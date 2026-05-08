@@ -45,7 +45,6 @@ import {
   SpecimenRejectionReason,
   ResultCommentTemplate,
   ReferralLab,
-  SampleLabelTemplate,
   LabBarcodeConfig,
   LabWorkflowSettings,
 } from '@/lib/types/laboratory';
@@ -101,8 +100,6 @@ import {
   ResultCommentTemplateArraySchema,
   ReferralLabSchema,
   ReferralLabArraySchema,
-  SampleLabelTemplateSchema,
-  SampleLabelTemplateArraySchema,
   LabBarcodeConfigSchema,
   LabWorkflowSettingsSchema,
 } from '@/lib/schemas/laboratory.schema';
@@ -1241,32 +1238,6 @@ export const laboratoryApi = {
 
   async deleteReferralLab(id: number): Promise<void> {
     await apiClient.delete(`/api/lab/settings/referral-labs/${id}/`);
-  },
-
-  async listLabelTemplates(params?: { is_active?: boolean }): Promise<SampleLabelTemplate[]> {
-    const response = await apiClient.get('/api/lab/settings/label-templates/', { params });
-    const data = Array.isArray(response.data) ? response.data : response.data.results || [];
-    return parseResponse(SampleLabelTemplateArraySchema, data, {
-      context: 'laboratoryApi.listLabelTemplates',
-    });
-  },
-
-  async createLabelTemplate(data: Partial<SampleLabelTemplate>): Promise<SampleLabelTemplate> {
-    const response = await apiClient.post('/api/lab/settings/label-templates/', data);
-    return parseResponse(SampleLabelTemplateSchema, response.data, {
-      context: 'laboratoryApi.createLabelTemplate',
-    });
-  },
-
-  async updateLabelTemplate(id: number, data: Partial<SampleLabelTemplate>): Promise<SampleLabelTemplate> {
-    const response = await apiClient.patch(`/api/lab/settings/label-templates/${id}/`, data);
-    return parseResponse(SampleLabelTemplateSchema, response.data, {
-      context: 'laboratoryApi.updateLabelTemplate',
-    });
-  },
-
-  async deleteLabelTemplate(id: number): Promise<void> {
-    await apiClient.delete(`/api/lab/settings/label-templates/${id}/`);
   },
 
   async getBarcodeConfig(): Promise<LabBarcodeConfig> {

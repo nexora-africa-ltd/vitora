@@ -1031,26 +1031,6 @@ export interface ReferralLab {
   is_active: boolean;
 }
 
-export type LabelSize = 'SMALL' | 'MEDIUM' | 'LARGE';
-
-export interface SampleLabelTemplate {
-  id: number;
-  name: string;
-  label_size: LabelSize;
-  label_size_display: string;
-  include_barcode: boolean;
-  include_patient_name: boolean;
-  include_mrn: boolean;
-  include_dob: boolean;
-  include_collection_date: boolean;
-  include_test_name: boolean;
-  include_specimen_type: boolean;
-  include_priority: boolean;
-  copies_per_specimen: number;
-  is_default: boolean;
-  is_active: boolean;
-}
-
 export type BarcodeFormat = 'CODE128' | 'CODE39' | 'QR';
 
 export interface LabBarcodeConfig {

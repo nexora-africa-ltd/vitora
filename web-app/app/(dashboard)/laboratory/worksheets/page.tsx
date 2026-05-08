@@ -221,13 +221,17 @@ export default function WorksheetsPage() {
   const generateLabelsMutation = useMutation({
     mutationFn: (data: { template_id: number; specimen_ids: number[]; copies?: number }) =>
       worksheetsApi.generateLabels(data),
-    onSuccess: () => {
+    onSuccess: (job) => {
       queryClient.invalidateQueries({ queryKey: ['label-print-jobs'] });
       setShowLabelDialog(false);
       setLabelWorksheetId(null);
       setSelectedLabelTemplate('');
       setLabelCopies(1);
       toast.success('Label print job created');
+      // Auto-open print output
+      if (job.output_data) {
+        openPrintOutput(job);
+      }
     },
     onError: () => toast.error('Failed to generate labels'),
   });
@@ -246,6 +250,86 @@ export default function WorksheetsPage() {
       template_id: parseInt(selectedLabelTemplate),
       specimen_ids: specimenIds,
       copies: labelCopies,
+    });
+  }
+
+  function openPrintOutput(job: LabelPrintJob | LabelPrintJobListItem) {
+    // List items don't have output_data — fetch full job first
+    if (!('output_data' in job)) {
+      worksheetsApi.getPrintJob(job.id).then((fullJobData) => {
+        openPrintOutput(fullJobData);
+      }).catch(() => toast.error('Failed to fetch print job data'));
+      return;
+    }
+
+    const fullJob = job as LabelPrintJob;
+
+    // ZPL output — copy to clipboard
+    if (fullJob.output_data && (fullJob.output_data.startsWith('^XA') || fullJob.output_data.includes('^FO'))) {
+      navigator.clipboard.writeText(fullJob.output_data).then(() => {
+        toast.success('ZPL commands copied to clipboard — paste into Zebra printer software');
+      });
+      worksheetsApi.markPrintJobPrinted(fullJob.id).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['label-print-jobs'] });
+      });
+      return;
+    }
+
+    // PDF output (base64-encoded)
+    if (fullJob.output_data && fullJob.output_data.length > 100) {
+      try {
+        const byteCharacters = atob(fullJob.output_data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const printWindow = window.open(url, '_blank');
+        if (printWindow) {
+          printWindow.onload = () => printWindow.print();
+        }
+        worksheetsApi.markPrintJobPrinted(fullJob.id).then(() => {
+          queryClient.invalidateQueries({ queryKey: ['label-print-jobs'] });
+        });
+        return;
+      } catch {
+        // Not valid base64, fall through to HTML labels
+      }
+    }
+
+    // Fallback: generate printable HTML from item label_data
+    const items = fullJob.items || [];
+    if (items.length === 0) {
+      toast.error('No label data available');
+      return;
+    }
+
+    const labelHtml = items.map((item) => {
+      const data = item.label_data as Record<string, string>;
+      return `
+        <div style="border:1px solid #ccc;padding:8px;margin:4px;display:inline-block;font-family:monospace;font-size:11px;width:200px;">
+          <div style="font-weight:bold;font-size:14px;margin-bottom:4px;">${data.barcode || item.specimen_barcode}</div>
+          ${data.patient_name ? `<div>${data.patient_name}</div>` : ''}
+          ${data.mrn ? `<div>MRN: ${data.mrn}</div>` : ''}
+          ${data.test_name ? `<div>${data.test_name}</div>` : ''}
+          ${data.collected_at ? `<div>${data.collected_at}</div>` : ''}
+        </div>`;
+    }).join('');
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html><head><title>Labels - Job #${fullJob.id}</title>
+        <style>@media print { body { margin: 0; } div { page-break-inside: avoid; } }</style>
+        </head><body>${labelHtml}</body></html>`);
+      printWindow.document.close();
+      printWindow.onload = () => printWindow.print();
+    }
+
+    worksheetsApi.markPrintJobPrinted(fullJob.id).then(() => {
+      queryClient.invalidateQueries({ queryKey: ['label-print-jobs'] });
     });
   }
 
@@ -577,6 +661,15 @@ export default function WorksheetsPage() {
                   cell: (item) => formatDate(item.created_at),
                   hideOnMobile: true,
                 },
+                {
+                  key: 'actions',
+                  header: '',
+                  cell: (item) => item.status === 'GENERATED' || item.status === 'PRINTED' ? (
+                    <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openPrintOutput(item); }}>
+                      <Printer className="h-4 w-4 mr-1" />{item.status === 'PRINTED' ? 'Reprint' : 'Print'}
+                    </Button>
+                  ) : null,
+                },
               ]}
               mobileCard={(item) => (
                 <div className="p-3 space-y-2">
@@ -586,9 +679,16 @@ export default function WorksheetsPage() {
                       {item.status}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {item.template_name} • {item.label_count} labels
-                  </p>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-muted-foreground">
+                      {item.template_name} • {item.label_count} labels
+                    </p>
+                    {(item.status === 'GENERATED' || item.status === 'PRINTED') && (
+                      <Button size="sm" variant="outline" onClick={() => openPrintOutput(item)}>
+                        <Printer className="h-3 w-3 mr-1" />Print
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
             />

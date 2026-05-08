@@ -35,7 +35,6 @@ from .models import (
     LOINCCode,
     ReferralLab,
     ResultCommentTemplate,
-    SampleLabelTemplate,
     Specimen,
     SpecimenRejectionReason,
     TestCatalog,
@@ -72,7 +71,6 @@ from .serializers import (
     LOINCCodeSerializer,
     ReferralLabSerializer,
     ResultCommentTemplateSerializer,
-    SampleLabelTemplateSerializer,
     SpecimenRejectionReasonSerializer,
     SpecimenSerializer,
     TestCatalogCreateSerializer,
@@ -1757,28 +1755,6 @@ class ReferralLabViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         search = self.request.query_params.get("search")
         if search:
             qs = qs.filter(models.Q(name__icontains=search) | models.Q(code__icontains=search))
-        return qs
-
-    def perform_create(self, serializer):
-        serializer.save(**self.get_tenant_save_kwargs())
-
-    def perform_update(self, serializer):
-        serializer.save()
-
-
-class SampleLabelTemplateViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
-    """CRUD for sample label templates."""
-
-    queryset = SampleLabelTemplate.objects.all()
-    serializer_class = SampleLabelTemplateSerializer
-    permission_classes = [IsAuthenticated]
-    tenant_scope = "facility"
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        is_active = self.request.query_params.get("is_active")
-        if is_active is not None:
-            qs = qs.filter(is_active=is_active.lower() == "true")
         return qs
 
     def perform_create(self, serializer):

@@ -1080,25 +1080,6 @@ export const ReferralLabSchema = z.object({
 });
 export const ReferralLabArraySchema = z.array(ReferralLabSchema);
 
-export const SampleLabelTemplateSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  label_size: z.enum(['SMALL', 'MEDIUM', 'LARGE']),
-  label_size_display: z.string(),
-  include_barcode: z.boolean(),
-  include_patient_name: z.boolean(),
-  include_mrn: z.boolean(),
-  include_dob: z.boolean(),
-  include_collection_date: z.boolean(),
-  include_test_name: z.boolean(),
-  include_specimen_type: z.boolean(),
-  include_priority: z.boolean(),
-  copies_per_specimen: z.number(),
-  is_default: z.boolean(),
-  is_active: z.boolean(),
-});
-export const SampleLabelTemplateArraySchema = z.array(SampleLabelTemplateSchema);
-
 export const LabBarcodeConfigSchema = z.object({
   id: z.number(),
   prefix: z.string(),
