@@ -83,6 +83,7 @@ export function ResponsiveTable<T>({
   };
 
   const sortedData = React.useMemo(() => {
+    if (!Array.isArray(data)) return [];
     if (!sortColumn) return data;
     const col = columns.find((c) => String(c.key) === sortColumn);
     if (!col || !col.sortable) return data;
@@ -121,7 +122,7 @@ export function ResponsiveTable<T>({
     );
   }
 
-  if (data.length === 0) {
+  if (!Array.isArray(data) || data.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         {emptyMessage}
