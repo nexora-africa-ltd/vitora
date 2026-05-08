@@ -15,7 +15,7 @@ export const WorksheetStatusSchema = z.enum(['DRAFT', 'IN_PROGRESS', 'COMPLETED'
 
 export const LabelFormatSchema = z.enum(['ZPL', 'PDF']);
 export const LabelTypeSchema = z.enum(['SPECIMEN', 'ALIQUOT', 'SLIDE', 'BLOCK', 'RACK', 'TRAY']);
-export const LabelPrintJobStatusSchema = z.enum(['PENDING', 'GENERATING', 'READY', 'PRINTED', 'FAILED']);
+export const LabelPrintJobStatusSchema = z.enum(['PENDING', 'GENERATED', 'PRINTED', 'FAILED']);
 
 // =============================================================================
 // Worksheet Template
@@ -118,11 +118,7 @@ export const LabelTemplateSchema = z.object({
   width_mm: z.number(),
   height_mm: z.number(),
   barcode_format: z.string(),
-  include_patient_name: z.boolean(),
-  include_dob: z.boolean(),
-  include_mrn: z.boolean(),
-  include_collection_date: z.boolean(),
-  include_test_name: z.boolean(),
+  include_fields: z.array(z.string()),
   zpl_template: z.string(),
   is_default: z.boolean(),
   is_active: z.boolean(),
@@ -143,11 +139,11 @@ export const PaginatedLabelTemplateSchema = z.object({
 
 export const LabelPrintJobItemSchema = z.object({
   id: z.number(),
-  print_job: z.number(),
-  lab_order_item: z.number(),
+  specimen: z.number(),
   specimen_barcode: z.string(),
-  patient_name: z.string(),
-  label_data: z.string(),
+  order_item: z.number(),
+  copies: z.number(),
+  label_data: z.record(z.unknown()),
 });
 
 // =============================================================================
@@ -156,14 +152,15 @@ export const LabelPrintJobItemSchema = z.object({
 
 export const LabelPrintJobSchema = z.object({
   id: z.number(),
-  template: z.number(),
+  template: z.number().nullable(),
   template_name: z.string(),
   status: LabelPrintJobStatusSchema,
-  total_labels: z.number(),
-  generated_data: z.string(),
-  generated_by_name: z.string(),
-  printed_at: z.string().nullable(),
+  label_count: z.number(),
+  output_data: z.string(),
   error_message: z.string(),
+  generated_by: z.number().nullable(),
+  generated_at: z.string().nullable(),
+  printed_at: z.string().nullable(),
   items: z.array(LabelPrintJobItemSchema),
   created_at: z.string(),
   updated_at: z.string(),
@@ -173,5 +170,15 @@ export const PaginatedLabelPrintJobSchema = z.object({
   count: z.number(),
   next: z.string().nullable(),
   previous: z.string().nullable(),
-  results: z.array(LabelPrintJobSchema),
+  results: z.array(z.object({
+    id: z.number(),
+    template: z.number().nullable(),
+    template_name: z.string(),
+    status: LabelPrintJobStatusSchema,
+    label_count: z.number(),
+    generated_by: z.number().nullable(),
+    generated_at: z.string().nullable(),
+    printed_at: z.string().nullable(),
+    created_at: z.string(),
+  })),
 });
