@@ -17,6 +17,10 @@ from rest_framework.response import Response
 from hmis.apps.core.mixins import NestedTenantScopeMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.referrals.models import ClinicalReferral
+from hmis.apps.referrals.permissions import (
+    ReferralActionPermission,
+    user_can_view_sensitive_referrals,
+)
 from hmis.apps.referrals.serializers import (
     ClinicalReferralCreateSerializer,
     ClinicalReferralListSerializer,
@@ -84,7 +88,7 @@ class ClinicalReferralViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "destination_clinic",
         "clinic_visit",
     )
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ReferralActionPermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -101,6 +105,13 @@ class ClinicalReferralViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     ]
     ordering_fields = ["created_at", "priority", "status", "target_service"]
     ordering = ["-created_at"]
+
+    def get_queryset(self):
+        """Filter sensitive referrals from users without explicit permission."""
+        qs = super().get_queryset()
+        if not user_can_view_sensitive_referrals(self.request.user):
+            qs = qs.filter(is_sensitive=False)
+        return qs
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action."""
@@ -258,9 +269,10 @@ class ClinicalReferralViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
         serializer = ReferralCancelSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        cancel_reason = serializer.validated_data.get("reason", "")
 
         try:
-            referral.cancel(user=request.user)
+            referral.cancel(user=request.user, reason=cancel_reason)
         except Exception as e:
             return Response(
                 {"detail": str(e)},
@@ -273,7 +285,10 @@ class ClinicalReferralViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             resource_type="ClinicalReferral",
             resource_id=referral.id,
             patient_id=referral.patient_id,
-            details={"referral_number": referral.referral_number},
+            details={
+                "referral_number": referral.referral_number,
+                "reason": cancel_reason,
+            },
         )
 
         return Response(

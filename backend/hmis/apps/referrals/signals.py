@@ -2,24 +2,55 @@
 Django signals for the referrals module.
 
 Handles:
-- Clinic queue integration: Auto-route patients when referral is accepted
-- Allied health order creation: Auto-create module-specific records
-- Admission recommendation: Auto-create when admission referral is accepted
+- Domain event publication on lifecycle transitions (created/accepted/declined/cancelled/expired/completed).
+- Encounter disposition: marked REFERRED on creation, reverted on cancel/decline/expire.
+- Clinic queue integration: auto-route patients when referral is accepted (skips EXTERNAL).
+- Allied health order creation: auto-create module-specific records.
+- Admission recommendation: auto-create when admission referral is accepted.
 """
 
 import logging
 
-from django.db.models.signals import post_save
+from django.db.models.signals import post_init, post_save
 from django.dispatch import receiver
 
+from hmis.apps.core.events import ReferralEvents, publish_event
 from hmis.apps.referrals.models import ClinicalReferral
 
 logger = logging.getLogger(__name__)
 
 
+@receiver(post_init, sender=ClinicalReferral)
+def _track_status(sender, instance, **kwargs):
+    """Capture the database status at load time so save() can compare."""
+    instance._status_before = instance.status
+
+
 def _build_referral_disposition_note(referral: ClinicalReferral) -> str:
     """Return a concise encounter note describing the referral handoff."""
     return f"Referral {referral.referral_number} to {referral.target_service}: {referral.reason}"
+
+
+def _event_payload(referral: ClinicalReferral) -> dict:
+    """Build the payload used for all referral domain events."""
+    return {
+        "id": referral.pk,
+        "referral_number": referral.referral_number,
+        "referral_type": referral.referral_type,
+        "target_service": referral.target_service,
+        "status": referral.status,
+        "priority": referral.priority,
+        "patient_id": referral.patient_id,
+        "encounter_id": referral.encounter_id,
+        "facility_id": referral.facility_id,
+        "organization_id": referral.organization_id,
+        "is_sensitive": referral.is_sensitive,
+    }
+
+
+# ----------------------------------------------------------------------------
+# Lifecycle: creation
+# ----------------------------------------------------------------------------
 
 
 @receiver(post_save, sender=ClinicalReferral)
@@ -28,26 +59,94 @@ def mark_source_encounter_referred(sender, instance, created, **kwargs):
     if not created:
         return
 
+    # Publish creation event
+    try:
+        publish_event(
+            event_type=ReferralEvents.CREATED,
+            aggregate_type="ClinicalReferral",
+            aggregate_id=instance.pk,
+            payload=_event_payload(instance),
+            facility_id=instance.facility_id,
+            organization_id=instance.organization_id,
+        )
+    except Exception:
+        logger.exception("Failed to publish referral.created event for %s", instance.pk)
+
     encounter = instance.encounter
-    if not encounter or encounter.encounter_type != "OPD":
-        return
-
-    if encounter.status in ("CLOSED", "CANCELLED"):
-        return
-
-    disposition_note = _build_referral_disposition_note(instance)
-    existing_notes = (encounter.disposition_notes or "").strip()
-    if disposition_note in existing_notes:
-        return
-
-    encounter.disposition = "REFERRED"
-    encounter.disposition_notes = (
-        f"{existing_notes}\n{disposition_note}" if existing_notes else disposition_note
-    )
-    encounter.save(update_fields=["disposition", "disposition_notes", "updated_at"])
+    if (
+        encounter
+        and encounter.encounter_type == "OPD"
+        and encounter.status
+        not in (
+            "CLOSED",
+            "CANCELLED",
+        )
+    ):
+        disposition_note = _build_referral_disposition_note(instance)
+        existing_notes = (encounter.disposition_notes or "").strip()
+        if disposition_note not in existing_notes:
+            encounter.disposition = "REFERRED"
+            encounter.disposition_notes = (
+                f"{existing_notes}\n{disposition_note}" if existing_notes else disposition_note
+            )
+            encounter.save(update_fields=["disposition", "disposition_notes", "updated_at"])
 
     # Notify target department staff about incoming referral
     _notify_referral_created(instance)
+
+
+# ----------------------------------------------------------------------------
+# Lifecycle: status transitions (accept / decline / cancel / expire / complete)
+# ----------------------------------------------------------------------------
+
+
+_STATUS_TO_EVENT = {
+    "ACCEPTED": ReferralEvents.ACCEPTED,
+    "DECLINED": ReferralEvents.DECLINED,
+    "CANCELLED": ReferralEvents.CANCELLED,
+    "EXPIRED": ReferralEvents.EXPIRED,
+    "IN_PROGRESS": ReferralEvents.IN_PROGRESS,
+    "COMPLETED": ReferralEvents.COMPLETED,
+}
+
+_NEGATIVE_TERMINAL_STATES = {"CANCELLED", "DECLINED", "EXPIRED"}
+
+
+@receiver(post_save, sender=ClinicalReferral)
+def _publish_status_change_event(sender, instance, created, **kwargs):
+    """Emit a domain event when status changes (skip on creation — handled above)."""
+    if created:
+        # Reset tracking after creation
+        instance._status_before = instance.status
+        return
+
+    previous = getattr(instance, "_status_before", None)
+    if previous == instance.status:
+        return
+
+    event_type = _STATUS_TO_EVENT.get(instance.status)
+    if event_type:
+        try:
+            publish_event(
+                event_type=event_type,
+                aggregate_type="ClinicalReferral",
+                aggregate_id=instance.pk,
+                payload=_event_payload(instance),
+                facility_id=instance.facility_id,
+                organization_id=instance.organization_id,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to publish referral status event for %s (%s)",
+                instance.pk,
+                instance.status,
+            )
+
+    # If the referral became negatively-terminal, revert encounter disposition.
+    if instance.status in _NEGATIVE_TERMINAL_STATES:
+        _revert_encounter_disposition_if_unique(instance)
+
+    instance._status_before = instance.status
 
 
 @receiver(post_save, sender=ClinicalReferral)
@@ -64,6 +163,10 @@ def handle_referral_accepted(sender, instance, created, **kwargs):
 
     For ADMISSION referrals:
         - Creates an AdmissionRecommendation in the inpatient module
+
+    For EXTERNAL referrals:
+        - Skipped — the patient is being sent to another facility, no internal
+          downstream record is appropriate.
     """
     if created:
         return  # Skip on initial creation
@@ -78,14 +181,53 @@ def handle_referral_accepted(sender, instance, created, **kwargs):
     # Notify referring clinician that referral was accepted
     _notify_referral_accepted(instance)
 
+    # External referrals do not create local downstream records.
+    if instance.is_external:
+        logger.info(
+            "Referral %s is EXTERNAL — skipping internal downstream routing.",
+            instance.referral_number,
+        )
+        return
+
     # Route based on referral type
     if instance.is_allied_health:
         _create_allied_health_order(instance)
     elif instance.is_admission:
         _create_admission_recommendation(instance)
     else:
-        # Specialty clinic or external — route to clinic queue
+        # Specialty clinic — route to clinic queue
         _create_clinic_visit(instance)
+
+
+def _revert_encounter_disposition_if_unique(referral: ClinicalReferral) -> None:
+    """If the source OPD encounter has no other active referrals, clear REFERRED disposition."""
+    encounter = referral.encounter
+    if not encounter or encounter.encounter_type != "OPD":
+        return
+    if encounter.status in ("CLOSED", "CANCELLED"):
+        return
+    if encounter.disposition != "REFERRED":
+        return
+
+    # Are there any sibling referrals still in an active state?
+    sibling_active = (
+        ClinicalReferral.objects.filter(
+            encounter_id=encounter.pk,
+            status__in=("DRAFT", "PENDING", "ACCEPTED", "IN_PROGRESS", "COMPLETED"),
+        )
+        .exclude(pk=referral.pk)
+        .exists()
+    )
+    if sibling_active:
+        return
+
+    # No siblings keeping the encounter referred — clear disposition fields.
+    encounter.disposition = ""
+    # Append an audit note rather than wiping prior context.
+    note = f"Referral {referral.referral_number} {referral.status.lower()}."
+    existing = (encounter.disposition_notes or "").strip()
+    encounter.disposition_notes = f"{existing}\n{note}" if existing else note
+    encounter.save(update_fields=["disposition", "disposition_notes", "updated_at"])
 
 
 def _create_allied_health_order(referral):
@@ -272,7 +414,11 @@ def _create_admission_recommendation(referral):
 
 
 def _create_clinic_visit(referral):
-    """Create a ClinicVisit for specialty clinic routing."""
+    """Create a ClinicVisit for specialty clinic routing.
+
+    Constrained to the source encounter's facility/organization to prevent
+    cross-tenant data leaks via the fallback clinic lookup.
+    """
     try:
         from hmis.apps.clinics.models import Clinic, ClinicVisit
 
@@ -288,26 +434,40 @@ def _create_clinic_visit(referral):
             )
             return
 
+        # Resolve the facility/organization scope from the encounter (canonical),
+        # falling back to the referral's own tenant FKs for safety.
+        encounter = referral.encounter
+        facility_id = getattr(encounter, "facility_id", None) or referral.facility_id
+        organization_id = getattr(encounter, "organization_id", None) or referral.organization_id
+
         clinic = None
         if referral.destination_clinic_id:
-            clinic = Clinic.objects.filter(
-                pk=referral.destination_clinic_id,
-                status="ACTIVE",
-            ).first()
+            clinic_filter = {"pk": referral.destination_clinic_id, "status": "ACTIVE"}
+            if facility_id:
+                clinic_filter["facility_id"] = facility_id
+            clinic = Clinic.objects.filter(**clinic_filter).first()
 
         if not clinic:
-            clinic = (
-                Clinic.objects.filter(
-                    clinic_type=clinic_type,
-                    status="ACTIVE",
+            fallback_filter = {
+                "clinic_type": clinic_type,
+                "status": "ACTIVE",
+            }
+            if facility_id:
+                fallback_filter["facility_id"] = facility_id
+            elif organization_id:
+                fallback_filter["organization_id"] = organization_id
+            else:
+                # Refuse to route without tenant context to avoid cross-tenant leak.
+                logger.warning(
+                    "Referral %s has no tenant context; refusing clinic-queue routing.",
+                    referral.referral_number,
                 )
-                .order_by("name", "id")
-                .first()
-            )
+                return
+            clinic = Clinic.objects.filter(**fallback_filter).order_by("name", "id").first()
 
         if not clinic:
             logger.warning(
-                f"No active {clinic_type} clinic found. "
+                f"No active {clinic_type} clinic found in tenant scope. "
                 f"Skipping queue routing for referral {referral.referral_number}."
             )
             return
@@ -387,34 +547,40 @@ def _notify_referral_created(instance):
 
         User = get_user_model()
 
+        # Resolve facility from the referral itself or the source encounter.
         facility_id = getattr(instance, "facility_id", None)
+        if not facility_id and instance.encounter_id:
+            facility_id = getattr(instance.encounter, "facility_id", None)
         if not facility_id:
             return
 
-        # Try to find staff in the target department/service
         target_service = instance.target_service or ""
         patient = getattr(instance.encounter, "patient", None) if instance.encounter else None
         patient_name = f"{patient.first_name} {patient.last_name}" if patient else "a patient"
 
-        # Find staff associated with target department
-        target_dept = getattr(instance, "target_department", None)
-        if target_dept:
+        # Prefer the destination clinic's department if available.
+        target_dept = None
+        destination_clinic = getattr(instance, "destination_clinic", None)
+        if destination_clinic is not None:
+            target_dept = getattr(destination_clinic, "department", None)
+
+        if target_dept is not None:
             staff = User.objects.filter(
-                staff_profile__facilities__id=facility_id,
+                staff_profile__primary_facility_id=facility_id,
                 staff_profile__department=target_dept,
                 is_active=True,
             ).distinct()
         else:
-            # Fallback: notify all clinicians in facility
+            # Fallback: notify all clinicians in facility (capped to avoid spam)
             staff = User.objects.filter(
-                staff_profile__facilities__id=facility_id,
+                staff_profile__primary_facility_id=facility_id,
                 staff_profile__primary_role__code__in=[
                     "DOCTOR",
                     "CLINICAL_OFFICER",
                     "CLINICAL_SENIOR",
                 ],
                 is_active=True,
-            ).distinct()[:10]  # Limit to avoid spam
+            ).distinct()[:10]
 
         if not staff:
             return

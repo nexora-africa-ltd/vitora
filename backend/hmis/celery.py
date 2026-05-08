@@ -170,6 +170,11 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.pharmacy.tasks.expire_prescriptions",
         "schedule": crontab(minute=0, hour=1),
     },
+    # Referrals: Expire stale PENDING referrals every 15 minutes
+    "referrals-expire-referrals": {
+        "task": "hmis.apps.referrals.tasks.expire_referrals",
+        "schedule": crontab(minute="*/15"),
+    },
     # Pharmacy: Generate expiring-soon Rx alerts daily at 6 AM
     "pharmacy-prescription-expiry-alerts": {
         "task": "hmis.apps.pharmacy.tasks.generate_prescription_expiry_alerts",

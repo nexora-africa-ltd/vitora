@@ -95,6 +95,7 @@ class ClinicalReferralSerializer(serializers.ModelSerializer):
     referred_by_name = serializers.SerializerMethodField()
     accepted_by_name = serializers.SerializerMethodField()
     declined_by_name = serializers.SerializerMethodField()
+    cancelled_by_name = serializers.SerializerMethodField()
     destination_clinic_name = serializers.CharField(
         source="destination_clinic.name", read_only=True
     )
@@ -143,9 +144,13 @@ class ClinicalReferralSerializer(serializers.ModelSerializer):
             "declined_by",
             "declined_by_name",
             "decline_reason",
+            "cancelled_by",
+            "cancelled_by_name",
+            "cancel_reason",
             # Timestamps
             "accepted_at",
             "declined_at",
+            "cancelled_at",
             "completed_at",
             "expires_at",
             # Linked specialist record
@@ -167,8 +172,10 @@ class ClinicalReferralSerializer(serializers.ModelSerializer):
             "referred_by",
             "accepted_by",
             "declined_by",
+            "cancelled_by",
             "accepted_at",
             "declined_at",
+            "cancelled_at",
             "completed_at",
             "linked_module",
             "linked_model",
@@ -204,6 +211,12 @@ class ClinicalReferralSerializer(serializers.ModelSerializer):
         if obj.declined_by:
             name = f"{obj.declined_by.first_name} {obj.declined_by.last_name}".strip()
             return name or obj.declined_by.username
+        return ""
+
+    def get_cancelled_by_name(self, obj):
+        if obj.cancelled_by:
+            name = f"{obj.cancelled_by.first_name} {obj.cancelled_by.last_name}".strip()
+            return name or obj.cancelled_by.username
         return ""
 
 
@@ -270,11 +283,8 @@ class ClinicalReferralCreateSerializer(serializers.ModelSerializer):
                     }
                 )
 
-        # External referrals detected by target_service=OTHER + external fields
-        if target_service == "OTHER" and data.get("external_facility_name"):
-            # This is an external referral
-            pass
-        elif referral_type == "EXTERNAL":
+        # External referrals require an external facility name
+        if referral_type == "EXTERNAL":
             if not data.get("external_facility_name"):
                 raise serializers.ValidationError(
                     {
