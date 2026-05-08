@@ -19,12 +19,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import (
-    NestedTenantScopeMixin,
-    ReadOnCreateMixin,
-    TenantScopedViewMixin,
-    resolve_request_tenant,
-)
+from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.permissions import RequiresActiveShiftPermission
 
 from .models import (
@@ -116,15 +111,16 @@ def _parse_date_range(request) -> tuple[date, date]:
     return start_date, end_date
 
 
-class TestCatalogViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class TestCatalogViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for test catalog, scoped per facility.
-    Each facility maintains its own test catalog.
+    ViewSet for test catalog.
+    Provides full CRUD operations with search functionality.
+    List/retrieve are available to all authenticated users.
+    Create/update/delete require admin role.
     """
 
     queryset = TestCatalog.objects.all()
     permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISManageCatalogPermission]
-    tenant_scope = "facility"
     lookup_field = "code"
 
     def get_serializer_class(self):
@@ -166,7 +162,7 @@ class TestCatalogViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(**self.get_tenant_save_kwargs())
+        serializer.save()
 
     def perform_update(self, serializer):
         serializer.save()
@@ -258,19 +254,12 @@ class TestCatalogViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="seed-defaults")
     def seed_defaults(self, request):
-        """Seed essential Kenya laboratory tests for this facility (idempotent).
+        """Seed essential Kenya laboratory tests (idempotent).
 
         Uses get_or_create so existing entries are not overwritten.
         Returns the count of newly created entries.
         """
         from decimal import Decimal
-
-        resolve_request_tenant(request)
-        facility = getattr(request, "facility", None)
-        if not facility:
-            return Response(
-                {"error": "Facility context required"}, status=status.HTTP_400_BAD_REQUEST
-            )
 
         essential_tests = [
             {
@@ -496,9 +485,7 @@ class TestCatalogViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         created_count = 0
         for test_data in essential_tests:
             _, created = TestCatalog.objects.get_or_create(
-                facility=facility,
-                code=test_data["code"],
-                defaults={**test_data, "organization": facility.organization},
+                code=test_data["code"], defaults=test_data
             )
             if created:
                 created_count += 1
