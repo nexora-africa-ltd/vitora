@@ -163,6 +163,14 @@ export const laboratoryApi = {
   },
 
   /**
+   * Seed essential Kenya laboratory tests (idempotent).
+   */
+  async seedDefaults(): Promise<{ created: number; total: number }> {
+    const response = await apiClient.post<{ created: number; total: number }>('/api/lab/tests/seed-defaults/');
+    return response.data;
+  },
+
+  /**
    * Create a new test catalog entry.
    */
   async createTest(data: TestCatalogCreateData): Promise<TestCatalog> {

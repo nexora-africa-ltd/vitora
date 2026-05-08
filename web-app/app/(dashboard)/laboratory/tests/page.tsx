@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +24,8 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
-import { Plus, FlaskConical, DollarSign, Clock } from 'lucide-react';
+import { Plus, FlaskConical, DollarSign, Clock, Download } from 'lucide-react';
+import { toast } from 'sonner';
 
 const EMPTY_TESTS: TestCatalogListItem[] = [];
 
@@ -58,14 +59,27 @@ export default function LaboratoryTestsPage() {
   const { refresh, isRefreshing } = usePageRefresh();
   const { canPerformAction } = usePermissions();
   const canManage = canPerformAction('laboratory.manage_catalog');
+  const queryClient = useQueryClient();
 
   const testsQuery = useQuery({
     queryKey: ['laboratoryTests', { is_active: true, page: 1, page_size: 200 }],
     queryFn: async () => laboratoryApi.listTests({ is_active: true, page: 1, page_size: 200 }),
   });
 
+  const seedMutation = useMutation({
+    mutationFn: () => laboratoryApi.seedDefaults(),
+    onSuccess: (data) => {
+      toast.success(`Seeded ${data.created} default test(s)`);
+      queryClient.invalidateQueries({ queryKey: ['laboratoryTests'] });
+    },
+    onError: () => {
+      toast.error('Failed to seed default tests');
+    },
+  });
+
   const tests: TestCatalogListItem[] = testsQuery.data?.results ?? EMPTY_TESTS;
   const errorMessage = testsQuery.error instanceof Error ? testsQuery.error.message : null;
+  const catalogEmpty = !testsQuery.isLoading && !errorMessage && tests.length === 0;
 
   const filtered = useMemo(() => {
     let result = tests;
@@ -197,6 +211,21 @@ export default function LaboratoryTestsPage() {
               </div>
             ) : errorMessage ? (
               <div className="text-sm text-destructive">{errorMessage}</div>
+            ) : catalogEmpty && canManage ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <FlaskConical className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-1">No tests in catalog</h3>
+                <p className="text-sm text-muted-foreground mb-4 max-w-sm">
+                  Seed the catalog with 16 essential Kenya laboratory tests (CBC, HIV, Malaria, Urinalysis, etc.) to get started.
+                </p>
+                <Button
+                  onClick={() => seedMutation.mutate()}
+                  disabled={seedMutation.isPending}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {seedMutation.isPending ? 'Seeding...' : 'Seed Defaults'}
+                </Button>
+              </div>
             ) : (
               <ResponsiveTable
                 data={filtered}
