@@ -7,13 +7,11 @@ import {
   CheckCircle2,
   TrendingUp,
   Users,
-  RefreshCw,
   Timer,
 } from 'lucide-react';
 import { subDays, format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -75,18 +73,13 @@ export default function LabSLADashboardPage() {
   const [preset, setPreset] = useState<DatePreset>('last7days');
   const { start, end } = useMemo(() => getDateRange(preset), [preset]);
 
-  const { data: compliance, isLoading: compLoading, refetch: refetchComp } = useSLAComplianceReport(start, end);
+  const { data: compliance, isLoading: compLoading } = useSLAComplianceReport(start, end);
   const { data: trend, isLoading: trendLoading } = useTATTrendReport(start, end);
-  const { data: breaches, isLoading: breachLoading, refetch: refetchBreaches } = useActiveBreaches();
+  const { data: breaches, isLoading: breachLoading } = useActiveBreaches();
   const { data: techEfficiency, isLoading: techLoading } = useTechnicianEfficiency(start, end);
   const { data: workloadKPI, isLoading: workloadLoading } = useWorkloadKPI(start, end);
 
   const isLoading = compLoading || trendLoading || breachLoading || techLoading || workloadLoading;
-
-  const handleRefresh = () => {
-    refetchComp();
-    refetchBreaches();
-  };
 
   if (isLoading) {
     return (
@@ -110,23 +103,18 @@ export default function LabSLADashboardPage() {
         title="SLA & Performance"
         helpContent="Monitor turnaround time SLA compliance, active breaches, technician efficiency, and workload KPIs. Data updates in real-time for active breaches."
         actions={
-          <div className="flex items-center gap-2">
-            <Select value={preset} onValueChange={(v) => setPreset(v as DatePreset)}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {datePresets.map((p) => (
-                  <SelectItem key={p.value} value={p.value}>
-                    {p.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="sm" onClick={handleRefresh}>
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          </div>
+          <Select value={preset} onValueChange={(v) => setPreset(v as DatePreset)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {datePresets.map((p) => (
+                <SelectItem key={p.value} value={p.value}>
+                  {p.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         }
       />
 

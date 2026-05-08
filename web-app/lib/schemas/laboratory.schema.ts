@@ -883,7 +883,7 @@ export const CultureResultSchema = z.object({
   status: z.enum(['INOCULATED', 'INCUBATING', 'READING', 'PRELIMINARY', 'FINAL', 'NO_GROWTH', 'CANCELLED']),
   status_display: z.string(),
   culture_medium: z.string(),
-  incubation_temperature: z.number().nullable(),
+  incubation_temperature: z.coerce.number().nullable(),
   incubation_atmosphere: z.string(),
   incubation_hours: z.number().nullable(),
   inoculated_by: z.number().nullable(),
