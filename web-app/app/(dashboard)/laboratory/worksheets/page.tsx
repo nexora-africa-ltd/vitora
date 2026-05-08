@@ -253,22 +253,29 @@ export default function WorksheetsPage() {
     });
   }
 
-  function openPrintOutput(job: LabelPrintJob | LabelPrintJobListItem) {
+  async function openPrintOutput(job: LabelPrintJob | LabelPrintJobListItem) {
+    let fullJob: LabelPrintJob;
+
     // List items don't have output_data — fetch full job first
     if (!('output_data' in job)) {
-      worksheetsApi.getPrintJob(job.id).then((fullJobData) => {
-        openPrintOutput(fullJobData);
-      }).catch(() => toast.error('Failed to fetch print job data'));
-      return;
+      try {
+        fullJob = await worksheetsApi.getPrintJob(job.id);
+      } catch {
+        toast.error('Failed to fetch print job data');
+        return;
+      }
+    } else {
+      fullJob = job as LabelPrintJob;
     }
-
-    const fullJob = job as LabelPrintJob;
 
     // ZPL output — copy to clipboard
     if (fullJob.output_data && (fullJob.output_data.startsWith('^XA') || fullJob.output_data.includes('^FO'))) {
-      navigator.clipboard.writeText(fullJob.output_data).then(() => {
+      try {
+        await navigator.clipboard.writeText(fullJob.output_data);
         toast.success('ZPL commands copied to clipboard — paste into Zebra printer software');
-      });
+      } catch {
+        toast.error('Failed to copy ZPL to clipboard');
+      }
       worksheetsApi.markPrintJobPrinted(fullJob.id).then(() => {
         queryClient.invalidateQueries({ queryKey: ['label-print-jobs'] });
       });
@@ -288,7 +295,7 @@ export default function WorksheetsPage() {
         const url = URL.createObjectURL(blob);
         const printWindow = window.open(url, '_blank');
         if (printWindow) {
-          printWindow.onload = () => printWindow.print();
+          printWindow.addEventListener('load', () => printWindow.print());
         }
         worksheetsApi.markPrintJobPrinted(fullJob.id).then(() => {
           queryClient.invalidateQueries({ queryKey: ['label-print-jobs'] });
@@ -325,7 +332,8 @@ export default function WorksheetsPage() {
         <style>@media print { body { margin: 0; } div { page-break-inside: avoid; } }</style>
         </head><body>${labelHtml}</body></html>`);
       printWindow.document.close();
-      printWindow.onload = () => printWindow.print();
+      // Small delay to let content render before triggering print
+      setTimeout(() => printWindow.print(), 300);
     }
 
     worksheetsApi.markPrintJobPrinted(fullJob.id).then(() => {
