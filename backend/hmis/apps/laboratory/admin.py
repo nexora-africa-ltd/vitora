@@ -11,9 +11,10 @@ from .models import LabOrder, LabOrderItem, LabResult, LOINCCode, Specimen, Test
 class TestCatalogAdmin(admin.ModelAdmin):
     """Admin interface for Test Catalog."""
 
-    list_display = ("code", "name", "category", "specimen_type", "cost", "is_active")
-    list_filter = ("category", "specimen_type", "is_active", "available_in_house")
+    list_display = ("code", "name", "category", "specimen_type", "cost", "facility", "is_active")
+    list_filter = ("category", "specimen_type", "is_active", "available_in_house", "facility")
     search_fields = ("code", "name", "short_name", "loinc_code")
+    raw_id_fields = ("facility", "organization")
     ordering = ("category", "name")
 
 

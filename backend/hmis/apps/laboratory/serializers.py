@@ -149,11 +149,18 @@ class TestCatalogCreateSerializer(serializers.ModelSerializer):
         ]
 
     def validate_code(self):
-        """Ensure code is unique (case-insensitive)."""
+        """Ensure code is unique within the facility (case-insensitive)."""
         code = self.initial_data.get("code", "")
         if isinstance(code, str):
             code = code.strip().upper()
+        # Scope uniqueness check to the facility from the request context
+        facility = None
+        request = self.context.get("request")
+        if request:
+            facility = getattr(request, "facility", None)
         qs = TestCatalog.objects.filter(code__iexact=code)
+        if facility:
+            qs = qs.filter(facility=facility)
         if self.instance:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
