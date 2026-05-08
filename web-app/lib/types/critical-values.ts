@@ -29,7 +29,7 @@ export interface CriticalValueRange {
   critical_high: number | null;
   panic_low: number | null;
   panic_high: number | null;
-  unit: string;
+  unit?: string;
   notification_deadline_minutes: number;
   is_active: boolean;
   created_at: string;

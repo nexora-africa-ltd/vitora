@@ -7,8 +7,8 @@
 // Enums
 // =============================================================================
 
-export type WorksheetGroupBy = 'TEST' | 'PANEL' | 'DEPARTMENT' | 'PRIORITY' | 'SPECIMEN_TYPE';
-export type WorksheetExportFormat = 'CSV' | 'PDF' | 'TSV';
+export type WorksheetGroupBy = 'ANALYZER' | 'SECTION' | 'PRIORITY' | 'SPECIMEN_TYPE';
+export type WorksheetExportFormat = 'CSV' | 'PDF' | 'ZPL';
 export type WorksheetStatus = 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'PRINTED';
 
 export type LabelFormat = 'ZPL' | 'PDF';
@@ -24,10 +24,13 @@ export interface WorksheetTemplate {
   name: string;
   description: string;
   group_by: WorksheetGroupBy;
+  section_filter: string;
+  instrument: number | null;
+  instrument_name?: string | null;
+  include_qc_slots: boolean;
+  max_specimens_per_page: number;
   default_export_format: WorksheetExportFormat;
-  filters: Record<string, unknown>;
-  columns: string[];
-  page_size: number;
+  columns?: string[];
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -37,10 +40,12 @@ export interface WorksheetTemplateCreateData {
   name: string;
   description?: string;
   group_by: WorksheetGroupBy;
+  section_filter?: string;
+  instrument?: number | null;
+  include_qc_slots?: boolean;
+  max_specimens_per_page?: number;
   default_export_format?: WorksheetExportFormat;
-  filters?: Record<string, unknown>;
   columns?: string[];
-  page_size?: number;
 }
 
 // =============================================================================

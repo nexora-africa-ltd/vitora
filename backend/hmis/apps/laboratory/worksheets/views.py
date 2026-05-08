@@ -59,6 +59,116 @@ class WorksheetTemplateViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewset
     def perform_create(self, serializer):
         serializer.save(**self.get_tenant_save_kwargs())
 
+    @action(detail=False, methods=["post"])
+    def seed_defaults(self, request):
+        """Seed default worksheet templates for the current facility."""
+        self._resolve_tenant_context()
+        facility = request.facility
+
+        DEFAULTS = [
+            {
+                "name": "Hematology Worklist",
+                "description": "Daily worklist for CBC, coagulation, and ESR specimens grouped by section.",
+                "group_by": "SECTION",
+                "section_filter": "HEMATOLOGY",
+                "max_specimens_per_page": 30,
+                "default_export_format": "PDF",
+                "include_qc_slots": True,
+                "columns": [
+                    "specimen_barcode",
+                    "patient_name",
+                    "test_name",
+                    "priority",
+                    "collection_time",
+                ],
+            },
+            {
+                "name": "Chemistry/Biochemistry Worklist",
+                "description": "Batch worklist for chemistry analyzer runs (LFT, RFT, lipids, glucose).",
+                "group_by": "ANALYZER",
+                "section_filter": "BIOCHEMISTRY",
+                "max_specimens_per_page": 40,
+                "default_export_format": "PDF",
+                "include_qc_slots": True,
+                "columns": ["specimen_barcode", "patient_name", "test_name", "priority"],
+            },
+            {
+                "name": "Microbiology Worklist",
+                "description": "Culture and sensitivity worklist grouped by specimen type.",
+                "group_by": "SPECIMEN_TYPE",
+                "section_filter": "MICROBIOLOGY",
+                "max_specimens_per_page": 20,
+                "default_export_format": "PDF",
+                "include_qc_slots": False,
+                "columns": [
+                    "specimen_barcode",
+                    "patient_name",
+                    "test_name",
+                    "specimen_type",
+                    "priority",
+                ],
+            },
+            {
+                "name": "Immunology/Serology Worklist",
+                "description": "Worklist for immunoassay tests (HIV, Hepatitis, thyroid, hormones).",
+                "group_by": "SECTION",
+                "section_filter": "IMMUNOLOGY",
+                "max_specimens_per_page": 25,
+                "default_export_format": "PDF",
+                "include_qc_slots": True,
+                "columns": ["specimen_barcode", "patient_name", "test_name", "priority"],
+            },
+            {
+                "name": "Urgent/STAT Worklist",
+                "description": "Priority worklist for urgent specimens across all sections.",
+                "group_by": "PRIORITY",
+                "section_filter": "",
+                "max_specimens_per_page": 20,
+                "default_export_format": "PDF",
+                "include_qc_slots": False,
+                "columns": [
+                    "specimen_barcode",
+                    "patient_name",
+                    "test_name",
+                    "section",
+                    "priority",
+                    "collection_time",
+                ],
+            },
+            {
+                "name": "Parasitology Worklist",
+                "description": "Microscopy worklist for malaria, stool O/C, urinalysis.",
+                "group_by": "SECTION",
+                "section_filter": "PARASITOLOGY",
+                "max_specimens_per_page": 25,
+                "default_export_format": "PDF",
+                "include_qc_slots": False,
+                "columns": ["specimen_barcode", "patient_name", "test_name", "specimen_type"],
+            },
+        ]
+
+        created = 0
+        for tmpl_data in DEFAULTS:
+            _, was_created = WorksheetTemplate.objects.get_or_create(
+                facility=facility,
+                name=tmpl_data["name"],
+                defaults={
+                    "organization": facility.organization,
+                    **tmpl_data,
+                },
+            )
+            if was_created:
+                created += 1
+
+        return Response(
+            {
+                "created": created,
+                "total": len(DEFAULTS),
+                "message": f"Seeded {created} template(s).",
+            },
+            status=status.HTTP_201_CREATED if created > 0 else status.HTTP_200_OK,
+        )
+
 
 # =============================================================================
 # Worksheet ViewSet

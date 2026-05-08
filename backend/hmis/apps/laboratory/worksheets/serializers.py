@@ -32,6 +32,7 @@ class WorksheetTemplateListSerializer(serializers.ModelSerializer):
             "include_qc_slots",
             "max_specimens_per_page",
             "default_export_format",
+            "columns",
             "is_active",
             "created_at",
             "updated_at",

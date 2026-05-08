@@ -9,8 +9,8 @@ import { z } from 'zod';
 // Enums
 // =============================================================================
 
-export const WorksheetGroupBySchema = z.enum(['TEST', 'PANEL', 'DEPARTMENT', 'PRIORITY', 'SPECIMEN_TYPE']);
-export const WorksheetExportFormatSchema = z.enum(['CSV', 'PDF', 'TSV']);
+export const WorksheetGroupBySchema = z.enum(['ANALYZER', 'SECTION', 'PRIORITY', 'SPECIMEN_TYPE']);
+export const WorksheetExportFormatSchema = z.enum(['CSV', 'PDF', 'ZPL']);
 export const WorksheetStatusSchema = z.enum(['DRAFT', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'PRINTED']);
 
 export const LabelFormatSchema = z.enum(['ZPL', 'PDF']);
@@ -26,10 +26,13 @@ export const WorksheetTemplateSchema = z.object({
   name: z.string(),
   description: z.string(),
   group_by: WorksheetGroupBySchema,
+  section_filter: z.string(),
+  instrument: z.number().nullable(),
+  instrument_name: z.string().nullable().optional(),
+  include_qc_slots: z.boolean(),
+  max_specimens_per_page: z.number(),
   default_export_format: WorksheetExportFormatSchema,
-  filters: z.record(z.unknown()),
-  columns: z.array(z.string()),
-  page_size: z.number(),
+  columns: z.array(z.string()).optional(),
   is_active: z.boolean(),
   created_at: z.string(),
   updated_at: z.string(),
