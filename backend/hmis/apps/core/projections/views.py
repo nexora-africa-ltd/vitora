@@ -263,7 +263,7 @@ def _compute_live_pharmacy_queue(filters: dict) -> list[dict]:
 
     from hmis.apps.pharmacy.models import Prescription, StockAlert
 
-    today = tz.now().date()
+    today = tz.localdate()
     rx_filters = {}
     if filters.get("facility_id"):
         rx_filters["facility_id"] = filters["facility_id"]
