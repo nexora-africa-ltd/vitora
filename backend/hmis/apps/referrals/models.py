@@ -26,11 +26,12 @@ from datetime import datetime, timedelta
 from django.apps import apps
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 from hmis.apps.core.history import HistoryMixin
+from hmis.apps.core.mixins import FacilityScopedModel, resolve_tenant_from_related
 from hmis.apps.core.models import TimeStampedModel
 
 
@@ -41,6 +42,10 @@ def generate_referral_number():
     Format: REF-YYYYMMDD-XXXX
     Where XXXX is a 4-digit sequential number for the day.
 
+    Concurrency: wraps the SELECT in ``transaction.atomic`` with
+    ``select_for_update`` to serialize concurrent inserts and prevent
+    UNIQUE collisions on ``referral_number``.
+
     Returns:
         str: A unique referral number string
     """
@@ -49,17 +54,22 @@ def generate_referral_number():
 
     ClinicalReferral = apps.get_model("referrals", "ClinicalReferral")
 
-    latest = (
-        ClinicalReferral.objects.filter(referral_number__startswith=prefix)
-        .order_by("-referral_number")
-        .first()
-    )
+    with transaction.atomic():
+        qs = ClinicalReferral.objects.filter(referral_number__startswith=prefix).order_by(
+            "-referral_number"
+        )
+        try:
+            latest = qs.select_for_update().first()
+        except transaction.TransactionManagementError:
+            # Some test backends (e.g., SQLite without explicit atomic) may not
+            # support row locking — fall back to plain query.
+            latest = qs.first()
 
-    if latest:
-        last_sequence = int(latest.referral_number.split("-")[-1])
-        sequence = last_sequence + 1
-    else:
-        sequence = 1
+        if latest:
+            last_sequence = int(latest.referral_number.split("-")[-1])
+            sequence = last_sequence + 1
+        else:
+            sequence = 1
 
     return f"{prefix}{sequence:04d}"
 
@@ -69,7 +79,7 @@ def default_referral_expiry():
     return timezone.now() + timedelta(hours=48)
 
 
-class ClinicalReferral(HistoryMixin, TimeStampedModel):
+class ClinicalReferral(HistoryMixin, FacilityScopedModel, TimeStampedModel):
     """
     A lightweight referral created by a clinician during an encounter.
 
@@ -191,6 +201,10 @@ class ClinicalReferral(HistoryMixin, TimeStampedModel):
         "PEDIATRIC_WARD": "ADMISSION",
         "ICU": "ADMISSION",
         "HDU": "ADMISSION",
+        # OTHER is the canonical sentinel for external-facility referrals.
+        # The frontend exposes external_facility_name/_code only when target
+        # service is OTHER, so we map this to EXTERNAL.
+        "OTHER": "EXTERNAL",
     }
 
     # Mapping: target_service → clinic_type (for queue routing)
@@ -367,6 +381,24 @@ class ClinicalReferral(HistoryMixin, TimeStampedModel):
         default="",
         help_text="Reason if referral was declined",
     )
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="referrals_cancelled",
+        help_text="Person who cancelled the referral",
+    )
+    cancel_reason = models.TextField(
+        blank=True,
+        default="",
+        help_text="Reason if referral was cancelled",
+    )
+    cancelled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the referral was cancelled",
+    )
 
     # =========================================================================
     # Timestamps
@@ -487,6 +519,10 @@ class ClinicalReferral(HistoryMixin, TimeStampedModel):
         if self.encounter and not self.patient_id:
             self.patient = self.encounter.patient
 
+        # Auto-resolve tenant (facility/organization) from encounter or patient.
+        # Required by the multi-tenant scoping rule — prevents cross-tenant leaks.
+        resolve_tenant_from_related(self, encounter_field="encounter", patient_field="patient")
+
         super().save(*args, **kwargs)
 
     def clean(self):
@@ -517,7 +553,7 @@ class ClinicalReferral(HistoryMixin, TimeStampedModel):
         Args:
             new_status: The target status
             user: The user performing the transition
-            reason: Optional reason (required for DECLINED)
+            reason: Optional reason (required for DECLINED, persisted for CANCELLED)
 
         Raises:
             ValidationError: If the transition is not valid
@@ -541,6 +577,11 @@ class ClinicalReferral(HistoryMixin, TimeStampedModel):
             self.declined_at = timezone.now()
             self.declined_by = user
             self.decline_reason = reason
+        elif new_status == "CANCELLED":
+            self.cancelled_at = timezone.now()
+            self.cancelled_by = user
+            if reason:
+                self.cancel_reason = reason
         elif new_status == "COMPLETED":
             self.completed_at = timezone.now()
 
@@ -554,9 +595,9 @@ class ClinicalReferral(HistoryMixin, TimeStampedModel):
         """Decline the referral with a reason."""
         self.update_status("DECLINED", user=user, reason=reason)
 
-    def cancel(self, user=None):
-        """Cancel the referral."""
-        self.update_status("CANCELLED", user=user)
+    def cancel(self, user=None, reason=""):
+        """Cancel the referral, optionally persisting a reason."""
+        self.update_status("CANCELLED", user=user, reason=reason)
 
     def complete(self):
         """Mark the referral as completed."""

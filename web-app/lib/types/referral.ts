@@ -267,9 +267,13 @@ export interface ClinicalReferral {
   declined_by: number | null;
   declined_by_name: string;
   decline_reason: string;
+  cancelled_by: number | null;
+  cancelled_by_name: string;
+  cancel_reason: string;
   // Timestamps
   accepted_at: string | null;
   declined_at: string | null;
+  cancelled_at: string | null;
   completed_at: string | null;
   expires_at: string;
   // Linked specialist record

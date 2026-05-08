@@ -346,3 +346,15 @@ class TheatreEvents:
     INTRAOP_VITAL_RECORDED = "theatre.intraop_vital.recorded"
     PACU_ARRIVED = "theatre.pacu.arrived"
     PACU_DISCHARGED = "theatre.pacu.discharged"
+
+
+class ReferralEvents:
+    """Clinical referral lifecycle domain event types."""
+
+    CREATED = "referrals.referral.created"
+    ACCEPTED = "referrals.referral.accepted"
+    DECLINED = "referrals.referral.declined"
+    CANCELLED = "referrals.referral.cancelled"
+    EXPIRED = "referrals.referral.expired"
+    IN_PROGRESS = "referrals.referral.in_progress"
+    COMPLETED = "referrals.referral.completed"

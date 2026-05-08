@@ -369,6 +369,18 @@ Convention: `<domain>.<aggregate>.<action>`
 | `PACU_ARRIVED` | `theatre.pacu.arrived` | `theatre/signals.py` |
 | `PACU_DISCHARGED` | `theatre.pacu.discharged` | `theatre/signals.py` |
 
+### ReferralEvents (7 constants)
+
+| Constant | Value | Published From |
+|----------|-------|---------------|
+| `CREATED` | `referrals.referral.created` | `referrals/signals.py` |
+| `ACCEPTED` | `referrals.referral.accepted` | `referrals/signals.py` |
+| `DECLINED` | `referrals.referral.declined` | `referrals/signals.py` |
+| `CANCELLED` | `referrals.referral.cancelled` | `referrals/signals.py` |
+| `EXPIRED` | `referrals.referral.expired` | `referrals/signals.py` |
+| `IN_PROGRESS` | `referrals.referral.in_progress` | `referrals/signals.py` |
+| `COMPLETED` | `referrals.referral.completed` | `referrals/signals.py` |
+
 ### Summary
 
 | Class | Defined | Wired | Coverage |
@@ -385,7 +397,8 @@ Convention: `<domain>.<aggregate>.<action>`
 | SchedulingEvents | 19 | 19 | 100% |
 | ImagingEvents | 3 | 1 | 33% |
 | TheatreEvents | 13 | 13 | 100% |
-| **Total** | **87** | **66** | **76%** |
+| ReferralEvents | 7 | 7 | 100% |
+| **Total** | **94** | **73** | **78%** |
 
 ---
 
