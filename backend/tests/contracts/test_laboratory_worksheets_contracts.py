@@ -234,6 +234,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         WorksheetTemplateListSerializer,
         frozenset(
             {
+                "columns",
                 "created_at",
                 "default_export_format",
                 "description",
