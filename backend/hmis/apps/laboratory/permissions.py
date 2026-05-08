@@ -88,7 +88,7 @@ class LISQCPermission(BasePermission):
 
     message = "You do not have permission to access QC features."
 
-    LIS_QC_ROLES = {"LAB_TECH", "LAB_SCIENTIST", "PATHOLOGIST", "ADMIN", "ORG-ADMIN"}
+    LIS_QC_ROLES = {"LAB_TECH", "LAB_SCIENTIST", "PATHOLOGIST", "ADMIN", "ORG-ADMIN", "LIS_ADMIN"}
 
     def has_permission(self, request, view):  # noqa: ARG002
         if not request.user or not request.user.is_authenticated:
@@ -108,7 +108,7 @@ class LISManageCatalogPermission(BasePermission):
 
     message = "You do not have permission to manage the test catalog."
 
-    CATALOG_ADMIN_ROLES = {"LAB_SCIENTIST", "PATHOLOGIST", "ADMIN", "ORG-ADMIN"}
+    CATALOG_ADMIN_ROLES = {"LAB_SCIENTIST", "PATHOLOGIST", "ADMIN", "ORG-ADMIN", "LIS_ADMIN"}
 
     def has_permission(self, request, view):  # noqa: ARG002
         if not request.user or not request.user.is_authenticated:
@@ -132,7 +132,7 @@ class LISVerifyResultsPermission(BasePermission):
 
     message = "Only lab scientists and pathologists can verify results."
 
-    VERIFY_ROLES = {"LAB_SCIENTIST", "PATHOLOGIST", "ADMIN"}
+    VERIFY_ROLES = {"LAB_SCIENTIST", "PATHOLOGIST", "ADMIN", "ORG-ADMIN", "LIS_ADMIN"}
 
     def has_permission(self, request, view):  # noqa: ARG002
         if not request.user or not request.user.is_authenticated:
@@ -145,3 +145,101 @@ class LISVerifyResultsPermission(BasePermission):
             return False
 
         return profile.primary_role.code in self.VERIFY_ROLES
+
+
+# ---------------------------------------------------------------------------
+# Granular workflow permissions (collect / enter / release / config)
+# ---------------------------------------------------------------------------
+
+
+class _RoleBasedPermission(BasePermission):
+    """Internal helper: gates by a fixed role-code allowlist.
+
+    Subclasses set ``ALLOWED_ROLES`` and ``message``. Superusers always pass.
+    Read-only methods are allowed for any authenticated user (read access in
+    the laboratory module is gated separately by ``LaboratoryModuleRequired``).
+    """
+
+    ALLOWED_ROLES: set[str] = set()
+    message = "You do not have permission to perform this action."
+
+    def has_permission(self, request, view):  # noqa: ARG002
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser:
+            return True
+        if request.method in ("GET", "HEAD", "OPTIONS"):
+            return True
+        profile = getattr(request.user, "staff_profile", None)
+        if not profile or not profile.primary_role:
+            return False
+        return profile.primary_role.code in self.ALLOWED_ROLES
+
+
+class LISCollectSamplePermission(_RoleBasedPermission):
+    """Gates specimen collection — phlebotomists, lab techs, nurses."""
+
+    message = "You do not have permission to collect specimens."
+    ALLOWED_ROLES = {
+        "LAB_TECH",
+        "LAB_SCIENTIST",
+        "PHLEBOTOMIST",
+        "NURSE",
+        "ADMIN",
+        "ORG-ADMIN",
+        "LIS_ADMIN",
+    }
+
+
+class LISEnterResultsPermission(_RoleBasedPermission):
+    """Gates entering / saving lab results — bench techs, scientists, pathologists."""
+
+    message = "You do not have permission to enter laboratory results."
+    ALLOWED_ROLES = {
+        "LAB_TECH",
+        "LAB_SCIENTIST",
+        "PATHOLOGIST",
+        "ADMIN",
+        "ORG-ADMIN",
+        "LIS_ADMIN",
+    }
+
+
+class LISReleaseResultsPermission(_RoleBasedPermission):
+    """Gates releasing / signing-out final results — scientists & pathologists only."""
+
+    message = "Only lab scientists and pathologists can release results."
+    ALLOWED_ROLES = {
+        "LAB_SCIENTIST",
+        "PATHOLOGIST",
+        "ADMIN",
+        "ORG-ADMIN",
+        "LIS_ADMIN",
+    }
+
+
+class LISConfigPermission(_RoleBasedPermission):
+    """Gates LIS configuration (QC rules, reflex rules, critical values, analyzers, autoverify)."""
+
+    message = "You do not have permission to manage LIS configuration."
+    ALLOWED_ROLES = {
+        "LAB_SCIENTIST",
+        "PATHOLOGIST",
+        "ADMIN",
+        "ORG-ADMIN",
+        "LIS_ADMIN",
+    }
+
+
+class LISWorksheetPermission(_RoleBasedPermission):
+    """Gates worksheet management — techs and above."""
+
+    message = "You do not have permission to manage worksheets."
+    ALLOWED_ROLES = {
+        "LAB_TECH",
+        "LAB_SCIENTIST",
+        "PATHOLOGIST",
+        "ADMIN",
+        "ORG-ADMIN",
+        "LIS_ADMIN",
+    }

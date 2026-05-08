@@ -365,8 +365,16 @@ class TestLabResultValidationSummary:
 @pytest.fixture
 def authenticated_tech_client(lab_technician, sample_organization, sample_facility):
     """API client authenticated as lab technician."""
+    from hmis.apps.core.models import Role
+
     client = APIClient()
-    ensure_staff_profile(lab_technician, sample_organization, sample_facility)
+    profile = ensure_staff_profile(lab_technician, sample_organization, sample_facility)
+    role, _ = Role.objects.get_or_create(
+        code="LAB_TECH",
+        defaults={"name": "Lab Technician", "hierarchy_level": 4, "is_active": True},
+    )
+    profile.primary_role = role
+    profile.save(update_fields=["primary_role"])
     client.force_authenticate(user=lab_technician)
     return client
 
@@ -374,8 +382,16 @@ def authenticated_tech_client(lab_technician, sample_organization, sample_facili
 @pytest.fixture
 def authenticated_pathologist_client(pathologist, sample_organization, sample_facility):
     """API client authenticated as pathologist."""
+    from hmis.apps.core.models import Role
+
     client = APIClient()
-    ensure_staff_profile(pathologist, sample_organization, sample_facility)
+    profile = ensure_staff_profile(pathologist, sample_organization, sample_facility)
+    role, _ = Role.objects.get_or_create(
+        code="PATHOLOGIST",
+        defaults={"name": "Pathologist", "hierarchy_level": 6, "is_active": True},
+    )
+    profile.primary_role = role
+    profile.save(update_fields=["primary_role"])
     client.force_authenticate(user=pathologist)
     return client
 

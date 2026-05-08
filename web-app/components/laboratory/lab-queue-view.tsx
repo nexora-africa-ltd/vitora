@@ -931,7 +931,8 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                         <Beaker className="h-4 w-4 mr-2" />
                         Enter Results
                       </ActionButton>
-                      <Button
+                      <ActionButton
+                        action="laboratory.enter_results"
                         className="w-full justify-start"
                         variant="outline"
                         onClick={() => {
@@ -941,13 +942,14 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                       >
                         <Send className="h-4 w-4 mr-2" />
                         Submit for Review
-                      </Button>
+                      </ActionButton>
                     </>
                   )}
 
                   {/* REVIEW: Release Results */}
                   {selectedQueueEntry.queue_status === 'REVIEW' && (
-                    <Button
+                    <ActionButton
+                      action="laboratory.release_results"
                       className="w-full justify-start"
                       onClick={() => {
                         setActionsDialogOpen(false);
@@ -956,7 +958,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                     >
                       <CheckCircle2 className="h-4 w-4 mr-2" />
                       Release Results
-                    </Button>
+                    </ActionButton>
                   )}
 
                   {/* Notes - available for most statuses */}
@@ -976,7 +978,8 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
 
                   {/* Reject - available until released */}
                   {['PENDING', 'COLLECTED', 'PROCESSING'].includes(selectedQueueEntry.queue_status) && (
-                    <Button
+                    <ActionButton
+                      action="laboratory.reject_sample"
                       className="w-full justify-start"
                       variant="destructive"
                       onClick={() => {
@@ -986,7 +989,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                     >
                       <XCircle className="h-4 w-4 mr-2" />
                       Reject Sample
-                    </Button>
+                    </ActionButton>
                   )}
                 </div>
               </div>

@@ -224,6 +224,59 @@ def ensure_staff_profile(user, organization, facility, employee_id=None):
 
 
 # ============================================================================
+# Laboratory module test compatibility
+# ============================================================================
+
+
+# Files outside ``tests/laboratory/`` that exercise lab API endpoints. The
+# laboratory ViewSets are now gated by role-based permissions; the global
+# ``test_staff_profile`` fixture defaults to a DOCTOR role which would fail
+# those checks. For these legacy test files we promote the role to
+# LAB_SCIENTIST so existing assertions still exercise the success path.
+_LAB_LEGACY_TEST_FILES = {
+    "test_qc_system.py",
+    "test_reflex.py",
+    "test_worksheets.py",
+    "test_lab_reporting.py",
+    "test_autoverify.py",
+    "test_critical_values.py",
+    "test_microbiology.py",
+}
+
+
+@pytest.fixture(autouse=True)
+def _lab_legacy_role_compat(request):
+    """Promote test_staff_profile to LAB_SCIENTIST for legacy lab test files."""
+    test_file = os.path.basename(str(request.node.fspath))
+    if test_file not in _LAB_LEGACY_TEST_FILES:
+        return None
+    if "test_staff_profile" not in request.fixturenames:
+        return None
+
+    from hmis.apps.core.models import Role
+
+    profile = request.getfixturevalue("test_staff_profile")
+    role, _ = Role.objects.get_or_create(
+        code="LAB_SCIENTIST",
+        defaults={
+            "name": "Laboratory Scientist",
+            "hierarchy_level": 5,
+            "is_active": True,
+        },
+    )
+    profile.primary_role = role
+    profile.save(update_fields=["primary_role"])
+
+    # Also flip the lab module flag on the staff profile's facility.
+    facility = profile.primary_facility
+    if facility and not (facility.has_laboratory or facility.has_lis_standalone):
+        facility.has_laboratory = True
+        facility.save(update_fields=["has_laboratory"])
+
+    return profile
+
+
+# ============================================================================
 # API Client Fixtures
 # ============================================================================
 
