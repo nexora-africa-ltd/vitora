@@ -179,5 +179,6 @@ export interface LabelPrintJobItem {
 
 export interface LabelGenerateData {
   template_id: number;
-  lab_order_item_ids: number[];
+  specimen_ids: number[];
+  copies?: number;
 }

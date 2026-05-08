@@ -61,7 +61,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { worksheetsApi } from '@/lib/api/worksheets';
 import { toast } from 'sonner';
-import type { Worksheet, WorksheetTemplate, WorksheetTemplateCreateData, LabelPrintJob, WorksheetGroupBy, WorksheetExportFormat } from '@/lib/types/worksheets';
+import type { Worksheet, WorksheetTemplate, WorksheetTemplateCreateData, LabelPrintJob, LabelTemplate, WorksheetGroupBy, WorksheetExportFormat } from '@/lib/types/worksheets';
 
 // =============================================================================
 // Helpers
@@ -138,6 +138,12 @@ export default function WorksheetsPage() {
   const [templateForm, setTemplateForm] = useState<WorksheetTemplateCreateData>(EMPTY_TEMPLATE_FORM);
   const [deleteTemplateId, setDeleteTemplateId] = useState<number | null>(null);
 
+  // Label printing state
+  const [showLabelDialog, setShowLabelDialog] = useState(false);
+  const [labelWorksheetId, setLabelWorksheetId] = useState<number | null>(null);
+  const [selectedLabelTemplate, setSelectedLabelTemplate] = useState<string>('');
+  const [labelCopies, setLabelCopies] = useState(1);
+
   // Queries
   const { data: worksheetsData } = useQuery({
     queryKey: ['worksheets'],
@@ -152,6 +158,11 @@ export default function WorksheetsPage() {
   const { data: printJobsData } = useQuery({
     queryKey: ['label-print-jobs'],
     queryFn: () => worksheetsApi.listPrintJobs(),
+  });
+
+  const { data: labelTemplatesData } = useQuery({
+    queryKey: ['label-templates'],
+    queryFn: () => worksheetsApi.listLabelTemplates({ is_active: true }),
   });
 
   // Mutations
@@ -209,6 +220,37 @@ export default function WorksheetsPage() {
     onError: () => toast.error('Failed to delete template'),
   });
 
+  const generateLabelsMutation = useMutation({
+    mutationFn: (data: { template_id: number; specimen_ids: number[]; copies?: number }) =>
+      worksheetsApi.generateLabels(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['label-print-jobs'] });
+      setShowLabelDialog(false);
+      setLabelWorksheetId(null);
+      setSelectedLabelTemplate('');
+      setLabelCopies(1);
+      toast.success('Label print job created');
+    },
+    onError: () => toast.error('Failed to generate labels'),
+  });
+
+  async function handlePrintLabels() {
+    if (!labelWorksheetId || !selectedLabelTemplate) return;
+    const detail = await worksheetsApi.getWorksheet(labelWorksheetId);
+    const specimenIds = detail.items
+      .filter((it) => it.specimen !== null)
+      .map((it) => it.specimen as number);
+    if (specimenIds.length === 0) {
+      toast.error('No specimens in this worksheet');
+      return;
+    }
+    generateLabelsMutation.mutate({
+      template_id: parseInt(selectedLabelTemplate),
+      specimen_ids: specimenIds,
+      copies: labelCopies,
+    });
+  }
+
   function openCreateTemplate() {
     setEditingTemplate(null);
     setTemplateForm(EMPTY_TEMPLATE_FORM);
@@ -242,6 +284,7 @@ export default function WorksheetsPage() {
   const worksheets = worksheetsData?.results || [];
   const templates = templatesData?.results || [];
   const printJobs = printJobsData?.results || [];
+  const labelTemplates = labelTemplatesData?.results || [];
 
   // Stats
   const totalWorksheets = worksheetsData?.count || 0;
@@ -381,6 +424,7 @@ export default function WorksheetsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        title="Export CSV"
                         onClick={(e) => {
                           e.stopPropagation();
                           worksheetsApi.exportWorksheetCsv(item.id).then((blob) => {
@@ -396,10 +440,26 @@ export default function WorksheetsPage() {
                         <Download className="h-4 w-4" />
                       </Button>
                       {item.status !== 'CANCELLED' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={async (e) => {
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title="Print Labels"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLabelWorksheetId(item.id);
+                              setSelectedLabelTemplate('');
+                              setLabelCopies(1);
+                              setShowLabelDialog(true);
+                            }}
+                          >
+                            <Tag className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title="Print Worksheet"
+                            onClick={async (e) => {
                             e.stopPropagation();
                             try {
                               const detail = await worksheetsApi.getWorksheet(item.id);
@@ -447,6 +507,7 @@ export default function WorksheetsPage() {
                         >
                           <Printer className="h-4 w-4" />
                         </Button>
+                        </>
                       )}
                     </div>
                   ),
@@ -895,6 +956,66 @@ export default function WorksheetsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Print Labels Dialog */}
+        <Dialog open={showLabelDialog} onOpenChange={setShowLabelDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Print Specimen Labels</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Label Template</Label>
+                {labelTemplates.length === 0 ? (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    No label templates configured. Create one in Lab Settings first.
+                  </p>
+                ) : (
+                  <Select value={selectedLabelTemplate} onValueChange={setSelectedLabelTemplate}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a label template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {labelTemplates.map((lt) => (
+                        <SelectItem key={lt.id} value={String(lt.id)}>
+                          {lt.name} ({lt.label_type} • {lt.label_format})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="label-copies">Copies per specimen</Label>
+                <Input
+                  id="label-copies"
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={labelCopies}
+                  onChange={(e) => setLabelCopies(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowLabelDialog(false)} className="w-full sm:w-auto">
+                Cancel
+              </Button>
+              <Button
+                onClick={handlePrintLabels}
+                disabled={!selectedLabelTemplate || generateLabelsMutation.isPending}
+                className="w-full sm:w-auto"
+              >
+                {generateLabelsMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Tag className="h-4 w-4 mr-2" />
+                )}
+                Generate Labels
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </PullToRefresh>
   );
