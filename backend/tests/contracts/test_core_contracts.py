@@ -17,6 +17,10 @@ from hmis.apps.core.serializers import (
     CountySerializer,
     CrossOrgAcceptSerializer,
     DepartmentSerializer,
+    DHIS2ConfigCreateSerializer,
+    DHIS2ConfigDetailSerializer,
+    DHIS2ConfigListSerializer,
+    DHIS2ConfigUpdateSerializer,
     DocumentSignatureSerializer,
     EmailVerifySerializer,
     FacilityCreateSerializer,
@@ -167,6 +171,67 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "token",
+            }
+        ),
+    ),
+    (
+        DHIS2ConfigCreateSerializer,
+        frozenset(
+            {
+                "base_url",
+                "environment",
+                "is_active",
+                "name",
+                "organization",
+                "password",
+                "username",
+            }
+        ),
+    ),
+    (
+        DHIS2ConfigDetailSerializer,
+        frozenset(
+            {
+                "base_url",
+                "created_at",
+                "environment",
+                "id",
+                "is_active",
+                "name",
+                "organization",
+                "organization_name",
+                "updated_at",
+                "username",
+            }
+        ),
+    ),
+    (
+        DHIS2ConfigListSerializer,
+        frozenset(
+            {
+                "base_url",
+                "created_at",
+                "environment",
+                "id",
+                "is_active",
+                "name",
+                "organization",
+                "organization_name",
+                "updated_at",
+                "username",
+            }
+        ),
+    ),
+    (
+        DHIS2ConfigUpdateSerializer,
+        frozenset(
+            {
+                "base_url",
+                "environment",
+                "is_active",
+                "name",
+                "password",
+                "username",
             }
         ),
     ),
