@@ -40,6 +40,13 @@ from .models import (
     SpecimenRejectionReason,
     TestCatalog,
 )
+from .permissions import (
+    LaboratoryModuleRequired,
+    LISCollectSamplePermission,
+    LISEnterResultsPermission,
+    LISManageCatalogPermission,
+    LISReleaseResultsPermission,
+)
 from .reports import LabReportService
 from .serializers import (
     AnalyzerRunCreateSerializer,
@@ -115,7 +122,7 @@ class TestCatalogViewSet(viewsets.ModelViewSet):
     """
 
     queryset = TestCatalog.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISManageCatalogPermission]
     lookup_field = "code"
 
     def get_serializer_class(self):
@@ -266,10 +273,23 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             "items__result__validations__validated_by",
         )
     )
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, RequiresActiveShiftPermission]
     filter_backends = [filters.DjangoFilterBackend]
     filterset_fields = ["patient", "encounter", "status", "priority", "order_type"]
     lookup_field = "order_number"
+
+    # Per-action role gating (additive to base permission_classes).
+    _ACTION_PERMISSIONS = {
+        "collect_specimen": LISCollectSamplePermission,
+        "results": LISEnterResultsPermission,
+    }
+
+    def get_permissions(self):
+        perms = [perm() for perm in self.permission_classes]
+        extra = self._ACTION_PERMISSIONS.get(self.action)
+        if extra is not None:
+            perms.append(extra())
+        return perms
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -540,7 +560,7 @@ class LabResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     queryset = LabResult.objects.all().select_related(
         "order_item__test", "order_item__lab_order__patient", "entered_by"
     )
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, RequiresActiveShiftPermission]
     filter_backends = [SearchFilter, filters.DjangoFilterBackend]
     search_fields = [
         "order_item__test__name",
@@ -551,6 +571,28 @@ class LabResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     ]
     tenant_facility_chain = "order_item__lab_order__facility"
     tenant_org_chain = "order_item__lab_order__organization"
+
+    # Per-action role gating (additive to base permission_classes).
+    # ``verify`` / ``add_validation`` are the two-stage validation entrypoints:
+    # LAB_TECH can submit a TECHNICAL validation, PATHOLOGIST/LAB_SCIENTIST
+    # supplies the CLINICAL sign-off. We gate at the lower (enter-results)
+    # level here and let the serializer/model enforce stage-specific rules.
+    # Final ``release`` requires verify-level privileges.
+    _ACTION_PERMISSIONS = {
+        "create": LISEnterResultsPermission,
+        "update": LISEnterResultsPermission,
+        "partial_update": LISEnterResultsPermission,
+        "verify": LISEnterResultsPermission,
+        "add_validation": LISEnterResultsPermission,
+        "release": LISReleaseResultsPermission,
+    }
+
+    def get_permissions(self):
+        perms = [perm() for perm in self.permission_classes]
+        extra = self._ACTION_PERMISSIONS.get(self.action)
+        if extra is not None:
+            perms.append(extra())
+        return perms
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:

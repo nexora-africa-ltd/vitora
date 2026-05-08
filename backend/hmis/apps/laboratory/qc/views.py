@@ -12,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.laboratory.permissions import LaboratoryModuleRequired, LISQCPermission
 
 from .models import (
     EQASample,
@@ -105,7 +106,7 @@ class QCMaterialViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Model
     """CRUD for QC Materials."""
 
     queryset = QCMaterial.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISQCPermission]
     tenant_scope = "facility"
     search_fields = ["name", "manufacturer", "catalog_number"]
     ordering_fields = ["name", "manufacturer", "created_at"]
@@ -127,7 +128,7 @@ class QCLotViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewS
     """CRUD for QC Lots with expiry tracking."""
 
     queryset = QCLot.objects.select_related("material")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISQCPermission]
     tenant_scope = "facility"
     filterset_class = QCLotFilter
     search_fields = ["lot_number", "material__name"]
@@ -158,7 +159,7 @@ class QCTargetViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelVi
     """CRUD for QC Targets (mean, SD per lot/test)."""
 
     queryset = QCTarget.objects.select_related("lot", "test", "instrument")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISQCPermission]
     tenant_scope = "facility"
     filterset_fields = ["lot", "test", "instrument"]
 
@@ -183,7 +184,7 @@ class QCResultViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelVi
     queryset = QCResult.objects.select_related(
         "lot", "test", "instrument", "operator"
     ).prefetch_related("violations")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISQCPermission]
     tenant_scope = "facility"
     filterset_class = QCResultFilter
     search_fields = ["lot__lot_number", "test__name"]
@@ -296,7 +297,7 @@ class QCRuleViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelView
     """CRUD for Westgard QC Rules."""
 
     queryset = QCRule.objects.select_related("applies_to_test")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISQCPermission]
     tenant_scope = "facility"
     filterset_fields = ["rule_type", "is_active", "applies_to_test"]
 
@@ -381,7 +382,7 @@ class QCRuleViolationViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSe
 
     queryset = QCRuleViolation.objects.select_related("qc_result", "rule", "acknowledged_by")
     serializer_class = QCRuleViolationSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISQCPermission]
     tenant_scope = "facility"
     filterset_fields = ["severity", "acknowledged", "qc_result__lot", "qc_result__test"]
 
@@ -412,7 +413,7 @@ class EQASurveyViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelV
     """CRUD for EQA/Proficiency Testing surveys."""
 
     queryset = EQASurvey.objects.prefetch_related("samples")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISQCPermission]
     tenant_scope = "facility"
     filterset_class = EQASurveyFilter
     search_fields = ["provider", "survey_id", "name"]
@@ -449,7 +450,7 @@ class EQASampleViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelV
     """CRUD for EQA Samples within surveys."""
 
     queryset = EQASample.objects.select_related("survey", "test")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISQCPermission]
     tenant_scope = "facility"
     filterset_fields = ["survey", "test"]
 
@@ -470,7 +471,7 @@ class EQASubmissionViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mo
     queryset = EQASubmission.objects.select_related(
         "sample", "sample__test", "instrument", "submitted_by"
     )
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISQCPermission]
     tenant_scope = "facility"
     filterset_fields = ["sample__survey", "performance"]
 

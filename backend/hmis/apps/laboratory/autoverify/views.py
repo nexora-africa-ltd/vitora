@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.laboratory.permissions import LaboratoryModuleRequired, LISConfigPermission
 
 from .delta_engine import evaluate_delta_check
 from .models import (
@@ -48,7 +49,7 @@ class DeltaCheckRuleFilter(filters.FilterSet):
 class DeltaCheckRuleViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """CRUD for delta check rules."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
     filterset_class = DeltaCheckRuleFilter
     tenant_scope = "facility"
     queryset = DeltaCheckRule.objects.select_related("test")
@@ -167,7 +168,7 @@ class DeltaCheckResultFilter(filters.FilterSet):
 class DeltaCheckResultViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
     """Read-only view of delta check evaluations."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
     serializer_class = DeltaCheckResultSerializer
     filterset_class = DeltaCheckResultFilter
     tenant_scope = "facility"
@@ -225,7 +226,7 @@ class AutoVerifyRuleFilter(filters.FilterSet):
 class AutoVerifyRuleViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """CRUD for auto-verification rules."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
     filterset_class = AutoVerifyRuleFilter
     tenant_scope = "facility"
     queryset = AutoVerifyRule.objects.select_related("test")
@@ -292,7 +293,7 @@ class AutoVerifyRuleViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
 class AutoVerifyConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """Manage facility auto-verification configuration."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
     serializer_class = AutoVerifyConfigSerializer
     tenant_scope = "facility"
     queryset = AutoVerifyConfig.objects.all()
@@ -331,7 +332,7 @@ class AutoVerifyLogFilter(filters.FilterSet):
 class AutoVerifyLogViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
     """Read-only audit log of auto-verification attempts."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
     serializer_class = AutoVerifyLogSerializer
     filterset_class = AutoVerifyLogFilter
     tenant_scope = "facility"

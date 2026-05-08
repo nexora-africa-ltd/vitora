@@ -117,16 +117,17 @@ export const ACTION_PERMISSIONS = {
   'pharmacy.view_reports': ['PHARMACIST', 'PHARMACY_TECH', 'ADMIN'],
 
   // === Laboratory Module ===
-  'laboratory.view_dashboard': ['LAB_TECH', 'LAB_SCIENTIST', 'PATHOLOGIST', 'ADMIN', 'LIS_ADMIN'],
-  'laboratory.view_orders': ['LAB_TECH', 'LAB_SCIENTIST', 'DOCTOR', 'NURSE', 'LIS_ADMIN'],
-  'laboratory.collect_sample': ['LAB_TECH', 'PHLEBOTOMIST', 'NURSE', 'LIS_ADMIN'],
-  'laboratory.enter_results': ['LAB_TECH', 'LAB_SCIENTIST', 'LIS_ADMIN'],
-  'laboratory.verify_results': ['LAB_SCIENTIST', 'PATHOLOGIST', 'LIS_ADMIN'],
-  'laboratory.release_results': ['LAB_SCIENTIST', 'PATHOLOGIST', 'LIS_ADMIN'],
-  'laboratory.interpret_results': ['PATHOLOGIST', 'LIS_ADMIN'],
-  'laboratory.manage_catalog': ['LAB_SCIENTIST', 'PATHOLOGIST', 'ADMIN', 'LIS_ADMIN'],
-  'laboratory.view_reports': ['LAB_TECH', 'LAB_SCIENTIST', 'PATHOLOGIST', 'ADMIN', 'LIS_ADMIN'],
-  'laboratory.view_analytics': ['LAB_SCIENTIST', 'PATHOLOGIST', 'ADMIN', 'LIS_ADMIN'],
+  'laboratory.view_dashboard': ['LAB_TECH', 'LAB_SCIENTIST', 'PATHOLOGIST', 'PHLEBOTOMIST', 'ADMIN', 'ORG-ADMIN', 'LIS_ADMIN'],
+  'laboratory.view_orders': ['LAB_TECH', 'LAB_SCIENTIST', 'PATHOLOGIST', 'PHLEBOTOMIST', 'DOCTOR', 'NURSE', 'ADMIN', 'ORG-ADMIN', 'LIS_ADMIN'],
+  'laboratory.collect_sample': ['LAB_TECH', 'LAB_SCIENTIST', 'PHLEBOTOMIST', 'NURSE', 'ADMIN', 'ORG-ADMIN', 'LIS_ADMIN'],
+  'laboratory.enter_results': ['LAB_TECH', 'LAB_SCIENTIST', 'PATHOLOGIST', 'ADMIN', 'ORG-ADMIN', 'LIS_ADMIN'],
+  'laboratory.verify_results': ['LAB_SCIENTIST', 'PATHOLOGIST', 'ADMIN', 'ORG-ADMIN', 'LIS_ADMIN'],
+  'laboratory.release_results': ['LAB_SCIENTIST', 'PATHOLOGIST', 'ADMIN', 'ORG-ADMIN', 'LIS_ADMIN'],
+  'laboratory.reject_sample': ['LAB_TECH', 'LAB_SCIENTIST', 'PATHOLOGIST', 'ADMIN', 'ORG-ADMIN', 'LIS_ADMIN'],
+  'laboratory.interpret_results': ['PATHOLOGIST', 'ADMIN', 'ORG-ADMIN', 'LIS_ADMIN'],
+  'laboratory.manage_catalog': ['LAB_SCIENTIST', 'PATHOLOGIST', 'ADMIN', 'ORG-ADMIN', 'LIS_ADMIN'],
+  'laboratory.view_reports': ['LAB_TECH', 'LAB_SCIENTIST', 'PATHOLOGIST', 'ADMIN', 'ORG-ADMIN', 'LIS_ADMIN'],
+  'laboratory.view_analytics': ['LAB_SCIENTIST', 'PATHOLOGIST', 'ADMIN', 'ORG-ADMIN', 'LIS_ADMIN'],
 
   // === LIS Standalone Module ===
   'lis.register_walkin': ['LAB_TECH', 'LAB_SCIENTIST', 'PHLEBOTOMIST', 'ADMIN', 'LIS_ADMIN'],

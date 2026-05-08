@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
+from hmis.apps.laboratory.permissions import LaboratoryModuleRequired, LISEnterResultsPermission
 
 from .models import Antibiogram, Antibiotic, AntibioticSensitivity, CultureResult, Organism
 from .serializers import (
@@ -36,7 +37,7 @@ class OrganismViewSet(viewsets.ModelViewSet):
 
     queryset = Organism.objects.all()
     serializer_class = OrganismSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISEnterResultsPermission]
     filterset_fields = ["gram_stain", "organism_type", "is_active"]
     search_fields = ["name", "code", "genus", "species"]
 
@@ -51,7 +52,7 @@ class AntibioticViewSet(viewsets.ModelViewSet):
 
     queryset = Antibiotic.objects.all()
     serializer_class = AntibioticSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISEnterResultsPermission]
     filterset_fields = ["antibiotic_class", "is_active"]
     search_fields = ["name", "code", "antibiotic_class"]
 
@@ -72,7 +73,7 @@ class CultureResultViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mo
         "read_by",
     ).prefetch_related("sensitivities__antibiotic")
     serializer_class = CultureResultSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISEnterResultsPermission]
     tenant_scope = "facility"
     filterset_fields = ["status", "organism", "is_significant"]
     search_fields = ["organism__name", "lab_result__order_item__lab_order__order_number"]
@@ -245,7 +246,7 @@ class AntibioticSensitivityViewSet(TenantScopedViewMixin, viewsets.ModelViewSet)
 
     queryset = AntibioticSensitivity.objects.select_related("culture", "antibiotic", "tested_by")
     serializer_class = AntibioticSensitivitySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISEnterResultsPermission]
     tenant_scope = "facility"
     filterset_fields = ["culture", "antibiotic", "interpretation", "test_method"]
 
@@ -270,7 +271,7 @@ class AntibiogramViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
 
     queryset = Antibiogram.objects.select_related("organism", "antibiotic")
     serializer_class = AntibiogramSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISEnterResultsPermission]
     tenant_scope = "facility"
     filterset_fields = ["year", "organism", "antibiotic"]
 
@@ -298,7 +299,7 @@ class AntibiogramViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
 class WHONETExportView(APIView):
     """Export susceptibility data in WHONET-compatible CSV format."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISEnterResultsPermission]
 
     def get(self, request):
         resolve_request_tenant(request)

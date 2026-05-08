@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.laboratory.permissions import LaboratoryModuleRequired, LISConfigPermission
 
 from .models import AnalyzerDriverTemplate, AnalyzerMessage, InstrumentChannel
 from .serializers import (
@@ -74,7 +75,7 @@ class InstrumentChannelViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewset
     """
 
     queryset = InstrumentChannel.objects.select_related("instrument").all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
     filterset_class = InstrumentChannelFilter
     tenant_scope = "facility"
 
@@ -187,7 +188,7 @@ class AnalyzerMessageViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSe
     queryset = AnalyzerMessage.objects.select_related(
         "channel", "channel__instrument", "specimen"
     ).all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
     filterset_class = AnalyzerMessageFilter
     tenant_scope = "facility"
 
@@ -257,7 +258,7 @@ class AnalyzerDriverTemplateViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = AnalyzerDriverTemplate.objects.filter(is_active=True)
     serializer_class = AnalyzerDriverTemplateSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
     filterset_class = AnalyzerDriverTemplateFilter
 
 
@@ -273,7 +274,7 @@ class AnalyzerDashboardView(APIView):
     Returns connection status summary and per-channel health info.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
 
     def get(self, request):
         facility = getattr(request, "facility", None)
