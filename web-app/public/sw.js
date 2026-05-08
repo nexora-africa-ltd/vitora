@@ -1,5 +1,6 @@
-const STATIC_CACHE = 'vitora-static-v3';
-const RUNTIME_CACHE = 'vitora-runtime-v3';
+const STATIC_CACHE = 'vitora-static-v4';
+const RUNTIME_CACHE = 'vitora-runtime-v4';
+const PAGES_CACHE = 'vitora-pages-v4';
 const OFFLINE_URL = '/offline.html';
 const STATIC_ASSETS = [
   OFFLINE_URL,
@@ -22,7 +23,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((key) => ![STATIC_CACHE, RUNTIME_CACHE].includes(key))
+          .filter((key) => ![STATIC_CACHE, RUNTIME_CACHE, PAGES_CACHE].includes(key))
           .map((key) => caches.delete(key))
       )
     )
@@ -58,8 +59,18 @@ self.addEventListener('fetch', (event) => {
 
 async function handleNavigationRequest(request) {
   try {
-    return await fetch(request);
+    const networkResponse = await fetch(request);
+    // Cache successful HTML responses for offline use
+    if (networkResponse.ok && networkResponse.headers.get('content-type')?.includes('text/html')) {
+      const cache = await caches.open(PAGES_CACHE);
+      await cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
   } catch {
+    // Try serving cached version of this page first
+    const cachedPage = await caches.match(request);
+    if (cachedPage) return cachedPage;
+    // Last resort: generic offline fallback
     const cachedOfflineResponse = await caches.match(OFFLINE_URL);
     return cachedOfflineResponse || Response.error();
   }

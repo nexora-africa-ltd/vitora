@@ -32,6 +32,7 @@ export default function LoginPage() {
     availableMethods?: string[];
   } | null>(null);
   const [logoutReason, setLogoutReason] = useState<'idle' | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
   const { login, verifyMFA } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -40,6 +41,15 @@ export default function LoginPage() {
   // Prevent hydration mismatch for theme-dependent images
   useEffect(() => {
     setMounted(true);
+    setIsOffline(!navigator.onLine);
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => setIsOffline(false);
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online', goOnline);
+    return () => {
+      window.removeEventListener('offline', goOffline);
+      window.removeEventListener('online', goOnline);
+    };
   }, []);
 
   // Check for logout reason (e.g., idle timeout)
@@ -144,7 +154,11 @@ export default function LoginPage() {
 
       router.push('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+      if (!navigator.onLine || (err instanceof TypeError && err.message === 'Failed to fetch')) {
+        setError('You are offline. Connect to the internet to sign in.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -252,6 +266,14 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent className="relative z-10">
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Offline banner */}
+              {isOffline && (
+                <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground bg-muted/60 border border-border rounded-lg">
+                  <WifiOff className="h-4 w-4 flex-shrink-0" />
+                  <span>You are offline. An internet connection is required to sign in.</span>
+                </div>
+              )}
+
               {/* Idle timeout notification */}
               {logoutReason === 'idle' && (
                 <div className="flex items-center gap-2 p-3 text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">

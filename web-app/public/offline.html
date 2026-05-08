@@ -55,14 +55,33 @@
       strong {
         color: #0f172a;
       }
+
+      button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 1.25rem;
+        padding: 0.625rem 1.25rem;
+        border: 1px solid rgba(78, 11, 24, 0.2);
+        border-radius: 0.75rem;
+        background: #4e0b18;
+        color: #fff;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.15s;
+      }
+      button:hover { opacity: 0.85; }
+      button:active { opacity: 0.7; }
     </style>
   </head>
   <body>
     <main>
       <p class="eyebrow">Vitora HMIS</p>
       <h1>You are offline.</h1>
-      <p><strong>Static app assets remain available,</strong> but live clinical data and authenticated pages require a network connection.</p>
-      <p>Reconnect to continue working in the full hospital workspace.</p>
+      <p><strong>This page hasn&rsquo;t been cached yet.</strong> Pages you&rsquo;ve visited before will continue to work offline with locally stored clinical data.</p>
+      <p>Connect to the internet and visit this page once &mdash; it will be available offline from then on.</p>
+      <button onclick="location.reload()">&#8635; Try again</button>
     </main>
   </body>
 </html>
