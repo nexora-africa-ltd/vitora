@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { laboratoryApi } from '@/lib/api/laboratory';
+import { worksheetsApi } from '@/lib/api/worksheets';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
@@ -47,11 +48,10 @@ import type {
   ResultCommentTemplate,
   CommentTemplateCategory,
   ReferralLab,
-  SampleLabelTemplate,
-  LabelSize,
   LabBarcodeConfig,
   LabWorkflowSettings,
 } from '@/lib/types/laboratory';
+import type { LabelTemplate, LabelTemplateCreateData } from '@/lib/types/worksheets';
 
 // =============================================================================
 // Main Page
@@ -446,27 +446,29 @@ function ReferralLabsTab({ queryClient }: { queryClient: ReturnType<typeof useQu
 
 function LabelTemplatesTab({ queryClient }: { queryClient: ReturnType<typeof useQueryClient> }) {
   const [showDialog, setShowDialog] = useState(false);
-  const [editing, setEditing] = useState<SampleLabelTemplate | null>(null);
+  const [editing, setEditing] = useState<LabelTemplate | null>(null);
 
-  const { data: templates = [], isLoading } = useQuery({
+  const { data: templatesData, isLoading } = useQuery({
     queryKey: ['label-templates'],
-    queryFn: () => laboratoryApi.listLabelTemplates(),
+    queryFn: () => worksheetsApi.listLabelTemplates({ is_active: true }),
   });
 
+  const templates = templatesData?.results || [];
+
   const create = useMutation({
-    mutationFn: (data: Partial<SampleLabelTemplate>) => laboratoryApi.createLabelTemplate(data),
+    mutationFn: (data: LabelTemplateCreateData) => worksheetsApi.createLabelTemplate(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['label-templates'] }); toast.success('Label template added'); setShowDialog(false); },
     onError: () => toast.error('Failed to create'),
   });
 
   const update = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<SampleLabelTemplate> }) => laboratoryApi.updateLabelTemplate(id, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<LabelTemplateCreateData> }) => worksheetsApi.updateLabelTemplate(id, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['label-templates'] }); toast.success('Updated'); setShowDialog(false); setEditing(null); },
     onError: () => toast.error('Failed to update'),
   });
 
   const remove = useMutation({
-    mutationFn: (id: number) => laboratoryApi.deleteLabelTemplate(id),
+    mutationFn: (id: number) => worksheetsApi.deleteLabelTemplate(id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['label-templates'] }); toast.success('Deleted'); },
     onError: () => toast.error('Failed to delete'),
   });
@@ -476,8 +478,8 @@ function LabelTemplatesTab({ queryClient }: { queryClient: ReturnType<typeof use
       <Card>
         <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-base sm:text-lg">Sample Label Templates</CardTitle>
-            <HelpPopover content="Configure what information appears on specimen container labels." />
+            <CardTitle className="text-base sm:text-lg">Label Templates</CardTitle>
+            <HelpPopover content="Configure label formats for specimen containers. Supports ZPL (Zebra printers) and PDF output. These templates are used when printing labels from worksheets." />
           </div>
           <Button size="sm" onClick={() => { setEditing(null); setShowDialog(true); }}>
             <Plus className="h-4 w-4 mr-1" /> Add
@@ -490,14 +492,15 @@ function LabelTemplatesTab({ queryClient }: { queryClient: ReturnType<typeof use
             isLoading={isLoading}
             columns={[
               { key: 'name', header: 'Name', sortable: true, cell: (t) => <div><p className="font-medium">{t.name}</p>{t.is_default && <Badge variant="outline" className="text-xs">Default</Badge>}</div> },
-              { key: 'label_size', header: 'Size', cell: (t) => t.label_size_display, hideOnMobile: true },
-              { key: 'copies_per_specimen', header: 'Copies', cell: (t) => t.copies_per_specimen, hideOnMobile: true },
-              { key: 'fields', header: 'Fields', cell: (t) => { const fields = [t.include_barcode && 'Barcode', t.include_patient_name && 'Name', t.include_mrn && 'MRN', t.include_test_name && 'Test', t.include_collection_date && 'Date'].filter(Boolean); return <span className="text-xs text-muted-foreground">{fields.join(', ')}</span>; }, hideOnMobile: true },
+              { key: 'label_type', header: 'Type', cell: (t) => t.label_type, hideOnMobile: true },
+              { key: 'label_format', header: 'Format', cell: (t) => t.label_format, hideOnMobile: true },
+              { key: 'size', header: 'Size', cell: (t) => `${t.width_mm}×${t.height_mm}mm`, hideOnMobile: true },
+              { key: 'fields', header: 'Fields', cell: (t) => <span className="text-xs text-muted-foreground">{t.include_fields.join(', ')}</span>, hideOnMobile: true },
               { key: 'actions', header: '', cell: (t) => <div className="flex gap-1"><Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditing(t); setShowDialog(true); }}><Pencil className="h-4 w-4" /></Button><Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); remove.mutate(t.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button></div> },
             ]}
             mobileCard={(t) => (
               <div className="flex items-center justify-between p-3">
-                <div><p className="font-medium">{t.name} {t.is_default && '(Default)'}</p><p className="text-xs text-muted-foreground">{t.label_size_display} • {t.copies_per_specimen} copies</p></div>
+                <div><p className="font-medium">{t.name} {t.is_default && '(Default)'}</p><p className="text-xs text-muted-foreground">{t.label_format} • {t.label_type} • {t.width_mm}×{t.height_mm}mm</p></div>
                 <Button size="sm" variant="ghost" onClick={() => { setEditing(t); setShowDialog(true); }}><Pencil className="h-3 w-3" /></Button>
               </div>
             )}
@@ -909,58 +912,103 @@ function ReferralLabDialog({ open, onOpenChange, item, onSubmit, isLoading }: {
 }
 
 function LabelTemplateDialog({ open, onOpenChange, item, onSubmit, isLoading }: {
-  open: boolean; onOpenChange: (v: boolean) => void; item: SampleLabelTemplate | null;
-  onSubmit: (data: Partial<SampleLabelTemplate>) => void; isLoading: boolean;
+  open: boolean; onOpenChange: (v: boolean) => void; item: LabelTemplate | null;
+  onSubmit: (data: LabelTemplateCreateData) => void; isLoading: boolean;
 }) {
-  const [form, setForm] = useState({ name: '', label_size: 'MEDIUM' as LabelSize, include_barcode: true, include_patient_name: true, include_mrn: true, include_dob: false, include_collection_date: true, include_test_name: true, include_specimen_type: true, include_priority: false, copies_per_specimen: 1, is_default: false, is_active: true });
+  const [form, setForm] = useState<LabelTemplateCreateData>({
+    name: '', label_format: 'ZPL', label_type: 'SPECIMEN', width_mm: 50, height_mm: 25,
+    barcode_format: 'CODE128', include_fields: ['barcode', 'patient_name', 'mrn', 'test_name'],
+    zpl_template: '', is_default: false,
+  });
+
+  const AVAILABLE_FIELDS = ['barcode', 'patient_name', 'mrn', 'dob', 'test_name', 'collected_at', 'specimen_type'] as const;
 
   const handleOpen = (v: boolean) => {
-    if (v && item) setForm({ name: item.name, label_size: item.label_size, include_barcode: item.include_barcode, include_patient_name: item.include_patient_name, include_mrn: item.include_mrn, include_dob: item.include_dob, include_collection_date: item.include_collection_date, include_test_name: item.include_test_name, include_specimen_type: item.include_specimen_type, include_priority: item.include_priority, copies_per_specimen: item.copies_per_specimen, is_default: item.is_default, is_active: item.is_active });
-    else if (v) setForm({ name: '', label_size: 'MEDIUM', include_barcode: true, include_patient_name: true, include_mrn: true, include_dob: false, include_collection_date: true, include_test_name: true, include_specimen_type: true, include_priority: false, copies_per_specimen: 1, is_default: false, is_active: true });
+    if (v && item) setForm({
+      name: item.name, label_format: item.label_format, label_type: item.label_type,
+      width_mm: item.width_mm, height_mm: item.height_mm, barcode_format: item.barcode_format,
+      include_fields: item.include_fields, zpl_template: item.zpl_template, is_default: item.is_default,
+    });
+    else if (v) setForm({
+      name: '', label_format: 'ZPL', label_type: 'SPECIMEN', width_mm: 50, height_mm: 25,
+      barcode_format: 'CODE128', include_fields: ['barcode', 'patient_name', 'mrn', 'test_name'],
+      zpl_template: '', is_default: false,
+    });
     onOpenChange(v);
+  };
+
+  const toggleField = (field: string) => {
+    const current = form.include_fields || [];
+    const next = current.includes(field) ? current.filter((f) => f !== field) : [...current, field];
+    setForm({ ...form, include_fields: next });
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogContent aria-describedby={undefined} className="sm:max-w-md">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-lg">
         <DialogHeader><DialogTitle>{item ? 'Edit Label Template' : 'Add Label Template'}</DialogTitle></DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); if (form.name) onSubmit(form); }} className="space-y-4">
-          <div><Label>Name *</Label><Input className="mt-1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Standard Tube Label" /></div>
+          <div><Label>Name *</Label><Input className="mt-1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Chemistry Tube Label" /></div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Label Size</Label>
-              <Select value={form.label_size} onValueChange={(v) => setForm({ ...form, label_size: v as LabelSize })}>
+              <Label>Label Type</Label>
+              <Select value={form.label_type || 'SPECIMEN'} onValueChange={(v) => setForm({ ...form, label_type: v as LabelTemplate['label_type'] })}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SMALL">Small (25×10mm)</SelectItem>
-                  <SelectItem value="MEDIUM">Medium (50×25mm)</SelectItem>
-                  <SelectItem value="LARGE">Large (75×25mm)</SelectItem>
+                  <SelectItem value="SPECIMEN">Specimen Tube</SelectItem>
+                  <SelectItem value="ALIQUOT">Aliquot</SelectItem>
+                  <SelectItem value="SLIDE">Microscopy Slide</SelectItem>
+                  <SelectItem value="BLOCK">Histology Block</SelectItem>
+                  <SelectItem value="RACK">Rack</SelectItem>
+                  <SelectItem value="TRAY">Tray</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Copies per Specimen</Label><Input className="mt-1" type="number" min={1} max={5} value={form.copies_per_specimen} onChange={(e) => setForm({ ...form, copies_per_specimen: parseInt(e.target.value) || 1 })} /></div>
+            <div>
+              <Label>Output Format</Label>
+              <Select value={form.label_format || 'ZPL'} onValueChange={(v) => setForm({ ...form, label_format: v as LabelTemplate['label_format'] })}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ZPL">ZPL (Zebra Printer)</SelectItem>
+                  <SelectItem value="PDF">PDF (Generic)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div><Label>Width (mm)</Label><Input className="mt-1" type="number" min={10} max={200} value={form.width_mm} onChange={(e) => setForm({ ...form, width_mm: parseInt(e.target.value) || 50 })} /></div>
+            <div><Label>Height (mm)</Label><Input className="mt-1" type="number" min={5} max={100} value={form.height_mm} onChange={(e) => setForm({ ...form, height_mm: parseInt(e.target.value) || 25 })} /></div>
+            <div>
+              <Label>Barcode</Label>
+              <Select value={form.barcode_format || 'CODE128'} onValueChange={(v) => setForm({ ...form, barcode_format: v })}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CODE128">CODE128</SelectItem>
+                  <SelectItem value="QR">QR Code</SelectItem>
+                  <SelectItem value="DATAMATRIX">Data Matrix</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="space-y-3">
             <p className="text-sm font-medium">Include on Label:</p>
             <div className="grid grid-cols-2 gap-2">
-              {([
-                ['include_barcode', 'Barcode'],
-                ['include_patient_name', 'Patient Name'],
-                ['include_mrn', 'MRN'],
-                ['include_dob', 'Date of Birth'],
-                ['include_collection_date', 'Collection Date'],
-                ['include_test_name', 'Test Name'],
-                ['include_specimen_type', 'Specimen Type'],
-                ['include_priority', 'Priority'],
-              ] as const).map(([field, label]) => (
+              {AVAILABLE_FIELDS.map((field) => (
                 <div key={field} className="flex items-center gap-2">
-                  <Switch checked={form[field]} onCheckedChange={(v) => setForm({ ...form, [field]: v })} />
-                  <Label className="text-sm">{label}</Label>
+                  <Switch checked={(form.include_fields || []).includes(field)} onCheckedChange={() => toggleField(field)} />
+                  <Label className="text-sm">{field.replace(/_/g, ' ')}</Label>
                 </div>
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-3"><Switch checked={form.is_default} onCheckedChange={(v) => setForm({ ...form, is_default: v })} /><Label>Set as default template</Label></div>
+          {form.label_format === 'ZPL' && (
+            <div>
+              <Label>ZPL Template</Label>
+              <Textarea className="mt-1 font-mono text-xs" rows={4} value={form.zpl_template || ''} onChange={(e) => setForm({ ...form, zpl_template: e.target.value })} placeholder="^XA&#10;^FO10,10^BC,100^FD{barcode}^FS&#10;^FO10,120^A0,20^FD{patient_name}^FS&#10;^XZ" />
+              <p className="text-xs text-muted-foreground mt-1">Placeholders: {'{barcode}'}, {'{patient_name}'}, {'{mrn}'}, {'{test_name}'}, {'{collected_at}'}, {'{specimen_type}'}</p>
+            </div>
+          )}
+          <div className="flex items-center gap-3"><Switch checked={form.is_default || false} onCheckedChange={(v) => setForm({ ...form, is_default: v })} /><Label>Set as default template</Label></div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={isLoading || !form.name}>{isLoading && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}{item ? 'Save' : 'Add'}</Button>

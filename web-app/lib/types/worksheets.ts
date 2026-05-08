@@ -13,7 +13,7 @@ export type WorksheetStatus = 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED
 
 export type LabelFormat = 'ZPL' | 'PDF';
 export type LabelType = 'SPECIMEN' | 'ALIQUOT' | 'SLIDE' | 'BLOCK' | 'RACK' | 'TRAY';
-export type LabelPrintJobStatus = 'PENDING' | 'GENERATING' | 'READY' | 'PRINTED' | 'FAILED';
+export type LabelPrintJobStatus = 'PENDING' | 'GENERATED' | 'PRINTED' | 'FAILED';
 
 // =============================================================================
 // Worksheet Template
@@ -121,11 +121,7 @@ export interface LabelTemplate {
   width_mm: number;
   height_mm: number;
   barcode_format: string;
-  include_patient_name: boolean;
-  include_dob: boolean;
-  include_mrn: boolean;
-  include_collection_date: boolean;
-  include_test_name: boolean;
+  include_fields: string[];
   zpl_template: string;
   is_default: boolean;
   is_active: boolean;
@@ -135,16 +131,12 @@ export interface LabelTemplate {
 
 export interface LabelTemplateCreateData {
   name: string;
-  label_format: LabelFormat;
-  label_type: LabelType;
+  label_format?: LabelFormat;
+  label_type?: LabelType;
   width_mm?: number;
   height_mm?: number;
   barcode_format?: string;
-  include_patient_name?: boolean;
-  include_dob?: boolean;
-  include_mrn?: boolean;
-  include_collection_date?: boolean;
-  include_test_name?: boolean;
+  include_fields?: string[];
   zpl_template?: string;
   is_default?: boolean;
 }
@@ -155,26 +147,39 @@ export interface LabelTemplateCreateData {
 
 export interface LabelPrintJob {
   id: number;
-  template: number;
+  template: number | null;
   template_name: string;
   status: LabelPrintJobStatus;
-  total_labels: number;
-  generated_data: string;
-  generated_by_name: string;
-  printed_at: string | null;
+  label_count: number;
+  output_data: string;
   error_message: string;
+  generated_by: number | null;
+  generated_at: string | null;
+  printed_at: string | null;
   items: LabelPrintJobItem[];
   created_at: string;
   updated_at: string;
 }
 
+export interface LabelPrintJobListItem {
+  id: number;
+  template: number | null;
+  template_name: string;
+  status: LabelPrintJobStatus;
+  label_count: number;
+  generated_by: number | null;
+  generated_at: string | null;
+  printed_at: string | null;
+  created_at: string;
+}
+
 export interface LabelPrintJobItem {
   id: number;
-  print_job: number;
-  lab_order_item: number;
+  specimen: number;
   specimen_barcode: string;
-  patient_name: string;
-  label_data: string;
+  order_item: number;
+  copies: number;
+  label_data: Record<string, unknown>;
 }
 
 export interface LabelGenerateData {

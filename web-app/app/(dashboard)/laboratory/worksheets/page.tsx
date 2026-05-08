@@ -61,7 +61,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { worksheetsApi } from '@/lib/api/worksheets';
 import { toast } from 'sonner';
-import type { Worksheet, WorksheetTemplate, WorksheetTemplateCreateData, LabelPrintJob, LabelTemplate, WorksheetGroupBy, WorksheetExportFormat } from '@/lib/types/worksheets';
+import type { Worksheet, WorksheetTemplate, WorksheetTemplateCreateData, LabelPrintJob, LabelPrintJobListItem, LabelTemplate, WorksheetGroupBy, WorksheetExportFormat } from '@/lib/types/worksheets';
 
 // =============================================================================
 // Helpers
@@ -86,9 +86,7 @@ function labelJobStatusColor(status: string) {
   switch (status) {
     case 'PENDING':
       return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300';
-    case 'GENERATING':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
-    case 'READY':
+    case 'GENERATED':
       return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
     case 'PRINTED':
       return 'bg-gray-100 text-gray-800 dark:bg-gray-800/30 dark:text-gray-300';
@@ -555,11 +553,11 @@ export default function WorksheetsPage() {
                   cell: (item) => item.template_name,
                 },
                 {
-                  key: 'total_labels',
+                  key: 'label_count',
                   header: 'Labels',
                   sortable: true,
                   sortType: 'number',
-                  cell: (item) => item.total_labels,
+                  cell: (item) => item.label_count,
                 },
                 {
                   key: 'status',
@@ -589,7 +587,7 @@ export default function WorksheetsPage() {
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {item.template_name} • {item.total_labels} labels
+                    {item.template_name} • {item.label_count} labels
                   </p>
                 </div>
               )}
