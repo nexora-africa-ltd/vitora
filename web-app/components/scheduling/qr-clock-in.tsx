@@ -35,8 +35,10 @@ export function QRCodeDisplay() {
 
   useEffect(() => {
     if (data?.qr_token && canvasRef.current) {
+      // Responsive QR size: smaller on mobile
+      const size = window.innerWidth < 400 ? 200 : 280;
       QRCode.toCanvas(canvasRef.current, data.qr_token, {
-        width: 280,
+        width: size,
         margin: 2,
         color: { dark: '#000000', light: '#ffffff' },
       });
@@ -59,20 +61,20 @@ export function QRCodeDisplay() {
           <span className="sm:hidden">QR</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>Facility QR Code</DialogTitle>
             <HelpPopover content="Display this QR code at the facility entrance. Staff scan it with the mobile app or scanner to clock in automatically." />
           </div>
         </DialogHeader>
-        <div className="flex flex-col items-center gap-4">
-          <div className="rounded-xl border bg-white p-4">
-            <canvas ref={canvasRef} />
+        <div className="flex flex-col items-center gap-3 sm:gap-4">
+          <div className="rounded-xl border bg-white p-3 sm:p-4">
+            <canvas ref={canvasRef} className="max-w-full h-auto" />
           </div>
           {data && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Timer className="h-4 w-4" />
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground text-center">
+              <Timer className="h-4 w-4 shrink-0" />
               <span>
                 {data.facility_name} · Valid until {validUntil}
               </span>
@@ -167,14 +169,14 @@ export function QRScannerDialog() {
           Scan QR
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>Scan QR to Clock In</DialogTitle>
             <HelpPopover content="Point your camera at the facility QR code to clock in automatically." />
           </div>
         </DialogHeader>
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-3 sm:gap-4">
           <div
             id="qr-reader"
             ref={scannerRef}
