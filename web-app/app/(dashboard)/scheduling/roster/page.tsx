@@ -896,7 +896,7 @@ export default function WeeklyRosterPage() {
           title="Weekly Roster"
           helpContent="Plan shifts for the week ahead. Click cells to assign shift types. Use the paint brush selector to choose a shift type, then click staff×day cells. Save when done. Right-click (or long-press on mobile) any saved shift to add notes/comments."
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
               {canManageSchedules && (
                 <>
                   <QRCodeDisplay />

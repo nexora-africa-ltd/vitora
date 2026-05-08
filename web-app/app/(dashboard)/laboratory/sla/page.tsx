@@ -162,12 +162,14 @@ export default function LabSLADashboardPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="compliance" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="compliance">Compliance</TabsTrigger>
-          <TabsTrigger value="breaches">Breaches</TabsTrigger>
-          <TabsTrigger value="efficiency">Efficiency</TabsTrigger>
-          <TabsTrigger value="workload">Workload</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-4">
+            <TabsTrigger value="compliance" className="whitespace-nowrap px-3 text-xs sm:text-sm">Compliance</TabsTrigger>
+            <TabsTrigger value="breaches" className="whitespace-nowrap px-3 text-xs sm:text-sm">Breaches</TabsTrigger>
+            <TabsTrigger value="efficiency" className="whitespace-nowrap px-3 text-xs sm:text-sm">Efficiency</TabsTrigger>
+            <TabsTrigger value="workload" className="whitespace-nowrap px-3 text-xs sm:text-sm">Workload</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* SLA Compliance Tab */}
         <TabsContent value="compliance" className="space-y-4">
