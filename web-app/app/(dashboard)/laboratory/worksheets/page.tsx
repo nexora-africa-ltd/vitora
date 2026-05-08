@@ -146,7 +146,8 @@ export default function WorksheetsPage() {
           actions={
             <Button onClick={() => setShowGenerateDialog(true)} size="sm">
               <Plus className="mr-2 h-4 w-4" />
-              Generate Worksheet
+              <span className="hidden sm:inline">Generate Worksheet</span>
+              <span className="sm:hidden">Generate</span>
             </Button>
           }
         />
@@ -197,19 +198,19 @@ export default function WorksheetsPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="worksheets">
-          <TabsList>
-            <TabsTrigger value="worksheets" className="gap-2">
-              <FileSpreadsheet className="h-4 w-4" />
+          <TabsList className="w-full sm:w-auto">
+            <TabsTrigger value="worksheets" className="gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm">
+              <FileSpreadsheet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="sm:hidden">Sheets</span>
               <span className="hidden sm:inline">Worksheets</span>
             </TabsTrigger>
-            <TabsTrigger value="labels" className="gap-2">
-              <Printer className="h-4 w-4" />
+            <TabsTrigger value="labels" className="gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm">
+              <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="sm:hidden">Labels</span>
               <span className="hidden sm:inline">Print Jobs</span>
             </TabsTrigger>
-            <TabsTrigger value="templates" className="gap-2">
-              <FileSpreadsheet className="h-4 w-4" />
+            <TabsTrigger value="templates" className="gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm">
+              <FileSpreadsheet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               Templates
             </TabsTrigger>
           </TabsList>
@@ -236,11 +237,11 @@ export default function WorksheetsPage() {
                   cell: (item) => item.title || item.template_name || '—',
                 },
                 {
-                  key: 'item_count',
+                  key: 'specimen_count',
                   header: 'Items',
                   sortable: true,
                   sortType: 'number',
-                  cell: (item) => item.item_count,
+                  cell: (item) => item.specimen_count,
                 },
                 {
                   key: 'status',
@@ -282,13 +283,54 @@ export default function WorksheetsPage() {
                       >
                         <Download className="h-4 w-4" />
                       </Button>
-                      {item.status !== 'COMPLETED' && (
+                      {item.status !== 'COMPLETED' && item.status !== 'PRINTED' && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            markPrintedMutation.mutate(item.id);
+                            try {
+                              const detail = await worksheetsApi.getWorksheet(item.id);
+                              const printWindow = window.open('', '_blank');
+                              if (printWindow) {
+                                printWindow.document.write(`
+                                  <html><head><title>${detail.worksheet_number}</title>
+                                  <style>
+                                    body { font-family: system-ui, sans-serif; padding: 20px; }
+                                    h1 { font-size: 18px; margin-bottom: 4px; }
+                                    p { font-size: 13px; color: #666; margin: 2px 0; }
+                                    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+                                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 13px; }
+                                    th { background: #f5f5f5; font-weight: 600; }
+                                    @media print { body { padding: 0; } }
+                                  </style></head><body>
+                                  <h1>${detail.worksheet_number}</h1>
+                                  <p>${detail.title || 'Lab Worksheet'}</p>
+                                  <p>Generated: ${new Date(detail.generated_at).toLocaleString()}</p>
+                                  <table>
+                                    <thead><tr><th>#</th><th>Patient</th><th>Test</th><th>Specimen</th></tr></thead>
+                                    <tbody>
+                                      ${detail.items.map((it, idx) => `
+                                        <tr>
+                                          <td>${idx + 1}</td>
+                                          <td>${it.patient_name}</td>
+                                          <td>${it.test_name}</td>
+                                          <td>${it.specimen_barcode || '—'}</td>
+                                        </tr>
+                                      `).join('')}
+                                    </tbody>
+                                  </table>
+                                  </body></html>
+                                `);
+                                printWindow.document.close();
+                                printWindow.focus();
+                                printWindow.print();
+                              }
+                              markPrintedMutation.mutate(item.id);
+                            } catch {
+                              // If fetch fails, still allow marking as printed
+                              markPrintedMutation.mutate(item.id);
+                            }
                           }}
                         >
                           <Printer className="h-4 w-4" />
@@ -312,7 +354,7 @@ export default function WorksheetsPage() {
                     </Badge>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{item.item_count} items</span>
+                    <span>{item.specimen_count} items</span>
                     <span>{formatDate(item.generated_at)}</span>
                   </div>
                 </div>
@@ -455,7 +497,7 @@ export default function WorksheetsPage() {
 
         {/* Generate Worksheet Dialog */}
         <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Generate Worksheet</DialogTitle>
             </DialogHeader>
@@ -471,12 +513,13 @@ export default function WorksheetsPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowGenerateDialog(false)}>
+              <Button variant="outline" onClick={() => setShowGenerateDialog(false)} className="w-full sm:w-auto">
                 Cancel
               </Button>
               <Button
                 onClick={() => generateMutation.mutate({ title: generateTitle || undefined })}
                 disabled={generateMutation.isPending}
+                className="w-full sm:w-auto"
               >
                 {generateMutation.isPending ? 'Generating...' : 'Generate'}
               </Button>

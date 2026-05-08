@@ -11,6 +11,9 @@ import {
   ShieldAlert,
   TrendingUp,
   Zap,
+  Plus,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 
 import { PageHeader } from '@/components/shared/page-header';
@@ -21,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +32,17 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -38,12 +53,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { criticalValuesApi } from '@/lib/api/critical-values';
+import { laboratoryApi } from '@/lib/api/laboratory';
 import type {
   CriticalValueNotification,
   CriticalValueRange,
+  CriticalValueRangeCreateData,
   CriticalValueCompliance,
   CriticalNotificationMethod,
 } from '@/lib/types/critical-values';
+import type { TestCatalogListItem } from '@/lib/types/laboratory';
+import { toast } from 'sonner';
 
 // =============================================================================
 // Helpers
@@ -97,6 +116,8 @@ export default function CriticalValuesPage() {
   const [notifyMethod, setNotifyMethod] = useState<CriticalNotificationMethod>('PHONE_CALL');
   const [notifyToName, setNotifyToName] = useState('');
   const [readBackValue, setReadBackValue] = useState('');
+  const [showRangeDialog, setShowRangeDialog] = useState(false);
+  const [editingRange, setEditingRange] = useState<CriticalValueRange | null>(null);
 
   // Queries
   const { data: notificationsData } = useQuery({
@@ -114,6 +135,11 @@ export default function CriticalValuesPage() {
     queryFn: () => criticalValuesApi.getCompliance(),
   });
 
+  const { data: testsData } = useQuery({
+    queryKey: ['lab-tests-for-critical'],
+    queryFn: () => laboratoryApi.listTests({ page_size: 200 }),
+  });
+
   // Mutations
   const notifyMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: { method: CriticalNotificationMethod; notified_to_name: string } }) =>
@@ -123,6 +149,7 @@ export default function CriticalValuesPage() {
       queryClient.invalidateQueries({ queryKey: ['critical-compliance'] });
       setShowNotifyDialog(false);
       setSelectedNotification(null);
+      toast.success('Clinician notified');
     },
   });
 
@@ -145,11 +172,46 @@ export default function CriticalValuesPage() {
 
   const seedMutation = useMutation({
     mutationFn: () => criticalValuesApi.seedDefaults(),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['critical-ranges'] }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['critical-ranges'] });
+      toast.success(data.message);
+    },
+  });
+
+  const createRangeMutation = useMutation({
+    mutationFn: (data: CriticalValueRangeCreateData) => criticalValuesApi.createRange(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['critical-ranges'] });
+      setShowRangeDialog(false);
+      toast.success('Critical value range created');
+    },
+    onError: () => toast.error('Failed to create range'),
+  });
+
+  const updateRangeMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<CriticalValueRangeCreateData> }) =>
+      criticalValuesApi.updateRange(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['critical-ranges'] });
+      setShowRangeDialog(false);
+      setEditingRange(null);
+      toast.success('Critical value range updated');
+    },
+    onError: () => toast.error('Failed to update range'),
+  });
+
+  const deleteRangeMutation = useMutation({
+    mutationFn: (id: number) => criticalValuesApi.deleteRange(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['critical-ranges'] });
+      toast.success('Critical value range deleted');
+    },
+    onError: () => toast.error('Failed to delete range'),
   });
 
   const notifications = notificationsData?.results || [];
   const ranges = rangesData?.results || [];
+  const tests = testsData?.results || [];
 
   // Stats
   const pendingCount = compliance?.pending_count || 0;
@@ -375,15 +437,24 @@ export default function CriticalValuesPage() {
           </TabsContent>
 
           <TabsContent value="ranges" className="mt-4">
-            <div className="mb-4 flex justify-end">
+            <div className="mb-4 flex justify-end gap-2">
               <Button
                 onClick={() => seedMutation.mutate()}
                 disabled={seedMutation.isPending}
                 variant="outline"
                 size="sm"
               >
-                <Zap className="mr-2 h-4 w-4" />
-                {seedMutation.isPending ? 'Seeding...' : 'Seed Defaults'}
+                <Zap className="mr-1 h-4 w-4" />
+                <span className="hidden sm:inline">{seedMutation.isPending ? 'Seeding...' : 'Seed Defaults'}</span>
+                <span className="sm:hidden">Seed</span>
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => { setEditingRange(null); setShowRangeDialog(true); }}
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                <span className="hidden sm:inline">Add Range</span>
+                <span className="sm:hidden">Add</span>
               </Button>
             </div>
             <ResponsiveTable
@@ -454,11 +525,56 @@ export default function CriticalValuesPage() {
                       {item.is_active ? 'Active' : 'Inactive'}
                     </Badge>
                   ),
+                  hideOnMobile: true,
+                },
+                {
+                  key: 'actions',
+                  header: '',
+                  cell: (item) => (
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); setEditingRange(item); setShowRangeDialog(true); }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete critical value range?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete the critical value range for &quot;{item.test_name}&quot;.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteRangeMutation.mutate(item.id)}
+                              className="bg-destructive text-white hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  ),
                 },
               ]}
               mobileCard={(item) => (
-                <div className="p-3 space-y-1">
-                  <div className="flex justify-between items-center">
+                <div className="p-3 space-y-2">
+                  <div className="flex justify-between items-start">
                     <div>
                       <p className="font-medium">{item.test_name}</p>
                       <p className="text-xs text-muted-foreground">{item.test_code}</p>
@@ -477,6 +593,24 @@ export default function CriticalValuesPage() {
                     Critical: {item.critical_low ?? '—'} – {item.critical_high ?? '—'} |
                     Panic: {item.panic_low ?? '—'} – {item.panic_high ?? '—'}
                   </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      Deadline: {item.notification_deadline_minutes} min
+                    </span>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" className="h-7" onClick={() => { setEditingRange(item); setShowRangeDialog(true); }}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-destructive"
+                        onClick={() => deleteRangeMutation.mutate(item.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
             />
@@ -547,7 +681,201 @@ export default function CriticalValuesPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Critical Value Range Dialog */}
+        <CriticalValueRangeDialog
+          open={showRangeDialog}
+          onOpenChange={(open) => { setShowRangeDialog(open); if (!open) setEditingRange(null); }}
+          editingRange={editingRange}
+          tests={tests}
+          onSubmit={(data) => {
+            if (editingRange) {
+              updateRangeMutation.mutate({ id: editingRange.id, data });
+            } else {
+              createRangeMutation.mutate(data as CriticalValueRangeCreateData);
+            }
+          }}
+          isPending={createRangeMutation.isPending || updateRangeMutation.isPending}
+        />
       </div>
     </PullToRefresh>
+  );
+}
+
+// --- Range Dialog Component ---
+
+function CriticalValueRangeDialog({
+  open,
+  onOpenChange,
+  editingRange,
+  tests,
+  onSubmit,
+  isPending,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  editingRange: CriticalValueRange | null;
+  tests: TestCatalogListItem[];
+  onSubmit: (data: Partial<CriticalValueRangeCreateData> & { is_active?: boolean }) => void;
+  isPending: boolean;
+}) {
+  const [testId, setTestId] = useState<string>('');
+  const [criticalLow, setCriticalLow] = useState('');
+  const [criticalHigh, setCriticalHigh] = useState('');
+  const [panicLow, setPanicLow] = useState('');
+  const [panicHigh, setPanicHigh] = useState('');
+  const [deadline, setDeadline] = useState('30');
+  const [unit, setUnit] = useState('');
+  const [isActive, setIsActive] = useState(true);
+
+  // Reset form when dialog opens/editingRange changes
+  const resetForm = () => {
+    if (editingRange) {
+      setTestId(String(editingRange.test));
+      setCriticalLow(editingRange.critical_low != null ? String(editingRange.critical_low) : '');
+      setCriticalHigh(editingRange.critical_high != null ? String(editingRange.critical_high) : '');
+      setPanicLow(editingRange.panic_low != null ? String(editingRange.panic_low) : '');
+      setPanicHigh(editingRange.panic_high != null ? String(editingRange.panic_high) : '');
+      setDeadline(String(editingRange.notification_deadline_minutes));
+      setUnit(editingRange.unit || '');
+      setIsActive(editingRange.is_active);
+    } else {
+      setTestId('');
+      setCriticalLow('');
+      setCriticalHigh('');
+      setPanicLow('');
+      setPanicHigh('');
+      setDeadline('30');
+      setUnit('');
+      setIsActive(true);
+    }
+  };
+
+  // Reset on open
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleOpenChange = (val: boolean) => {
+    if (val) resetForm();
+    onOpenChange(val);
+  };
+
+  // Also reset when editingRange changes while dialog is open
+  if (open && editingRange && testId === '' && editingRange.test) {
+    resetForm();
+  }
+
+  const handleSubmit = () => {
+    const data: Partial<CriticalValueRangeCreateData> & { is_active?: boolean } = {};
+    if (!editingRange) {
+      if (!testId) return;
+      data.test = Number(testId);
+    }
+    if (criticalLow) data.critical_low = Number(criticalLow);
+    if (criticalHigh) data.critical_high = Number(criticalHigh);
+    if (panicLow) data.panic_low = Number(panicLow);
+    if (panicHigh) data.panic_high = Number(panicHigh);
+    if (deadline) data.notification_deadline_minutes = Number(deadline);
+    if (unit) data.unit = unit;
+    if (editingRange) data.is_active = isActive;
+    onSubmit(data);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{editingRange ? 'Edit Critical Value Range' : 'Add Critical Value Range'}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          {!editingRange && (
+            <div>
+              <Label>Test</Label>
+              <Select value={testId} onValueChange={setTestId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a test" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tests.map((t) => (
+                    <SelectItem key={t.id} value={String(t.id)}>
+                      {t.name} ({t.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Critical Low</Label>
+              <Input
+                type="number"
+                value={criticalLow}
+                onChange={(e) => setCriticalLow(e.target.value)}
+                placeholder="e.g. 3.0"
+              />
+            </div>
+            <div>
+              <Label>Critical High</Label>
+              <Input
+                type="number"
+                value={criticalHigh}
+                onChange={(e) => setCriticalHigh(e.target.value)}
+                placeholder="e.g. 6.5"
+              />
+            </div>
+            <div>
+              <Label>Panic Low</Label>
+              <Input
+                type="number"
+                value={panicLow}
+                onChange={(e) => setPanicLow(e.target.value)}
+                placeholder="e.g. 2.0"
+              />
+            </div>
+            <div>
+              <Label>Panic High</Label>
+              <Input
+                type="number"
+                value={panicHigh}
+                onChange={(e) => setPanicHigh(e.target.value)}
+                placeholder="e.g. 8.0"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Notification Deadline (min)</Label>
+              <Input
+                type="number"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                placeholder="30"
+              />
+            </div>
+            <div>
+              <Label>Unit</Label>
+              <Input
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                placeholder="e.g. mmol/L"
+              />
+            </div>
+          </div>
+          {editingRange && (
+            <div className="flex items-center gap-2">
+              <Switch checked={isActive} onCheckedChange={setIsActive} />
+              <Label>{isActive ? 'Active' : 'Inactive'}</Label>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={isPending || (!editingRange && !testId)}>
+            {isPending ? 'Saving...' : editingRange ? 'Update' : 'Create'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
