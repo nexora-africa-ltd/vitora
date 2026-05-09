@@ -2761,17 +2761,18 @@ class Organization(TimeStampedModel):
                 self.max_users = self.subscription_plan.max_users
                 self.max_patients = self.subscription_plan.max_patients
                 self.monthly_ai_tokens = self.subscription_plan.monthly_ai_tokens
-                if update_fields is not None:
-                    extra = {
-                        "subscription_tier",
-                        "max_facilities",
-                        "max_users",
-                        "max_patients",
-                        "monthly_ai_tokens",
-                    }
-                    kwargs["update_fields"] = list(set(update_fields) | extra)
             else:
                 self.subscription_tier = self.SubscriptionTier.FREE
+                self.monthly_ai_tokens = 0
+            if update_fields is not None:
+                extra = {
+                    "subscription_tier",
+                    "max_facilities",
+                    "max_users",
+                    "max_patients",
+                    "monthly_ai_tokens",
+                }
+                kwargs["update_fields"] = list(set(update_fields) | extra)
         super().save(*args, **kwargs)
 
     @property
@@ -2870,6 +2871,7 @@ class Organization(TimeStampedModel):
         plan = self.subscription_plan
         if plan is None:
             self.subscription_tier = self.SubscriptionTier.FREE
+            self.monthly_ai_tokens = 0
         else:
             self.subscription_tier = plan.code
             self.max_facilities = plan.max_facilities

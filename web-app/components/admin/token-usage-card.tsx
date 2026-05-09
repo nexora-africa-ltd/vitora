@@ -179,7 +179,8 @@ export function TokenUsageCard({ organizationId }: TokenUsageCardProps) {
   if (!data) return null;
 
   const isUnlimited = data.monthly_ai_tokens === null;
-  const percent = isUnlimited
+  const hasNoQuota = data.monthly_ai_tokens === 0;
+  const percent = isUnlimited || hasNoQuota
     ? 0
     : data.monthly_ai_tokens != null && data.monthly_ai_tokens > 0
       ? (data.ai_tokens_used / data.monthly_ai_tokens) * 100
@@ -205,7 +206,9 @@ export function TokenUsageCard({ organizationId }: TokenUsageCardProps) {
             <CardDescription className="mt-1">
               {isUnlimited
                 ? 'Unlimited quota this billing cycle'
-                : `${formatTokenCount(data.ai_tokens_used)} of ${formatTokenCount(data.monthly_ai_tokens!)} tokens used`}
+                : hasNoQuota
+                  ? 'No AI tokens included in current plan'
+                  : `${formatTokenCount(data.ai_tokens_used)} of ${formatTokenCount(data.monthly_ai_tokens!)} tokens used`}
             </CardDescription>
           </div>
           {data.facilities.length > 1 && (
@@ -247,9 +250,9 @@ export function TokenUsageCard({ organizationId }: TokenUsageCardProps) {
                 <p className="font-semibold">{formatTokenCount(data.ai_tokens_used)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Remaining</p>
+                <p className="text-xs text-muted-foreground">{hasNoQuota ? 'Quota' : 'Remaining'}</p>
                 <p className="font-semibold">
-                  {isUnlimited ? '∞' : formatTokenCount(data.ai_tokens_remaining ?? 0)}
+                  {isUnlimited ? '∞' : hasNoQuota ? '—' : formatTokenCount(data.ai_tokens_remaining ?? 0)}
                 </p>
               </div>
             </div>
