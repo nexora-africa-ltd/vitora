@@ -109,6 +109,7 @@ MIDDLEWARE = [
     "hmis.apps.core.middleware.AdminAccessMiddleware",  # Restrict /admin/ to Nexora superusers
     "hmis.apps.core.middleware.MFAGraceEnforcementMiddleware",  # Block API after MFA grace period
     "hmis.apps.core.middleware.OnboardingEnforcementMiddleware",  # Block API after onboarding grace period
+    "hmis.apps.core.middleware.SubscriptionExpiryMiddleware",  # Block writes when subscription expired
     "hmis.apps.core.middleware.MediaSecurityMiddleware",  # Force Content-Disposition: attachment on /media/
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -252,6 +253,9 @@ ONBOARDING_GRACE_PERIOD_DAYS = 7
 # require the user to have an ACTIVE or ON_BREAK shift today.
 # Override to False in development/test settings to allow unrestricted writes.
 ACTIVE_SHIFT_ENFORCEMENT = True
+# Subscription expiry enforcement — when True, write operations are blocked
+# for organizations whose subscription has expired. Read access remains.
+SUBSCRIPTION_EXPIRY_ENFORCEMENT = True
 
 # WebAuthn / FIDO2 / Passkey settings
 # RP ID must match the domain the site is served from (no port, no scheme).

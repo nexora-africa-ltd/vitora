@@ -275,6 +275,22 @@ export default function NewSubscriptionPlanPage() {
                   className="mt-1"
                 />
               </div>
+              <div>
+                <Label htmlFor="monthly_ai_tokens">Monthly AI Tokens</Label>
+                <Input
+                  id="monthly_ai_tokens"
+                  type="number"
+                  value={form.monthly_ai_tokens ?? ''}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      monthly_ai_tokens: e.target.value ? parseInt(e.target.value) : null,
+                    })
+                  }
+                  placeholder="Unlimited"
+                  className="mt-1"
+                />
+              </div>
             </CardContent>
           </Card>
 

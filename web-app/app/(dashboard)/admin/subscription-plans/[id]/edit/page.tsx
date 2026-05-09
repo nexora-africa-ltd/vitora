@@ -58,6 +58,7 @@ export default function EditSubscriptionPlanPage({
         max_facilities: plan.max_facilities,
         max_users: plan.max_users,
         max_patients: plan.max_patients,
+        monthly_ai_tokens: plan.monthly_ai_tokens,
         is_active: plan.is_active,
         sort_order: plan.sort_order,
         trial_period_days: plan.trial_period_days,
@@ -252,6 +253,22 @@ export default function EditSubscriptionPlanPage({
                     setForm({
                       ...form,
                       max_patients: e.target.value ? parseInt(e.target.value) : null,
+                    })
+                  }
+                  placeholder="Unlimited"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="monthly_ai_tokens">Monthly AI Tokens</Label>
+                <Input
+                  id="monthly_ai_tokens"
+                  type="number"
+                  value={form.monthly_ai_tokens ?? ''}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      monthly_ai_tokens: e.target.value ? parseInt(e.target.value) : null,
                     })
                   }
                   placeholder="Unlimited"

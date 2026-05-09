@@ -610,3 +610,23 @@ class SubscriptionFeaturePermission(permissions.BasePermission):
         if not profile or not profile.organization:
             return True  # No org context — allow (other perms will block)
         return profile.organization.has_feature(feature_key)
+
+
+class AITokenQuotaPermission(permissions.BasePermission):
+    """
+    Block AI requests when the org has exhausted its monthly token quota.
+
+    Returns 403 with code ``ai_token_quota_exceeded`` when the org's
+    ``ai_tokens_used >= monthly_ai_tokens``.  Superusers and orgs with
+    unlimited tokens (``monthly_ai_tokens is None``) bypass.
+    """
+
+    message = "Your organization has exhausted its monthly AI token quota."
+
+    def has_permission(self, request, view):
+        if request.user.is_superuser:
+            return True
+        profile = getattr(request.user, "staff_profile", None)
+        if not profile or not profile.organization:
+            return True
+        return profile.organization.can_use_ai_tokens()

@@ -40,6 +40,7 @@ export interface SubscriptionPlanListItem {
   annual_price: string;
   max_facilities: number | null;
   max_users: number | null;
+  monthly_ai_tokens: number | null;
   is_active: boolean;
   sort_order: number;
   has_trial: boolean;
@@ -49,6 +50,7 @@ export interface SubscriptionPlanDetail extends SubscriptionPlanListItem {
   description: string;
   annual_savings: string;
   max_patients: number | null;
+  monthly_ai_tokens: number | null;
   features: Record<string, boolean>;
   trial_period_days: number;
   created_at: string;
@@ -64,6 +66,7 @@ export interface SubscriptionPlanCreateData {
   max_facilities?: number | null;
   max_users?: number | null;
   max_patients?: number | null;
+  monthly_ai_tokens?: number | null;
   features?: Record<string, boolean>;
   is_active?: boolean;
   sort_order?: number;

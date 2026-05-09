@@ -1924,6 +1924,88 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         serializer = FacilityListSerializer(facilities, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["get"], url_path="token-usage")
+    def token_usage(self, request, pk=None):
+        """
+        Return AI token usage summary for this organization.
+
+        Response shape::
+
+            {
+                "monthly_ai_tokens": 10000 | null,
+                "ai_tokens_used": 2345,
+                "ai_tokens_remaining": 7655 | null,
+                "ai_tokens_reset_at": "2026-05-01T00:00:00Z" | null,
+                "facilities": [
+                    {"id": 1, "name": "Demo Clinic", "tokens_used": 1200},
+                    ...
+                ]
+            }
+        """
+        from django.db.models import Sum
+
+        from hmis.apps.ai.models import (
+            AICarePlanResult,
+            AICDSResult,
+            AIDischargeResult,
+            AIICURiskResult,
+            AIInvestigationSuggestResult,
+            AILabInterpretResult,
+            AISurgicalChecklistSessionResult,
+            AISurgicalPostOpCarePlanResult,
+            AISurgicalPreOpAssessResult,
+        )
+
+        organization = self.get_object()
+
+        ai_models = [
+            AICarePlanResult,
+            AICDSResult,
+            AILabInterpretResult,
+            AIDischargeResult,
+            AIICURiskResult,
+            AIInvestigationSuggestResult,
+            AISurgicalPreOpAssessResult,
+            AISurgicalChecklistSessionResult,
+            AISurgicalPostOpCarePlanResult,
+        ]
+
+        # Per-facility aggregation across all AI result tables
+        facility_totals: dict[int, int] = {}
+        for model in ai_models:
+            rows = (
+                model.objects.filter(facility__organization=organization)
+                .values("facility_id")
+                .annotate(total=Sum("total_tokens"))
+            )
+            for row in rows:
+                fid = row["facility_id"]
+                facility_totals[fid] = facility_totals.get(fid, 0) + (row["total"] or 0)
+
+        facilities = organization.facilities.filter(is_active=True).order_by("name")
+        facility_list = [
+            {
+                "id": f.id,
+                "name": f.name,
+                "tokens_used": facility_totals.get(f.id, 0),
+            }
+            for f in facilities
+        ]
+
+        return Response(
+            {
+                "monthly_ai_tokens": organization.monthly_ai_tokens,
+                "ai_tokens_used": organization.ai_tokens_used,
+                "ai_tokens_remaining": organization.ai_tokens_remaining,
+                "ai_tokens_reset_at": (
+                    organization.ai_tokens_reset_at.isoformat()
+                    if organization.ai_tokens_reset_at
+                    else None
+                ),
+                "facilities": facility_list,
+            }
+        )
+
 
 # ============================================================================
 # Facility ViewSet (RBAC Capability Plan – Phase 1)

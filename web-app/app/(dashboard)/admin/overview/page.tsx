@@ -20,6 +20,7 @@ import {
   UserRoundCheck,
 } from 'lucide-react';
 import { AdminStatCard } from '@/components/admin/admin-stat-card';
+import { TokenUsageCard } from '@/components/admin/token-usage-card';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Badge } from '@/components/ui/badge';
@@ -561,6 +562,11 @@ export default function AdminOverviewPage() {
                 </Button>
               </CardContent>
             </Card>
+
+            {/* AI Token Usage — show for the first active org */}
+            {organizations[0] != null && (
+              <TokenUsageCard organizationId={organizations[0].id} />
+            )}
           </div>
         </div>
         {/* System Health — Superuser only */}
