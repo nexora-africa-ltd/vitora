@@ -29,14 +29,7 @@ import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useCounties, useSubCounties } from '@/lib/hooks/use-locations';
 import { organizationsApi } from '@/lib/api/organizations';
 import { subscriptionPlansApi } from '@/lib/api/subscription-plans';
-import type { OrganizationUpdateData, SubscriptionTier } from '@/lib/types/organization';
-
-const TIERS: { value: SubscriptionTier; label: string }[] = [
-  { value: 'FREE', label: 'Free' },
-  { value: 'BASIC', label: 'Basic' },
-  { value: 'PROFESSIONAL', label: 'Professional' },
-  { value: 'ENTERPRISE', label: 'Enterprise' },
-];
+import type { OrganizationUpdateData } from '@/lib/types/organization';
 
 export default function EditOrganizationPage() {
   const params = useParams();
@@ -65,9 +58,6 @@ export default function EditOrganizationPage() {
     contact_phone: '',
     address: '',
     subscription_plan: null as number | null,
-    subscription_tier: 'BASIC' as SubscriptionTier,
-    max_facilities: '' as string,
-    max_users: '' as string,
     data_retention_years: '7',
     is_active: true,
   });
@@ -88,9 +78,6 @@ export default function EditOrganizationPage() {
         contact_phone: org.contact_phone || '',
         address: org.address || '',
         subscription_plan: org.subscription_plan,
-        subscription_tier: org.subscription_tier,
-        max_facilities: org.max_facilities != null ? String(org.max_facilities) : '',
-        max_users: org.max_users != null ? String(org.max_users) : '',
         data_retention_years: String(org.data_retention_years),
         is_active: org.is_active,
       });
@@ -198,9 +185,6 @@ export default function EditOrganizationPage() {
       county: countyId ?? null,
       sub_county: subCountyId ?? null,
       subscription_plan: formData.subscription_plan,
-      subscription_tier: formData.subscription_tier,
-      max_facilities: formData.max_facilities ? parseInt(formData.max_facilities) : undefined,
-      max_users: formData.max_users ? parseInt(formData.max_users) : undefined,
       data_retention_years: formData.data_retention_years ? parseInt(formData.data_retention_years) : undefined,
       is_active: formData.is_active,
     };
@@ -379,18 +363,16 @@ export default function EditOrganizationPage() {
               Subscription & Limits
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Plan</Label>
               <Select
                 value={formData.subscription_plan != null ? String(formData.subscription_plan) : 'none'}
                 onValueChange={(v) => {
                   const planId = v === 'none' ? null : parseInt(v);
-                  const selectedPlan = plans.find((p) => p.id === planId);
                   setFormData((prev) => ({
                     ...prev,
                     subscription_plan: planId,
-                    subscription_tier: (selectedPlan?.code ?? prev.subscription_tier) as SubscriptionTier,
                   }));
                 }}
               >
@@ -402,14 +384,9 @@ export default function EditOrganizationPage() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="max_facilities">Max Facilities</Label>
-              <Input id="max_facilities" type="number" min={1} value={formData.max_facilities} onChange={(e) => handleChange('max_facilities', e.target.value)} placeholder="Unlimited" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="max_users">Max Users</Label>
-              <Input id="max_users" type="number" min={1} value={formData.max_users} onChange={(e) => handleChange('max_users', e.target.value)} placeholder="Unlimited" />
+              <p className="text-xs text-muted-foreground">
+                Tier, limits, and AI tokens are automatically set from the selected plan.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="data_retention_years">Data Retention (years)</Label>

@@ -39,7 +39,6 @@ def sample_org(db):
         name="Demo Health Group",
         slug="demo-health-group",
         contact_email="admin@demohealth.co.ke",
-        subscription_tier="BASIC",
     )
 
 
@@ -181,7 +180,7 @@ class TestOrganizationModel:
         assert sample_org.name == "Demo Health Group"
         assert sample_org.slug == "demo-health-group"
         assert sample_org.is_active is True
-        assert sample_org.subscription_tier == "BASIC"
+        assert sample_org.subscription_tier == "FREE"
         assert sample_org.data_retention_years == 7
 
     def test_organization_str(self, sample_org):
@@ -410,7 +409,6 @@ class TestOrganizationAPI:
             "name": "New Health Network",
             "slug": "new-health-network",
             "contact_email": "info@newhealthnetwork.co.ke",
-            "subscription_tier": "PROFESSIONAL",
         }
         response = admin_client.post("/api/organizations/", data, format="json")
         assert response.status_code == status.HTTP_201_CREATED

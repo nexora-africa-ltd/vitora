@@ -232,9 +232,12 @@ class TestHasFeature:
         assert org_with_basic_plan.has_feature("telehealth") is False
 
     def test_feature_no_plan(self, sample_organization):
-        """Should return True (no restrictions) when no plan is linked."""
+        """Should only allow baseline features when no plan is linked."""
         sample_organization.subscription_plan = None
-        assert sample_organization.has_feature("anything") is True
+        assert sample_organization.has_feature("outpatient") is True
+        assert sample_organization.has_feature("pharmacy") is True
+        assert sample_organization.has_feature("billing") is True
+        assert sample_organization.has_feature("anything_else") is False
 
 
 # ============================================================================
