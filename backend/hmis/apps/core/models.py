@@ -2625,8 +2625,9 @@ class Organization(TimeStampedModel):
     subscription_tier = models.CharField(
         max_length=20,
         choices=SubscriptionTier.choices,
-        default=SubscriptionTier.BASIC,
-        help_text="Current subscription tier (synced from subscription_plan.code).",
+        default=SubscriptionTier.FREE,
+        editable=False,
+        help_text="Derived from subscription_plan.code — do not set directly.",
     )
     max_facilities = models.PositiveIntegerField(
         null=True,
@@ -2749,6 +2750,30 @@ class Organization(TimeStampedModel):
         """Return the organization name."""
         return self.name
 
+    def save(self, *args, **kwargs):
+        """Auto-sync tier and limits from the linked plan on every save."""
+        update_fields = kwargs.get("update_fields")
+        # Only sync when subscription_plan is being saved (or full save)
+        if update_fields is None or "subscription_plan" in update_fields:
+            if self.subscription_plan is not None:
+                self.subscription_tier = self.subscription_plan.code
+                self.max_facilities = self.subscription_plan.max_facilities
+                self.max_users = self.subscription_plan.max_users
+                self.max_patients = self.subscription_plan.max_patients
+                self.monthly_ai_tokens = self.subscription_plan.monthly_ai_tokens
+                if update_fields is not None:
+                    extra = {
+                        "subscription_tier",
+                        "max_facilities",
+                        "max_users",
+                        "max_patients",
+                        "monthly_ai_tokens",
+                    }
+                    kwargs["update_fields"] = list(set(update_fields) | extra)
+            else:
+                self.subscription_tier = self.SubscriptionTier.FREE
+        super().save(*args, **kwargs)
+
     @property
     def facility_count(self) -> int:
         """Return the number of facilities under this organization."""
@@ -2784,10 +2809,22 @@ class Organization(TimeStampedModel):
             return True
         return self.patient_count < self.max_patients
 
+    # Baseline features for orgs without a subscription plan.
+    # Only core clinical features are enabled — everything else requires a plan.
+    PLAN_FALLBACK_FEATURES: dict[str, bool] = {
+        "outpatient": True,
+        "pharmacy": True,
+        "billing": True,
+    }
+
     def has_feature(self, feature_key: str) -> bool:
-        """Check if a feature is enabled for this org's subscription plan."""
+        """Check if a feature is enabled for this org's subscription plan.
+
+        Orgs without a plan get only the baseline features defined in
+        ``PLAN_FALLBACK_FEATURES`` (outpatient, pharmacy, billing).
+        """
         if self.subscription_plan is None:
-            return True  # No plan means no restrictions
+            return self.PLAN_FALLBACK_FEATURES.get(feature_key, False)
         return bool(self.subscription_plan.features.get(feature_key, False))
 
     @property
@@ -2824,15 +2861,21 @@ class Organization(TimeStampedModel):
         self.save(update_fields=["ai_tokens_used", "ai_tokens_reset_at"])
 
     def sync_from_plan(self, save: bool = True) -> None:
-        """Sync tier, limits from the linked SubscriptionPlan."""
+        """Sync tier, limits from the linked SubscriptionPlan.
+
+        .. note:: The ``save()`` override already auto-syncs on every
+           save, so this method is only needed for explicit in-memory
+           sync without a full save, or for legacy callers.
+        """
         plan = self.subscription_plan
         if plan is None:
-            return
-        self.subscription_tier = plan.code
-        self.max_facilities = plan.max_facilities
-        self.max_users = plan.max_users
-        self.max_patients = plan.max_patients
-        self.monthly_ai_tokens = plan.monthly_ai_tokens
+            self.subscription_tier = self.SubscriptionTier.FREE
+        else:
+            self.subscription_tier = plan.code
+            self.max_facilities = plan.max_facilities
+            self.max_users = plan.max_users
+            self.max_patients = plan.max_patients
+            self.monthly_ai_tokens = plan.monthly_ai_tokens
         if save:
             self.save(
                 update_fields=[

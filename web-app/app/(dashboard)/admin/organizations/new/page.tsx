@@ -23,19 +23,20 @@ import {
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCounties, useSubCounties } from '@/lib/hooks/use-locations';
 import { organizationsApi } from '@/lib/api/organizations';
-import type { OrganizationCreateData, SubscriptionTier } from '@/lib/types/organization';
-
-const TIERS: { value: SubscriptionTier; label: string }[] = [
-  { value: 'FREE', label: 'Free' },
-  { value: 'BASIC', label: 'Basic' },
-  { value: 'PROFESSIONAL', label: 'Professional' },
-  { value: 'ENTERPRISE', label: 'Enterprise' },
-];
+import { subscriptionPlansApi } from '@/lib/api/subscription-plans';
+import type { OrganizationCreateData } from '@/lib/types/organization';
+import { useQuery } from '@tanstack/react-query';
 
 export default function NewOrganizationPage() {
   const router = useRouter();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const { data: plansData } = useQuery({
+    queryKey: ['subscription-plans'],
+    queryFn: () => subscriptionPlansApi.list({ is_active: true, ordering: 'sort_order' }),
+  });
+  const plans = plansData?.results ?? [];
 
   const [formData, setFormData] = useState<OrganizationCreateData>({
     name: '',
@@ -43,9 +44,7 @@ export default function NewOrganizationPage() {
     contact_email: '',
     contact_phone: '',
     address: '',
-    subscription_tier: 'BASIC',
-    max_facilities: undefined,
-    max_users: undefined,
+    subscription_plan: null,
     county: undefined,
     sub_county: undefined,
   });
@@ -252,50 +251,27 @@ export default function NewOrganizationPage() {
               Subscription & Limits
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label>Subscription Tier</Label>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Subscription Plan</Label>
               <Select
-                value={formData.subscription_tier ?? 'BASIC'}
-                onValueChange={(v) => handleChange('subscription_tier', v)}
+                value={formData.subscription_plan?.toString() ?? ''}
+                onValueChange={(v) => handleChange('subscription_plan', v ? parseInt(v) : undefined)}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select a plan" />
                 </SelectTrigger>
                 <SelectContent>
-                  {TIERS.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
+                  {plans.map((p) => (
+                    <SelectItem key={p.id} value={p.id.toString()}>
+                      {p.name} ({p.code})
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="max_facilities">Max Facilities</Label>
-              <Input
-                id="max_facilities"
-                type="number"
-                min={1}
-                value={formData.max_facilities ?? ''}
-                onChange={(e) =>
-                  handleChange('max_facilities', e.target.value ? parseInt(e.target.value) : undefined)
-                }
-                placeholder="Unlimited"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="max_users">Max Users</Label>
-              <Input
-                id="max_users"
-                type="number"
-                min={1}
-                value={formData.max_users ?? ''}
-                onChange={(e) =>
-                  handleChange('max_users', e.target.value ? parseInt(e.target.value) : undefined)
-                }
-                placeholder="Unlimited"
-              />
+              <p className="text-xs text-muted-foreground">
+                Tier, limits, and AI tokens are automatically set from the selected plan.
+              </p>
             </div>
           </CardContent>
         </Card>

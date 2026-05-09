@@ -824,7 +824,6 @@ def org_signup(request):
             contact_email=data["admin_email"],
             is_active=False,
             is_verified=False,
-            subscription_tier=Organization.SubscriptionTier.FREE,
             subscription_plan=SubscriptionPlan.objects.filter(code="FREE", is_active=True).first(),
         )
 
@@ -1115,7 +1114,6 @@ def setup_initialize(request):
             contact_phone=data.get("org_contact_phone", ""),
             is_active=True,
             is_verified=True,
-            subscription_tier=Organization.SubscriptionTier.BASIC,
             subscription_plan=SubscriptionPlan.objects.filter(code="BASIC", is_active=True).first(),
         )
 

@@ -839,7 +839,7 @@ class OrganizationListSerializer(serializers.ModelSerializer):
             "facility_count",
             "staff_count",
         ]
-        read_only_fields = ["id", "facility_count", "staff_count", "plan_name"]
+        read_only_fields = ["id", "subscription_tier", "facility_count", "staff_count", "plan_name"]
 
 
 class OrganizationDetailSerializer(serializers.ModelSerializer):
@@ -913,6 +913,11 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "subscription_tier",
+            "max_facilities",
+            "max_users",
+            "max_patients",
+            "monthly_ai_tokens",
             "facility_count",
             "staff_count",
             "plan_name",

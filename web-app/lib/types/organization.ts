@@ -51,9 +51,7 @@ export interface OrganizationCreateData {
   address?: string;
   county?: number | null;
   sub_county?: number | null;
-  subscription_tier?: SubscriptionTier;
-  max_facilities?: number;
-  max_users?: number;
+  subscription_plan?: number | null;
 }
 
 export interface OrganizationUpdateData extends Partial<OrganizationCreateData> {

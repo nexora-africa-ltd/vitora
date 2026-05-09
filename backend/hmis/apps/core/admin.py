@@ -977,7 +977,16 @@ class OrganizationAdmin(admin.ModelAdmin):
     search_fields = ["name", "slug", "contact_email"]
     prepopulated_fields = {"slug": ("name",)}
     ordering = ["name"]
-    readonly_fields = ["created_at", "updated_at", "tibabot_keys_summary"]
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+        "subscription_tier",
+        "max_facilities",
+        "max_users",
+        "max_patients",
+        "monthly_ai_tokens",
+        "tibabot_keys_summary",
+    ]
     inlines = [FacilityInline, OrgStaffInline]
 
     fieldsets = (
