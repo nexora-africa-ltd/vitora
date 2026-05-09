@@ -34,7 +34,7 @@ PLANS = [
         "max_facilities": 1,
         "max_users": 5,
         "max_patients": 100,
-        "monthly_ai_tokens": None,
+        "monthly_ai_tokens": 0,
         "trial_period_days": 14,
         "sort_order": 0,
         "features": {
