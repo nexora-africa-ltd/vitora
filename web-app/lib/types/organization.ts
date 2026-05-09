@@ -28,6 +28,15 @@ export interface OrganizationDetail extends OrganizationListItem {
   can_add_facility: boolean;
   can_add_user: boolean;
   can_add_patient: boolean;
+  // Subscription validity
+  subscription_status: 'ACTIVE' | 'TRIAL' | 'EXPIRED' | 'SUSPENDED';
+  subscription_valid_until: string | null;
+  is_subscription_expired: boolean;
+  // AI token usage
+  monthly_ai_tokens: number | null;
+  ai_tokens_used: number;
+  ai_tokens_remaining: number | null;
+  ai_tokens_reset_at: string | null;
   data_retention_years: number;
   settings: Record<string, unknown>;
   created_at: string;
@@ -52,4 +61,18 @@ export interface OrganizationUpdateData extends Partial<OrganizationCreateData> 
   data_retention_years?: number;
   settings?: Record<string, unknown>;
   subscription_plan?: number | null;
+}
+
+export interface FacilityTokenUsage {
+  id: number;
+  name: string;
+  tokens_used: number;
+}
+
+export interface OrgTokenUsage {
+  monthly_ai_tokens: number | null;
+  ai_tokens_used: number;
+  ai_tokens_remaining: number | null;
+  ai_tokens_reset_at: string | null;
+  facilities: FacilityTokenUsage[];
 }

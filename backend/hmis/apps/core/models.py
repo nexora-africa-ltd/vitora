@@ -2480,6 +2480,11 @@ class SubscriptionPlan(TimeStampedModel):
         default=0,
         help_text="Trial period in days (0 = no trial).",
     )
+    monthly_ai_tokens = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Monthly AI token quota (null = unlimited). Resets on billing cycle.",
+    )
 
     # ------------------------------------------------------------------
     # Meta & Methods
@@ -2640,6 +2645,49 @@ class Organization(TimeStampedModel):
     )
 
     # ------------------------------------------------------------------
+    # Subscription Validity
+    # ------------------------------------------------------------------
+
+    class SubscriptionStatus(models.TextChoices):
+        """Subscription lifecycle states."""
+
+        ACTIVE = "ACTIVE", "Active"
+        TRIAL = "TRIAL", "Trial"
+        EXPIRED = "EXPIRED", "Expired"
+        SUSPENDED = "SUSPENDED", "Suspended"
+
+    subscription_status = models.CharField(
+        max_length=20,
+        choices=SubscriptionStatus.choices,
+        default=SubscriptionStatus.ACTIVE,
+        help_text="Current subscription lifecycle state.",
+    )
+    subscription_valid_until = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the current subscription period expires (null = no expiry).",
+    )
+
+    # ------------------------------------------------------------------
+    # AI Token Usage (per billing cycle)
+    # ------------------------------------------------------------------
+
+    monthly_ai_tokens = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Monthly AI token quota (synced from plan, null = unlimited).",
+    )
+    ai_tokens_used = models.PositiveIntegerField(
+        default=0,
+        help_text="AI tokens consumed in the current billing cycle.",
+    )
+    ai_tokens_reset_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the AI token counter was last reset.",
+    )
+
+    # ------------------------------------------------------------------
     # Compliance (Kenya DPA 2019)
     # ------------------------------------------------------------------
 
@@ -2742,6 +2790,39 @@ class Organization(TimeStampedModel):
             return True  # No plan means no restrictions
         return bool(self.subscription_plan.features.get(feature_key, False))
 
+    @property
+    def is_subscription_expired(self) -> bool:
+        """Whether the subscription has passed its validity date."""
+        if self.subscription_valid_until is None:
+            return False
+        return timezone.now() > self.subscription_valid_until
+
+    @property
+    def ai_tokens_remaining(self) -> int | None:
+        """Return remaining AI tokens, or None if unlimited."""
+        if self.monthly_ai_tokens is None:
+            return None
+        return max(0, self.monthly_ai_tokens - self.ai_tokens_used)
+
+    def can_use_ai_tokens(self, tokens_needed: int = 0) -> bool:
+        """Check if the organization has enough AI tokens."""
+        if self.monthly_ai_tokens is None:
+            return True
+        return self.ai_tokens_used + tokens_needed <= self.monthly_ai_tokens
+
+    def record_ai_token_usage(self, tokens: int) -> None:
+        """Atomically increment the AI token counter."""
+        from django.db.models import F
+
+        Organization.objects.filter(pk=self.pk).update(ai_tokens_used=F("ai_tokens_used") + tokens)
+        self.ai_tokens_used += tokens  # Keep instance in sync
+
+    def reset_ai_tokens(self) -> None:
+        """Reset the AI token counter (called at billing cycle start)."""
+        self.ai_tokens_used = 0
+        self.ai_tokens_reset_at = timezone.now()
+        self.save(update_fields=["ai_tokens_used", "ai_tokens_reset_at"])
+
     def sync_from_plan(self, save: bool = True) -> None:
         """Sync tier, limits from the linked SubscriptionPlan."""
         plan = self.subscription_plan
@@ -2751,6 +2832,7 @@ class Organization(TimeStampedModel):
         self.max_facilities = plan.max_facilities
         self.max_users = plan.max_users
         self.max_patients = plan.max_patients
+        self.monthly_ai_tokens = plan.monthly_ai_tokens
         if save:
             self.save(
                 update_fields=[
@@ -2759,6 +2841,7 @@ class Organization(TimeStampedModel):
                     "max_facilities",
                     "max_users",
                     "max_patients",
+                    "monthly_ai_tokens",
                 ]
             )
 

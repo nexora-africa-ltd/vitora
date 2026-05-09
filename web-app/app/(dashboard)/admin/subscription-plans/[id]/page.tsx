@@ -209,6 +209,10 @@ export default function SubscriptionPlanDetailPage({
               <span className="text-muted-foreground">Max Patients</span>
               <span className="font-medium">{formatLimit(plan.max_patients)}</span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Monthly AI Tokens</span>
+              <span className="font-medium">{formatLimit(plan.monthly_ai_tokens)}</span>
+            </div>
           </CardContent>
         </Card>
 

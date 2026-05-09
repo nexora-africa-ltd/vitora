@@ -934,7 +934,7 @@ class SubscriptionPlanAdmin(admin.ModelAdmin):
         ),
         (
             "Limits",
-            {"fields": ("max_facilities", "max_users", "max_patients")},
+            {"fields": ("max_facilities", "max_users", "max_patients", "monthly_ai_tokens")},
         ),
         (
             "Features",
@@ -959,6 +959,7 @@ class OrganizationAdmin(admin.ModelAdmin):
         "name",
         "slug",
         "subscription_tier",
+        "subscription_status",
         "is_verified",
         "is_active",
         "onboarding_completed_at",
@@ -966,7 +967,13 @@ class OrganizationAdmin(admin.ModelAdmin):
         "tibabot_keys_count",
         "created_at",
     ]
-    list_filter = ["subscription_tier", "is_active", "is_verified", "onboarding_completed_at"]
+    list_filter = [
+        "subscription_tier",
+        "subscription_status",
+        "is_active",
+        "is_verified",
+        "onboarding_completed_at",
+    ]
     search_fields = ["name", "slug", "contact_email"]
     prepopulated_fields = {"slug": ("name",)}
     ordering = ["name"]
@@ -1008,10 +1015,24 @@ class OrganizationAdmin(admin.ModelAdmin):
             "Subscription & Limits",
             {
                 "fields": (
+                    "subscription_plan",
                     "subscription_tier",
+                    "subscription_status",
+                    "subscription_valid_until",
                     "max_facilities",
                     "max_users",
+                    "max_patients",
                 )
+            },
+        ),
+        (
+            "AI Token Usage",
+            {
+                "fields": (
+                    "monthly_ai_tokens",
+                    "ai_tokens_used",
+                    "ai_tokens_reset_at",
+                ),
             },
         ),
         (

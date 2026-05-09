@@ -136,6 +136,31 @@ class TibaBotUnavailableError(TibaBotError):
     pass
 
 
+def extract_token_usage(response_data: dict) -> dict[str, int | None]:
+    """
+    Extract token usage from a TibaBot response payload.
+
+    Looks for ``usage`` or ``token_usage`` keys in the response,
+    following the OpenAI-style convention::
+
+        {"usage": {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150}}
+
+    Returns:
+        Dict with ``input_tokens``, ``output_tokens``, ``total_tokens`` (all nullable).
+    """
+    usage = response_data.get("usage") or response_data.get("token_usage") or {}
+    input_t = usage.get("prompt_tokens") or usage.get("input_tokens")
+    output_t = usage.get("completion_tokens") or usage.get("output_tokens")
+    total_t = usage.get("total_tokens")
+    if input_t is not None and output_t is not None and total_t is None:
+        total_t = input_t + output_t
+    return {
+        "input_tokens": input_t,
+        "output_tokens": output_t,
+        "total_tokens": total_t,
+    }
+
+
 class TibaBotClient:
     """
     HTTP client for communicating with the TibaBot AI service.

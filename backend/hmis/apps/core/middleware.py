@@ -387,6 +387,103 @@ class OnboardingEnforcementMiddleware:
 
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Subscription Expiry Middleware
+# ---------------------------------------------------------------------------
+
+
+class SubscriptionExpiryMiddleware:
+    """
+    Block write operations when an org's subscription has expired.
+
+    When ``subscription_status`` is ``EXPIRED`` or ``subscription_valid_until``
+    has passed, write methods (POST, PUT, PATCH, DELETE) are rejected with
+    a 403.  Read operations (GET, HEAD, OPTIONS) remain allowed so the org
+    can still view its data.
+
+    Exempt paths (always accessible regardless of subscription state):
+    - ``/api/token/`` — authentication
+    - ``/api/auth/`` — cookie auth
+    - ``/api/core/auth/`` — signup / password reset
+    - ``/api/staff/me/`` — user info
+    - ``/admin/`` — Django admin
+
+    Superusers bypass this middleware entirely.
+
+    Only enforced when ``SUBSCRIPTION_EXPIRY_ENFORCEMENT`` setting is ``True``.
+    """
+
+    EXEMPT_PREFIXES = (
+        "/api/token/",
+        "/api/auth/",
+        "/api/core/auth/",
+        "/api/staff/me/",
+        "/admin/",
+        "/api/mfa/",
+    )
+
+    WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        import json
+
+        from django.conf import settings as django_settings
+        from django.http import HttpResponse
+
+        if not getattr(django_settings, "SUBSCRIPTION_EXPIRY_ENFORCEMENT", False):
+            return self.get_response(request)
+
+        # Only gate API routes
+        if not request.path.startswith("/api/"):
+            return self.get_response(request)
+
+        # Only gate write methods
+        if request.method not in self.WRITE_METHODS:
+            return self.get_response(request)
+
+        # Exempt paths
+        if any(request.path.startswith(p) for p in self.EXEMPT_PREFIXES):
+            return self.get_response(request)
+
+        user = getattr(request, "user", None)
+        if not user or not getattr(user, "is_authenticated", False):
+            return self.get_response(request)
+
+        # Superusers bypass
+        if user.is_superuser:
+            return self.get_response(request)
+
+        profile = getattr(user, "staff_profile", None)
+        if not profile or not profile.organization:
+            return self.get_response(request)
+
+        org = profile.organization
+
+        is_expired = org.subscription_status == "EXPIRED" or org.is_subscription_expired
+
+        if not is_expired:
+            return self.get_response(request)
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    "detail": (
+                        "Your subscription has expired. "
+                        "Please renew to continue making changes. "
+                        "You can still view your data."
+                    ),
+                    "code": "subscription_expired",
+                }
+            ),
+            content_type="application/json",
+            status=403,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Media Security Middleware
 # ---------------------------------------------------------------------------
 

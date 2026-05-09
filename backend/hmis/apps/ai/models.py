@@ -209,6 +209,21 @@ class AIResultBase(FacilityScopedModel):
         default="tibabot",
         help_text="'tibabot' or 'fallback'.",
     )
+    input_tokens = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Number of input/prompt tokens consumed.",
+    )
+    output_tokens = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Number of output/completion tokens consumed.",
+    )
+    total_tokens = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Total tokens consumed (input + output).",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

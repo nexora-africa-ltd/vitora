@@ -114,6 +114,11 @@ AUTH_COOKIE_SECURE = True
 # Active-shift enforcement — disabled in development for convenience
 ACTIVE_SHIFT_ENFORCEMENT = os.getenv("ACTIVE_SHIFT_ENFORCEMENT", "false").lower() == "true"
 
+# Subscription expiry enforcement — disabled in development for convenience
+SUBSCRIPTION_EXPIRY_ENFORCEMENT = (
+    os.getenv("SUBSCRIPTION_EXPIRY_ENFORCEMENT", "false").lower() == "true"
+)
+
 # Email backend for development (console)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 

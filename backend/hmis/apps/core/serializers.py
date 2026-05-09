@@ -731,6 +731,7 @@ class SubscriptionPlanListSerializer(serializers.ModelSerializer):
             "annual_price",
             "max_facilities",
             "max_users",
+            "monthly_ai_tokens",
             "is_active",
             "sort_order",
             "has_trial",
@@ -761,6 +762,7 @@ class SubscriptionPlanDetailSerializer(serializers.ModelSerializer):
             "max_facilities",
             "max_users",
             "max_patients",
+            "monthly_ai_tokens",
             # Features
             "features",
             # Display & Status
@@ -795,6 +797,7 @@ class SubscriptionPlanCreateSerializer(serializers.ModelSerializer):
             "max_facilities",
             "max_users",
             "max_patients",
+            "monthly_ai_tokens",
             "features",
             "is_active",
             "sort_order",
@@ -853,6 +856,8 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
     can_add_facility = serializers.BooleanField(read_only=True)
     can_add_user = serializers.BooleanField(read_only=True)
     can_add_patient = serializers.BooleanField(read_only=True)
+    is_subscription_expired = serializers.BooleanField(read_only=True)
+    ai_tokens_remaining = serializers.IntegerField(read_only=True)
 
     class Meta:
         """Meta options for OrganizationDetailSerializer."""
@@ -884,6 +889,15 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
             "can_add_facility",
             "can_add_user",
             "can_add_patient",
+            # Subscription validity
+            "subscription_status",
+            "subscription_valid_until",
+            "is_subscription_expired",
+            # AI token usage
+            "monthly_ai_tokens",
+            "ai_tokens_used",
+            "ai_tokens_remaining",
+            "ai_tokens_reset_at",
             # Compliance
             "data_retention_years",
             # Config
@@ -906,6 +920,8 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
             "can_add_facility",
             "can_add_user",
             "can_add_patient",
+            "is_subscription_expired",
+            "ai_tokens_remaining",
             "created_at",
             "updated_at",
         ]

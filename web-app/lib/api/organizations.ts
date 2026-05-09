@@ -3,6 +3,7 @@ import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
   OrganizationDetailSchema,
+  OrgTokenUsageSchema,
   PaginatedOrganizationListSchema,
 } from '@/lib/schemas/organization.schema';
 import { FacilityListItemSchema } from '@/lib/schemas/facility.schema';
@@ -13,6 +14,7 @@ import type {
   OrganizationDetail,
   OrganizationListItem,
   OrganizationUpdateData,
+  OrgTokenUsage,
 } from '@/lib/types/organization';
 
 export const organizationsApi = {
@@ -75,6 +77,13 @@ export const organizationsApi = {
     const response = await apiClient.get(`/api/organizations/${orgId}/facilities/`, { params });
     return parseResponse(z.array(FacilityListItemSchema), response.data, {
       context: 'organizationsApi.listFacilities',
+    });
+  },
+
+  async getTokenUsage(orgId: number): Promise<OrgTokenUsage> {
+    const response = await apiClient.get(`/api/organizations/${orgId}/token-usage/`);
+    return parseResponse(OrgTokenUsageSchema, response.data, {
+      context: 'organizationsApi.getTokenUsage',
     });
   },
 };

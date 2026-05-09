@@ -28,6 +28,11 @@ ONBOARDING_ENFORCEMENT = os.getenv("ONBOARDING_ENFORCEMENT", "false").lower() ==
 # Active-shift enforcement — disabled in tests by default
 ACTIVE_SHIFT_ENFORCEMENT = os.getenv("ACTIVE_SHIFT_ENFORCEMENT", "false").lower() == "true"
 
+# Subscription expiry enforcement — disabled in tests by default
+SUBSCRIPTION_EXPIRY_ENFORCEMENT = (
+    os.getenv("SUBSCRIPTION_EXPIRY_ENFORCEMENT", "false").lower() == "true"
+)
+
 # In-memory SQLite for speed — migrations run once per pytest session (~2-4s).
 # WebSocket / Channels tests that need cross-thread visibility should use a
 # file-backed override (see conftest.py `ws_db` fixture).
