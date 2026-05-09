@@ -116,12 +116,14 @@ export default function OrganizationsPage() {
               },
               {
                 key: 'subscription_tier',
-                header: 'Tier',
+                header: 'Plan',
                 sortable: true,
                 cell: (org) => (
-                  <Badge className={tierColors[org.subscription_tier]}>
-                    {org.subscription_tier.charAt(0) + org.subscription_tier.slice(1).toLowerCase()}
-                  </Badge>
+                  <div>
+                    <Badge className={tierColors[org.subscription_tier]}>
+                      {org.plan_name ?? org.subscription_tier.charAt(0) + org.subscription_tier.slice(1).toLowerCase()}
+                    </Badge>
+                  </div>
                 ),
               },
               {
@@ -171,7 +173,7 @@ export default function OrganizationsPage() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge className={tierColors[org.subscription_tier]}>
-                    {org.subscription_tier.charAt(0) + org.subscription_tier.slice(1).toLowerCase()}
+                    {org.plan_name ?? org.subscription_tier.charAt(0) + org.subscription_tier.slice(1).toLowerCase()}
                   </Badge>
                 </div>
               </div>

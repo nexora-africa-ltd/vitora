@@ -581,3 +581,32 @@ class RequiresActiveShiftPermission(permissions.BasePermission):
                 "reason": "Emergency override — user bypassed active shift requirement",
             },
         )
+
+
+class SubscriptionFeaturePermission(permissions.BasePermission):
+    """
+    Gate access to views based on the org's subscription plan features.
+
+    Usage on a ViewSet::
+
+        class PharmacyViewSet(viewsets.ModelViewSet):
+            subscription_feature = "pharmacy"
+            permission_classes = [IsAuthenticated, SubscriptionFeaturePermission]
+
+    If the org's plan has ``features.pharmacy == False``, all requests
+    will be denied with 403 and a ``subscription_feature_disabled`` code.
+    Superusers bypass this check.
+    """
+
+    message = "This feature is not included in your subscription plan."
+
+    def has_permission(self, request, view):
+        feature_key = getattr(view, "subscription_feature", None)
+        if not feature_key:
+            return True  # No feature gate defined
+        if request.user.is_superuser:
+            return True
+        profile = getattr(request.user, "staff_profile", None)
+        if not profile or not profile.organization:
+            return True  # No org context — allow (other perms will block)
+        return profile.organization.has_feature(feature_key)

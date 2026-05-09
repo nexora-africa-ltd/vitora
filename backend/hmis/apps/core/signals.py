@@ -544,3 +544,10 @@ def publish_org_activation_event(sender, instance, created, **kwargs):
                 )
         except Exception:
             logger.exception("Failed to send org-activated email for org %s", instance.pk)
+
+
+@receiver(post_save, sender="core.SubscriptionPlan")
+def sync_plan_to_organizations(sender, instance, **kwargs):
+    """When a SubscriptionPlan is saved, sync limits to all linked Organizations."""
+    for org in instance.organizations.all():
+        org.sync_from_plan(save=True)

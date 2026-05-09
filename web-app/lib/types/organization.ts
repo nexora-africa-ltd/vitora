@@ -5,6 +5,8 @@ export interface OrganizationListItem {
   name: string;
   slug: string;
   subscription_tier: SubscriptionTier;
+  subscription_plan: number | null;
+  plan_name: string | null;
   is_active: boolean;
   county_name: string | null;
   facility_count: number;
@@ -19,8 +21,13 @@ export interface OrganizationDetail extends OrganizationListItem {
   county: number | null;
   sub_county: number | null;
   sub_county_name: string | null;
+  plan_features: Record<string, boolean>;
   max_facilities: number | null;
   max_users: number | null;
+  max_patients: number | null;
+  can_add_facility: boolean;
+  can_add_user: boolean;
+  can_add_patient: boolean;
   data_retention_years: number;
   settings: Record<string, unknown>;
   created_at: string;
@@ -44,4 +51,5 @@ export interface OrganizationUpdateData extends Partial<OrganizationCreateData> 
   is_active?: boolean;
   data_retention_years?: number;
   settings?: Record<string, unknown>;
+  subscription_plan?: number | null;
 }

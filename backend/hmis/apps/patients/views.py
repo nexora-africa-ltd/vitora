@@ -149,6 +149,22 @@ class PatientViewSet(
                 # Return cached response (idempotent replay)
                 return Response(existing.response_data, status=existing.response_status)
 
+        # Enforce subscription patient limit
+        if not request.user.is_superuser:
+            profile = getattr(request.user, "staff_profile", None)
+            if profile and profile.organization and not profile.organization.can_add_patient():
+                org = profile.organization
+                return Response(
+                    {
+                        "detail": (
+                            f"Patient limit reached ({org.max_patients}). "
+                            "Upgrade your subscription plan to register more patients."
+                        ),
+                        "code": "patient_limit_reached",
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
         with transaction.atomic():
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)

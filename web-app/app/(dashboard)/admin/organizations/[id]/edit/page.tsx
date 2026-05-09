@@ -28,6 +28,7 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useCounties, useSubCounties } from '@/lib/hooks/use-locations';
 import { organizationsApi } from '@/lib/api/organizations';
+import { subscriptionPlansApi } from '@/lib/api/subscription-plans';
 import type { OrganizationUpdateData, SubscriptionTier } from '@/lib/types/organization';
 
 const TIERS: { value: SubscriptionTier; label: string }[] = [
@@ -51,12 +52,19 @@ export default function EditOrganizationPage() {
     enabled: !isNaN(orgId),
   });
 
+  const { data: plansData } = useQuery({
+    queryKey: ['subscription-plans'],
+    queryFn: () => subscriptionPlansApi.list({ is_active: true, ordering: 'sort_order' }),
+  });
+  const plans = plansData?.results ?? [];
+
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
     contact_email: '',
     contact_phone: '',
     address: '',
+    subscription_plan: null as number | null,
     subscription_tier: 'BASIC' as SubscriptionTier,
     max_facilities: '' as string,
     max_users: '' as string,
@@ -79,6 +87,7 @@ export default function EditOrganizationPage() {
         contact_email: org.contact_email || '',
         contact_phone: org.contact_phone || '',
         address: org.address || '',
+        subscription_plan: org.subscription_plan,
         subscription_tier: org.subscription_tier,
         max_facilities: org.max_facilities != null ? String(org.max_facilities) : '',
         max_users: org.max_users != null ? String(org.max_users) : '',
@@ -188,6 +197,7 @@ export default function EditOrganizationPage() {
       address: formData.address || undefined,
       county: countyId ?? null,
       sub_county: subCountyId ?? null,
+      subscription_plan: formData.subscription_plan,
       subscription_tier: formData.subscription_tier,
       max_facilities: formData.max_facilities ? parseInt(formData.max_facilities) : undefined,
       max_users: formData.max_users ? parseInt(formData.max_users) : undefined,
@@ -371,11 +381,25 @@ export default function EditOrganizationPage() {
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
-              <Label>Tier</Label>
-              <Select value={formData.subscription_tier} onValueChange={(v) => handleChange('subscription_tier', v)}>
+              <Label>Plan</Label>
+              <Select
+                value={formData.subscription_plan != null ? String(formData.subscription_plan) : 'none'}
+                onValueChange={(v) => {
+                  const planId = v === 'none' ? null : parseInt(v);
+                  const selectedPlan = plans.find((p) => p.id === planId);
+                  setFormData((prev) => ({
+                    ...prev,
+                    subscription_plan: planId,
+                    subscription_tier: (selectedPlan?.code ?? prev.subscription_tier) as SubscriptionTier,
+                  }));
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {TIERS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  <SelectItem value="none">No plan</SelectItem>
+                  {plans.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>{p.name} ({p.code})</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

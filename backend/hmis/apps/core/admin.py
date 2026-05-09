@@ -2,6 +2,9 @@
 Admin configuration for core app.
 """
 
+import json
+
+from django import forms
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -35,6 +38,7 @@ from .models import (
     StaffInvitation,
     StaffProfile,
     SubCounty,
+    SubscriptionPlan,
     SyncConflict,
     SyncMetrics,
     SyncQueue,
@@ -842,6 +846,109 @@ class OrgStaffInline(admin.TabularInline):
     def has_delete_permission(self, request, obj=None):
         """Prevent removing staff from the org page."""
         return False
+
+
+@admin.register(SubscriptionPlan)
+class SubscriptionPlanAdmin(admin.ModelAdmin):
+    """Admin configuration for the SubscriptionPlan model."""
+
+    class FeaturesWidget(forms.Widget):
+        """Renders SubscriptionPlan.features as toggleable checkboxes."""
+
+        def __init__(self, feature_choices, attrs=None):
+            super().__init__(attrs)
+            self.feature_choices = feature_choices
+
+        def render(self, name, value, attrs=None, renderer=None):
+            from django.utils.html import format_html, format_html_join
+
+            if isinstance(value, str):
+                try:
+                    value = json.loads(value)
+                except (json.JSONDecodeError, TypeError):
+                    value = {}
+            if not isinstance(value, dict):
+                value = {}
+            items = []
+            for key, label in self.feature_choices:
+                checked = " checked" if value.get(key, False) else ""
+                items.append(
+                    format_html(
+                        '<label style="display:inline-flex;align-items:center;gap:6px;'
+                        'cursor:pointer;padding:2px 0;">'
+                        '<input type="checkbox" name="{}"{}>{}</label>',
+                        f"{name}_{key}",
+                        checked,
+                        label,
+                    )
+                )
+            inner = format_html_join("\n", "{}", ((item,) for item in items))
+            return format_html(
+                '<div style="display:grid;grid-template-columns:repeat(3,1fr);'
+                'gap:6px 24px;">{}</div>',
+                inner,
+            )
+
+        def value_from_datadict(self, data, files, name):
+            result = {}
+            for key, _label in self.feature_choices:
+                result[key] = f"{name}_{key}" in data
+            return json.dumps(result)
+
+    class SubscriptionPlanForm(forms.ModelForm):
+        class Meta:
+            model = SubscriptionPlan
+            exclude = ()  # noqa: DJ006
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.fields["features"].widget = SubscriptionPlanAdmin.FeaturesWidget(
+                feature_choices=SubscriptionPlan.FEATURE_REGISTRY
+            )
+
+    form = SubscriptionPlanForm
+
+    list_display = [
+        "name",
+        "code",
+        "monthly_price",
+        "annual_price",
+        "max_facilities",
+        "max_users",
+        "is_active",
+        "sort_order",
+    ]
+    list_filter = ["is_active", "code"]
+    search_fields = ["name", "code"]
+    ordering = ["sort_order", "monthly_price"]
+    readonly_fields = ["created_at", "updated_at"]
+
+    fieldsets = (
+        (
+            "Identity",
+            {"fields": ("code", "name", "description")},
+        ),
+        (
+            "Pricing (KES)",
+            {"fields": ("monthly_price", "annual_price")},
+        ),
+        (
+            "Limits",
+            {"fields": ("max_facilities", "max_users", "max_patients")},
+        ),
+        (
+            "Features",
+            {"fields": ("features",)},
+        ),
+        (
+            "Display & Status",
+            {"fields": ("is_active", "sort_order", "trial_period_days")},
+        ),
+        (
+            "Timestamps",
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+        ),
+    )
 
 
 @admin.register(Organization)
