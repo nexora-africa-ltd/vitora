@@ -22,7 +22,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .mixins import TenantScopedViewMixin, resolve_request_tenant
+from .mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
 from .models import (
     AuditLog,
     CertificateAuthority,
@@ -41,6 +41,7 @@ from .models import (
     Role,
     StaffProfile,
     SubCounty,
+    SubscriptionPlan,
     UserCertificate,
     Ward,
 )
@@ -77,6 +78,9 @@ from .serializers import (
     StaffProfileSerializer,
     StaffProfileUpdateSerializer,
     SubCountySerializer,
+    SubscriptionPlanCreateSerializer,
+    SubscriptionPlanDetailSerializer,
+    SubscriptionPlanListSerializer,
     UserCertificateSerializer,
     UsernameCheckResponseSerializer,
     UsernameSuggestionRequestSerializer,
@@ -918,6 +922,23 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        # Enforce subscription limit
+        if not request.user.is_superuser:
+            profile = getattr(request.user, "staff_profile", None)
+            if profile and profile.organization and not profile.organization.can_add_user():
+                org = profile.organization
+                return Response(
+                    {
+                        "detail": (
+                            f"Staff limit reached ({org.max_users}). "
+                            "Upgrade your subscription plan to add more users."
+                        ),
+                        "code": "user_limit_reached",
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
         staff_profile = serializer.save()
 
         AuditLog.log(
@@ -1819,6 +1840,38 @@ class FeatureFlagViewSet(ListModelMixin, viewsets.GenericViewSet):
 
 
 # ============================================================================
+# Subscription Plan ViewSet (SaaS Licensing)
+# ============================================================================
+
+
+class SubscriptionPlanViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for SubscriptionPlan CRUD operations.
+
+    * All authenticated users can list / retrieve plans.
+    * Only superusers can create, update, or delete plans.
+    """
+
+    queryset = SubscriptionPlan.objects.all()
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "code"]
+    ordering_fields = ["sort_order", "monthly_price", "name"]
+    ordering = ["sort_order", "monthly_price"]
+
+    def get_permissions(self):
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return SubscriptionPlanListSerializer
+        if self.action == "create":
+            return SubscriptionPlanCreateSerializer
+        return SubscriptionPlanDetailSerializer
+
+
+# ============================================================================
 # Organization ViewSet (Multitenancy – Phase 1)
 # ============================================================================
 
@@ -1832,7 +1885,9 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     * Only admin/superuser can create, update, or delete organizations.
     """
 
-    queryset = Organization.objects.select_related("county", "sub_county").all()
+    queryset = Organization.objects.select_related(
+        "county", "sub_county", "subscription_plan"
+    ).all()
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "slug"]
     ordering_fields = ["name", "created_at"]
@@ -1992,6 +2047,21 @@ class FacilityViewSet(viewsets.ModelViewSet):
         """Create facility and return the full detail representation."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        # Enforce subscription limit
+        org = self._get_org_for_limit_check(request)
+        if org and not org.can_add_facility():
+            return Response(
+                {
+                    "detail": (
+                        f"Facility limit reached ({org.max_facilities}). "
+                        "Upgrade your subscription plan to add more facilities."
+                    ),
+                    "code": "facility_limit_reached",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         facility = serializer.save()
         AuditLog.log(
             action="facility_created",
@@ -2010,6 +2080,15 @@ class FacilityViewSet(viewsets.ModelViewSet):
         # includes id, modules, county_name, timestamps, etc.
         read_serializer = FacilityDetailSerializer(facility)
         return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+
+    def _get_org_for_limit_check(self, request):
+        """Resolve the Organization for subscription limit checks."""
+        if request.user.is_superuser:
+            return None  # Superusers bypass limits
+        profile = getattr(request.user, "staff_profile", None)
+        if profile and profile.organization:
+            return profile.organization
+        return None
 
     def perform_update(self, serializer):
         """Update facility and log the action for audit compliance."""

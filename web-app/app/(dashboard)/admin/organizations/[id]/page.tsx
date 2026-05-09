@@ -212,8 +212,19 @@ export default function OrganizationDetailPage() {
             <CardContent className="space-y-3">
               <InfoRow
                 icon={<Settings className="h-3.5 w-3.5" />}
-                label="Tier"
-                value={tierLabel(org.subscription_tier)}
+                label="Plan"
+                value={
+                  org.subscription_plan ? (
+                    <Link
+                      href={`/admin/subscription-plans/${org.subscription_plan}`}
+                      className="text-primary hover:underline"
+                    >
+                      {org.plan_name ?? tierLabel(org.subscription_tier)}
+                    </Link>
+                  ) : (
+                    tierLabel(org.subscription_tier)
+                  )
+                }
               />
               <InfoRow
                 icon={<Building2 className="h-3.5 w-3.5" />}
@@ -224,6 +235,11 @@ export default function OrganizationDetailPage() {
                 icon={<Users className="h-3.5 w-3.5" />}
                 label="Max Users"
                 value={org.max_users != null ? String(org.max_users) : 'Unlimited'}
+              />
+              <InfoRow
+                icon={<Users className="h-3.5 w-3.5" />}
+                label="Max Patients"
+                value={org.max_patients != null ? String(org.max_patients) : 'Unlimited'}
               />
               <InfoRow
                 icon={<Calendar className="h-3.5 w-3.5" />}
@@ -395,7 +411,7 @@ export default function OrganizationDetailPage() {
   );
 }
 
-function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-start gap-2 text-sm">
       <span className="text-muted-foreground mt-0.5 shrink-0">{icon}</span>

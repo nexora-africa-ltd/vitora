@@ -8,6 +8,7 @@ and sync-related models for offline-first functionality.
 
 import hashlib
 import json
+from decimal import Decimal
 
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -2344,6 +2345,167 @@ class FeatureFlag(models.Model):
 
 
 # ============================================================================
+# Subscription Plan Model (SaaS Licensing)
+# ============================================================================
+
+
+class SubscriptionPlan(TimeStampedModel):
+    """
+    Defines a subscription tier with pricing, limits, and feature flags.
+
+    Each Organization references a tier code (FREE / BASIC / PROFESSIONAL / ENTERPRISE)
+    and this model stores the configurable details for that tier.
+    """
+
+    class TierCode(models.TextChoices):
+        """Tier code choices — must stay in sync with Organization.SubscriptionTier."""
+
+        FREE = "FREE", "Free"
+        BASIC = "BASIC", "Basic"
+        PROFESSIONAL = "PROFESSIONAL", "Professional"
+        ENTERPRISE = "ENTERPRISE", "Enterprise"
+
+    # ------------------------------------------------------------------
+    # Identity
+    # ------------------------------------------------------------------
+
+    code = models.CharField(
+        max_length=20,
+        choices=TierCode.choices,
+        unique=True,
+        help_text="Unique tier code (matches Organization.subscription_tier).",
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text="Display name shown to customers (e.g. 'Professional Plan').",
+    )
+    description = models.TextField(
+        blank=True,
+        default="",
+        help_text="Marketing description of this plan.",
+    )
+
+    # ------------------------------------------------------------------
+    # Pricing (KES)
+    # ------------------------------------------------------------------
+
+    monthly_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Monthly price in KES.",
+    )
+    annual_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Annual price in KES (typically discounted).",
+    )
+
+    # ------------------------------------------------------------------
+    # Limits
+    # ------------------------------------------------------------------
+
+    max_facilities = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Maximum number of facilities (null = unlimited).",
+    )
+    max_users = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Maximum number of staff users (null = unlimited).",
+    )
+    max_patients = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Maximum number of patient records (null = unlimited).",
+    )
+
+    # ------------------------------------------------------------------
+    # Features
+    # ------------------------------------------------------------------
+
+    features = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Feature flags for this plan. Example: "
+            '{"pharmacy": true, "laboratory": true, "ai_assistant": false}'
+        ),
+    )
+
+    # Canonical registry of subscription feature keys.
+    # Used by the admin widget to render toggleable checkboxes.
+    FEATURE_REGISTRY: list[tuple[str, str]] = [
+        # Module features (mirror Facility has_* flags)
+        ("outpatient", "Outpatient (OPD)"),
+        ("inpatient", "Inpatient (IPD)"),
+        ("emergency", "Emergency / Casualty"),
+        ("pharmacy", "Pharmacy"),
+        ("laboratory", "Laboratory"),
+        ("imaging", "Imaging / Radiology"),
+        ("theatre", "Surgical Theatre"),
+        ("dialysis", "Renal Dialysis"),
+        ("icu", "ICU"),
+        ("maternity", "Maternity / Obstetrics"),
+        ("mortuary", "Mortuary"),
+        ("blood_bank", "Blood Bank"),
+        ("inventory", "Inventory / Supply Chain"),
+        ("billing", "Billing & Invoicing"),
+        ("scheduling", "Staff Rostering & Scheduling"),
+        # Platform features
+        ("ai_assistant", "AI Assistant (TibaBot)"),
+        ("sha_claims", "SHA Claims Integration"),
+        ("dhis2_reporting", "DHIS2 / KHIS Reporting"),
+        ("api_access", "API Access"),
+        ("custom_reports", "Custom Reports"),
+        ("offline_sync", "Offline Sync"),
+        ("sms_notifications", "SMS & WhatsApp Notifications"),
+    ]
+
+    # ------------------------------------------------------------------
+    # Display & Status
+    # ------------------------------------------------------------------
+
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this plan is currently available for selection.",
+    )
+    sort_order = models.PositiveIntegerField(
+        default=0,
+        help_text="Display order (lower = first).",
+    )
+    trial_period_days = models.PositiveIntegerField(
+        default=0,
+        help_text="Trial period in days (0 = no trial).",
+    )
+
+    # ------------------------------------------------------------------
+    # Meta & Methods
+    # ------------------------------------------------------------------
+
+    class Meta:
+        verbose_name = "Subscription Plan"
+        verbose_name_plural = "Subscription Plans"
+        ordering = ["sort_order", "monthly_price"]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.get_code_display()})"
+
+    @property
+    def annual_savings(self) -> Decimal:
+        """Return annual savings compared to monthly billing."""
+        monthly_annual = self.monthly_price * Decimal("12")
+        return max(monthly_annual - self.annual_price, Decimal("0"))
+
+    @property
+    def has_trial(self) -> bool:
+        """Whether this plan offers a trial period."""
+        return self.trial_period_days > 0
+
+
+# ============================================================================
 # Organization Model (Multitenancy – Phase 1)
 # ============================================================================
 
@@ -2447,21 +2609,34 @@ class Organization(TimeStampedModel):
     # Subscription & Limits
     # ------------------------------------------------------------------
 
+    subscription_plan = models.ForeignKey(
+        "core.SubscriptionPlan",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="organizations",
+        help_text="Linked subscription plan (source of truth for limits/features).",
+    )
     subscription_tier = models.CharField(
         max_length=20,
         choices=SubscriptionTier.choices,
         default=SubscriptionTier.BASIC,
-        help_text="Current subscription tier.",
+        help_text="Current subscription tier (synced from subscription_plan.code).",
     )
     max_facilities = models.PositiveIntegerField(
         null=True,
         blank=True,
-        help_text="Maximum number of facilities allowed (null = unlimited).",
+        help_text="Maximum number of facilities allowed (synced from plan, null = unlimited).",
     )
     max_users = models.PositiveIntegerField(
         null=True,
         blank=True,
-        help_text="Maximum number of staff users allowed (null = unlimited).",
+        help_text="Maximum number of staff users allowed (synced from plan, null = unlimited).",
+    )
+    max_patients = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Maximum number of patient records (synced from plan, null = unlimited).",
     )
 
     # ------------------------------------------------------------------
@@ -2536,6 +2711,13 @@ class Organization(TimeStampedModel):
         """Return the number of staff members in this organization."""
         return self.staff_profiles.count()
 
+    @property
+    def patient_count(self) -> int:
+        """Return the number of patients under this organization."""
+        from hmis.apps.patients.models import Patient
+
+        return Patient.objects.filter(organization=self).count()
+
     def can_add_facility(self) -> bool:
         """Check if the organization can add another facility."""
         if self.max_facilities is None:
@@ -2547,6 +2729,38 @@ class Organization(TimeStampedModel):
         if self.max_users is None:
             return True
         return self.staff_count < self.max_users
+
+    def can_add_patient(self) -> bool:
+        """Check if the organization can add another patient."""
+        if self.max_patients is None:
+            return True
+        return self.patient_count < self.max_patients
+
+    def has_feature(self, feature_key: str) -> bool:
+        """Check if a feature is enabled for this org's subscription plan."""
+        if self.subscription_plan is None:
+            return True  # No plan means no restrictions
+        return bool(self.subscription_plan.features.get(feature_key, False))
+
+    def sync_from_plan(self, save: bool = True) -> None:
+        """Sync tier, limits from the linked SubscriptionPlan."""
+        plan = self.subscription_plan
+        if plan is None:
+            return
+        self.subscription_tier = plan.code
+        self.max_facilities = plan.max_facilities
+        self.max_users = plan.max_users
+        self.max_patients = plan.max_patients
+        if save:
+            self.save(
+                update_fields=[
+                    "subscription_plan",
+                    "subscription_tier",
+                    "max_facilities",
+                    "max_users",
+                    "max_patients",
+                ]
+            )
 
     @property
     def onboarding_complete(self) -> bool:

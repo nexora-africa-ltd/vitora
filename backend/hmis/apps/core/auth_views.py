@@ -35,6 +35,7 @@ from .models import (
     Role,
     StaffInvitation,
     StaffProfile,
+    SubscriptionPlan,
 )
 from .serializers import (
     ChangePasswordSerializer,
@@ -824,6 +825,7 @@ def org_signup(request):
             is_active=False,
             is_verified=False,
             subscription_tier=Organization.SubscriptionTier.FREE,
+            subscription_plan=SubscriptionPlan.objects.filter(code="FREE", is_active=True).first(),
         )
 
         # 2. Create initial facility
@@ -1114,6 +1116,7 @@ def setup_initialize(request):
             is_active=True,
             is_verified=True,
             subscription_tier=Organization.SubscriptionTier.BASIC,
+            subscription_plan=SubscriptionPlan.objects.filter(code="BASIC", is_active=True).first(),
         )
 
         # 2. Create Facility

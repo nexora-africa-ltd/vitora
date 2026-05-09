@@ -25,6 +25,7 @@ from .models import (
     StaffInvitation,
     StaffProfile,
     SubCounty,
+    SubscriptionPlan,
     UserCertificate,
     Ward,
 )
@@ -709,6 +710,104 @@ class PushSubscriptionSerializer(serializers.ModelSerializer):
 
 
 # ============================================================================
+# Subscription Plan Serializers (SaaS Licensing)
+# ============================================================================
+
+
+class SubscriptionPlanListSerializer(serializers.ModelSerializer):
+    """Compact serializer for subscription plan list views."""
+
+    code_display = serializers.CharField(source="get_code_display", read_only=True)
+    has_trial = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = SubscriptionPlan
+        fields = [
+            "id",
+            "code",
+            "code_display",
+            "name",
+            "monthly_price",
+            "annual_price",
+            "max_facilities",
+            "max_users",
+            "is_active",
+            "sort_order",
+            "has_trial",
+        ]
+        read_only_fields = ["id"]
+
+
+class SubscriptionPlanDetailSerializer(serializers.ModelSerializer):
+    """Full serializer for subscription plan detail / update views."""
+
+    code_display = serializers.CharField(source="get_code_display", read_only=True)
+    annual_savings = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    has_trial = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = SubscriptionPlan
+        fields = [
+            "id",
+            "code",
+            "code_display",
+            "name",
+            "description",
+            # Pricing
+            "monthly_price",
+            "annual_price",
+            "annual_savings",
+            # Limits
+            "max_facilities",
+            "max_users",
+            "max_patients",
+            # Features
+            "features",
+            # Display & Status
+            "is_active",
+            "sort_order",
+            "trial_period_days",
+            "has_trial",
+            # Timestamps
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "annual_savings",
+            "has_trial",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class SubscriptionPlanCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating a new subscription plan."""
+
+    class Meta:
+        model = SubscriptionPlan
+        fields = [
+            "code",
+            "name",
+            "description",
+            "monthly_price",
+            "annual_price",
+            "max_facilities",
+            "max_users",
+            "max_patients",
+            "features",
+            "is_active",
+            "sort_order",
+            "trial_period_days",
+        ]
+
+    def validate_code(self, value):
+        if SubscriptionPlan.objects.filter(code=value).exists():
+            raise serializers.ValidationError(f"A plan with code '{value}' already exists.")
+        return value
+
+
+# ============================================================================
 # Organization Serializers (Multitenancy – Phase 1)
 # ============================================================================
 
@@ -719,6 +818,7 @@ class OrganizationListSerializer(serializers.ModelSerializer):
     facility_count = serializers.IntegerField(read_only=True, default=0)
     staff_count = serializers.IntegerField(read_only=True, default=0)
     county_name = serializers.CharField(source="county.name", read_only=True, default=None)
+    plan_name = serializers.CharField(source="subscription_plan.name", read_only=True, default=None)
 
     class Meta:
         """Meta options for OrganizationListSerializer."""
@@ -729,12 +829,14 @@ class OrganizationListSerializer(serializers.ModelSerializer):
             "name",
             "slug",
             "subscription_tier",
+            "subscription_plan",
+            "plan_name",
             "is_active",
             "county_name",
             "facility_count",
             "staff_count",
         ]
-        read_only_fields = ["id", "facility_count", "staff_count"]
+        read_only_fields = ["id", "facility_count", "staff_count", "plan_name"]
 
 
 class OrganizationDetailSerializer(serializers.ModelSerializer):
@@ -744,6 +846,13 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
     staff_count = serializers.IntegerField(read_only=True, default=0)
     county_name = serializers.CharField(source="county.name", read_only=True, default=None)
     sub_county_name = serializers.CharField(source="sub_county.name", read_only=True, default=None)
+    plan_name = serializers.CharField(source="subscription_plan.name", read_only=True, default=None)
+    plan_features = serializers.JSONField(
+        source="subscription_plan.features", read_only=True, default=dict
+    )
+    can_add_facility = serializers.BooleanField(read_only=True)
+    can_add_user = serializers.BooleanField(read_only=True)
+    can_add_patient = serializers.BooleanField(read_only=True)
 
     class Meta:
         """Meta options for OrganizationDetailSerializer."""
@@ -764,9 +873,17 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
             "sub_county",
             "sub_county_name",
             # Subscription
+            "subscription_plan",
+            "plan_name",
+            "plan_features",
             "subscription_tier",
             "max_facilities",
             "max_users",
+            "max_patients",
+            # Limit checks
+            "can_add_facility",
+            "can_add_user",
+            "can_add_patient",
             # Compliance
             "data_retention_years",
             # Config
@@ -784,6 +901,11 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
             "id",
             "facility_count",
             "staff_count",
+            "plan_name",
+            "plan_features",
+            "can_add_facility",
+            "can_add_user",
+            "can_add_patient",
             "created_at",
             "updated_at",
         ]

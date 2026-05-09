@@ -40,6 +40,7 @@ from hmis.apps.core.views import (
     RoleViewSet,
     StaffProfileViewSet,
     SubCountyViewSet,
+    SubscriptionPlanViewSet,
     WardViewSet,
     me_permissions,
 )
@@ -165,6 +166,9 @@ router.register(r"dhis2-configs", DHIS2ConfigViewSet, basename="dhis2config")
 
 # Organization endpoint (Multitenancy)
 router.register(r"organizations", OrganizationViewSet, basename="organization")
+
+# Subscription Plans (SaaS Licensing)
+router.register(r"subscription-plans", SubscriptionPlanViewSet, basename="subscriptionplan")
 
 # Location routes under /api/locations/
 location_router = routers.DefaultRouter()
