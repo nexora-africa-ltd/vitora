@@ -44,6 +44,7 @@ export interface FacilityDetail extends FacilityListItem {
   has_maternity: boolean;
   has_mortuary: boolean;
   has_blood_bank: boolean;
+  has_inventory: boolean;
   has_lis_standalone: boolean;
   has_triage: boolean;
   has_scheduling: boolean;
@@ -83,6 +84,7 @@ export interface FacilityUpdateData {
   has_maternity?: boolean;
   has_mortuary?: boolean;
   has_blood_bank?: boolean;
+  has_inventory?: boolean;
   has_lis_standalone?: boolean;
   has_triage?: boolean;
   has_scheduling?: boolean;
@@ -120,6 +122,7 @@ export interface FacilityCreateData {
   has_maternity?: boolean;
   has_mortuary?: boolean;
   has_blood_bank?: boolean;
+  has_inventory?: boolean;
   has_lis_standalone?: boolean;
   has_triage?: boolean;
   has_scheduling?: boolean;

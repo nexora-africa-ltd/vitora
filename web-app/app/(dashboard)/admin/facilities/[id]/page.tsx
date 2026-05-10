@@ -43,6 +43,7 @@ const moduleLabels: Record<string, string> = {
   has_maternity: 'Maternity',
   has_mortuary: 'Mortuary',
   has_blood_bank: 'Blood Bank',
+  has_inventory: 'Inventory',
   has_lis_standalone: 'LIS Standalone',
   has_triage: 'Triage',
   has_scheduling: 'Scheduling',
