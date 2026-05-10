@@ -49,6 +49,10 @@ export interface User {
   facility?: UserFacility | null;  // Primary facility with module capabilities
   onboarding_complete?: boolean;  // Whether org has completed onboarding
   memberships?: OrgMembership[];  // All active org memberships for multi-org users
+  // Subscription / plan data (from organization)
+  subscription_tier?: string | null;  // FREE, BASIC, PROFESSIONAL, ENTERPRISE
+  plan_features?: Record<string, boolean>;  // Feature flags from subscription plan
+  ai_tokens_available?: boolean;  // Whether org has remaining AI token quota
 }
 
 // Auth tokens
@@ -141,6 +145,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           : null,
         onboarding_complete: typeof userInfo.onboarding_complete === 'boolean' ? userInfo.onboarding_complete : undefined,
         memberships: Array.isArray(userInfo.memberships) ? userInfo.memberships as OrgMembership[] : undefined,
+        subscription_tier: typeof userInfo.subscription_tier === 'string' ? userInfo.subscription_tier : null,
+        plan_features: userInfo.plan_features && typeof userInfo.plan_features === 'object' ? userInfo.plan_features as Record<string, boolean> : {},
+        ai_tokens_available: typeof userInfo.ai_tokens_available === 'boolean' ? userInfo.ai_tokens_available : undefined,
       };
 
       localStorage.setItem(USER_KEY, JSON.stringify(syncedUser));

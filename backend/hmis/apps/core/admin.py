@@ -964,6 +964,7 @@ class OrganizationAdmin(admin.ModelAdmin):
         "is_active",
         "onboarding_completed_at",
         "facility_count",
+        "ai_token_usage_display",
         "tibabot_keys_count",
         "created_at",
     ]
@@ -985,6 +986,9 @@ class OrganizationAdmin(admin.ModelAdmin):
         "max_users",
         "max_patients",
         "monthly_ai_tokens",
+        "ai_tokens_used",
+        "ai_tokens_reset_at",
+        "ai_tokens_remaining_display",
         "tibabot_keys_summary",
     ]
     inlines = [FacilityInline, OrgStaffInline]
@@ -1040,6 +1044,7 @@ class OrganizationAdmin(admin.ModelAdmin):
                 "fields": (
                     "monthly_ai_tokens",
                     "ai_tokens_used",
+                    "ai_tokens_remaining_display",
                     "ai_tokens_reset_at",
                 ),
             },
@@ -1094,6 +1099,25 @@ class OrganizationAdmin(admin.ModelAdmin):
             return "—"
         active = qs.filter(is_active=True).count()
         return f"{active}/{total}"
+
+    @admin.display(description="AI Tokens (used / quota)")
+    def ai_token_usage_display(self, obj: Organization) -> str:
+        """Show token usage vs quota in list view."""
+        used = obj.ai_tokens_used or 0
+        quota = obj.monthly_ai_tokens
+        if quota is None:
+            return f"{used:,} / ∞"
+        if quota == 0:
+            return "No AI access"
+        return f"{used:,} / {quota:,}"
+
+    @admin.display(description="Tokens remaining")
+    def ai_tokens_remaining_display(self, obj: Organization) -> str:
+        """Read-only computed field showing remaining AI tokens."""
+        remaining = obj.ai_tokens_remaining
+        if remaining is None:
+            return "Unlimited"
+        return f"{remaining:,}"
 
     @admin.display(description="TibaBot Facility Keys")
     def tibabot_keys_summary(self, obj: Organization) -> str:
@@ -1216,7 +1240,7 @@ class FacilityAdmin(admin.ModelAdmin):
     ]
     search_fields = ["name", "mfl_code", "sha_facility_code"]
     ordering = ["name"]
-    readonly_fields = ["created_at", "updated_at"]
+    readonly_fields = ["created_at", "updated_at", "facility_ai_token_usage"]
     raw_id_fields = ["organization"]
     inlines = [FacilityStaffInline]
 
@@ -1301,6 +1325,13 @@ class FacilityAdmin(admin.ModelAdmin):
             {"fields": ("is_active",)},
         ),
         (
+            "AI Token Usage",
+            {
+                "fields": ("facility_ai_token_usage",),
+                "classes": ("collapse",),
+            },
+        ),
+        (
             "Timestamps",
             {
                 "fields": (
@@ -1341,6 +1372,41 @@ class FacilityAdmin(admin.ModelAdmin):
             colour,
             label,
         )
+
+    @admin.display(description="AI token usage (this facility)")
+    def facility_ai_token_usage(self, obj) -> str:
+        """Aggregate total tokens consumed by AI results at this facility."""
+        from django.db.models import Sum
+
+        from hmis.apps.ai.models import (
+            AICarePlanResult,
+            AICDSResult,
+            AIDischargeResult,
+            AIICURiskResult,
+            AIInvestigationSuggestResult,
+            AILabInterpretResult,
+            AISurgicalChecklistSessionResult,
+            AISurgicalPostOpCarePlanResult,
+            AISurgicalPreOpAssessResult,
+        )
+
+        total = 0
+        for model_cls in (
+            AICarePlanResult,
+            AICDSResult,
+            AILabInterpretResult,
+            AIDischargeResult,
+            AIICURiskResult,
+            AIInvestigationSuggestResult,
+            AISurgicalPreOpAssessResult,
+            AISurgicalChecklistSessionResult,
+            AISurgicalPostOpCarePlanResult,
+        ):
+            agg = model_cls.objects.filter(facility=obj).aggregate(t=Sum("total_tokens"))
+            total += agg["t"] or 0
+        if total == 0:
+            return "No AI usage recorded"
+        return f"{total:,} tokens"
 
 
 # =============================================================================

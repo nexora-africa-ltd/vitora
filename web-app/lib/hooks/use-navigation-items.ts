@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useFacility } from '@/lib/context/facility-context';
 import { useNavigationMode } from '@/lib/context/navigation-mode-context';
+import { useSubscription } from '@/lib/hooks/use-subscription';
 import {
   mainNavItems,
   hasChildren,
@@ -24,12 +25,14 @@ export function useNavigationItems(): NavigationResult {
   const { canAccessModule, canPerformAction } = usePermissions();
   const { hasModule } = useFacility();
   const { navigationMode, isClinicalNavigationEligible } = useNavigationMode();
+  const { hasFeature } = useSubscription();
 
   return useMemo(() => {
-    const isAllowed = (item: { moduleKey?: string; facilityModule?: string; actionKey?: string }): boolean => {
+    const isAllowed = (item: { moduleKey?: string; facilityModule?: string; actionKey?: string; planFeature?: string }): boolean => {
       if (item.moduleKey && !canAccessModule(item.moduleKey as never)) return false;
       if (item.facilityModule && !hasModule(item.facilityModule as never)) return false;
       if (item.actionKey && !canPerformAction(item.actionKey as never)) return false;
+      if (item.planFeature && !hasFeature(item.planFeature)) return false;
       return true;
     };
 
@@ -66,6 +69,7 @@ export function useNavigationItems(): NavigationResult {
     canAccessModule,
     canPerformAction,
     hasModule,
+    hasFeature,
     navigationMode,
     isClinicalNavigationEligible,
   ]);
