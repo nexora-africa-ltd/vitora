@@ -3192,6 +3192,34 @@ class Facility(TimeStampedModel):
         default=False,
         help_text="LIS standalone mode: lab operates independently without full HMIS.",
     )
+    has_triage = models.BooleanField(
+        default=True,
+        help_text="Triage / patient acuity assessment.",
+    )
+    has_scheduling = models.BooleanField(
+        default=True,
+        help_text="Appointment scheduling and roster management.",
+    )
+    has_surveillance = models.BooleanField(
+        default=False,
+        help_text="Disease surveillance and outbreak reporting.",
+    )
+    has_immunizations = models.BooleanField(
+        default=False,
+        help_text="Immunization / vaccination programme.",
+    )
+    has_allied_health = models.BooleanField(
+        default=False,
+        help_text="Allied health services (physiotherapy, nutrition, social work, etc.).",
+    )
+    has_quality = models.BooleanField(
+        default=False,
+        help_text="Quality improvement and clinical audit.",
+    )
+    has_billing = models.BooleanField(
+        default=True,
+        help_text="Billing, invoicing, and financial management.",
+    )
 
     # ------------------------------------------------------------------
     # Status
@@ -3234,10 +3262,24 @@ class Facility(TimeStampedModel):
                 "has_mortuary",
                 "has_blood_bank",
                 "has_inventory",
+                "has_triage",
+                "has_scheduling",
+                "has_surveillance",
+                "has_immunizations",
+                "has_allied_health",
+                "has_quality",
+                "has_billing",
             ]
             # Only apply defaults if no module was explicitly set beyond the
-            # model-level defaults (outpatient=True, pharmacy=True, rest=False).
-            defaults_from_model = {"has_outpatient": True, "has_pharmacy": True}
+            # model-level defaults (outpatient=True, pharmacy=True, triage=True,
+            # scheduling=True, billing=True, rest=False).
+            defaults_from_model = {
+                "has_outpatient": True,
+                "has_pharmacy": True,
+                "has_triage": True,
+                "has_scheduling": True,
+                "has_billing": True,
+            }
             all_at_model_default = all(
                 getattr(self, f) == defaults_from_model.get(f, False) for f in module_fields
             )
@@ -3278,6 +3320,13 @@ class Facility(TimeStampedModel):
             "blood_bank": self.has_blood_bank,
             "inventory": self.has_inventory,
             "lis_standalone": self.has_lis_standalone,
+            "triage": self.has_triage,
+            "scheduling": self.has_scheduling,
+            "surveillance": self.has_surveillance,
+            "immunizations": self.has_immunizations,
+            "allied_health": self.has_allied_health,
+            "quality": self.has_quality,
+            "billing": self.has_billing,
         }
 
     @property
@@ -3339,16 +3388,40 @@ class Facility(TimeStampedModel):
             "mortuary": False,
             "blood_bank": False,
             "inventory": False,
+            "triage": False,
+            "scheduling": False,
+            "surveillance": False,
+            "immunizations": False,
+            "allied_health": False,
+            "quality": False,
+            "billing": False,
         }
 
         level_overrides: dict[str, dict[str, bool]] = {
-            "1": {"outpatient": True},
-            "2": {"outpatient": True, "pharmacy": True},
+            "1": {
+                "outpatient": True,
+                "triage": True,
+                "billing": True,
+                "immunizations": True,
+            },
+            "2": {
+                "outpatient": True,
+                "pharmacy": True,
+                "triage": True,
+                "scheduling": True,
+                "billing": True,
+                "immunizations": True,
+            },
             "3": {
                 "outpatient": True,
                 "pharmacy": True,
                 "laboratory": True,
                 "maternity": True,
+                "triage": True,
+                "scheduling": True,
+                "billing": True,
+                "immunizations": True,
+                "surveillance": True,
             },
             "4": {
                 "outpatient": True,
@@ -3360,6 +3433,13 @@ class Facility(TimeStampedModel):
                 "theatre": True,
                 "maternity": True,
                 "inventory": True,
+                "triage": True,
+                "scheduling": True,
+                "billing": True,
+                "immunizations": True,
+                "surveillance": True,
+                "allied_health": True,
+                "quality": True,
             },
             "5": {
                 "outpatient": True,
@@ -3373,6 +3453,13 @@ class Facility(TimeStampedModel):
                 "maternity": True,
                 "dialysis": True,
                 "inventory": True,
+                "triage": True,
+                "scheduling": True,
+                "billing": True,
+                "immunizations": True,
+                "surveillance": True,
+                "allied_health": True,
+                "quality": True,
             },
             "6": {
                 "outpatient": True,
@@ -3388,10 +3475,19 @@ class Facility(TimeStampedModel):
                 "blood_bank": True,
                 "mortuary": True,
                 "inventory": True,
+                "triage": True,
+                "scheduling": True,
+                "billing": True,
+                "immunizations": True,
+                "surveillance": True,
+                "allied_health": True,
+                "quality": True,
             },
         }
 
-        overrides = level_overrides.get(level, {"outpatient": True})
+        overrides = level_overrides.get(
+            level, {"outpatient": True, "triage": True, "billing": True}
+        )
         return {**all_modules, **overrides}
 
 

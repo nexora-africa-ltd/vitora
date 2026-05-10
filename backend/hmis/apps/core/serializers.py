@@ -1048,6 +1048,13 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "has_blood_bank",
             "has_inventory",
             "has_lis_standalone",
+            "has_triage",
+            "has_scheduling",
+            "has_surveillance",
+            "has_immunizations",
+            "has_allied_health",
+            "has_quality",
+            "has_billing",
             # Status & timestamps
             "is_active",
             "created_at",
@@ -1122,6 +1129,13 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
             "has_blood_bank",
             "has_inventory",
             "has_lis_standalone",
+            "has_triage",
+            "has_scheduling",
+            "has_surveillance",
+            "has_immunizations",
+            "has_allied_health",
+            "has_quality",
+            "has_billing",
             # Status
             "is_active",
         ]

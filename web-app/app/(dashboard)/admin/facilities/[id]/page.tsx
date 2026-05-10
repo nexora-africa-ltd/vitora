@@ -43,6 +43,14 @@ const moduleLabels: Record<string, string> = {
   has_maternity: 'Maternity',
   has_mortuary: 'Mortuary',
   has_blood_bank: 'Blood Bank',
+  has_lis_standalone: 'LIS Standalone',
+  has_triage: 'Triage',
+  has_scheduling: 'Scheduling',
+  has_surveillance: 'Surveillance',
+  has_immunizations: 'Immunizations',
+  has_allied_health: 'Allied Health',
+  has_quality: 'Quality',
+  has_billing: 'Finance / Billing',
 };
 
 export default function FacilityDetailPage() {

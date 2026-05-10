@@ -20,6 +20,13 @@ export interface FacilityModules {
   blood_bank: boolean;
   inventory: boolean;
   lis_standalone: boolean;
+  triage: boolean;
+  scheduling: boolean;
+  surveillance: boolean;
+  immunizations: boolean;
+  allied_health: boolean;
+  quality: boolean;
+  billing: boolean;
 }
 
 // User's facility info included in auth response
