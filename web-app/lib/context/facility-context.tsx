@@ -100,12 +100,15 @@ export function FacilityProvider({ children }: { children: ReactNode }) {
 
   const hasModule = useMemo(() => {
     return (module: keyof FacilityModules): boolean => {
-      // Superusers bypass facility module checks
-      if (user?.is_superuser) return true;
-      if (!facility) return false; // No facility assigned = hide facility-gated modules
-      return facility.modules[module] ?? false;
+      // When no facility is assigned, superusers see everything;
+      // other users see nothing (no facility-gated modules).
+      if (!facility) return !!user?.is_superuser;
+      // Prefer fresh facility detail from React Query (reflects admin changes
+      // without re-login), fall back to auth context snapshot
+      const modules = facilityDetail?.modules ?? facility.modules;
+      return modules[module] ?? false;
     };
-  }, [user, facility]);
+  }, [user, facility, facilityDetail]);
 
   // Derive organization from facility detail
   const organization = useMemo(() => {

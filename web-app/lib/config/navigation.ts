@@ -151,6 +151,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Triage',
     icon: Thermometer,
     moduleKey: 'triage',
+    facilityModule: 'triage',
     children: [
       { label: 'Queue', href: '/triage', icon: ListOrdered, actionKey: 'triage.view_queue' },
       { label: 'New Triage', href: '/triage/new', icon: Thermometer, actionKey: 'triage.assess' },
@@ -173,6 +174,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Scheduling',
     icon: CalendarDays,
     moduleKey: 'scheduling',
+    facilityModule: 'scheduling',
     planFeature: 'scheduling',
     children: [
       { label: 'Overview', href: '/scheduling', icon: LayoutDashboard, actionKey: 'scheduling.view_appointments' },
@@ -191,6 +193,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Surveillance',
     icon: Flag,
     moduleKey: 'surveillance',
+    facilityModule: 'surveillance',
     children: [
       { label: 'Dashboard', href: '/surveillance', icon: LayoutDashboard, actionKey: 'surveillance.view_dashboard' },
       { label: 'Notifiable Cases', href: '/surveillance/cases', icon: AlertTriangle, actionKey: 'surveillance.report_case' },
@@ -221,6 +224,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Immunizations',
     icon: Syringe,
     moduleKey: 'immunizations',
+    facilityModule: 'immunizations',
     children: [
       { label: 'Records', href: '/immunizations', icon: Syringe, actionKey: 'immunizations.view_records' },
       { label: 'Campaigns', href: '/immunizations/campaigns', icon: Target, actionKey: 'immunizations.manage_campaigns' },
@@ -290,6 +294,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Last Office',
     icon: Skull,
     moduleKey: 'last_office',
+    facilityModule: 'mortuary',
     children: [
       { label: 'Records', href: '/last-office', icon: ClipboardList, actionKey: 'last_office.view_records' },
       { label: 'Record Death', href: '/last-office/new', icon: Skull, actionKey: 'last_office.record_death' },
@@ -383,6 +388,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Allied Health',
     icon: HeartPlus,
     moduleKey: 'allied_health',
+    facilityModule: 'allied_health',
     children: [
       { label: 'Dashboard', href: '/allied-health', icon: LayoutDashboard, actionKey: 'allied_health.view_dashboard' },
       { label: 'Physiotherapy', href: '/allied-health/physiotherapy', icon: Dumbbell, actionKey: 'allied_health.assess_physio' },
@@ -413,6 +419,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Finance',
     icon: BadgeCent,
     moduleKey: 'billing',
+    facilityModule: 'billing',
     planFeature: 'billing',
     children: [
       { label: 'Dashboard', href: '/finance/overview', icon: ChartNoAxesGantt, actionKey: 'billing.view_dashboard' },
@@ -454,6 +461,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Quality',
     icon: CheckSquare,
     moduleKey: 'quality',
+    facilityModule: 'quality',
     children: [
       { label: 'Dashboard', href: '/quality', icon: LayoutDashboard, actionKey: 'quality.view_dashboard' },
       { label: 'Measures', href: '/quality/measures', icon: Target, actionKey: 'quality.view_measures' },

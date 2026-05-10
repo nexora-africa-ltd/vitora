@@ -45,6 +45,13 @@ export interface FacilityDetail extends FacilityListItem {
   has_mortuary: boolean;
   has_blood_bank: boolean;
   has_lis_standalone: boolean;
+  has_triage: boolean;
+  has_scheduling: boolean;
+  has_surveillance: boolean;
+  has_immunizations: boolean;
+  has_allied_health: boolean;
+  has_quality: boolean;
+  has_billing: boolean;
   /** Biometrics workstation ID for DHA HIE consent */
   workstation_id?: string;
   /** Agent national ID for biometric authorization */
@@ -77,6 +84,13 @@ export interface FacilityUpdateData {
   has_mortuary?: boolean;
   has_blood_bank?: boolean;
   has_lis_standalone?: boolean;
+  has_triage?: boolean;
+  has_scheduling?: boolean;
+  has_surveillance?: boolean;
+  has_immunizations?: boolean;
+  has_allied_health?: boolean;
+  has_quality?: boolean;
+  has_billing?: boolean;
   is_active?: boolean;
 }
 
@@ -107,5 +121,12 @@ export interface FacilityCreateData {
   has_mortuary?: boolean;
   has_blood_bank?: boolean;
   has_lis_standalone?: boolean;
+  has_triage?: boolean;
+  has_scheduling?: boolean;
+  has_surveillance?: boolean;
+  has_immunizations?: boolean;
+  has_allied_health?: boolean;
+  has_quality?: boolean;
+  has_billing?: boolean;
   is_active?: boolean;
 }

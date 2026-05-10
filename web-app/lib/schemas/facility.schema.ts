@@ -15,6 +15,13 @@ export const FacilityModulesSchema = z.object({
   blood_bank: z.boolean(),
   inventory: z.boolean().default(false),
   lis_standalone: z.boolean().default(false),
+  triage: z.boolean().default(true),
+  scheduling: z.boolean().default(true),
+  surveillance: z.boolean().default(false),
+  immunizations: z.boolean().default(false),
+  allied_health: z.boolean().default(false),
+  quality: z.boolean().default(false),
+  billing: z.boolean().default(true),
 });
 
 export const FacilityListItemSchema = z.object({
@@ -58,6 +65,13 @@ export const FacilityDetailSchema = FacilityListItemSchema.extend({
   has_mortuary: z.boolean(),
   has_blood_bank: z.boolean(),
   has_lis_standalone: z.boolean().default(false),
+  has_triage: z.boolean().default(true),
+  has_scheduling: z.boolean().default(true),
+  has_surveillance: z.boolean().default(false),
+  has_immunizations: z.boolean().default(false),
+  has_allied_health: z.boolean().default(false),
+  has_quality: z.boolean().default(false),
+  has_billing: z.boolean().default(true),
   created_at: z.string(),
   updated_at: z.string(),
 });

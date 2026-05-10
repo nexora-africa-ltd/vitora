@@ -58,6 +58,14 @@ const MODULE_LABELS: { key: string; label: string }[] = [
   { key: 'has_maternity', label: 'Maternity' },
   { key: 'has_mortuary', label: 'Mortuary' },
   { key: 'has_blood_bank', label: 'Blood Bank' },
+  { key: 'has_lis_standalone', label: 'LIS Standalone' },
+  { key: 'has_triage', label: 'Triage' },
+  { key: 'has_scheduling', label: 'Scheduling' },
+  { key: 'has_surveillance', label: 'Surveillance' },
+  { key: 'has_immunizations', label: 'Immunizations' },
+  { key: 'has_allied_health', label: 'Allied Health' },
+  { key: 'has_quality', label: 'Quality' },
+  { key: 'has_billing', label: 'Finance / Billing' },
 ];
 
 export default function EditFacilityPage() {
@@ -97,6 +105,14 @@ export default function EditFacilityPage() {
     has_maternity: false,
     has_mortuary: false,
     has_blood_bank: false,
+    has_lis_standalone: false,
+    has_triage: true,
+    has_scheduling: true,
+    has_surveillance: false,
+    has_immunizations: false,
+    has_allied_health: false,
+    has_quality: false,
+    has_billing: true,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -132,6 +148,14 @@ export default function EditFacilityPage() {
         has_maternity: facility.has_maternity,
         has_mortuary: facility.has_mortuary,
         has_blood_bank: facility.has_blood_bank,
+        has_lis_standalone: facility.has_lis_standalone,
+        has_triage: facility.has_triage,
+        has_scheduling: facility.has_scheduling,
+        has_surveillance: facility.has_surveillance,
+        has_immunizations: facility.has_immunizations,
+        has_allied_health: facility.has_allied_health,
+        has_quality: facility.has_quality,
+        has_billing: facility.has_billing,
       });
       setCountyId(facility.county);
       setSubCountyId(facility.sub_county);
@@ -222,6 +246,14 @@ export default function EditFacilityPage() {
       has_maternity: formData.has_maternity,
       has_mortuary: formData.has_mortuary,
       has_blood_bank: formData.has_blood_bank,
+      has_lis_standalone: formData.has_lis_standalone,
+      has_triage: formData.has_triage,
+      has_scheduling: formData.has_scheduling,
+      has_surveillance: formData.has_surveillance,
+      has_immunizations: formData.has_immunizations,
+      has_allied_health: formData.has_allied_health,
+      has_quality: formData.has_quality,
+      has_billing: formData.has_billing,
     };
     updateFacility.mutate(payload);
   };

@@ -1314,6 +1314,13 @@ class FacilityAdmin(admin.ModelAdmin):
                     "has_mortuary",
                     "has_blood_bank",
                     "has_inventory",
+                    "has_triage",
+                    "has_scheduling",
+                    "has_surveillance",
+                    "has_immunizations",
+                    "has_allied_health",
+                    "has_quality",
+                    "has_billing",
                 ),
                 "description": "Toggle the clinical service modules available "
                 "at this facility. These flags drive the sidebar navigation in "

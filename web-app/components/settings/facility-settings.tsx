@@ -83,6 +83,13 @@ const MODULE_FIELDS: Array<{
   { key: 'mortuary', field: 'has_mortuary', title: 'Mortuary', description: 'Mortuary and post-mortem support.' },
   { key: 'blood_bank', field: 'has_blood_bank', title: 'Blood Bank', description: 'Blood storage and transfusion services.' },
   { key: 'lis_standalone', field: 'has_lis_standalone', title: 'LIS Standalone', description: 'Lab operates independently — walk-in patients, external orders, no encounter required.' },
+  { key: 'triage', field: 'has_triage', title: 'Triage', description: 'Patient acuity assessment and queue prioritisation.' },
+  { key: 'scheduling', field: 'has_scheduling', title: 'Scheduling', description: 'Appointment booking and roster management.' },
+  { key: 'surveillance', field: 'has_surveillance', title: 'Surveillance', description: 'Disease surveillance and outbreak reporting.' },
+  { key: 'immunizations', field: 'has_immunizations', title: 'Immunizations', description: 'Vaccination programme, cold chain, and AEFI tracking.' },
+  { key: 'allied_health', field: 'has_allied_health', title: 'Allied Health', description: 'Physiotherapy, nutrition, occupational therapy, social work.' },
+  { key: 'quality', field: 'has_quality', title: 'Quality', description: 'Clinical audit and quality improvement measures.' },
+  { key: 'billing', field: 'has_billing', title: 'Finance / Billing', description: 'Invoicing, payments, and financial management.' },
 ];
 
 interface FacilityFormState {
@@ -110,6 +117,13 @@ interface FacilityFormState {
   has_mortuary: boolean;
   has_blood_bank: boolean;
   has_lis_standalone: boolean;
+  has_triage: boolean;
+  has_scheduling: boolean;
+  has_surveillance: boolean;
+  has_immunizations: boolean;
+  has_allied_health: boolean;
+  has_quality: boolean;
+  has_billing: boolean;
 }
 
 function createFormState(facility: FacilityDetail): FacilityFormState {
@@ -138,6 +152,13 @@ function createFormState(facility: FacilityDetail): FacilityFormState {
     has_mortuary: facility.has_mortuary,
     has_blood_bank: facility.has_blood_bank,
     has_lis_standalone: facility.has_lis_standalone,
+    has_triage: facility.has_triage,
+    has_scheduling: facility.has_scheduling,
+    has_surveillance: facility.has_surveillance,
+    has_immunizations: facility.has_immunizations,
+    has_allied_health: facility.has_allied_health,
+    has_quality: facility.has_quality,
+    has_billing: facility.has_billing,
   };
 }
 
