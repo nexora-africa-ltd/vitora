@@ -26,7 +26,7 @@ from rest_framework.views import APIView
 from hmis.apps.core.mixins import resolve_request_tenant
 from hmis.apps.core.models import AuditLog
 
-from .client import TibaBotError, TibaBotUnavailableError, get_tibabot_client
+from .client import TibaBotError, TibaBotUnavailableError, extract_token_usage, get_tibabot_client
 from .context import build_facility_context, build_user_context
 from .feature_flags import AIFeatureGatedMixin, is_ai_enabled
 from .models import (
@@ -101,6 +101,24 @@ from .serializers import (  # Advisory link serializers
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _record_response_tokens(request: Request, result: dict) -> None:
+    """Extract token usage from a TibaBot response and record against the org."""
+    usage = extract_token_usage(result)
+    total = usage.get("total_tokens")
+    if not total or total <= 0:
+        return
+    user = getattr(request, "user", None)
+    if user is None or not getattr(user, "is_authenticated", False):
+        return
+    profile = getattr(user, "staff_profile", None)
+    if profile is None:
+        return
+    org = getattr(profile, "organization", None)
+    if org is not None:
+        org.record_ai_token_usage(total)
+
 
 # Accepted verbosity values — aligned with TibaBot's API.
 _VALID_VERBOSITY = {"concise", "standard", "educational"}
@@ -538,6 +556,9 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
         if not assistant_content:
             assistant_content = result.get("response", result.get("content", ""))
 
+        # Record token usage against the organization quota
+        _record_response_tokens(request, result)
+
         # Extract model identifier from TibaBot response (if provided)
         model_id = result.get("model_used") or result.get("model") or None
 
@@ -675,6 +696,9 @@ class ClinicalAssistView(AIFeatureGatedMixin, APIView):
         if isinstance(result, dict):
             if "recommendation" in result and "response" not in result:
                 result["response"] = result.pop("recommendation")
+
+        # Record token usage against the organization quota
+        _record_response_tokens(request, result)
 
         # Validate outbound response
         response_data = {

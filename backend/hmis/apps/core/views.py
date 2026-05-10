@@ -159,6 +159,29 @@ def _build_user_info(user) -> dict:
         except StaffProfile.DoesNotExist:
             pass
 
+    # Resolve subscription/plan data from organization
+    subscription_data = {}
+    org = None
+    if hasattr(user, "staff_profile"):
+        try:
+            org = user.staff_profile.organization
+        except StaffProfile.DoesNotExist:
+            pass
+
+    if org:
+        plan = org.subscription_plan
+        subscription_data = {
+            "subscription_tier": org.subscription_tier,
+            "plan_features": plan.features if plan else org.PLAN_FALLBACK_FEATURES,
+            "ai_tokens_available": org.can_use_ai_tokens(),
+        }
+    else:
+        subscription_data = {
+            "subscription_tier": None,
+            "plan_features": {},
+            "ai_tokens_available": False,
+        }
+
     return {
         "id": user.id,
         "username": user.username,
@@ -175,6 +198,7 @@ def _build_user_info(user) -> dict:
         "facility": facility_data,
         "onboarding_complete": onboarding_complete,
         "memberships": _build_memberships(user),
+        **subscription_data,
     }
 
 

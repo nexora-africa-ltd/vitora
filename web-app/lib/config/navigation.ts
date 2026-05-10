@@ -106,6 +106,8 @@ export interface NavItem {
   actionKey?: ActionKey;
   /** Capability: required facility module */
   facilityModule?: keyof FacilityModules;
+  /** Subscription plan feature gate (e.g. 'ai_assistant') */
+  planFeature?: string;
   badge?: number;
 }
 
@@ -116,6 +118,8 @@ export interface NavItemWithChildren {
   moduleKey?: ModuleKey;
   /** Capability: required facility module */
   facilityModule?: keyof FacilityModules;
+  /** Subscription plan feature gate (e.g. 'ai_assistant') */
+  planFeature?: string;
   children: NavItem[];
   /** When set, the item is only included if the flag is true. */
   featureFlag?: boolean;
@@ -159,6 +163,7 @@ const _allNavItems: NavItemType[] = [
     icon: Siren,
     moduleKey: 'emergency',
     facilityModule: 'emergency',
+    planFeature: 'emergency',
     children: [
       { label: 'Dashboard', href: '/emergency', icon: LayoutDashboard, actionKey: 'emergency.view_dashboard' },
       { label: 'Bed Board', href: '/emergency/bed-board', icon: BedDouble, actionKey: 'emergency.view_bed_board' },
@@ -168,6 +173,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Scheduling',
     icon: CalendarDays,
     moduleKey: 'scheduling',
+    planFeature: 'scheduling',
     children: [
       { label: 'Overview', href: '/scheduling', icon: LayoutDashboard, actionKey: 'scheduling.view_appointments' },
       { label: 'Appointments', href: '/scheduling/appointments', icon: CalendarDays, actionKey: 'scheduling.view_appointments' },
@@ -230,6 +236,7 @@ const _allNavItems: NavItemType[] = [
     icon: Baby,
     moduleKey: 'mch',
     facilityModule: 'maternity',
+    planFeature: 'maternity',
     children: [
       { label: 'Registrations', href: '/mch', icon: ClipboardList, actionKey: 'mch.register' },
       { label: 'Deliveries', href: '/mch/deliveries', icon: Venus, actionKey: 'mch.record_delivery' },
@@ -266,6 +273,7 @@ const _allNavItems: NavItemType[] = [
     icon: BedDouble,
     moduleKey: 'inpatient',
     facilityModule: 'inpatient',
+    planFeature: 'inpatient',
     children: [
       { label: 'Bed Board', href: '/inpatient/bed-board', icon: BedDouble, actionKey: 'inpatient.view_ward' },
       { label: 'Wards', href: '/wards', icon: Building2, actionKey: 'inpatient.view_ward' },
@@ -292,6 +300,7 @@ const _allNavItems: NavItemType[] = [
     icon: Droplets,
     moduleKey: 'blood_bank',
     facilityModule: 'blood_bank',
+    planFeature: 'blood_bank',
     children: [
       { label: 'Dashboard', href: '/blood-bank', icon: LayoutDashboard, actionKey: 'blood_bank.view_dashboard' },
       { label: 'Donors', href: '/blood-bank/donors', icon: UserPlus, actionKey: 'blood_bank.view_donors' },
@@ -305,6 +314,7 @@ const _allNavItems: NavItemType[] = [
     icon: CircleDot,
     moduleKey: 'dialysis',
     facilityModule: 'dialysis',
+    planFeature: 'dialysis',
     children: [
       { label: 'Dashboard', href: '/dialysis', icon: LayoutDashboard, actionKey: 'dialysis.view_dashboard' },
       { label: 'Sessions', href: '/dialysis/sessions', icon: Activity, actionKey: 'dialysis.view_sessions' },
@@ -317,6 +327,7 @@ const _allNavItems: NavItemType[] = [
     icon: Pill,
     moduleKey: 'pharmacy',
     facilityModule: 'pharmacy',
+    planFeature: 'pharmacy',
     children: [
       { label: 'Dashboard', href: '/pharmacy', icon: LayoutDashboard, actionKey: 'pharmacy.view_dashboard' },
       { label: 'Dispensing', href: '/pharmacy/dispensing', icon: FlaskConical, actionKey: 'pharmacy.dispense' },
@@ -332,6 +343,7 @@ const _allNavItems: NavItemType[] = [
     icon: Microscope,
     moduleKey: 'laboratory',
     facilityModule: 'laboratory',
+    planFeature: 'laboratory',
     children: [
       { label: 'Dashboard', href: '/laboratory', icon: LayoutDashboard, actionKey: 'laboratory.view_dashboard' },
       { label: 'Orders', href: '/laboratory/orders', icon: SquareDashedTopSolid, actionKey: 'laboratory.view_orders' },
@@ -359,6 +371,7 @@ const _allNavItems: NavItemType[] = [
     icon: ScanLine,
     moduleKey: 'imaging',
     facilityModule: 'imaging',
+    planFeature: 'imaging',
     children: [
       { label: 'Dashboard', href: '/imaging', icon: LayoutDashboard, actionKey: 'imaging.view_dashboard' },
       { label: 'Worklist', href: '/imaging/worklist', icon: ListOrdered, actionKey: 'imaging.view_orders' },
@@ -384,6 +397,7 @@ const _allNavItems: NavItemType[] = [
     icon: Scissors,
     moduleKey: 'theatre',
     facilityModule: 'theatre',
+    planFeature: 'theatre',
     featureFlag: ENABLE_THEATRE,
     children: [
       { label: 'Overview', href: '/theatre', icon: LayoutDashboard, actionKey: 'theatre.view_schedule' },
@@ -399,6 +413,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Finance',
     icon: BadgeCent,
     moduleKey: 'billing',
+    planFeature: 'billing',
     children: [
       { label: 'Dashboard', href: '/finance/overview', icon: ChartNoAxesGantt, actionKey: 'billing.view_dashboard' },
       { label: 'Invoices', href: '/transactions/invoices', icon: FileText, actionKey: 'billing.view_invoices' },
@@ -421,6 +436,7 @@ const _allNavItems: NavItemType[] = [
     icon: Package,
     moduleKey: 'inventory',
     facilityModule: 'inventory',
+    planFeature: 'inventory',
     children: [
       { label: 'Dashboard', href: '/inventory', icon: LayoutDashboard, actionKey: 'inventory.view_dashboard' },
       { label: 'Suppliers', href: '/inventory/suppliers', icon: Building2, actionKey: 'inventory.view_suppliers' },
@@ -450,17 +466,20 @@ const _allNavItems: NavItemType[] = [
     href: '/analytics',
     icon: BarChart3,
     moduleKey: 'analytics',
+    planFeature: 'custom_reports',
   },
   {
     label: 'MOH Reports',
     href: '/reports/moh',
     icon: ClipboardList,
     moduleKey: 'moh_reporting',
+    planFeature: 'dhis2_reporting',
   },
   {
     label: 'CDS',
     icon: BrainCircuit,
     moduleKey: 'cds',
+    planFeature: 'ai_assistant',
     children: [
       { label: 'Dashboard', href: '/cds', icon: LayoutDashboard, actionKey: 'cds.view_dashboard' },
       { label: 'Rules', href: '/cds/rules', icon: Shield, actionKey: 'cds.manage_rules' },
@@ -473,6 +492,7 @@ const _allNavItems: NavItemType[] = [
     icon: BotIcon,
     moduleKey: 'ai',
     actionKey: 'ai.use_chat',
+    planFeature: 'ai_assistant',
     featureFlag: ENABLE_AI,
   } as NavItem & { featureFlag?: boolean },
   {

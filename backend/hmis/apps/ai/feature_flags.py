@@ -5,10 +5,14 @@ All AI endpoints are gated behind TIBABOT_ENABLED setting.
 Per-feature flags gate individual clinical features (lab assist,
 discharge readiness, care plan, clerking assist).
 When disabled, endpoints return 404 — no endpoint discovery or partial behavior.
+
+Plan-level and quota checks are enforced in AIFeatureGatedMixin.initial():
+- ``ai_assistant`` plan feature must be enabled on the org's subscription plan
+- Organization must have remaining AI token quota for write operations
 """
 
 from django.conf import settings
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, PermissionDenied
 
 from .client import tibabot_user_context
 
@@ -65,9 +69,30 @@ class AIFeatureGatedMixin:
         if self.ai_feature_flag and not is_feature_enabled(self.ai_feature_flag):
             raise NotFound("This AI feature is not enabled for this facility.")
 
-        # Set up user context for TibaBot client (user is now authenticated)
+        # Plan-level and quota checks for authenticated non-superusers
         user = getattr(request, "user", None)
         if user is not None and getattr(user, "is_authenticated", False):
+            if not user.is_superuser:
+                org = self._resolve_user_org(user)
+                if org is not None:
+                    # Plan feature check
+                    if not org.has_feature("ai_assistant"):
+                        raise PermissionDenied(
+                            "AI features are not available on your current plan. "
+                            "Please upgrade to a plan that includes AI Assistant."
+                        )
+                    # Token quota check (only for write operations)
+                    if request.method not in (
+                        "GET",
+                        "HEAD",
+                        "OPTIONS",
+                    ) and not org.can_use_ai_tokens(tokens_needed=1):
+                        raise PermissionDenied(
+                            "Your organization has used all available AI tokens "
+                            "for this billing cycle."
+                        )
+
+            # Set up user context for TibaBot client
             facility = getattr(request, "facility", None)
             self._tibabot_ctx = tibabot_user_context(user, facility)
             self._tibabot_ctx.__enter__()
@@ -78,3 +103,11 @@ class AIFeatureGatedMixin:
             self._tibabot_ctx.__exit__(None, None, None)
             self._tibabot_ctx = None
         return super().finalize_response(request, response, *args, **kwargs)  # type: ignore[misc]
+
+    @staticmethod
+    def _resolve_user_org(user):
+        """Resolve the Organization from the user's staff profile."""
+        profile = getattr(user, "staff_profile", None)
+        if profile is None:
+            return None
+        return getattr(profile, "organization", None)

@@ -44,6 +44,8 @@ import {
   useDeleteAIChatSession,
 } from '@/lib/hooks/use-ai';
 import type { AIChatMessage, AIChatSession } from '@/lib/types/ai';
+import { FeatureGate } from '@/components/shared/feature-gate';
+import { UpgradeBanner } from '@/components/shared/upgrade-banner';
 
 // =============================================================================
 // Session List (shared between sidebar & bottom sheet)
@@ -284,6 +286,7 @@ export default function AIPage() {
   const sessions = sessionsData?.sessions ?? [];
 
   return (
+    <FeatureGate feature="ai_assistant" fallback={<UpgradeBanner feature="AI Assistant" />}>
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
         title="AI Assistant"
@@ -361,5 +364,6 @@ export default function AIPage() {
         </SheetContent>
       </Sheet>
     </div>
+    </FeatureGate>
   );
 }

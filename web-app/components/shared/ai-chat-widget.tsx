@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils/cn';
 import { useAIChatContext } from '@/lib/context/ai-chat-context';
 import { useAIEnabled } from '@/lib/hooks/use-ai';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useSubscription } from '@/lib/hooks/use-subscription';
 import { TibaBotStatusIndicator, TibaBotStatusStyles } from './tibabot-status-indicator';
 import { AIChatPanel } from './ai-chat-panel';
 import { useAIClinicalChat, useAIClinicalAssist } from '@/lib/hooks/use-ai';
@@ -154,6 +155,7 @@ function useDraggable() {
 export function AIChatWidget() {
   const aiEnabled = useAIEnabled();
   const { canPerformAction } = usePermissions();
+  const { hasFeature } = useSubscription();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -500,10 +502,10 @@ export function AIChatWidget() {
     toggleWidget();
   }, [toggleWidget]);
 
-  // Don't render if AI is disabled or user lacks permission
+  // Don't render if AI is disabled, user lacks permission, or plan doesn't include AI
   // Also hide the widget entirely when already on the full-page /ai view
   const isOnAIPage = pathname?.startsWith('/ai');
-  if (!aiEnabled || !canUseChat || isOnAIPage) return null;
+  if (!aiEnabled || !canUseChat || !hasFeature('ai_assistant') || isOnAIPage) return null;
 
   const isExpanded = widgetState === 'expanded';
 
