@@ -82,6 +82,7 @@ const MODULE_FIELDS: Array<{
   { key: 'maternity', field: 'has_maternity', title: 'Maternity', description: 'Maternal and obstetric services.' },
   { key: 'mortuary', field: 'has_mortuary', title: 'Mortuary', description: 'Mortuary and post-mortem support.' },
   { key: 'blood_bank', field: 'has_blood_bank', title: 'Blood Bank', description: 'Blood storage and transfusion services.' },
+  { key: 'inventory', field: 'has_inventory', title: 'Inventory', description: 'Supply chain, stock management, and procurement.' },
   { key: 'lis_standalone', field: 'has_lis_standalone', title: 'LIS Standalone', description: 'Lab operates independently — walk-in patients, external orders, no encounter required.' },
   { key: 'triage', field: 'has_triage', title: 'Triage', description: 'Patient acuity assessment and queue prioritisation.' },
   { key: 'scheduling', field: 'has_scheduling', title: 'Scheduling', description: 'Appointment booking and roster management.' },
@@ -116,6 +117,7 @@ interface FacilityFormState {
   has_maternity: boolean;
   has_mortuary: boolean;
   has_blood_bank: boolean;
+  has_inventory: boolean;
   has_lis_standalone: boolean;
   has_triage: boolean;
   has_scheduling: boolean;
@@ -151,6 +153,7 @@ function createFormState(facility: FacilityDetail): FacilityFormState {
     has_maternity: facility.has_maternity,
     has_mortuary: facility.has_mortuary,
     has_blood_bank: facility.has_blood_bank,
+    has_inventory: facility.has_inventory,
     has_lis_standalone: facility.has_lis_standalone,
     has_triage: facility.has_triage,
     has_scheduling: facility.has_scheduling,
@@ -210,6 +213,13 @@ function NoFacilityState() {
         blood_bank: false,
         inventory: false,
         lis_standalone: false,
+        triage: true,
+        scheduling: true,
+        surveillance: false,
+        immunizations: false,
+        allied_health: false,
+        quality: false,
+        billing: true,
       },
     });
     // Page will re-render with the selected facility

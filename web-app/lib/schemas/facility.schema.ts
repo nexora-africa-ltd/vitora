@@ -64,6 +64,7 @@ export const FacilityDetailSchema = FacilityListItemSchema.extend({
   has_maternity: z.boolean(),
   has_mortuary: z.boolean(),
   has_blood_bank: z.boolean(),
+  has_inventory: z.boolean().default(false),
   has_lis_standalone: z.boolean().default(false),
   has_triage: z.boolean().default(true),
   has_scheduling: z.boolean().default(true),
