@@ -27,6 +27,7 @@ import { useFacility } from '@/lib/context/facility-context';
 import { printDischargeDocument } from '@/lib/documents';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
+import { SignatureBadge } from '@/components/shared/signature-badge';
 import type { Discharge, DischargeType } from '@/lib/types/inpatient';
 
 // =============================================================================
@@ -177,6 +178,11 @@ export default function DischargeDetailPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+          <SignatureBadge
+            documentType="Discharge"
+            documentId={discharge.id}
+            canSign={true}
+          />
           {getDischargeTypeBadge(discharge.discharge_type)}
         </div>
       </div>
