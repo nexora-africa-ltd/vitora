@@ -82,6 +82,7 @@ import {
 } from '@/lib/types/imaging';
 import { imagingApi } from '@/lib/api/imaging';
 import { printRadiologyReport } from '@/lib/documents';
+import { SignatureBadge } from '@/components/shared/signature-badge';
 
 interface RadiologyReportPageProps {
   orderNumber: string;
@@ -348,6 +349,11 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
             {report.is_critical && (
               <Badge variant="destructive">Critical Finding</Badge>
             )}
+            <SignatureBadge
+              documentType="RadiologyReport"
+              documentId={report.id}
+              canSign={report.status === 'FINAL' || report.status === 'AMENDED'}
+            />
           </div>
         )}
       </div>

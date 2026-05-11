@@ -58,6 +58,7 @@ import { useAuth } from '@/lib/auth/context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { CommentThread } from '@/components/comments';
 import { useCommentCount } from '@/lib/hooks/use-comment-count';
+import { SignatureBadge } from '@/components/shared/signature-badge';
 
 // Status badge colors
 const STATUS_COLORS: Record<PrescriptionStatus, string> = {
@@ -268,6 +269,14 @@ export default function PrescriptionDetailPage() {
                 <StatusIcon className="h-3 w-3 mr-1" />
                 {prescription.status}
               </Badge>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Digital Signature</p>
+              <SignatureBadge
+                documentType="Prescription"
+                documentId={prescriptionId}
+                canSign={true}
+              />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Dispensing</p>

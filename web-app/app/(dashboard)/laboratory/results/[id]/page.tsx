@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { AlertTriangle, Paperclip, ShieldCheck, Upload } from 'lucide-react';
 import { laboratoryApi } from '@/lib/api/laboratory';
+import { SignatureBadge } from '@/components/shared/signature-badge';
 import { useToast } from '@/lib/hooks';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
@@ -203,9 +204,16 @@ export default function LabResultDetailPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-3">
               <CardTitle className="text-base">Status</CardTitle>
-              <Badge variant={statusText === 'VERIFIED' ? 'default' : 'secondary'}>
-                {statusText === 'VERIFIED' ? 'Verified' : statusText}
-              </Badge>
+              <div className="flex items-center gap-3">
+                <SignatureBadge
+                  documentType="LabResult"
+                  documentId={resultId}
+                  canSign={statusText === 'VERIFIED'}
+                />
+                <Badge variant={statusText === 'VERIFIED' ? 'default' : 'secondary'}>
+                  {statusText === 'VERIFIED' ? 'Verified' : statusText}
+                </Badge>
+              </div>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
               <Button onClick={() => router.push(`/laboratory/results/${resultId}/edit`)}>Edit</Button>
