@@ -358,3 +358,12 @@ class ReferralEvents:
     EXPIRED = "referrals.referral.expired"
     IN_PROGRESS = "referrals.referral.in_progress"
     COMPLETED = "referrals.referral.completed"
+
+
+class SickNoteEvents:
+    """Sick note / medical certificate domain event types."""
+
+    CREATED = "sick_notes.note.created"
+    ISSUED = "sick_notes.note.issued"
+    REVOKED = "sick_notes.note.revoked"
+    CANCELLED = "sick_notes.note.cancelled"

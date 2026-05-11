@@ -66,14 +66,14 @@ interface LabResultsEntryProps {
 }
 
 const RESULT_FLAGS: { value: ResultFlag; label: string; color: string }[] = [
-  { value: 'NORMAL', label: 'Normal', color: 'bg-green-100 text-green-700' },
-  { value: 'LOW', label: 'Low', color: 'bg-blue-100 text-blue-700' },
-  { value: 'HIGH', label: 'High', color: 'bg-orange-100 text-orange-700' },
-  { value: 'CRITICAL_LOW', label: 'Critical Low', color: 'bg-red-100 text-red-700' },
-  { value: 'CRITICAL_HIGH', label: 'Critical High', color: 'bg-red-100 text-red-700' },
-  { value: 'ABNORMAL', label: 'Abnormal', color: 'bg-yellow-100 text-yellow-700' },
-  { value: 'POSITIVE', label: 'Positive', color: 'bg-purple-100 text-purple-700' },
-  { value: 'NEGATIVE', label: 'Negative', color: 'bg-gray-100 text-gray-700' },
+  { value: 'NORMAL', label: 'Normal', color: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' },
+  { value: 'LOW', label: 'Low', color: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400' },
+  { value: 'HIGH', label: 'High', color: 'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400' },
+  { value: 'CRITICAL_LOW', label: 'Critical Low', color: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' },
+  { value: 'CRITICAL_HIGH', label: 'Critical High', color: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' },
+  { value: 'ABNORMAL', label: 'Abnormal', color: 'bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400' },
+  { value: 'POSITIVE', label: 'Positive', color: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400' },
+  { value: 'NEGATIVE', label: 'Negative', color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' },
 ];
 
 // Common lab result units used in Kenya

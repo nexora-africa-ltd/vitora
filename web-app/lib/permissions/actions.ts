@@ -183,6 +183,13 @@ export const ACTION_PERMISSIONS = {
   'referrals.decline': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
   'referrals.view_sensitive': ['DOCTOR', 'CLINICAL_OFFICER', 'ADMIN'],
 
+  // === Sick Notes Module ===
+  'sick_notes.view': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'RECORDS_CLERK', 'ADMIN'],
+  'sick_notes.create': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE'],
+  'sick_notes.issue': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
+  'sick_notes.revoke': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
+  'sick_notes.print': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'RECORDS_CLERK', 'ADMIN'],
+
   // === Surveillance Module ===
   'surveillance.view_dashboard': ['DOCTOR', 'NURSE', 'CLINICAL_OFFICER', 'SURVEILLANCE_OFFICER', 'ADMIN'],
   'surveillance.report_case': ['DOCTOR', 'NURSE', 'CLINICAL_OFFICER', 'SURVEILLANCE_OFFICER'],

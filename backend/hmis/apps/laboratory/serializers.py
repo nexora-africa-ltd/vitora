@@ -1018,6 +1018,9 @@ class DiagnosticReportSerializer(serializers.ModelSerializer):
 
     lab_order_number = serializers.CharField(source="lab_order.order_number", read_only=True)
     patient_name = serializers.SerializerMethodField()
+    patient_mrn = serializers.SerializerMethodField()
+    patient_gender = serializers.SerializerMethodField()
+    patient_dob = serializers.SerializerMethodField()
     issued_by_name = serializers.SerializerMethodField()
     amended_by_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
@@ -1032,6 +1035,9 @@ class DiagnosticReportSerializer(serializers.ModelSerializer):
             "lab_order",
             "lab_order_number",
             "patient_name",
+            "patient_mrn",
+            "patient_gender",
+            "patient_dob",
             "status",
             "status_display",
             "is_finalized",
@@ -1055,6 +1061,9 @@ class DiagnosticReportSerializer(serializers.ModelSerializer):
             "report_number",
             "lab_order_number",
             "patient_name",
+            "patient_mrn",
+            "patient_gender",
+            "patient_dob",
             "status_display",
             "is_finalized",
             "issued_by_name",
@@ -1067,8 +1076,28 @@ class DiagnosticReportSerializer(serializers.ModelSerializer):
     def get_patient_name(self, obj) -> str:
         """Get patient full name from lab order."""
         if obj.lab_order.patient:
-            return str(obj.lab_order.patient)
+            p = obj.lab_order.patient
+            return f"{p.first_name} {p.last_name}"
         return obj.lab_order.walkin_patient_name or "Walk-in"
+
+    def get_patient_mrn(self, obj) -> str:
+        """Get patient MRN from lab order."""
+        if obj.lab_order.patient:
+            return obj.lab_order.patient.mrn
+        return ""
+
+    def get_patient_gender(self, obj) -> str:
+        """Get patient gender from lab order."""
+        if obj.lab_order.patient:
+            return obj.lab_order.patient.gender or ""
+        return obj.lab_order.walkin_patient_gender or ""
+
+    def get_patient_dob(self, obj) -> str:
+        """Get patient date of birth from lab order."""
+        if obj.lab_order.patient and obj.lab_order.patient.date_of_birth:
+            return str(obj.lab_order.patient.date_of_birth)
+        dob = obj.lab_order.walkin_patient_dob
+        return str(dob) if dob else ""
 
     def get_issued_by_name(self, obj) -> str:
         """Get name of user who issued the report."""

@@ -741,8 +741,8 @@ export function useUpdateDiagnosticReport() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<DiagnosticReport> }) =>
-      laboratoryApi.updateDiagnosticReport(id, data),
+    mutationFn: ({ reportNumber, data }: { reportNumber: string; data: Partial<DiagnosticReport> }) =>
+      laboratoryApi.updateDiagnosticReport(reportNumber, data),
     onSuccess: (updatedReport: DiagnosticReport) => {
       queryClient.invalidateQueries({ queryKey: ['diagnostic-reports'] });
       queryClient.invalidateQueries({
@@ -759,7 +759,7 @@ export function useFinalizeDiagnosticReport() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: number) => laboratoryApi.finalizeDiagnosticReport(id),
+    mutationFn: (reportNumber: string) => laboratoryApi.finalizeDiagnosticReport(reportNumber),
     onSuccess: (updatedReport: DiagnosticReport) => {
       queryClient.invalidateQueries({ queryKey: ['diagnostic-reports'] });
       queryClient.invalidateQueries({
@@ -776,8 +776,8 @@ export function useAmendDiagnosticReport() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, conclusion }: { id: number; conclusion: string }) =>
-      laboratoryApi.amendDiagnosticReport(id, conclusion),
+    mutationFn: ({ reportNumber, conclusion }: { reportNumber: string; conclusion: string }) =>
+      laboratoryApi.amendDiagnosticReport(reportNumber, conclusion),
     onSuccess: (updatedReport: DiagnosticReport) => {
       queryClient.invalidateQueries({ queryKey: ['diagnostic-reports'] });
       queryClient.invalidateQueries({
@@ -794,8 +794,8 @@ export function useCancelDiagnosticReport() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
-      laboratoryApi.cancelDiagnosticReport(id, reason),
+    mutationFn: ({ reportNumber, reason }: { reportNumber: string; reason: string }) =>
+      laboratoryApi.cancelDiagnosticReport(reportNumber, reason),
     onSuccess: (updatedReport: DiagnosticReport) => {
       queryClient.invalidateQueries({ queryKey: ['diagnostic-reports'] });
       queryClient.invalidateQueries({
@@ -810,7 +810,7 @@ export function useCancelDiagnosticReport() {
  */
 export function useGenerateReportPdf() {
   return useMutation({
-    mutationFn: (id: number) => laboratoryApi.downloadDiagnosticReportPdf(id),
+    mutationFn: (reportNumber: string) => laboratoryApi.downloadDiagnosticReportPdf(reportNumber),
     onSuccess: (blob: Blob) => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

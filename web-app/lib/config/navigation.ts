@@ -258,6 +258,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'All Encounters', href: '/encounters', icon: Stethoscope },
       { label: 'New Encounter', href: '/encounters/new', icon: ClipboardList },
       { label: 'Referrals', href: '/referrals', icon: ArrowLeftRight, actionKey: 'encounters.refer' },
+      { label: 'Sick Notes', href: '/sick-notes', icon: FileText, actionKey: 'sick_notes.view' },
     ],
   },
   {
@@ -381,6 +382,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Dashboard', href: '/imaging', icon: LayoutDashboard, actionKey: 'imaging.view_dashboard' },
       { label: 'Worklist', href: '/imaging/worklist', icon: ListOrdered, actionKey: 'imaging.view_orders' },
       { label: 'Imaging Orders', href: '/imaging/orders', icon: SquareDashedTopSolid, actionKey: 'imaging.view_orders' },
+      { label: 'Reports', href: '/imaging/reports', icon: FileText, actionKey: 'imaging.view_orders' },
       { label: 'DICOM Studies', href: '/imaging/studies', icon: ImageIcon, actionKey: 'imaging.view_studies' },
     ],
   },

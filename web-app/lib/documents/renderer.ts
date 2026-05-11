@@ -14,6 +14,7 @@ import type {
   RenderContext,
   LayoutType,
   PrintOptions,
+  SignatureInfo,
 } from './types';
 import {
   generateQRDataUri,
@@ -80,6 +81,29 @@ export function formatDateTime(dateStr: string | null | undefined): string {
   } catch {
     return dateStr;
   }
+}
+
+/**
+ * Render the "Signature & Stamp" column in a print template.
+ *
+ * If digital signature data is provided, renders signer identity,
+ * timestamp, and verification status. Otherwise, renders the static
+ * "Signature & Stamp" placeholder for manual signing.
+ */
+export function renderSignatureColumn(signature?: SignatureInfo): string {
+  if (!signature) {
+    return `<div class="sig">Signature &amp; Stamp</div>`;
+  }
+  const signedDate = formatDateTime(signature.signed_at);
+  const status = signature.is_valid !== false
+    ? '✓ Digitally Signed'
+    : '⚠ Signature Invalid';
+  const statusColor = signature.is_valid !== false ? '#16a34a' : '#dc2626';
+  return `<div class="sig">
+      <span style="color: ${statusColor}; font-weight: 600; font-size: 11px;">${status}</span><br />
+      ${escapeHtml(signature.signer_full_name)}<br />
+      ${signedDate}${signature.certificate_serial ? `<br /><span style="font-size: 10px; color: #666;">Cert: ${escapeHtml(signature.certificate_serial)}</span>` : ''}
+    </div>`;
 }
 
 /**

@@ -7,7 +7,7 @@
  */
 
 import type { LabOrder, LabOrderItem, LabResult } from '@/lib/types/laboratory';
-import type { FacilityInfo, PatientInfo, LayoutType } from './types';
+import type { FacilityInfo, PatientInfo, SignatureInfo, LayoutType } from './types';
 import {
   buildPrintDocument,
   escapeHtml,
@@ -43,6 +43,8 @@ export interface PrintLabReportData {
   order: LabOrder;
   patient?: LabReportPatientInfo;
   facility?: Partial<FacilityInfo>;
+  /** Digital signature data. When provided, renders signer identity in the signature block. */
+  signature?: SignatureInfo;
   layout?: LayoutType;
   theme?: string;
   verificationUrl?: string;
@@ -409,10 +411,12 @@ function buildTemplateData(data: PrintLabReportData): Record<string, unknown> {
       rows: rowsHtml,
     },
     signature: {
-      name: '',
+      name: data.signature?.signer_full_name || '',
       credentials: labReportDefaults.signature_credentials,
-      datetime: '',
-      status: reportStatus.label === 'Final' ? 'Electronically verified' : 'Not fully verified',
+      datetime: data.signature?.signed_at ? formatDateTime(data.signature.signed_at) : '',
+      status: data.signature
+        ? (data.signature.is_valid !== false ? '✓ Digitally Signed' : '⚠ Signature Invalid')
+        : '⚠ Not digitally signed',
     },
     system: {
       name: labReportDefaults.system_name,

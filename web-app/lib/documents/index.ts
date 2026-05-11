@@ -39,6 +39,7 @@ export type {
   PrintOptions,
   FacilityInfo,
   ClinicianInfo,
+  SignatureInfo,
   PatientInfo,
   RenderContext,
   PrintPrescriptionData,
@@ -83,6 +84,7 @@ export {
   escapeHtml,
   formatDate,
   formatDateTime,
+  renderSignatureColumn,
   resolveDataPath,
   resolveBinding,
   replaceBindings,
@@ -168,3 +170,13 @@ export {
   printDischargeDocument,
   type DischargeDocumentData,
 } from './print-discharge';
+
+export {
+  printSickNote,
+  type PrintSickNoteOptions,
+} from './print-sick-note';
+
+export {
+  printReferralLetter,
+  type PrintReferralOptions,
+} from './print-referral';

@@ -83,6 +83,7 @@ import {
 import { imagingApi } from '@/lib/api/imaging';
 import { printRadiologyReport } from '@/lib/documents';
 import { SignatureBadge } from '@/components/shared/signature-badge';
+import { useFacility } from '@/lib/context/facility-context';
 
 interface RadiologyReportPageProps {
   orderNumber: string;
@@ -97,6 +98,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
   const router = useRouter();
+  const { facilityDetail } = useFacility();
 
   // Form state
   const [technique, setTechnique] = useState('');
@@ -267,7 +269,7 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
         patient: {
           full_name: report.patient_name,
           mrn: report.patient_mrn,
-          age: '', // Would need to fetch from patient
+          age: '',
           sex: '',
         },
         order: {
@@ -276,6 +278,14 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
           ordered_at: order.ordered_at,
           clinical_indication: order.clinical_indication,
         },
+        facility: facilityDetail
+          ? {
+              name: facilityDetail.name,
+              address: `${facilityDetail.county_name ?? ''}, ${facilityDetail.sub_county_name ?? ''}`.replace(/^, |, $/g, ''),
+              phone: '',
+              license: facilityDetail.mfl_code || '',
+            }
+          : undefined,
       });
     } catch (error) {
       toast({

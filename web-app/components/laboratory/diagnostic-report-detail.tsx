@@ -22,10 +22,9 @@ import {
 import {
   AlertTriangle,
   CheckCircle2,
-  Download,
   ExternalLink,
-  Loader2,
   PenLine,
+  Printer,
   XCircle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
@@ -36,10 +35,13 @@ import {
   useFinalizeDiagnosticReport,
   useAmendDiagnosticReport,
   useCancelDiagnosticReport,
-  useGenerateReportPdf,
+  useLabOrder,
 } from '@/lib/hooks/use-laboratory';
 import { useToast } from '@/lib/hooks';
 import { formatDateTime } from '@/lib/utils/format';
+import { SignatureBadge } from '@/components/shared/signature-badge';
+import { useFacility } from '@/lib/context/facility-context';
+import { printLabReport } from '@/lib/documents';
 
 interface DiagnosticReportDetailProps {
   reportNumber: string;
@@ -57,7 +59,9 @@ export function DiagnosticReportDetail({
   const finalizeReport = useFinalizeDiagnosticReport();
   const amendReport = useAmendDiagnosticReport();
   const cancelReport = useCancelDiagnosticReport();
-  const generatePdf = useGenerateReportPdf();
+  const { facilityDetail } = useFacility();
+  const labOrderNumber = report?.lab_order_number ?? '';
+  const { data: labOrder } = useLabOrder(labOrderNumber);
 
   if (isLoading) {
     return <ReportDetailSkeleton />;
@@ -85,11 +89,11 @@ export function DiagnosticReportDetail({
   const canAmend = report.is_finalized;
   const canCancel =
     report.status !== 'CANCELLED' && report.status !== 'FINAL' && report.status !== 'AMENDED';
-  const canDownloadPdf = report.status !== 'CANCELLED';
+  const canPrint = report.status !== 'CANCELLED';
 
   const handleFinalize = async () => {
     try {
-      await finalizeReport.mutateAsync(report.id);
+      await finalizeReport.mutateAsync(report.report_number);
       toast({
         title: 'Report finalized',
         description: 'The diagnostic report has been finalized.',
@@ -115,7 +119,7 @@ export function DiagnosticReportDetail({
     }
     try {
       await amendReport.mutateAsync({
-        id: report.id,
+        reportNumber: report.report_number,
         conclusion: amendConclusion,
       });
       toast({
@@ -143,7 +147,7 @@ export function DiagnosticReportDetail({
       return;
     }
     try {
-      await cancelReport.mutateAsync({ id: report.id, reason: cancelReason });
+      await cancelReport.mutateAsync({ reportNumber: report.report_number, reason: cancelReason });
       toast({
         title: 'Report cancelled',
         description: 'The diagnostic report has been cancelled.',
@@ -159,18 +163,44 @@ export function DiagnosticReportDetail({
     }
   };
 
-  const handleDownloadPdf = async () => {
-    try {
-      await generatePdf.mutateAsync(report.id);
+  // Compute patient age from DOB
+  const patientAge = report.patient_dob
+    ? String(Math.floor((Date.now() - new Date(report.patient_dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)))
+    : '';
+  const patientSex = report.patient_gender === 'M' ? 'Male' : report.patient_gender === 'F' ? 'Female' : report.patient_gender || '';
+
+  const handlePrint = async () => {
+    if (!labOrder) {
       toast({
-        title: 'PDF downloaded',
-        description: 'The report PDF has been downloaded.',
+        title: 'Loading order data',
+        description: 'Please wait for the lab order to load.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      await printLabReport({
+        order: labOrder,
+        patient: {
+          full_name: report.patient_name,
+          mrn: report.patient_mrn || '',
+          age: patientAge,
+          sex: patientSex,
+        },
+        facility: facilityDetail
+          ? {
+              name: facilityDetail.name,
+              address: `${facilityDetail.county_name ?? ''}, ${facilityDetail.sub_county_name ?? ''}`.replace(/^, |, $/g, ''),
+              phone: '',
+              license: facilityDetail.mfl_code || '',
+            }
+          : undefined,
       });
     } catch (error) {
       toast({
         title: 'Error',
         description:
-          error instanceof Error ? error.message : 'Failed to download PDF',
+          error instanceof Error ? error.message : 'Failed to print report',
         variant: 'destructive',
       });
     }
@@ -183,18 +213,13 @@ export function DiagnosticReportDetail({
         helpContent="View and manage this diagnostic report. Finalize when ready, amend if corrections are needed, or download as PDF."
         actions={
           <>
-            {canDownloadPdf && (
+            {canPrint && (
               <Button
                 variant="outline"
-                onClick={handleDownloadPdf}
-                disabled={generatePdf.isPending}
+                onClick={handlePrint}
               >
-                {generatePdf.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4 mr-2" />
-                )}
-                Download PDF
+                <Printer className="h-4 w-4 mr-2" />
+                Print
               </Button>
             )}
 
@@ -203,24 +228,24 @@ export function DiagnosticReportDetail({
                 <AlertDialogTrigger asChild>
                   <Button>
                     <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Finalize
+                    Sign & Finalize
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <div className="flex items-center gap-2">
-                      <AlertDialogTitle>Finalize Report</AlertDialogTitle>
-                      <HelpPopover content="Finalizing marks this report as the official result. After finalization, it can only be amended, not edited directly." />
+                      <AlertDialogTitle>Sign & Finalize Report</AlertDialogTitle>
+                      <HelpPopover content="Signing and finalizing marks this report as the official result. After finalization, it can only be amended, not edited directly." />
                     </div>
                   </AlertDialogHeader>
                   <p className="text-sm text-muted-foreground">
-                    Are you sure you want to finalize this report? This action
+                    Are you sure you want to sign and finalize this report? This action
                     marks it as the official diagnostic report.
                   </p>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={handleFinalize}>
-                      Finalize Report
+                      Sign & Finalize
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -319,10 +344,18 @@ export function DiagnosticReportDetail({
             Created {formatDateTime(report.created_at)}
           </p>
         </div>
-        <ReportStatusBadge
-          status={report.status}
-          className="self-start sm:self-auto"
-        />
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <ReportStatusBadge
+            status={report.status}
+          />
+          {report.is_finalized && (
+            <SignatureBadge
+              documentType="DiagnosticReport"
+              documentId={report.id}
+              canSign={false}
+            />
+          )}
+        </div>
       </div>
 
       {/* Report Content */}

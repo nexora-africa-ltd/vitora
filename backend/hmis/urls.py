@@ -494,6 +494,8 @@ urlpatterns = [
     path("api/allied-health/", include("hmis.apps.allied_health.urls", namespace="allied_health")),
     # Referrals API
     path("api/referrals/", include("hmis.apps.referrals.urls", namespace="referrals")),
+    # Sick Notes API
+    path("api/sick-notes/", include("hmis.apps.sick_notes.urls", namespace="sick_notes")),
     # Procedures API
     path("api/procedures/", include("hmis.apps.procedures.urls", namespace="procedures")),
     # Theatre / Operating Room API

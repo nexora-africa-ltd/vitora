@@ -13,8 +13,11 @@ import {
   buildPrintDocument,
   escapeHtml,
   formatDate,
+  formatDateTime,
   openPrintWindow,
+  renderSignatureColumn,
 } from './renderer';
+import type { SignatureInfo } from './types';
 import { generateQRDataUri } from '@/lib/utils/qr';
 
 // =============================================================================
@@ -263,6 +266,8 @@ export interface DischargeDocumentData {
   showQrCode?: boolean;
   /** Facility logo URL (effective_logo_url from API) */
   facilityLogoUrl?: string | null;
+  /** Digital signature data. When provided, renders signer identity in the signature block. */
+  signature?: SignatureInfo;
 }
 
 // =============================================================================
@@ -566,6 +571,7 @@ ${showSig ? `
 <div class="signature-block">
   <div class="sig">
     <div class="line">Discharging Officer</div>
+    ${data.signature ? `<div style="font-size: 11px; margin-top: 4px;">${escapeHtml(data.signature.signer_full_name)}</div><div style="font-size: 10px; color: #666;">${formatDateTime(data.signature.signed_at)}</div>` : ''}
   </div>
   ${showQr && qrDataUri ? `
   <div class="qr-block">
@@ -574,7 +580,9 @@ ${showSig ? `
   </div>
   ` : ''}
   <div class="sig">
-    <div class="line">Patient / Guardian Signature</div>
+    ${data.signature
+      ? `<div style="color: ${data.signature.is_valid !== false ? '#16a34a' : '#dc2626'}; font-weight: 600; font-size: 11px;">${data.signature.is_valid !== false ? '✓ Digitally Signed' : '⚠ Signature Invalid'}</div>`
+      : '<div class="line">Patient / Guardian Signature</div>'}
   </div>
 </div>
 ` : ''}

@@ -40,6 +40,7 @@ class VerificationResult:
 
 # Registry of content extractors per document type
 SIGNABLE_DOCUMENT_TYPES = {
+    "DiagnosticReport",
     "LabResult",
     "Prescription",
     "Discharge",

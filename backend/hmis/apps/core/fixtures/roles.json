@@ -963,6 +963,14 @@
           "delete": true,
           "accept_order": true,
           "reject_order": true
+        },
+        "SickNote": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "issue_sick_note": true,
+          "revoke_sick_note": true
         }
       },
       "hierarchy_level": 0,
@@ -1525,6 +1533,14 @@
           "delete": false,
           "manage_dialysis": true,
           "perform_dialysis": true
+        },
+        "SickNote": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "issue_sick_note": true,
+          "revoke_sick_note": true
         }
       },
       "hierarchy_level": 2,
@@ -1912,6 +1928,14 @@
           "delete": false,
           "certify_death": true,
           "release_body": true
+        },
+        "SickNote": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "issue_sick_note": true,
+          "revoke_sick_note": true
         }
       },
       "hierarchy_level": 2,
@@ -2419,6 +2443,14 @@
           "delete": false,
           "manage_dialysis": true,
           "perform_dialysis": true
+        },
+        "SickNote": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "issue_sick_note": true,
+          "revoke_sick_note": true
         }
       },
       "hierarchy_level": 3,
@@ -2791,6 +2823,14 @@
           "read": true,
           "update": false,
           "delete": false
+        },
+        "SickNote": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false,
+          "issue_sick_note": false,
+          "revoke_sick_note": false
         }
       },
       "hierarchy_level": 4,
@@ -3235,6 +3275,12 @@
           "update": false,
           "delete": false,
           "approve_swap": false
+        },
+        "SickNote": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
         }
       },
       "hierarchy_level": 5,
@@ -3282,6 +3328,12 @@
           "delete": false
         },
         "CheckIn": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "SickNote": {
           "create": false,
           "read": true,
           "update": false,
