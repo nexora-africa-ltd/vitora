@@ -25,7 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CheckCircle2, XCircle, QrCode, FileText, Loader2, Shield } from 'lucide-react';
+import { CheckCircle2, XCircle, QrCode, FileText, Loader2, Shield, Camera } from 'lucide-react';
+import { QRScannerDialog } from '@/components/patients/qr-scanner-dialog';
 
 interface VerificationResult {
   valid: boolean;
@@ -182,6 +183,44 @@ export default function VerifyPage() {
 
               {/* QR Code Tab */}
               <TabsContent value="qr" className="space-y-4 mt-4">
+                <QRScannerDialog
+                  raw
+                  onScan={(text) => {
+                    setQrData(text);
+                    // Auto-verify after scan
+                    setIsLoading(true);
+                    setResult(null);
+                    fetch(
+                      `${process.env.NEXT_PUBLIC_API_URL || ''}/api/core/verify/?qr_data=${encodeURIComponent(text)}`
+                    )
+                      .then((res) => res.json())
+                      .then((data) => setResult(data))
+                      .catch(() =>
+                        setResult({
+                          valid: false,
+                          message: 'Failed to connect to verification server',
+                          error: 'Network error',
+                        })
+                      )
+                      .finally(() => setIsLoading(false));
+                  }}
+                  trigger={
+                    <Button variant="outline" className="w-full h-11">
+                      <Camera className="mr-2 h-4 w-4" />
+                      Scan with Camera
+                    </Button>
+                  }
+                />
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">or paste QR data</span>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="qr-data">QR Code Data</Label>
                   <Textarea
@@ -192,9 +231,6 @@ export default function VerifyPage() {
                     rows={4}
                     className="font-mono text-sm"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Use a QR scanner app to scan the code, then paste the content here
-                  </p>
                 </div>
                 <Button
                   onClick={verifyWithQR}
