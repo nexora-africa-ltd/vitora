@@ -225,6 +225,9 @@ export interface DiagnosticReport {
   lab_order: number;
   lab_order_number: string;
   patient_name: string;
+  patient_mrn?: string;
+  patient_gender?: string;
+  patient_dob?: string;
   status: DiagnosticReportStatus;
   status_display: string;
   is_finalized: boolean;

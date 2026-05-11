@@ -10,6 +10,7 @@ import type {
   FacilityInfo,
   ClinicianInfo,
   PatientInfo,
+  SignatureInfo,
   LayoutType,
   RenderContext,
 } from './types';
@@ -20,6 +21,7 @@ import {
   openPrintWindow,
   escapeHtml,
   formatDate,
+  renderSignatureColumn,
 } from './renderer';
 import { getPrescriptionQRContent, type QRContent } from '@/lib/utils/qr';
 
@@ -98,9 +100,7 @@ const PRESCRIPTION_TEMPLATE = `
       Prescribing Clinician<br />
       {{clinician.name}} ({{clinician.registration}})
     </div>
-    <div class="sig">
-      Signature & Stamp
-    </div>
+    {{signature_column}}
   </div>
 
   <div class="footer">
@@ -229,6 +229,8 @@ export interface PrintPrescriptionOptions {
   facility?: FacilityInfo;
   /** Clinician information for signature */
   clinician?: ClinicianInfo;
+  /** Digital signature data. When provided, renders signer identity instead of static placeholder. */
+  signature?: SignatureInfo;
   /** Encounter ID */
   encounterId?: number | string;
   /** Layout format */
@@ -274,6 +276,7 @@ export async function printPrescription(options: PrintPrescriptionOptions): Prom
     patient,
     facility,
     clinician,
+    signature,
     encounterId,
     layout = 'a4',
     theme = 'default',
@@ -332,12 +335,15 @@ export async function printPrescription(options: PrintPrescriptionOptions): Prom
   };
 
   // Render the document with QR code
-  const bodyHtml = await renderDocumentAsync(
+  let bodyHtml = await renderDocumentAsync(
     PRESCRIPTION_TEMPLATE,
     prescriptionSchema,
     context,
     qrContent
   );
+
+  // Digital signature
+  bodyHtml = bodyHtml.replace(/\{\{signature_column\}\}/g, renderSignatureColumn(signature));
 
   // Build complete HTML with CSS
   const title = `Prescription - ${prescription.prescription_number}`;

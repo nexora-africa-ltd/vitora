@@ -135,6 +135,19 @@ export interface ClinicianInfo {
 }
 
 /**
+ * Digital signature information for printed documents.
+ *
+ * When present, the print template replaces the static "Signature & Stamp"
+ * placeholder with actual signer identity and verification status.
+ */
+export interface SignatureInfo {
+  signer_full_name: string;
+  signed_at: string;
+  certificate_serial?: string;
+  is_valid?: boolean;
+}
+
+/**
  * Patient information for documents
  */
 export interface PatientInfo {

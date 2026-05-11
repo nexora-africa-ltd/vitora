@@ -676,11 +676,11 @@ export const laboratoryApi = {
    * Update a diagnostic report.
    */
   async updateDiagnosticReport(
-    id: number,
+    reportNumber: string,
     data: Partial<DiagnosticReport>
   ): Promise<DiagnosticReport> {
     const response = await apiClient.patch<DiagnosticReport>(
-      `/api/lab/diagnostic-reports/${id}/`,
+      `/api/lab/diagnostic-reports/${reportNumber}/`,
       data
     );
     return parseResponse(DiagnosticReportSchema, response.data, {
@@ -691,9 +691,9 @@ export const laboratoryApi = {
   /**
    * Finalize a diagnostic report.
    */
-  async finalizeDiagnosticReport(id: number): Promise<DiagnosticReport> {
+  async finalizeDiagnosticReport(reportNumber: string): Promise<DiagnosticReport> {
     const response = await apiClient.post<DiagnosticReport>(
-      `/api/lab/diagnostic-reports/${id}/finalize/`
+      `/api/lab/diagnostic-reports/${reportNumber}/finalize/`
     );
     return parseResponse(DiagnosticReportSchema, response.data, {
       context: 'laboratoryApi.finalizeDiagnosticReport',
@@ -703,9 +703,9 @@ export const laboratoryApi = {
   /**
    * Amend a diagnostic report.
    */
-  async amendDiagnosticReport(id: number, conclusion: string): Promise<DiagnosticReport> {
+  async amendDiagnosticReport(reportNumber: string, conclusion: string): Promise<DiagnosticReport> {
     const response = await apiClient.post<DiagnosticReport>(
-      `/api/lab/diagnostic-reports/${id}/amend/`,
+      `/api/lab/diagnostic-reports/${reportNumber}/amend/`,
       {
         conclusion,
       }
@@ -718,9 +718,9 @@ export const laboratoryApi = {
   /**
    * Cancel a diagnostic report.
    */
-  async cancelDiagnosticReport(id: number, reason: string): Promise<DiagnosticReport> {
+  async cancelDiagnosticReport(reportNumber: string, reason: string): Promise<DiagnosticReport> {
     const response = await apiClient.post<DiagnosticReport>(
-      `/api/lab/diagnostic-reports/${id}/cancel/`,
+      `/api/lab/diagnostic-reports/${reportNumber}/cancel/`,
       {
         reason,
       }
@@ -733,9 +733,9 @@ export const laboratoryApi = {
   /**
    * Generate and download a diagnostic report PDF.
    */
-  async downloadDiagnosticReportPdf(id: number): Promise<Blob> {
+  async downloadDiagnosticReportPdf(reportNumber: string): Promise<Blob> {
     const pdfResponse = await apiClient.post<{ pdf_url?: string | null }>(
-      `/api/lab/diagnostic-reports/${id}/generate_pdf/`
+      `/api/lab/diagnostic-reports/${reportNumber}/generate_pdf/`
     );
     const pdfData = parseResponse(
       z.object({ pdf_url: z.string().nullable().optional() }),

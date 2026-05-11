@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     "hmis.apps.immunizations.apps.ImmunizationsConfig",
     "hmis.apps.allied_health.apps.AlliedHealthConfig",
     "hmis.apps.referrals.apps.ReferralsConfig",
+    "hmis.apps.sick_notes.apps.SickNotesConfig",
     "hmis.apps.quality.apps.QualityConfig",
     "hmis.apps.cds.apps.CDSConfig",
     "hmis.apps.ai.apps.AIConfig",

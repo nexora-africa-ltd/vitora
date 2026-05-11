@@ -61,8 +61,21 @@ export function SignatureBadge({ documentType, documentId, canSign = false }: Si
         queryKey: ['document-signatures', documentType, documentId],
       });
     },
-    onError: () => {
-      toast.error('Failed to sign document. Ensure you have an active certificate.');
+    onError: (err: unknown) => {
+      // Extract error message from API response
+      let message = 'Failed to sign document.';
+      if (err && typeof err === 'object' && 'response' in err) {
+        const resp = (err as { response?: { data?: Record<string, unknown> } }).response;
+        const d = resp?.data;
+        if (d) {
+          if (typeof d.error === 'string') message = d.error;
+          else if (typeof d.detail === 'string') message = d.detail;
+          else if (typeof d.message === 'string') message = d.message;
+        }
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      toast.error(message);
     },
   });
 

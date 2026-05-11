@@ -74,9 +74,9 @@ const STATUS_CONFIG: Record<LabOrderStatus, {
 };
 
 const PRIORITY_CONFIG: Record<LabPriority, { label: string; className: string }> = {
-  ROUTINE: { label: 'Routine', className: 'bg-gray-100 text-gray-700' },
-  URGENT: { label: 'Urgent', className: 'bg-orange-100 text-orange-700' },
-  STAT: { label: 'STAT', className: 'bg-red-100 text-red-700 font-bold' },
+  ROUTINE: { label: 'Routine', className: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' },
+  URGENT: { label: 'Urgent', className: 'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400' },
+  STAT: { label: 'STAT', className: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 font-bold' },
 };
 
 export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
@@ -355,13 +355,13 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
             <div className="flex items-center gap-3">
               <div className={cn(
                 'p-2 rounded-full',
-                statusConfig.variant === 'destructive' ? 'bg-red-100' :
-                statusConfig.variant === 'default' ? 'bg-green-100' : 'bg-gray-100'
+                statusConfig.variant === 'destructive' ? 'bg-red-100 dark:bg-red-950/40' :
+                statusConfig.variant === 'default' ? 'bg-green-100 dark:bg-green-950/40' : 'bg-gray-100 dark:bg-gray-800'
               )}>
                 <StatusIcon className={cn(
                   'h-5 w-5',
-                  statusConfig.variant === 'destructive' ? 'text-red-600' :
-                  statusConfig.variant === 'default' ? 'text-green-600' : 'text-gray-600'
+                  statusConfig.variant === 'destructive' ? 'text-red-600 dark:text-red-400' :
+                  statusConfig.variant === 'default' ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'
                 )} />
               </div>
               <div>
@@ -375,8 +375,8 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-green-100">
-                <User className="h-5 w-5 text-green-600" />
+              <div className="p-2 rounded-full bg-green-100 dark:bg-green-950/40">
+                <User className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Patient</p>
@@ -442,9 +442,9 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
           {order.cancellation_reason && (
             <>
               <Separator />
-              <div className="bg-red-50 p-3 rounded-md">
-                <p className="text-sm font-medium text-red-700 mb-1">Cancellation Reason</p>
-                <p className="text-sm text-red-600">{order.cancellation_reason}</p>
+              <div className="bg-red-50 dark:bg-red-950/30 p-3 rounded-md">
+                <p className="text-sm font-medium text-red-700 dark:text-red-400 mb-1">Cancellation Reason</p>
+                <p className="text-sm text-red-600 dark:text-red-300">{order.cancellation_reason}</p>
               </div>
             </>
           )}
@@ -466,7 +466,7 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
                 key={item.id}
                 className={cn(
                   'p-4 border rounded-lg',
-                  item.result?.is_critical_result && 'border-red-300 bg-red-50'
+                  item.result?.is_critical_result && 'border-red-500 dark:border-red-600 border-2'
                 )}
               >
                 <div className="flex items-start justify-between">

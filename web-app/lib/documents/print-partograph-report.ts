@@ -5,7 +5,7 @@
  */
 
 import type { LabourPartograph, LabourPartographObservation, MCHRegistration } from '@/lib/types/mch';
-import type { FacilityInfo, LayoutType } from './types';
+import type { FacilityInfo, SignatureInfo, LayoutType } from './types';
 import {
   buildPrintDocument,
   escapeHtml,
@@ -25,6 +25,8 @@ export interface PrintPartographReportData {
   partograph: LabourPartograph;
   observations: LabourPartographObservation[];
   facility?: Partial<FacilityInfo>;
+  /** Digital signature data. When provided, overrides report-level signer info. */
+  signature?: SignatureInfo;
   layout?: LayoutType;
   theme?: string;
   verificationUrl?: string;
@@ -587,10 +589,12 @@ function buildTemplateData(data: PrintPartographReportData): Record<string, unkn
       rows: buildObservationRows(data.observations),
     },
     signature: {
-      name: escapeHtml(latestObservation?.recorded_by_name || data.partograph.created_by_name || data.registration.registered_by_name || ''),
+      name: data.signature?.signer_full_name || escapeHtml(latestObservation?.recorded_by_name || data.partograph.created_by_name || data.registration.registered_by_name || ''),
       credentials: partographReportDefaults.signature_credentials,
-      datetime: escapeHtml(latestObservation ? formatDateTime(latestObservation.observation_time) : formatDateTime(data.partograph.started_at)),
-      status: data.partograph.status === 'COMPLETED' ? 'Labour chart completed' : 'Live labour monitoring record',
+      datetime: data.signature?.signed_at ? formatDateTime(data.signature.signed_at) : escapeHtml(latestObservation ? formatDateTime(latestObservation.observation_time) : formatDateTime(data.partograph.started_at)),
+      status: data.signature
+        ? (data.signature.is_valid !== false ? '✓ Digitally Signed' : '⚠ Signature Invalid')
+        : (data.partograph.status === 'COMPLETED' ? 'Labour chart completed' : 'Live labour monitoring record'),
     },
     system: {
       name: partographReportDefaults.system_name,

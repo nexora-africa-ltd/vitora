@@ -1646,6 +1646,7 @@ class DiagnosticReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "issued_by",
         "amended_by",
     ).all()
+    lookup_field = "report_number"
     permission_classes = [IsAuthenticated]
     filterset_class = DiagnosticReportFilter
     tenant_facility_chain = "lab_order__facility"
@@ -1673,7 +1674,7 @@ class DiagnosticReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
-    def finalize(self, request, pk=None):
+    def finalize(self, request, report_number=None):
         """
         Finalize a draft diagnostic report.
 
@@ -1684,14 +1685,14 @@ class DiagnosticReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             report.finalize()
             return Response(DiagnosticReportSerializer(report, context={"request": request}).data)
         except Exception as e:
-            logger.exception("Error finalizing diagnostic report %s", pk)
+            logger.exception("Error finalizing diagnostic report %s", report_number)
             return Response(
                 {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
     @action(detail=True, methods=["post"])
-    def amend(self, request, pk=None):
+    def amend(self, request, report_number=None):
         """
         Amend a finalized diagnostic report.
 
@@ -1708,14 +1709,14 @@ class DiagnosticReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             )
             return Response(DiagnosticReportSerializer(report, context={"request": request}).data)
         except Exception as e:
-            logger.exception("Error amending diagnostic report %s", pk)
+            logger.exception("Error amending diagnostic report %s", report_number)
             return Response(
                 {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
     @action(detail=True, methods=["post"])
-    def cancel(self, request, pk=None):
+    def cancel(self, request, report_number=None):
         """
         Cancel a diagnostic report.
 
@@ -1729,14 +1730,14 @@ class DiagnosticReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             report.cancel(reason=serializer.validated_data["reason"])
             return Response(DiagnosticReportSerializer(report, context={"request": request}).data)
         except Exception as e:
-            logger.exception("Error cancelling diagnostic report %s", pk)
+            logger.exception("Error cancelling diagnostic report %s", report_number)
             return Response(
                 {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
     @action(detail=True, methods=["post"], url_path="generate_pdf")
-    def generate_pdf(self, request, pk=None):
+    def generate_pdf(self, request, report_number=None):
         """
         Generate PDF for a diagnostic report.
 

@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -92,6 +92,13 @@ export default function ReferralsPage() {
         <PageHeader
           title="Referrals"
           helpContent="View and manage all clinical referrals. Track referrals across departments — allied health, specialty clinics, admissions, and external facilities."
+          actions={
+            <Button onClick={() => router.push('/referrals/new')} size="sm">
+              <Plus className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">New Referral</span>
+              <span className="sm:hidden">New</span>
+            </Button>
+          }
         />
 
         {/* Filters */}

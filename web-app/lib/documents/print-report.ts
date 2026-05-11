@@ -9,6 +9,7 @@ import type { RadiologyReport } from '@/lib/types/imaging';
 import type {
   FacilityInfo,
   PatientInfo,
+  SignatureInfo,
   LayoutType,
   RenderContext,
 } from './types';
@@ -62,6 +63,8 @@ export interface PrintRadiologyReportData {
   order: ReportOrderInfo;
   /** Facility information (optional, uses defaults if not provided) */
   facility?: Partial<FacilityInfo>;
+  /** Digital signature data. When provided, overrides report-level signer info. */
+  signature?: SignatureInfo;
   /** Layout override */
   layout?: LayoutType;
 }
@@ -417,10 +420,12 @@ function buildTemplateData(data: PrintRadiologyReportData): Record<string, unkno
       items: amendmentItemsHtml,
     },
     signature: {
-      name: report.reported_by_name || '',
+      name: data.signature?.signer_full_name || report.reported_by_name || '',
       credentials: radiologyReportDefaults.radiologist_credentials,
-      datetime: signatureDatetime,
-      status: signatureStatus,
+      datetime: data.signature?.signed_at ? formatDateTime(data.signature.signed_at) : signatureDatetime,
+      status: data.signature
+        ? (data.signature.is_valid !== false ? '✓ Digitally Signed' : '⚠ Signature Invalid')
+        : signatureStatus,
     },
     system: {
       name: radiologyReportDefaults.system_name,
