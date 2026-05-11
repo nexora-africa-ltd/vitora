@@ -38,6 +38,7 @@ import { SignatureBadge } from '@/components/shared/signature-badge';
 import { sickNotesApi } from '@/lib/api/sick-notes';
 import { signaturesApi } from '@/lib/api/certificates';
 import { printSickNote } from '@/lib/documents/print-sick-note';
+import { useFacility } from '@/lib/context/facility-context';
 import type { SickNoteStatus } from '@/lib/types/sick-note';
 import { SICK_NOTE_STATUS_CONFIG } from '@/lib/types/sick-note';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -54,6 +55,7 @@ export default function SickNoteDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { facilityDetail } = useFacility();
   const id = Number(params.id);
 
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
@@ -127,7 +129,18 @@ export default function SickNoteDetailPage() {
     } catch {
       // Print without signature data if fetch fails
     }
-    printSickNote({ sickNote, signature });
+    printSickNote({
+      sickNote,
+      signature,
+      facility: facilityDetail
+        ? {
+            name: facilityDetail.name,
+            address: `${facilityDetail.county_name ?? ''}, ${facilityDetail.sub_county_name ?? ''}`.replace(/^, |, $/g, ''),
+            phone: '',
+            license: facilityDetail.mfl_code || '',
+          }
+        : undefined,
+    });
   };
 
   if (isLoading || !sickNote) {
