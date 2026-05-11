@@ -40,11 +40,13 @@ class VerificationResult:
 
 # Registry of content extractors per document type
 SIGNABLE_DOCUMENT_TYPES = {
+    "ClinicalReferral",
     "DiagnosticReport",
     "LabResult",
     "Prescription",
     "Discharge",
     "RadiologyReport",
+    "SickNote",
 }
 
 
@@ -272,6 +274,9 @@ class DocumentSigningService:
             "Prescription": self._extract_prescription,
             "Discharge": self._extract_discharge,
             "RadiologyReport": self._extract_radiology_report,
+            "DiagnosticReport": self._extract_diagnostic_report,
+            "SickNote": self._extract_sick_note,
+            "ClinicalReferral": self._extract_clinical_referral,
         }
 
         extractor = extractors.get(document_type)
@@ -288,6 +293,9 @@ class DocumentSigningService:
             "Prescription": ("pharmacy", "Prescription"),
             "Discharge": ("inpatient", "Discharge"),
             "RadiologyReport": ("imaging", "RadiologyReport"),
+            "DiagnosticReport": ("laboratory", "DiagnosticReport"),
+            "SickNote": ("sick_notes", "SickNote"),
+            "ClinicalReferral": ("referrals", "ClinicalReferral"),
         }
 
         app_model = model_map.get(document_type)
@@ -388,4 +396,51 @@ class DocumentSigningService:
             "recommendations": doc.recommendations,
             "status": doc.status,
             "reported_by_id": doc.reported_by_id,
+        }
+
+    def _extract_diagnostic_report(self, doc) -> dict:
+        """Extract signable content from a DiagnosticReport."""
+        return {
+            "type": "DiagnosticReport",
+            "id": doc.pk,
+            "report_number": doc.report_number,
+            "patient_id": doc.lab_order.patient_id if doc.lab_order else None,
+            "conclusion": doc.conclusion,
+            "clinical_info": doc.clinical_info,
+            "status": doc.status,
+            "issued_by_id": doc.issued_by_id,
+            "issued_at": str(doc.issued_at) if doc.issued_at else None,
+        }
+
+    def _extract_sick_note(self, doc) -> dict:
+        """Extract signable content from a SickNote."""
+        return {
+            "type": "SickNote",
+            "id": doc.pk,
+            "note_number": doc.note_number,
+            "patient_id": doc.patient_id,
+            "diagnosis_text": doc.diagnosis_text,
+            "diagnosis_code": doc.diagnosis_code,
+            "leave_start_date": str(doc.leave_start_date),
+            "leave_end_date": str(doc.leave_end_date),
+            "recommendations": doc.recommendations,
+            "status": doc.status,
+            "issued_by_id": doc.issued_by_id,
+            "issued_at": str(doc.issued_at) if doc.issued_at else None,
+        }
+
+    def _extract_clinical_referral(self, doc) -> dict:
+        """Extract signable content from a ClinicalReferral."""
+        return {
+            "type": "ClinicalReferral",
+            "id": doc.pk,
+            "referral_number": doc.referral_number,
+            "referral_type": doc.referral_type,
+            "patient_id": doc.patient_id,
+            "reason": doc.reason,
+            "clinical_notes": doc.clinical_notes,
+            "priority": doc.priority,
+            "provisional_diagnosis": doc.provisional_diagnosis,
+            "status": doc.status,
+            "referred_by_id": doc.referred_by_id,
         }
