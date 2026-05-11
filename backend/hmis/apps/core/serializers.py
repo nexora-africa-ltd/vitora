@@ -1299,6 +1299,7 @@ class DocumentSignatureSerializer(serializers.ModelSerializer):
 
     signer_username = serializers.CharField(source="signer.username", read_only=True)
     signer_name = serializers.SerializerMethodField()
+    signer_full_name = serializers.SerializerMethodField()
     certificate_serial = serializers.CharField(source="certificate.serial_number", read_only=True)
 
     class Meta:
@@ -1310,6 +1311,7 @@ class DocumentSignatureSerializer(serializers.ModelSerializer):
             "signer",
             "signer_username",
             "signer_name",
+            "signer_full_name",
             "certificate",
             "certificate_serial",
             "content_hash",
@@ -1326,14 +1328,23 @@ class DocumentSignatureSerializer(serializers.ModelSerializer):
             return ""
         return obj.signer.get_full_name().strip() or obj.signer.username
 
+    def get_signer_full_name(self, obj) -> str:
+        return self.get_signer_name(obj)
+
 
 class SignDocumentRequestSerializer(serializers.Serializer):
     """Request serializer for signing a document."""
 
     document_type = serializers.ChoiceField(
-        choices=["LabResult", "Prescription", "Discharge", "RadiologyReport"],
+        choices=[],  # Set dynamically from SIGNABLE_DOCUMENT_TYPES
     )
     document_id = serializers.IntegerField(min_value=1)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .services.signing_service import SIGNABLE_DOCUMENT_TYPES
+
+        self.fields["document_type"].choices = sorted(SIGNABLE_DOCUMENT_TYPES)
 
 
 class VerifySignatureRequestSerializer(serializers.Serializer):

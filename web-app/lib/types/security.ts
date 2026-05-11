@@ -112,11 +112,11 @@ export interface DocumentSignature {
   document_id: number;
   signer: number;
   signer_username: string;
+  signer_name?: string;
   signer_full_name: string;
   certificate: number;
   certificate_serial: string;
   content_hash: string;
-  signature: string;
   hash_algorithm: string;
   signed_at: string;
   is_valid: boolean;

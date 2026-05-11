@@ -42,6 +42,7 @@ import { formatDateTime } from '@/lib/utils/format';
 import { SignatureBadge } from '@/components/shared/signature-badge';
 import { useFacility } from '@/lib/context/facility-context';
 import { printLabReport } from '@/lib/documents';
+import { signaturesApi } from '@/lib/api/certificates';
 
 interface DiagnosticReportDetailProps {
   reportNumber: string;
@@ -179,6 +180,21 @@ export function DiagnosticReportDetail({
       return;
     }
     try {
+      // Fetch signature data for the report (if signed)
+      let signatureData: { signer_full_name: string; signed_at: string; certificate_serial?: string; is_valid?: boolean } | undefined;
+      try {
+        const sigs = await signaturesApi.forDocument('DiagnosticReport', report.id);
+        if (sigs.length > 0) {
+          signatureData = {
+            signer_full_name: sigs[0].signer_full_name,
+            signed_at: sigs[0].signed_at,
+            certificate_serial: sigs[0].certificate_serial,
+            is_valid: sigs[0].is_valid,
+          };
+        }
+      } catch {
+        // Signature fetch failed — print without signature info
+      }
       await printLabReport({
         order: labOrder,
         patient: {
@@ -187,6 +203,7 @@ export function DiagnosticReportDetail({
           age: patientAge,
           sex: patientSex,
         },
+        signature: signatureData,
         facility: facilityDetail
           ? {
               name: facilityDetail.name,
@@ -352,7 +369,7 @@ export function DiagnosticReportDetail({
             <SignatureBadge
               documentType="DiagnosticReport"
               documentId={report.id}
-              canSign={false}
+              canSign={true}
             />
           )}
         </div>
