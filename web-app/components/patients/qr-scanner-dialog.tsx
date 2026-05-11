@@ -13,17 +13,21 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface QRScannerDialogProps {
-  /** Called with the decoded MRN when scan succeeds */
-  onScan: (mrn: string) => void;
+  /** Called with the decoded text when scan succeeds */
+  onScan: (text: string) => void;
   /** Button label override */
   label?: string;
+  /** When true, returns raw QR text without Vitora MRN parsing */
+  raw?: boolean;
+  /** Custom trigger element (replaces default button) */
+  trigger?: React.ReactNode;
 }
 
 /**
  * QR scanner dialog using the device camera.
  * Decodes Vitora patient QR codes (format: VITORA:MRN:{mrn}).
  */
-export function QRScannerDialog({ onScan, label }: QRScannerDialogProps) {
+export function QRScannerDialog({ onScan, label, raw, trigger }: QRScannerDialogProps) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -63,6 +67,13 @@ export function QRScannerDialog({ onScan, label }: QRScannerDialogProps) {
           aspectRatio: 1,
         },
         (decodedText) => {
+          if (raw) {
+            // Return raw text without any parsing
+            onScan(decodedText);
+            stopScanner();
+            setOpen(false);
+            return;
+          }
           // Parse Vitora QR format: VITORA:MRN:{mrn}
           const match = decodedText.match(/^VITORA:MRN:(.+)$/);
           if (match?.[1]) {
@@ -122,10 +133,12 @@ export function QRScannerDialog({ onScan, label }: QRScannerDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="h-11 sm:h-12 w-full sm:w-auto">
-          <ScanLine className="mr-2 h-4 w-4" />
-          {label ?? 'Scan QR'}
-        </Button>
+        {trigger ?? (
+          <Button variant="outline" className="h-11 sm:h-12 w-full sm:w-auto">
+            <ScanLine className="mr-2 h-4 w-4" />
+            {label ?? 'Scan QR'}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-sm">
         <DialogHeader>

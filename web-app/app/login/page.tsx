@@ -179,7 +179,7 @@ export default function LoginPage() {
     <div className="relative min-h-screen">
       {/* Full-bleed background: branding gradient fading into background color */}
       <div className="absolute inset-0 bg-background" />
-      <div className="absolute inset-0 bg-gradient-to-br from-brand-burgundy-900 via-brand-burgundy-900 to-brand-teal-600 lg:[mask-image:linear-gradient(to_right,black_35%,transparent_65%)]" />
+      <div className="absolute inset-0 bg-gradient-to-br from-brand-teal-900 via-brand-teal-800 to-brand-teal-600 lg:[mask-image:linear-gradient(to_right,black_35%,transparent_65%)]" />
 
       {/* Theme toggle */}
       <AnimatedThemeToggle className="absolute top-4 right-4 z-50" />
@@ -189,7 +189,7 @@ export default function LoginPage() {
       <div className="hidden lg:flex lg:w-1/2 p-12 flex-col relative">
         <div className="w-64">
           <VitoraLogo
-            tone="burgundy-teal"
+            tone="white"
             alt={APP_NAME}
             className="w-full"
             priority
@@ -236,7 +236,7 @@ export default function LoginPage() {
 
       {/* Right side - Login form */}
       <div className="relative flex w-full lg:w-1/2 items-center justify-center p-4 sm:p-8">
-        <Card className="relative z-10 w-full max-w-md border-brand-burgundy-200 dark:border-muted/30 shadow-none lg:shadow-lg lg:border-2 transition-shadow duration-300 hover:shadow-2xl overflow-hidden">
+        <Card className="relative z-10 w-full max-w-md border-brand-teal-200 dark:border-muted/30 shadow-none lg:shadow-lg lg:border-2 transition-shadow duration-300 hover:shadow-2xl overflow-hidden">
           {/* Background logo watermark - centered in card */}
           {mounted && (
             <VitoraLogo
@@ -383,6 +383,14 @@ export default function LoginPage() {
                     className="font-medium text-primary dark:text-brand-teal-400 hover:text-primary/80 dark:hover:text-brand-teal-300 transition-colors"
                   >
                     Sign up
+                  </Link>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <Link
+                    href="/verify"
+                    className="font-medium underline text-primary dark:text-brand-teal-400 hover:text-primary/80 dark:hover:text-brand-teal-300 transition-colors"
+                  >
+                    Verify a document
                   </Link>
                 </p>
               </div>
