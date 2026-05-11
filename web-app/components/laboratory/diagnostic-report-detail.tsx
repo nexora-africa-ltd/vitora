@@ -184,7 +184,7 @@ export function DiagnosticReportDetail({
       let signatureData: { signer_full_name: string; signed_at: string; certificate_serial?: string; is_valid?: boolean } | undefined;
       try {
         const sigs = await signaturesApi.forDocument('DiagnosticReport', report.id);
-        if (sigs.length > 0) {
+        if (sigs.length > 0 && sigs[0]) {
           signatureData = {
             signer_full_name: sigs[0].signer_full_name,
             signed_at: sigs[0].signed_at,

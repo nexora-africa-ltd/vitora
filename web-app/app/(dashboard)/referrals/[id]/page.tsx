@@ -39,6 +39,7 @@ import { SignatureBadge } from '@/components/shared/signature-badge';
 import { referralsApi } from '@/lib/api/referrals';
 import { signaturesApi } from '@/lib/api/certificates';
 import { printReferralLetter } from '@/lib/documents/print-referral';
+import { useFacility } from '@/lib/context/facility-context';
 import {
   REFERRAL_STATUS_CONFIG,
   REFERRAL_PRIORITY_CONFIG,
@@ -68,6 +69,7 @@ export default function ReferralDetailPage() {
   const params = useParams();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { facilityDetail } = useFacility();
   const id = Number(params.id);
 
   const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
@@ -160,7 +162,18 @@ export default function ReferralDetailPage() {
     } catch {
       // Print without signature data if fetch fails
     }
-    printReferralLetter({ referral, signature });
+    printReferralLetter({
+      referral,
+      signature,
+      facility: facilityDetail
+        ? {
+            name: facilityDetail.name,
+            address: `${facilityDetail.county_name ?? ''}, ${facilityDetail.sub_county_name ?? ''}`.replace(/^, |, $/g, ''),
+            phone: '',
+            license: facilityDetail.mfl_code || '',
+          }
+        : undefined,
+    });
   };
 
   if (isLoading || !referral) {
