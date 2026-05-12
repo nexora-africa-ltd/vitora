@@ -66,6 +66,8 @@ app.conf.task_routes = {
     "hmis.apps.scheduling.tasks.mark_absent_shifts": {"queue": "monitoring"},
     "hmis.apps.scheduling.tasks.auto_clock_out_stale_shifts": {"queue": "monitoring"},
     "hmis.apps.scheduling.tasks.send_shift_reminders": {"queue": "monitoring"},
+    # HWR license verification
+    "hmis.apps.core.tasks.verify_staff_hwr_licenses": {"queue": "monitoring"},
     # Laboratory analyzer tasks
     "laboratory.analyzers.check_channel_health": {"queue": "monitoring"},
     "laboratory.analyzers.retry_failed_messages": {"queue": "maintenance"},
@@ -244,6 +246,11 @@ app.conf.beat_schedule = {
     "lab-broadcast-work-orders": {
         "task": "laboratory.analyzers.broadcast_work_orders",
         "schedule": crontab(minute="*/10"),
+    },
+    # HWR: Verify staff licenses weekly (Sunday 4 AM)
+    "core-verify-staff-hwr-licenses": {
+        "task": "hmis.apps.core.tasks.verify_staff_hwr_licenses",
+        "schedule": crontab(minute=0, hour=4, day_of_week="sunday"),
     },
 }
 

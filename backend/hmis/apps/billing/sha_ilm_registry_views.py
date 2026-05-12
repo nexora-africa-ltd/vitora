@@ -68,6 +68,8 @@ def _ilm_handle_error(view_name: str, exc: DHAError, *, extra: dict | None = Non
     with contextlib.suppress(Exception):  # telemetry must not break the API
         publish_event(
             BillingEvents.DHA_REGISTRY_CALL_FAILED,
+            "dha_registry",
+            0,
             {
                 "view": view_name,
                 "error": exc.__class__.__name__,

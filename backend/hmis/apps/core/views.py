@@ -1209,6 +1209,92 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         return Response({"suggestions": suggestions})
 
+    @action(detail=False, methods=["get"])
+    def license_summary(self, request):
+        """Return license status summary for the current org's licensed staff.
+
+        GET /api/staff/license_summary/
+
+        Returns counts of valid, expired, expiring-soon, and unverified
+        licenses for staff whose role requires a license.
+
+        For non-admin users, returns only the caller's own license status.
+        """
+        from datetime import date, timedelta
+
+        today = date.today()
+        expiry_threshold = today + timedelta(days=30)
+
+        base_qs = self.get_queryset().filter(
+            primary_role__requires_license=True,
+            employment_status="ACTIVE",
+        )
+
+        # Non-admin users get only their own license status
+        staff_profile = getattr(request.user, "staff_profile", None)
+        is_admin = request.user.is_superuser or (
+            staff_profile
+            and staff_profile.primary_role
+            and staff_profile.primary_role.code in ("ADMIN", "ORG-ADMIN", "OWNER")
+        )
+
+        if not is_admin:
+            base_qs = base_qs.filter(user=request.user)
+
+        total = base_qs.count()
+        verified = base_qs.filter(license_verified=True).count()
+        unverified = total - verified
+
+        expired = base_qs.filter(license_expiry__lt=today).count()
+        expiring_soon = base_qs.filter(
+            license_expiry__gte=today,
+            license_expiry__lte=expiry_threshold,
+        ).count()
+        valid = base_qs.filter(license_expiry__gt=expiry_threshold).count()
+        no_expiry = base_qs.filter(license_expiry__isnull=True).count()
+
+        # For individual staff, include their own status
+        my_status = None
+        if (
+            staff_profile
+            and staff_profile.primary_role
+            and staff_profile.primary_role.requires_license
+        ):
+            my_license = {
+                "license_number": staff_profile.license_number,
+                "license_expiry": str(staff_profile.license_expiry)
+                if staff_profile.license_expiry
+                else None,
+                "license_verified": staff_profile.license_verified,
+                "licensing_body": staff_profile.licensing_body,
+                "hwr_last_verified_at": staff_profile.hwr_last_verified_at.isoformat()
+                if staff_profile.hwr_last_verified_at
+                else None,
+            }
+            if staff_profile.license_expiry:
+                if staff_profile.license_expiry < today:
+                    my_license["status"] = "expired"
+                elif staff_profile.license_expiry <= expiry_threshold:
+                    my_license["status"] = "expiring_soon"
+                else:
+                    my_license["status"] = "valid"
+            else:
+                my_license["status"] = "unknown"
+            my_status = my_license
+
+        return Response(
+            {
+                "total": total,
+                "valid": valid,
+                "expired": expired,
+                "expiring_soon": expiring_soon,
+                "unverified": unverified,
+                "no_expiry_set": no_expiry,
+                "is_admin_view": is_admin,
+                "my_license": my_status,
+            }
+        )
+
     def perform_destroy(self, instance):
         """
         Deactivate staff instead of deleting.

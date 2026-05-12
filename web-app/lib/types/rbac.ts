@@ -211,6 +211,8 @@ export interface StaffProfile {
   licensing_body?: string | null;
   is_license_valid?: boolean;
   specialization?: string | null;
+  hwr_national_id?: string | null;
+  hwr_last_verified_at?: string | null;
   phone_number?: string | null;
   emergency_contact_name?: string | null;
   emergency_contact_phone?: string | null;
@@ -254,6 +256,7 @@ export interface StaffProfileCreateData {
   license_expiry?: string;
   licensing_body?: string;
   specialization?: string;
+  hwr_national_id?: string;
   hire_date?: string;
 }
 
@@ -280,6 +283,25 @@ export interface UsernameCheckResponse {
 // Username suggestion response
 export interface UsernameSuggestionResponse {
   suggestions: string[];
+}
+
+// License summary from /api/staff/license_summary/
+export interface LicenseSummary {
+  total: number;
+  valid: number;
+  expired: number;
+  expiring_soon: number;
+  unverified: number;
+  no_expiry_set: number;
+  is_admin_view: boolean;
+  my_license: {
+    license_number: string;
+    license_expiry: string | null;
+    license_verified: boolean;
+    licensing_body: string;
+    hwr_last_verified_at: string | null;
+    status: 'valid' | 'expired' | 'expiring_soon' | 'unknown';
+  } | null;
 }
 
 // =============================================================================

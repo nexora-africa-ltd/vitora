@@ -676,22 +676,22 @@ export type FacilityValidationResponseSchemaType = z.infer<typeof FacilityValida
 
 export const DHAPractitionerMembershipSchema = z.object({
   id: z.string(),
-  status: z.string(),
-  salutation: z.string(),
+  status: z.string().default(''),
+  salutation: z.string().default(''),
   full_name: z.string(),
-  gender: z.string(),
+  gender: z.string().default(''),
   first_name: z.string(),
-  middle_name: z.string(),
+  middle_name: z.string().default(''),
   last_name: z.string(),
   registration_id: z.string(),
-  external_reference_id: z.string(),
+  external_reference_id: z.string().default(''),
   licensing_body: z.string(),
-  specialty: z.string(),
+  specialty: z.string().default(''),
   is_active: z.number(),
-  is_withdrawn: z.number(),
-  withdrawal_reason: z.string(),
-  withdrawal_date: z.string(),
-  license_expires_in_days: z.number(),
+  is_withdrawn: z.number().default(0),
+  withdrawal_reason: z.string().default(''),
+  withdrawal_date: z.string().default(''),
+  license_expires_in_days: z.number().default(0),
 });
 
 export const DHAPractitionerLicenseSchema = z.object({
@@ -703,25 +703,25 @@ export const DHAPractitionerLicenseSchema = z.object({
 });
 
 export const DHAPractitionerProfessionalDetailsSchema = z.object({
-  professional_cadre: z.string(),
-  practice_type: z.string(),
-  specialty: z.string(),
-  subspecialty: z.string(),
-  discipline_name: z.string(),
-  educational_qualifications: z.string(),
+  professional_cadre: z.string().default(''),
+  practice_type: z.string().default(''),
+  specialty: z.string().default(''),
+  subspecialty: z.string().default(''),
+  discipline_name: z.string().default(''),
+  educational_qualifications: z.string().default(''),
 });
 
 export const DHAPractitionerContactsSchema = z.object({
-  phone: z.string(),
-  email: z.string(),
-  postal_address: z.string(),
+  phone: z.string().default(''),
+  email: z.string().default(''),
+  postal_address: z.string().default(''),
 });
 
 export const DHAPractitionerIdentifiersSchema = z.object({
   identification_type: z.string(),
   identification_number: z.string(),
-  client_registry_id: z.string(),
-  student_id: z.string(),
+  client_registry_id: z.string().default(''),
+  student_id: z.string().default(''),
 });
 
 export const DHAPractitionerSchema = z.object({
