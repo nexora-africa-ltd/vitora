@@ -7,6 +7,8 @@ interoperability and ease of switching between providers.
 
 from __future__ import annotations
 
+import hashlib
+import hmac as hmac_mod
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -126,6 +128,32 @@ class KMSProvider(ABC):
             Decrypted plaintext string.
         """
         pass
+
+    def compute_hmac(self, plaintext: str, *, hmac_key: str | None = None) -> str:
+        """
+        Compute HMAC-SHA256 blind index for searchable encrypted fields.
+
+        Args:
+            plaintext: The value to compute an HMAC for.
+            hmac_key: Optional separate HMAC key. If not provided,
+                      uses PII_HMAC_KEY from Django settings.
+
+        Returns:
+            Hex-encoded HMAC-SHA256 digest (64 chars).
+        """
+        if not hmac_key:
+            from django.conf import settings
+
+            hmac_key = getattr(settings, "PII_HMAC_KEY", "")
+            if not hmac_key:
+                raise ValueError(
+                    "PII_HMAC_KEY must be set in Django settings for searchable encrypted fields"
+                )
+        return hmac_mod.new(
+            hmac_key.encode("utf-8"),
+            plaintext.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
 
     @abstractmethod
     def rotate_key(self) -> KeyMetadata:

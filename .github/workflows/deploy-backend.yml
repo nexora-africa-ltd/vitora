@@ -61,6 +61,7 @@ jobs:
             DJANGO_SETTINGS_MODULE=hmis.settings.staging
             DATABASE_URL=secretref:database-url
             ENCRYPTION_KEY=secretref:encryption-key
+            PII_HMAC_KEY=secretref:pii-hmac-key
             DJANGO_SECRET_KEY=secretref:django-secret-key
             DEBUG=false
             PORT=8000

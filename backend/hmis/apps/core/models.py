@@ -222,6 +222,12 @@ class AuditLog(models.Model):
             if organization is None:
                 organization = getattr(request, "organization", None)
         resolved_details = details or {}
+
+        # Redact PII values before persisting to audit log
+        from hmis.apps.core.pii import redact_pii
+
+        resolved_details = redact_pii(resolved_details)
+
         with transaction.atomic():
             # Get the last entry's hash and sequence for chaining.
             # Use select_for_update on databases that support it (PostgreSQL).
