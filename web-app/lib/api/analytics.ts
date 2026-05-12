@@ -12,6 +12,8 @@ import {
   PaginatedDiagnosisTrendSchema,
   PaginatedDemographicSnapshotSchema,
   MetabaseEmbedResponseSchema,
+  SupersetGuestTokenResponseSchema,
+  SupersetDashboardListSchema,
   ClinicQueueProjectionArraySchema,
   WardOccupancyProjectionArraySchema,
   PharmacyQueueProjectionArraySchema,
@@ -30,6 +32,8 @@ import type {
   MetabaseResourceType,
   MetabaseEmbedResponse,
   MetabaseDashboardInfo,
+  SupersetGuestTokenResponse,
+  SupersetDashboardInfo,
   ClinicQueueProjectionParams,
   ClinicQueueProjectionRow,
   WardOccupancyProjectionParams,
@@ -114,6 +118,30 @@ export const analyticsApi = {
   getMetabaseDashboards: async (): Promise<MetabaseDashboardInfo[]> => {
     const response = await apiClient.get('/api/analytics/metabase-dashboards/');
     return response.data;
+  },
+
+  /**
+   * Get a Superset guest token for embedding a dashboard.
+   */
+  getSupersetGuestToken: async (
+    dashboardId: number
+  ): Promise<SupersetGuestTokenResponse> => {
+    const response = await apiClient.get('/api/analytics/superset-guest-token/', {
+      params: { dashboard_id: dashboardId },
+    });
+    return parseResponse(SupersetGuestTokenResponseSchema, response.data, {
+      context: 'analyticsApi.getSupersetGuestToken',
+    });
+  },
+
+  /**
+   * List Superset dashboards available for embedding.
+   */
+  getSupersetDashboards: async (): Promise<SupersetDashboardInfo[]> => {
+    const response = await apiClient.get('/api/analytics/superset-dashboards/');
+    return parseResponse(SupersetDashboardListSchema, response.data, {
+      context: 'analyticsApi.getSupersetDashboards',
+    });
   },
 
   getClinicQueueProjection: async (

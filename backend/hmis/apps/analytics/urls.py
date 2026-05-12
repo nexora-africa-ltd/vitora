@@ -64,6 +64,18 @@ router.register(
 )
 
 urlpatterns = [
+    # Superset (primary)
+    path(
+        "superset-guest-token/",
+        views.SupersetGuestTokenView.as_view(),
+        name="superset-guest-token",
+    ),
+    path(
+        "superset-dashboards/",
+        views.SupersetDashboardListView.as_view(),
+        name="superset-dashboards",
+    ),
+    # Legacy Metabase (kept for backward compat)
     path("metabase-embed/", views.MetabaseEmbedView.as_view(), name="metabase-embed"),
     path(
         "metabase-dashboards/",

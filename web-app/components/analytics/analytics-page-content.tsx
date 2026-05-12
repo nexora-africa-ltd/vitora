@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * AnalyticsPageContent — wraps the built-in dashboard and the Metabase
+ * AnalyticsPageContent — wraps the built-in dashboard and the Superset
  * "Explore" tab in a tabbed container.
  */
 
@@ -16,14 +16,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { AnalyticsDashboard } from '@/components/analytics/analytics-dashboard';
-import { MetabaseEmbed } from '@/components/analytics/metabase-embed';
+import { SupersetEmbed } from '@/components/analytics/superset-embed';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useMetabaseDashboards } from '@/lib/hooks/use-analytics';
+import { useSupersetDashboards } from '@/lib/hooks/use-analytics';
 import type { Period } from '@/components/analytics/analytics-dashboard';
+
+const SUPERSET_DOMAIN = process.env.NEXT_PUBLIC_SUPERSET_URL || '';
 
 export function AnalyticsPageContent() {
   const [period, setPeriod] = useState<Period>('30d');
-  const { data: dashboards, isLoading: dashboardsLoading } = useMetabaseDashboards();
+  const { data: dashboards, isLoading: dashboardsLoading } = useSupersetDashboards();
 
   return (
     <Tabs defaultValue="dashboard">
@@ -57,22 +59,33 @@ export function AnalyticsPageContent() {
       </TabsContent>
 
       <TabsContent value="explore" className="mt-4 space-y-6">
-        <div className="rounded-lg border border-dashed border-muted-foreground/30 p-4 text-sm text-muted-foreground">
-          <p>
-            The Explore tab connects to Metabase for ad-hoc analytics.
-            Dashboards must be configured in Metabase first — add a data source, create questions, and pin them to these dashboards.
-            {' '}
-            <a
-              href={process.env.NEXT_PUBLIC_METABASE_URL || '#'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-foreground"
-            >
-              Open Metabase
-            </a>
-            {' '}to set them up.
-          </p>
-        </div>
+        {!SUPERSET_DOMAIN && (
+          <div className="rounded-lg border border-dashed border-muted-foreground/30 p-4 text-sm text-muted-foreground">
+            <p>
+              Superset is not configured. Set <code>NEXT_PUBLIC_SUPERSET_URL</code> to
+              enable embedded dashboards.
+            </p>
+          </div>
+        )}
+
+        {SUPERSET_DOMAIN && (
+          <div className="rounded-lg border border-dashed border-muted-foreground/30 p-4 text-sm text-muted-foreground">
+            <p>
+              The Explore tab connects to Apache Superset for ad-hoc analytics.
+              Dashboards must be created and published in Superset first.
+              {' '}
+              <a
+                href={SUPERSET_DOMAIN}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground"
+              >
+                Open Superset
+              </a>
+              {' '}to manage them.
+            </p>
+          </div>
+        )}
 
         {dashboardsLoading && (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
@@ -81,22 +94,23 @@ export function AnalyticsPageContent() {
           </div>
         )}
 
-        {!dashboardsLoading && (!dashboards || dashboards.length === 0) && (
+        {!dashboardsLoading && (!dashboards || dashboards.length === 0) && SUPERSET_DOMAIN && (
           <div className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center text-sm text-muted-foreground">
-            No dashboards configured for embedding yet. Open Metabase to create dashboards
-            and enable them for embedding.
+            No dashboards available for embedding yet. Open Superset to create and
+            publish dashboards.
           </div>
         )}
 
-        {dashboards?.map((dashboard) => (
+        {dashboards?.filter((d) => d.embedded_id).map((dashboard) => (
           <Card key={dashboard.id}>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{dashboard.name}</CardTitle>
             </CardHeader>
             <CardContent>
-              <MetabaseEmbed
-                resourceType="dashboard"
-                resourceId={dashboard.id}
+              <SupersetEmbed
+                dashboardId={dashboard.id}
+                embeddedId={dashboard.embedded_id}
+                supersetDomain={SUPERSET_DOMAIN}
                 title={dashboard.name}
                 minHeight="500px"
               />
