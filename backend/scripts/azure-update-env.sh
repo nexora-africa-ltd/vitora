@@ -66,6 +66,8 @@ declare -A SECRETS=(
   ["superset-admin-password"]="${SUPERSET_ADMIN_PASSWORD:-}"
   ["resend-api-key"]="${RESEND_API_KEY:-}"
   ["vapid-private-key"]="${VAPID_PRIVATE_KEY:-}"
+  ["dhis2-username"]="${DHIS2_USERNAME:-}"
+  ["dhis2-password"]="${DHIS2_PASSWORD:-}"
 )
 
 SECRET_ARGS=()
@@ -205,6 +207,19 @@ az containerapp update \
     "VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}" \
     "VAPID_PRIVATE_KEY=secretref:vapid-private-key" \
     "VAPID_CLAIM_EMAIL=${VAPID_CLAIM_EMAIL:-mailto:info@nexora.africa}" \
+    "LIS_STANDALONE_MODE=${LIS_STANDALONE_MODE:-false}" \
+    "DHIS2_BASE_URL=${DHIS2_BASE_URL:-}" \
+    "DHIS2_USERNAME=secretref:dhis2-username" \
+    "DHIS2_PASSWORD=secretref:dhis2-password" \
+    "DHIS2_ORG_UNIT=${DHIS2_ORG_UNIT:-}" \
+    "FACILITY_HAS_ICU=${FACILITY_HAS_ICU:-}" \
+    "FACILITY_HAS_LABORATORY=${FACILITY_HAS_LABORATORY:-true}" \
+    "FACILITY_HAS_IMAGING=${FACILITY_HAS_IMAGING:-}" \
+    "FACILITY_HAS_PHARMACY=${FACILITY_HAS_PHARMACY:-true}" \
+    "FACILITY_ADDRESS=${FACILITY_ADDRESS:-}" \
+    "FACILITY_PHONE=${FACILITY_PHONE:-}" \
+    "FACILITY_EMAIL=${FACILITY_EMAIL:-}" \
+    "FACILITY_LICENSE=${FACILITY_LICENSE:-}" \
   --output none
 
 echo ""
