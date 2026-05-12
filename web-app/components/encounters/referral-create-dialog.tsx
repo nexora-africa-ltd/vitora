@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/select';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { clinicsApi } from '@/lib/api/clinics';
+import { encountersApi } from '@/lib/api/encounters';
 import { useCreateReferral } from '@/lib/hooks/use-referrals';
 import { getApiErrorMessage } from '@/lib/api/client';
 import {
@@ -64,6 +65,14 @@ export function ReferralCreateDialog({
 }: ReferralCreateDialogProps) {
   const createReferral = useCreateReferral();
 
+  // Fetch encounter detail for clinical notes auto-population
+  const { data: encounterDetail } = useQuery({
+    queryKey: ['encounter-detail', encounterId],
+    queryFn: () => encountersApi.get(encounterId),
+    enabled: open && !!encounterId,
+    staleTime: 60000,
+  });
+
   // Form state
   const [targetService, setTargetService] = React.useState<ReferralTargetService | ''>('');
   const [reason, setReason] = React.useState('');
@@ -80,6 +89,40 @@ export function ReferralCreateDialog({
   const [externalFacilityName, setExternalFacilityName] = React.useState('');
   const [externalFacilityCode, setExternalFacilityCode] = React.useState('');
   const [destinationClinicId, setDestinationClinicId] = React.useState<string>('');
+
+  // Auto-populate clinical notes from encounter when dialog opens
+  React.useEffect(() => {
+    if (!open || !encounterDetail) return;
+    const parts: string[] = [];
+    if (encounterDetail.chief_complaint) {
+      parts.push(`Chief Complaint: ${encounterDetail.chief_complaint}`);
+    }
+    if (encounterDetail.history_of_present_illness) {
+      parts.push(`HPI: ${encounterDetail.history_of_present_illness}`);
+    }
+    if (encounterDetail.physical_examination) {
+      parts.push(`Examination: ${encounterDetail.physical_examination}`);
+    }
+    if (encounterDetail.assessment) {
+      parts.push(`Assessment: ${encounterDetail.assessment}`);
+    }
+    if (encounterDetail.notes) {
+      parts.push(`Notes: ${encounterDetail.notes}`);
+    }
+    if (encounterDetail.vitals_summary) {
+      parts.push(`Vitals: ${encounterDetail.vitals_summary}`);
+    }
+    if (encounterDetail.allergies) {
+      parts.push(`Allergies: ${encounterDetail.allergies}`);
+    }
+    if (encounterDetail.chronic_conditions) {
+      parts.push(`Chronic Conditions: ${encounterDetail.chronic_conditions}`);
+    }
+    if (encounterDetail.current_medications) {
+      parts.push(`Current Medications: ${encounterDetail.current_medications}`);
+    }
+    setClinicalNotes(parts.join('\n\n'));
+  }, [open, encounterDetail]);
 
   const isAdmission = targetService
     ? ADMISSION_SERVICES.includes(targetService as ReferralTargetService)
