@@ -503,6 +503,10 @@ X_FRAME_OPTIONS = "DENY"
 # - "gcp": Google Cloud KMS (alternative cloud option)
 KMS_PROVIDER = os.getenv("KMS_PROVIDER", "local")
 
+# HMAC key for PII blind-index lookups (searchable encrypted fields).
+# Must be a distinct secret from ENCRYPTION_KEY for defense-in-depth.
+PII_HMAC_KEY = os.getenv("PII_HMAC_KEY", "")
+
 # Key rotation policy (in days) - minimum 365 per DHA compliance
 KMS_KEY_ROTATION_DAYS = int(os.getenv("KMS_KEY_ROTATION_DAYS", "365"))
 

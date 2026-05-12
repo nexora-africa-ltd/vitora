@@ -139,6 +139,7 @@ ENCRYPTION_KEY = os.getenv(
     "zPvPKpZGcLmqPJ3L2oXZBCH_gJGWl5C6FZp8YMfFgFA=",
 )
 FIELD_ENCRYPTION_KEY = ENCRYPTION_KEY
+PII_HMAC_KEY = os.getenv("PII_HMAC_KEY", "")
 
 # =============================================================================
 # PowerSync — offline-first data sync

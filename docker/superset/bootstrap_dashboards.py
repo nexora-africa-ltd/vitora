@@ -120,6 +120,16 @@ def api_post(url, **kwargs):
     return r
 
 
+def api_put(url, **kwargs):
+    """PUT with auto retry on 401 (token expired)."""
+    kwargs.setdefault("timeout", REQUEST_TIMEOUT)
+    r = session.put(url, **kwargs)
+    if r.status_code == 401:
+        _reauth()
+        r = session.put(url, **kwargs)
+    return r
+
+
 def get_database_id(base_url, db_name):
     """Find the Vitora database by name."""
     r = api_get(f"{base_url}/api/v1/database/", params={"q": json.dumps({"filters": [{"col": "database_name", "opr": "eq", "value": db_name}]})})
@@ -1901,25 +1911,13 @@ def create_charts(base_url):
 # Dashboard creation — one per category
 # ---------------------------------------------------------------------------
 
-def create_dashboard(base_url, title, chart_ids):
-    """Create a single dashboard with the given charts."""
-    # Check if dashboard exists
-    r = api_get(
-        f"{base_url}/api/v1/dashboard/",
-        params={"q": json.dumps({"filters": [{"col": "dashboard_title", "opr": "eq", "value": title}]})},
-    )
-    if r.status_code == 200 and r.json().get("count", 0) > 0:
-        dash_id = r.json()["result"][0]["id"]
-        print(f"  ✓ Dashboard '{title}' already exists (id={dash_id})")
-        return dash_id
-
-    # Build a simple grid layout — 2 columns
+def _build_position_json(title, chart_ids):
+    """Build Superset position_json for a 2-column grid of charts."""
     position = {"DASHBOARD_VERSION_KEY": "v2"}
     root_children = []
 
     for i, chart_id in enumerate(chart_ids):
         row = i // 2
-        col = i % 2
         component_id = f"CHART-{chart_id}"
         row_id = f"ROW-{row}"
 
@@ -1948,21 +1946,51 @@ def create_dashboard(base_url, title, chart_ids):
     position["ROOT_ID"] = {"type": "ROOT", "id": "ROOT_ID", "children": ["GRID_ID"]}
     position["GRID_ID"] = {"type": "GRID", "id": "GRID_ID", "children": root_children}
     position["HEADER_ID"] = {"type": "HEADER", "id": "HEADER_ID", "meta": {"text": title}}
+    return position
 
-    payload = {
-        "dashboard_title": title,
-        "published": True,
-        "position_json": json.dumps(position),
-    }
 
-    r = api_post(f"{base_url}/api/v1/dashboard/", json=payload)
-    if r.status_code in (200, 201):
-        dash_id = r.json()["id"]
-        print(f"  ✓ Dashboard created: '{title}' (id={dash_id})")
-        return dash_id
+def create_dashboard(base_url, title, chart_ids):
+    """Create or update a dashboard and link its charts.
+
+    Superset's POST (create) does NOT extract chartId references from
+    position_json to build the dashboard-slice association.  That linking
+    only happens inside DashboardDAO.update() (PUT).  So we always follow
+    up with a PUT to ensure the charts are actually associated.
+    """
+    position = _build_position_json(title, chart_ids)
+    pos_json = json.dumps(position)
+
+    # Check if dashboard exists
+    r = api_get(
+        f"{base_url}/api/v1/dashboard/",
+        params={"q": json.dumps({"filters": [{"col": "dashboard_title", "opr": "eq", "value": title}]})},
+    )
+    if r.status_code == 200 and r.json().get("count", 0) > 0:
+        dash_id = r.json()["result"][0]["id"]
     else:
-        print(f"  ✗ Failed to create dashboard '{title}': {r.status_code} {r.text[:300]}")
-        return None
+        # Create the dashboard first
+        payload = {
+            "dashboard_title": title,
+            "published": True,
+            "position_json": pos_json,
+        }
+        r = api_post(f"{base_url}/api/v1/dashboard/", json=payload)
+        if r.status_code not in (200, 201):
+            print(f"  ✗ Failed to create dashboard '{title}': {r.status_code} {r.text[:300]}")
+            return None
+        dash_id = r.json()["id"]
+
+    # PUT to trigger DashboardDAO.update() which links charts via position_json
+    update_payload = {
+        "position_json": pos_json,
+        "published": True,
+    }
+    r = api_put(f"{base_url}/api/v1/dashboard/{dash_id}", json=update_payload)
+    if r.status_code in (200, 201):
+        print(f"  ✓ Dashboard '{title}' (id={dash_id}, {len(chart_ids)} charts)")
+    else:
+        print(f"  ⚠ Dashboard '{title}' created (id={dash_id}) but chart linking failed: {r.status_code}")
+    return dash_id
 
 
 def create_all_dashboards(base_url, dashboard_charts):

@@ -77,6 +77,7 @@ SYNC_SERVER_URL = "http://test-server.example.com"
 # Valid Fernet key for tests (NOT for production use)
 ENCRYPTION_KEY = "d6ZDi90GkEDpDprOfhaMGg1xLI62TAhOkGcnKjFLn8E="
 FIELD_ENCRYPTION_KEY = "dGVzdC1maWVsZC1lbmNyeXB0aW9uLWtleS0xMjM0NQ=="
+PII_HMAC_KEY = "test-hmac-key-not-for-production"
 
 # Logging - reduce verbosity in tests
 LOGGING["loggers"]["django"]["level"] = "WARNING"  # noqa: F405

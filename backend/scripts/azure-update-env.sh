@@ -47,6 +47,7 @@ echo "==> Updating secrets..."
 declare -A SECRETS=(
   ["database-url"]="${DATABASE_URL:-}"
   ["encryption-key"]="${ENCRYPTION_KEY:-}"
+  ["pii-hmac-key"]="${PII_HMAC_KEY:-}"
   ["django-secret-key"]="${DJANGO_SECRET_KEY:-}"
   ["sha-username"]="${SHA_USERNAME:-}"
   ["sha-password"]="${SHA_PASSWORD:-}"
@@ -109,6 +110,7 @@ az containerapp update \
     "DJANGO_SECRET_KEY=secretref:django-secret-key" \
     "DATABASE_URL=secretref:database-url" \
     "ENCRYPTION_KEY=secretref:encryption-key" \
+    "PII_HMAC_KEY=secretref:pii-hmac-key" \
     "DEBUG=false" \
     "PORT=8000" \
     "ALLOWED_HOSTS=${FQDN},staging.vitora.digital,vitora-navy.vercel.app,localhost" \

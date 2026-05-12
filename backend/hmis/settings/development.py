@@ -72,6 +72,7 @@ ENCRYPTION_KEY = os.getenv(
     "zPvPKpZGcLmqPJ3L2oXZBCH_gJGWl5C6FZp8YMfFgFA=",  # Default for dev only!
 )
 FIELD_ENCRYPTION_KEY = ENCRYPTION_KEY
+PII_HMAC_KEY = os.getenv("PII_HMAC_KEY", "dev-hmac-key-not-for-production")
 
 # Sync server configuration (legacy offline sync — being replaced by PowerSync)
 SYNC_SERVER_URL = os.getenv("SYNC_SERVER_URL", "http://localhost:9088/api/sync")

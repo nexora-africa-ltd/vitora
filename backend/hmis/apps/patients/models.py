@@ -204,6 +204,41 @@ class Patient(HistoryMixin, models.Model):
         max_length=50, blank=True, null=True, help_text="Patient's national ID number (legacy)"
     )
 
+    # ------------------------------------------------------------------
+    # PII Encrypted Storage (Kenya DPA 2019 § 41)
+    # Dual-write: plaintext columns above remain for existing queries/indexes.
+    # These encrypted columns are the canonical at-rest store.
+    # Phase D migration will drop plaintext columns.
+    # ------------------------------------------------------------------
+    identification_number_encrypted = models.TextField(
+        blank=True, default="", help_text="KMS-encrypted identification_number"
+    )
+    identification_number_hmac = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="HMAC blind index for identification_number lookup",
+    )
+    phone_number_encrypted = models.TextField(
+        blank=True, default="", help_text="KMS-encrypted phone_number"
+    )
+    phone_number_hmac = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="HMAC blind index for phone_number lookup",
+    )
+    email_encrypted = models.TextField(blank=True, default="", help_text="KMS-encrypted email")
+    address_encrypted = models.TextField(blank=True, default="", help_text="KMS-encrypted address")
+    national_id_encrypted = models.TextField(
+        blank=True, default="", help_text="KMS-encrypted national_id (legacy)"
+    )
+    principal_national_id_encrypted = models.TextField(
+        blank=True, default="", help_text="KMS-encrypted principal_national_id"
+    )
+
     # Demographics
     citizenship = models.CharField(
         max_length=100,
@@ -352,10 +387,40 @@ class Patient(HistoryMixin, models.Model):
         return f"{self.mrn} - {self.full_name}"
 
     def save(self, *args, **kwargs):
-        """Override save to auto-generate MRN if not set."""
+        """Override save to auto-generate MRN and dual-write encrypted PII."""
         if not self.mrn:
             self.mrn = generate_mrn()
+        self._encrypt_pii_fields()
         super().save(*args, **kwargs)
+
+    # ------------------------------------------------------------------
+    # PII dual-write helpers
+    # ------------------------------------------------------------------
+    _PII_FIELDS = (
+        # (plaintext_attr, encrypted_attr, hmac_attr_or_None)
+        ("identification_number", "identification_number_encrypted", "identification_number_hmac"),
+        ("phone_number", "phone_number_encrypted", "phone_number_hmac"),
+        ("email", "email_encrypted", None),
+        ("address", "address_encrypted", None),
+        ("national_id", "national_id_encrypted", None),
+        ("principal_national_id", "principal_national_id_encrypted", None),
+    )
+
+    def _encrypt_pii_fields(self):
+        """Encrypt plaintext PII values into *_encrypted/*_hmac columns."""
+        from hmis.apps.core.kms import get_kms_provider
+
+        kms = get_kms_provider()
+        for plain_attr, enc_attr, hmac_attr in self._PII_FIELDS:
+            value = getattr(self, plain_attr, None) or ""
+            if value:
+                setattr(self, enc_attr, kms.encrypt_string(value))
+                if hmac_attr:
+                    setattr(self, hmac_attr, kms.compute_hmac(value))
+            else:
+                setattr(self, enc_attr, "")
+                if hmac_attr:
+                    setattr(self, hmac_attr, "")
 
     def clean(self):
         """Validate the model fields."""
@@ -1261,6 +1326,14 @@ class EmergencyContact(models.Model):
         help_text="Alternative phone number",
     )
 
+    # PII Encrypted Storage (Kenya DPA 2019)
+    phone_number_encrypted = models.TextField(
+        blank=True, default="", help_text="KMS-encrypted phone_number"
+    )
+    alternative_phone_encrypted = models.TextField(
+        blank=True, default="", help_text="KMS-encrypted alternative_phone"
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1275,6 +1348,27 @@ class EmergencyContact(models.Model):
     def __str__(self) -> str:
         """String representation of the emergency contact."""
         return f"{self.full_name} ({self.relationship}) - {self.patient.mrn}"
+
+    def save(self, *args, **kwargs):
+        """Dual-write encrypted PII on save."""
+        self._encrypt_pii_fields()
+        super().save(*args, **kwargs)
+
+    _PII_FIELDS = (
+        ("phone_number", "phone_number_encrypted", None),
+        ("alternative_phone", "alternative_phone_encrypted", None),
+    )
+
+    def _encrypt_pii_fields(self):
+        from hmis.apps.core.kms import get_kms_provider
+
+        kms = get_kms_provider()
+        for plain_attr, enc_attr, _hmac_attr in self._PII_FIELDS:
+            value = getattr(self, plain_attr, None) or ""
+            if value:
+                setattr(self, enc_attr, kms.encrypt_string(value))
+            else:
+                setattr(self, enc_attr, "")
 
     def clean(self):
         """Validate the model fields."""
