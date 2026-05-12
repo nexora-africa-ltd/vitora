@@ -1,0 +1,17 @@
+FROM apache/superset:4.1.1
+
+USER root
+
+# PostgreSQL driver + CORS support
+RUN pip install --no-cache-dir psycopg2-binary flask-cors
+
+# Bake in the production config + startup script
+COPY superset_config_production.py /app/superset_config.py
+COPY start-superset.sh /app/start-superset.sh
+RUN chmod +x /app/start-superset.sh
+
+ENV SUPERSET_CONFIG_PATH=/app/superset_config.py
+
+USER superset
+
+CMD ["/app/start-superset.sh"]

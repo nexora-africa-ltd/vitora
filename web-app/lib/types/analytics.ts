@@ -163,7 +163,23 @@ export interface DiagnosisTrendParams {
 }
 
 // ---------------------------------------------------------------------------
-// Metabase Embedding
+// Superset Embedding (primary)
+// ---------------------------------------------------------------------------
+
+export interface SupersetGuestTokenResponse {
+  guest_token: string;
+  instance_url: string;
+}
+
+export interface SupersetDashboardInfo {
+  id: number;
+  name: string;
+  description: string;
+  embedded_id: string;
+}
+
+// ---------------------------------------------------------------------------
+// Metabase Embedding (legacy — kept for migration period)
 // ---------------------------------------------------------------------------
 
 export type MetabaseResourceType = 'dashboard' | 'question';

@@ -39,6 +39,9 @@ export const ANALYTICS_KEYS = {
   metabaseEmbed: (type: MetabaseResourceType, id: number) =>
     ['analytics', 'metabase-embed', type, id] as const,
   metabaseDashboards: () => ['analytics', 'metabase-dashboards'] as const,
+  supersetGuestToken: (dashboardId: number) =>
+    ['analytics', 'superset-guest-token', dashboardId] as const,
+  supersetDashboards: () => ['analytics', 'superset-dashboards'] as const,
 };
 
 // Analytics data is ETL'd nightly — 15 min stale time is fine
@@ -156,6 +159,33 @@ export function useMetabaseDashboards() {
   return useQuery({
     queryKey: ANALYTICS_KEYS.metabaseDashboards(),
     queryFn: () => analyticsApi.getMetabaseDashboards(),
+    staleTime: STALE_TIME,
+    retry: 1,
+  });
+}
+
+/**
+ * Fetch a Superset guest token for embedding a dashboard.
+ * Token is short-lived (5 min), so refetch every 4 min.
+ */
+export function useSupersetGuestToken(dashboardId: number) {
+  return useQuery({
+    queryKey: ANALYTICS_KEYS.supersetGuestToken(dashboardId),
+    queryFn: () => analyticsApi.getSupersetGuestToken(dashboardId),
+    staleTime: 4 * 60 * 1000,
+    refetchInterval: 4 * 60 * 1000,
+    enabled: dashboardId > 0,
+    retry: 1,
+  });
+}
+
+/**
+ * Fetch the list of Superset dashboards available for embedding.
+ */
+export function useSupersetDashboards() {
+  return useQuery({
+    queryKey: ANALYTICS_KEYS.supersetDashboards(),
+    queryFn: () => analyticsApi.getSupersetDashboards(),
     staleTime: STALE_TIME,
     retry: 1,
   });

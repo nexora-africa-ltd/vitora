@@ -1,0 +1,84 @@
+name: Deploy Superset to Azure Container Apps
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/superset/**'
+      - '.github/workflows/deploy-superset.yml'
+  workflow_dispatch:
+
+env:
+  AZURE_RESOURCE_GROUP: vitora-rg
+  CONTAINER_APP_NAME: vitora-superset
+  CONTAINER_APP_WORKER: vitora-superset-worker
+  CONTAINER_APP_ENV: vitora-env
+  REGISTRY_NAME: vitoraacr
+  IMAGE_NAME: vitora-superset
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy Superset
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name ${{ env.REGISTRY_NAME }}
+
+      - name: Build and push Docker image
+        working-directory: docker/superset
+        run: |
+          IMAGE_TAG="${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          IMAGE_LATEST="${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest"
+          docker build -f Dockerfile.production -t "$IMAGE_TAG" -t "$IMAGE_LATEST" .
+          docker push "$IMAGE_TAG"
+          docker push "$IMAGE_LATEST"
+
+      - name: Deploy Superset web server
+        run: |
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --output none
+
+      - name: Deploy Superset Celery worker
+        run: |
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_WORKER }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --output none
+
+      - name: Verify deployment
+        run: |
+          FQDN=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.configuration.ingress.fqdn" -o tsv)
+          echo "Superset deployed to: https://${FQDN}"
+          # Health check
+          for i in $(seq 1 12); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${FQDN}/health" || echo "000")
+            if [[ "$STATUS" == "200" ]]; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "  Waiting for healthy... (attempt $i/12, got $STATUS)"
+            sleep 10
+          done
+          echo "WARNING: Health check did not pass within 2 minutes"

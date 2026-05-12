@@ -768,3 +768,13 @@
 .tibabot-markdown th {
   font-weight: 600;
 }
+
+/* Superset embedded SDK — force the injected iframe to fill its container */
+.superset-embed-container iframe {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: inherit;
+  border: none;
+  position: absolute;
+  inset: 0;
+}

@@ -63,6 +63,7 @@ declare -A SECRETS=(
   ["tibabot-admin-key"]="${TIBABOT_ADMIN_KEY:-}"
   ["metabase-embedding-secret"]="${METABASE_EMBEDDING_SECRET:-}"
   ["metabase-api-key"]="${METABASE_API_KEY:-}"
+  ["superset-admin-password"]="${SUPERSET_ADMIN_PASSWORD:-}"
   ["resend-api-key"]="${RESEND_API_KEY:-}"
   ["vapid-private-key"]="${VAPID_PRIVATE_KEY:-}"
 )
@@ -194,6 +195,9 @@ az containerapp update \
     "METABASE_API_URL=${METABASE_API_URL:-http://vitora-metabase}" \
     "METABASE_EMBEDDING_SECRET=secretref:metabase-embedding-secret" \
     "METABASE_API_KEY=secretref:metabase-api-key" \
+    "SUPERSET_URL=${SUPERSET_URL:-}" \
+    "SUPERSET_ADMIN_USERNAME=${SUPERSET_ADMIN_USERNAME:-admin}" \
+    "SUPERSET_ADMIN_PASSWORD=secretref:superset-admin-password" \
     "RESEND_API_KEY=secretref:resend-api-key" \
     "POWERSYNC_URL=${POWERSYNC_URL:-https://69d7e1b30e377e689729cf08.powersync.journeyapps.com}" \
     "POWERSYNC_JWT_KID=${POWERSYNC_JWT_KID:-vitora-hmis-1}" \

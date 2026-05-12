@@ -1,0 +1,128 @@
+# =============================================================================
+# Apache Superset — standalone Docker Compose for Vitora HMIS
+# =============================================================================
+# Usage:
+#   cd docker/superset
+#   docker compose up -d
+#
+# First run: the init service creates the admin user and exits.
+# Superset UI: http://localhost:8088 (admin / admin)
+#
+# To connect Superset to the Vitora database, add a database source:
+#   SQLAlchemy URI: postgresql://user:pass@host.docker.internal:5432/vitora
+#   (or use the Neon connection string for staging/prod)
+# =============================================================================
+
+services:
+  # ---------- Metadata store (Superset's internal state) ----------
+  superset-db:
+    image: postgres:16-alpine
+    container_name: vitora-superset-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: superset
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: ${SUPERSET_DB_PASSWORD:-superset}
+    volumes:
+      - superset-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superset"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------- Cache / Celery broker ----------
+  superset-redis:
+    image: redis:7-alpine
+    container_name: vitora-superset-redis
+    restart: unless-stopped
+    volumes:
+      - superset-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------- One-shot init: DB upgrade + admin user ----------
+  superset-init:
+    build: .
+    container_name: vitora-superset-init
+    depends_on:
+      superset-db:
+        condition: service_healthy
+      superset-redis:
+        condition: service_healthy
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-vitora-dev-secret-change-in-production}
+      SUPERSET_CONFIG_PATH: /app/superset_config.py
+      # Admin bootstrap
+      ADMIN_USERNAME: ${SUPERSET_ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:-admin}
+      ADMIN_FIRST_NAME: Vitora
+      ADMIN_LAST_NAME: Admin
+      ADMIN_EMAIL: admin@vitora.digital
+    volumes:
+      - ./superset_config.py:/app/superset_config.py:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        superset db upgrade &&
+        superset fab create-admin \
+          --username "$$ADMIN_USERNAME" \
+          --firstname "$$ADMIN_FIRST_NAME" \
+          --lastname "$$ADMIN_LAST_NAME" \
+          --email "$$ADMIN_EMAIL" \
+          --password "$$ADMIN_PASSWORD" || true &&
+        superset init
+
+  # ---------- Main Superset web server ----------
+  superset:
+    build: .
+    container_name: vitora-superset
+    restart: unless-stopped
+    depends_on:
+      superset-init:
+        condition: service_completed_successfully
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-vitora-dev-secret-change-in-production}
+      SUPERSET_CONFIG_PATH: /app/superset_config.py
+    ports:
+      - "${SUPERSET_PORT:-8088}:8088"
+    volumes:
+      - ./superset_config.py:/app/superset_config.py:ro
+      - superset-home:/app/superset_home
+      - ../../backend:/data/backend:z
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8088/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ---------- Celery worker (async queries, thumbnails) ----------
+  superset-worker:
+    build: .
+    container_name: vitora-superset-worker
+    restart: unless-stopped
+    depends_on:
+      superset-init:
+        condition: service_completed_successfully
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-vitora-dev-secret-change-in-production}
+      SUPERSET_CONFIG_PATH: /app/superset_config.py
+    command: ["celery", "--app=superset.tasks.celery_app:app", "worker", "--pool=prefork", "-O", "fair", "-c", "2"]
+    volumes:
+      - ./superset_config.py:/app/superset_config.py:ro
+      - superset-home:/app/superset_home
+      - ../../backend:/data/backend:z
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A superset.tasks.celery_app:app inspect ping -d celery@$$HOSTNAME"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  superset-db-data:
+  superset-redis-data:
+  superset-home:
