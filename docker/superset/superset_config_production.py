@@ -70,36 +70,43 @@ TALISMAN_CONFIG = {
 }
 
 # ---------------------------------------------------------------------------
-# Cache (Redis)
+# Cache — use Redis if available, fall back to simple cache
 # ---------------------------------------------------------------------------
-_REDIS_URL = os.environ.get("SUPERSET_REDIS_URL", "redis://vitora-superset-redis:6379/0")
+_REDIS_URL = os.environ.get("SUPERSET_REDIS_URL", "")
 
-CACHE_CONFIG = {
-    "CACHE_TYPE": "RedisCache",
-    "CACHE_DEFAULT_TIMEOUT": 300,
-    "CACHE_KEY_PREFIX": "superset_",
-    "CACHE_REDIS_URL": _REDIS_URL,
-}
+if _REDIS_URL:
+    CACHE_CONFIG = {
+        "CACHE_TYPE": "RedisCache",
+        "CACHE_DEFAULT_TIMEOUT": 300,
+        "CACHE_KEY_PREFIX": "superset_",
+        "CACHE_REDIS_URL": _REDIS_URL,
+    }
+else:
+    CACHE_CONFIG = {
+        "CACHE_TYPE": "SimpleCache",
+        "CACHE_DEFAULT_TIMEOUT": 300,
+        "CACHE_KEY_PREFIX": "superset_",
+    }
+
 DATA_CACHE_CONFIG = {**CACHE_CONFIG, "CACHE_KEY_PREFIX": "superset_data_"}
 FILTER_STATE_CACHE_CONFIG = {**CACHE_CONFIG, "CACHE_KEY_PREFIX": "superset_filter_"}
 EXPLORE_FORM_DATA_CACHE_CONFIG = {**CACHE_CONFIG, "CACHE_KEY_PREFIX": "superset_explore_"}
 
 # ---------------------------------------------------------------------------
-# Celery (async queries)
+# Celery (async queries) — disabled if no Redis
 # ---------------------------------------------------------------------------
-_REDIS_BROKER = os.environ.get("SUPERSET_REDIS_URL", "redis://vitora-superset-redis:6379/1")
+if _REDIS_URL:
+    _REDIS_BROKER = _REDIS_URL.replace("/0", "/1") if "/0" in _REDIS_URL else _REDIS_URL
 
+    class CeleryConfig:
+        broker_url = _REDIS_BROKER
+        result_backend = _REDIS_BROKER.replace("/1", "/2") if "/1" in _REDIS_BROKER else _REDIS_BROKER
+        imports = ("superset.sql_lab", "superset.tasks.scheduler")
+        task_annotations = {
+            "sql_lab.get_sql_results": {"rate_limit": "100/s"},
+        }
 
-class CeleryConfig:
-    broker_url = _REDIS_BROKER
-    result_backend = _REDIS_BROKER.replace("/1", "/2") if "/1" in _REDIS_BROKER else _REDIS_BROKER
-    imports = ("superset.sql_lab", "superset.tasks.scheduler")
-    task_annotations = {
-        "sql_lab.get_sql_results": {"rate_limit": "100/s"},
-    }
-
-
-CELERY_CONFIG = CeleryConfig
+    CELERY_CONFIG = CeleryConfig
 
 # ---------------------------------------------------------------------------
 # Misc
