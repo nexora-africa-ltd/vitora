@@ -64,6 +64,8 @@ az containerapp create \
   --image "docker.io/library/postgres:16-alpine" \
   --target-port 5432 \
   --ingress internal \
+  --transport tcp \
+  --exposed-port 5432 \
   --min-replicas 1 \
   --max-replicas 1 \
   --cpu 0.25 \
@@ -90,6 +92,8 @@ az containerapp create \
   --image "docker.io/library/redis:7-alpine" \
   --target-port 6379 \
   --ingress internal \
+  --transport tcp \
+  --exposed-port 6379 \
   --min-replicas 1 \
   --max-replicas 1 \
   --cpu 0.25 \
