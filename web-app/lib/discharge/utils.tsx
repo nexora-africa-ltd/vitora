@@ -129,6 +129,17 @@ export function buildTemplateAlignedContent(
     // 1. Dedicated content (structured data rendered by the page)
     let content = dedicatedContent[tplSection.key]?.trim();
 
+    // When dedicated content fills this slot, mark any matching form sections
+    // as consumed so they are not duplicated in the unconsumed-sections tail.
+    if (content) {
+      const consumePatterns = KEY_TO_TITLE_PATTERNS[tplSection.key] || [tplSection.label.toLowerCase()];
+      for (const s of formSections) {
+        if (!usedFormSectionIds.has(s.id) && consumePatterns.some((p) => fuzzyTitleMatch(s.title, p))) {
+          usedFormSectionIds.add(s.id);
+        }
+      }
+    }
+
     // 2. Fuzzy-match against form sections (skip when dedicated content exists)
     if (!content) {
       const patterns = KEY_TO_TITLE_PATTERNS[tplSection.key] || [tplSection.label.toLowerCase()];
