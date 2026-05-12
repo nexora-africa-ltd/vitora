@@ -63,7 +63,7 @@ export function AnalyticsPageContent() {
             Dashboards must be configured in Metabase first — add a data source, create questions, and pin them to these dashboards.
             {' '}
             <a
-              href="/metabase-embed/"
+              href={process.env.NEXT_PUBLIC_METABASE_URL || '#'}
               target="_blank"
               rel="noopener noreferrer"
               className="underline hover:text-foreground"
