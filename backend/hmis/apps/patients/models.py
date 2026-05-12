@@ -387,14 +387,21 @@ class Patient(HistoryMixin, models.Model):
         return f"{self.mrn} - {self.full_name}"
 
     def save(self, *args, **kwargs):
-        """Override save to auto-generate MRN and dual-write encrypted PII."""
+        """Override save to auto-generate MRN, encrypt PII, and blank plaintext."""
         if not self.mrn:
             self.mrn = generate_mrn()
         self._encrypt_pii_fields()
         super().save(*args, **kwargs)
 
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        """Hydrate plaintext CharField from *_encrypted on DB load (Phase C)."""
+        instance = super().from_db(db, field_names, values)
+        instance._decrypt_pii_fields()
+        return instance
+
     # ------------------------------------------------------------------
-    # PII dual-write helpers
+    # PII encryption helpers (Phase C — encrypted is canonical)
     # ------------------------------------------------------------------
     _PII_FIELDS = (
         # (plaintext_attr, encrypted_attr, hmac_attr_or_None)
@@ -407,7 +414,7 @@ class Patient(HistoryMixin, models.Model):
     )
 
     def _encrypt_pii_fields(self):
-        """Encrypt plaintext PII values into *_encrypted/*_hmac columns."""
+        """Encrypt PII values and blank the plaintext columns."""
         from hmis.apps.core.kms import get_kms_provider
 
         kms = get_kms_provider()
@@ -417,10 +424,27 @@ class Patient(HistoryMixin, models.Model):
                 setattr(self, enc_attr, kms.encrypt_string(value))
                 if hmac_attr:
                     setattr(self, hmac_attr, kms.compute_hmac(value))
-            else:
+                # Phase C: blank plaintext so it is never stored at rest
+                field = self._meta.get_field(plain_attr)
+                setattr(self, plain_attr, None if field.null else "")
+            elif not getattr(self, enc_attr, ""):
+                # Only clear encrypted if it's not already populated
                 setattr(self, enc_attr, "")
                 if hmac_attr:
                     setattr(self, hmac_attr, "")
+
+    def _decrypt_pii_fields(self):
+        """Populate plaintext CharField attrs from *_encrypted columns."""
+        import contextlib
+
+        from hmis.apps.core.kms import get_kms_provider
+
+        kms = get_kms_provider()
+        for plain_attr, enc_attr, _hmac_attr in self._PII_FIELDS:
+            encrypted_val = getattr(self, enc_attr, "")
+            if encrypted_val:
+                with contextlib.suppress(Exception):
+                    setattr(self, plain_attr, kms.decrypt_string(encrypted_val))
 
     def clean(self):
         """Validate the model fields."""
@@ -1350,9 +1374,16 @@ class EmergencyContact(models.Model):
         return f"{self.full_name} ({self.relationship}) - {self.patient.mrn}"
 
     def save(self, *args, **kwargs):
-        """Dual-write encrypted PII on save."""
+        """Encrypt PII and blank plaintext on save (Phase C)."""
         self._encrypt_pii_fields()
         super().save(*args, **kwargs)
+
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        """Hydrate plaintext attrs from *_encrypted on DB load (Phase C)."""
+        instance = super().from_db(db, field_names, values)
+        instance._decrypt_pii_fields()
+        return instance
 
     _PII_FIELDS = (
         ("phone_number", "phone_number_encrypted", None),
@@ -1360,6 +1391,7 @@ class EmergencyContact(models.Model):
     )
 
     def _encrypt_pii_fields(self):
+        """Encrypt PII and blank plaintext columns."""
         from hmis.apps.core.kms import get_kms_provider
 
         kms = get_kms_provider()
@@ -1367,8 +1399,24 @@ class EmergencyContact(models.Model):
             value = getattr(self, plain_attr, None) or ""
             if value:
                 setattr(self, enc_attr, kms.encrypt_string(value))
-            else:
+                # Phase C: blank plaintext so it is never stored at rest
+                field = self._meta.get_field(plain_attr)
+                setattr(self, plain_attr, None if field.null else "")
+            elif not getattr(self, enc_attr, ""):
                 setattr(self, enc_attr, "")
+
+    def _decrypt_pii_fields(self):
+        """Populate plaintext attrs from *_encrypted columns."""
+        import contextlib
+
+        from hmis.apps.core.kms import get_kms_provider
+
+        kms = get_kms_provider()
+        for plain_attr, enc_attr, _hmac_attr in self._PII_FIELDS:
+            encrypted_val = getattr(self, enc_attr, "")
+            if encrypted_val:
+                with contextlib.suppress(Exception):
+                    setattr(self, plain_attr, kms.decrypt_string(encrypted_val))
 
     def clean(self):
         """Validate the model fields."""

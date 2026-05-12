@@ -132,13 +132,30 @@ class TestPatientPIIEncryption:
         assert patient.phone_number_encrypted == ""
         assert patient.email_encrypted == ""
 
-    def test_plaintext_columns_preserved(self, patient_with_pii):
-        """During dual-write phase, plaintext columns should still hold values."""
+    def test_plaintext_blanked_at_rest(self, patient_with_pii):
+        """Phase C: plaintext columns should be blank in the database."""
+        # Check the raw DB values (bypass from_db decrypt)
+        raw = (
+            Patient.objects.filter(pk=patient_with_pii.pk)
+            .values("identification_number", "phone_number", "email", "address")
+            .first()
+        )
+        assert raw["identification_number"] is None  # null=True field
+        assert raw["phone_number"] is None  # null=True field
+        assert raw["email"] == ""  # NOT NULL field, blanked to ""
+        assert raw["address"] == ""  # NOT NULL field, blanked to ""
+
+    def test_from_db_decrypts_pii(self, patient_with_pii):
+        """Phase C: from_db should decrypt encrypted columns into plaintext attrs."""
+        patient_with_pii.refresh_from_db()
         assert patient_with_pii.identification_number == "34221265"
         assert patient_with_pii.phone_number == "0769005262"
+        assert patient_with_pii.email == "test@example.com"
+        assert patient_with_pii.address == "123 Test Street, Nairobi"
 
     def test_update_reencrypts(self, patient_with_pii):
         """Updating a field should re-encrypt."""
+        patient_with_pii.refresh_from_db()
         old_enc = patient_with_pii.identification_number_encrypted
         old_hmac = patient_with_pii.identification_number_hmac
 
@@ -148,6 +165,7 @@ class TestPatientPIIEncryption:
         patient_with_pii.refresh_from_db()
         assert patient_with_pii.identification_number_encrypted != old_enc
         assert patient_with_pii.identification_number_hmac != old_hmac
+        assert patient_with_pii.identification_number == "99999999"
 
 
 # ============================================================================
@@ -280,7 +298,7 @@ class TestEncryptPiiFieldsCommand:
     ):
         """Create a patient with plaintext PII but empty encrypted columns.
 
-        We use update() to bypass the save() dual-write.
+        We use update() to bypass the save() encrypt-then-blank.
         """
         patient = Patient.objects.create(
             first_name="Backfill",
@@ -294,10 +312,12 @@ class TestEncryptPiiFieldsCommand:
             identification_number="12345678",
             phone_number="0700000000",
         )
-        # Clear encrypted columns to simulate pre-encryption data
+        # Clear encrypted columns and restore plaintext to simulate pre-encryption data
         Patient.objects.filter(pk=patient.pk).update(
+            identification_number="12345678",
             identification_number_encrypted="",
             identification_number_hmac="",
+            phone_number="0700000000",
             phone_number_encrypted="",
             phone_number_hmac="",
         )
@@ -317,6 +337,16 @@ class TestEncryptPiiFieldsCommand:
         assert unencrypted_patient.identification_number_encrypted != ""
         assert unencrypted_patient.identification_number_hmac != ""
         assert unencrypted_patient.phone_number_encrypted != ""
+        # Phase C: plaintext blanked at rest
+        raw = (
+            Patient.objects.filter(pk=unencrypted_patient.pk)
+            .values("identification_number", "phone_number")
+            .first()
+        )
+        assert raw["identification_number"] is None
+        assert raw["phone_number"] is None
+        # But from_db decrypts into in-memory attrs
+        assert unencrypted_patient.identification_number == "12345678"
 
     def test_backfill_is_resumable(self, unencrypted_patient):
         """Running backfill twice should be idempotent."""
