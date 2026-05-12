@@ -161,3 +161,16 @@ jobs:
             VAPID_PUBLIC_KEY=BK9Ze2ux8-t3w3r83bj7kOEcTuz3IfATjoyg5_TRYBVTAHaqvjRUHqpVHc6T0Ej0nbaDY5ZTVlJ7Mnle6h7ZesU
             VAPID_PRIVATE_KEY=secretref:vapid-private-key
             VAPID_CLAIM_EMAIL=mailto:info@nexora.africa
+            LIS_STANDALONE_MODE=${{ vars.LIS_STANDALONE_MODE || 'false' }}
+            DHIS2_BASE_URL=${{ vars.DHIS2_BASE_URL || '' }}
+            DHIS2_USERNAME=secretref:dhis2-username
+            DHIS2_PASSWORD=secretref:dhis2-password
+            DHIS2_ORG_UNIT=${{ vars.DHIS2_ORG_UNIT || '' }}
+            FACILITY_HAS_ICU=${{ vars.FACILITY_HAS_ICU || '' }}
+            FACILITY_HAS_LABORATORY=${{ vars.FACILITY_HAS_LABORATORY || 'true' }}
+            FACILITY_HAS_IMAGING=${{ vars.FACILITY_HAS_IMAGING || '' }}
+            FACILITY_HAS_PHARMACY=${{ vars.FACILITY_HAS_PHARMACY || 'true' }}
+            FACILITY_ADDRESS=${{ vars.FACILITY_ADDRESS || '' }}
+            FACILITY_PHONE=${{ vars.FACILITY_PHONE || '' }}
+            FACILITY_EMAIL=${{ vars.FACILITY_EMAIL || '' }}
+            FACILITY_LICENSE=${{ vars.FACILITY_LICENSE || '' }}
