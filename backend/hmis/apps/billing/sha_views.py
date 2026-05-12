@@ -2047,14 +2047,20 @@ class PractitionerSearchView(APIView):
     """
     API view for practitioner search via DHA Health Worker Registry.
 
-    Searches by National ID or Passport number and returns comprehensive
-    practitioner information including membership, licenses, professional
-    details, and contact information.
+    Uses the ILM middleware (``/api/v1/professionals``) to search by
+    National ID or Passport number and returns comprehensive practitioner
+    information including membership, licenses, professional details,
+    and contact information.
 
-    Based on: https://uat.dha.go.ke/v1/practitioner-search
+    Note: Replaced legacy ``/v1/practitioner-search`` with the ILM
+    middleware which uses the newer authentication flow.
     """
 
     permission_classes = [IsAuthenticated]
+
+    # Map identification_type to the DHA regulator code.
+    # When the caller doesn't specify a regulator we try all four.
+    _REGULATORS = ("KMPDC", "COC", "PPB", "NCK")
 
     @extend_schema(
         parameters=[
@@ -2067,12 +2073,9 @@ class PractitionerSearchView(APIView):
                 "identification_type", OpenApiTypes.STR, description="'National ID' or 'passport'"
             ),
             OpenApiParameter(
-                "registration_number", OpenApiTypes.STR, description="Registration number (PUID)"
-            ),
-            OpenApiParameter(
-                "license_number",
+                "regulator",
                 OpenApiTypes.STR,
-                description="License number (alias for registration_number)",
+                description="Regulator code: KMPDC, COC, PPB, NCK (optional – tries all if omitted)",
             ),
         ],
         responses={
@@ -2086,121 +2089,183 @@ class PractitionerSearchView(APIView):
     )
     def get(self, request):
         """
-        Search practitioner in Health Worker Registry.
+        Search practitioner in Health Worker Registry via ILM middleware.
 
         GET /api/sha/practitioner/validate/?identification_type=National+ID&identification_number=12345678
 
         Query Parameters:
             identification_number: National ID or Passport number (required)
             identification_type: 'National ID' or 'passport' (default: 'National ID')
-            registration_number: Alternative: search by registration number (PUID)
+            regulator: KMPDC | COC | PPB | NCK (optional – tries all if omitted)
 
         Returns:
             Full practitioner data including membership, licenses,
             professional details, contacts, and identifiers.
-
-        Note:
-            The DHA API requires 'National ID' as the identification_type value,
-            not just 'ID'. Using 'ID' may cause timeouts or errors.
         """
+        from hmis.apps.billing.services.dha_errors import (
+            DHAError,
+            DHANotFoundError,
+            DHAValidationError,
+        )
+        from hmis.apps.billing.services.ilm_registries_service import IlmRegistriesService
+
         identification_number = request.query_params.get("identification_number")
         identification_type = request.query_params.get("identification_type", "National ID")
-        registration_number = request.query_params.get("registration_number")
-        license_number = request.query_params.get("license_number")
+        regulator = request.query_params.get("regulator")
 
-        # license_number is an alias for registration_number
-        if license_number and not registration_number:
-            registration_number = license_number
-
-        if not identification_number and not registration_number:
+        if not identification_number:
             return Response(
-                {"error": "identification_number or registration_number is required"},
+                {"error": "identification_number is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            service = DHASearchService()
-            practitioner = service.search_practitioner(
-                identification_number=identification_number,
-                identification_type=identification_type,
-                registration_number=registration_number,
-            )
+        regulators = [regulator] if regulator else list(self._REGULATORS)
+        facility = getattr(request.user, "primary_facility", None)
+        service = IlmRegistriesService()
+        last_error: Exception | None = None
 
-            if practitioner and practitioner.found:
-                # Return the full rich data structure
-                return Response(
-                    {
-                        "message": {
-                            "membership": {
-                                "id": practitioner.membership.id,
-                                "status": practitioner.membership.status,
-                                "salutation": practitioner.membership.salutation,
-                                "full_name": practitioner.membership.full_name,
-                                "gender": practitioner.membership.gender,
-                                "first_name": practitioner.membership.first_name,
-                                "middle_name": practitioner.membership.middle_name,
-                                "last_name": practitioner.membership.last_name,
-                                "registration_id": practitioner.membership.registration_id,
-                                "external_reference_id": practitioner.membership.external_reference_id,
-                                "licensing_body": practitioner.membership.licensing_body,
-                                "specialty": practitioner.membership.specialty,
-                                "is_active": practitioner.membership.is_active,
-                                "is_withdrawn": practitioner.membership.is_withdrawn,
-                                "withdrawal_reason": practitioner.membership.withdrawal_reason,
-                                "withdrawal_date": practitioner.membership.withdrawal_date,
-                                "license_expires_in_days": practitioner.membership.license_expires_in_days,
-                            },
-                            "licenses": [
-                                {
-                                    "id": lic.id,
-                                    "external_reference_id": lic.external_reference_id,
-                                    "license_type": lic.license_type,
-                                    "license_start": lic.license_start,
-                                    "license_end": lic.license_end,
-                                }
-                                for lic in practitioner.licenses
-                            ],
-                            "professional_details": {
-                                "professional_cadre": practitioner.professional_details.professional_cadre,
-                                "practice_type": practitioner.professional_details.practice_type,
-                                "specialty": practitioner.professional_details.specialty,
-                                "subspecialty": practitioner.professional_details.subspecialty,
-                                "discipline_name": practitioner.professional_details.discipline_name,
-                                "educational_qualifications": practitioner.professional_details.educational_qualifications,
-                            },
-                            "contacts": {
-                                "phone": practitioner.contacts.phone,
-                                "email": practitioner.contacts.email,
-                                "postal_address": practitioner.contacts.postal_address,
-                            },
-                            "identifiers": {
-                                "identification_type": practitioner.identifiers.identification_type,
-                                "identification_number": practitioner.identifiers.identification_number,
-                                "client_registry_id": practitioner.identifiers.client_registry_id,
-                                "student_id": practitioner.identifiers.student_id,
-                            },
+        for reg in regulators:
+            try:
+                result = service.search_professional(
+                    identification_number=identification_number,
+                    identification_type=identification_type,
+                    regulator=reg,
+                    facility=facility,
+                    user=request.user,
+                )
+                raw = result.payload
+                if raw and isinstance(raw, dict):
+                    msg = raw.get("message") or raw
+                    membership = msg.get("membership", {})
+                    return Response(
+                        {
+                            "message": {
+                                "membership": {
+                                    "id": membership.get("id", ""),
+                                    "status": membership.get("status", ""),
+                                    "salutation": membership.get("salutation", ""),
+                                    "full_name": membership.get("full_name", ""),
+                                    "gender": membership.get("gender", ""),
+                                    "first_name": membership.get("first_name", ""),
+                                    "middle_name": membership.get("middle_name", ""),
+                                    "last_name": membership.get("last_name", ""),
+                                    "registration_id": membership.get("registration_id", ""),
+                                    "external_reference_id": membership.get(
+                                        "external_reference_id", ""
+                                    ),
+                                    "licensing_body": membership.get("licensing_body", ""),
+                                    "specialty": membership.get("specialty", ""),
+                                    "is_active": membership.get("is_active", 0),
+                                    "is_withdrawn": membership.get("is_withdrawn", 0),
+                                    "withdrawal_reason": membership.get("withdrawal_reason", ""),
+                                    "withdrawal_date": membership.get("withdrawal_date", ""),
+                                    "license_expires_in_days": _compute_license_days(
+                                        msg.get("licenses", [])
+                                    ),
+                                },
+                                "licenses": [
+                                    {
+                                        "id": lic.get("id", ""),
+                                        "external_reference_id": lic.get(
+                                            "external_reference_id", ""
+                                        ),
+                                        "license_type": lic.get("license_type", ""),
+                                        "license_start": lic.get("license_start", ""),
+                                        "license_end": lic.get("license_end", ""),
+                                    }
+                                    for lic in msg.get("licenses", [])
+                                ],
+                                "professional_details": {
+                                    "professional_cadre": msg.get("professional_details", {}).get(
+                                        "professional_cadre", ""
+                                    ),
+                                    "practice_type": msg.get("professional_details", {}).get(
+                                        "practice_type", ""
+                                    ),
+                                    "specialty": msg.get("professional_details", {}).get(
+                                        "specialty", ""
+                                    ),
+                                    "subspecialty": msg.get("professional_details", {}).get(
+                                        "subspecialty", ""
+                                    ),
+                                    "discipline_name": msg.get("professional_details", {}).get(
+                                        "discipline_name", ""
+                                    ),
+                                    "educational_qualifications": msg.get(
+                                        "professional_details", {}
+                                    ).get("educational_qualifications", ""),
+                                },
+                                "contacts": {
+                                    "phone": msg.get("contacts", {}).get("phone", ""),
+                                    "email": msg.get("contacts", {}).get("email", ""),
+                                    "postal_address": msg.get("contacts", {}).get(
+                                        "postal_address", ""
+                                    ),
+                                },
+                                "identifiers": {
+                                    "identification_type": msg.get("identifiers", {}).get(
+                                        "identification_type", ""
+                                    ),
+                                    "identification_number": msg.get("identifiers", {}).get(
+                                        "identification_number", ""
+                                    ),
+                                    "client_registry_id": msg.get("identifiers", {}).get(
+                                        "client_registry_id", ""
+                                    ),
+                                    "student_id": msg.get("identifiers", {}).get("student_id", ""),
+                                },
+                            }
                         }
-                    }
-                )
-            else:
-                return Response(
-                    {
-                        "error": "No practitioner found with the provided identification",
-                        "message": None,
-                    },
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+                    )
+            except DHANotFoundError:
+                last_error = None  # try next regulator
+                continue
+            except DHAValidationError as exc:
+                # "no practitioner membership returned" means not found with this regulator
+                if "no practitioner" in str(exc).lower():
+                    continue
+                last_error = exc
+                continue
+            except DHAError as exc:
+                last_error = exc
+                continue
+            except Exception as exc:
+                last_error = exc
+                continue
 
-        except SearchError as e:
+        if last_error:
+            logger.exception("Practitioner search failed via ILM: %s", last_error)
             return Response(
-                {"error": str(e), "message": None}, status=status.HTTP_503_SERVICE_UNAVAILABLE
+                {"error": str(last_error), "message": None},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except Exception:
-            logger.exception("Practitioner search failed")
-            return Response(
-                {"error": "Practitioner search failed. Please try again.", "message": None},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+
+        return Response(
+            {
+                "error": "No practitioner found with the provided identification",
+                "message": None,
+            },
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+
+def _compute_license_days(licenses: list[dict]) -> int:
+    """Compute days until the latest license expires."""
+    from datetime import datetime
+
+    best = -999
+    for lic in licenses:
+        end_str = lic.get("license_end") or ""
+        if not end_str or end_str == "None":
+            continue
+        try:
+            end_date = datetime.strptime(end_str, "%Y-%m-%d").date()
+            days = (end_date - date.today()).days
+            if days > best:
+                best = days
+        except (ValueError, TypeError):
+            continue
+    return best if best > -999 else 0
 
 
 class EligibilityCheckView(APIView):

@@ -1490,6 +1490,16 @@ class StaffProfile(models.Model):
         blank=True,
         help_text="Medical specialization",
     )
+    hwr_national_id = models.CharField(
+        max_length=30,
+        blank=True,
+        help_text="National ID used for DHA HWR lookups (stored on practitioner select)",
+    )
+    hwr_last_verified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp of last successful HWR verification",
+    )
 
     # Contact
     phone_number = models.CharField(

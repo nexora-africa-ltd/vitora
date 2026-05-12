@@ -48,12 +48,12 @@ PATIENT_BENEFIT_INTERVENTIONS_PATH = "/api/v1/patients/benefits/interventions"
 PATIENT_BENEFIT_UTILIZATION_PATH = "/api/v1/patients/benefits/utilization"
 
 
-def _publish_safe(event_type: str, payload: dict) -> None:
+def _publish_safe(event_type: str, payload: dict, *, aggregate_id: int | str = 0) -> None:
     """Publish a billing event without ever breaking the calling request."""
     try:
         from hmis.apps.core.events import publish_event
 
-        publish_event(event_type, payload)
+        publish_event(event_type, "dha_registry", aggregate_id, payload)
     except Exception:  # pragma: no cover
         logger.exception("Failed to publish DHA HIE registry event %s", event_type)
 

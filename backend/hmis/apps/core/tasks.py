@@ -676,3 +676,178 @@ def verify_audit_chain_integrity(count: int = 1000):
         "first_mismatch_seq": result.first_mismatch_seq,
         "errors": result.errors,
     }
+
+
+# ---------------------------------------------------------------------------
+# HWR License Verification
+# ---------------------------------------------------------------------------
+
+_REGULATORS = ("KMPDC", "COC", "PPB", "NCK")
+
+
+@shared_task(name="hmis.apps.core.tasks.verify_staff_hwr_licenses")
+def verify_staff_hwr_licenses():
+    """Weekly HWR license verification for all staff with a stored national ID.
+
+    For each staff member whose role requires a license and who has
+    ``hwr_national_id`` set, queries the ILM middleware to refresh
+    ``license_number``, ``license_expiry``, ``license_verified``, and
+    ``hwr_last_verified_at``.
+
+    Publishes domain events for expired / expiring-soon licenses.
+    """
+    from datetime import date, timedelta
+
+    from django.utils import timezone
+
+    from hmis.apps.core.models import StaffProfile
+
+    profiles = StaffProfile.objects.filter(
+        hwr_national_id__gt="",
+        employment_status="ACTIVE",
+        primary_role__requires_license=True,
+    ).select_related("user", "primary_role", "organization", "primary_facility")
+
+    verified = 0
+    failed = 0
+    expired_count = 0
+    expiring_soon_count = 0
+    today = date.today()
+    expiry_warning_threshold = today + timedelta(days=30)
+
+    for profile in profiles:
+        try:
+            result = _verify_single_profile(profile)
+            if result is None:
+                failed += 1
+                continue
+
+            verified += 1
+            profile.hwr_last_verified_at = timezone.now()
+
+            if profile.license_expiry:
+                if profile.license_expiry < today:
+                    expired_count += 1
+                    _publish_license_event(
+                        "core.staff.license_expired",
+                        profile,
+                        {"days_overdue": (today - profile.license_expiry).days},
+                    )
+                elif profile.license_expiry <= expiry_warning_threshold:
+                    expiring_soon_count += 1
+                    _publish_license_event(
+                        "core.staff.license_expiring_soon",
+                        profile,
+                        {"days_remaining": (profile.license_expiry - today).days},
+                    )
+
+            profile.save(
+                update_fields=[
+                    "license_number",
+                    "license_expiry",
+                    "license_verified",
+                    "hwr_last_verified_at",
+                ]
+            )
+        except Exception:
+            failed += 1
+            logger.exception(
+                "HWR verification failed for staff %s (user=%s)",
+                profile.pk,
+                profile.user_id,
+            )
+
+    summary = (
+        f"HWR verification complete: {verified} verified, {failed} failed, "
+        f"{expired_count} expired, {expiring_soon_count} expiring soon"
+    )
+    logger.info(summary)
+    return summary
+
+
+def _verify_single_profile(profile):
+    """Query ILM for a single staff profile and update license fields.
+
+    Returns the ILM result on success, None on failure/not-found.
+    """
+    from hmis.apps.billing.services.dha_errors import DHAError
+    from hmis.apps.billing.services.ilm_registries_service import IlmRegistriesService
+
+    service = IlmRegistriesService()
+
+    for regulator in _REGULATORS:
+        try:
+            result = service.search_professional(
+                identification_number=profile.hwr_national_id,
+                identification_type="National ID",
+                regulator=regulator,
+                facility=profile.primary_facility,
+                user=profile.user,
+            )
+            raw = result.payload
+            if not raw or not isinstance(raw, dict):
+                continue
+
+            msg = raw.get("message") or raw
+            licenses = msg.get("licenses", [])
+            if not licenses:
+                continue
+
+            # Find the latest active license
+            from datetime import datetime
+
+            best_license = None
+            best_end = None
+            for lic in licenses:
+                end_str = lic.get("license_end") or ""
+                if not end_str or end_str == "None":
+                    continue
+                try:
+                    end_date = datetime.strptime(end_str, "%Y-%m-%d").date()
+                    if best_end is None or end_date > best_end:
+                        best_end = end_date
+                        best_license = lic
+                except (ValueError, TypeError):
+                    continue
+
+            if best_license and best_end:
+                profile.license_number = best_license.get(
+                    "external_reference_id"
+                ) or best_license.get("id", "")
+                profile.license_expiry = best_end
+                profile.license_verified = True
+                return result
+
+        except DHAError:
+            continue
+        except Exception:
+            logger.exception("ILM error for regulator %s, staff %s", regulator, profile.pk)
+            continue
+
+    # None of the regulators returned a result
+    profile.license_verified = False
+    return None
+
+
+def _publish_license_event(event_type: str, profile, extra: dict) -> None:
+    """Publish a license-related domain event without breaking the task."""
+    try:
+        from hmis.apps.core.events import publish_event
+
+        publish_event(
+            event_type,
+            "staff_profile",
+            profile.pk,
+            {
+                "staff_id": profile.pk,
+                "user_id": profile.user_id,
+                "full_name": profile.get_full_name(),
+                "license_number": profile.license_number,
+                "license_expiry": str(profile.license_expiry) if profile.license_expiry else None,
+                "organization_id": profile.organization_id,
+                "facility_id": profile.primary_facility_id,
+                **extra,
+            },
+        )
+    except Exception:
+        logger.exception("Failed to publish license event %s for staff %s", event_type, profile.pk)

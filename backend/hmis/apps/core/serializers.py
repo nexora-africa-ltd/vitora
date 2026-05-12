@@ -341,6 +341,8 @@ class StaffProfileSerializer(serializers.ModelSerializer):
             "licensing_body",
             "is_license_valid",
             "specialization",
+            "hwr_national_id",
+            "hwr_last_verified_at",
             "phone_number",
             "emergency_contact_name",
             "emergency_contact_phone",
@@ -352,7 +354,13 @@ class StaffProfileSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["created_at", "updated_at", "is_license_valid", "organization"]
+        read_only_fields = [
+            "created_at",
+            "updated_at",
+            "is_license_valid",
+            "organization",
+            "hwr_last_verified_at",
+        ]
 
     def get_full_name(self, obj) -> str:
         """Get full name with title."""
@@ -406,6 +414,7 @@ class StaffProfileUpdateSerializer(serializers.ModelSerializer):
             "license_verified",
             "licensing_body",
             "specialization",
+            "hwr_national_id",
             "phone_number",
             "emergency_contact_name",
             "emergency_contact_phone",
@@ -504,6 +513,7 @@ class StaffProfileCreateSerializer(serializers.Serializer):
     license_expiry = serializers.DateField(required=False, allow_null=True)
     licensing_body = serializers.CharField(max_length=100, required=False, allow_blank=True)
     specialization = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    hwr_national_id = serializers.CharField(max_length=30, required=False, allow_blank=True)
 
     hire_date = serializers.DateField(required=False, allow_null=True, source="date_joined")
 

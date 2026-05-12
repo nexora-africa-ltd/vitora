@@ -50,6 +50,7 @@ import type {
   AuditLogListParams,
   UsernameCheckResponse,
   UsernameSuggestionResponse,
+  LicenseSummary,
 } from '@/lib/types/rbac';
 
 // =============================================================================
@@ -203,6 +204,14 @@ export const staffApi = {
       middle_name: middleName || '',
     });
     return parseResponse(UsernameSuggestionResponseSchema, response.data, { context: 'staffApi.suggestUsername' });
+  },
+
+  /**
+   * Get license status summary for the org (admin) or current user
+   */
+  licenseSummary: async (): Promise<LicenseSummary> => {
+    const response = await apiClient.get<LicenseSummary>('/api/staff/license_summary/');
+    return response.data;
   },
 };
 

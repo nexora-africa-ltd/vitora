@@ -126,6 +126,7 @@ export default function NewStaffPage() {
     license_expiry: undefined as Date | undefined,
     licensing_body: '',
     specialization: '',
+    hwr_national_id: '',
     hire_date: new Date(),
   });
 
@@ -275,9 +276,14 @@ export default function NewStaffPage() {
       newData.hwr_id = practitioner.membership.registration_id || practitioner.membership.id;
       fieldsPopulated++;
 
-      // License number is from licenses[].id
-      if (currentLicense?.id) {
-        newData.license_number = currentLicense.id;
+      // Store national ID for periodic HWR verification
+      if (practitioner.identifiers?.identification_number) {
+        newData.hwr_national_id = practitioner.identifiers.identification_number;
+      }
+
+      // License number is from licenses[].external_reference_id (the actual license/reg number)
+      if (currentLicense?.external_reference_id) {
+        newData.license_number = currentLicense.external_reference_id;
         fieldsPopulated++;
       }
 
@@ -295,9 +301,9 @@ export default function NewStaffPage() {
 
       // Specialization
       if (!prev.specialization) {
-        const specialty = practitioner.professional_details.specialty ||
-          practitioner.membership.specialty ||
-          practitioner.professional_details.professional_cadre;
+        const specialty = practitioner.professional_details.professional_cadre ||
+          practitioner.professional_details.specialty ||
+          practitioner.membership.specialty;
         if (specialty) {
           newData.specialization = specialty;
           fieldsPopulated++;
@@ -318,6 +324,21 @@ export default function NewStaffPage() {
     // Suggest username after populating names
     setTimeout(() => suggestUsername(), 100);
   };
+
+  // Pick up HWR practitioner data stored by HWR Lookup page
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('hwr_practitioner');
+      if (stored) {
+        sessionStorage.removeItem('hwr_practitioner');
+        const practitioner = JSON.parse(stored) as DHAPractitioner;
+        handlePractitionerSelect(practitioner);
+      }
+    } catch {
+      // ignore parse or sessionStorage errors
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -377,6 +398,7 @@ export default function NewStaffPage() {
         license_expiry: formData.license_expiry?.toISOString().split('T')[0],
         licensing_body: formData.licensing_body || undefined,
         specialization: formData.specialization || undefined,
+        hwr_national_id: formData.hwr_national_id || undefined,
         hire_date: formData.hire_date?.toISOString().split('T')[0],
       });
 

@@ -11,7 +11,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
-import { Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, AlertTriangle, Users } from 'lucide-react';
+import { Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, AlertTriangle, Users, Sparkles } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,6 +56,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useStaffProfile, useUpdateStaffProfile, useDeleteStaffProfile, useDepartments, useRoles, useStaffList, useOrgMemberships, useCreateOrgMembership, useUpdateOrgMembership, useDeleteOrgMembership } from '@/lib/hooks/use-rbac';
 import { facilitiesApi } from '@/lib/api/facilities';
+import { DHAPractitionerSearch } from '@/components/sha/practitioner-search';
+import type { DHAPractitioner } from '@/lib/types/sha';
 
 export default function EditStaffPage() {
   const router = useRouter();
@@ -92,6 +94,7 @@ export default function EditStaffPage() {
     license_number: '',
     license_expiry: '',
     specialization: '',
+    hwr_national_id: '',
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -105,6 +108,7 @@ export default function EditStaffPage() {
     facilities: [] as string[],
   });
   const [membershipErrors, setMembershipErrors] = useState<Record<string, string>>({});
+  const [hwrPopulated, setHwrPopulated] = useState(false);
 
   // Load staff data into form
   useEffect(() => {
@@ -121,6 +125,7 @@ export default function EditStaffPage() {
         license_number: staff.license_number || '',
         license_expiry: staff.license_expiry || '',
         specialization: staff.specialization || '',
+        hwr_national_id: staff.hwr_national_id || '',
       });
       setSecondaryDepartments(
         (staff.secondary_departments ?? []).map(String)
@@ -238,6 +243,7 @@ export default function EditStaffPage() {
           license_number: formData.license_number || undefined,
           license_expiry: formData.license_expiry || undefined,
           specialization: formData.specialization || undefined,
+          hwr_national_id: formData.hwr_national_id || undefined,
           secondary_departments: secondaryDepartments.map(Number),
           secondary_facilities: secondaryFacilities.map(Number),
           supervisor: supervisor && supervisor !== 'none' ? parseInt(supervisor) : null,
@@ -887,6 +893,51 @@ export default function EditStaffPage() {
           <TabsContent value="professional">
             <Card>
               <CardContent className="space-y-4 pt-6">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    DHA Health Worker Registry Lookup
+                    {hwrPopulated && (
+                      <Badge variant="secondary" className="ml-1">
+                        <Sparkles className="h-3 w-3 mr-1" />
+                        Auto-populated
+                      </Badge>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Search by National ID to verify and update professional details from the DHA registry
+                  </p>
+                </div>
+                <DHAPractitionerSearch
+                  onSelect={(practitioner: DHAPractitioner) => {
+                    const currentLicense = practitioner.licenses?.find(l =>
+                      l.license_end && l.license_end !== 'None' && new Date(l.license_end) >= new Date()
+                    ) || practitioner.licenses?.[0];
+
+                    const licenseExpiryDate = practitioner.membership.license_expires_in_days > 0
+                      ? new Date(Date.now() + practitioner.membership.license_expires_in_days * 24 * 60 * 60 * 1000)
+                      : undefined;
+
+                    const licenseExpiry = currentLicense?.license_end && currentLicense.license_end !== 'None'
+                      ? currentLicense.license_end
+                      : licenseExpiryDate ? format(licenseExpiryDate, 'yyyy-MM-dd') : '';
+
+                    setFormData(prev => ({
+                      ...prev,
+                      license_number: currentLicense?.external_reference_id || prev.license_number,
+                      license_expiry: licenseExpiry || prev.license_expiry,
+                      specialization: practitioner.professional_details?.professional_cadre || practitioner.professional_details?.specialty || practitioner.membership?.specialty || prev.specialization,
+                      phone_number: practitioner.contacts?.phone || prev.phone_number,
+                      email: practitioner.contacts?.email?.toLowerCase() || prev.email,
+                      hwr_national_id: practitioner.identifiers?.identification_number || prev.hwr_national_id,
+                    }));
+                    setHwrPopulated(true);
+                    toast({
+                      title: 'Professional details updated',
+                      description: `Populated from DHA registry for ${practitioner.membership.full_name.trim()}`,
+                    });
+                  }}
+                />
+                <Separator />
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="license_number">License Number</Label>
@@ -898,6 +949,7 @@ export default function EditStaffPage() {
                       value={formData.license_number}
                       onChange={(e) => handleChange('license_number', e.target.value)}
                       placeholder="MED-12345…"
+                      className={hwrPopulated && formData.license_number ? 'bg-muted' : ''}
                     />
                   </div>
                   <div className="space-y-2">
@@ -918,6 +970,7 @@ export default function EditStaffPage() {
                     value={formData.specialization}
                     onChange={(e) => handleChange('specialization', e.target.value)}
                     placeholder="e.g., Internal Medicine…"
+                    className={hwrPopulated && formData.specialization ? 'bg-muted' : ''}
                   />
                 </div>
               </CardContent>

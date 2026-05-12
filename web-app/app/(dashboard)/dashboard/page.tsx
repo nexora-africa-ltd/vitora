@@ -31,13 +31,14 @@ import {
   HeartHandshake,
   Building2,
   Syringe,
+  BadgeCheck,
 } from 'lucide-react';
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { RecentPatients } from '@/components/dashboard/recent-patients';
 import { AlertsWidget } from '@/components/dashboard/alerts-widget';
 import { MyClaimedEncountersWidget } from '@/components/dashboard/my-claimed-widget';
 import { useDashboardStats, formatCurrency, formatNumber } from '@/lib/hooks/use-dashboard-stats';
-import { useMyStaffProfile } from '@/lib/hooks/use-rbac';
+import { useMyStaffProfile, useLicenseSummary } from '@/lib/hooks/use-rbac';
 import { useTriageWaitTimeStats } from '@/lib/hooks/use-triage';
 import { useEmergencySocket, useDashboardSocket } from '@/lib/hooks/use-websocket';
 import { useIsSupervisor, useUser } from '@/lib/auth';
@@ -173,6 +174,7 @@ export default function DashboardPage() {
   const canViewAdmin = canAccessModule('admin');
   const canManageSchedules = canPerformAction('scheduling.manage_schedules');
   const { data: staffProfile } = useMyStaffProfile();
+  const { data: licenseSummary } = useLicenseSummary();
   const { refresh, isRefreshing } = usePageRefresh();
 
   // Triage queue metrics
@@ -388,6 +390,29 @@ export default function DashboardPage() {
       icon: Building2,
       href: '/admin/facilities',
       ariaLabel: 'Open facilities management',
+      showTrendIndicator: false,
+    }] : []),
+    // License status cards
+    ...(canViewAdmin && licenseSummary?.is_admin_view ? [{
+      title: 'Staff Licenses',
+      value: formatNumber(licenseSummary.valid),
+      meta: `${formatNumber(licenseSummary.expired)} expired · ${formatNumber(licenseSummary.expiring_soon)} expiring`,
+      description: `${formatNumber(licenseSummary.total)} licensed staff total`,
+      icon: BadgeCheck,
+      href: '/admin/staff',
+      ariaLabel: 'Open staff management',
+      variant: (licenseSummary.expired > 0 ? 'destructive' : licenseSummary.expiring_soon > 0 ? 'warning' : 'default') as DashboardStatCard['variant'],
+      showTrendIndicator: false,
+    }] : []),
+    ...(!canViewAdmin && licenseSummary?.my_license ? [{
+      title: 'My License',
+      value: licenseSummary.my_license.status === 'valid' ? 'Valid' : licenseSummary.my_license.status === 'expired' ? 'Expired' : licenseSummary.my_license.status === 'expiring_soon' ? 'Expiring' : 'Unknown',
+      meta: licenseSummary.my_license.license_expiry ? `Expires ${licenseSummary.my_license.license_expiry}` : 'No expiry date set',
+      description: licenseSummary.my_license.licensing_body || 'License status',
+      icon: BadgeCheck,
+      href: '/profile',
+      ariaLabel: 'Open your profile',
+      variant: (licenseSummary.my_license.status === 'expired' ? 'destructive' : licenseSummary.my_license.status === 'expiring_soon' ? 'warning' : 'default') as DashboardStatCard['variant'],
       showTrendIndicator: false,
     }] : []),
   ];

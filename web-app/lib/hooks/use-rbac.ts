@@ -229,6 +229,14 @@ export function useDeleteStaffProfile() {
   });
 }
 
+export function useLicenseSummary() {
+  return useQuery({
+    queryKey: ['staff', 'license-summary'],
+    queryFn: () => staffApi.licenseSummary(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
 export function useOrgMemberships(params?: OrgMembershipListParams) {
   return useQuery({
     queryKey: ['org-memberships', params],
