@@ -100,6 +100,20 @@ def _reauth():
     _do_login(_auth_creds["base_url"], _auth_creds["username"], _auth_creds["password"])
 
 
+def _is_csrf_error(response):
+    """Check if a 400 response is a CSRF token error."""
+    if response.status_code != 400:
+        return False
+    try:
+        body = response.json()
+        for err in body.get("errors", []):
+            if "CSRF" in err.get("message", ""):
+                return True
+    except Exception:
+        pass
+    return "CSRF" in response.text[:500]
+
+
 def api_get(url, **kwargs):
     """GET with auto retry on 401 (token expired)."""
     kwargs.setdefault("timeout", REQUEST_TIMEOUT)
@@ -111,20 +125,20 @@ def api_get(url, **kwargs):
 
 
 def api_post(url, **kwargs):
-    """POST with auto retry on 401 (token expired)."""
+    """POST with auto retry on 401 or CSRF expiry."""
     kwargs.setdefault("timeout", REQUEST_TIMEOUT)
     r = session.post(url, **kwargs)
-    if r.status_code == 401:
+    if r.status_code == 401 or _is_csrf_error(r):
         _reauth()
         r = session.post(url, **kwargs)
     return r
 
 
 def api_put(url, **kwargs):
-    """PUT with auto retry on 401 (token expired)."""
+    """PUT with auto retry on 401 or CSRF expiry."""
     kwargs.setdefault("timeout", REQUEST_TIMEOUT)
     r = session.put(url, **kwargs)
-    if r.status_code == 401:
+    if r.status_code == 401 or _is_csrf_error(r):
         _reauth()
         r = session.put(url, **kwargs)
     return r
@@ -1858,13 +1872,20 @@ def create_charts(base_url):
         print(f"  [{i}/{total}] {chart_def['name']}... ", end="", flush=True)
 
         try:
-            # Check if chart already exists by name
+            # Check if chart already exists by name — list all and match in
+            # Python to avoid Superset filter issues with & in slice_name
+            cid = None
             r = api_get(
                 f"{base_url}/api/v1/chart/",
-                params={"q": json.dumps({"filters": [{"col": "slice_name", "opr": "eq", "value": chart_def["name"]}]})},
+                params={"q": json.dumps({"page_size": 500, "columns": ["id", "slice_name"]})},
             )
-            if r.status_code == 200 and r.json().get("count", 0) > 0:
-                cid = r.json()["result"][0]["id"]
+            if r.status_code == 200:
+                for c in r.json().get("result", []):
+                    if c.get("slice_name") == chart_def["name"]:
+                        cid = c["id"]
+                        break
+
+            if cid is not None:
                 dashboard_charts.setdefault(dashboard_name, []).append(cid)
                 skipped += 1
                 print("exists")
@@ -1952,10 +1973,11 @@ def _build_position_json(title, chart_ids):
 def create_dashboard(base_url, title, chart_ids):
     """Create or update a dashboard and link its charts.
 
-    Superset's POST (create) does NOT extract chartId references from
-    position_json to build the dashboard-slice association.  That linking
-    only happens inside DashboardDAO.update() (PUT).  So we always follow
-    up with a PUT to ensure the charts are actually associated.
+    Superset 4.x does NOT auto-link charts from position_json on
+    dashboard PUT.  Instead, each chart must be updated via
+    ``PUT /api/v1/chart/{id}`` with ``{"dashboards": [dash_id]}``
+    to create the ``dashboard_slices`` association.  We still PUT
+    ``position_json`` on the dashboard for the 2-column grid layout.
     """
     position = _build_position_json(title, chart_ids)
     pos_json = json.dumps(position)
@@ -1986,16 +2008,23 @@ def create_dashboard(base_url, title, chart_ids):
             return None
         dash_id = r.json()["id"]
 
-    # PUT to trigger DashboardDAO.update() which links charts via position_json
-    update_payload = {
+    # Set position_json for layout
+    r = api_put(f"{base_url}/api/v1/dashboard/{dash_id}", json={
         "position_json": pos_json,
         "published": True,
-    }
-    r = api_put(f"{base_url}/api/v1/dashboard/{dash_id}", json=update_payload)
-    if r.status_code in (200, 201):
-        print(f"  ✓ Dashboard '{title}' (id={dash_id}, {len(chart_ids)} charts)")
-    else:
-        print(f"  ⚠ Dashboard '{title}' created (id={dash_id}) but chart linking failed: {r.status_code}")
+    })
+    if r.status_code not in (200, 201):
+        print(f"  ⚠ Dashboard '{title}' layout update failed: {r.status_code}")
+
+    # Link charts → dashboard via chart PUT (Superset 4.x requirement)
+    linked = 0
+    for cid in chart_ids:
+        r = api_put(f"{base_url}/api/v1/chart/{cid}", json={"dashboards": [dash_id]})
+        if r.status_code == 200:
+            linked += 1
+        else:
+            print(f"\n    ⚠ Chart {cid} link failed: {r.status_code}", end="")
+    print(f"  ✓ Dashboard '{title}' (id={dash_id}, {linked}/{len(chart_ids)} charts linked)")
     return dash_id
 
 
