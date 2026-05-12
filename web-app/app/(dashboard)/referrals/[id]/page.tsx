@@ -221,7 +221,7 @@ export default function ReferralDetailPage() {
           <Printer className="h-4 w-4 mr-1" />
           Print
         </Button>
-        {referral.status === 'PENDING' && (
+        {referral.status === 'PENDING' && referral.referral_type !== 'EXTERNAL' && (
           <>
             <Button
               variant="outline"
@@ -238,7 +238,8 @@ export default function ReferralDetailPage() {
             </Button>
           </>
         )}
-        {(referral.status === 'ACCEPTED' || referral.status === 'IN_PROGRESS') && (
+        {(referral.status === 'ACCEPTED' || referral.status === 'IN_PROGRESS'
+          || (referral.status === 'PENDING' && referral.referral_type === 'EXTERNAL')) && (
           <Button size="sm" onClick={handleComplete} disabled={isSubmitting}>
             <CheckCircle2 className="h-4 w-4 mr-1" />
             Complete

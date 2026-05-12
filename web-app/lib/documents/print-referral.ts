@@ -41,6 +41,11 @@ const REFERRAL_TEMPLATE = `
     <div class="patient-grid">
       <div><strong>Name:</strong> {{patient_name}}</div>
       <div><strong>Patient ID:</strong> {{patient_mrn}}</div>
+      <div><strong>Gender:</strong> {{patient_gender}}</div>
+      <div><strong>Date of Birth:</strong> {{patient_dob}}</div>
+      {{#patient_phone}}
+      <div><strong>Phone:</strong> {{patient_phone}}</div>
+      {{/patient_phone}}
     </div>
   </div>
 
@@ -165,6 +170,22 @@ export function printReferralLetter(options: PrintReferralOptions): Window | nul
   // Patient
   html = html.replace(/\{\{patient_name\}\}/g, escapeHtml(patient?.full_name || referral.patient_name));
   html = html.replace(/\{\{patient_mrn\}\}/g, escapeHtml(patient?.mrn || referral.patient_mrn));
+
+  // Patient demographics
+  const genderMap: Record<string, string> = { M: 'Male', F: 'Female', O: 'Other' };
+  const gender = patient?.gender || referral.patient_gender || '';
+  html = html.replace(/\{\{patient_gender\}\}/g, escapeHtml(genderMap[gender] || gender));
+
+  const dob = patient?.date_of_birth || referral.patient_date_of_birth || '';
+  html = html.replace(/\{\{patient_dob\}\}/g, dob ? formatDate(dob) : 'N/A');
+
+  const phone = patient?.phone || referral.patient_phone || '';
+  if (phone) {
+    html = html.replace(/\{\{#patient_phone\}\}([\s\S]*?)\{\{\/patient_phone\}\}/g, '$1');
+    html = html.replace(/\{\{patient_phone\}\}/g, escapeHtml(phone));
+  } else {
+    html = html.replace(/\{\{#patient_phone\}\}[\s\S]*?\{\{\/patient_phone\}\}/g, '');
+  }
 
   // Reason
   html = html.replace(/\{\{reason\}\}/g, escapeHtml(referral.reason));

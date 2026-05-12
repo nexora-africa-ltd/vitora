@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, ArrowLeftRight, Plus, X } from 'lucide-react';
@@ -95,7 +95,49 @@ export default function NewReferralPage() {
   });
 
   const encounters = (encountersData?.results || []) as Encounter[];
-  const selectedEncounter = encounters.find((e) => e.id === encounterId) || null;
+  const selectedEncounterSummary = encounters.find((e) => e.id === encounterId) || null;
+
+  // Fetch full encounter detail to get clinical notes for auto-population
+  const { data: selectedEncounter } = useQuery({
+    queryKey: ['encounter-detail', encounterId],
+    queryFn: () => encountersApi.get(encounterId!),
+    enabled: !!encounterId,
+    staleTime: 60000,
+  });
+
+  // Auto-populate clinical notes when encounter is selected
+  useEffect(() => {
+    if (!selectedEncounter) return;
+    const parts: string[] = [];
+    if (selectedEncounter.chief_complaint) {
+      parts.push(`Chief Complaint: ${selectedEncounter.chief_complaint}`);
+    }
+    if (selectedEncounter.history_of_present_illness) {
+      parts.push(`HPI: ${selectedEncounter.history_of_present_illness}`);
+    }
+    if (selectedEncounter.physical_examination) {
+      parts.push(`Examination: ${selectedEncounter.physical_examination}`);
+    }
+    if (selectedEncounter.assessment) {
+      parts.push(`Assessment: ${selectedEncounter.assessment}`);
+    }
+    if (selectedEncounter.notes) {
+      parts.push(`Notes: ${selectedEncounter.notes}`);
+    }
+    if (selectedEncounter.vitals_summary) {
+      parts.push(`Vitals: ${selectedEncounter.vitals_summary}`);
+    }
+    if (selectedEncounter.allergies) {
+      parts.push(`Allergies: ${selectedEncounter.allergies}`);
+    }
+    if (selectedEncounter.chronic_conditions) {
+      parts.push(`Chronic Conditions: ${selectedEncounter.chronic_conditions}`);
+    }
+    if (selectedEncounter.current_medications) {
+      parts.push(`Current Medications: ${selectedEncounter.current_medications}`);
+    }
+    setClinicalNotes(parts.join('\n\n'));
+  }, [selectedEncounter]);
 
   const handlePatientChange = useCallback(
     (id: number | null, patient: Patient | null) => {
@@ -250,18 +292,18 @@ export default function NewReferralPage() {
                 </SelectContent>
               </Select>
             )}
-            {selectedEncounter && (
+            {selectedEncounterSummary && (
               <div className="mt-3 p-3 rounded-lg border bg-muted/30">
                 <div className="flex items-center gap-2 text-sm">
                   <ArrowLeftRight className="h-4 w-4 text-primary shrink-0" />
                   <span className="font-medium">
-                    {format(new Date(selectedEncounter.encounter_date), 'dd MMM yyyy')}
+                    {format(new Date(selectedEncounterSummary.encounter_date), 'dd MMM yyyy')}
                   </span>
-                  <Badge variant="outline" className="text-xs">{selectedEncounter.encounter_type}</Badge>
+                  <Badge variant="outline" className="text-xs">{selectedEncounterSummary.encounter_type}</Badge>
                 </div>
-                {selectedEncounter.chief_complaint && (
+                {selectedEncounterSummary.chief_complaint && (
                   <p className="text-sm text-muted-foreground mt-1 ml-6">
-                    {selectedEncounter.chief_complaint}
+                    {selectedEncounterSummary.chief_complaint}
                   </p>
                 )}
               </div>
@@ -444,12 +486,12 @@ export default function NewReferralPage() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="referralLetter">Referral Letter</Label>
+                <Label htmlFor="referralLetter">Additional Notes</Label>
                 <Textarea
                   id="referralLetter"
                   value={referralLetter}
                   onChange={(e) => setReferralLetter(e.target.value)}
-                  placeholder="Referral letter contents or summary..."
+                  placeholder="Any additional notes for the receiving facility..."
                   rows={4}
                 />
               </div>

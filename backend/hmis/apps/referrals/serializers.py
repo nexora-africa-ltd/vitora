@@ -92,6 +92,11 @@ class ClinicalReferralSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     patient_name = serializers.SerializerMethodField()
     patient_mrn = serializers.SerializerMethodField()
+    patient_gender = serializers.CharField(source="patient.gender", read_only=True, default="")
+    patient_date_of_birth = serializers.DateField(
+        source="patient.date_of_birth", read_only=True, default=None
+    )
+    patient_phone = serializers.SerializerMethodField()
     referred_by_name = serializers.SerializerMethodField()
     accepted_by_name = serializers.SerializerMethodField()
     declined_by_name = serializers.SerializerMethodField()
@@ -115,6 +120,9 @@ class ClinicalReferralSerializer(serializers.ModelSerializer):
             "patient",
             "patient_name",
             "patient_mrn",
+            "patient_gender",
+            "patient_date_of_birth",
+            "patient_phone",
             "encounter",
             "destination_clinic",
             "destination_clinic_name",
@@ -193,6 +201,12 @@ class ClinicalReferralSerializer(serializers.ModelSerializer):
     def get_patient_mrn(self, obj):
         if obj.patient:
             return obj.patient.mrn
+        return ""
+
+    def get_patient_phone(self, obj):
+        """Return patient phone (decrypted)."""
+        if obj.patient and obj.patient.phone_number:
+            return obj.patient.phone_number
         return ""
 
     def get_referred_by_name(self, obj):

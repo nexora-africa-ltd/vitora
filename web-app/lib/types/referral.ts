@@ -165,7 +165,7 @@ export const TARGET_SERVICE_GROUPS = [
     label: 'Other',
     options: [
       { value: 'PROCEDURE_ROOM', label: 'Procedure Room' },
-      { value: 'OTHER', label: 'Other' },
+      { value: 'OTHER', label: 'Other (External)' },
     ],
   },
 ];
@@ -238,6 +238,9 @@ export interface ClinicalReferral {
   patient: number;
   patient_name: string;
   patient_mrn: string;
+  patient_gender: string;
+  patient_date_of_birth: string | null;
+  patient_phone: string;
   encounter: number;
   destination_clinic: number | null;
   destination_clinic_name: string;
