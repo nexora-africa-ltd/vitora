@@ -90,19 +90,20 @@ class Command(BaseCommand):
 
         processed = 0
         for patient in qs.iterator(chunk_size=batch_size):
-            update_fields = []
+            update_kwargs = {}
 
             for plain_attr, enc_attr, hmac_attr in Patient._PII_FIELDS:
                 value = getattr(patient, plain_attr, None) or ""
                 if value and not getattr(patient, enc_attr):
-                    setattr(patient, enc_attr, kms.encrypt_string(value))
-                    update_fields.append(enc_attr)
+                    update_kwargs[enc_attr] = kms.encrypt_string(value)
                     if hmac_attr:
-                        setattr(patient, hmac_attr, kms.compute_hmac(value))
-                        update_fields.append(hmac_attr)
+                        update_kwargs[hmac_attr] = kms.compute_hmac(value)
+                    # Phase C: blank plaintext at rest
+                    field = Patient._meta.get_field(plain_attr)
+                    update_kwargs[plain_attr] = None if field.null else ""
 
-            if update_fields:
-                patient.save(update_fields=update_fields)
+            if update_kwargs:
+                Patient.objects.filter(pk=patient.pk).update(**update_kwargs)
 
             processed += 1
             if processed % batch_size == 0:
@@ -128,16 +129,18 @@ class Command(BaseCommand):
 
         processed = 0
         for contact in qs.iterator(chunk_size=batch_size):
-            update_fields = []
+            update_kwargs = {}
 
             for plain_attr, enc_attr, _hmac_attr in EmergencyContact._PII_FIELDS:
                 value = getattr(contact, plain_attr, None) or ""
                 if value and not getattr(contact, enc_attr):
-                    setattr(contact, enc_attr, kms.encrypt_string(value))
-                    update_fields.append(enc_attr)
+                    update_kwargs[enc_attr] = kms.encrypt_string(value)
+                    # Phase C: blank plaintext at rest
+                    field = EmergencyContact._meta.get_field(plain_attr)
+                    update_kwargs[plain_attr] = None if field.null else ""
 
-            if update_fields:
-                contact.save(update_fields=update_fields)
+            if update_kwargs:
+                EmergencyContact.objects.filter(pk=contact.pk).update(**update_kwargs)
 
             processed += 1
             if processed % batch_size == 0:

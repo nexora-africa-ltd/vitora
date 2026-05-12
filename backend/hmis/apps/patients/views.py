@@ -92,7 +92,7 @@ class PatientViewSet(
     permission_classes = [IsAuthenticated, SensitiveAccessPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = PatientFilter
-    search_fields = ["first_name", "last_name", "mrn", "national_id", "phone_number"]
+    search_fields = ["first_name", "last_name", "mrn"]
     ordering_fields = ["created_at", "last_name", "first_name"]
     ordering = ["-created_at"]
 
@@ -684,11 +684,15 @@ class PatientViewSet(
         matches = []
         match_type = None
 
-        # Priority 1: Exact identification match
+        # Priority 1: Exact identification match (via HMAC blind index)
         if identification_number:
+            from hmis.apps.core.kms import get_kms_provider
+
+            kms = get_kms_provider()
+            id_hmac = kms.compute_hmac(identification_number)
             exact_match = Patient.objects.filter(
                 identification_type=identification_type,
-                identification_number=identification_number,
+                identification_number_hmac=id_hmac,
             ).first()
 
             if exact_match:

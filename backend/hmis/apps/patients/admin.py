@@ -31,7 +31,7 @@ class PatientAdmin(admin.ModelAdmin):
         "created_at",
     ]
     list_filter = ["gender", "referral_source", "county", "is_sensitive", "created_at"]
-    search_fields = ["mrn", "first_name", "last_name", "national_id", "phone_number"]
+    search_fields = ["mrn", "first_name", "last_name"]
     readonly_fields = ["mrn", "registered_by", "created_at", "updated_at"]
     ordering = ["-created_at"]
     inlines = [EmergencyContactInline]
@@ -80,7 +80,6 @@ class EmergencyContactAdmin(admin.ModelAdmin):
         "patient__first_name",
         "patient__last_name",
         "full_name",
-        "phone_number",
     ]
     ordering = ["-created_at"]
     autocomplete_fields = ["patient"]
