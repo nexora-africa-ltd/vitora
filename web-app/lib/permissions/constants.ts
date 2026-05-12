@@ -91,7 +91,7 @@ export const MODULE_PERMISSIONS = {
   immunizations: 'immunizations.view_immunizationrecord',
   quality: 'quality.view_qualitymeasure',
   cds: 'cds.view_cdsrule',
-  analytics: null, // All authenticated users can view analytics
+  analytics: 'analytics.view_facilitydailysummary',
   moh_reporting: null, // All authenticated users can view MOH reports
   inventory: [
     'inventory.view_supplier',

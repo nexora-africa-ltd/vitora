@@ -14,6 +14,10 @@
  *   COUNSELLOR (not COUNSELOR), DIETITIAN (not NUTRITIONIST), etc.
  */
 export const ACTION_PERMISSIONS = {
+  // === Analytics Module ===
+  'analytics.view_dashboard': ['ADMIN', 'ORG-ADMIN', 'OWNER', 'MANAGEMENT'],
+  'analytics.view_explore': ['ADMIN', 'ORG-ADMIN', 'OWNER', 'MANAGEMENT'],
+
   // === Patients Module ===
   'patients.view': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'RECORDS_CLERK', 'ADMIN', 'ORG-ADMIN', 'LAB_TECH', 'LAB_SCIENTIST', 'PHARMACIST', 'RADIOGRAPHER', 'RADIOLOGIST', 'BILLING_CLERK', 'CASHIER', 'BILLING_SUPERVISOR', 'HR_OFFICER', 'NURSE_AIDE', 'CHW'],
   'patients.create': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'RECORDS_CLERK', 'ADMIN', 'CHW'],
