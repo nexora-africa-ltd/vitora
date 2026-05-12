@@ -1960,14 +1960,20 @@ def create_dashboard(base_url, title, chart_ids):
     position = _build_position_json(title, chart_ids)
     pos_json = json.dumps(position)
 
-    # Check if dashboard exists
+    # Check if dashboard exists — list all and match in Python to avoid
+    # Superset filter issues with special characters (& in titles)
+    dash_id = None
     r = api_get(
         f"{base_url}/api/v1/dashboard/",
-        params={"q": json.dumps({"filters": [{"col": "dashboard_title", "opr": "eq", "value": title}]})},
+        params={"q": json.dumps({"page_size": 200})},
     )
-    if r.status_code == 200 and r.json().get("count", 0) > 0:
-        dash_id = r.json()["result"][0]["id"]
-    else:
+    if r.status_code == 200:
+        for d in r.json().get("result", []):
+            if d.get("dashboard_title") == title:
+                dash_id = d["id"]
+                break
+
+    if dash_id is None:
         # Create the dashboard first
         payload = {
             "dashboard_title": title,
