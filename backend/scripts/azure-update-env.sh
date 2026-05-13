@@ -206,7 +206,7 @@ az containerapp update \
     "POWERSYNC_URL=${POWERSYNC_URL:-https://69d7e1b30e377e689729cf08.powersync.journeyapps.com}" \
     "POWERSYNC_JWT_KID=${POWERSYNC_JWT_KID:-vitora-hmis-1}" \
     "POWERSYNC_JWT_AUDIENCE=${POWERSYNC_JWT_AUDIENCE:-https://69d7e1b30e377e689729cf08.powersync.journeyapps.com}" \
-    "VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}" \
+    "VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-BK9Ze2ux8-t3w3r83bj7kOEcTuz3IfATjoyg5_TRYBVTAHaqvjRUHqpVHc6T0Ej0nbaDY5ZTVlJ7Mnle6h7ZesU}" \
     "VAPID_PRIVATE_KEY=secretref:vapid-private-key" \
     "VAPID_CLAIM_EMAIL=${VAPID_CLAIM_EMAIL:-mailto:info@nexora.africa}" \
     "LIS_STANDALONE_MODE=${LIS_STANDALONE_MODE:-false}" \
