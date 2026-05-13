@@ -66,8 +66,14 @@ class PatientQuerySet(models.QuerySet):
         rewritten = {}
         kms = None
         for key, value in kwargs.items():
-            # Handle both `field` and `field__exact` lookups
-            base = key.removesuffix("__exact")
+            # Match `field`, `field__exact`, `field__iexact`, `field__icontains`.
+            # HMAC is a deterministic hash, so case-insensitive and substring
+            # matches collapse to exact equality on the hashed value.
+            base = key
+            for suffix in ("__exact", "__iexact", "__icontains"):
+                if key.endswith(suffix):
+                    base = key[: -len(suffix)]
+                    break
             if base in self._HMAC_REWRITES and isinstance(value, str) and value:
                 if kms is None:
                     kms = get_kms_provider()
@@ -77,11 +83,33 @@ class PatientQuerySet(models.QuerySet):
                 rewritten[key] = value
         return rewritten
 
+    def _rewrite_q(self, q):
+        """Recursively rewrite a Q object, translating PII lookups to HMAC."""
+        from django.db.models import Q
+
+        new_q = Q(_connector=q.connector, _negated=q.negated)
+        for child in q.children:
+            if isinstance(child, Q):
+                new_q.children.append(self._rewrite_q(child))
+            elif isinstance(child, tuple) and len(child) == 2:
+                rewritten = self._rewrite_pii_kwargs({child[0]: child[1]})
+                # Take the (possibly renamed) single kwarg
+                new_key, new_val = next(iter(rewritten.items()))
+                new_q.children.append((new_key, new_val))
+            else:
+                new_q.children.append(child)
+        return new_q
+
+    def _rewrite_args(self, args):
+        from django.db.models import Q
+
+        return tuple(self._rewrite_q(a) if isinstance(a, Q) else a for a in args)
+
     def filter(self, *args, **kwargs):
-        return super().filter(*args, **self._rewrite_pii_kwargs(kwargs))
+        return super().filter(*self._rewrite_args(args), **self._rewrite_pii_kwargs(kwargs))
 
     def exclude(self, *args, **kwargs):
-        return super().exclude(*args, **self._rewrite_pii_kwargs(kwargs))
+        return super().exclude(*self._rewrite_args(args), **self._rewrite_pii_kwargs(kwargs))
 
 
 PatientManager = models.Manager.from_queryset(PatientQuerySet)
