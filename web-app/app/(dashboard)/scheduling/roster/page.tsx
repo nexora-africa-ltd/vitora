@@ -394,12 +394,18 @@ export default function WeeklyRosterPage() {
         });
       }
 
-      // Delete removed shifts first
-      const deleteResults = await Promise.allSettled(
-        deleteIds.map((id) => shiftsApi.delete(id)),
-      );
-      const deleted = deleteResults.filter((r) => r.status === 'fulfilled').length;
-      const deleteFailed = deleteResults.filter((r) => r.status === 'rejected').length;
+      // Delete removed shifts — batch to avoid overwhelming the server
+      let deleted = 0;
+      let deleteFailed = 0;
+      const BATCH_SIZE = 6;
+      for (let i = 0; i < deleteIds.length; i += BATCH_SIZE) {
+        const batch = deleteIds.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(
+          batch.map((id) => shiftsApi.delete(id)),
+        );
+        deleted += results.filter((r) => r.status === 'fulfilled').length;
+        deleteFailed += results.filter((r) => r.status === 'rejected').length;
+      }
 
       // Then create new shifts
       let createResult = { created: 0, skipped: 0, errors: 0 };

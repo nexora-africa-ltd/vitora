@@ -395,7 +395,9 @@ export const shiftsApi = {
 
   /** Bulk-create shifts for a roster grid. Skips duplicates. */
   bulkCreate: async (payload: BulkCreateShiftsPayload): Promise<BulkCreateShiftsResult> => {
-    const response = await apiClient.post(`${BASE_URL}/shifts/bulk-create/`, payload);
+    const response = await apiClient.post(`${BASE_URL}/shifts/bulk-create/`, payload, {
+      timeout: 120000, // 2 minutes — large rosters can take time
+    });
     return response.data;
   },
 
