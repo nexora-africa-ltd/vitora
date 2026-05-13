@@ -187,10 +187,15 @@ let isRedirectingToLogin = false;
  */
 function handleAuthError(): void {
   tokenStorage.clearAll();
-  // Redirect to login (only once, only in browser)
+  // Redirect to login (only once, only in browser) — preserve current path
   if (typeof window !== 'undefined' && !isRedirectingToLogin) {
     isRedirectingToLogin = true;
-    window.location.href = '/login';
+    const currentPath = window.location.pathname + window.location.search;
+    const loginUrl = new URL('/login', window.location.origin);
+    if (currentPath && currentPath !== '/' && currentPath !== '/login') {
+      loginUrl.searchParams.set('callbackUrl', currentPath);
+    }
+    window.location.href = loginUrl.toString();
   }
 }
 
