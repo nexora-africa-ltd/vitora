@@ -78,14 +78,14 @@ for name in "${!SECRETS[@]}"; do
   if [[ -n "$value" ]]; then
     SECRET_ARGS+=("${name}=${value}")
   else
-    # Use placeholder to ensure secret exists (deploy fails if secretref is missing)
-    SECRET_ARGS+=("${name}=placeholder-set-real-value")
+    # Skip empty secrets — do NOT overwrite existing secrets with placeholders.
+    # The secret must already exist in Azure (set manually or by a previous run).
     SKIPPED+=("$name")
   fi
 done
 
 if [[ ${#SKIPPED[@]} -gt 0 ]]; then
-  echo "    Secrets with placeholder values (set real values): ${SKIPPED[*]}"
+  echo "    ⚠ Skipped (not exported, keeping existing Azure value): ${SKIPPED[*]}"
 fi
 
 if [[ ${#SECRET_ARGS[@]} -gt 0 ]]; then
