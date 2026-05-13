@@ -152,7 +152,13 @@ export default function LoginPage() {
         // If parse fails, proceed to dashboard
       }
 
-      router.push('/');
+      // Redirect to the page the user was on before logout, or dashboard
+      const callbackUrl = searchParams.get('callbackUrl');
+      if (callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')) {
+        router.push(callbackUrl);
+      } else {
+        router.push('/');
+      }
     } catch (err) {
       if (!navigator.onLine || (err instanceof TypeError && err.message === 'Failed to fetch')) {
         setError('You are offline. Connect to the internet to sign in.');

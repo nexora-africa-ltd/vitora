@@ -48,10 +48,15 @@ export function IdleTimerProvider({
   const router = useRouter();
   const { logout, isAuthenticated } = useAuth();
 
-  // Handle auto-logout
+  // Handle auto-logout — preserve current path so login can redirect back
   const handleLogout = useCallback(() => {
+    const currentPath = window.location.pathname + window.location.search;
     logout();
-    router.push('/login?reason=idle');
+    const params = new URLSearchParams({ reason: 'idle' });
+    if (currentPath && currentPath !== '/' && currentPath !== '/login') {
+      params.set('callbackUrl', currentPath);
+    }
+    router.push(`/login?${params.toString()}`);
   }, [logout, router]);
 
   // Only enable timer when user is authenticated
