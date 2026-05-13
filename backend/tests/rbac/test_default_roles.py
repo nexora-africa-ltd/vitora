@@ -399,6 +399,9 @@ KNOWN_CUSTOM_ACTIONS = {
     "approve_emergency_access",
     "revoke_emergency_access",
     "view_emergency_dashboard",
+    # sick notes
+    "issue_sick_note",
+    "revoke_sick_note",
 }
 
 ALL_VALID_ACTIONS = STANDARD_ACTIONS | KNOWN_CUSTOM_ACTIONS

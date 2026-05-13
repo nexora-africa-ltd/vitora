@@ -57,6 +57,42 @@ def get_field_changes(old_record, new_record, exclude_fields: list[str] | None =
             "updated_at",
         ]
 
+    # Phase C PII: encrypted columns are canonical; plaintext columns are blanked
+    # at rest. Map encrypted column changes back to their plaintext field name
+    # and decrypt for human-readable diffs. Suppress the raw _encrypted/_hmac
+    # columns and the now-blanked plaintext column from the output.
+    def _resolve_pii_mapping(record):
+        """Return (encrypted_to_plain, suppressed_fields) for a (historical) record."""
+        # Historical records (django-simple-history) expose the source model
+        # via instance_type; fall back to the record's own class if absent.
+        model = getattr(record, "instance_type", None) or type(record)
+        pii_fields = getattr(model, "_PII_FIELDS", None)
+        if not pii_fields:
+            return {}, set()
+        enc_to_plain: dict[str, str] = {}
+        suppressed: set[str] = set()
+        for plain_attr, enc_attr, hmac_attr in pii_fields:
+            enc_to_plain[enc_attr] = plain_attr
+            suppressed.add(plain_attr)
+            suppressed.add(enc_attr)
+            if hmac_attr:
+                suppressed.add(hmac_attr)
+        return enc_to_plain, suppressed
+
+    def _decrypt_pii(value):
+        """Decrypt a Fernet-encrypted PII value, returning None on failure."""
+        if not value:
+            return None
+        import contextlib
+
+        from hmis.apps.core.kms import get_kms_provider
+
+        with contextlib.suppress(Exception):
+            return get_kms_provider().decrypt_string(value)
+        return None
+
+    enc_to_plain, suppressed_fields = _resolve_pii_mapping(new_record)
+
     changes = {}
 
     if old_record is None:
@@ -64,6 +100,16 @@ def get_field_changes(old_record, new_record, exclude_fields: list[str] | None =
         for field in new_record._meta.fields:
             field_name = field.name
             if field_name in exclude_fields:
+                continue
+
+            # Phase C: render encrypted columns as their plaintext field name
+            if field_name in enc_to_plain:
+                plain_name = enc_to_plain[field_name]
+                new_value = _decrypt_pii(getattr(new_record, field_name, None))
+                if new_value:
+                    changes[plain_name] = {"old": None, "new": _serialize_value(new_value)}
+                continue
+            if field_name in suppressed_fields:
                 continue
 
             new_value = getattr(new_record, field_name, None)
@@ -78,6 +124,20 @@ def get_field_changes(old_record, new_record, exclude_fields: list[str] | None =
     for field in new_record._meta.fields:
         field_name = field.name
         if field_name in exclude_fields:
+            continue
+
+        # Phase C: render encrypted columns as their plaintext field name
+        if field_name in enc_to_plain:
+            plain_name = enc_to_plain[field_name]
+            old_value = _decrypt_pii(getattr(old_record, field_name, None))
+            new_value = _decrypt_pii(getattr(new_record, field_name, None))
+            if old_value != new_value:
+                changes[plain_name] = {
+                    "old": _serialize_value(old_value),
+                    "new": _serialize_value(new_value),
+                }
+            continue
+        if field_name in suppressed_fields:
             continue
 
         old_value = getattr(old_record, field_name, None)

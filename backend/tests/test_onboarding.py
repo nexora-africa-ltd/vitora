@@ -53,14 +53,24 @@ class TestOrganizationOnboardingModel:
         sample_facility.has_pharmacy = False
         sample_facility.has_laboratory = False
         sample_facility.has_maternity = False
-        sample_facility.save(
-            update_fields=[
-                "has_outpatient",
-                "has_pharmacy",
-                "has_laboratory",
-                "has_maternity",
-            ]
-        )
+        sample_facility.has_inpatient = False
+        sample_facility.has_emergency = False
+        sample_facility.has_imaging = False
+        sample_facility.has_theatre = False
+        sample_facility.has_dialysis = False
+        sample_facility.has_icu = False
+        sample_facility.has_mortuary = False
+        sample_facility.has_blood_bank = False
+        sample_facility.has_inventory = False
+        sample_facility.has_lis_standalone = False
+        sample_facility.has_triage = False
+        sample_facility.has_scheduling = False
+        sample_facility.has_surveillance = False
+        sample_facility.has_immunizations = False
+        sample_facility.has_allied_health = False
+        sample_facility.has_quality = False
+        sample_facility.has_billing = False
+        sample_facility.save()
 
         steps = sample_organization.get_onboarding_checklist()
         modules_step = next(s for s in steps if s["key"] == "facility_modules")

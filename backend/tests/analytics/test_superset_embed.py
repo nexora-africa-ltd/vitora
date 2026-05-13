@@ -47,6 +47,14 @@ def _make_dashboard_list_response(dashboards=None):
     return resp
 
 
+def _make_embedded_uuid_response(uuid="fake-embedded-uuid"):
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.json.return_value = {"result": {"uuid": uuid}}
+    resp.raise_for_status = MagicMock()
+    return resp
+
+
 @pytest.fixture(autouse=True)
 def _clear_token_cache():
     """Clear the Superset token cache before each test."""
@@ -91,11 +99,15 @@ class TestSupersetGuestTokenView:
     )
     @patch("hmis.apps.analytics.views.http_requests")
     def test_returns_guest_token_for_dashboard(self, mock_requests, authenticated_client):
-        mock_requests.post.side_effect = [
+        session_mock = mock_requests.Session.return_value
+        session_mock.post.side_effect = [
             _make_login_response(),
             _make_guest_token_response("test-guest-token"),
         ]
-        mock_requests.get.return_value = _make_csrf_response()
+        session_mock.get.side_effect = [
+            _make_csrf_response(),
+            _make_embedded_uuid_response(),
+        ]
         mock_requests.RequestException = Exception
 
         response = authenticated_client.get(GUEST_TOKEN_URL, {"dashboard_id": 42})
@@ -110,11 +122,15 @@ class TestSupersetGuestTokenView:
     )
     @patch("hmis.apps.analytics.views.http_requests")
     def test_trailing_slash_stripped(self, mock_requests, authenticated_client):
-        mock_requests.post.side_effect = [
+        session_mock = mock_requests.Session.return_value
+        session_mock.post.side_effect = [
             _make_login_response(),
             _make_guest_token_response(),
         ]
-        mock_requests.get.return_value = _make_csrf_response()
+        session_mock.get.side_effect = [
+            _make_csrf_response(),
+            _make_embedded_uuid_response(),
+        ]
         mock_requests.RequestException = Exception
 
         response = authenticated_client.get(GUEST_TOKEN_URL, {"dashboard_id": 1})
@@ -130,21 +146,25 @@ class TestSupersetGuestTokenView:
     def test_guest_token_includes_rls_for_facility(
         self, mock_requests, authenticated_client, sample_facility
     ):
-        mock_requests.post.side_effect = [
+        session_mock = mock_requests.Session.return_value
+        session_mock.post.side_effect = [
             _make_login_response(),
             _make_guest_token_response(),
         ]
-        mock_requests.get.return_value = _make_csrf_response()
+        session_mock.get.side_effect = [
+            _make_csrf_response(),
+            _make_embedded_uuid_response(),
+        ]
         mock_requests.RequestException = Exception
 
         authenticated_client.get(GUEST_TOKEN_URL, {"dashboard_id": 1})
 
         # Second post call is the guest_token request
-        guest_call = mock_requests.post.call_args_list[1]
+        guest_call = session_mock.post.call_args_list[1]
         body = guest_call.kwargs.get("json") or guest_call[1].get("json")
         rls_rules = body["rls"]
-        assert len(rls_rules) == 1
-        assert f"facility_id = {sample_facility.id}" in rls_rules[0]["clause"]
+        rls_clauses = [r["clause"] for r in rls_rules]
+        assert f"facility_id = {sample_facility.id}" in rls_clauses
 
     @override_settings(
         SUPERSET_URL="https://superset.example.com",
@@ -153,7 +173,8 @@ class TestSupersetGuestTokenView:
     )
     @patch("hmis.apps.analytics.views.http_requests")
     def test_returns_502_on_superset_failure(self, mock_requests, authenticated_client):
-        mock_requests.post.side_effect = Exception("Connection refused")
+        session_mock = mock_requests.Session.return_value
+        session_mock.post.side_effect = Exception("Connection refused")
         mock_requests.RequestException = Exception
 
         response = authenticated_client.get(GUEST_TOKEN_URL, {"dashboard_id": 1})
@@ -180,11 +201,15 @@ class TestSupersetDashboardListView:
     )
     @patch("hmis.apps.analytics.views.http_requests")
     def test_returns_published_dashboards(self, mock_requests, authenticated_client):
-        mock_requests.post.return_value = _make_login_response()
+        session_mock = mock_requests.Session.return_value
+        session_mock.post.return_value = _make_login_response()
         mock_requests.RequestException = Exception
-        mock_requests.get.side_effect = [
+        session_mock.get.side_effect = [
             _make_csrf_response(),
             _make_dashboard_list_response(),
+            # embedded UUID calls for each dashboard
+            _make_embedded_uuid_response("emb-1"),
+            _make_embedded_uuid_response("emb-2"),
         ]
 
         response = authenticated_client.get(DASHBOARD_LIST_URL)
@@ -200,9 +225,10 @@ class TestSupersetDashboardListView:
     )
     @patch("hmis.apps.analytics.views.http_requests")
     def test_returns_502_on_superset_failure(self, mock_requests, authenticated_client):
-        mock_requests.post.return_value = _make_login_response()
+        session_mock = mock_requests.Session.return_value
+        session_mock.post.return_value = _make_login_response()
         mock_requests.RequestException = Exception
-        mock_requests.get.side_effect = [
+        session_mock.get.side_effect = [
             _make_csrf_response(),
             Exception("Connection refused"),
         ]

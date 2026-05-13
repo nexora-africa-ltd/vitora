@@ -428,7 +428,7 @@ class TestDiagnosticReportRetrieveAPI:
             conclusion="Test conclusion",
         )
 
-        response = authenticated_client.get(f"/api/lab/diagnostic-reports/{report.id}/")
+        response = authenticated_client.get(f"/api/lab/diagnostic-reports/{report.report_number}/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["id"] == report.id
@@ -444,7 +444,7 @@ class TestDiagnosticReportRetrieveAPI:
             issued_by=test_user,
         )
 
-        response = authenticated_client.get(f"/api/lab/diagnostic-reports/{report.id}/")
+        response = authenticated_client.get(f"/api/lab/diagnostic-reports/{report.report_number}/")
 
         assert response.status_code == status.HTTP_200_OK
         assert "lab_order_number" in response.data
@@ -464,7 +464,7 @@ class TestDiagnosticReportUpdateAPI:
         )
 
         response = authenticated_client.patch(
-            f"/api/lab/diagnostic-reports/{report.id}/",
+            f"/api/lab/diagnostic-reports/{report.report_number}/",
             {
                 "conclusion": "Updated conclusion",
             },
@@ -486,7 +486,7 @@ class TestDiagnosticReportUpdateAPI:
         )
 
         response = authenticated_client.patch(
-            f"/api/lab/diagnostic-reports/{report.id}/",
+            f"/api/lab/diagnostic-reports/{report.report_number}/",
             {
                 "status": "DRAFT",  # Should not be allowed
             },
@@ -509,7 +509,7 @@ class TestDiagnosticReportActionsAPI:
         )
 
         response = authenticated_client.post(
-            f"/api/lab/diagnostic-reports/{report.id}/finalize/",
+            f"/api/lab/diagnostic-reports/{report.report_number}/finalize/",
             format="json",
         )
 
@@ -529,7 +529,7 @@ class TestDiagnosticReportActionsAPI:
         )
 
         response = authenticated_client.post(
-            f"/api/lab/diagnostic-reports/{report.id}/amend/",
+            f"/api/lab/diagnostic-reports/{report.report_number}/amend/",
             {
                 "conclusion": "Amended after pathologist review",
             },
@@ -550,7 +550,7 @@ class TestDiagnosticReportActionsAPI:
         )
 
         response = authenticated_client.post(
-            f"/api/lab/diagnostic-reports/{report.id}/cancel/",
+            f"/api/lab/diagnostic-reports/{report.report_number}/cancel/",
             {
                 "reason": "Created in error",
             },
@@ -575,7 +575,7 @@ class TestDiagnosticReportActionsAPI:
         )
 
         response = authenticated_client.post(
-            f"/api/lab/diagnostic-reports/{report.id}/generate_pdf/",
+            f"/api/lab/diagnostic-reports/{report.report_number}/generate_pdf/",
             format="json",
         )
 
