@@ -17,6 +17,7 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from hmis.apps.core.mixins import FacilityScopedModel, OrganizationScopedModel
+from hmis.apps.core.pii import encrypted_pii_property
 from hmis.apps.core.upload_validators import validate_image_upload as _validate_image_upload
 
 
@@ -1496,33 +1497,22 @@ class StaffProfile(models.Model):
         blank=True,
         help_text="Medical specialization",
     )
-    hwr_national_id = models.CharField(
-        max_length=30,
-        blank=True,
-        help_text="National ID used for DHA HWR lookups (stored on practitioner select)",
-    )
+    hwr_national_id_encrypted = models.TextField(default="", blank=True)
+    hwr_national_id_hmac = models.CharField(max_length=64, default="", blank=True, db_index=True)
+    hwr_national_id = encrypted_pii_property("hwr_national_id")
     hwr_last_verified_at = models.DateTimeField(
         null=True,
         blank=True,
         help_text="Timestamp of last successful HWR verification",
     )
 
-    # Contact
-    phone_number = models.CharField(
-        max_length=20,
-        blank=True,
-        help_text="Contact phone number",
-    )
-    emergency_contact_name = models.CharField(
-        max_length=100,
-        blank=True,
-        help_text="Emergency contact name",
-    )
-    emergency_contact_phone = models.CharField(
-        max_length=20,
-        blank=True,
-        help_text="Emergency contact phone",
-    )
+    # Contact (encrypted at rest — Kenya DPA 2019 § 41)
+    phone_number_encrypted = models.TextField(default="", blank=True)
+    phone_number = encrypted_pii_property("phone_number")
+    emergency_contact_name_encrypted = models.TextField(default="", blank=True)
+    emergency_contact_name = encrypted_pii_property("emergency_contact_name")
+    emergency_contact_phone_encrypted = models.TextField(default="", blank=True)
+    emergency_contact_phone = encrypted_pii_property("emergency_contact_phone")
 
     # Account lifecycle
     must_change_password = models.BooleanField(
@@ -2588,22 +2578,12 @@ class Organization(TimeStampedModel):
     # Contact
     # ------------------------------------------------------------------
 
-    contact_email = models.EmailField(
-        blank=True,
-        default="",
-        help_text="Primary contact email for the organization.",
-    )
-    contact_phone = models.CharField(
-        max_length=20,
-        blank=True,
-        default="",
-        help_text="Primary contact phone number.",
-    )
-    address = models.TextField(
-        blank=True,
-        default="",
-        help_text="Physical address of the organization's headquarters.",
-    )
+    contact_email_encrypted = models.TextField(default="", blank=True)
+    contact_email = encrypted_pii_property("contact_email")
+    contact_phone_encrypted = models.TextField(default="", blank=True)
+    contact_phone = encrypted_pii_property("contact_phone")
+    address_encrypted = models.TextField(default="", blank=True)
+    address = encrypted_pii_property("address")
 
     # ------------------------------------------------------------------
     # Location (optional HQ)
@@ -3972,9 +3952,9 @@ class StaffInvitation(models.Model):
         editable=False,
         help_text="Unique token embedded in the invitation link.",
     )
-    email = models.EmailField(
-        help_text="Email address the invitation was sent to.",
-    )
+    email_encrypted = models.TextField(default="", blank=True)
+    email_hmac = models.CharField(max_length=64, default="", blank=True, db_index=True)
+    email = encrypted_pii_property("email")
 
     # Pre-configured admin settings
     organization = models.ForeignKey(
@@ -4091,7 +4071,7 @@ class StaffInvitation(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["token"]),
-            models.Index(fields=["email"]),
+            models.Index(fields=["email_hmac"]),
             models.Index(fields=["status"]),
         ]
 

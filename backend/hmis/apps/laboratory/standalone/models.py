@@ -10,6 +10,7 @@ from django.db import models
 
 from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.models import TimeStampedModel
+from hmis.apps.core.pii import encrypted_pii_property
 
 User = get_user_model()
 
@@ -39,14 +40,17 @@ class WalkInPatient(FacilityScopedModel, TimeStampedModel):
     date_of_birth = models.DateField(null=True, blank=True)
     gender = models.CharField(max_length=1, choices=Gender.choices, blank=True)
 
-    # Contact
-    phone_number = models.CharField(max_length=20, blank=True)
-    email = models.EmailField(blank=True)
+    # Contact (encrypted at rest — Kenya DPA 2019 § 41)
+    phone_number_encrypted = models.TextField(default="", blank=True)
+    phone_number_hmac = models.CharField(max_length=64, default="", blank=True, db_index=True)
+    phone_number = encrypted_pii_property("phone_number")
+    email_encrypted = models.TextField(default="", blank=True)
+    email = encrypted_pii_property("email")
 
-    # Identification
-    national_id = models.CharField(
-        max_length=30, blank=True, help_text="National ID, passport, or other identifier"
-    )
+    # Identification (encrypted at rest)
+    national_id_encrypted = models.TextField(default="", blank=True)
+    national_id_hmac = models.CharField(max_length=64, default="", blank=True, db_index=True)
+    national_id = encrypted_pii_property("national_id")
     id_type = models.CharField(
         max_length=20,
         blank=True,
@@ -86,9 +90,9 @@ class WalkInPatient(FacilityScopedModel, TimeStampedModel):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["registration_number"]),
-            models.Index(fields=["national_id"]),
+            models.Index(fields=["national_id_hmac"]),
             models.Index(fields=["last_name", "first_name"]),
-            models.Index(fields=["phone_number"]),
+            models.Index(fields=["phone_number_hmac"]),
         ]
 
     def __str__(self):

@@ -13,7 +13,16 @@ class EmergencyContactInline(admin.TabularInline):
     model = EmergencyContact
     extra = 0
     max_num = 3
-    fields = ["full_name", "phone_number", "relationship", "alternative_phone"]
+    fields = ["full_name", "display_phone_number", "relationship", "display_alternative_phone"]
+    readonly_fields = ["display_phone_number", "display_alternative_phone"]
+
+    @admin.display(description="Phone Number")
+    def display_phone_number(self, obj):
+        return obj.phone_number or "—"
+
+    @admin.display(description="Alt Phone")
+    def display_alternative_phone(self, obj):
+        return obj.alternative_phone or "—"
 
 
 @admin.register(Patient)
@@ -32,7 +41,16 @@ class PatientAdmin(admin.ModelAdmin):
     ]
     list_filter = ["gender", "referral_source", "county", "is_sensitive", "created_at"]
     search_fields = ["mrn", "first_name", "last_name"]
-    readonly_fields = ["mrn", "registered_by", "created_at", "updated_at"]
+    readonly_fields = [
+        "mrn",
+        "registered_by",
+        "created_at",
+        "updated_at",
+        "display_phone_number",
+        "display_email",
+        "display_address",
+        "display_national_id",
+    ]
     ordering = ["-created_at"]
     inlines = [EmergencyContactInline]
     autocomplete_fields = ["county", "sub_county", "ward"]
@@ -42,12 +60,15 @@ class PatientAdmin(admin.ModelAdmin):
             "Personal Information",
             {"fields": ("first_name", "middle_name", "last_name", "date_of_birth", "gender")},
         ),
-        ("Contact Information", {"fields": ("phone_number", "email", "address")}),
+        (
+            "Contact Information",
+            {"fields": ("display_phone_number", "display_email", "display_address")},
+        ),
         (
             "Location",
             {"fields": ("county", "sub_county", "ward", "village")},
         ),
-        ("Identification", {"fields": ("mrn", "national_id")}),
+        ("Identification", {"fields": ("mrn", "display_national_id")}),
         (
             "Referral & Registration",
             {"fields": ("referral_source", "referred_from_facility", "registered_by")},
@@ -68,12 +89,28 @@ class PatientAdmin(admin.ModelAdmin):
         ),
     )
 
+    @admin.display(description="Phone Number")
+    def display_phone_number(self, obj):
+        return obj.phone_number or "—"
+
+    @admin.display(description="Email")
+    def display_email(self, obj):
+        return obj.email or "—"
+
+    @admin.display(description="Address")
+    def display_address(self, obj):
+        return obj.address or "—"
+
+    @admin.display(description="National ID")
+    def display_national_id(self, obj):
+        return obj.national_id or "—"
+
 
 @admin.register(EmergencyContact)
 class EmergencyContactAdmin(admin.ModelAdmin):
     """Admin configuration for EmergencyContact model."""
 
-    list_display = ["patient", "full_name", "phone_number", "relationship"]
+    list_display = ["patient", "full_name", "relationship"]
     list_filter = ["relationship"]
     search_fields = [
         "patient__mrn",

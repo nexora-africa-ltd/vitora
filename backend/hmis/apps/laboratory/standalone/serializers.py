@@ -10,6 +10,11 @@ from .models import ExternalOrderRequest, WalkInPatient
 class WalkInPatientSerializer(serializers.ModelSerializer):
     """Read serializer for walk-in patients."""
 
+    # PII property fields (encrypted at rest)
+    phone_number = serializers.CharField(required=False, allow_blank=True, default="")
+    email = serializers.CharField(required=False, allow_blank=True, default="")
+    national_id = serializers.CharField(required=False, allow_blank=True, default="")
+
     full_name = serializers.CharField(read_only=True)
 
     class Meta:
@@ -37,6 +42,11 @@ class WalkInPatientSerializer(serializers.ModelSerializer):
 
 class WalkInPatientCreateSerializer(serializers.ModelSerializer):
     """Create serializer for walk-in patient registration."""
+
+    # PII property fields (encrypted at rest)
+    phone_number = serializers.CharField(required=False, allow_blank=True, default="")
+    email = serializers.CharField(required=False, allow_blank=True, default="")
+    national_id = serializers.CharField(required=False, allow_blank=True, default="")
 
     class Meta:
         model = WalkInPatient

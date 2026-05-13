@@ -3333,7 +3333,13 @@ class AdverseTransfusionReactionViewSet(
         for field, value in serializer.validated_data.items():
             if value:
                 setattr(atr, field, value)
-        atr.save(update_fields=list(serializer.validated_data.keys()) + ["updated_at"])
+        # Map property names to DB column names for update_fields
+        _PII_TO_DB = {
+            "ppb_submitter_mobile": "ppb_submitter_mobile_encrypted",
+            "ppb_submitter_email": "ppb_submitter_email_encrypted",
+        }
+        db_fields = [_PII_TO_DB.get(k, k) for k in serializer.validated_data] + ["updated_at"]
+        atr.save(update_fields=db_fields)
 
         try:
             atr.submit_to_ppb(user=request.user)

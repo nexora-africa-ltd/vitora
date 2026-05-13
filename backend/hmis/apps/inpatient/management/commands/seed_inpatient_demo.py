@@ -5520,7 +5520,7 @@ class Command(BaseCommand):
             if clear and not dry_run:
                 self._clear_demo_data()
             elif clear and dry_run:
-                count = Patient.objects.filter(phone_number__startswith="demo-ipd-").count()
+                count = Patient.objects.filter(middle_name__startswith="demo-ipd-").count()
                 self.stdout.write(
                     self.style.WARNING(f"Would clear {count} demo patients and related data")
                 )
@@ -5573,7 +5573,7 @@ class Command(BaseCommand):
 
                 # Idempotency: skip if this scenario's patient already exists
                 demo_tag = f"demo-ipd-{i:04d}"
-                if Patient.objects.filter(phone_number=demo_tag).exists():
+                if Patient.objects.filter(middle_name=demo_tag).exists():
                     self.stdout.write(self.style.NOTICE("    Already seeded, skipping"))
                     continue
 
@@ -6291,7 +6291,7 @@ class Command(BaseCommand):
         """Create supervisor alert acknowledgments for ICU admissions."""
         count = 0
         icu_admissions = Admission.objects.filter(
-            patient__phone_number__startswith="demo-ipd-",
+            patient__middle_name__startswith="demo-ipd-",
             ward__ward_type="ICU",
         ).exclude(alert_acknowledgment__isnull=False)
         for admission in icu_admissions:
@@ -6461,7 +6461,7 @@ class Command(BaseCommand):
 
         from django.db.models.deletion import ProtectedError
 
-        demo_patients = Patient.objects.filter(phone_number__startswith="demo-ipd-")
+        demo_patients = Patient.objects.filter(middle_name__startswith="demo-ipd-")
         count = demo_patients.count()
         if not count:
             self.stdout.write("No existing demo data to clear")
@@ -6591,5 +6591,6 @@ class Command(BaseCommand):
             gender=gender,
             county=county,
             sub_county=sub_county,
+            middle_name=scenario["_demo_tag"],
             phone_number=scenario["_demo_tag"],
         )

@@ -138,9 +138,9 @@ class TestGetFieldChanges:
         assert "first_name" in changes
         assert changes["first_name"]["old"] == "John"
         assert changes["first_name"]["new"] == "Johnny"
+        # Phase D: PII tracked via HMAC; get_field_changes maps hmac→logical name
+        # but values are one-way hashes, so we just verify the change is detected
         assert "phone_number" in changes
-        assert changes["phone_number"]["old"] == "0712345678"
-        assert changes["phone_number"]["new"] == "0700999888"
 
     def test_ignores_excluded_fields(self, test_patient):
         """Should not include excluded fields like timestamps."""

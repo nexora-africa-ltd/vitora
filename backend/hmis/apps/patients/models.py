@@ -12,6 +12,7 @@ from django.db import models
 from simple_history.models import HistoricalRecords
 
 from hmis.apps.core.history import HistoryMixin
+from hmis.apps.core.pii import encrypted_pii_property
 
 
 def generate_mrn():
@@ -227,12 +228,7 @@ class Patient(HistoryMixin, models.Model):
         null=True,
         help_text="SHA household number used to group related members and dependants",
     )
-    principal_national_id = models.CharField(
-        max_length=20,
-        blank=True,
-        null=True,
-        help_text="Principal member's national ID (for dependants). Used for eligibility checks since DHA resolves coverage via principal.",
-    )
+    # principal_national_id: plaintext dropped (Phase D) — see encrypted_pii_property below
 
     # Title and Names
     title = models.CharField(
@@ -259,30 +255,11 @@ class Patient(HistoryMixin, models.Model):
         default="national_id",
         help_text="Type of identification document",
     )
-    identification_number = models.CharField(
-        max_length=50,
-        blank=True,
-        null=True,
-        help_text="Identification document number",
-    )
-
-    # Contact Information
-    phone_number = models.CharField(
-        max_length=20, blank=True, null=True, help_text="Patient's phone number"
-    )
-    email = models.EmailField(blank=True, default="", help_text="Patient's email address")
-    address = models.TextField(blank=True, default="", help_text="Patient's physical address")
-
-    # Legacy field - kept for backward compatibility, use identification_number instead
-    national_id = models.CharField(
-        max_length=50, blank=True, null=True, help_text="Patient's national ID number (legacy)"
-    )
 
     # ------------------------------------------------------------------
     # PII Encrypted Storage (Kenya DPA 2019 § 41)
-    # Dual-write: plaintext columns above remain for existing queries/indexes.
-    # These encrypted columns are the canonical at-rest store.
-    # Phase D migration will drop plaintext columns.
+    # Plaintext columns dropped in Phase D.  Property descriptors below
+    # transparently decrypt from *_encrypted on read and encrypt on write.
     # ------------------------------------------------------------------
     identification_number_encrypted = models.TextField(
         blank=True, default="", help_text="KMS-encrypted identification_number"
@@ -319,6 +296,14 @@ class Patient(HistoryMixin, models.Model):
     principal_national_id_encrypted = models.TextField(
         blank=True, default="", help_text="KMS-encrypted principal_national_id"
     )
+
+    # Property descriptors — transparent encrypt-on-write, decrypt-on-read
+    identification_number = encrypted_pii_property("identification_number")
+    phone_number = encrypted_pii_property("phone_number")
+    email = encrypted_pii_property("email")
+    address = encrypted_pii_property("address")
+    national_id = encrypted_pii_property("national_id")
+    principal_national_id = encrypted_pii_property("principal_national_id")
 
     # Demographics
     citizenship = models.CharField(
@@ -430,7 +415,17 @@ class Patient(HistoryMixin, models.Model):
     # Version history tracking (DHA Audit Trail Enhancement)
     history = HistoricalRecords(
         table_name="patients_patient_history",
-        excluded_fields=["updated_at"],  # Auto-updated field not useful in history
+        excluded_fields=[
+            "updated_at",
+            # Encrypted PII columns change ciphertext on every save (non-deterministic);
+            # track via HMAC columns or audit log instead.
+            "identification_number_encrypted",
+            "phone_number_encrypted",
+            "email_encrypted",
+            "address_encrypted",
+            "national_id_encrypted",
+            "principal_national_id_encrypted",
+        ],
     )
 
     # Custom manager with HMAC-aware PII lookups
@@ -448,7 +443,7 @@ class Patient(HistoryMixin, models.Model):
             models.Index(fields=["date_of_birth"]),
             models.Index(fields=["is_sensitive"]),
             models.Index(fields=["is_deceased"]),
-            models.Index(fields=["identification_type", "identification_number"]),
+            models.Index(fields=["identification_type"]),
         ]
         verbose_name = "Patient"
         verbose_name_plural = "Patients"
@@ -456,13 +451,11 @@ class Patient(HistoryMixin, models.Model):
             ("view_sensitive_patient", "Can view sensitive patient records"),
         ]
         constraints = [
-            # Prevent duplicate patients with same identification
-            # (Only applies when identification_number is not null and not empty)
+            # Prevent duplicate patients with same identification (via HMAC blind index)
             models.UniqueConstraint(
-                fields=["identification_type", "identification_number"],
-                condition=models.Q(identification_number__isnull=False)
-                & ~models.Q(identification_number=""),
-                name="unique_patient_identification",
+                fields=["identification_type", "identification_number_hmac"],
+                condition=~models.Q(identification_number_hmac=""),
+                name="unique_patient_identification_hmac",
             ),
         ]
 
@@ -471,93 +464,15 @@ class Patient(HistoryMixin, models.Model):
         return f"{self.mrn} - {self.full_name}"
 
     def save(self, *args, **kwargs):
-        """Override save to auto-generate MRN, encrypt PII, and blank plaintext."""
+        """Override save to auto-generate MRN.
+
+        PII encryption is handled transparently by encrypted_pii_property
+        descriptors — setting e.g. patient.phone_number = "0712…" writes
+        directly to phone_number_encrypted + phone_number_hmac.
+        """
         if not self.mrn:
             self.mrn = generate_mrn()
-
-        # Expand update_fields to include encrypted/HMAC columns for any PII field
-        update_fields = kwargs.get("update_fields")
-        if update_fields is not None:
-            extra = set()
-            for plain_attr, enc_attr, hmac_attr in self._PII_FIELDS:
-                if plain_attr in update_fields:
-                    extra.add(enc_attr)
-                    if hmac_attr:
-                        extra.add(hmac_attr)
-            if extra:
-                kwargs["update_fields"] = list(set(update_fields) | extra)
-
-        # Stash plaintext values before encryption blanks them
-        stashed = {
-            plain_attr: getattr(self, plain_attr, None)
-            for plain_attr, _enc_attr, _hmac_attr in self._PII_FIELDS
-        }
-        self._encrypt_pii_fields()
         super().save(*args, **kwargs)
-
-        # Restore plaintext in-memory so callers see the values they set
-        for plain_attr, value in stashed.items():
-            if value:
-                setattr(self, plain_attr, value)
-
-    @classmethod
-    def from_db(cls, db, field_names, values):
-        """Hydrate plaintext CharField from *_encrypted on DB load (Phase C)."""
-        instance = super().from_db(db, field_names, values)
-        instance._decrypt_pii_fields()
-        return instance
-
-    # ------------------------------------------------------------------
-    # PII encryption helpers (Phase C — encrypted is canonical)
-    # ------------------------------------------------------------------
-    _PII_FIELDS = (
-        # (plaintext_attr, encrypted_attr, hmac_attr_or_None)
-        ("identification_number", "identification_number_encrypted", "identification_number_hmac"),
-        ("phone_number", "phone_number_encrypted", "phone_number_hmac"),
-        ("email", "email_encrypted", None),
-        ("address", "address_encrypted", None),
-        ("national_id", "national_id_encrypted", "national_id_hmac"),
-        ("principal_national_id", "principal_national_id_encrypted", None),
-    )
-
-    def _encrypt_pii_fields(self):
-        """Encrypt PII values and blank the plaintext columns."""
-        from hmis.apps.core.kms import get_kms_provider
-
-        kms = get_kms_provider()
-        for plain_attr, enc_attr, hmac_attr in self._PII_FIELDS:
-            value = getattr(self, plain_attr, None) or ""
-            if value:
-                setattr(self, enc_attr, kms.encrypt_string(value))
-                if hmac_attr:
-                    setattr(self, hmac_attr, kms.compute_hmac(value))
-                # Phase C: blank plaintext so it is never stored at rest
-                field = self._meta.get_field(plain_attr)
-                setattr(self, plain_attr, None if field.null else "")
-            elif not getattr(self, enc_attr, ""):
-                # Only clear encrypted if it's not already populated
-                setattr(self, enc_attr, "")
-                if hmac_attr:
-                    setattr(self, hmac_attr, "")
-
-    def _decrypt_pii_fields(self):
-        """Populate plaintext CharField attrs from *_encrypted columns."""
-        import contextlib
-
-        from hmis.apps.core.kms import get_kms_provider
-
-        # Guard against deferred fields (e.g. .only("date_of_birth") queries)
-        # to avoid infinite recursion when accessing deferred encrypted columns.
-        deferred = self.get_deferred_fields()
-
-        kms = get_kms_provider()
-        for plain_attr, enc_attr, _hmac_attr in self._PII_FIELDS:
-            if enc_attr in deferred:
-                continue
-            encrypted_val = getattr(self, enc_attr, "")
-            if encrypted_val:
-                with contextlib.suppress(Exception):
-                    setattr(self, plain_attr, kms.decrypt_string(encrypted_val))
 
     def clean(self):
         """Validate the model fields."""
@@ -1452,16 +1367,6 @@ class EmergencyContact(models.Model):
         choices=RELATIONSHIP_CHOICES,
         help_text="Relationship to patient",
     )
-    phone_number = models.CharField(
-        max_length=20,
-        help_text="Primary phone number",
-    )
-    alternative_phone = models.CharField(
-        max_length=20,
-        blank=True,
-        default="",
-        help_text="Alternative phone number",
-    )
 
     # PII Encrypted Storage (Kenya DPA 2019)
     phone_number_encrypted = models.TextField(
@@ -1470,6 +1375,10 @@ class EmergencyContact(models.Model):
     alternative_phone_encrypted = models.TextField(
         blank=True, default="", help_text="KMS-encrypted alternative_phone"
     )
+
+    # Property descriptors — transparent encrypt-on-write, decrypt-on-read
+    phone_number = encrypted_pii_property("phone_number")
+    alternative_phone = encrypted_pii_property("alternative_phone")
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -1485,72 +1394,6 @@ class EmergencyContact(models.Model):
     def __str__(self) -> str:
         """String representation of the emergency contact."""
         return f"{self.full_name} ({self.relationship}) - {self.patient.mrn}"
-
-    def save(self, *args, **kwargs):
-        """Encrypt PII and blank plaintext on save (Phase C)."""
-        # Expand update_fields to include encrypted columns for any PII field
-        update_fields = kwargs.get("update_fields")
-        if update_fields is not None:
-            extra = set()
-            for plain_attr, enc_attr, hmac_attr in self._PII_FIELDS:
-                if plain_attr in update_fields:
-                    extra.add(enc_attr)
-                    if hmac_attr:
-                        extra.add(hmac_attr)
-            if extra:
-                kwargs["update_fields"] = list(set(update_fields) | extra)
-
-        # Stash plaintext values before encryption blanks them
-        stashed = {
-            plain_attr: getattr(self, plain_attr, None)
-            for plain_attr, _enc_attr, _hmac_attr in self._PII_FIELDS
-        }
-        self._encrypt_pii_fields()
-        super().save(*args, **kwargs)
-        # Restore plaintext in-memory so callers see the values they set
-        for plain_attr, value in stashed.items():
-            if value:
-                setattr(self, plain_attr, value)
-
-    @classmethod
-    def from_db(cls, db, field_names, values):
-        """Hydrate plaintext attrs from *_encrypted on DB load (Phase C)."""
-        instance = super().from_db(db, field_names, values)
-        instance._decrypt_pii_fields()
-        return instance
-
-    _PII_FIELDS = (
-        ("phone_number", "phone_number_encrypted", None),
-        ("alternative_phone", "alternative_phone_encrypted", None),
-    )
-
-    def _encrypt_pii_fields(self):
-        """Encrypt PII and blank plaintext columns."""
-        from hmis.apps.core.kms import get_kms_provider
-
-        kms = get_kms_provider()
-        for plain_attr, enc_attr, _hmac_attr in self._PII_FIELDS:
-            value = getattr(self, plain_attr, None) or ""
-            if value:
-                setattr(self, enc_attr, kms.encrypt_string(value))
-                # Phase C: blank plaintext so it is never stored at rest
-                field = self._meta.get_field(plain_attr)
-                setattr(self, plain_attr, None if field.null else "")
-            elif not getattr(self, enc_attr, ""):
-                setattr(self, enc_attr, "")
-
-    def _decrypt_pii_fields(self):
-        """Populate plaintext attrs from *_encrypted columns."""
-        import contextlib
-
-        from hmis.apps.core.kms import get_kms_provider
-
-        kms = get_kms_provider()
-        for plain_attr, enc_attr, _hmac_attr in self._PII_FIELDS:
-            encrypted_val = getattr(self, enc_attr, "")
-            if encrypted_val:
-                with contextlib.suppress(Exception):
-                    setattr(self, plain_attr, kms.decrypt_string(encrypted_val))
 
     def clean(self):
         """Validate the model fields."""

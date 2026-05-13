@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.models import TimeStampedModel
+from hmis.apps.core.pii import encrypted_pii_property
 
 
 class BloodGroup(models.TextChoices):
@@ -93,8 +94,11 @@ class BloodDonor(FacilityScopedModel, TimeStampedModel):
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=1, choices=[("M", "Male"), ("F", "Female")])
     blood_group = models.CharField(max_length=3, choices=BloodGroup.choices)
-    phone_number = models.CharField(max_length=20, blank=True)
-    national_id = models.CharField(max_length=20, blank=True)
+    phone_number_encrypted = models.TextField(default="", blank=True)
+    phone_number = encrypted_pii_property("phone_number")
+    national_id_encrypted = models.TextField(default="", blank=True)
+    national_id_hmac = models.CharField(max_length=64, default="", blank=True, db_index=True)
+    national_id = encrypted_pii_property("national_id")
 
     is_active = models.BooleanField(default=True)
     last_donation_date = models.DateField(null=True, blank=True)

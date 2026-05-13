@@ -17,7 +17,7 @@ class BloodDonorAdmin(admin.ModelAdmin):
         "facility",
     ]
     list_filter = ["blood_group", "is_active", "facility"]
-    search_fields = ["donor_number", "first_name", "last_name", "national_id"]
+    search_fields = ["donor_number", "first_name", "last_name"]
     raw_id_fields = ["patient", "facility", "organization"]
 
 

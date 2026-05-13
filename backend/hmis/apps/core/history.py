@@ -57,27 +57,41 @@ def get_field_changes(old_record, new_record, exclude_fields: list[str] | None =
             "updated_at",
         ]
 
-    # Phase C PII: encrypted columns are canonical; plaintext columns are blanked
-    # at rest. Map encrypted column changes back to their plaintext field name
-    # and decrypt for human-readable diffs. Suppress the raw _encrypted/_hmac
-    # columns and the now-blanked plaintext column from the output.
+    # Phase D PII: plaintext columns are dropped; only *_encrypted and *_hmac
+    # columns remain. Map HMAC column changes back to the logical field name
+    # so diffs show "phone_number" instead of "phone_number_hmac".
+    # Encrypted columns are excluded from HistoricalRecords, so only HMACs
+    # appear in history; we can detect *that* a PII field changed but cannot
+    # recover the old/new plaintext (HMACs are one-way).
     def _resolve_pii_mapping(record):
-        """Return (encrypted_to_plain, suppressed_fields) for a (historical) record."""
-        # Historical records (django-simple-history) expose the source model
-        # via instance_type; fall back to the record's own class if absent.
+        """Return (hmac_to_plain, suppressed_fields) for a (historical) record."""
         model = getattr(record, "instance_type", None) or type(record)
+        # Legacy explicit mapping
         pii_fields = getattr(model, "_PII_FIELDS", None)
-        if not pii_fields:
-            return {}, set()
-        enc_to_plain: dict[str, str] = {}
-        suppressed: set[str] = set()
-        for plain_attr, enc_attr, hmac_attr in pii_fields:
-            enc_to_plain[enc_attr] = plain_attr
-            suppressed.add(plain_attr)
-            suppressed.add(enc_attr)
-            if hmac_attr:
-                suppressed.add(hmac_attr)
-        return enc_to_plain, suppressed
+        if pii_fields:
+            enc_to_plain: dict[str, str] = {}
+            suppressed: set[str] = set()
+            for plain_attr, enc_attr, hmac_attr in pii_fields:
+                enc_to_plain[enc_attr] = plain_attr
+                suppressed.add(plain_attr)
+                suppressed.add(enc_attr)
+                if hmac_attr:
+                    suppressed.add(hmac_attr)
+            return enc_to_plain, suppressed
+        # Phase D auto-discovery: scan concrete fields for *_hmac / *_encrypted
+        field_names = {f.name for f in model._meta.fields}
+        hmac_to_plain: dict[str, str] = {}
+        suppressed_set: set[str] = set()
+        for fname in field_names:
+            if fname.endswith("_hmac"):
+                plain = fname.removesuffix("_hmac")
+                hmac_to_plain[fname] = plain
+                suppressed_set.add(fname)
+                enc = f"{plain}_encrypted"
+                if enc in field_names:
+                    hmac_to_plain[enc] = plain
+                    suppressed_set.add(enc)
+        return hmac_to_plain, suppressed_set
 
     def _decrypt_pii(value):
         """Decrypt a Fernet-encrypted PII value, returning None on failure."""
@@ -93,6 +107,18 @@ def get_field_changes(old_record, new_record, exclude_fields: list[str] | None =
 
     enc_to_plain, suppressed_fields = _resolve_pii_mapping(new_record)
 
+    def _pii_display(field_name, value):
+        """Return a human-readable value for a PII-mapped field.
+
+        For *_encrypted fields, attempt decryption.
+        For *_hmac fields, return '[redacted]' if non-empty (one-way hash).
+        """
+        if not value:
+            return None
+        if field_name.endswith("_hmac"):
+            return "[redacted]"
+        return _decrypt_pii(value)
+
     changes = {}
 
     if old_record is None:
@@ -102,10 +128,12 @@ def get_field_changes(old_record, new_record, exclude_fields: list[str] | None =
             if field_name in exclude_fields:
                 continue
 
-            # Phase C: render encrypted columns as their plaintext field name
+            # PII: render mapped columns under their logical field name
             if field_name in enc_to_plain:
                 plain_name = enc_to_plain[field_name]
-                new_value = _decrypt_pii(getattr(new_record, field_name, None))
+                if plain_name in changes:
+                    continue  # already emitted by a sibling column
+                new_value = _pii_display(field_name, getattr(new_record, field_name, None))
                 if new_value:
                     changes[plain_name] = {"old": None, "new": _serialize_value(new_value)}
                 continue
@@ -126,15 +154,17 @@ def get_field_changes(old_record, new_record, exclude_fields: list[str] | None =
         if field_name in exclude_fields:
             continue
 
-        # Phase C: render encrypted columns as their plaintext field name
+        # PII: render mapped columns under their logical field name
         if field_name in enc_to_plain:
             plain_name = enc_to_plain[field_name]
-            old_value = _decrypt_pii(getattr(old_record, field_name, None))
-            new_value = _decrypt_pii(getattr(new_record, field_name, None))
-            if old_value != new_value:
+            if plain_name in changes:
+                continue  # already emitted by a sibling column
+            old_raw = getattr(old_record, field_name, None)
+            new_raw = getattr(new_record, field_name, None)
+            if old_raw != new_raw:
                 changes[plain_name] = {
-                    "old": _serialize_value(old_value),
-                    "new": _serialize_value(new_value),
+                    "old": _serialize_value(_pii_display(field_name, old_raw)),
+                    "new": _serialize_value(_pii_display(field_name, new_raw)),
                 }
             continue
         if field_name in suppressed_fields:

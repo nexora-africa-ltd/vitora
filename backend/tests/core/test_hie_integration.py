@@ -30,7 +30,8 @@ def patient_with_national_id(sample_patient):
     sample_patient.national_id = "12345678"
     sample_patient.cr_number = None
     sample_patient.cr_synced_at = None
-    sample_patient.save(update_fields=["national_id", "cr_number", "cr_synced_at"])
+    # national_id is a property (Phase D); save without update_fields
+    sample_patient.save()
     return sample_patient
 
 
@@ -158,7 +159,8 @@ class TestCRLookupTask:
         """Patient without national ID skips CR fetch."""
         sample_patient.national_id = None
         sample_patient.cr_number = None
-        sample_patient.save(update_fields=["national_id", "cr_number"])
+        # national_id is a property (Phase D); save without update_fields
+        sample_patient.save()
 
         mock_service = MockCRService.return_value
         mock_service.fetch_client.return_value = None

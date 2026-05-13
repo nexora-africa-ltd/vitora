@@ -1300,6 +1300,11 @@ class ResultCommentTemplateSerializer(serializers.ModelSerializer):
 
 
 class ReferralLabSerializer(serializers.ModelSerializer):
+    # PII property fields (encrypted at rest)
+    address = serializers.CharField(required=False, allow_blank=True, default="")
+    phone = serializers.CharField(required=False, allow_blank=True, default="")
+    email = serializers.CharField(required=False, allow_blank=True, default="")
+
     class Meta:
         model = ReferralLab
         fields = [

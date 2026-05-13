@@ -11,8 +11,6 @@ class WalkInPatientAdmin(admin.ModelAdmin):
         "registration_number",
         "first_name",
         "last_name",
-        "national_id",
-        "phone_number",
         "referring_facility",
         "facility",
         "created_at",
@@ -21,8 +19,6 @@ class WalkInPatientAdmin(admin.ModelAdmin):
     search_fields = [
         "first_name",
         "last_name",
-        "national_id",
-        "phone_number",
         "registration_number",
     ]
     raw_id_fields = ["linked_patient", "registered_by", "facility", "organization"]

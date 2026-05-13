@@ -38,6 +38,16 @@ REDACTED_PII_FIELDS: set[str] = {
     "hwr_national_id",
     "mpesa_phone",
     "emergency_contact_phone",
+    "emergency_contact_name",
+    "contact_email",
+    "contact_phone",
+    "sms_recipient",
+    "email_recipient",
+    "initial_reporter_mobile",
+    "initial_reporter_email",
+    "ppb_submitter_mobile",
+    "ppb_submitter_email",
+    "phone",
 }
 
 

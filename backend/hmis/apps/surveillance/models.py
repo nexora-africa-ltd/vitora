@@ -16,6 +16,7 @@ from django.db import models
 from django.utils import timezone
 
 from hmis.apps.core.mixins import FacilityScopedModel
+from hmis.apps.core.pii import encrypted_pii_property
 
 if TYPE_CHECKING:
     pass
@@ -433,8 +434,10 @@ class SurveillanceAlert(FacilityScopedModel):
     sent_via_websocket = models.BooleanField(default=False)
     sent_via_sms = models.BooleanField(default=False)
     sent_via_email = models.BooleanField(default=False)
-    sms_recipient = models.CharField(max_length=20, blank=True, default="")
-    email_recipient = models.EmailField(blank=True, default="")
+    sms_recipient_encrypted = models.TextField(default="", blank=True)
+    sms_recipient = encrypted_pii_property("sms_recipient")
+    email_recipient_encrypted = models.TextField(default="", blank=True)
+    email_recipient = encrypted_pii_property("email_recipient")
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
 

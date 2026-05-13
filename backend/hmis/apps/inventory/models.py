@@ -19,6 +19,7 @@ from django.utils import timezone
 
 from hmis.apps.core.mixins import FacilityScopedModel, OrganizationScopedModel
 from hmis.apps.core.models import TimeStampedModel
+from hmis.apps.core.pii import encrypted_pii_property
 
 # ---------------------------------------------------------------------------
 # Auto-number generators
@@ -80,9 +81,12 @@ class Supplier(OrganizationScopedModel, TimeStampedModel):
 
     # Contact
     contact_person = models.CharField(max_length=200, blank=True)
-    email = models.EmailField(blank=True)
-    phone = models.CharField(max_length=30, blank=True)
-    address = models.TextField(blank=True)
+    email_encrypted = models.TextField(default="", blank=True)
+    email = encrypted_pii_property("email")
+    phone_encrypted = models.TextField(default="", blank=True)
+    phone = encrypted_pii_property("phone")
+    address_encrypted = models.TextField(default="", blank=True)
+    address = encrypted_pii_property("address")
 
     # Kenya regulatory
     tax_pin = models.CharField(

@@ -30,6 +30,7 @@ from django.utils import timezone
 
 from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.models import TimeStampedModel
+from hmis.apps.core.pii import encrypted_pii_property
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractUser
@@ -3372,15 +3373,10 @@ class AdverseTransfusionReaction(FacilityScopedModel, TimeStampedModel):
         blank=True,
         help_text="Cadre/designation of the initial reporter",
     )
-    initial_reporter_mobile = models.CharField(
-        max_length=20,
-        blank=True,
-        help_text="Mobile number of the initial reporter",
-    )
-    initial_reporter_email = models.EmailField(
-        blank=True,
-        help_text="Email of the initial reporter",
-    )
+    initial_reporter_mobile_encrypted = models.TextField(default="", blank=True)
+    initial_reporter_mobile = encrypted_pii_property("initial_reporter_mobile")
+    initial_reporter_email_encrypted = models.TextField(default="", blank=True)
+    initial_reporter_email = encrypted_pii_property("initial_reporter_email")
     report_date = models.DateField(
         help_text="Date the ATR report was created",
     )
@@ -3394,15 +3390,10 @@ class AdverseTransfusionReaction(FacilityScopedModel, TimeStampedModel):
         blank=True,
         help_text="Cadre/designation of the PPB submitter",
     )
-    ppb_submitter_mobile = models.CharField(
-        max_length=20,
-        blank=True,
-        help_text="Mobile number of the PPB submitter",
-    )
-    ppb_submitter_email = models.EmailField(
-        blank=True,
-        help_text="Email of the PPB submitter",
-    )
+    ppb_submitter_mobile_encrypted = models.TextField(default="", blank=True)
+    ppb_submitter_mobile = encrypted_pii_property("ppb_submitter_mobile")
+    ppb_submitter_email_encrypted = models.TextField(default="", blank=True)
+    ppb_submitter_email = encrypted_pii_property("ppb_submitter_email")
     submission_date = models.DateField(
         null=True,
         blank=True,
