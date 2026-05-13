@@ -178,6 +178,10 @@ export interface PatientListParams {
   is_sensitive?: boolean;
   current_facility_only?: boolean;
   ordering?: string;
+  /** Exact-match lookup against the encrypted national_id (HMAC blind-index). */
+  national_id?: string;
+  /** Exact-match lookup against the encrypted identification_number. */
+  identification_number?: string;
 }
 
 export interface PatientEncounter {

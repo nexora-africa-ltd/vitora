@@ -38,6 +38,10 @@ export const patientsApi = {
       searchParams.set('current_facility_only', String(params.current_facility_only));
     }
     if (params.ordering) searchParams.set('ordering', params.ordering);
+    if (params.national_id) searchParams.set('national_id', params.national_id);
+    if (params.identification_number) {
+      searchParams.set('identification_number', params.identification_number);
+    }
 
     const response = await apiClient.get<PaginatedResponse<Patient>>(
       `/api/patients/?${searchParams.toString()}`
