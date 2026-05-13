@@ -268,7 +268,9 @@ class TestSHAConsentServiceSendOTP:
     def test_send_otp_no_national_id(self, mock_auth_cls, sha_member, test_user, sample_facility):
         """Should raise error if member has no national ID."""
         # Bypass full_clean to test the service-level validation
-        SHAMember.objects.filter(pk=sha_member.pk).update(national_id="")
+        SHAMember.objects.filter(pk=sha_member.pk).update(
+            national_id_encrypted="", national_id_hmac=""
+        )
         sha_member.refresh_from_db()
 
         from hmis.apps.billing.services.sha_consent import SHAConsentError, SHAConsentService
