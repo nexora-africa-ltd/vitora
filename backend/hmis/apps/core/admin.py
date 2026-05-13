@@ -975,7 +975,7 @@ class OrganizationAdmin(admin.ModelAdmin):
         "is_verified",
         "onboarding_completed_at",
     ]
-    search_fields = ["name", "slug", "contact_email"]
+    search_fields = ["name", "slug"]
     prepopulated_fields = {"slug": ("name",)}
     ordering = ["name"]
     readonly_fields = [
@@ -1656,7 +1656,7 @@ class StaffInvitationAdmin(admin.ModelAdmin):
     """Admin for Staff Invitations."""
 
     list_display = [
-        "email",
+        "display_email",
         "organization",
         "facility",
         "role",
@@ -1666,7 +1666,7 @@ class StaffInvitationAdmin(admin.ModelAdmin):
         "created_at",
     ]
     list_filter = ["status", "organization"]
-    search_fields = ["email", "organization__name", "token"]
+    search_fields = ["organization__name", "token"]
     readonly_fields = ["token", "accepted_at", "accepted_user", "created_at", "updated_at"]
     raw_id_fields = [
         "invited_by",
@@ -1677,6 +1677,10 @@ class StaffInvitationAdmin(admin.ModelAdmin):
         "department",
     ]
     ordering = ["-created_at"]
+
+    @admin.display(description="Email")
+    def display_email(self, obj):
+        return obj.email or "—"
 
 
 @admin.register(EmailVerificationToken)

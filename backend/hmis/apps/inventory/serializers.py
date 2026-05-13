@@ -35,6 +35,11 @@ from hmis.apps.inventory.models import (
 class SupplierSerializer(serializers.ModelSerializer):
     """Read serializer for Supplier (list + detail)."""
 
+    # PII property fields (encrypted at rest)
+    email = serializers.CharField(required=False, allow_blank=True, default="")
+    phone = serializers.CharField(required=False, allow_blank=True, default="")
+    address = serializers.CharField(required=False, allow_blank=True, default="")
+
     class Meta:
         model = Supplier
         fields = [
@@ -60,6 +65,11 @@ class SupplierSerializer(serializers.ModelSerializer):
 
 class SupplierCreateSerializer(serializers.ModelSerializer):
     """Write serializer for Supplier creation."""
+
+    # PII property fields (encrypted at rest)
+    email = serializers.CharField(required=False, allow_blank=True, default="")
+    phone = serializers.CharField(required=False, allow_blank=True, default="")
+    address = serializers.CharField(required=False, allow_blank=True, default="")
 
     class Meta:
         model = Supplier

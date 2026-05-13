@@ -291,7 +291,7 @@ class SurveillanceService:
             if success:
                 alert.sent_via_sms = True
                 alert.sms_recipient = recipient
-                alert.save(update_fields=["sent_via_sms", "sms_recipient"])
+                alert.save(update_fields=["sent_via_sms", "sms_recipient_encrypted"])
                 logger.info(f"Sent SMS alert {alert.id} to {recipient}")
             return success
 
@@ -352,7 +352,7 @@ Please log in to Vitora HMIS to review and process this case.
 
             alert.sent_via_email = True
             alert.email_recipient = recipient
-            alert.save(update_fields=["sent_via_email", "email_recipient"])
+            alert.save(update_fields=["sent_via_email", "email_recipient_encrypted"])
             logger.info(f"Sent email alert {alert.id} to {recipient}")
             return True
 

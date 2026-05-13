@@ -16,6 +16,7 @@ from django.db import models
 from django.utils import timezone
 
 from hmis.apps.core.mixins import FacilityScopedModel
+from hmis.apps.core.pii import encrypted_pii_property
 from hmis.apps.core.upload_validators import validate_document_upload as _validate_document_upload
 
 logger = logging.getLogger(__name__)
@@ -2146,10 +2147,13 @@ class ReferralLab(FacilityScopedModel):
 
     code = models.CharField(max_length=30, db_index=True)
     name = models.CharField(max_length=200)
-    address = models.TextField(blank=True)
+    address_encrypted = models.TextField(default="", blank=True)
+    address = encrypted_pii_property("address")
     contact_person = models.CharField(max_length=100, blank=True)
-    phone = models.CharField(max_length=20, blank=True)
-    email = models.EmailField(blank=True)
+    phone_encrypted = models.TextField(default="", blank=True)
+    phone = encrypted_pii_property("phone")
+    email_encrypted = models.TextField(default="", blank=True)
+    email = encrypted_pii_property("email")
     website = models.URLField(blank=True)
     tests_offered = models.TextField(
         blank=True, help_text="Comma-separated test codes or description"

@@ -290,6 +290,12 @@ class RoleSerializer(serializers.ModelSerializer):
 class StaffProfileSerializer(serializers.ModelSerializer):
     """Serializer for StaffProfile model."""
 
+    # PII property fields (encrypted at rest)
+    phone_number = serializers.CharField(required=False, allow_blank=True, default="")
+    emergency_contact_name = serializers.CharField(required=False, allow_blank=True, default="")
+    emergency_contact_phone = serializers.CharField(required=False, allow_blank=True, default="")
+    hwr_national_id = serializers.CharField(required=False, allow_blank=True, default="")
+
     user_username = serializers.CharField(source="user.username", read_only=True)
     user_email = serializers.CharField(source="user.email", read_only=True)
     user_first_name = serializers.CharField(source="user.first_name", read_only=True)
@@ -373,6 +379,12 @@ class StaffProfileSerializer(serializers.ModelSerializer):
 
 class StaffProfileUpdateSerializer(serializers.ModelSerializer):
     """Write serializer for admin/staff profile updates with user field aliases."""
+
+    # PII property fields (encrypted at rest)
+    phone_number = serializers.CharField(required=False, allow_blank=True, default="")
+    emergency_contact_name = serializers.CharField(required=False, allow_blank=True, default="")
+    emergency_contact_phone = serializers.CharField(required=False, allow_blank=True, default="")
+    hwr_national_id = serializers.CharField(required=False, allow_blank=True, default="")
 
     email = serializers.EmailField(source="user.email", required=False)
     first_name = serializers.CharField(source="user.first_name", required=False)
@@ -854,6 +866,11 @@ class OrganizationListSerializer(serializers.ModelSerializer):
 
 class OrganizationDetailSerializer(serializers.ModelSerializer):
     """Full serializer for organization detail / create / update views."""
+
+    # PII property fields (encrypted at rest)
+    contact_email = serializers.CharField(required=False, allow_blank=True, default="")
+    contact_phone = serializers.CharField(required=False, allow_blank=True, default="")
+    address = serializers.CharField(required=False, allow_blank=True, default="")
 
     facility_count = serializers.IntegerField(read_only=True, default=0)
     staff_count = serializers.IntegerField(read_only=True, default=0)
@@ -1442,10 +1459,12 @@ class StaffInvitationCreateSerializer(serializers.Serializer):
             self._existing_user = None
 
         # Check for pending (non-expired) invitation
+        from hmis.apps.core.kms import get_kms_provider
         from hmis.apps.core.models import StaffInvitation
 
+        email_hmac = get_kms_provider().compute_hmac(normalized.lower())
         pending = StaffInvitation.objects.filter(
-            email__iexact=normalized,
+            email_hmac=email_hmac,
             status=StaffInvitation.InvitationStatus.PENDING,
         )
         for inv in pending:
@@ -1488,6 +1507,9 @@ class StaffInvitationCreateSerializer(serializers.Serializer):
 
 class StaffInvitationSerializer(serializers.ModelSerializer):
     """Read serializer for staff invitations."""
+
+    # PII property field (encrypted at rest)
+    email = serializers.CharField(required=False, allow_blank=True, default="")
 
     invited_by_name = serializers.SerializerMethodField()
     organization_name = serializers.CharField(source="organization.name", read_only=True)
@@ -1614,6 +1636,9 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 class InvitationPublicSerializer(serializers.ModelSerializer):
     """Public-facing serializer showing only non-sensitive invitation info."""
+
+    # PII property field (encrypted at rest)
+    email = serializers.CharField(read_only=True, default="")
 
     organization_name = serializers.CharField(source="organization.name", read_only=True)
     role_name = serializers.SerializerMethodField()

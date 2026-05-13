@@ -2141,6 +2141,10 @@ def _validate_reaction_choices(values, choices_enum, field_name):
 class ATRCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating an Adverse Transfusion Reaction report."""
 
+    # PII property fields (encrypted at rest)
+    initial_reporter_mobile = serializers.CharField(required=False, allow_blank=True, default="")
+    initial_reporter_email = serializers.CharField(required=False, allow_blank=True, default="")
+
     class Meta:
         model = AdverseTransfusionReaction
         fields = [
@@ -2212,6 +2216,12 @@ class ATRCreateSerializer(serializers.ModelSerializer):
 
 class ATRDetailSerializer(serializers.ModelSerializer):
     """Full detail serializer for Adverse Transfusion Reaction reports."""
+
+    # PII property fields (encrypted at rest)
+    initial_reporter_mobile = serializers.CharField(read_only=True, default="")
+    initial_reporter_email = serializers.CharField(read_only=True, default="")
+    ppb_submitter_mobile = serializers.CharField(read_only=True, default="")
+    ppb_submitter_email = serializers.CharField(read_only=True, default="")
 
     has_lab_investigation = serializers.BooleanField(read_only=True)
     reaction_categories_display = serializers.ListField(

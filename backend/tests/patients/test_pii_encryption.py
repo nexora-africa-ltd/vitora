@@ -1,16 +1,14 @@
 """
-Tests for PII encryption infrastructure.
+Tests for PII encryption infrastructure (Phase D — plaintext columns dropped).
 
 Covers:
 - KMS compute_hmac
-- Patient dual-write encryption on save
-- EmergencyContact dual-write encryption on save
+- Patient encrypted property read/write
+- EmergencyContact encrypted property read/write
 - AuditLog PII redaction
-- encrypt_pii_fields management command
 """
 
 import pytest  # type: ignore
-from django.core.management import call_command
 
 from hmis.apps.core.kms import get_kms_provider
 from hmis.apps.core.models import AuditLog
@@ -47,12 +45,12 @@ class TestKMSComputeHmac:
 
 
 # ============================================================================
-# Patient PII Encryption Tests
+# Patient PII Encryption Tests (Phase D — property descriptors)
 # ============================================================================
 
 
 class TestPatientPIIEncryption:
-    """Tests for Patient model dual-write PII encryption."""
+    """Tests for Patient model encrypted PII property descriptors."""
 
     @pytest.fixture
     def patient_with_pii(
@@ -101,6 +99,16 @@ class TestPatientPIIEncryption:
     def test_save_encrypts_principal_national_id(self, patient_with_pii):
         assert patient_with_pii.principal_national_id_encrypted != ""
 
+    def test_property_read_decrypts(self, patient_with_pii):
+        """Property descriptors should decrypt on read."""
+        patient_with_pii.refresh_from_db()
+        assert patient_with_pii.identification_number == "34221265"
+        assert patient_with_pii.phone_number == "0769005262"
+        assert patient_with_pii.email == "test@example.com"
+        assert patient_with_pii.address == "123 Test Street, Nairobi"
+        assert patient_with_pii.national_id == "34221265"
+        assert patient_with_pii.principal_national_id == "11111111"
+
     def test_encrypted_value_decrypts_to_original(self, patient_with_pii):
         """Encrypted value should decrypt back to the original plaintext."""
         kms = get_kms_provider()
@@ -132,30 +140,26 @@ class TestPatientPIIEncryption:
         assert patient.phone_number_encrypted == ""
         assert patient.email_encrypted == ""
 
-    def test_plaintext_blanked_at_rest(self, patient_with_pii):
-        """Phase C: plaintext columns should be blank in the database."""
-        # Check the raw DB values (bypass from_db decrypt)
-        raw = (
-            Patient.objects.filter(pk=patient_with_pii.pk)
-            .values("identification_number", "phone_number", "email", "address")
-            .first()
-        )
-        assert raw["identification_number"] is None  # null=True field
-        assert raw["phone_number"] is None  # null=True field
-        assert raw["email"] == ""  # NOT NULL field, blanked to ""
-        assert raw["address"] == ""  # NOT NULL field, blanked to ""
+    def test_no_plaintext_columns_at_rest(self, patient_with_pii):
+        """Phase D: plaintext columns do not exist in the database."""
+        from django.db import connection
 
-    def test_from_db_decrypts_pii(self, patient_with_pii):
-        """Phase C: from_db should decrypt encrypted columns into plaintext attrs."""
-        patient_with_pii.refresh_from_db()
-        assert patient_with_pii.identification_number == "34221265"
-        assert patient_with_pii.phone_number == "0769005262"
-        assert patient_with_pii.email == "test@example.com"
-        assert patient_with_pii.address == "123 Test Street, Nairobi"
+        with connection.cursor() as cursor:
+            cursor.execute("PRAGMA table_info(patients_patient)")
+            columns = {row[1] for row in cursor.fetchall()}
+        # These columns should NOT exist
+        assert "identification_number" not in columns
+        assert "phone_number" not in columns
+        assert "email" not in columns
+        assert "address" not in columns
+        assert "national_id" not in columns
+        assert "principal_national_id" not in columns
+        # These SHOULD exist
+        assert "identification_number_encrypted" in columns
+        assert "identification_number_hmac" in columns
 
     def test_update_reencrypts(self, patient_with_pii):
         """Updating a field should re-encrypt."""
-        patient_with_pii.refresh_from_db()
         old_enc = patient_with_pii.identification_number_encrypted
         old_hmac = patient_with_pii.identification_number_hmac
 
@@ -174,7 +178,7 @@ class TestPatientPIIEncryption:
 
 
 class TestEmergencyContactPIIEncryption:
-    """Tests for EmergencyContact model dual-write PII encryption."""
+    """Tests for EmergencyContact model encrypted PII property descriptors."""
 
     @pytest.fixture
     def contact(self, db, sample_patient):
@@ -195,6 +199,12 @@ class TestEmergencyContactPIIEncryption:
     def test_encrypted_decrypts_correctly(self, contact):
         kms = get_kms_provider()
         assert kms.decrypt_string(contact.phone_number_encrypted) == "0712345678"
+
+    def test_property_read_decrypts(self, contact):
+        """Property descriptor should decrypt on read."""
+        contact.refresh_from_db()
+        assert contact.phone_number == "0712345678"
+        assert contact.alternative_phone == "0798765432"
 
     def test_empty_alternative_not_encrypted(self, db, sample_patient):
         contact = EmergencyContact.objects.create(
@@ -282,79 +292,3 @@ class TestAuditLogPIIRedaction:
             "emergency_contact_phone",
         }
         assert expected <= REDACTED_PII_FIELDS
-
-
-# ============================================================================
-# Backfill Management Command Tests
-# ============================================================================
-
-
-class TestEncryptPiiFieldsCommand:
-    """Tests for the encrypt_pii_fields management command."""
-
-    @pytest.fixture
-    def unencrypted_patient(
-        self, db, sample_county, sample_sub_county, sample_organization, sample_facility
-    ):
-        """Create a patient with plaintext PII but empty encrypted columns.
-
-        We use update() to bypass the save() encrypt-then-blank.
-        """
-        patient = Patient.objects.create(
-            first_name="Backfill",
-            last_name="Test",
-            date_of_birth="1990-01-01",
-            gender="M",
-            county=sample_county,
-            sub_county=sample_sub_county,
-            organization=sample_organization,
-            registered_at_facility=sample_facility,
-            identification_number="12345678",
-            phone_number="0700000000",
-        )
-        # Clear encrypted columns and restore plaintext to simulate pre-encryption data
-        Patient.objects.filter(pk=patient.pk).update(
-            identification_number="12345678",
-            identification_number_encrypted="",
-            identification_number_hmac="",
-            phone_number="0700000000",
-            phone_number_encrypted="",
-            phone_number_hmac="",
-        )
-        patient.refresh_from_db()
-        return patient
-
-    def test_dry_run_does_not_modify(self, unencrypted_patient):
-        assert unencrypted_patient.identification_number_encrypted == ""
-        call_command("encrypt_pii_fields", "--dry-run")
-        unencrypted_patient.refresh_from_db()
-        assert unencrypted_patient.identification_number_encrypted == ""
-
-    def test_backfill_encrypts_patient(self, unencrypted_patient):
-        assert unencrypted_patient.identification_number_encrypted == ""
-        call_command("encrypt_pii_fields", "--model=Patient")
-        unencrypted_patient.refresh_from_db()
-        assert unencrypted_patient.identification_number_encrypted != ""
-        assert unencrypted_patient.identification_number_hmac != ""
-        assert unencrypted_patient.phone_number_encrypted != ""
-        # Phase C: plaintext blanked at rest
-        raw = (
-            Patient.objects.filter(pk=unencrypted_patient.pk)
-            .values("identification_number", "phone_number")
-            .first()
-        )
-        assert raw["identification_number"] is None
-        assert raw["phone_number"] is None
-        # But from_db decrypts into in-memory attrs
-        assert unencrypted_patient.identification_number == "12345678"
-
-    def test_backfill_is_resumable(self, unencrypted_patient):
-        """Running backfill twice should be idempotent."""
-        call_command("encrypt_pii_fields", "--model=Patient")
-        unencrypted_patient.refresh_from_db()
-        enc1 = unencrypted_patient.identification_number_encrypted
-
-        call_command("encrypt_pii_fields", "--model=Patient")
-        unencrypted_patient.refresh_from_db()
-        # Should not re-encrypt (skips already encrypted)
-        assert unencrypted_patient.identification_number_encrypted == enc1

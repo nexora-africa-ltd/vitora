@@ -130,11 +130,16 @@ This is an automated alert. Do not reply to this email.
         try:
             sms_gateway = SMSGateway()
             # Get admin phone numbers from staff profiles
-            admin_phones = list(
-                admins.exclude(staffprofile__phone_number="")
-                .exclude(staffprofile__phone_number__isnull=True)
-                .values_list("staffprofile__phone_number", flat=True)
-            )
+            admin_phones = [
+                p.phone_number
+                for p in (
+                    sp
+                    for u in admins
+                    if hasattr(u, "staffprofile")
+                    for sp in [u.staffprofile]
+                    if sp.phone_number
+                )
+            ]
             for phone in admin_phones:
                 try:
                     sms_gateway.send_reminder(phone, sms_message)

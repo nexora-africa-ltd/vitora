@@ -58,17 +58,16 @@ class TestSensitiveFieldEncryption:
         # The decrypted value should match what we put in
         assert patient.national_id == "12345678"
 
-        # Check raw database value (should be encrypted, not plaintext)
+        # Phase D: plaintext column dropped; verify the encrypted column
+        # holds ciphertext (not the original plaintext value)
         with connection.cursor() as cursor:
-            cursor.execute("SELECT national_id FROM patients_patient WHERE id = %s", [patient.id])
+            cursor.execute(
+                "SELECT national_id_encrypted FROM patients_patient WHERE id = %s",
+                [patient.id],
+            )
             raw_value = cursor.fetchone()[0]
-
-            # If encryption is working, raw value should NOT equal plaintext
-            # (unless we're using a transparent encryption approach)
-            if raw_value is not None:
-                # The raw value should either be encrypted ciphertext or None
-                # depending on the encryption approach used
-                pass  # Implementation will determine exact assertion
+            assert raw_value  # non-empty
+            assert raw_value != "12345678"  # ciphertext, not plaintext
 
     @pytest.mark.django_db
     def test_phone_number_is_encrypted_in_database(self, sample_organization):

@@ -10,6 +10,10 @@ from .models import BloodDonor, BloodIssue, BloodRequest, BloodUnit, CrossMatch
 
 
 class BloodDonorCreateSerializer(serializers.ModelSerializer):
+    # PII property fields (encrypted at rest)
+    phone_number = serializers.CharField(required=False, allow_blank=True, default="")
+    national_id = serializers.CharField(required=False, allow_blank=True, default="")
+
     class Meta:
         model = BloodDonor
         fields = [
@@ -46,6 +50,10 @@ class BloodDonorListSerializer(serializers.ModelSerializer):
 
 
 class BloodDonorDetailSerializer(serializers.ModelSerializer):
+    # PII property fields (encrypted at rest)
+    phone_number = serializers.CharField(required=False, allow_blank=True, default="")
+    national_id = serializers.CharField(required=False, allow_blank=True, default="")
+
     eligible_to_donate = serializers.BooleanField(read_only=True)
 
     class Meta:

@@ -45,8 +45,6 @@ class WalkInPatientViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mo
     search_fields = [
         "first_name",
         "last_name",
-        "national_id",
-        "phone_number",
         "registration_number",
     ]
 

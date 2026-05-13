@@ -12,6 +12,10 @@ from .models import Allergy, DeathRecord, EmergencyContact, Patient
 class EmergencyContactSerializer(serializers.ModelSerializer):
     """Serializer for the EmergencyContact model."""
 
+    # Explicit declarations — these are property descriptors, not model fields
+    phone_number = serializers.CharField(required=True, allow_blank=False)
+    alternative_phone = serializers.CharField(required=False, allow_blank=True, default="")
+
     class Meta:
         model = EmergencyContact
         fields = [
@@ -28,6 +32,22 @@ class EmergencyContactSerializer(serializers.ModelSerializer):
 
 class PatientSerializer(serializers.ModelSerializer):
     """Serializer for the Patient model."""
+
+    # Explicit declarations for PII property descriptors (not model fields)
+    identification_number = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True, default=None
+    )
+    phone_number = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True, default=None
+    )
+    email = serializers.CharField(required=False, allow_blank=True, default="")
+    address = serializers.CharField(required=False, allow_blank=True, default="")
+    national_id = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True, default=None
+    )
+    principal_national_id = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True, default=None
+    )
 
     household_members = serializers.SerializerMethodField()
 

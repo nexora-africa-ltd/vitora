@@ -80,7 +80,7 @@ class BloodDonorViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Model
     queryset = BloodDonor.objects.all()
     permission_classes = [IsAuthenticated]
     filterset_class = BloodDonorFilter
-    search_fields = ["first_name", "last_name", "donor_number", "national_id"]
+    search_fields = ["first_name", "last_name", "donor_number"]
     ordering_fields = ["created_at", "last_donation_date", "blood_group"]
     tenant_scope = "facility"
 
