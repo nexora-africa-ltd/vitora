@@ -673,8 +673,10 @@ GET    /api/ai/results/icu-risk/?admission_id={id}             # Stored ICU risk
 
 ### Test File Conventions
 
+> ⚠️ **CRITICAL**: Never place test files in the root `backend/tests/` directory. Every test file **MUST** go in a subfolder matching the app it tests (e.g., `tests/patients/`, `tests/scheduling/`, `tests/core/`). If no subfolder exists, create one with an `__init__.py`. The root `tests/` folder should only contain `conftest.py` and subfolders.
+
 ```python
-# backend/tests/test_{feature}.py
+# backend/tests/{app}/test_{feature}.py  — e.g. tests/patients/test_patient_api.py
 
 import pytest # type: ignore
 from rest_framework import status
