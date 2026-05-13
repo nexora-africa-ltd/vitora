@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vitora HMIS — Financial Model | Nexora Africa</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+  :root {
+    --burgundy: #7A1B3E;
+    --teal: #0D9488;
+    --teal-light: #14B8A6;
+    --gold: #D4A843;
+    --navy: #0F172A;
+    --green: #22C55E;
+    --red: #EF4444;
+    --gradient-hero: linear-gradient(135deg, #7A1B3E 0%, #0F172A 60%, #0D9488 100%);
+    --gradient-teal: linear-gradient(135deg, #0D9488, #14B8A6);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0F172A;
+    color: #E2E8F0;
+    overflow-x: hidden;
+    line-height: 1.5;
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ─── SLIDE SYSTEM ─── */
+  .slide {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .slide-number {
+    position: absolute;
+    bottom: 30px;
+    right: 40px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 2px;
+  }
+
+  .slide-logo {
+    position: absolute;
+    top: 30px;
+    left: 40px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 18px;
+    color: rgba(255,255,255,0.6);
+  }
+
+  .slide-logo .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--teal);
+  }
+
+  /* ─── BACKGROUNDS ─── */
+  .slide-title {
+    background: var(--gradient-hero);
+    text-align: center;
+    align-items: center;
+  }
+
+  .slide-title::before {
+    content: '';
+    position: absolute;
+    top: -200px; right: -200px;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(13,148,136,0.15), transparent 70%);
+  }
+
+  .slide-dark {
+    background: #0F172A;
+  }
+
+  .slide-dark::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 10% 20%, rgba(13,148,136,0.05), transparent 50%),
+      radial-gradient(ellipse at 90% 80%, rgba(122,27,62,0.05), transparent 50%);
+    pointer-events: none;
+  }
+
+  .slide-accent { background: linear-gradient(135deg, #0D9488, #0F766E); }
+  .slide-burgundy { background: linear-gradient(135deg, #7A1B3E, #5A1430); }
+
+  /* ─── TYPOGRAPHY ─── */
+  .section-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--teal-light);
+    margin-bottom: 16px;
+  }
+
+  .slide-accent .section-label,
+  .slide-burgundy .section-label { color: rgba(255,255,255,0.6); }
+
+  h2 {
+    font-size: clamp(32px, 4vw, 52px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1.5px;
+    margin-bottom: 20px;
+  }
+
+  h3 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    letter-spacing: -0.3px;
+  }
+
+  .subtitle {
+    font-size: 17px;
+    color: rgba(255,255,255,0.6);
+    line-height: 1.6;
+    max-width: 650px;
+    margin-bottom: 36px;
+  }
+
+  .slide-accent .subtitle { color: rgba(255,255,255,0.8); }
+
+  .highlight { color: var(--teal-light); }
+  .gold { color: var(--gold); }
+  .green { color: var(--green); }
+  .red { color: var(--red); }
+
+  .title-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 100px;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--teal-light);
+    margin-bottom: 30px;
+    backdrop-filter: blur(10px);
+  }
+
+  .title-main {
+    font-size: clamp(44px, 5.5vw, 72px);
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: -2px;
+    margin-bottom: 24px;
+    position: relative; z-index: 1;
+  }
+
+  .title-main .hl {
+    background: var(--gradient-teal);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .title-sub {
+    font-size: 20px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.7);
+    max-width: 660px;
+    line-height: 1.6;
+    position: relative; z-index: 1;
+  }
+
+  /* ─── GRIDS ─── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: start; }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 26px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card h4 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #F1F5F9;
+    margin-bottom: 8px;
+  }
+
+  .card p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: rgba(255,255,255,0.5);
+  }
+
+  /* ─── STAT BLOCKS ─── */
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+
+  .stat-block {
+    text-align: center;
+    padding: 26px 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+  }
+
+  .stat-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 40px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* ─── DATA TABLES ─── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  .data-table thead th {
+    text-align: right;
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.35);
+    border-bottom: 2px solid rgba(255,255,255,0.08);
+  }
+
+  .data-table thead th:first-child { text-align: left; }
+
+  .data-table tbody td {
+    padding: 11px 14px;
+    text-align: right;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.65);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+
+  .data-table tbody td:first-child {
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    color: #CBD5E1;
+  }
+
+  .data-table tbody tr:last-child td { border-bottom: none; }
+
+  .data-table .total-row td {
+    font-weight: 700;
+    color: #F1F5F9;
+    border-top: 2px solid rgba(255,255,255,0.1);
+    border-bottom: 2px solid rgba(255,255,255,0.1);
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+
+  .data-table .total-row td:not(:first-child) {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .data-table .positive { color: var(--green); }
+  .data-table .negative { color: var(--red); }
+  .data-table .highlight-cell { color: var(--teal-light); font-weight: 600; }
+
+  .table-wrapper {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    overflow: hidden;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrapper .data-table { margin: 0; }
+  .table-wrapper .data-table thead th { background: rgba(255,255,255,0.03); }
+
+  /* ─── BARS ─── */
+  .bar-chart { display: flex; flex-direction: column; gap: 14px; }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 100px;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .bar-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #CBD5E1;
+  }
+
+  .bar-track {
+    height: 28px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.6s ease;
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+    min-width: fit-content;
+    white-space: nowrap;
+  }
+
+  .bar-fill.teal { background: linear-gradient(90deg, rgba(13,148,136,0.8), rgba(20,184,166,0.6)); }
+  .bar-fill.gold { background: linear-gradient(90deg, rgba(212,168,67,0.8), rgba(232,199,106,0.6)); }
+  .bar-fill.burgundy { background: linear-gradient(90deg, rgba(122,27,62,0.8), rgba(229,123,160,0.6)); }
+
+  .bar-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: #F1F5F9;
+    text-align: right;
+  }
+
+  /* ─── KPI ROW ─── */
+  .kpi-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .kpi-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 14px 20px;
+    min-width: 120px;
+    flex: 1;
+  }
+
+  .kpi-chip .val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--teal-light);
+  }
+
+  .kpi-chip .lbl {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+  }
+
+  /* ─── ASSUMPTION CHIPS ─── */
+  .assumption-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .assumption-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .assumption-item:last-child { border-bottom: none; }
+
+  .assumption-item .label {
+    font-size: 14px;
+    color: rgba(255,255,255,0.6);
+  }
+
+  .assumption-item .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: #F1F5F9;
+  }
+
+  /* ─── WATERFALL ─── */
+  .waterfall {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    height: 200px;
+    padding-top: 20px;
+    margin-top: 16px;
+  }
+
+  .waterfall-bar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    height: 100%;
+  }
+
+  .waterfall-bar .bar {
+    width: 100%;
+    border-radius: 6px 6px 0 0;
+    min-height: 4px;
+    transition: height 0.4s ease;
+  }
+
+  .waterfall-bar .bar.rev { background: var(--gradient-teal); }
+  .waterfall-bar .bar.cost { background: linear-gradient(to top, rgba(239,68,68,0.7), rgba(239,68,68,0.4)); }
+
+  .waterfall-bar .val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: #CBD5E1;
+  }
+
+  .waterfall-bar .lbl {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    font-weight: 500;
+  }
+
+  /* ─── FOOTNOTE ─── */
+  .footnote {
+    font-size: 12px;
+    color: rgba(255,255,255,0.3);
+    margin-top: 24px;
+    font-style: italic;
+  }
+
+  .divider {
+    width: 60px; height: 4px;
+    border-radius: 2px;
+    background: var(--gradient-teal);
+    margin-bottom: 20px;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media print {
+    .slide { page-break-after: always; page-break-inside: avoid; }
+  }
+
+  @media (max-width: 1024px) {
+    .slide { padding: 50px 40px; }
+    .grid-4, .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .two-col { gap: 30px; }
+    h2 { font-size: clamp(28px, 4vw, 42px); }
+    .stat-number { font-size: 32px; }
+    .data-table { font-size: 13px; }
+    .data-table tbody td { font-size: 12px; }
+  }
+
+  @media (max-width: 768px) {
+    .slide { padding: 40px 20px; min-height: auto; padding-top: 56px; padding-bottom: 56px; }
+    .grid-2, .grid-3, .two-col { grid-template-columns: 1fr; }
+    .grid-4, .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .title-main { font-size: clamp(30px, 8vw, 44px); }
+    .stat-number { font-size: 28px; }
+    .kpi-row { gap: 6px; }
+    .kpi-chip { min-width: 90px; padding: 10px 14px; }
+    .kpi-chip .val { font-size: 18px; }
+    .bar-row { grid-template-columns: 60px 1fr 80px; }
+    .waterfall { height: 150px; }
+    .slide-logo { top: 18px; left: 20px; font-size: 15px; }
+    .slide-number { bottom: 18px; right: 20px; font-size: 11px; }
+    .data-table thead th, .data-table tbody td { padding: 8px 8px; font-size: 11px; }
+    .table-wrapper { border-radius: 10px; }
+  }
+
+  @media (max-width: 480px) {
+    .slide { padding: 32px 14px; padding-top: 50px; }
+    .grid-4, .stat-grid { grid-template-columns: 1fr; }
+    .stat-number { font-size: 24px; }
+    .bar-row { grid-template-columns: 1fr; gap: 4px; }
+    .bar-value { text-align: left; }
+    .kpi-chip { min-width: 100%; }
+    h2 { font-size: clamp(22px, 6vw, 30px); }
+    .waterfall { height: 120px; gap: 6px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 1 — TITLE                                                -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-title">
+  <div class="title-badge">
+    <span style="color:var(--gold)">●</span> Confidential
+  </div>
+  <h1 class="title-main">
+    <span class="hl">Vitora</span> HMIS<br>Financial Model
+  </h1>
+  <p class="title-sub">
+    5-year revenue projections, unit economics, and path to profitability for Kenya's offline-first hospital management platform.
+  </p>
+  <div style="margin-top: 40px; display: flex; gap: 32px; font-size: 14px; color: rgba(255,255,255,0.5); position: relative; z-index:1;">
+    <span>📍 Nexora Africa Ltd</span>
+    <span>📅 FY 2026–2030</span>
+    <span>💱 All figures in KES (1 USD ≈ 130 KES)</span>
+  </div>
+  <div class="slide-number">01</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 2 — MARKET OPPORTUNITY                                   -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">Market Opportunity</div>
+  <h2>KES 2.5B addressable market<br>in Kenya alone</h2>
+  <p class="subtitle">13,000+ clinics and 800+ hospitals, most still on paper or basic spreadsheets. SHA digitization mandates are accelerating adoption.</p>
+
+  <div class="grid-3" style="margin-bottom: 36px;">
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 8px;">Total Addressable Market</div>
+      <div class="mono" style="font-size: 36px; font-weight: 800; color: var(--teal-light);">KES 2.46B</div>
+      <div style="font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 4px;">$18.9M USD / year</div>
+    </div>
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 8px;">Serviceable Market (Year 5)</div>
+      <div class="mono" style="font-size: 36px; font-weight: 800; color: var(--gold);">KES 850M</div>
+      <div style="font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 4px;">$6.5M USD / year</div>
+    </div>
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 8px;">Year 5 Target Share</div>
+      <div class="mono" style="font-size: 36px; font-weight: 800; color: #E57BA0;">7.8%</div>
+      <div style="font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 4px;">of TAM (conservative)</div>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Segment</th>
+          <th>Facilities in Kenya</th>
+          <th>Avg ARPU / mo</th>
+          <th>Annual Revenue per Customer</th>
+          <th>Segment TAM</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Outpatient Clinics</td>
+          <td>~13,000</td>
+          <td>KES 11,500</td>
+          <td>KES 138,000</td>
+          <td>KES 1.79B</td>
+        </tr>
+        <tr>
+          <td>Hospitals (L3-L5)</td>
+          <td>~800</td>
+          <td>KES 62,000</td>
+          <td>KES 744,000</td>
+          <td>KES 595M</td>
+        </tr>
+        <tr>
+          <td>Enterprise / County Systems</td>
+          <td>~50</td>
+          <td>KES 120,000</td>
+          <td>KES 1,440,000</td>
+          <td>KES 72M</td>
+        </tr>
+        <tr class="total-row">
+          <td>Total</td>
+          <td>~13,850</td>
+          <td>—</td>
+          <td>—</td>
+          <td class="highlight-cell">KES 2.46B</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="footnote">ARPU includes base plan + weighted average add-on attach rates (TibaBot AI 35%, Offline Sync 45%, LIS 20%, SMS 25%).</p>
+  <div class="slide-number">02</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 3 — REVENUE MODEL & PRICING                              -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">Revenue Model</div>
+  <h2>SaaS recurring revenue<br>+ implementation fees</h2>
+  <p class="subtitle">Three subscription tiers with modular add-ons. Annual billing earns 2 months free (~17% discount, incentivizes commitment).</p>
+
+  <div class="two-col">
+    <div>
+      <h3 style="font-size: 18px; color: var(--teal-light); margin-bottom: 16px;">Subscription Tiers (MRR per Customer)</h3>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr><th>Tier</th><th>Base Price</th><th>Avg Add-ons</th><th>Blended ARPU</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Clinic</td>
+              <td>KES 8,999</td>
+              <td>KES 2,500</td>
+              <td class="highlight-cell">KES 11,500</td>
+            </tr>
+            <tr>
+              <td>Hospital</td>
+              <td>KES 49,999</td>
+              <td>KES 12,000</td>
+              <td class="highlight-cell">KES 62,000</td>
+            </tr>
+            <tr>
+              <td>Enterprise</td>
+              <td>KES 80,000+</td>
+              <td>KES 40,000</td>
+              <td class="highlight-cell">KES 120,000</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style="font-size: 18px; color: var(--gold); margin-top: 28px; margin-bottom: 16px;">Add-On Modules</h3>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr><th>Add-On</th><th>Price / mo</th><th>Attach Rate</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>TibaBot AI</td><td>KES 5,000</td><td>35%</td></tr>
+            <tr><td>Offline Sync</td><td>KES 3,000</td><td>45%</td></tr>
+            <tr><td>Advanced LIS</td><td>KES 7,000</td><td>20%</td></tr>
+            <tr><td>SMS & WhatsApp</td><td>KES 2,500</td><td>25%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <h3 style="font-size: 18px; color: rgba(255,255,255,0.6); margin-bottom: 16px;">Key Revenue Assumptions</h3>
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="assumption-list">
+          <div class="assumption-item">
+            <span class="label">Annual billing adoption</span>
+            <span class="value">60% by Y3</span>
+          </div>
+          <div class="assumption-item">
+            <span class="label">Annual churn rate (Y1 → Y3+)</span>
+            <span class="value">18% → 10% → 8%</span>
+          </div>
+          <div class="assumption-item">
+            <span class="label">Net revenue retention</span>
+            <span class="value">112% (Y3+)</span>
+          </div>
+          <div class="assumption-item">
+            <span class="label">Pilot conversion rate</span>
+            <span class="value">55%</span>
+          </div>
+          <div class="assumption-item">
+            <span class="label">Implementation fee (hospital)</span>
+            <span class="value">KES 0 (included)</span>
+          </div>
+          <div class="assumption-item">
+            <span class="label">Avg contract length</span>
+            <span class="value">12 months</span>
+          </div>
+          <div class="assumption-item">
+            <span class="label">Free pilot period</span>
+            <span class="value">30 days</span>
+          </div>
+          <div class="assumption-item">
+            <span class="label">Payment method split</span>
+            <span class="value">M-Pesa 60% / Bank 40%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="background: rgba(13,148,136,0.06); border-color: rgba(13,148,136,0.15);">
+        <h4 style="font-size: 13px; color: var(--teal-light); margin-bottom: 6px;">📈 Expansion Revenue Driver</h4>
+        <p style="font-size: 13px;">Clinics upgrading to Hospital tier as they grow + increasing add-on attach rates drive 112% net retention. TibaBot AI attach rate expected to reach 50% by Y4.</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">03</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 4 — CUSTOMER PROJECTIONS                                 -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">Customer Growth</div>
+  <h2>715 active customers<br>by <span class="highlight">Year 5</span></h2>
+  <p class="subtitle">Conservative ramp: Year 1 focuses on pilot conversions and reference customers. Growth accelerates from Y2 as SHA mandates drive demand.</p>
+
+  <div class="table-wrapper" style="margin-bottom: 28px;">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Y1 (2026)</th>
+          <th>Y2 (2027)</th>
+          <th>Y3 (2028)</th>
+          <th>Y4 (2029)</th>
+          <th>Y5 (2030)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>New Clinics</strong></td>
+          <td>15</td>
+          <td>55</td>
+          <td>120</td>
+          <td>180</td>
+          <td>220</td>
+        </tr>
+        <tr>
+          <td><strong>New Hospitals</strong></td>
+          <td>3</td>
+          <td>14</td>
+          <td>40</td>
+          <td>48</td>
+          <td>60</td>
+        </tr>
+        <tr>
+          <td><strong>New Enterprise</strong></td>
+          <td>0</td>
+          <td>3</td>
+          <td>6</td>
+          <td>9</td>
+          <td>12</td>
+        </tr>
+        <tr style="color: rgba(255,255,255,0.3);"><td colspan="6" style="padding: 4px 14px; font-size: 11px; font-style: italic;">Less: churn (18% Y1, 12% Y2, 10% Y3, 8% Y4-5)</td></tr>
+        <tr>
+          <td><strong>Churned Customers</strong></td>
+          <td class="negative">−3</td>
+          <td class="negative">−9</td>
+          <td class="negative">−19</td>
+          <td class="negative">−24</td>
+          <td class="negative">−29</td>
+        </tr>
+        <tr class="total-row">
+          <td>Active Customers (Cumulative)</td>
+          <td>15</td>
+          <td>78</td>
+          <td>225</td>
+          <td>438</td>
+          <td class="highlight-cell">715</td>
+        </tr>
+        <tr>
+          <td style="padding-left: 28px; color: rgba(255,255,255,0.4);">↳ Clinics</td>
+          <td style="color: rgba(255,255,255,0.4);">12</td>
+          <td style="color: rgba(255,255,255,0.4);">58</td>
+          <td style="color: rgba(255,255,255,0.4);">160</td>
+          <td style="color: rgba(255,255,255,0.4);">316</td>
+          <td style="color: rgba(255,255,255,0.4);">510</td>
+        </tr>
+        <tr>
+          <td style="padding-left: 28px; color: rgba(255,255,255,0.4);">↳ Hospitals</td>
+          <td style="color: rgba(255,255,255,0.4);">3</td>
+          <td style="color: rgba(255,255,255,0.4);">16</td>
+          <td style="color: rgba(255,255,255,0.4);">52</td>
+          <td style="color: rgba(255,255,255,0.4);">95</td>
+          <td style="color: rgba(255,255,255,0.4);">148</td>
+        </tr>
+        <tr>
+          <td style="padding-left: 28px; color: rgba(255,255,255,0.4);">↳ Enterprise</td>
+          <td style="color: rgba(255,255,255,0.4);">0</td>
+          <td style="color: rgba(255,255,255,0.4);">3</td>
+          <td style="color: rgba(255,255,255,0.4);">9</td>
+          <td style="color: rgba(255,255,255,0.4);">17</td>
+          <td style="color: rgba(255,255,255,0.4);">28</td>
+        </tr>
+        <tr>
+          <td><strong>Market Penetration</strong></td>
+          <td>0.1%</td>
+          <td>0.6%</td>
+          <td>1.6%</td>
+          <td>3.2%</td>
+          <td class="highlight-cell">5.2%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi-chip">
+      <div class="val">55%</div>
+      <div class="lbl">Pilot → Paid</div>
+    </div>
+    <div class="kpi-chip">
+      <div class="val">92%</div>
+      <div class="lbl">Retention (Y3+)</div>
+    </div>
+    <div class="kpi-chip">
+      <div class="val">112%</div>
+      <div class="lbl">Net Revenue Retention</div>
+    </div>
+    <div class="kpi-chip">
+      <div class="val">3.5×</div>
+      <div class="lbl">YoY Customer Growth (Avg)</div>
+    </div>
+  </div>
+  <div class="slide-number">04</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 5 — REVENUE PROJECTIONS                                  -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-accent">
+  <div class="slide-logo"><span class="dot" style="background:white"></span> VITORA</div>
+  <div class="section-label">Revenue Projections</div>
+  <h2>KES 192M ARR<br>by Year 5</h2>
+  <p class="subtitle">Recurring SaaS revenue with strong expansion dynamics. Hospital and enterprise segments drive outsized revenue contribution.</p>
+
+  <div class="table-wrapper" style="margin-bottom: 28px; background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12);">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Revenue Stream</th>
+          <th>Y1</th>
+          <th>Y2</th>
+          <th>Y3</th>
+          <th>Y4</th>
+          <th>Y5</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Clinic Subscriptions</td>
+          <td>0.8M</td>
+          <td>4.8M</td>
+          <td>15.4M</td>
+          <td>31.8M</td>
+          <td>52.9M</td>
+        </tr>
+        <tr>
+          <td>Hospital Subscriptions</td>
+          <td>1.1M</td>
+          <td>7.1M</td>
+          <td>25.3M</td>
+          <td>49.0M</td>
+          <td>81.8M</td>
+        </tr>
+        <tr>
+          <td>Enterprise Subscriptions</td>
+          <td>—</td>
+          <td>2.2M</td>
+          <td>8.6M</td>
+          <td>18.4M</td>
+          <td>31.1M</td>
+        </tr>
+        <tr>
+          <td>Add-On Revenue (blended)</td>
+          <td>0.3M</td>
+          <td>2.1M</td>
+          <td>7.5M</td>
+          <td>15.8M</td>
+          <td>26.2M</td>
+        </tr>
+        <tr class="total-row">
+          <td>Total Annual Revenue</td>
+          <td>2.2M</td>
+          <td>16.2M</td>
+          <td>56.8M</td>
+          <td>115.0M</td>
+          <td class="highlight-cell" style="color: white;">192.0M</td>
+        </tr>
+        <tr>
+          <td>Exit MRR (Dec)</td>
+          <td class="highlight-cell" style="color: rgba(255,255,255,0.8);">360K</td>
+          <td class="highlight-cell" style="color: rgba(255,255,255,0.8);">2.3M</td>
+          <td class="highlight-cell" style="color: rgba(255,255,255,0.8);">6.8M</td>
+          <td class="highlight-cell" style="color: rgba(255,255,255,0.8);">12.4M</td>
+          <td class="highlight-cell" style="color: white;">19.3M</td>
+        </tr>
+        <tr>
+          <td>Exit ARR (Annualized)</td>
+          <td>4.3M</td>
+          <td>27.6M</td>
+          <td>81.6M</td>
+          <td>148.8M</td>
+          <td class="highlight-cell" style="color: white;">231.6M</td>
+        </tr>
+        <tr>
+          <td>YoY Revenue Growth</td>
+          <td>—</td>
+          <td class="positive">+636%</td>
+          <td class="positive">+251%</td>
+          <td class="positive">+102%</td>
+          <td class="positive">+67%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+    <div class="kpi-chip" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12);">
+      <div class="val" style="color: white;">43%</div>
+      <div class="lbl" style="color: rgba(255,255,255,0.6);">Hospital Rev Share (Y5)</div>
+    </div>
+    <div class="kpi-chip" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12);">
+      <div class="val" style="color: white;">14%</div>
+      <div class="lbl" style="color: rgba(255,255,255,0.6);">Add-On Rev Share</div>
+    </div>
+    <div class="kpi-chip" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12);">
+      <div class="val" style="color: white;">KES 269K</div>
+      <div class="lbl" style="color: rgba(255,255,255,0.6);">Blended ARPU / mo (Y5)</div>
+    </div>
+  </div>
+
+  <p class="footnote" style="color: rgba(255,255,255,0.35);">Revenue recognized on accrual basis. Annual billing discount (~17%) applied to 60% of Y3+ customers. All figures in KES.</p>
+  <div class="slide-number">05</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 6 — COST STRUCTURE                                       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">Cost Structure</div>
+  <h2>Lean team, capital-efficient<br>growth to profitability</h2>
+  <p class="subtitle">Engineering-heavy team with Kenya-competitive compensation. Cloud costs scale with customers, not upfront.</p>
+
+  <div class="two-col">
+    <div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Cost Category</th>
+              <th>Y1</th>
+              <th>Y2</th>
+              <th>Y3</th>
+              <th>Y4</th>
+              <th>Y5</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>👥 Team (Salaries + Benefits)</td>
+              <td>24.0M</td>
+              <td>39.6M</td>
+              <td>61.2M</td>
+              <td>82.8M</td>
+              <td>104.4M</td>
+            </tr>
+            <tr>
+              <td>☁️ Cloud Infrastructure</td>
+              <td>2.4M</td>
+              <td>4.2M</td>
+              <td>7.2M</td>
+              <td>10.8M</td>
+              <td>14.4M</td>
+            </tr>
+            <tr>
+              <td>📢 Sales & Marketing</td>
+              <td>3.6M</td>
+              <td>7.2M</td>
+              <td>12.0M</td>
+              <td>16.8M</td>
+              <td>20.4M</td>
+            </tr>
+            <tr>
+              <td>🛠️ Support & Implementation</td>
+              <td>1.8M</td>
+              <td>4.2M</td>
+              <td>8.4M</td>
+              <td>13.2M</td>
+              <td>18.0M</td>
+            </tr>
+            <tr>
+              <td>🏢 Office & G&A</td>
+              <td>1.8M</td>
+              <td>2.4M</td>
+              <td>3.6M</td>
+              <td>4.8M</td>
+              <td>6.0M</td>
+            </tr>
+            <tr class="total-row">
+              <td>Total Operating Costs</td>
+              <td>33.6M</td>
+              <td>57.6M</td>
+              <td>92.4M</td>
+              <td>128.4M</td>
+              <td>163.2M</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <h3 style="font-size: 18px; color: var(--teal-light); margin-bottom: 16px;">Headcount Plan</h3>
+      <div class="table-wrapper" style="margin-bottom: 20px;">
+        <table class="data-table">
+          <thead>
+            <tr><th>Function</th><th>Y1</th><th>Y2</th><th>Y3</th><th>Y4</th><th>Y5</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Engineering</td><td>5</td><td>8</td><td>12</td><td>16</td><td>19</td></tr>
+            <tr><td>Product & Design</td><td>1</td><td>2</td><td>3</td><td>3</td><td>4</td></tr>
+            <tr><td>Sales & Marketing</td><td>1</td><td>2</td><td>4</td><td>6</td><td>7</td></tr>
+            <tr><td>Support & CS</td><td>1</td><td>2</td><td>3</td><td>5</td><td>7</td></tr>
+            <tr><td>G&A / Ops</td><td>0</td><td>0</td><td>1</td><td>1</td><td>2</td></tr>
+            <tr class="total-row"><td>Total FTE</td><td>8</td><td>14</td><td>23</td><td>31</td><td>39</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card" style="background: rgba(212,168,67,0.06); border-color: rgba(212,168,67,0.15);">
+        <h4 style="font-size: 13px; color: var(--gold);">💡 Compensation Assumptions</h4>
+        <p style="font-size: 12px;">Avg all-in cost KES 250K/mo per FTE (Y1), scaling to KES 280K (Y5). Includes salary, NSSF, NHIF, tools, and training. Nairobi-competitive for senior engineering talent.</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">06</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 7 — P&L SUMMARY                                         -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-burgundy">
+  <div class="slide-logo"><span class="dot" style="background: var(--gold)"></span> VITORA</div>
+  <div class="section-label">Profit & Loss</div>
+  <h2>Breakeven in Y4,<br><span style="color: var(--gold);">KES 28.8M profit</span> in Y5</h2>
+  <p class="subtitle">High gross margins (85%+ SaaS) compound as customer base grows. Operational leverage kicks in from Y3.</p>
+
+  <div class="table-wrapper" style="margin-bottom: 28px; background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12);">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Y1</th>
+          <th>Y2</th>
+          <th>Y3</th>
+          <th>Y4</th>
+          <th>Y5</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Revenue</strong></td>
+          <td>2.2M</td>
+          <td>16.2M</td>
+          <td>56.8M</td>
+          <td>115.0M</td>
+          <td class="highlight-cell">192.0M</td>
+        </tr>
+        <tr>
+          <td>COGS (Infra + Support)</td>
+          <td>(4.2M)</td>
+          <td>(8.4M)</td>
+          <td>(15.6M)</td>
+          <td>(24.0M)</td>
+          <td>(32.4M)</td>
+        </tr>
+        <tr>
+          <td><strong>Gross Profit</strong></td>
+          <td class="negative">(2.0M)</td>
+          <td>7.8M</td>
+          <td>41.2M</td>
+          <td>91.0M</td>
+          <td class="positive">159.6M</td>
+        </tr>
+        <tr>
+          <td style="color: rgba(255,255,255,0.4);">Gross Margin</td>
+          <td style="color: rgba(255,255,255,0.3);">neg</td>
+          <td style="color: rgba(255,255,255,0.3);">48%</td>
+          <td style="color: rgba(255,255,255,0.3);">73%</td>
+          <td style="color: rgba(255,255,255,0.3);">79%</td>
+          <td style="color: var(--gold);">83%</td>
+        </tr>
+        <tr><td colspan="6" style="height: 8px; border: none;"></td></tr>
+        <tr>
+          <td>Team Costs</td>
+          <td>(24.0M)</td>
+          <td>(39.6M)</td>
+          <td>(61.2M)</td>
+          <td>(82.8M)</td>
+          <td>(104.4M)</td>
+        </tr>
+        <tr>
+          <td>Sales & Marketing</td>
+          <td>(3.6M)</td>
+          <td>(7.2M)</td>
+          <td>(12.0M)</td>
+          <td>(16.8M)</td>
+          <td>(20.4M)</td>
+        </tr>
+        <tr>
+          <td>G&A</td>
+          <td>(1.8M)</td>
+          <td>(2.4M)</td>
+          <td>(3.6M)</td>
+          <td>(4.8M)</td>
+          <td>(6.0M)</td>
+        </tr>
+        <tr class="total-row">
+          <td>EBITDA</td>
+          <td class="negative">(31.4M)</td>
+          <td class="negative">(41.4M)</td>
+          <td class="negative">(35.6M)</td>
+          <td class="negative">(13.4M)</td>
+          <td class="positive">28.8M</td>
+        </tr>
+        <tr>
+          <td style="color: rgba(255,255,255,0.4);">EBITDA Margin</td>
+          <td style="color: rgba(255,255,255,0.3);">neg</td>
+          <td style="color: rgba(255,255,255,0.3);">neg</td>
+          <td style="color: rgba(255,255,255,0.3);">-63%</td>
+          <td style="color: rgba(255,255,255,0.3);">-12%</td>
+          <td class="positive">15%</td>
+        </tr>
+        <tr>
+          <td><strong>Cumulative Cash Burn</strong></td>
+          <td class="negative">(31.4M)</td>
+          <td class="negative">(72.8M)</td>
+          <td class="negative">(108.4M)</td>
+          <td class="negative">(121.8M)</td>
+          <td class="negative">(93.0M)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Visual: Revenue vs Cost bars by year -->
+  <div style="display: flex; gap: 16px; justify-content: space-between;">
+    <div style="flex: 1; text-align: center;">
+      <div style="display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 120px;">
+        <div style="width: 28px; height: 3%; background: var(--teal-light); border-radius: 4px 4px 0 0; opacity: 0.8;"></div>
+        <div style="width: 28px; height: 42%; background: rgba(239,68,68,0.5); border-radius: 4px 4px 0 0;"></div>
+      </div>
+      <div style="font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 6px;"><strong>Y1</strong></div>
+    </div>
+    <div style="flex: 1; text-align: center;">
+      <div style="display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 120px;">
+        <div style="width: 28px; height: 10%; background: var(--teal-light); border-radius: 4px 4px 0 0; opacity: 0.8;"></div>
+        <div style="width: 28px; height: 55%; background: rgba(239,68,68,0.5); border-radius: 4px 4px 0 0;"></div>
+      </div>
+      <div style="font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 6px;"><strong>Y2</strong></div>
+    </div>
+    <div style="flex: 1; text-align: center;">
+      <div style="display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 120px;">
+        <div style="width: 28px; height: 35%; background: var(--teal-light); border-radius: 4px 4px 0 0; opacity: 0.8;"></div>
+        <div style="width: 28px; height: 70%; background: rgba(239,68,68,0.5); border-radius: 4px 4px 0 0;"></div>
+      </div>
+      <div style="font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 6px;"><strong>Y3</strong></div>
+    </div>
+    <div style="flex: 1; text-align: center;">
+      <div style="display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 120px;">
+        <div style="width: 28px; height: 70%; background: var(--teal-light); border-radius: 4px 4px 0 0; opacity: 0.8;"></div>
+        <div style="width: 28px; height: 85%; background: rgba(239,68,68,0.5); border-radius: 4px 4px 0 0;"></div>
+      </div>
+      <div style="font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 6px;"><strong>Y4</strong></div>
+    </div>
+    <div style="flex: 1; text-align: center;">
+      <div style="display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 120px;">
+        <div style="width: 28px; height: 100%; background: var(--teal-light); border-radius: 4px 4px 0 0;"></div>
+        <div style="width: 28px; height: 88%; background: rgba(239,68,68,0.5); border-radius: 4px 4px 0 0;"></div>
+      </div>
+      <div style="font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 6px;"><strong style="color: var(--gold);">Y5 ✓</strong></div>
+    </div>
+  </div>
+  <div style="display: flex; gap: 20px; justify-content: center; margin-top: 10px; font-size: 12px; color: rgba(255,255,255,0.4);">
+    <span>🟩 Revenue</span>
+    <span>🟥 Costs</span>
+  </div>
+
+  <div class="slide-number">07</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 8 — UNIT ECONOMICS                                       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">Unit Economics</div>
+  <h2>Best-in-class LTV:CAC —<br><span class="highlight">10× clinics, 18× hospitals</span></h2>
+  <p class="subtitle">Low customer acquisition costs (Kenya-based sales team + product-led growth from free pilots) combined with strong retention drive exceptional payback.</p>
+
+  <div class="grid-3" style="margin-bottom: 32px;">
+    <!-- Clinic Unit Economics -->
+    <div class="card" style="border-color: rgba(13,148,136,0.2);">
+      <div style="font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--teal-light); margin-bottom: 14px;">🏥 Clinic</div>
+      <div class="assumption-list">
+        <div class="assumption-item">
+          <span class="label">ARPU / month</span>
+          <span class="value">KES 11,500</span>
+        </div>
+        <div class="assumption-item">
+          <span class="label">CAC (all-in)</span>
+          <span class="value">KES 85,000</span>
+        </div>
+        <div class="assumption-item">
+          <span class="label">Avg lifetime</span>
+          <span class="value">~8 years</span>
+        </div>
+        <div class="assumption-item">
+          <span class="label">LTV (discounted)</span>
+          <span class="value highlight" style="font-size: 16px;">KES 828K</span>
+        </div>
+        <div class="assumption-item" style="border: none;">
+          <span class="label">LTV : CAC</span>
+          <span class="value positive" style="font-size: 18px;">9.7×</span>
+        </div>
+      </div>
+      <div style="background: rgba(13,148,136,0.1); border-radius: 8px; padding: 10px 14px; margin-top: 8px; text-align: center;">
+        <div style="font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px;">Payback Period</div>
+        <div class="mono" style="font-size: 20px; font-weight: 800; color: var(--teal-light);">7.4 months</div>
+      </div>
+    </div>
+
+    <!-- Hospital Unit Economics -->
+    <div class="card" style="border-color: rgba(212,168,67,0.2); background: rgba(212,168,67,0.03);">
+      <div style="font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-bottom: 14px;">🏨 Hospital</div>
+      <div class="assumption-list">
+        <div class="assumption-item">
+          <span class="label">ARPU / month</span>
+          <span class="value">KES 62,000</span>
+        </div>
+        <div class="assumption-item">
+          <span class="label">CAC (all-in)</span>
+          <span class="value">KES 250,000</span>
+        </div>
+        <div class="assumption-item">
+          <span class="label">Avg lifetime</span>
+          <span class="value">~10 years</span>
+        </div>
+        <div class="assumption-item">
+          <span class="label">LTV (discounted)</span>
+          <span class="value gold" style="font-size: 16px;">KES 4.46M</span>
+        </div>
+        <div class="assumption-item" style="border: none;">
+          <span class="label">LTV : CAC</span>
+          <span class="value positive" style="font-size: 18px;">17.9×</span>
+        </div>
+      </div>
+      <div style="background: rgba(212,168,67,0.1); border-radius: 8px; padding: 10px 14px; margin-top: 8px; text-align: center;">
+        <div style="font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px;">Payback Period</div>
+        <div class="mono" style="font-size: 20px; font-weight: 800; color: var(--gold);">4.0 months</div>
+      </div>
+    </div>
+
+    <!-- Enterprise Unit Economics -->
+    <div class="card" style="border-color: rgba(122,27,62,0.2);">
+      <div style="font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #E57BA0; margin-bottom: 14px;">🌍 Enterprise</div>
+      <div class="assumption-list">
+        <div class="assumption-item">
+          <span class="label">ARPU / month</span>
+          <span class="value">KES 120,000</span>
+        </div>
+        <div class="assumption-item">
+          <span class="label">CAC (all-in)</span>
+          <span class="value">KES 480,000</span>
+        </div>
+        <div class="assumption-item">
+          <span class="label">Avg lifetime</span>
+          <span class="value">~12 years</span>
+        </div>
+        <div class="assumption-item">
+          <span class="label">LTV (discounted)</span>
+          <span class="value" style="font-size: 16px; color: #E57BA0;">KES 10.4M</span>
+        </div>
+        <div class="assumption-item" style="border: none;">
+          <span class="label">LTV : CAC</span>
+          <span class="value positive" style="font-size: 18px;">21.6×</span>
+        </div>
+      </div>
+      <div style="background: rgba(122,27,62,0.1); border-radius: 8px; padding: 10px 14px; margin-top: 8px; text-align: center;">
+        <div style="font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px;">Payback Period</div>
+        <div class="mono" style="font-size: 20px; font-weight: 800; color: #E57BA0;">4.0 months</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="padding: 18px 24px;">
+    <div style="display: flex; gap: 36px; flex-wrap: wrap;">
+      <div>
+        <div style="font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px;">Discount Rate (WACC)</div>
+        <div class="mono" style="font-size: 15px; font-weight: 700; color: #CBD5E1;">15%</div>
+      </div>
+      <div>
+        <div style="font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px;">CAC includes</div>
+        <div style="font-size: 13px; color: #CBD5E1;">Sales comp, marketing, demo/pilot costs, implementation, onboarding</div>
+      </div>
+      <div>
+        <div style="font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px;">LTV Factor</div>
+        <div style="font-size: 13px; color: #CBD5E1;">Includes 112% NRR uplift (add-on upsells, plan upgrades)</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">08</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 9 — FUNDING & USE OF PROCEEDS                            -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">Funding</div>
+  <h2>Raising KES 150M seed<br>to reach <span class="highlight">breakeven</span></h2>
+  <p class="subtitle">Peak cumulative cash burn of KES 122M occurs in Y4. A KES 150M ($1.15M) seed round provides runway through profitability with buffer.</p>
+
+  <div class="two-col">
+    <div>
+      <h3 style="font-size: 18px; color: var(--teal-light); margin-bottom: 20px;">Use of Proceeds</h3>
+      <div class="bar-chart">
+        <div class="bar-row">
+          <div class="bar-label">Eng.</div>
+          <div class="bar-track">
+            <div class="bar-fill teal" style="width: 50%;">Engineering Team</div>
+          </div>
+          <div class="bar-value">KES 75M</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Sales</div>
+          <div class="bar-track">
+            <div class="bar-fill gold" style="width: 20%;">Sales & Marketing</div>
+          </div>
+          <div class="bar-value">KES 30M</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Infra</div>
+          <div class="bar-track">
+            <div class="bar-fill burgundy" style="width: 13%;">Cloud + Ops</div>
+          </div>
+          <div class="bar-value">KES 20M</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Support</div>
+          <div class="bar-track">
+            <div class="bar-fill teal" style="width: 10%;">CS & Support</div>
+          </div>
+          <div class="bar-value">KES 15M</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Buffer</div>
+          <div class="bar-track">
+            <div class="bar-fill gold" style="width: 7%;">Reserve</div>
+          </div>
+          <div class="bar-value">KES 10M</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 28px;">
+        <h3 style="font-size: 18px; color: var(--gold); margin-bottom: 16px;">Key Milestones This Round Funds</h3>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <span style="color: var(--teal-light); font-weight: 700;">Y1</span>
+            <span style="font-size: 14px; color: rgba(255,255,255,0.6);">15 paying facilities, product-market fit validated, 3 reference hospitals</span>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <span style="color: var(--teal-light); font-weight: 700;">Y2</span>
+            <span style="font-size: 14px; color: rgba(255,255,255,0.6);">78 facilities across 8+ counties, KES 16M ARR, enterprise segment launched</span>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <span style="color: var(--teal-light); font-weight: 700;">Y3</span>
+            <span style="font-size: 14px; color: rgba(255,255,255,0.6);">225 facilities, KES 57M ARR, 83% gross margin, net revenue retention >110%</span>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <span style="color: var(--gold); font-weight: 700;">Y4</span>
+            <span style="font-size: 14px; color: rgba(255,255,255,0.6);">438 facilities, near-breakeven, Series A optionality for East Africa expansion</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h3 style="font-size: 18px; color: rgba(255,255,255,0.6); margin-bottom: 16px;">Capital Efficiency</h3>
+      <div class="stat-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 20px;">
+        <div class="stat-block">
+          <div class="stat-number" style="font-size: 28px; color: var(--teal-light);">KES 150M</div>
+          <div class="stat-label">Seed Round</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-number" style="font-size: 28px; color: var(--gold);">$1.15M</div>
+          <div class="stat-label">USD Equivalent</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-number" style="font-size: 28px; color: var(--green);">4.3 yrs</div>
+          <div class="stat-label">Runway to Profit</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-number" style="font-size: 28px; color: #60A5FA;">1.3×</div>
+          <div class="stat-label">Cash Multiple (Y5)</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 16px;">
+        <h4 style="font-size: 14px; margin-bottom: 12px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px;">Return Scenarios (Y5 Exit)</h4>
+        <div class="assumption-list">
+          <div class="assumption-item">
+            <span class="label">Exit ARR (Y5)</span>
+            <span class="value highlight">KES 231.6M</span>
+          </div>
+          <div class="assumption-item">
+            <span class="label">At 6× ARR multiple</span>
+            <span class="value">KES 1.39B ($10.7M)</span>
+          </div>
+          <div class="assumption-item">
+            <span class="label">At 8× ARR multiple</span>
+            <span class="value">KES 1.85B ($14.2M)</span>
+          </div>
+          <div class="assumption-item">
+            <span class="label">At 10× ARR (premium)</span>
+            <span class="value gold">KES 2.32B ($17.8M)</span>
+          </div>
+          <div class="assumption-item" style="border: none;">
+            <span class="label">ROI on seed (6× multiple)</span>
+            <span class="value positive" style="font-size: 16px;">9.3× return</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="background: rgba(13,148,136,0.06); border-color: rgba(13,148,136,0.15);">
+        <h4 style="font-size: 13px; color: var(--teal-light); margin-bottom: 4px;">💰 Series A Optionality</h4>
+        <p style="font-size: 12px;">If growth exceeds projections, a Y3 Series A (KES 300-500M) accelerates East Africa expansion — Uganda, Tanzania, Rwanda — tripling the addressable market.</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">09</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 10 — SENSITIVITY & RISKS                                 -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">Sensitivity Analysis</div>
+  <h2>Stress-tested across<br>key variables</h2>
+  <p class="subtitle">Even in the bear case, the business reaches breakeven within the funding runway.</p>
+
+  <div class="grid-3" style="margin-bottom: 32px;">
+    <div class="card">
+      <h4 style="color: var(--green); margin-bottom: 14px;">🐂 Bull Case</h4>
+      <div class="assumption-list">
+        <div class="assumption-item"><span class="label">Y5 Customers</span><span class="value positive">950</span></div>
+        <div class="assumption-item"><span class="label">Y5 ARR</span><span class="value positive">KES 310M</span></div>
+        <div class="assumption-item"><span class="label">Y5 EBITDA</span><span class="value positive">KES 68M</span></div>
+        <div class="assumption-item"><span class="label">Breakeven</span><span class="value">Mid Y3</span></div>
+        <div class="assumption-item" style="border:none"><span class="label">Churn</span><span class="value">6%</span></div>
+      </div>
+      <p style="font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 8px;">SHA mandate enforcement drives faster adoption. County-level deals land in Y2.</p>
+    </div>
+
+    <div class="card" style="border-color: rgba(13,148,136,0.2); background: rgba(13,148,136,0.04);">
+      <h4 style="color: var(--teal-light); margin-bottom: 14px;">📊 Base Case</h4>
+      <div class="assumption-list">
+        <div class="assumption-item"><span class="label">Y5 Customers</span><span class="value highlight">715</span></div>
+        <div class="assumption-item"><span class="label">Y5 ARR</span><span class="value highlight">KES 231.6M</span></div>
+        <div class="assumption-item"><span class="label">Y5 EBITDA</span><span class="value highlight">KES 28.8M</span></div>
+        <div class="assumption-item"><span class="label">Breakeven</span><span class="value">Early Y5</span></div>
+        <div class="assumption-item" style="border:none"><span class="label">Churn</span><span class="value">8-10%</span></div>
+      </div>
+      <p style="font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 8px;">Steady organic growth. Hospital segment drives majority of revenue.</p>
+    </div>
+
+    <div class="card">
+      <h4 style="color: var(--red); margin-bottom: 14px;">🐻 Bear Case</h4>
+      <div class="assumption-list">
+        <div class="assumption-item"><span class="label">Y5 Customers</span><span class="value negative">420</span></div>
+        <div class="assumption-item"><span class="label">Y5 ARR</span><span class="value negative">KES 140M</span></div>
+        <div class="assumption-item"><span class="label">Y5 EBITDA</span><span class="value negative">(KES 8M)</span></div>
+        <div class="assumption-item"><span class="label">Breakeven</span><span class="value">Early Y6</span></div>
+        <div class="assumption-item" style="border:none"><span class="label">Churn</span><span class="value">15%</span></div>
+      </div>
+      <p style="font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 8px;">Slower adoption, SHA mandate delays, 1 competitor captures hospital segment. Bridge round needed.</p>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr><th>Risk Factor</th><th>Impact</th><th>Probability</th><th>Mitigation</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>SHA mandate delays</td>
+          <td style="color: var(--gold);">Medium</td>
+          <td>30%</td>
+          <td style="font-family: Inter; text-align: left; font-size: 12px;">Product works without SHA — offline-first value prop stands alone</td>
+        </tr>
+        <tr>
+          <td>Large EHR vendor enters Kenya</td>
+          <td style="color: var(--red);">High</td>
+          <td>15%</td>
+          <td style="font-family: Inter; text-align: left; font-size: 12px;">Offline-first + SHA integration = 18-month moat. Local team = faster iteration</td>
+        </tr>
+        <tr>
+          <td>FX depreciation (KES/USD)</td>
+          <td style="color: var(--gold);">Medium</td>
+          <td>40%</td>
+          <td style="font-family: Inter; text-align: left; font-size: 12px;">Revenue & costs both in KES — natural hedge. Cloud costs (USD) are &lt;10% of total</td>
+        </tr>
+        <tr>
+          <td>Churn higher than projected</td>
+          <td style="color: var(--gold);">Medium</td>
+          <td>25%</td>
+          <td style="font-family: Inter; text-align: left; font-size: 12px;">30-day pilot de-risks. Implementation included reduces switching cost. CS team scales with customers</td>
+        </tr>
+        <tr>
+          <td>Hiring delays (engineering)</td>
+          <td style="color: var(--gold);">Medium</td>
+          <td>35%</td>
+          <td style="font-family: Inter; text-align: left; font-size: 12px;">Strong Nairobi tech talent pool. Competitive comp. AI-augmented dev productivity</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="slide-number">10</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 11 — KEY ASSUMPTIONS SUMMARY                             -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-accent">
+  <div class="slide-logo"><span class="dot" style="background:white"></span> VITORA</div>
+  <div class="section-label">Appendix</div>
+  <h2>Full assumption set</h2>
+  <p class="subtitle">All projections built bottom-up from customer acquisition, pricing, and cost assumptions.</p>
+
+  <div class="two-col" style="margin-top: 10px;">
+    <div>
+      <h3 style="font-size: 16px; color: rgba(255,255,255,0.8); margin-bottom: 14px;">Revenue Assumptions</h3>
+      <div class="card" style="background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12);">
+        <div class="assumption-list">
+          <div class="assumption-item"><span class="label">Clinic ARPU</span><span class="value">KES 11,500/mo</span></div>
+          <div class="assumption-item"><span class="label">Hospital ARPU</span><span class="value">KES 62,000/mo</span></div>
+          <div class="assumption-item"><span class="label">Enterprise ARPU</span><span class="value">KES 120,000/mo</span></div>
+          <div class="assumption-item"><span class="label">Annual billing discount</span><span class="value">17% (2 months free)</span></div>
+          <div class="assumption-item"><span class="label">Annual billing adoption</span><span class="value">40% Y1 → 65% Y5</span></div>
+          <div class="assumption-item"><span class="label">Pilot → paid conversion</span><span class="value">55%</span></div>
+          <div class="assumption-item"><span class="label">NRR (net revenue retention)</span><span class="value">105% Y1 → 115% Y5</span></div>
+          <div class="assumption-item"><span class="label">Logo churn (annual)</span><span class="value">18% Y1 → 8% Y5</span></div>
+          <div class="assumption-item"><span class="label">Upgrade rate (clinic → hosp)</span><span class="value">3% / year</span></div>
+          <div class="assumption-item" style="border:none"><span class="label">Add-on attach rate growth</span><span class="value">+5 ppts / year</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3 style="font-size: 16px; color: rgba(255,255,255,0.8); margin-bottom: 14px;">Cost Assumptions</h3>
+      <div class="card" style="background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12);">
+        <div class="assumption-list">
+          <div class="assumption-item"><span class="label">Avg FTE cost (all-in)</span><span class="value">KES 250K/mo</span></div>
+          <div class="assumption-item"><span class="label">Annual salary inflation</span><span class="value">5%</span></div>
+          <div class="assumption-item"><span class="label">Cloud cost per customer / mo</span><span class="value">KES 1,500</span></div>
+          <div class="assumption-item"><span class="label">Fixed cloud baseline / mo</span><span class="value">KES 120,000</span></div>
+          <div class="assumption-item"><span class="label">CAC (clinic)</span><span class="value">KES 85,000</span></div>
+          <div class="assumption-item"><span class="label">CAC (hospital)</span><span class="value">KES 250,000</span></div>
+          <div class="assumption-item"><span class="label">CAC (enterprise)</span><span class="value">KES 480,000</span></div>
+          <div class="assumption-item"><span class="label">Support cost per customer / mo</span><span class="value">KES 2,000</span></div>
+          <div class="assumption-item"><span class="label">Office (Nairobi co-working)</span><span class="value">KES 150K/mo</span></div>
+          <div class="assumption-item" style="border:none"><span class="label">Exchange rate assumption</span><span class="value">1 USD = 130 KES</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="footnote" style="color: rgba(255,255,255,0.35);">This financial model is for planning purposes. Actual results will vary. All projections are management estimates based on current market conditions as of May 2026. Prepared by Nexora Africa Ltd.</p>
+  <div class="slide-number">11</div>
+</section>
+
+</body>
+</html>

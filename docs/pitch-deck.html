@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vitora HMIS — Pitch Deck | Nexora Africa</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  :root {
+    --burgundy: #7A1B3E;
+    --burgundy-dark: #5A1430;
+    --teal: #0D9488;
+    --teal-light: #14B8A6;
+    --gold: #D4A843;
+    --navy: #0F172A;
+    --slate: #334155;
+    --light-bg: #F8FAFC;
+    --card-bg: #FFFFFF;
+    --gradient-hero: linear-gradient(135deg, #7A1B3E 0%, #0F172A 60%, #0D9488 100%);
+    --gradient-teal: linear-gradient(135deg, #0D9488, #14B8A6);
+    --gradient-gold: linear-gradient(135deg, #D4A843, #E8C76A);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0F172A;
+    color: #E2E8F0;
+    overflow-x: hidden;
+  }
+
+  /* ─── SLIDE SYSTEM ─── */
+  .slide {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .slide-number {
+    position: absolute;
+    bottom: 30px;
+    right: 40px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 2px;
+  }
+
+  .slide-logo {
+    position: absolute;
+    top: 30px;
+    left: 40px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 18px;
+    color: rgba(255,255,255,0.6);
+  }
+
+  .slide-logo .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--teal);
+  }
+
+  /* ─── TITLE SLIDE ─── */
+  .slide-title {
+    background: var(--gradient-hero);
+    text-align: center;
+    align-items: center;
+  }
+
+  .slide-title::before {
+    content: '';
+    position: absolute;
+    top: -200px;
+    right: -200px;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(13,148,136,0.15), transparent 70%);
+  }
+
+  .slide-title::after {
+    content: '';
+    position: absolute;
+    bottom: -150px;
+    left: -150px;
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(212,168,67,0.1), transparent 70%);
+  }
+
+  .title-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 100px;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--teal-light);
+    margin-bottom: 30px;
+    backdrop-filter: blur(10px);
+  }
+
+  .title-main {
+    font-size: clamp(48px, 6vw, 80px);
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: -2px;
+    margin-bottom: 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .title-main .highlight {
+    background: var(--gradient-teal);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .title-sub {
+    font-size: 22px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.7);
+    max-width: 700px;
+    line-height: 1.6;
+    position: relative;
+    z-index: 1;
+  }
+
+  .title-meta {
+    margin-top: 50px;
+    display: flex;
+    gap: 40px;
+    font-size: 14px;
+    color: rgba(255,255,255,0.5);
+    position: relative;
+    z-index: 1;
+  }
+
+  .title-meta span { display: flex; align-items: center; gap: 6px; }
+
+  /* ─── DARK SLIDES ─── */
+  .slide-dark {
+    background: #0F172A;
+  }
+
+  .slide-dark::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background:
+      radial-gradient(ellipse at 10% 20%, rgba(13,148,136,0.06), transparent 50%),
+      radial-gradient(ellipse at 90% 80%, rgba(122,27,62,0.06), transparent 50%);
+    pointer-events: none;
+  }
+
+  /* ─── ACCENT SLIDES ─── */
+  .slide-accent {
+    background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%);
+  }
+
+  .slide-burgundy {
+    background: linear-gradient(135deg, #7A1B3E 0%, #5A1430 100%);
+  }
+
+  /* ─── TYPOGRAPHY ─── */
+  .section-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--teal-light);
+    margin-bottom: 16px;
+  }
+
+  .slide-accent .section-label,
+  .slide-burgundy .section-label {
+    color: rgba(255,255,255,0.6);
+  }
+
+  h2 {
+    font-size: clamp(36px, 4vw, 56px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1.5px;
+    margin-bottom: 24px;
+  }
+
+  h3 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    letter-spacing: -0.5px;
+  }
+
+  .subtitle {
+    font-size: 18px;
+    color: rgba(255,255,255,0.6);
+    line-height: 1.6;
+    max-width: 650px;
+    margin-bottom: 40px;
+  }
+
+  .slide-accent .subtitle,
+  .slide-burgundy .subtitle {
+    color: rgba(255,255,255,0.8);
+  }
+
+  /* ─── GRIDS & CARDS ─── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+
+  .card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 28px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card:hover {
+    border-color: rgba(13,148,136,0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+  }
+
+  .card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    margin-bottom: 16px;
+  }
+
+  .card-icon.teal { background: rgba(13,148,136,0.15); color: var(--teal-light); }
+  .card-icon.burgundy { background: rgba(122,27,62,0.15); color: #E57BA0; }
+  .card-icon.gold { background: rgba(212,168,67,0.15); color: var(--gold); }
+  .card-icon.blue { background: rgba(59,130,246,0.15); color: #60A5FA; }
+
+  .card h4 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #F1F5F9;
+  }
+
+  .card p {
+    font-size: 14px;
+    line-height: 1.5;
+    color: rgba(255,255,255,0.55);
+  }
+
+  /* ─── STAT BLOCKS ─── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+
+  .stat-block {
+    text-align: center;
+    padding: 30px 20px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+  }
+
+  .stat-number {
+    font-size: 48px;
+    font-weight: 900;
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .stat-number.teal { color: var(--teal-light); }
+  .stat-number.gold { color: var(--gold); }
+  .stat-number.burgundy { color: #E57BA0; }
+  .stat-number.blue { color: #60A5FA; }
+
+  .stat-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* ─── PROBLEM/SOLUTION ─── */
+  .problem-row {
+    display: grid;
+    grid-template-columns: 1fr 40px 1fr;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .problem-row:last-child { border-bottom: none; }
+
+  .problem-text {
+    font-size: 15px;
+    color: rgba(255,255,255,0.5);
+    text-align: right;
+    padding-right: 12px;
+  }
+
+  .arrow-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(13,148,136,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--teal-light);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .solution-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #F1F5F9;
+    padding-left: 12px;
+  }
+
+  /* ─── TIBABOT FEATURE LIST ─── */
+  .feature-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 100px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #E2E8F0;
+    margin: 4px;
+  }
+
+  .feature-pill .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--teal-light);
+  }
+
+  /* ─── PRICING TABLE ─── */
+  .pricing-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 36px;
+    text-align: center;
+    position: relative;
+  }
+
+  .pricing-card.featured {
+    background: rgba(13,148,136,0.08);
+    border-color: rgba(13,148,136,0.3);
+    transform: scale(1.03);
+  }
+
+  .pricing-card.featured::before {
+    content: 'MOST POPULAR';
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--gradient-teal);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    padding: 4px 16px;
+    border-radius: 100px;
+  }
+
+  .pricing-tier {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 8px;
+  }
+
+  .pricing-price {
+    font-size: 36px;
+    font-weight: 900;
+    color: #F1F5F9;
+    letter-spacing: -1px;
+    margin-bottom: 4px;
+  }
+
+  .pricing-price .currency { font-size: 18px; font-weight: 600; color: rgba(255,255,255,0.5); }
+  .pricing-price .period { font-size: 14px; font-weight: 400; color: rgba(255,255,255,0.4); }
+
+  .pricing-audience {
+    font-size: 14px;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .pricing-features {
+    list-style: none;
+    text-align: left;
+    font-size: 14px;
+    color: rgba(255,255,255,0.6);
+  }
+
+  .pricing-features li {
+    padding: 6px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .pricing-features li::before {
+    content: '✓';
+    color: var(--teal-light);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* ─── TIMELINE ─── */
+  .timeline {
+    display: flex;
+    gap: 0;
+    margin-top: 20px;
+    position: relative;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    top: 30px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+  }
+
+  .timeline-item {
+    flex: 1;
+    text-align: center;
+    position: relative;
+    padding: 0 12px;
+  }
+
+  .timeline-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    margin: 22px auto 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .timeline-dot.done { background: var(--teal-light); box-shadow: 0 0 20px rgba(13,148,136,0.4); }
+  .timeline-dot.active { background: var(--gold); box-shadow: 0 0 20px rgba(212,168,67,0.4); }
+  .timeline-dot.upcoming { background: rgba(255,255,255,0.15); }
+
+  .timeline-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 8px;
+  }
+
+  .timeline-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #F1F5F9;
+    margin-bottom: 6px;
+  }
+
+  .timeline-desc {
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+    line-height: 1.4;
+  }
+
+  /* ─── INTEGRATION GRID ─── */
+  .integration-badge {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 16px 20px;
+  }
+
+  .integration-badge .icon-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .integration-badge .name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #F1F5F9;
+  }
+
+  .integration-badge .detail {
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+  }
+
+  /* ─── CTA SLIDE ─── */
+  .cta-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 36px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: none;
+  }
+
+  .cta-primary {
+    background: var(--gradient-teal);
+    color: white;
+    box-shadow: 0 4px 20px rgba(13,148,136,0.4);
+  }
+
+  .cta-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(13,148,136,0.5);
+  }
+
+  .cta-outline {
+    background: transparent;
+    border: 2px solid rgba(255,255,255,0.2);
+    color: white;
+  }
+
+  .cta-outline:hover {
+    border-color: rgba(255,255,255,0.4);
+    background: rgba(255,255,255,0.05);
+  }
+
+  /* ─── TWO-COL LAYOUT ─── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+  }
+
+  /* ─── DIVIDER ─── */
+  .divider {
+    width: 60px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--gradient-teal);
+    margin-bottom: 24px;
+  }
+
+  /* ─── SECURITY PILLARS ─── */
+  .pillar {
+    display: flex;
+    gap: 16px;
+    padding: 20px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .pillar:last-child { border-bottom: none; }
+
+  .pillar-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(13,148,136,0.15);
+    color: var(--teal-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  .pillar h4 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #F1F5F9;
+    margin-bottom: 4px;
+  }
+
+  .pillar p {
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    line-height: 1.5;
+  }
+
+  /* ─── COMPETITIVE TABLE ─── */
+  .comp-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+
+  .comp-table th {
+    text-align: left;
+    padding: 14px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.4);
+    border-bottom: 2px solid rgba(255,255,255,0.08);
+  }
+
+  .comp-table th:not(:first-child) { text-align: center; }
+
+  .comp-table td {
+    padding: 14px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.6);
+  }
+
+  .comp-table td:not(:first-child) { text-align: center; }
+
+  .comp-table .check { color: var(--teal-light); font-size: 18px; font-weight: 700; }
+  .comp-table .cross { color: rgba(255,255,255,0.2); font-size: 18px; }
+  .comp-table .partial { color: var(--gold); font-size: 14px; }
+  .comp-table .vitora-col { background: rgba(13,148,136,0.06); }
+
+  .comp-table th.vitora-col {
+    color: var(--teal-light);
+    background: rgba(13,148,136,0.08);
+  }
+
+  /* ─── ADDONS ─── */
+  .addon-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 30px;
+  }
+
+  .addon-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 22px;
+  }
+
+  .addon-card .price-tag {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+
+  .addon-card .addon-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #F1F5F9;
+    margin-bottom: 6px;
+  }
+
+  .addon-card .addon-desc {
+    font-size: 12px;
+    color: rgba(255,255,255,0.45);
+    line-height: 1.5;
+  }
+
+  /* ─── FOOTER BAR ─── */
+  .footer-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    margin-top: auto;
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+  }
+
+  /* ─── PRINT / PRESENTATION ─── */
+  @media print {
+    .slide {
+      page-break-after: always;
+      page-break-inside: avoid;
+      min-height: 100vh;
+    }
+  }
+
+  /* ─── TABLET (≤1024px) ─── */
+  @media (max-width: 1024px) {
+    .slide { padding: 50px 48px; }
+    .grid-4, .stat-grid, .addon-grid { grid-template-columns: repeat(2, 1fr); }
+    .two-col { gap: 36px; }
+    h2 { font-size: clamp(30px, 4vw, 44px); }
+    .stat-number { font-size: 38px; }
+    .pricing-card.featured { transform: scale(1.01); }
+    .comp-table th, .comp-table td { padding: 10px 8px; font-size: 13px; }
+  }
+
+  /* ─── SMALL TABLET / LARGE PHONE (≤768px) ─── */
+  @media (max-width: 768px) {
+    .slide { padding: 40px 24px; min-height: auto; padding-top: 60px; padding-bottom: 60px; }
+    .grid-2, .grid-3, .two-col { grid-template-columns: 1fr; }
+    .grid-4, .stat-grid, .addon-grid { grid-template-columns: repeat(2, 1fr); }
+    .timeline { flex-direction: column; gap: 16px; }
+    .timeline::before { display: none; }
+    .timeline-item { text-align: left; padding: 0; display: flex; gap: 14px; align-items: flex-start; }
+    .timeline-dot { margin: 4px 0 0; flex-shrink: 0; }
+    .problem-row { grid-template-columns: 1fr; text-align: left; gap: 6px; }
+    .problem-text { text-align: left; padding: 0; font-size: 13px; }
+    .solution-text { padding: 0; font-size: 14px; }
+    .arrow-icon { display: none; }
+    .title-main { font-size: clamp(32px, 8vw, 48px); letter-spacing: -1px; }
+    .title-sub { font-size: 16px; }
+    .title-meta { flex-direction: column; gap: 12px; }
+    .stat-number { font-size: 32px; }
+    .stat-label { font-size: 11px; }
+    .pricing-card { padding: 24px; }
+    .pricing-card.featured { transform: none; }
+    .pricing-card.featured::before { font-size: 10px; padding: 3px 12px; }
+    .comp-table { font-size: 11px; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .comp-table th, .comp-table td { padding: 8px 6px; white-space: nowrap; }
+    .slide-logo { font-size: 15px; top: 20px; left: 24px; }
+    .slide-number { bottom: 20px; right: 24px; font-size: 11px; }
+    .feature-pill { font-size: 12px; padding: 7px 14px; }
+    .section-label { font-size: 11px; letter-spacing: 2px; }
+    .subtitle { font-size: 15px; }
+    h3 { font-size: 22px; }
+    .pillar { gap: 12px; padding: 14px 0; }
+    .pillar h4 { font-size: 14px; }
+    .pillar p { font-size: 12px; }
+    .cta-button { padding: 14px 28px; font-size: 15px; }
+    .integration-badge { padding: 12px 14px; }
+  }
+
+  /* ─── PHONE (≤480px) ─── */
+  @media (max-width: 480px) {
+    .slide { padding: 36px 16px; padding-top: 52px; padding-bottom: 52px; }
+    .grid-4, .stat-grid, .addon-grid { grid-template-columns: 1fr; }
+    .grid-3 { grid-template-columns: 1fr; }
+    .title-main { font-size: clamp(28px, 9vw, 40px); }
+    h2 { font-size: clamp(24px, 6vw, 32px); }
+    .stat-number { font-size: 28px; }
+    .stat-block { padding: 20px 14px; }
+    .card { padding: 20px; }
+    .pricing-price { font-size: 28px; }
+    .pricing-features { font-size: 13px; }
+    .addon-card { padding: 16px; }
+    .addon-card .price-tag { font-size: 16px; }
+    .cta-button { width: 100%; justify-content: center; padding: 14px 20px; font-size: 14px; }
+    div:has(> .cta-button) { flex-direction: column; align-items: stretch; }
+    .two-col { gap: 24px; }
+    .comp-table th:nth-child(4), .comp-table td:nth-child(4) { display: none; }
+    .title-meta { font-size: 12px; }
+    .slide-title::before { width: 300px; height: 300px; top: -100px; right: -100px; }
+    .slide-title::after { width: 200px; height: 200px; bottom: -80px; left: -80px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 1 — TITLE                                                -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-title">
+  <div class="title-badge">
+    <span style="color:var(--gold)">●</span> Nexora Africa Ltd
+  </div>
+  <h1 class="title-main">
+    <span class="highlight">Vitora</span> HMIS
+  </h1>
+  <p class="title-sub">
+    The offline-first hospital management system built for Kenya's healthcare infrastructure. SHA-compliant. AI-powered. Always available.
+  </p>
+  <div class="title-meta">
+    <span>📍 Nairobi, Kenya</span>
+    <span>🌐 vitora.digital</span>
+    <span>📅 May 2026</span>
+  </div>
+  <div class="slide-number">01</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 2 — THE PROBLEM                                          -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">The Problem</div>
+  <h2>Kenya's healthcare facilities<br>deserve better technology</h2>
+  <p class="subtitle">Existing systems weren't built for Kenya. They fail when the internet drops, can't handle SHA claims, and ignore local reporting requirements.</p>
+
+  <div style="max-width: 900px;">
+    <div class="problem-row">
+      <div class="problem-text">Internet goes down, work stops</div>
+      <div class="arrow-icon">→</div>
+      <div class="solution-text">100% offline operation, auto-sync on reconnect</div>
+    </div>
+    <div class="problem-row">
+      <div class="problem-text">SHA claims take hours to reconcile</div>
+      <div class="arrow-icon">→</div>
+      <div class="solution-text">All 15 SHA/DHA APIs integrated — automated end-to-end</div>
+    </div>
+    <div class="problem-row">
+      <div class="problem-text">Patients wait too long</div>
+      <div class="arrow-icon">→</div>
+      <div class="solution-text">KETA triage + real-time queue cuts wait times drastically</div>
+    </div>
+    <div class="problem-row">
+      <div class="problem-text">MOH reports are manual & error-prone</div>
+      <div class="arrow-icon">→</div>
+      <div class="solution-text">Automated KHIS/DHIS2 reporting — zero manual entry</div>
+    </div>
+    <div class="problem-row">
+      <div class="problem-text">Paper records aren't secure or searchable</div>
+      <div class="arrow-icon">→</div>
+      <div class="solution-text">AES encryption, audit trail, Kenya DPA 2019 compliant</div>
+    </div>
+    <div class="problem-row">
+      <div class="problem-text">Clinical decisions lack guideline support</div>
+      <div class="arrow-icon">→</div>
+      <div class="solution-text">TibaBot AI: KSTG-aligned decision support + ICD-10 coding</div>
+    </div>
+  </div>
+  <div class="slide-number">02</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 3 — THE SOLUTION                                         -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-accent">
+  <div class="slide-logo"><span class="dot" style="background:white"></span> VITORA</div>
+  <div class="section-label">The Solution</div>
+  <h2>Digitize your clinic<br>in days, not months</h2>
+  <p class="subtitle">Vitora is a complete hospital management system purpose-built for Kenyan clinics and hospitals — from a single dispensary to county-wide health systems.</p>
+
+  <div class="stat-grid" style="margin-top: 40px;">
+    <div class="stat-block" style="background: rgba(255,255,255,0.08);">
+      <div class="stat-number" style="color: white;">100%</div>
+      <div class="stat-label" style="color: rgba(255,255,255,0.7);">Offline Capable</div>
+    </div>
+    <div class="stat-block" style="background: rgba(255,255,255,0.08);">
+      <div class="stat-number" style="color: white;">15</div>
+      <div class="stat-label" style="color: rgba(255,255,255,0.7);">SHA APIs Integrated</div>
+    </div>
+    <div class="stat-block" style="background: rgba(255,255,255,0.08);">
+      <div class="stat-number" style="color: white;">47</div>
+      <div class="stat-label" style="color: rgba(255,255,255,0.7);">Counties Supported</div>
+    </div>
+    <div class="stat-block" style="background: rgba(255,255,255,0.08);">
+      <div class="stat-number" style="color: white;">&lt; 2 wk</div>
+      <div class="stat-label" style="color: rgba(255,255,255,0.7);">Go-Live Time</div>
+    </div>
+  </div>
+  <div class="slide-number">03</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 4 — PRODUCT MODULES                                      -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">Product Overview</div>
+  <h2>Everything a facility needs,<br>one platform</h2>
+  <p class="subtitle">20+ integrated clinical & administrative modules — no more juggling separate systems.</p>
+
+  <div class="grid-4" style="margin-top: 10px;">
+    <div class="card">
+      <div class="card-icon teal">🏥</div>
+      <h4>Patient Flow</h4>
+      <p>Registration, KETA triage, queue management, scheduling, room-aware clock-in</p>
+    </div>
+    <div class="card">
+      <div class="card-icon burgundy">🩺</div>
+      <h4>Clinical Records</h4>
+      <p>SOAP notes, vitals trending, ICD-10/11 coding, treatment plans, nursing notes</p>
+    </div>
+    <div class="card">
+      <div class="card-icon gold">💰</div>
+      <h4>Billing & Revenue</h4>
+      <p>Auto-invoicing, M-Pesa, SHA claims, remittance tracking, eTIMS integration</p>
+    </div>
+    <div class="card">
+      <div class="card-icon blue">💊</div>
+      <h4>Pharmacy</h4>
+      <p>Prescriptions, dispensing, drug interactions, batch tracking, expiry alerts</p>
+    </div>
+    <div class="card">
+      <div class="card-icon teal">🔬</div>
+      <h4>Laboratory (LIS)</h4>
+      <p>Orders, specimens, results, QC (Westgard), HL7 auto-import, LOINC mapping</p>
+    </div>
+    <div class="card">
+      <div class="card-icon burgundy">🏨</div>
+      <h4>Inpatient</h4>
+      <p>Ward dashboards, bed management, admissions, discharges, transfers, ward rounds</p>
+    </div>
+    <div class="card">
+      <div class="card-icon gold">🤰</div>
+      <h4>MCH Module</h4>
+      <p>ANC visits, delivery, partograph, PNC, growth monitoring, HEI follow-up</p>
+    </div>
+    <div class="card">
+      <div class="card-icon blue">💉</div>
+      <h4>Immunizations</h4>
+      <p>KEPI schedule, multi-dose series, campaigns, AEFI tracking, cold chain</p>
+    </div>
+    <div class="card">
+      <div class="card-icon teal">📡</div>
+      <h4>Surveillance</h4>
+      <p>IDSR weekly reporting, IHR notifications, outbreak detection & alerts</p>
+    </div>
+    <div class="card">
+      <div class="card-icon burgundy">🏗️</div>
+      <h4>Inventory</h4>
+      <p>Suppliers, purchase orders, goods receipt, stock counts, demand forecasting</p>
+    </div>
+    <div class="card">
+      <div class="card-icon gold">🖼️</div>
+      <h4>Imaging / DICOM</h4>
+      <p>Procedure catalog, radiology orders, DICOM viewer, reporting</p>
+    </div>
+    <div class="card">
+      <div class="card-icon blue">📊</div>
+      <h4>Analytics & BI</h4>
+      <p>Real-time dashboards, MOH reports, diagnosis trends, Metabase BI</p>
+    </div>
+  </div>
+  <div class="slide-number">04</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 5 — TIBABOT AI                                           -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">AI-Powered</div>
+  <h2>Meet <span style="color: var(--teal-light);">TibaBot</span> — Clinical<br>Intelligence for Kenya</h2>
+  <p class="subtitle">AI-powered clinical decision support built on Kenya's own treatment guidelines. Safer care, faster workflows, better outcomes.</p>
+
+  <div class="two-col" style="margin-top: 10px;">
+    <div>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+        <span class="feature-pill"><span class="dot"></span> ICD-10 Auto-Coding</span>
+        <span class="feature-pill"><span class="dot"></span> Drug Interaction Checks</span>
+        <span class="feature-pill"><span class="dot"></span> Care Plan Generation</span>
+        <span class="feature-pill"><span class="dot"></span> Lab Interpretation</span>
+        <span class="feature-pill"><span class="dot"></span> Symptom Triage</span>
+        <span class="feature-pill"><span class="dot"></span> Discharge Readiness</span>
+        <span class="feature-pill"><span class="dot"></span> ICU Risk Prediction</span>
+        <span class="feature-pill"><span class="dot"></span> Clerking Autocomplete</span>
+        <span class="feature-pill"><span class="dot"></span> SOAP Note Generation</span>
+        <span class="feature-pill"><span class="dot"></span> Investigation Suggestions</span>
+        <span class="feature-pill"><span class="dot"></span> Clinical Chat (Streaming)</span>
+        <span class="feature-pill"><span class="dot"></span> English + Swahili + Sheng</span>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="border-color: rgba(13,148,136,0.2); background: rgba(13,148,136,0.05);">
+        <h4 style="font-size: 18px; margin-bottom: 14px;">🛡️ Safety-First Design</h4>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <span style="color: var(--teal-light); font-size: 16px;">✓</span>
+            <span style="font-size: 14px; color: rgba(255,255,255,0.7);"><strong style="color: #F1F5F9;">Clinician always in control</strong> — suggestions, never autonomous decisions</span>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <span style="color: var(--teal-light); font-size: 16px;">✓</span>
+            <span style="font-size: 14px; color: rgba(255,255,255,0.7);"><strong style="color: #F1F5F9;">KSTG-aligned</strong> — built on Kenya Standard Treatment Guidelines</span>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <span style="color: var(--teal-light); font-size: 16px;">✓</span>
+            <span style="font-size: 14px; color: rgba(255,255,255,0.7);"><strong style="color: #F1F5F9;">Data stays private</strong> — encrypted, processed locally, no third-party sharing</span>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <span style="color: var(--teal-light); font-size: 16px;">✓</span>
+            <span style="font-size: 14px; color: rgba(255,255,255,0.7);"><strong style="color: #F1F5F9;">Kenya DPA 2019 compliant</strong> — full audit trail on all AI interactions</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">05</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 6 — OFFLINE-FIRST                                        -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-burgundy">
+  <div class="slide-logo"><span class="dot" style="background: var(--gold);"></span> VITORA</div>
+  <div class="section-label">Offline-First Architecture</div>
+  <h2>Built for unreliable<br>internet — by design</h2>
+  <p class="subtitle">Not a bolt-on. Vitora's offline-first architecture means your facility never stops, regardless of connectivity.</p>
+
+  <div class="grid-3" style="margin-top: 30px;">
+    <div class="card" style="border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.06);">
+      <div class="card-icon" style="background: rgba(212,168,67,0.2); color: var(--gold);">📱</div>
+      <h4>Local-First Storage</h4>
+      <p>All data stored locally in SQLite. Reads are instant — no network dependency for clinical workflows.</p>
+    </div>
+    <div class="card" style="border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.06);">
+      <div class="card-icon" style="background: rgba(212,168,67,0.2); color: var(--gold);">🔄</div>
+      <h4>Bi-Directional Sync</h4>
+      <p>PowerSync Cloud handles automatic bi-directional sync when connectivity returns. Conflict resolution built-in.</p>
+    </div>
+    <div class="card" style="border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.06);">
+      <div class="card-icon" style="background: rgba(212,168,67,0.2); color: var(--gold);">⚡</div>
+      <h4>Real-Time When Online</h4>
+      <p>WebSocket connections push instant updates — lab alerts, triage queue changes, dashboard stats — the moment you're connected.</p>
+    </div>
+  </div>
+
+  <div style="margin-top: 40px; display: flex; justify-content: center;">
+    <div style="background: rgba(0,0,0,0.2); border-radius: 14px; padding: 24px 40px; display: flex; gap: 48px; align-items: center;">
+      <div style="text-align: center;">
+        <div style="font-size: 28px; font-weight: 900; color: white;">Web</div>
+        <div style="font-size: 12px; color: rgba(255,255,255,0.5);">SQLite/WASM</div>
+      </div>
+      <div style="font-size: 24px; color: rgba(255,255,255,0.3);">←→</div>
+      <div style="text-align: center;">
+        <div style="font-size: 28px; font-weight: 900; color: var(--gold);">PowerSync</div>
+        <div style="font-size: 12px; color: rgba(255,255,255,0.5);">Cloud Sync</div>
+      </div>
+      <div style="font-size: 24px; color: rgba(255,255,255,0.3);">←→</div>
+      <div style="text-align: center;">
+        <div style="font-size: 28px; font-weight: 900; color: white;">PostgreSQL</div>
+        <div style="font-size: 12px; color: rgba(255,255,255,0.5);">Neon (Cloud)</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">06</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 7 — INTEGRATIONS                                         -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">Integrations</div>
+  <h2>Plugs into Kenya's<br>health ecosystem</h2>
+  <p class="subtitle">Native integrations with every system Kenyan facilities depend on — no middleware needed.</p>
+
+  <div class="grid-3" style="margin-top: 10px;">
+    <div class="integration-badge">
+      <div class="icon-circle" style="background: rgba(13,148,136,0.15); color: var(--teal-light);">🏛️</div>
+      <div>
+        <div class="name">SHA / DHA</div>
+        <div class="detail">All 15 APIs — eligibility, claims, pre-auth, ILM</div>
+      </div>
+    </div>
+    <div class="integration-badge">
+      <div class="icon-circle" style="background: rgba(59,130,246,0.15); color: #60A5FA;">📊</div>
+      <div>
+        <div class="name">KHIS / DHIS2</div>
+        <div class="detail">MOH 705A, 705B, 711, 717 — auto-generated & pushed</div>
+      </div>
+    </div>
+    <div class="integration-badge">
+      <div class="icon-circle" style="background: rgba(34,197,94,0.15); color: #4ADE80;">💳</div>
+      <div>
+        <div class="name">M-Pesa</div>
+        <div class="detail">STK Push, real-time verification, auto receipts</div>
+      </div>
+    </div>
+    <div class="integration-badge">
+      <div class="icon-circle" style="background: rgba(212,168,67,0.15); color: var(--gold);">🔥</div>
+      <div>
+        <div class="name">FHIR R4</div>
+        <div class="detail">Patient, Encounter, Observation, Condition, CarePlan</div>
+      </div>
+    </div>
+    <div class="integration-badge">
+      <div class="icon-circle" style="background: rgba(168,85,247,0.15); color: #C084FC;">🔬</div>
+      <div>
+        <div class="name">HL7 v2 / Lab Equipment</div>
+        <div class="detail">ORM/ORU messaging, analyzer integration</div>
+      </div>
+    </div>
+    <div class="integration-badge">
+      <div class="icon-circle" style="background: rgba(244,63,94,0.15); color: #FB7185;">🧬</div>
+      <div>
+        <div class="name">SNOMED CT & LOINC</div>
+        <div class="detail">International clinical terminologies</div>
+      </div>
+    </div>
+    <div class="integration-badge">
+      <div class="icon-circle" style="background: rgba(13,148,136,0.15); color: var(--teal-light);">🧾</div>
+      <div>
+        <div class="name">KRA eTIMS</div>
+        <div class="detail">Electronic tax invoice submission</div>
+      </div>
+    </div>
+    <div class="integration-badge">
+      <div class="icon-circle" style="background: rgba(59,130,246,0.15); color: #60A5FA;">📱</div>
+      <div>
+        <div class="name">SMS & WhatsApp</div>
+        <div class="detail">Automated appointment reminders</div>
+      </div>
+    </div>
+    <div class="integration-badge">
+      <div class="icon-circle" style="background: rgba(212,168,67,0.15); color: var(--gold);">📈</div>
+      <div>
+        <div class="name">Metabase BI</div>
+        <div class="detail">Embedded analytics dashboards</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">07</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 8 — SECURITY & COMPLIANCE                                -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">Security & Compliance</div>
+  <h2>Patient data protection is<br>the <span style="color: var(--gold);">foundation</span></h2>
+  <p class="subtitle">Six pillars of protection — designed for Kenya's regulatory landscape from day one.</p>
+
+  <div class="two-col" style="margin-top: 10px;">
+    <div>
+      <div class="pillar">
+        <div class="pillar-num">1</div>
+        <div><h4>AES Encryption at Rest & TLS in Transit</h4><p>Fernet/AES-128 for PII fields (national ID, phone), TLS 1.3 everywhere</p></div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-num">2</div>
+        <div><h4>Role-Based Access Control</h4><p>12+ roles, sensitive records (HIV/GBV) need explicit permission</p></div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-num">3</div>
+        <div><h4>Full Audit Trail</h4><p>Every access logged — user, IP, timestamp, purpose. 7-year retention</p></div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-num">4</div>
+        <div><h4>MFA Enforcement</h4><p>TOTP-based MFA mandatory for admin/senior clinical roles</p></div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-num">5</div>
+        <div><h4>Secure Cloud Hosting</h4><p>Azure Container Apps, Neon PostgreSQL (EU), managed SSL</p></div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-num">6</div>
+        <div><h4>Data Minimization & Consent</h4><p>Purpose limitation, consent tracking, data subject rights (export/delete)</p></div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom: 16px;">
+        <h4 style="margin-bottom: 12px; font-size: 14px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px;">Regulatory Compliance</h4>
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <span style="font-size: 14px; font-weight: 600; color: #F1F5F9;">Kenya DPA 2019</span>
+            <span style="background: rgba(13,148,136,0.15); color: var(--teal-light); padding: 4px 12px; border-radius: 100px; font-size: 12px; font-weight: 600;">Compliant</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <span style="font-size: 14px; font-weight: 600; color: #F1F5F9;">SHA / DHA</span>
+            <span style="background: rgba(13,148,136,0.15); color: var(--teal-light); padding: 4px 12px; border-radius: 100px; font-size: 12px; font-weight: 600;">All 15 APIs</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <span style="font-size: 14px; font-weight: 600; color: #F1F5F9;">FHIR R4</span>
+            <span style="background: rgba(13,148,136,0.15); color: var(--teal-light); padding: 4px 12px; border-radius: 100px; font-size: 12px; font-weight: 600;">Supported</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
+            <span style="font-size: 14px; font-weight: 600; color: #F1F5F9;">KHIS / DHIS2</span>
+            <span style="background: rgba(13,148,136,0.15); color: var(--teal-light); padding: 4px 12px; border-radius: 100px; font-size: 12px; font-weight: 600;">Automated</span>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="background: rgba(122,27,62,0.08); border-color: rgba(122,27,62,0.2);">
+        <h4 style="font-size: 14px; margin-bottom: 8px;">🔐 Break-Glass Emergency Access</h4>
+        <p style="font-size: 13px; color: rgba(255,255,255,0.5);">Emergency override with mandatory audit trail — ensures patient care always comes first while maintaining accountability.</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">08</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 9 — COMPETITIVE ADVANTAGE                                -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">Why Vitora Wins</div>
+  <h2>Purpose-built for Kenya,<br>not adapted from abroad</h2>
+
+  <table class="comp-table" style="margin-top: 30px;">
+    <thead>
+      <tr>
+        <th style="width: 28%;">Capability</th>
+        <th class="vitora-col" style="width: 18%;">Vitora</th>
+        <th style="width: 18%;">Generic HMIS</th>
+        <th style="width: 18%;">Paper / Spreadsheets</th>
+        <th style="width: 18%;">Imported EHR</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Works fully offline</td>
+        <td class="vitora-col"><span class="check">✓</span></td>
+        <td><span class="partial">Partial</span></td>
+        <td><span class="check" style="color: rgba(255,255,255,0.3);">✓</span></td>
+        <td><span class="cross">✗</span></td>
+      </tr>
+      <tr>
+        <td>All 15 SHA/DHA APIs</td>
+        <td class="vitora-col"><span class="check">✓</span></td>
+        <td><span class="partial">1-3</span></td>
+        <td><span class="cross">✗</span></td>
+        <td><span class="cross">✗</span></td>
+      </tr>
+      <tr>
+        <td>Automated KHIS/DHIS2 reporting</td>
+        <td class="vitora-col"><span class="check">✓</span></td>
+        <td><span class="partial">Manual</span></td>
+        <td><span class="cross">✗</span></td>
+        <td><span class="cross">✗</span></td>
+      </tr>
+      <tr>
+        <td>AI clinical decision support</td>
+        <td class="vitora-col"><span class="check">✓</span></td>
+        <td><span class="cross">✗</span></td>
+        <td><span class="cross">✗</span></td>
+        <td><span class="partial">Add-on</span></td>
+      </tr>
+      <tr>
+        <td>M-Pesa integration</td>
+        <td class="vitora-col"><span class="check">✓</span></td>
+        <td><span class="partial">Varies</span></td>
+        <td><span class="cross">✗</span></td>
+        <td><span class="cross">✗</span></td>
+      </tr>
+      <tr>
+        <td>Kenya DPA 2019 compliance</td>
+        <td class="vitora-col"><span class="check">✓</span></td>
+        <td><span class="partial">Partial</span></td>
+        <td><span class="cross">✗</span></td>
+        <td><span class="partial">HIPAA-only</span></td>
+      </tr>
+      <tr>
+        <td>KETA triage + 47-county hierarchy</td>
+        <td class="vitora-col"><span class="check">✓</span></td>
+        <td><span class="cross">✗</span></td>
+        <td><span class="cross">✗</span></td>
+        <td><span class="cross">✗</span></td>
+      </tr>
+      <tr>
+        <td>Implementation time</td>
+        <td class="vitora-col" style="color: var(--teal-light); font-weight: 700;">< 2 weeks</td>
+        <td>1-3 months</td>
+        <td>—</td>
+        <td>3-6 months</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="slide-number">09</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 10 — MARKET SEGMENTS                                     -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">Market</div>
+  <h2>From single clinics to<br>county health systems</h2>
+  <p class="subtitle">Four segments, one platform — each with a tailored plan and implementation path.</p>
+
+  <div class="grid-4" style="margin-top: 20px;">
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 16px;">🏥</div>
+      <h4>Outpatient Clinics</h4>
+      <p style="margin-bottom: 16px;">Dispensaries, health centres, GP practices</p>
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--teal-light); font-weight: 600;">~13,000 facilities in Kenya</div>
+    </div>
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 16px;">🏨</div>
+      <h4>Hospitals</h4>
+      <p style="margin-bottom: 16px;">Level 3-5 multi-department facilities</p>
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--teal-light); font-weight: 600;">~800 hospitals in Kenya</div>
+    </div>
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 16px;">🦷</div>
+      <h4>Specialized Practices</h4>
+      <p style="margin-bottom: 16px;">Dental, optical, physiotherapy, allied health</p>
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--teal-light); font-weight: 600;">Growing private sector</div>
+    </div>
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 16px;">🌍</div>
+      <h4>Enterprise</h4>
+      <p style="margin-bottom: 16px;">Hospital groups, county health systems, NGO networks</p>
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--gold); font-weight: 600;">Custom deployment</div>
+    </div>
+  </div>
+  <div class="slide-number">10</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 11 — PRICING                                             -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">Pricing</div>
+  <h2>Transparent, predictable pricing</h2>
+  <p class="subtitle">Start with a free 30-day pilot. Annual billing saves 2 months.</p>
+
+  <div class="grid-3" style="margin-top: 20px;">
+    <div class="pricing-card">
+      <div class="pricing-tier">Clinic</div>
+      <div class="pricing-price"><span class="currency">KES </span>8,999<span class="period">/mo</span></div>
+      <div class="pricing-audience">Outpatient clinics & dispensaries · Up to 10 staff</div>
+      <ul class="pricing-features">
+        <li>Patient registration & records</li>
+        <li>Triage & queue management</li>
+        <li>Billing & M-Pesa payments</li>
+        <li>SHA eligibility & claims</li>
+        <li>MOH report generation</li>
+        <li>Basic analytics dashboard</li>
+        <li>Email & chat support</li>
+      </ul>
+    </div>
+    <div class="pricing-card featured">
+      <div class="pricing-tier">Hospital</div>
+      <div class="pricing-price"><span class="currency">KES </span>49,999<span class="period">/mo</span></div>
+      <div class="pricing-audience">Level 3-5 facilities · Up to 50 staff</div>
+      <ul class="pricing-features">
+        <li>Everything in Clinic, plus:</li>
+        <li>Inpatient & bed management</li>
+        <li>Laboratory Information System</li>
+        <li>Pharmacy & inventory</li>
+        <li>MCH, immunizations, imaging</li>
+        <li>Staff scheduling & roster</li>
+        <li>Full implementation included (KES 50K+ value)</li>
+        <li>Priority support & training</li>
+      </ul>
+    </div>
+    <div class="pricing-card">
+      <div class="pricing-tier">Enterprise</div>
+      <div class="pricing-price">Custom</div>
+      <div class="pricing-audience">Hospital groups & county systems · Unlimited staff</div>
+      <ul class="pricing-features">
+        <li>Everything in Hospital, plus:</li>
+        <li>Multi-facility dashboard</li>
+        <li>Cross-facility analytics</li>
+        <li>Custom integrations</li>
+        <li>Dedicated account manager</li>
+        <li>On-site training & support</li>
+        <li>Custom SLA & data residency</li>
+        <li>API access for 3rd-party systems</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="addon-grid">
+    <div class="addon-card">
+      <div class="price-tag">+KES 5,000/mo</div>
+      <div class="addon-name">🤖 TibaBot AI</div>
+      <div class="addon-desc">AI diagnosis support, drug interactions, auto-coding</div>
+    </div>
+    <div class="addon-card">
+      <div class="price-tag">+KES 3,000/mo</div>
+      <div class="addon-name">📡 Offline Sync</div>
+      <div class="addon-desc">Full offline operation, auto-sync on reconnect</div>
+    </div>
+    <div class="addon-card">
+      <div class="price-tag">+KES 7,000/mo</div>
+      <div class="addon-name">🔬 Advanced LIS</div>
+      <div class="addon-desc">Analyzer integration, QC, LOINC, auto-billing</div>
+    </div>
+    <div class="addon-card">
+      <div class="price-tag">+KES 2,500/mo</div>
+      <div class="addon-name">📱 SMS & WhatsApp</div>
+      <div class="addon-desc">Patient reminders & automated notifications</div>
+    </div>
+  </div>
+  <div class="slide-number">11</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 12 — TRACTION & METRICS                                  -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-accent">
+  <div class="slide-logo"><span class="dot" style="background: white;"></span> VITORA</div>
+  <div class="section-label">Traction & Engineering</div>
+  <h2>Enterprise-grade from<br>day one</h2>
+  <p class="subtitle">Built with rigorous engineering practices — not a prototype.</p>
+
+  <div class="stat-grid" style="margin-top: 30px;">
+    <div class="stat-block" style="background: rgba(255,255,255,0.1);">
+      <div class="stat-number" style="color: white;">8,400+</div>
+      <div class="stat-label" style="color: rgba(255,255,255,0.7);">Automated Tests</div>
+    </div>
+    <div class="stat-block" style="background: rgba(255,255,255,0.1);">
+      <div class="stat-number" style="color: white;">339</div>
+      <div class="stat-label" style="color: rgba(255,255,255,0.7);">Web App Pages</div>
+    </div>
+    <div class="stat-block" style="background: rgba(255,255,255,0.1);">
+      <div class="stat-number" style="color: white;">250+</div>
+      <div class="stat-label" style="color: rgba(255,255,255,0.7);">Data Models</div>
+    </div>
+    <div class="stat-block" style="background: rgba(255,255,255,0.1);">
+      <div class="stat-number" style="color: white;">104K</div>
+      <div class="stat-label" style="color: rgba(255,255,255,0.7);">ICD-10 Codes</div>
+    </div>
+  </div>
+
+  <div class="grid-4" style="margin-top: 24px;">
+    <div style="text-align: center; padding: 16px;">
+      <div style="font-size: 24px; font-weight: 800; color: white;">33</div>
+      <div style="font-size: 12px; color: rgba(255,255,255,0.6);">Django Apps</div>
+    </div>
+    <div style="text-align: center; padding: 16px;">
+      <div style="font-size: 24px; font-weight: 800; color: white;">458</div>
+      <div style="font-size: 12px; color: rgba(255,255,255,0.6);">UI Components</div>
+    </div>
+    <div style="text-align: center; padding: 16px;">
+      <div style="font-size: 24px; font-weight: 800; color: white;">40</div>
+      <div style="font-size: 12px; color: rgba(255,255,255,0.6);">Mobile Screens</div>
+    </div>
+    <div style="text-align: center; padding: 16px;">
+      <div style="font-size: 24px; font-weight: 800; color: white;">5</div>
+      <div style="font-size: 12px; color: rgba(255,255,255,0.6);">CI/CD Pipelines</div>
+    </div>
+  </div>
+  <div class="slide-number">12</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 13 — ROADMAP                                             -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">Roadmap</div>
+  <h2>From foundation to<br>national scale</h2>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="timeline-dot done"></div>
+      <div class="timeline-label">Phase 0</div>
+      <div class="timeline-title">Foundation</div>
+      <div class="timeline-desc">Jan–Mar 2026<br>Desktop app, API, security, offline sync</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot done"></div>
+      <div class="timeline-label">Phase 1</div>
+      <div class="timeline-title">Clinical Core</div>
+      <div class="timeline-desc">Apr–Sep 2026<br>SHA integration, mobile app, web frontend, billing</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot active"></div>
+      <div class="timeline-label">Phase 2</div>
+      <div class="timeline-title">Full Platform</div>
+      <div class="timeline-desc">Oct 2026–Mar 2027<br>MCH, imaging, surveillance, inventory, analytics</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot upcoming"></div>
+      <div class="timeline-label">Phase 3</div>
+      <div class="timeline-title">Pilot & Scale</div>
+      <div class="timeline-desc">Apr–Sep 2027<br>15+ sites, FHIR certification, private insurance</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot upcoming"></div>
+      <div class="timeline-label">Phase 4</div>
+      <div class="timeline-title">Open Source</div>
+      <div class="timeline-desc">Oct–Dec 2027<br>On-device ML, multi-language, Apache 2.0, 30+ sites</div>
+    </div>
+  </div>
+
+  <div style="margin-top: 50px;">
+    <h3 style="font-size: 20px; margin-bottom: 20px;">Phase 3 Success Metrics</h3>
+    <div class="grid-4">
+      <div class="stat-block">
+        <div class="stat-number teal" style="font-size: 36px;">7+</div>
+        <div class="stat-label">Operational Sites</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-number gold" style="font-size: 36px;">90%</div>
+        <div class="stat-label">Offline Uptime</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-number burgundy" style="font-size: 36px;">&lt;5%</div>
+        <div class="stat-label">Sync Conflicts</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-number blue" style="font-size: 36px;">95%</div>
+        <div class="stat-label">SHA Claim Success</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">13</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 14 — TEAM                                                -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-dark">
+  <div class="slide-logo"><span class="dot"></span> VITORA</div>
+  <div class="section-label">The Team</div>
+  <h2>Nairobi-based.<br>Kenya-obsessed.</h2>
+  <p class="subtitle">A lean, full-stack team with deep Kenya healthcare domain expertise.</p>
+
+  <div class="two-col" style="margin-top: 20px;">
+    <div>
+      <h3 style="font-size: 20px; margin-bottom: 20px; color: var(--teal-light);">Core Team — 8 FTE</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="card" style="padding: 18px;">
+          <h4 style="font-size: 14px;">Engineering Lead</h4>
+          <p style="font-size: 12px;">Architecture & technical vision</p>
+        </div>
+        <div class="card" style="padding: 18px;">
+          <h4 style="font-size: 14px;">Product Manager</h4>
+          <p style="font-size: 12px;">Clinical workflows & roadmap</p>
+        </div>
+        <div class="card" style="padding: 18px;">
+          <h4 style="font-size: 14px;">2× Backend Engineers</h4>
+          <p style="font-size: 12px;">Django, integrations, security</p>
+        </div>
+        <div class="card" style="padding: 18px;">
+          <h4 style="font-size: 14px;">2× Frontend Engineers</h4>
+          <p style="font-size: 12px;">Next.js, React Native, UX</p>
+        </div>
+        <div class="card" style="padding: 18px; grid-column: span 2;">
+          <h4 style="font-size: 14px;">2× QA Engineers</h4>
+          <p style="font-size: 12px;">8,400+ tests, CI/CD, quality gates</p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3 style="font-size: 20px; margin-bottom: 20px; color: var(--gold);">Extended Team</h3>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--gold); flex-shrink: 0;"></div>
+          <span style="font-size: 14px; color: rgba(255,255,255,0.7);"><strong style="color: #F1F5F9;">DevOps</strong> — Azure, CI/CD, infrastructure</span>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--gold); flex-shrink: 0;"></div>
+          <span style="font-size: 14px; color: rgba(255,255,255,0.7);"><strong style="color: #F1F5F9;">Security Specialist</strong> — Compliance, penetration testing</span>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--gold); flex-shrink: 0;"></div>
+          <span style="font-size: 14px; color: rgba(255,255,255,0.7);"><strong style="color: #F1F5F9;">UX Designer</strong> — Clinical workflow optimization</span>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--gold); flex-shrink: 0;"></div>
+          <span style="font-size: 14px; color: rgba(255,255,255,0.7);"><strong style="color: #F1F5F9;">3-5 Clinical Advisors</strong> — Kenyan clinicians guiding product</span>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--gold); flex-shrink: 0;"></div>
+          <span style="font-size: 14px; color: rgba(255,255,255,0.7);"><strong style="color: #F1F5F9;">Integration Partners</strong> — SHA, KHIS/DHIS2 liaisons</span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 24px; background: rgba(13,148,136,0.06); border-color: rgba(13,148,136,0.15);">
+        <h4 style="font-size: 14px; margin-bottom: 8px;">🇰🇪 Local Advantage</h4>
+        <p style="font-size: 13px; color: rgba(255,255,255,0.6);">Nairobi-based team means same-timezone support, on-site implementation, and deep understanding of Kenya's healthcare challenges.</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">14</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 15 — CTA / CLOSE                                         -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-title" style="text-align: center; align-items: center;">
+  <div class="title-badge">
+    <span style="color: var(--teal-light);">●</span> Let's Talk
+  </div>
+  <h1 class="title-main" style="font-size: clamp(40px, 5vw, 64px);">
+    Built for Care<br><span class="highlight">Without Limits</span>
+  </h1>
+  <p class="title-sub" style="margin-bottom: 40px;">
+    Start with a free 30-day pilot — real workflows, full functionality, guided implementation. No risk.
+  </p>
+
+  <div style="display: flex; gap: 16px; justify-content: center; position: relative; z-index: 1;">
+    <a href="https://vitora.digital/demo" class="cta-button cta-primary">Request a Demo →</a>
+    <a href="https://vitora.digital/contact" class="cta-button cta-outline">Contact Us</a>
+  </div>
+
+  <div style="margin-top: 60px; display: flex; gap: 48px; justify-content: center; position: relative; z-index: 1;">
+    <div style="text-align: center;">
+      <div style="font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.8);">🌐 vitora.digital</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.8);">📱 +254 717 550 482</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.8);">📍 Nairobi, Kenya</div>
+    </div>
+  </div>
+
+  <div style="margin-top: 40px; position: relative; z-index: 1;">
+    <div style="font-size: 13px; color: rgba(255,255,255,0.3);">© 2026 Nexora Africa Ltd. All rights reserved.</div>
+  </div>
+  <div class="slide-number">15</div>
+</section>
+
+</body>
+</html>
