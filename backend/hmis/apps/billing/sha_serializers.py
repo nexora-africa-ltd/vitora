@@ -23,6 +23,7 @@ class SHAMemberSerializer(serializers.ModelSerializer):
     patient_name = serializers.SerializerMethodField()
     eligibility_display = serializers.SerializerMethodField()
     pfms_category_display = serializers.SerializerMethodField()
+    national_id = serializers.CharField(required=False, allow_blank=True, default="")
 
     class Meta:
         model = SHAMember

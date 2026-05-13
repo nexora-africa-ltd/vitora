@@ -22,6 +22,7 @@ from django.db import models
 from django.utils import timezone
 
 from hmis.apps.core.mixins import FacilityScopedModel
+from hmis.apps.core.pii import encrypted_pii_property
 
 
 class ServiceCategory(models.Model):
@@ -1658,9 +1659,17 @@ class SHAMember(models.Model):
     sha_number = models.CharField(
         max_length=20, unique=True, help_text="SHA member number (format: SHA-XXXXXXXXXX)"
     )
-    national_id = models.CharField(
-        max_length=20, db_index=True, blank=True, help_text="Kenya National ID linked to SHA"
+    national_id_encrypted = models.TextField(
+        default="", blank=True, help_text="Encrypted Kenya National ID linked to SHA"
     )
+    national_id_hmac = models.CharField(
+        max_length=64,
+        default="",
+        blank=True,
+        db_index=True,
+        help_text="HMAC blind-index for national ID lookups",
+    )
+    national_id = encrypted_pii_property("national_id")
 
     # Membership details
     membership_type = models.CharField(
@@ -1747,7 +1756,7 @@ class SHAMember(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["sha_number"]),
-            models.Index(fields=["national_id"]),
+            models.Index(fields=["national_id_hmac"]),
             models.Index(fields=["status"]),
             models.Index(fields=["is_pfms_eligible"]),
         ]

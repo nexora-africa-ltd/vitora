@@ -57,6 +57,7 @@ from hmis.apps.billing.sha_serializers import (
     SHAMemberSerializer,
     SHATariffSerializer,
 )
+from hmis.apps.core.kms import get_kms_provider
 from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.permissions import SHAPermission
 
@@ -84,7 +85,7 @@ class SHAMemberViewSet(viewsets.ModelViewSet):
     pagination_class = SHAPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = SHAMemberFilter
-    search_fields = ["sha_number", "national_id", "patient__first_name", "patient__last_name"]
+    search_fields = ["sha_number", "patient__first_name", "patient__last_name"]
     ordering_fields = ["created_at", "sha_number"]
     ordering = ["-created_at"]
 
@@ -206,7 +207,9 @@ class SHAMemberViewSet(viewsets.ModelViewSet):
         if sha_number:
             queryset = queryset.filter(sha_number__icontains=sha_number)
         if national_id:
-            queryset = queryset.filter(national_id__icontains=national_id)
+            queryset = queryset.filter(
+                national_id_hmac=get_kms_provider().compute_hmac(national_id)
+            )
         if patient_name:
             queryset = queryset.filter(
                 patient__first_name__icontains=patient_name
