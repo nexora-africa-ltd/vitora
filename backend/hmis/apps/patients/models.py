@@ -41,6 +41,52 @@ def generate_mrn():
     return f"{prefix}{sequence:04d}"
 
 
+class PatientQuerySet(models.QuerySet):
+    """Custom QuerySet that translates PII field exact lookups to HMAC blind-index queries.
+
+    Phase C blanks plaintext PII columns at rest.  DB queries like
+    ``Patient.objects.filter(national_id="12345678")`` would always
+    return an empty set because the column contains ``""``.
+
+    This QuerySet intercepts exact lookups for PII fields that have a
+    companion ``_hmac`` column and rewrites the filter clause to use the
+    HMAC value instead, enabling transparent search over encrypted data.
+    """
+
+    # (plaintext_kwarg, hmac_column) — only for fields with an HMAC index
+    _HMAC_REWRITES: dict[str, str] = {
+        "national_id": "national_id_hmac",
+        "identification_number": "identification_number_hmac",
+        "phone_number": "phone_number_hmac",
+    }
+
+    def _rewrite_pii_kwargs(self, kwargs: dict) -> dict:
+        from hmis.apps.core.kms import get_kms_provider
+
+        rewritten = {}
+        kms = None
+        for key, value in kwargs.items():
+            # Handle both `field` and `field__exact` lookups
+            base = key.removesuffix("__exact")
+            if base in self._HMAC_REWRITES and isinstance(value, str) and value:
+                if kms is None:
+                    kms = get_kms_provider()
+                hmac_col = self._HMAC_REWRITES[base]
+                rewritten[hmac_col] = kms.compute_hmac(value)
+            else:
+                rewritten[key] = value
+        return rewritten
+
+    def filter(self, *args, **kwargs):
+        return super().filter(*args, **self._rewrite_pii_kwargs(kwargs))
+
+    def exclude(self, *args, **kwargs):
+        return super().exclude(*args, **self._rewrite_pii_kwargs(kwargs))
+
+
+PatientManager = models.Manager.from_queryset(PatientQuerySet)
+
+
 class Patient(HistoryMixin, models.Model):
     """
     Patient model representing a patient in the system.
@@ -235,6 +281,13 @@ class Patient(HistoryMixin, models.Model):
     national_id_encrypted = models.TextField(
         blank=True, default="", help_text="KMS-encrypted national_id (legacy)"
     )
+    national_id_hmac = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="HMAC blind index for national_id lookup",
+    )
     principal_national_id_encrypted = models.TextField(
         blank=True, default="", help_text="KMS-encrypted principal_national_id"
     )
@@ -352,6 +405,9 @@ class Patient(HistoryMixin, models.Model):
         excluded_fields=["updated_at"],  # Auto-updated field not useful in history
     )
 
+    # Custom manager with HMAC-aware PII lookups
+    objects = PatientManager()
+
     class Meta:
         """Meta options for Patient model."""
 
@@ -390,8 +446,31 @@ class Patient(HistoryMixin, models.Model):
         """Override save to auto-generate MRN, encrypt PII, and blank plaintext."""
         if not self.mrn:
             self.mrn = generate_mrn()
+
+        # Expand update_fields to include encrypted/HMAC columns for any PII field
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            extra = set()
+            for plain_attr, enc_attr, hmac_attr in self._PII_FIELDS:
+                if plain_attr in update_fields:
+                    extra.add(enc_attr)
+                    if hmac_attr:
+                        extra.add(hmac_attr)
+            if extra:
+                kwargs["update_fields"] = list(set(update_fields) | extra)
+
+        # Stash plaintext values before encryption blanks them
+        stashed = {
+            plain_attr: getattr(self, plain_attr, None)
+            for plain_attr, _enc_attr, _hmac_attr in self._PII_FIELDS
+        }
         self._encrypt_pii_fields()
         super().save(*args, **kwargs)
+
+        # Restore plaintext in-memory so callers see the values they set
+        for plain_attr, value in stashed.items():
+            if value:
+                setattr(self, plain_attr, value)
 
     @classmethod
     def from_db(cls, db, field_names, values):
@@ -409,7 +488,7 @@ class Patient(HistoryMixin, models.Model):
         ("phone_number", "phone_number_encrypted", "phone_number_hmac"),
         ("email", "email_encrypted", None),
         ("address", "address_encrypted", None),
-        ("national_id", "national_id_encrypted", None),
+        ("national_id", "national_id_encrypted", "national_id_hmac"),
         ("principal_national_id", "principal_national_id_encrypted", None),
     )
 
@@ -439,8 +518,14 @@ class Patient(HistoryMixin, models.Model):
 
         from hmis.apps.core.kms import get_kms_provider
 
+        # Guard against deferred fields (e.g. .only("date_of_birth") queries)
+        # to avoid infinite recursion when accessing deferred encrypted columns.
+        deferred = self.get_deferred_fields()
+
         kms = get_kms_provider()
         for plain_attr, enc_attr, _hmac_attr in self._PII_FIELDS:
+            if enc_attr in deferred:
+                continue
             encrypted_val = getattr(self, enc_attr, "")
             if encrypted_val:
                 with contextlib.suppress(Exception):
@@ -1375,8 +1460,29 @@ class EmergencyContact(models.Model):
 
     def save(self, *args, **kwargs):
         """Encrypt PII and blank plaintext on save (Phase C)."""
+        # Expand update_fields to include encrypted columns for any PII field
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            extra = set()
+            for plain_attr, enc_attr, hmac_attr in self._PII_FIELDS:
+                if plain_attr in update_fields:
+                    extra.add(enc_attr)
+                    if hmac_attr:
+                        extra.add(hmac_attr)
+            if extra:
+                kwargs["update_fields"] = list(set(update_fields) | extra)
+
+        # Stash plaintext values before encryption blanks them
+        stashed = {
+            plain_attr: getattr(self, plain_attr, None)
+            for plain_attr, _enc_attr, _hmac_attr in self._PII_FIELDS
+        }
         self._encrypt_pii_fields()
         super().save(*args, **kwargs)
+        # Restore plaintext in-memory so callers see the values they set
+        for plain_attr, value in stashed.items():
+            if value:
+                setattr(self, plain_attr, value)
 
     @classmethod
     def from_db(cls, db, field_names, values):

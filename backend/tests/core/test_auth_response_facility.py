@@ -277,6 +277,9 @@ class TestBuildUserInfo:
             "facility",
             "onboarding_complete",
             "memberships",
+            "subscription_tier",
+            "plan_features",
+            "ai_tokens_available",
         }
         assert set(info.keys()) == expected_keys
 
@@ -300,6 +303,13 @@ class TestBuildUserInfo:
             "blood_bank",
             "inventory",
             "lis_standalone",
+            "triage",
+            "scheduling",
+            "surveillance",
+            "immunizations",
+            "allied_health",
+            "quality",
+            "billing",
         }
         assert set(modules.keys()) == expected_modules
 

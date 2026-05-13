@@ -141,6 +141,8 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "SurgeryCase": ("theatre", "surgerycase"),
     # referrals
     "ClinicalReferral": ("referrals", "clinicalreferral"),
+    # sick notes
+    "SickNote": ("sick_notes", "sicknote"),
     # mch
     "MCHRegistration": ("mch", "mchregistration"),
     "ANCVisit": ("mch", "ancvisit"),
@@ -326,6 +328,9 @@ CUSTOM_ACTIONS: set[str] = {
     "approve_emergency_access",
     "revoke_emergency_access",
     "view_emergency_dashboard",
+    # sick notes
+    "issue_sick_note",
+    "revoke_sick_note",
 }
 
 # Actions following {action}_{model} pattern (e.g. view_sensitive_patient)
