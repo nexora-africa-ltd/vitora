@@ -1549,6 +1549,26 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
             )
 
         tenant_kwargs = self.get_tenant_save_kwargs()
+        facility_filter = {k: v for k, v in tenant_kwargs.items() if k == "facility"}
+
+        # Pre-fetch existing shifts for duplicate detection (single query)
+        dates = {item.get("shift_date") for item in shifts_data if item.get("shift_date")}
+        resource_ids = {
+            item.get("staff_resource") for item in shifts_data if item.get("staff_resource")
+        }
+        existing_keys = set()
+        if dates and resource_ids:
+            existing_qs = (
+                Shift.objects.filter(
+                    staff_resource_id__in=resource_ids,
+                    shift_date__in=dates,
+                    **facility_filter,
+                )
+                .exclude(status="CANCELLED")
+                .values_list("staff_resource_id", "shift_date", "shift_type")
+            )
+            existing_keys = {(r, str(d), t) for r, d, t in existing_qs}
+
         created, skipped, errors = [], [], []
 
         for idx, item in enumerate(shifts_data):
@@ -1558,19 +1578,9 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
                 continue
 
             vd = serializer.validated_data
-            # Skip duplicates: same staff + date + type already exists
-            exists = (
-                Shift.objects.filter(
-                    staff_resource=vd["staff_resource"],
-                    shift_date=vd["shift_date"],
-                    shift_type=vd["shift_type"],
-                    **{k: v for k, v in tenant_kwargs.items() if k == "facility"},
-                )
-                .exclude(status="CANCELLED")
-                .exists()
-            )
+            dup_key = (vd["staff_resource"].pk, str(vd["shift_date"]), vd["shift_type"])
 
-            if exists:
+            if dup_key in existing_keys:
                 skipped.append(
                     {
                         "index": idx,
@@ -1582,6 +1592,8 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
             try:
                 shift = serializer.save(**tenant_kwargs)
                 created.append(shift.id)
+                # Add to existing_keys so subsequent duplicates in the same batch are caught
+                existing_keys.add(dup_key)
             except Exception:
                 logger.exception("Failed to create shift at index %d in bulk_create", idx)
                 errors.append({"index": idx, "errors": "Failed to create shift"})
