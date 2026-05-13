@@ -31,10 +31,17 @@ export default function PatientLookupPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 300);
 
-  // Local search
-  const { data, isLoading, isError, error } = usePatients(
-    debouncedQuery.length >= 2 ? { search: debouncedQuery, page_size: 20 } : undefined
-  );
+  // Local search — numeric-only queries are treated as a national-ID exact
+  // lookup (PII is HMAC-indexed, so substring search can't reach it). All
+  // other queries use the standard fuzzy `search=` over name/MRN.
+  const isNumericOnlyQuery = /^\d+$/.test(debouncedQuery.trim());
+  const localParams =
+    debouncedQuery.length >= 2
+      ? isNumericOnlyQuery
+        ? { national_id: debouncedQuery.trim(), page_size: 20 }
+        : { search: debouncedQuery, page_size: 20 }
+      : undefined;
+  const { data, isLoading, isError, error } = usePatients(localParams);
 
   // CR/SHA lookup (mutation — user triggers explicitly)
   const crMutation = useFetchFromCR();

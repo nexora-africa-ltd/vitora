@@ -89,6 +89,11 @@ export function usePatients(params: PatientListParams = {}) {
 
   const countSql = `SELECT COUNT(*) as count FROM patients_patient p ${whereClause}`;
 
+  // Encrypted PII fields (national_id, identification_number) are excluded
+  // from PowerSync sync-streams, so any query that filters on them must hit
+  // the API directly — local SQLite cannot satisfy the lookup.
+  const requiresApi = !!(params.national_id || params.identification_number);
+
   return useOfflineQuery<
     PatientRow & { id: string; county_name?: string; sub_county_name?: string },
     PaginatedResponse<Patient>
@@ -108,6 +113,7 @@ export function usePatients(params: PatientListParams = {}) {
     queryKey: patientKeys.list(params),
     queryFn: () => patientsApi.getPatients(params),
     queryOptions: { staleTime: 30000 },
+    forceApi: requiresApi,
   });
 }
 

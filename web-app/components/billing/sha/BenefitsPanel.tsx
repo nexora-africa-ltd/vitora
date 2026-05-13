@@ -32,6 +32,32 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
 import { useQuery } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
+
+/**
+ * DHA returns HTTP 400 with "No result found for ID ... ClientRegistry ID"
+ * whenever a patient has no benefits coverage on file. That is an expected
+ * empty state for many patients, not a real error — render it accordingly
+ * and don't pollute the console via the global query error handler.
+ */
+function isNoCoverageError(err: unknown): boolean {
+  if (!(err instanceof AxiosError)) return false;
+  if (err.response?.status !== 400) return false;
+  const data = err.response?.data as { message?: string; detail?: string } | undefined;
+  const text = `${data?.message ?? ''} ${data?.detail ?? ''}`.toLowerCase();
+  return text.includes('no result found');
+}
+
+/**
+ * Normalize an internal SHA member number to the DHA Client Registry id.
+ * Local convention stores numbers as `SHA-XXXXX-N`; DHA expects `CRXXXXX-N`.
+ * Already-CR ids and other shapes are returned unchanged.
+ */
+function toCrId(value: string): string {
+  if (!value) return value;
+  if (value.startsWith('SHA-')) return `CR${value.slice(4)}`;
+  return value;
+}
 
 // ============================================================================
 // Types
@@ -149,6 +175,8 @@ export function BenefitsPanel({
   className,
   compact = false,
 }: BenefitsPanelProps) {
+  // Normalize SHA-XXX-N → CRXXX-N for ILM calls.
+  const lookupId = toCrId(crNumber);
   const {
     data: benefitsResponse,
     isLoading,
@@ -157,26 +185,28 @@ export function BenefitsPanel({
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ['sha-benefits', crNumber, patientPk],
+    queryKey: ['sha-benefits', lookupId, patientPk],
     queryFn: () =>
       shaApi.ilmBenefits({
-        patient_id: crNumber,
+        patient_id: lookupId,
         is_unique_benefit: true,
         patient_pk: patientPk,
         sha_member_id: shaMemberId,
       }),
-    enabled: !!crNumber,
+    enabled: !!lookupId,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
+    meta: { skipGlobalErrorHandler: true },
   });
 
   const benefits = extractItems<BenefitPackageItem>(benefitsResponse?.data);
+  const noCoverage = isError && isNoCoverageError(error);
 
   if (isLoading) {
     return <BenefitsSkeleton compact={compact} className={className} />;
   }
 
-  if (isError) {
+  if (isError && !noCoverage) {
     return (
       <Alert variant="destructive" className={className}>
         <AlertCircle className="h-4 w-4" />
@@ -187,7 +217,7 @@ export function BenefitsPanel({
     );
   }
 
-  if (benefits.length === 0) {
+  if (noCoverage || benefits.length === 0) {
     return null;
   }
 
@@ -216,7 +246,7 @@ export function BenefitsPanel({
           <BenefitAccordion
             key={getBenefitCode(benefit) || idx}
             benefit={benefit}
-            crNumber={crNumber}
+            crNumber={lookupId}
             patientPk={patientPk}
             shaMemberId={shaMemberId}
           />
