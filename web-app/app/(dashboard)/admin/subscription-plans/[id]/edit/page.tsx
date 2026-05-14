@@ -31,15 +31,6 @@ export default function EditSubscriptionPlanPage({
   const queryClient = useQueryClient();
   const { isSuperuser } = usePermissions();
 
-  if (!isSuperuser) {
-    return (
-      <div className="space-y-4">
-        <PageHeader title="Access Denied" />
-        <Card><CardContent className="py-8 text-center text-muted-foreground">Only Nexora superusers can manage subscription plans.</CardContent></Card>
-      </div>
-    );
-  }
-
   const { data: plan, isLoading } = useQuery({
     queryKey: ['subscription-plan', planId],
     queryFn: () => subscriptionPlansApi.get(planId),
@@ -80,6 +71,15 @@ export default function EditSubscriptionPlanPage({
       toast.error('Failed to update plan');
     },
   });
+
+  if (!isSuperuser) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="Access Denied" />
+        <Card><CardContent className="py-8 text-center text-muted-foreground">Only Nexora superusers can manage subscription plans.</CardContent></Card>
+      </div>
+    );
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

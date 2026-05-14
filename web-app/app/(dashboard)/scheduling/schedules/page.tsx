@@ -393,7 +393,7 @@ export default function SchedulesPage() {
       page_size: PAGE_SIZE,
     }),
   });
-  const schedules = scheduleData?.results || [];
+  const schedules = useMemo(() => scheduleData?.results || [], [scheduleData?.results]);
   const totalCount = scheduleData?.count || 0;
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 

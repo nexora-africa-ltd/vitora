@@ -227,7 +227,7 @@ export default function DutyRosterPage() {
   });
   const departmentsList = departmentsData?.results || [];
 
-  const shifts = data?.results || [];
+  const shifts = useMemo(() => data?.results || [], [data?.results]);
   const totalCount = data?.count || 0;
   const totalPages = Math.ceil(totalCount / 20);
 

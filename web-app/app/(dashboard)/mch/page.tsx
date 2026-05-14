@@ -76,7 +76,7 @@ export default function MCHRegistrationsPage() {
       }),
   });
 
-  const registrations = data?.results || [];
+  const registrations = useMemo(() => data?.results || [], [data?.results]);
   const totalPages = Math.ceil((data?.count || 0) / 20);
 
   // Compute stats

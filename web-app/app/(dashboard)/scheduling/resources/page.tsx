@@ -161,7 +161,7 @@ export default function SchedulingResourcesPage() {
 
   const departments = departmentsData?.results || [];
 
-  const resources = data?.results || [];
+  const resources = useMemo(() => data?.results || [], [data?.results]);
 
   // Client-side search filter + grouping
   const grouped = useMemo(() => {

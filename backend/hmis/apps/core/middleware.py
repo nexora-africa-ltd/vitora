@@ -484,6 +484,102 @@ class SubscriptionExpiryMiddleware:
 
 
 # ---------------------------------------------------------------------------
+# Subscription Feature Gate Middleware
+# ---------------------------------------------------------------------------
+
+
+class SubscriptionFeatureGateMiddleware:
+    """
+    Gate entire API modules based on subscription plan feature flags.
+
+    Maps URL prefixes to feature keys defined in ``SubscriptionPlan.features``.
+    When a user's organization does not have the required feature enabled,
+    ALL requests (reads and writes) to that module are rejected with 403.
+
+    Superusers bypass this check.  Unauthenticated requests are let through
+    (other middleware / permission classes handle auth).
+
+    Only enforced when ``SUBSCRIPTION_FEATURE_ENFORCEMENT`` setting is ``True``
+    (defaults to ``False`` in dev/test).
+    """
+
+    # URL prefix → feature key (from SubscriptionPlan.features JSON)
+    FEATURE_GATE_MAP: dict[str, str] = {
+        "/api/lab/": "laboratory",
+        "/api/imaging/": "imaging",
+        "/api/inpatient/": "inpatient",
+        "/api/scheduling/": "scheduling",
+        "/api/sha/": "sha_claims",
+        "/api/hl7/": "api_access",
+        "/api/powersync/": "offline_sync",
+        "/api/theatre/": "theatre",
+        "/api/blood-bank/": "blood_bank",
+        "/api/dialysis/": "dialysis",
+        "/api/inventory/": "inventory",
+        "/api/mch/": "maternity",
+        "/api/procedures/": "theatre",
+        "/api/moh-reports/": "dhis2_reporting",
+        "/api/dhis2-configs/": "dhis2_reporting",
+    }
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        import json
+
+        from django.conf import settings as django_settings
+        from django.http import HttpResponse
+
+        if not getattr(django_settings, "SUBSCRIPTION_FEATURE_ENFORCEMENT", False):
+            return self.get_response(request)
+
+        # Only check API routes
+        if not request.path.startswith("/api/"):
+            return self.get_response(request)
+
+        # Find matching feature gate
+        feature_key = None
+        for prefix, key in self.FEATURE_GATE_MAP.items():
+            if request.path.startswith(prefix):
+                feature_key = key
+                break
+
+        if not feature_key:
+            return self.get_response(request)
+
+        user = getattr(request, "user", None)
+        if not user or not getattr(user, "is_authenticated", False):
+            return self.get_response(request)
+
+        if user.is_superuser:
+            return self.get_response(request)
+
+        profile = getattr(user, "staff_profile", None)
+        if not profile or not profile.organization:
+            return self.get_response(request)
+
+        if profile.organization.has_feature(feature_key):
+            return self.get_response(request)
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    "detail": (
+                        f"The {feature_key.replace('_', ' ')} module is not "
+                        "included in your subscription plan. "
+                        "Please upgrade to access this feature."
+                    ),
+                    "code": "subscription_feature_disabled",
+                    "feature": feature_key,
+                }
+            ),
+            content_type="application/json",
+            status=403,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Media Security Middleware
 # ---------------------------------------------------------------------------
 

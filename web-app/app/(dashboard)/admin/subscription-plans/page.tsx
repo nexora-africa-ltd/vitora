@@ -46,15 +46,6 @@ export default function SubscriptionPlansPage() {
   const { isSuperuser } = usePermissions();
   const [search, setSearch] = useState('');
 
-  if (!isSuperuser) {
-    return (
-      <div className="space-y-4">
-        <PageHeader title="Access Denied" />
-        <Card><CardContent className="py-8 text-center text-muted-foreground">Only Nexora superusers can manage subscription plans.</CardContent></Card>
-      </div>
-    );
-  }
-
   const { data, isLoading } = useQuery({
     queryKey: ['subscription-plans', search],
     queryFn: () => subscriptionPlansApi.list(search ? { search } : undefined),
@@ -63,6 +54,15 @@ export default function SubscriptionPlansPage() {
   const plans = data?.results ?? [];
   const totalPlans = data?.count ?? 0;
   const activePlans = plans.filter((p) => p.is_active).length;
+
+  if (!isSuperuser) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="Access Denied" />
+        <Card><CardContent className="py-8 text-center text-muted-foreground">Only Nexora superusers can manage subscription plans.</CardContent></Card>
+      </div>
+    );
+  }
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>

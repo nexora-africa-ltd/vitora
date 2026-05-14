@@ -58,15 +58,6 @@ export default function NewSubscriptionPlanPage() {
   const queryClient = useQueryClient();
   const { isSuperuser } = usePermissions();
 
-  if (!isSuperuser) {
-    return (
-      <div className="space-y-4">
-        <PageHeader title="Access Denied" />
-        <Card><CardContent className="py-8 text-center text-muted-foreground">Only Nexora superusers can manage subscription plans.</CardContent></Card>
-      </div>
-    );
-  }
-
   const [form, setForm] = useState<SubscriptionPlanCreateData>({
     code: 'BASIC',
     name: '',
@@ -94,6 +85,15 @@ export default function NewSubscriptionPlanPage() {
       toast.error('Failed to create plan');
     },
   });
+
+  if (!isSuperuser) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="Access Denied" />
+        <Card><CardContent className="py-8 text-center text-muted-foreground">Only Nexora superusers can manage subscription plans.</CardContent></Card>
+      </div>
+    );
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

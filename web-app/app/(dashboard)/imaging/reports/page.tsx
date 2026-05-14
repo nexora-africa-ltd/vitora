@@ -49,7 +49,7 @@ export default function ImagingReportsPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
   const { data: reportsData, isLoading } = useRadiologyReports();
-  const reports = reportsData?.results ?? [];
+  const reports = useMemo(() => reportsData?.results ?? [], [reportsData?.results]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<RadiologyReportStatus | ''>('');
 

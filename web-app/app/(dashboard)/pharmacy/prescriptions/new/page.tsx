@@ -415,7 +415,7 @@ Prescribed by: ${prescriberName}
     };
 
     await printPrescription(printOptions);
-  }, [items, patient, patientId, encounterId, clinicalNotes, prescriberName, user, toast]);
+  }, [items, patient, patientId, encounterId, clinicalNotes, dispensingType, prescriberName, user, toast]);
 
   // Validate current item before adding
   const validateItem = useCallback((): boolean => {
