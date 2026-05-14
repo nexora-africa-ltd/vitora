@@ -506,7 +506,7 @@ class TestSHAEligibilityServiceResponseParsing:
         service = SHAEligibilityService()
         ilm_scheme_response = {
             "requestIdType": 2,
-            "requestIdNumber": "34221265",
+            "requestIdNumber": "00100100",
             "dateOfBirth": "1997-11-15T01:00:00+03:00",
             "gender": "F",
             "age": 29,
@@ -533,7 +533,7 @@ class TestSHAEligibilityServiceResponseParsing:
                         "status": "1",
                     },
                     "principalContributor": {
-                        "idNumber": "34221265",
+                        "idNumber": "00100100",
                         "idType": "NATIONAL_ID",
                         "crNumber": "CR8432995013637-1",
                         "name": "SALOME KUNGU",
@@ -546,7 +546,7 @@ class TestSHAEligibilityServiceResponseParsing:
         }
 
         with patch.object(service, "_call_api", return_value=ilm_scheme_response):
-            result = service.check_eligibility_direct("National ID", "34221265")
+            result = service.check_eligibility_direct("National ID", "00100100")
 
         assert result["is_eligible"] is True
         assert result["sha_number"] == "CR8432995013637-1"

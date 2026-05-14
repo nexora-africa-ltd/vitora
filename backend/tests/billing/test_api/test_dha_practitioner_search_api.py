@@ -20,7 +20,7 @@ class TestDHAPractitionerSearchAPI:
 
     def test_requires_authentication(self, api_client):
         response = api_client.get(
-            f"{self.ENDPOINT}?identification_type=National%20ID&identification_number=34221265"
+            f"{self.ENDPOINT}?identification_type=National%20ID&identification_number=00100100"
         )
 
         assert response.status_code == 401

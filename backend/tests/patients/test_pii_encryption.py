@@ -26,15 +26,15 @@ class TestKMSComputeHmac:
     def test_hmac_deterministic(self, db):
         """Same input produces same HMAC."""
         kms = get_kms_provider()
-        h1 = kms.compute_hmac("34221265")
-        h2 = kms.compute_hmac("34221265")
+        h1 = kms.compute_hmac("00100100")
+        h2 = kms.compute_hmac("00100100")
         assert h1 == h2
         assert len(h1) == 64  # SHA-256 hex digest
 
     def test_hmac_different_inputs(self, db):
         """Different inputs produce different HMACs."""
         kms = get_kms_provider()
-        h1 = kms.compute_hmac("34221265")
+        h1 = kms.compute_hmac("00100100")
         h2 = kms.compute_hmac("12345678")
         assert h1 != h2
 
@@ -65,18 +65,18 @@ class TestPatientPIIEncryption:
             sub_county=sample_sub_county,
             organization=sample_organization,
             registered_at_facility=sample_facility,
-            identification_number="34221265",
+            identification_number="00100100",
             phone_number="0769005262",
             email="test@example.com",
             address="123 Test Street, Nairobi",
-            national_id="34221265",
+            national_id="00100100",
             principal_national_id="11111111",
         )
 
     def test_save_encrypts_identification_number(self, patient_with_pii):
         """identification_number_encrypted should be populated on save."""
         assert patient_with_pii.identification_number_encrypted != ""
-        assert patient_with_pii.identification_number_encrypted != "34221265"
+        assert patient_with_pii.identification_number_encrypted != "00100100"
 
     def test_save_populates_hmac(self, patient_with_pii):
         """identification_number_hmac should be populated on save."""
@@ -102,23 +102,23 @@ class TestPatientPIIEncryption:
     def test_property_read_decrypts(self, patient_with_pii):
         """Property descriptors should decrypt on read."""
         patient_with_pii.refresh_from_db()
-        assert patient_with_pii.identification_number == "34221265"
+        assert patient_with_pii.identification_number == "00100100"
         assert patient_with_pii.phone_number == "0769005262"
         assert patient_with_pii.email == "test@example.com"
         assert patient_with_pii.address == "123 Test Street, Nairobi"
-        assert patient_with_pii.national_id == "34221265"
+        assert patient_with_pii.national_id == "00100100"
         assert patient_with_pii.principal_national_id == "11111111"
 
     def test_encrypted_value_decrypts_to_original(self, patient_with_pii):
         """Encrypted value should decrypt back to the original plaintext."""
         kms = get_kms_provider()
         decrypted = kms.decrypt_string(patient_with_pii.identification_number_encrypted)
-        assert decrypted == "34221265"
+        assert decrypted == "00100100"
 
     def test_hmac_matches_direct_compute(self, patient_with_pii):
         """HMAC stored on model should match direct compute_hmac result."""
         kms = get_kms_provider()
-        expected = kms.compute_hmac("34221265")
+        expected = kms.compute_hmac("00100100")
         assert patient_with_pii.identification_number_hmac == expected
 
     def test_empty_fields_not_encrypted(
@@ -226,7 +226,7 @@ class TestAuditLogPIIRedaction:
 
     def test_redact_top_level_fields(self):
         details = {
-            "identification_number": "34221265",
+            "identification_number": "00100100",
             "phone_number": "0769005262",
             "action": "patient_create",
         }
