@@ -148,7 +148,10 @@ export default function PatientLookupPage() {
       {crMutation.isError && (
         <Alert variant="destructive">
           <AlertDescription>
-            {crMutation.error instanceof Error ? crMutation.error.message : 'CR/SHA lookup failed. Please try again.'}
+            {(() => {
+              const err = crMutation.error as { response?: { data?: { error?: string } } };
+              return err?.response?.data?.error || (crMutation.error instanceof Error ? crMutation.error.message : 'CR/SHA lookup failed. Please try again.');
+            })()}
           </AlertDescription>
         </Alert>
       )}

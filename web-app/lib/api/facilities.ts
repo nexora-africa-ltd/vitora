@@ -68,6 +68,14 @@ export const facilitiesApi = {
       context: 'facilitiesApi.removeLogo',
     });
   },
+
+  /** Fetch and cache DHA registry data for this facility. */
+  async syncDhaRegistry(id: number): Promise<FacilityDetail> {
+    const response = await apiClient.post<FacilityDetail>(`/api/facilities/${id}/sync-dha-registry/`);
+    return parseResponse(FacilityDetailSchema, response.data, {
+      context: 'facilitiesApi.syncDhaRegistry',
+    });
+  },
 };
 
 export function toUserFacility(facility: FacilityDetail): UserFacility {

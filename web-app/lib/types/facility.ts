@@ -57,6 +57,31 @@ export interface FacilityDetail extends FacilityListItem {
   workstation_id?: string;
   /** Agent national ID for biometric authorization */
   biometrics_agent_national_id?: string;
+  // DHA Registry Cache
+  dha_registry_synced_at: string | null;
+  dha_fid_code: string;
+  dha_fr_code: string;
+  dha_license_status: string;
+  dha_license_number: string;
+  dha_license_expiry: string;
+  dha_operational_status: string;
+  dha_sha_contract_status: string;
+  dha_sha_contract_start: string;
+  dha_sha_contract_end: string;
+  dha_total_beds: number;
+  dha_icu_beds: number;
+  dha_hdu_beds: number;
+  dha_facility_type: string;
+  dha_keph_level: string;
+  dha_ownership: string;
+  dha_regulatory_body: string;
+  dha_admin_name: string;
+  dha_admin_phone: string;
+  dha_admin_email: string;
+  dha_admin_id: string;
+  dha_facility_phone: string;
+  dha_facility_email: string;
+  dha_registry_data: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
