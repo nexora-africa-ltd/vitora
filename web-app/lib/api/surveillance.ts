@@ -202,6 +202,53 @@ export const surveillanceApi = {
     });
   },
 
+  /** Seed default national outbreak thresholds (admin only, empty DB only). */
+  async seedThresholds(): Promise<{ created: number; total: number }> {
+    const response = await apiClient.post<{ created: number; total: number }>(
+      '/api/surveillance/thresholds/seed/',
+    );
+    return response.data;
+  },
+
+  async createThreshold(data: {
+    disease: number;
+    county?: number | null;
+    case_threshold: number;
+    period_days: number;
+    is_active?: boolean;
+  }): Promise<OutbreakThreshold> {
+    const response = await apiClient.post<OutbreakThreshold>(
+      '/api/surveillance/thresholds/',
+      data,
+    );
+    return parseResponse(OutbreakThresholdSchema, response.data, {
+      context: 'surveillanceApi.createThreshold',
+    });
+  },
+
+  async updateThreshold(
+    id: number,
+    data: {
+      disease?: number;
+      county?: number | null;
+      case_threshold?: number;
+      period_days?: number;
+      is_active?: boolean;
+    },
+  ): Promise<OutbreakThreshold> {
+    const response = await apiClient.patch<OutbreakThreshold>(
+      `/api/surveillance/thresholds/${id}/`,
+      data,
+    );
+    return parseResponse(OutbreakThresholdSchema, response.data, {
+      context: 'surveillanceApi.updateThreshold',
+    });
+  },
+
+  async deleteThreshold(id: number): Promise<void> {
+    await apiClient.delete(`/api/surveillance/thresholds/${id}/`);
+  },
+
   // ─────────────────────────────────────────────────────────────────────────
   // County Reports
   // ─────────────────────────────────────────────────────────────────────────
@@ -289,13 +336,14 @@ export const surveillanceApi = {
   // IHR Notifications
   // ─────────────────────────────────────────────────────────────────────────
   async listIHRNotifiableDiseases(): Promise<NotifiableDiseaseListItem[]> {
-    const response = await apiClient.get<NotifiableDiseaseListItem[]>(
+    const response = await apiClient.get(
       '/api/surveillance/diseases/',
-      { params: { is_ihr_notifiable: true, is_active: true } }
+      { params: { is_ihr_notifiable: true, is_active: true, page_size: 200 } }
     );
+    const results = response.data?.results ?? response.data;
     return parseResponse(
       z.array(NotifiableDiseaseListItemSchema),
-      response.data,
+      results,
       { context: 'surveillanceApi.listIHRNotifiableDiseases' }
     );
   },
@@ -454,5 +502,32 @@ export const surveillanceApi = {
       { responseType: 'blob' }
     );
     return response.data as Blob;
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Notifiable Diseases
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** List all notifiable diseases. */
+  async listDiseases(): Promise<NotifiableDiseaseListItem[]> {
+    const response = await apiClient.get(
+      '/api/surveillance/diseases/',
+      { params: { page_size: 200 } },
+    );
+    // Endpoint returns paginated response; extract results array
+    const results = response.data?.results ?? response.data;
+    return parseResponse(
+      z.array(NotifiableDiseaseListItemSchema),
+      results,
+      { context: 'surveillanceApi.listDiseases' }
+    );
+  },
+
+  /** Seed MOH 502 notifiable diseases (admin only, empty DB only). */
+  async seedDiseases(): Promise<{ created: number; total: number }> {
+    const response = await apiClient.post<{ created: number; total: number }>(
+      '/api/surveillance/diseases/seed/',
+    );
+    return response.data;
   },
 };

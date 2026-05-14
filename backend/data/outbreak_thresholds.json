@@ -1,0 +1,190 @@
+{
+  "_metadata": {
+    "version": "1.0",
+    "source": "WHO IHR 2005, Kenya MOH 502, IDSR Technical Guidelines (3rd Edition, Africa)",
+    "last_updated": "2026-05-14",
+    "notes": "National-level default thresholds. Facilities can add county-specific overrides via the admin UI."
+  },
+  "thresholds": [
+    {
+      "disease_name": "Cholera",
+      "case_threshold": 1,
+      "period_days": 7,
+      "notes": "Single confirmed case constitutes an outbreak (WHO/IHR)"
+    },
+    {
+      "disease_name": "Yellow Fever",
+      "case_threshold": 1,
+      "period_days": 7,
+      "notes": "Single confirmed case is a public health emergency (IHR)"
+    },
+    {
+      "disease_name": "Plague",
+      "case_threshold": 1,
+      "period_days": 7,
+      "notes": "Single confirmed case (IHR notifiable)"
+    },
+    {
+      "disease_name": "Viral Hemorrhagic Fevers",
+      "case_threshold": 1,
+      "period_days": 7,
+      "notes": "Single confirmed case (Ebola, Marburg, etc.) is an emergency"
+    },
+    {
+      "disease_name": "Measles",
+      "case_threshold": 3,
+      "period_days": 30,
+      "notes": "Cluster of 3+ cases in a district within a month (IDSR)"
+    },
+    {
+      "disease_name": "Acute Flaccid Paralysis (Polio)",
+      "case_threshold": 1,
+      "period_days": 7,
+      "notes": "Single case triggers full investigation (polio eradication)"
+    },
+    {
+      "disease_name": "Meningococcal Meningitis",
+      "case_threshold": 5,
+      "period_days": 7,
+      "notes": "5 cases per 100k per week in meningitis belt; 5 as national default"
+    },
+    {
+      "disease_name": "Rabies (Human)",
+      "case_threshold": 1,
+      "period_days": 7,
+      "notes": "Single confirmed human case"
+    },
+    {
+      "disease_name": "Diphtheria",
+      "case_threshold": 1,
+      "period_days": 7,
+      "notes": "Single confirmed case triggers outbreak response"
+    },
+    {
+      "disease_name": "Neonatal Tetanus",
+      "case_threshold": 1,
+      "period_days": 30,
+      "notes": "Single case in a district indicates immunization gap"
+    },
+    {
+      "disease_name": "Pertussis (Whooping Cough)",
+      "case_threshold": 3,
+      "period_days": 14,
+      "notes": "Cluster of cases suggests outbreak"
+    },
+    {
+      "disease_name": "Anthrax",
+      "case_threshold": 1,
+      "period_days": 7,
+      "notes": "Single confirmed human case"
+    },
+    {
+      "disease_name": "SARS/Novel Coronavirus",
+      "case_threshold": 1,
+      "period_days": 7,
+      "notes": "Single confirmed case is IHR notifiable"
+    },
+    {
+      "disease_name": "Influenza (Novel/Pandemic)",
+      "case_threshold": 1,
+      "period_days": 7,
+      "notes": "Novel strain — single case triggers IHR notification"
+    },
+    {
+      "disease_name": "Smallpox",
+      "case_threshold": 1,
+      "period_days": 7,
+      "notes": "Any case is a global emergency"
+    },
+    {
+      "disease_name": "Malaria",
+      "case_threshold": 50,
+      "period_days": 7,
+      "notes": "Epidemic threshold: doubling of expected cases in a week"
+    },
+    {
+      "disease_name": "Typhoid Fever",
+      "case_threshold": 5,
+      "period_days": 7,
+      "notes": "Cluster in same locality suggests common source"
+    },
+    {
+      "disease_name": "Dysentery",
+      "case_threshold": 10,
+      "period_days": 7,
+      "notes": "Bloody diarrhoea cluster — potential Shigella outbreak"
+    },
+    {
+      "disease_name": "Tuberculosis",
+      "case_threshold": 10,
+      "period_days": 30,
+      "notes": "Cluster in institution or community"
+    },
+    {
+      "disease_name": "Pneumonia",
+      "case_threshold": 15,
+      "period_days": 7,
+      "notes": "Unusual cluster above baseline"
+    },
+    {
+      "disease_name": "Hepatitis (Viral)",
+      "case_threshold": 5,
+      "period_days": 14,
+      "notes": "Cluster suggests waterborne (Hep A/E) or nosocomial transmission"
+    },
+    {
+      "disease_name": "Chikungunya",
+      "case_threshold": 3,
+      "period_days": 14,
+      "notes": "Arboviral cluster — vector control trigger"
+    },
+    {
+      "disease_name": "Dengue Fever",
+      "case_threshold": 3,
+      "period_days": 14,
+      "notes": "Arboviral cluster in non-endemic area"
+    },
+    {
+      "disease_name": "Rift Valley Fever",
+      "case_threshold": 1,
+      "period_days": 7,
+      "notes": "Single confirmed human case — zoonotic emergency"
+    },
+    {
+      "disease_name": "Dracunculiasis (Guinea Worm)",
+      "case_threshold": 1,
+      "period_days": 30,
+      "notes": "Eradication target — any case is critical"
+    },
+    {
+      "disease_name": "Adverse Events Following Immunization (AEFI)",
+      "case_threshold": 3,
+      "period_days": 7,
+      "notes": "Cluster of serious AEFIs from same batch/site"
+    },
+    {
+      "disease_name": "SARI (Severe Acute Respiratory Infections)",
+      "case_threshold": 5,
+      "period_days": 7,
+      "notes": "Unusual cluster triggers influenza/novel pathogen investigation"
+    },
+    {
+      "disease_name": "Methanol Poisoning",
+      "case_threshold": 2,
+      "period_days": 7,
+      "notes": "Cluster suggests contaminated alcohol source"
+    },
+    {
+      "disease_name": "Leishmaniasis (Kala-azar)",
+      "case_threshold": 5,
+      "period_days": 30,
+      "notes": "Cluster in endemic counties (Turkana, Baringo, West Pokot)"
+    },
+    {
+      "disease_name": "Trypanosomiasis (Sleeping Sickness)",
+      "case_threshold": 1,
+      "period_days": 30,
+      "notes": "Single case in previously cleared area"
+    }
+  ]
+}

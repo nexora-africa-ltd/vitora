@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   Clock,
@@ -10,6 +10,8 @@ import {
   Users,
   Siren,
   BarChart3,
+  Database,
+  Loader2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -21,9 +23,13 @@ import { WebSocketStatus } from '@/components/ui/websocket-status';
 import { surveillanceApi } from '@/lib/api/surveillance';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useSurveillanceWebSocket } from '@/lib/hooks/surveillance-websocket';
+import { usePermissions } from '@/lib/hooks/use-permissions';
+import { toast } from 'sonner';
 
 export default function SurveillanceDashboardPage() {
   const { refresh, isRefreshing } = usePageRefresh();
+  const { isAdmin } = usePermissions();
+  const queryClient = useQueryClient();
 
   // WebSocket connection with polling fallback
   const {
@@ -46,6 +52,27 @@ export default function SurveillanceDashboardPage() {
     queryFn: () => surveillanceApi.listUnacknowledgedAlerts(),
     staleTime: 30000,
   });
+
+  // Check if notifiable diseases have been seeded
+  const { data: diseases } = useQuery({
+    queryKey: ['notifiable-diseases'],
+    queryFn: () => surveillanceApi.listDiseases(),
+    staleTime: 60000,
+  });
+
+  const seedMutation = useMutation({
+    mutationFn: () => surveillanceApi.seedDiseases(),
+    onSuccess: (result) => {
+      toast.success(`Seeded ${result.created} MOH 502 notifiable diseases`);
+      queryClient.invalidateQueries({ queryKey: ['notifiable-diseases'] });
+      queryClient.invalidateQueries({ queryKey: ['surveillance-dashboard'] });
+    },
+    onError: () => {
+      toast.error('Failed to seed diseases. You may not have admin permissions.');
+    },
+  });
+
+  const diseasesEmpty = diseases !== undefined && diseases.length === 0;
 
   // Combined refresh: WebSocket + React Query
   const handleRefresh = () => {
@@ -75,6 +102,31 @@ export default function SurveillanceDashboardPage() {
           </Card>
         ) : (
           <>
+            {/* Seed diseases prompt */}
+            {diseasesEmpty && isAdmin && (
+              <Card className="border-amber-500/50 bg-amber-500/5">
+                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <Database className="h-5 w-5 text-amber-600" />
+                    <div>
+                      <p className="font-medium">No notifiable diseases configured</p>
+                      <p className="text-sm text-muted-foreground">
+                        Seed the MOH 502 notifiable disease list to enable case reporting and surveillance alerts.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => seedMutation.mutate()}
+                    disabled={seedMutation.isPending}
+                  >
+                    {seedMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Seed MOH 502 Diseases
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Key Stats */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatsCard
