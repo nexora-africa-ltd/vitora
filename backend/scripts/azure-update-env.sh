@@ -122,8 +122,8 @@ az containerapp update \
     "DEFAULT_FROM_EMAIL=noreply@vitora.digital" \
     "SHA_ENABLED=${SHA_ENABLED:-true}" \
     "SHA_API_BASE_URL=${SHA_API_BASE_URL:-https://uat.dha.go.ke}" \
-    "SHA_AUTH_MODE=${SHA_AUTH_MODE:-legacy}" \
-    "SHA_AUTH_BASE_URL=${SHA_AUTH_BASE_URL:-${SHA_API_BASE_URL:-https://uat.dha.go.ke}}" \
+    "SHA_AUTH_MODE=${SHA_AUTH_MODE:-ilm}" \
+    "SHA_AUTH_BASE_URL=${SHA_AUTH_BASE_URL:-https://ilm-dev.dha.go.ke/uat-middleware}" \
     "SHA_AUTH_TOKEN_ENDPOINT=${SHA_AUTH_TOKEN_ENDPOINT:-}" \
     "SHA_CONSUMER_KEY=secretref:sha-consumer-key" \
     "SHA_CLIENT_ID=${SHA_CLIENT_ID:-}" \
