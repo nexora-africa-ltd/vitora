@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, CheckCircle, TrendingUp, Database, Loader2, Plus, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
@@ -12,15 +12,34 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { WebSocketStatus } from '@/components/ui/websocket-status';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ThresholdFormDialog } from '@/components/surveillance/threshold-form-dialog';
 import { surveillanceApi, type ThresholdListParams } from '@/lib/api/surveillance';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useSurveillanceWebSocket } from '@/lib/hooks/surveillance-websocket';
+import { usePermissions } from '@/lib/hooks/use-permissions';
+import { toast } from 'sonner';
 import type { OutbreakThreshold } from '@/lib/types/surveillance';
 
 const PAGE_SIZE = 20;
@@ -78,6 +97,13 @@ function ThresholdProgress({ threshold }: { threshold: OutbreakThreshold }) {
 
 export default function OutbreakThresholdsPage() {
   const { refresh, isRefreshing } = usePageRefresh();
+  const { isAdmin } = usePermissions();
+  const queryClient = useQueryClient();
+
+  // Dialog state
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingThreshold, setEditingThreshold] = useState<OutbreakThreshold | undefined>();
+  const [deletingThreshold, setDeletingThreshold] = useState<OutbreakThreshold | null>(null);
 
   // WebSocket connection with polling fallback
   const {
@@ -126,6 +152,43 @@ export default function OutbreakThresholdsPage() {
   });
 
   const exceededCount = exceededData?.length ?? 0;
+
+  const thresholdsEmpty = !isLoading && (data?.count ?? 0) === 0;
+
+  const seedMutation = useMutation({
+    mutationFn: () => surveillanceApi.seedThresholds(),
+    onSuccess: (result) => {
+      toast.success(`Seeded ${result.created} default outbreak thresholds`);
+      queryClient.invalidateQueries({ queryKey: ['outbreak-thresholds'] });
+      queryClient.invalidateQueries({ queryKey: ['outbreak-thresholds-exceeded'] });
+    },
+    onError: () => {
+      toast.error('Failed to seed thresholds. Ensure diseases are seeded first and you have admin permissions.');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => surveillanceApi.deleteThreshold(id),
+    onSuccess: () => {
+      toast.success('Threshold deleted');
+      queryClient.invalidateQueries({ queryKey: ['outbreak-thresholds'] });
+      queryClient.invalidateQueries({ queryKey: ['outbreak-thresholds-exceeded'] });
+      setDeletingThreshold(null);
+    },
+    onError: () => {
+      toast.error('Failed to delete threshold');
+    },
+  });
+
+  function handleEdit(threshold: OutbreakThreshold) {
+    setEditingThreshold(threshold);
+    setFormOpen(true);
+  }
+
+  function handleCreate() {
+    setEditingThreshold(undefined);
+    setFormOpen(true);
+  }
 
   // Filter by exceeded status client-side (API may not support this filter directly)
   const filteredResults = useMemo(() => {
@@ -215,6 +278,36 @@ export default function OutbreakThresholdsPage() {
           <Badge variant="secondary">Inactive</Badge>
         ),
     },
+    ...(isAdmin
+      ? [
+          {
+            key: 'actions',
+            header: '',
+            cell: (item: OutbreakThreshold) => (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleEdit(item)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => setDeletingThreshold(item)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -224,14 +317,48 @@ export default function OutbreakThresholdsPage() {
           title="Outbreak Thresholds"
           helpContent="Configure and monitor outbreak detection thresholds. Alerts are triggered when case counts exceed defined thresholds within specified periods."
           actions={
-            <WebSocketStatus
-              connectionState={connectionState}
-              reconnectAttempts={reconnectAttempts}
-              showLabel
-              size="sm"
-            />
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <Button size="sm" onClick={handleCreate}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Add Threshold</span>
+                  <span className="sm:hidden">Add</span>
+                </Button>
+              )}
+              <WebSocketStatus
+                connectionState={connectionState}
+                reconnectAttempts={reconnectAttempts}
+                showLabel
+                size="sm"
+              />
+            </div>
           }
         />
+
+        {/* Seed thresholds prompt */}
+        {thresholdsEmpty && isAdmin && (
+          <Card className="border-amber-500/50 bg-amber-500/5">
+            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <Database className="h-5 w-5 text-amber-600" />
+                <div>
+                  <p className="font-medium">No outbreak thresholds configured</p>
+                  <p className="text-sm text-muted-foreground">
+                    Seed default national thresholds based on WHO IHR and Kenya IDSR guidelines.
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => seedMutation.mutate()}
+                disabled={seedMutation.isPending}
+              >
+                {seedMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Seed Default Thresholds
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Summary Cards */}
         <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
@@ -347,7 +474,7 @@ export default function OutbreakThresholdsPage() {
             mobileCard={(item) => (
               <Card className="p-3">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-1">
+                  <div className="space-y-1 flex-1 min-w-0">
                     <p className="font-medium">{item.disease_name}</p>
                     <p className="text-xs text-muted-foreground">
                       {item.county_name || 'National'} • {item.case_threshold} cases / {item.period_days} days
@@ -362,6 +489,28 @@ export default function OutbreakThresholdsPage() {
                       <Badge variant="secondary" className="w-fit">
                         Inactive
                       </Badge>
+                    )}
+                    {isAdmin && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEdit(item)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => setDeletingThreshold(item)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
                 </div>
@@ -395,6 +544,53 @@ export default function OutbreakThresholdsPage() {
           </div>
         )}
       </div>
+
+      {/* Create/Edit Dialog */}
+      <ThresholdFormDialog
+        open={formOpen}
+        onOpenChange={(open) => {
+          setFormOpen(open);
+          if (!open) setEditingThreshold(undefined);
+        }}
+        threshold={editingThreshold}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog
+        open={!!deletingThreshold}
+        onOpenChange={(open) => { if (!open) setDeletingThreshold(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Threshold</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete the outbreak threshold for{' '}
+              <strong>{deletingThreshold?.disease_name}</strong>
+              {deletingThreshold?.county_name
+                ? ` (${deletingThreshold.county_name})`
+                : ' (National)'}
+              ? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
+              onClick={() => {
+                if (deletingThreshold) deleteMutation.mutate(deletingThreshold.id);
+              }}
+            >
+              {deleteMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PullToRefresh>
   );
 }

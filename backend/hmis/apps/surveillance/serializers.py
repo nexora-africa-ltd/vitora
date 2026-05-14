@@ -290,6 +290,19 @@ class OutbreakThresholdSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at", "threshold_status"]
 
+    def validate(self, attrs):
+        disease = attrs.get("disease", getattr(self.instance, "disease", None))
+        county = attrs.get("county", getattr(self.instance, "county", None))
+        qs = OutbreakThreshold.objects.filter(disease=disease, county=county)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            scope = county.name if county else "National"
+            raise serializers.ValidationError(
+                f"A threshold for this disease already exists at the {scope} level."
+            )
+        return attrs
+
     def get_threshold_status(self, obj) -> dict:
         """Return current threshold status."""
         exceeded, count = obj.check_threshold()

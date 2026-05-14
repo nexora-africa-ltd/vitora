@@ -525,7 +525,12 @@ class OutbreakThreshold(models.Model):
             models.UniqueConstraint(
                 fields=["disease", "county"],
                 name="unique_disease_county_threshold",
-            )
+            ),
+            models.UniqueConstraint(
+                fields=["disease"],
+                condition=models.Q(county__isnull=True),
+                name="unique_disease_national_threshold",
+            ),
         ]
 
     def __str__(self) -> str:

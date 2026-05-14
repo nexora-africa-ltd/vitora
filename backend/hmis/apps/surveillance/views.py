@@ -5,8 +5,11 @@ Provides API endpoints for notifiable diseases, cases, alerts,
 reporting to county health offices, and dashboard statistics.
 """
 
+import json
 from datetime import timedelta
+from pathlib import Path
 
+from django.conf import settings
 from django.db.models import Count, Q
 from django.utils import timezone
 from django_filters import rest_framework as filters
@@ -140,6 +143,92 @@ class NotifiableDiseaseViewSet(viewsets.ModelViewSet):
                 "icd10_codes": disease.get_icd10_code_list(),
             }
         )
+
+    @extend_schema(
+        request=None,
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "created": {"type": "integer"},
+                    "total": {"type": "integer"},
+                },
+            }
+        },
+    )
+    @action(detail=False, methods=["post"], permission_classes=[permissions.IsAdminUser])
+    def seed(self, request):
+        """Seed MOH 502 notifiable diseases from bundled JSON data.
+
+        Only creates missing diseases (safe to call multiple times).
+        Returns 409 if diseases already exist.
+        """
+        if NotifiableDisease.objects.exists():
+            return Response(
+                {
+                    "detail": "Notifiable diseases already exist. Use the management command for updates."
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        json_path = Path(settings.BASE_DIR) / "data" / "notifiable_diseases.json"
+        if not json_path.exists():
+            return Response(
+                {"detail": "Seed data file not found."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        with open(json_path, encoding="utf-8") as f:
+            data = json.load(f)
+
+        diseases = data.get("diseases", [])
+        created = 0
+        for entry in diseases:
+            name = entry.get("name")
+            if not name:
+                continue
+
+            # Flatten nested case_definition / laboratory_criteria
+            case_def = entry.get("case_definition", "")
+            if isinstance(case_def, dict):
+                parts = []
+                if case_def.get("suspected"):
+                    parts.append(f"Suspected: {case_def['suspected']}")
+                if case_def.get("confirmed"):
+                    parts.append(f"Confirmed: {case_def['confirmed']}")
+                if case_def.get("source"):
+                    parts.append(f"Source: {case_def['source']}")
+                case_def = "\n".join(parts)
+
+            lab_criteria = entry.get("laboratory_criteria", "")
+            if isinstance(lab_criteria, dict):
+                parts = []
+                if lab_criteria.get("specimen"):
+                    parts.append(f"Specimen: {lab_criteria['specimen']}")
+                if lab_criteria.get("test"):
+                    parts.append(f"Test: {lab_criteria['test']}")
+                if lab_criteria.get("turnaround"):
+                    parts.append(f"Turnaround: {lab_criteria['turnaround']}")
+                if lab_criteria.get("biosafety"):
+                    parts.append(f"Biosafety: {lab_criteria['biosafety']}")
+                if lab_criteria.get("source"):
+                    parts.append(f"Source: {lab_criteria['source']}")
+                lab_criteria = "\n".join(parts)
+
+            NotifiableDisease.objects.create(
+                name=name,
+                icd10_codes=entry.get("icd10_codes", ""),
+                category=entry.get("category", "WEEKLY"),
+                reporting_hours=entry.get("reporting_hours", 168),
+                description=entry.get("description", ""),
+                case_definition=case_def,
+                laboratory_criteria=lab_criteria,
+                is_ihr_notifiable=entry.get("is_ihr_notifiable", False),
+                is_active=entry.get("is_active", True),
+            )
+            created += 1
+
+        return Response({"created": created, "total": NotifiableDisease.objects.count()})
 
 
 class NotifiableCaseViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
@@ -367,6 +456,73 @@ class OutbreakThresholdViewSet(viewsets.ModelViewSet):
                     }
                 )
         return Response(exceeded)
+
+    @extend_schema(
+        request=None,
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "created": {"type": "integer"},
+                    "total": {"type": "integer"},
+                },
+            }
+        },
+    )
+    @action(detail=False, methods=["post"])
+    def seed(self, request):
+        """Seed default national outbreak thresholds from bundled JSON data.
+
+        Only creates missing thresholds (safe to call multiple times).
+        Returns 409 if thresholds already exist.
+        Requires notifiable diseases to be seeded first.
+        """
+        if OutbreakThreshold.objects.exists():
+            return Response(
+                {
+                    "detail": "Outbreak thresholds already exist. Use the management command for updates."
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if not NotifiableDisease.objects.exists():
+            return Response(
+                {"detail": "No notifiable diseases found. Seed diseases first."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        json_path = Path(settings.BASE_DIR) / "data" / "outbreak_thresholds.json"
+        if not json_path.exists():
+            return Response(
+                {"detail": "Seed data file not found."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        with open(json_path, encoding="utf-8") as f:
+            data = json.load(f)
+
+        entries = data.get("thresholds", [])
+        created = 0
+        for entry in entries:
+            disease_name = entry.get("disease_name")
+            if not disease_name:
+                continue
+
+            try:
+                disease = NotifiableDisease.objects.get(name=disease_name)
+            except NotifiableDisease.DoesNotExist:
+                continue
+
+            OutbreakThreshold.objects.create(
+                disease=disease,
+                county=None,
+                case_threshold=entry["case_threshold"],
+                period_days=entry["period_days"],
+                is_active=True,
+            )
+            created += 1
+
+        return Response({"created": created, "total": OutbreakThreshold.objects.count()})
 
 
 class SurveillanceDashboardView(APIView):
