@@ -1,18 +1,21 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { AlertTriangle, MapPin, Pencil, ShieldCheck } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { AlertTriangle, MapPin, Pencil, ShieldCheck, Globe, Loader2, RefreshCw } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { DhaResultCard } from '@/components/shared/dha-result-card';
 import { facilitiesApi } from '@/lib/api/facilities';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { FacilityInterventionsPanel } from '@/components/admin/facility-interventions-panel';
+import type { FacilityDetail } from '@/lib/types/facility';
 
 const levelLabels: Record<string, string> = {
   '1': 'Level 1 – Community',
@@ -54,16 +57,65 @@ const moduleLabels: Record<string, string> = {
   has_billing: 'Finance / Billing',
 };
 
+/**
+ * Merge cached DHA registry JSON (non-PII) with decrypted PII fields
+ * from the facility detail into the shape DhaResultCard expects.
+ */
+function buildDhaData(facility: FacilityDetail): Record<string, unknown> | null {
+  if (!facility.dha_registry_synced_at) return null;
+  // Start with the cached non-PII JSON blob (contains address, beds, services, etc.)
+  const base: Record<string, unknown> = facility.dha_registry_data
+    ? { ...facility.dha_registry_data }
+    : {};
+
+  // Overlay structured columns (authoritative, may be more recent)
+  base.fidCode = facility.dha_fid_code || base.fidCode;
+  base.frCode = facility.dha_fr_code || base.frCode;
+  base.facilityLicenseStatus = facility.dha_license_status || base.facilityLicenseStatus;
+  base.licenseNumber = facility.dha_license_number || base.licenseNumber;
+  base.facilityLicenseEndDate = facility.dha_license_expiry || base.facilityLicenseEndDate;
+  base.facilityType = facility.dha_facility_type || base.facilityType;
+  base.kephLevel = facility.dha_keph_level || base.kephLevel;
+  base.facilityOwnership = facility.dha_ownership || base.facilityOwnership;
+  base.regulatoryBody = facility.dha_regulatory_body || base.regulatoryBody;
+  base.shaContractStatus = facility.dha_sha_contract_status || base.shaContractStatus;
+  base.shaConstractStartDate = facility.dha_sha_contract_start || base.shaConstractStartDate;
+  base.shaConstractEndDate = facility.dha_sha_contract_end || base.shaConstractEndDate;
+
+  // Re-inject decrypted PII (these were stripped from dha_registry_data)
+  base.facilityAdministratorName = facility.dha_admin_name;
+  base.facilityAdministratorPhone = facility.dha_admin_phone;
+  base.facilityAdministratorEmail = facility.dha_admin_email;
+  base.facilityAdministratorIdentifier = facility.dha_admin_id;
+  base.facilityPhoneNumber = facility.dha_facility_phone;
+  base.facilityEmail = facility.dha_facility_email;
+
+  return base;
+}
+
 export default function FacilityDetailPage() {
   const router = useRouter();
   const params = useParams();
   const facilityId = parseInt(params.id as string);
   const { isSuperuser } = usePermissions();
+  const queryClient = useQueryClient();
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const { data: facility, isLoading, error } = useQuery({
     queryKey: ['facility', facilityId],
     queryFn: () => facilitiesApi.get(facilityId),
     enabled: !isNaN(facilityId),
+  });
+
+  const syncDha = useMutation({
+    mutationFn: () => facilitiesApi.syncDhaRegistry(facilityId),
+    onSuccess: () => {
+      setSyncError(null);
+      queryClient.invalidateQueries({ queryKey: ['facility', facilityId] });
+    },
+    onError: (err: Error) => {
+      setSyncError(err.message || 'Failed to sync DHA registry');
+    },
   });
 
   if (isLoading) {
@@ -225,6 +277,55 @@ export default function FacilityDetailPage() {
         {facility.sha_contracted && (
           <FacilityInterventionsPanel facilityLevel={facility.level} />
         )}
+
+        {/* DHA Registry */}
+        <div className="md:col-span-2 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-blue-600" />
+              <h3 className="text-sm font-medium">DHA Registry</h3>
+              {facility.dha_registry_synced_at && (
+                <span className="text-xs text-muted-foreground">
+                  Synced {new Date(facility.dha_registry_synced_at).toLocaleDateString()}
+                </span>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => syncDha.mutate()}
+              disabled={syncDha.isPending}
+            >
+              {syncDha.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              )}
+              {facility.dha_registry_synced_at ? 'Refresh' : 'Fetch from DHA'}
+            </Button>
+          </div>
+
+          {syncError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{syncError}</AlertDescription>
+            </Alert>
+          )}
+
+          {(() => {
+            const dhaData = facility ? buildDhaData(facility) : null;
+            if (dhaData) return <DhaResultCard data={dhaData} />;
+            if (!facility.dha_registry_synced_at)
+              return (
+                <Card>
+                  <CardContent className="py-6 text-center text-sm text-muted-foreground">
+                    No DHA registry data cached. Click &quot;Fetch from DHA&quot; to retrieve it.
+                  </CardContent>
+                </Card>
+              );
+            return null;
+          })()}
+        </div>
       </div>
     </div>
   );

@@ -48,6 +48,13 @@ REDACTED_PII_FIELDS: set[str] = {
     "ppb_submitter_mobile",
     "ppb_submitter_email",
     "phone",
+    "biometrics_agent_national_id",
+    "dha_admin_name",
+    "dha_admin_phone",
+    "dha_admin_email",
+    "dha_admin_id",
+    "dha_facility_phone",
+    "dha_facility_email",
 }
 
 

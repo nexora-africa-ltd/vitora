@@ -569,8 +569,11 @@ class ClientRegistryService:
             )
         except Exception as exc:  # DHAError, etc.
             status_code = getattr(exc, "status_code", 0) or 0
-            # 404 means not found in CR — return None instead of raising.
+            exc_msg = str(exc).lower()
+            # 404 or 400 "zero results" means not found in CR — return None.
             if status_code == 404:
+                return None
+            if status_code == 400 and "zero results" in exc_msg:
                 return None
             raise ClientRegistryError(
                 f"ILM client registry lookup failed: {exc}",

@@ -3105,12 +3105,162 @@ class Facility(TimeStampedModel):
         default="",
         help_text="SHA-specific facility code used in claims submission.",
     )
-    biometrics_agent_national_id = models.CharField(
+
+    # Biometrics agent — PII encrypted (Kenya DPA 2019 § 41)
+    biometrics_agent_national_id_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="KMS-encrypted national ID of the biometrics agent.",
+    )
+    biometrics_agent_national_id = encrypted_pii_property("biometrics_agent_national_id")
+
+    # ------------------------------------------------------------------
+    # DHA Registry Cache (populated via ILM facility-search)
+    # ------------------------------------------------------------------
+    # Non-PII fields stored as plain columns for offline access.
+    # PII fields (admin phone, email, ID) stored encrypted.
+
+    dha_registry_synced_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the DHA registry data was last fetched.",
+    )
+    dha_fid_code = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="DHA Facility ID code.",
+    )
+    dha_fr_code = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="DHA Facility Registration code.",
+    )
+    dha_license_status = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="License status from DHA (e.g. LICENSED).",
+    )
+    dha_license_number = models.CharField(
         max_length=100,
         blank=True,
         default="",
-        help_text="National ID of the biometrics agent registered with SHA "
-        "for this facility. Required for biometric consent calls.",
+        help_text="License number from DHA.",
+    )
+    dha_license_expiry = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+        help_text="License expiry date string from DHA.",
+    )
+    dha_operational_status = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Regulatory operational status from DHA.",
+    )
+    dha_sha_contract_status = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="SHA contract status from DHA.",
+    )
+    dha_sha_contract_start = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+        help_text="SHA contract start date string from DHA.",
+    )
+    dha_sha_contract_end = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+        help_text="SHA contract end date string from DHA.",
+    )
+    dha_total_beds = models.PositiveIntegerField(
+        default=0,
+        help_text="Total bed capacity from DHA.",
+    )
+    dha_icu_beds = models.PositiveIntegerField(
+        default=0,
+        help_text="ICU bed count from DHA.",
+    )
+    dha_hdu_beds = models.PositiveIntegerField(
+        default=0,
+        help_text="HDU bed count from DHA.",
+    )
+    dha_facility_type = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Facility type from DHA.",
+    )
+    dha_keph_level = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="KEPH level from DHA.",
+    )
+    dha_ownership = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Ownership from DHA.",
+    )
+    dha_regulatory_body = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Regulatory body from DHA.",
+    )
+
+    # DHA PII fields — encrypted (admin contact, facility contact)
+    dha_admin_name_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="KMS-encrypted DHA administrator name.",
+    )
+    dha_admin_phone_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="KMS-encrypted DHA administrator phone.",
+    )
+    dha_admin_email_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="KMS-encrypted DHA administrator email.",
+    )
+    dha_admin_id_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="KMS-encrypted DHA administrator national ID.",
+    )
+    dha_facility_phone_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="KMS-encrypted facility phone from DHA.",
+    )
+    dha_facility_email_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="KMS-encrypted facility email from DHA.",
+    )
+
+    # Property descriptors — transparent encrypt-on-write, decrypt-on-read
+    dha_admin_name = encrypted_pii_property("dha_admin_name")
+    dha_admin_phone = encrypted_pii_property("dha_admin_phone")
+    dha_admin_email = encrypted_pii_property("dha_admin_email")
+    dha_admin_id = encrypted_pii_property("dha_admin_id")
+    dha_facility_phone = encrypted_pii_property("dha_facility_phone")
+    dha_facility_email = encrypted_pii_property("dha_facility_email")
+
+    # Full DHA response (non-PII subset) for UI rendering
+    dha_registry_data = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Cached DHA registry response with PII fields stripped.",
     )
 
     # ------------------------------------------------------------------
@@ -3350,6 +3500,72 @@ class Facility(TimeStampedModel):
         if self.organization and self.organization.logo:
             return self.organization.logo
         return None
+
+    # ------------------------------------------------------------------
+    # DHA Registry Sync
+    # ------------------------------------------------------------------
+
+    # PII field keys in DHA responses — stripped from dha_registry_data
+    _DHA_PII_KEYS = frozenset(
+        {
+            "facilityAdministratorName",
+            "facilityAdministratorPhone",
+            "facilityAdministratorEmail",
+            "facilityAdministratorIdentifier",
+            "facilityPhoneNumber",
+            "facilityEmail",
+        }
+    )
+
+    def update_from_dha_response(self, data: dict) -> None:
+        """
+        Populate cached DHA registry fields from a DHA API response dict.
+
+        Non-PII fields are stored as plain columns.  PII fields (admin
+        contact, facility contact) are stored encrypted.  The full response
+        is cached in ``dha_registry_data`` with PII keys stripped.
+        """
+        from django.utils import timezone
+
+        # Non-PII columns
+        self.dha_fid_code = str(data.get("fidCode", "") or "")
+        self.dha_fr_code = str(data.get("frCode", "") or "")
+        self.dha_license_status = str(data.get("facilityLicenseStatus", "") or "")
+        self.dha_license_number = str(data.get("licenseNumber", "") or "")
+        self.dha_license_expiry = str(data.get("facilityLicenseEndDate", "") or "")
+        self.dha_facility_type = str(data.get("facilityType", "") or "")
+        self.dha_keph_level = str(data.get("kephLevel", "") or "")
+        self.dha_ownership = str(data.get("facilityOwnership", "") or "")
+        self.dha_regulatory_body = str(data.get("regulatoryBody", "") or "")
+
+        # Operational / SHA status
+        reg_ops = data.get("regulatoryOperationalStatus") or {}
+        self.dha_operational_status = str(
+            reg_ops.get("operationalStatus", "") if isinstance(reg_ops, dict) else ""
+        )
+        self.dha_sha_contract_status = str(data.get("shaContractStatus", "") or "")
+        self.dha_sha_contract_start = str(data.get("shaConstractStartDate", "") or "")
+        self.dha_sha_contract_end = str(data.get("shaConstractEndDate", "") or "")
+
+        # Bed capacity
+        beds = data.get("bedOccupancy") or {}
+        if isinstance(beds, dict):
+            self.dha_total_beds = int(beds.get("totalBeds", 0) or 0)
+            self.dha_icu_beds = int(beds.get("icuBeds", 0) or 0)
+            self.dha_hdu_beds = int(beds.get("hduBeds", 0) or 0)
+
+        # PII fields — encrypted
+        self.dha_admin_name = str(data.get("facilityAdministratorName", "") or "")
+        self.dha_admin_phone = str(data.get("facilityAdministratorPhone", "") or "")
+        self.dha_admin_email = str(data.get("facilityAdministratorEmail", "") or "")
+        self.dha_admin_id = str(data.get("facilityAdministratorIdentifier", "") or "")
+        self.dha_facility_phone = str(data.get("facilityPhoneNumber", "") or "")
+        self.dha_facility_email = str(data.get("facilityEmail", "") or "")
+
+        # Cache the full response with PII stripped
+        safe_data = {k: v for k, v in data.items() if k not in self._DHA_PII_KEYS}
+        self.dha_registry_data = safe_data
+        self.dha_registry_synced_at = timezone.now()
 
     # ------------------------------------------------------------------
     # Class Methods

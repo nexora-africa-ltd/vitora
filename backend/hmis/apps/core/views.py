@@ -2384,6 +2384,113 @@ class FacilityViewSet(viewsets.ModelViewSet):
         serializer = FacilityListSerializer(facilities, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary="Fetch and cache DHA registry data for this facility",
+        responses={200: FacilityDetailSerializer},
+    )
+    @action(detail=True, methods=["post"], url_path="sync-dha-registry")
+    def sync_dha_registry(self, request, pk=None):
+        """
+        Fetch the facility's record from the DHA ILM registry using its
+        available identifier (mfl_code, sha_facility_code) and cache the
+        result (PII encrypted, non-PII in JSON).
+
+        Identifier priority (DHA accepts: fid, fr-code, registration-number):
+        1. sha_facility_code → identifier-type "fr-code" (FID-XX-XXXXXX-X format)
+        2. mfl_code          → identifier-type "fr-code" (numeric MFL code)
+
+        Returns the updated facility detail with all cached DHA fields.
+        """
+        facility = self.get_object()
+
+        # Build ordered list of (identifier, identifier_type) to try
+        # DHA valid types: fid, fr-code, registration-number
+        candidates: list[tuple[str, str]] = []
+        if facility.sha_facility_code:
+            candidates.append((facility.sha_facility_code, "fr-code"))
+        if facility.mfl_code:
+            candidates.append((facility.mfl_code, "fr-code"))
+
+        if not candidates:
+            return Response(
+                {"detail": "Facility has no MFL code or SHA facility code."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from hmis.apps.billing.services.dha_errors import DHAError
+        from hmis.apps.billing.services.ilm_registries_service import IlmRegistriesService
+
+        service = IlmRegistriesService()
+        result = None
+        last_error: DHAError | None = None
+
+        for identifier, identifier_type in candidates:
+            try:
+                result = service.search_facility(
+                    identifier=identifier,
+                    identifier_type=identifier_type,
+                    facility=facility,
+                    user=request.user,
+                )
+                if result.status_code == 200 and result.payload:
+                    last_error = None
+                    break
+            except DHAError as exc:
+                last_error = exc
+                result = None
+                continue
+
+        if last_error is not None:
+            return Response(
+                {"detail": f"DHA registry lookup failed: {last_error}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        if result is None:
+            return Response(
+                {"detail": "DHA registry lookup failed for all identifiers."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        payload = result.payload
+        if not payload:
+            return Response(
+                {"detail": "Empty response from DHA registry."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        # DHA may wrap in results/data array
+        data = payload
+        if isinstance(data, dict):
+            data = data.get("results", data.get("data", data))
+        if isinstance(data, list):
+            data = data[0] if data else {}
+
+        if not isinstance(data, dict) or not data:
+            return Response(
+                {"detail": "Could not parse DHA registry response."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        facility.update_from_dha_response(data)
+        facility.save()
+
+        AuditLog.log(
+            action="facility_dha_registry_synced",
+            user=request.user,
+            resource_type="Facility",
+            resource_id=facility.id,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "mfl_code": facility.mfl_code,
+                "sha_facility_code": facility.sha_facility_code,
+            },
+        )
+
+        serializer = FacilityDetailSerializer(facility, context={"request": request})
+        return Response(serializer.data)
+
 
 # =============================================================================
 # DHIS2 Configuration ViewSet

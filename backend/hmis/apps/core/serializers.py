@@ -1028,6 +1028,17 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
     enabled_module_names = serializers.ListField(child=serializers.CharField(), read_only=True)
     effective_logo_url = serializers.SerializerMethodField()
 
+    # Encrypted PII fields — exposed via model property descriptors
+    biometrics_agent_national_id = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
+    dha_admin_name = serializers.CharField(read_only=True)
+    dha_admin_phone = serializers.CharField(read_only=True)
+    dha_admin_email = serializers.CharField(read_only=True)
+    dha_admin_id = serializers.CharField(read_only=True)
+    dha_facility_phone = serializers.CharField(read_only=True)
+    dha_facility_email = serializers.CharField(read_only=True)
+
     class Meta:
         """Meta options for FacilityDetailSerializer."""
 
@@ -1055,6 +1066,32 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "sha_contracted",
             "sha_contract_expiry",
             "sha_facility_code",
+            "biometrics_agent_national_id",
+            # DHA Registry Cache
+            "dha_registry_synced_at",
+            "dha_fid_code",
+            "dha_fr_code",
+            "dha_license_status",
+            "dha_license_number",
+            "dha_license_expiry",
+            "dha_operational_status",
+            "dha_sha_contract_status",
+            "dha_sha_contract_start",
+            "dha_sha_contract_end",
+            "dha_total_beds",
+            "dha_icu_beds",
+            "dha_hdu_beds",
+            "dha_facility_type",
+            "dha_keph_level",
+            "dha_ownership",
+            "dha_regulatory_body",
+            "dha_admin_name",
+            "dha_admin_phone",
+            "dha_admin_email",
+            "dha_admin_id",
+            "dha_facility_phone",
+            "dha_facility_email",
+            "dha_registry_data",
             # DHIS2
             "dhis2_org_unit",
             # Modules
@@ -1092,6 +1129,30 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "modules",
             "enabled_module_names",
             "effective_logo_url",
+            "dha_registry_synced_at",
+            "dha_fid_code",
+            "dha_fr_code",
+            "dha_license_status",
+            "dha_license_number",
+            "dha_license_expiry",
+            "dha_operational_status",
+            "dha_sha_contract_status",
+            "dha_sha_contract_start",
+            "dha_sha_contract_end",
+            "dha_total_beds",
+            "dha_icu_beds",
+            "dha_hdu_beds",
+            "dha_facility_type",
+            "dha_keph_level",
+            "dha_ownership",
+            "dha_regulatory_body",
+            "dha_admin_name",
+            "dha_admin_phone",
+            "dha_admin_email",
+            "dha_admin_id",
+            "dha_facility_phone",
+            "dha_facility_email",
+            "dha_registry_data",
             "created_at",
             "updated_at",
         ]

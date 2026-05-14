@@ -518,6 +518,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Roles', href: '/admin/roles', icon: ShieldUser, actionKey: 'admin.manage_roles' },
       { label: 'Staff', href: '/admin/staff', icon: UserCog, actionKey: 'admin.manage_staff' },
       { label: 'HWR Lookup', href: '/admin/hwr-lookup', icon: KenyaCoatOfArmsIcon, actionKey: 'admin.manage_staff' },
+      { label: 'Facility Lookup', href: '/admin/facility-lookup', icon: KenyaCoatOfArmsIcon, actionKey: 'admin.manage_departments' },
       { label: 'Join Requests', href: '/admin/join-requests', icon: UserPlus, actionKey: 'admin.manage_staff' },
       { label: 'Audit Logs', href: '/admin/audit-logs', icon: ScrollText, actionKey: 'admin.view_audit_logs' },
       { label: 'Audit Integrity', href: '/admin/audit-integrity', icon: Fingerprint, actionKey: 'admin.view_audit_logs' },
