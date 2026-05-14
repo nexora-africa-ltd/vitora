@@ -5,7 +5,7 @@
 
 # Kenya HMIS (Hospital Management Information System)
 _Comprehensive Technical Blueprint & Implementation Guide (Kenya-Tailored)_
-_Last Updated: March 21, 2026_
+_Last Updated: May 14, 2026_
 
 ---
 
@@ -75,9 +75,9 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 |-------|----------|-------|--------|
 | **Phase 0** | Jan-Mar 2026 | Foundation, Desktop Prototype, Security | ✅ Complete |
 | **Phase 1** | Apr-Sep 2026 | Clinical Core, SHA Integration, Mobile, Web | ✅ Complete |
-| **Phase 2** | Oct 2026-Mar 2027 | Theatre, Inventory, KHIS Reporting, Cloud Sync | 🚧 In Progress |
-| **Phase 3** | Apr-Sep 2027 | MCH/Immunization, Imaging, BI Mart | 📋 Planned |
-| **Phase 4** | Oct-Dec 2027 | AI/Advanced Analytics, Global Scaling | 📋 Planned |
+| **Phase 2** | Oct 2026-Mar 2027 | Surveillance, MCH, Imaging, Allied Health, Analytics, MOH Reporting, FHIR Conformance | 🚧 In Progress |
+| **Phase 3** | Apr-Sep 2027 | Pilots, Scaling, Advanced Billing, BI Expansion | 📋 Planned |
+| **Phase 4** | Oct-Dec 2027 | On-Device AI/ML, Global Readiness, Open Source | 📋 Planned |
 
 ---
 
@@ -131,29 +131,31 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 ### 2.2 Test Coverage
 | Component | Tests | Coverage |
 |-----------|-------|----------|
-| Backend (Django) | 6,465+ functions (285 files) | 30.21% overall* |
+| Backend (Django) | 10,241+ functions (494 files) | Core modules 80%+ |
 | Web App (Jest + Playwright) | 679 test files (27 E2E) | Unit + E2E |
 | Desktop (Jest) | 66+ | 70%+ |
 | Mobile (Jest) | 348 test files | - |
 | **Total** | **7,500+** | **Core modules 80%+** |
 
-> *Overall backend coverage dropped to 30.21% as the codebase expanded rapidly from ~10K to 44K lines across 27 apps. Core modules (patients, encounters, billing, triage, pharmacy, laboratory) retain higher coverage. Improving coverage for newer modules is an ongoing priority.
+> *Overall backend coverage reflects rapid codebase expansion across 38 apps. Core modules (patients, encounters, billing, triage, pharmacy, laboratory) retain higher coverage. Improving coverage for newer modules is an ongoing priority.
 
 ### 2.3 Key Metrics Achieved
-- ✅ 6,465+ backend test functions across 285 test files
+- ✅ 10,241+ backend test functions across 494 test files
 - ✅ Zero critical security vulnerabilities (Bandit + Trivy scan)
 - ✅ 100% Kenya Data Protection Act compliance
 - ✅ All 15 SHA/DHA APIs integrated
 - ✅ Offline-first architecture validated
 - ✅ Full RBAC with department-scoped permissions
-- ✅ 30 route groups in web dashboard (239 pages)
-- ✅ 39 API client modules with Zod validation
-- ✅ 34 Zod schema files for runtime response validation
-- ✅ 27 Django backend apps with 211 migrations
+- ✅ 38 route groups in web dashboard (404 pages)
+- ✅ 49 API client modules with Zod validation
+- ✅ 62 Zod schema files for runtime response validation
+- ✅ 38 Django backend apps with 458 migrations
 - ✅ 4 CI/CD workflows (CI, CodeQL, FHIR, Security)
 - ✅ AI/TibaBot integration with 20+ clinical AI endpoints
 - ✅ MFA, PKI, emergency access, tamper-resistant audit
 - ✅ FHIR R4 endpoints, HL7v2, SNOMED CT, SHR sharing
+- ✅ FHIR IPS conformance testing (Inferno IPS 2.0.0-ballot — all tests passing)
+- ✅ Subscription tier enforcement (FREE/BASIC/PROFESSIONAL/ENTERPRISE)
 - ✅ 6 WebSocket consumers for real-time updates
 - ✅ 45+ management commands for data seeding & operations
 
@@ -222,7 +224,7 @@ vitora/
 │   ├── package.json
 │   ├── next.config.js
 │   ├── tailwind.config.js
-│   ├── app/                        # 30 route groups
+│   ├── app/                        # 38 route groups
 │   │   ├── (dashboard)/            # Protected routes
 │   │   │   ├── patients/
 │   │   │   ├── encounters/
@@ -247,8 +249,8 @@ vitora/
 │   │   └── login/
 │   ├── components/
 │   ├── lib/
-│   │   ├── api/                    # 39 API client modules
-│   │   ├── schemas/                # 34 Zod validation schemas
+│   │   ├── api/                    # 69 API client modules
+│   │   ├── schemas/                # 62 Zod validation schemas
 │   │   └── hooks/
 │   └── e2e/                        # Playwright E2E tests (27 specs)
 │
@@ -958,7 +960,7 @@ All API clients include Zod validation schemas:
 \`\`\`
 web-app/
 ├── app/
-│   ├── (dashboard)/           # Protected routes with auth (30 route groups)
+│   ├── (dashboard)/           # Protected routes with auth (38 route groups)
 │   │   ├── layout.tsx         # Sidebar + Header layout
 │   │   ├── page.tsx           # Dashboard with stats
 │   │   ├── patients/          # Patient management
@@ -986,8 +988,8 @@ web-app/
 │   ├── ui/                    # shadcn/ui components
 │   └── shared/                # LoadingSpinner, EmptyState, PageHeader
 └── lib/
-    ├── api/                   # 39 API client modules with interceptors
-    ├── schemas/               # 34 Zod validation schemas
+    ├── api/                   # 69 API client modules with interceptors
+    ├── schemas/               # 62 Zod validation schemas
     ├── types/                 # 37 TypeScript type definitions
     ├── auth/                  # AuthProvider, AuthGuard, useAuth
     └── hooks/                 # Custom hooks
