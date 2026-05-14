@@ -196,7 +196,7 @@ export default function WeeklyRosterPage() {
     queryKey: ['scheduling-resources-person'],
     queryFn: () => resourcesApi.list({ resource_type: 'PERSON', page_size: 200, ordering: 'name' }),
   });
-  const allStaff = resourcesData?.results ?? [];
+  const allStaff = useMemo(() => resourcesData?.results ?? [], [resourcesData?.results]);
   const staffList = useMemo(
     () => departmentFilter ? allStaff.filter((r) => r.department_name === departmentFilter) : allStaff,
     [allStaff, departmentFilter],

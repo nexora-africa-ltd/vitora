@@ -58,15 +58,6 @@ export default function SubscriptionPlanDetailPage({
   const queryClient = useQueryClient();
   const { isSuperuser } = usePermissions();
 
-  if (!isSuperuser) {
-    return (
-      <div className="space-y-4">
-        <PageHeader title="Access Denied" />
-        <Card><CardContent className="py-8 text-center text-muted-foreground">Only Nexora superusers can manage subscription plans.</CardContent></Card>
-      </div>
-    );
-  }
-
   const { data: plan, isLoading } = useQuery({
     queryKey: ['subscription-plan', planId],
     queryFn: () => subscriptionPlansApi.get(planId),
@@ -83,6 +74,15 @@ export default function SubscriptionPlanDetailPage({
       toast.error('Failed to delete plan');
     },
   });
+
+  if (!isSuperuser) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="Access Denied" />
+        <Card><CardContent className="py-8 text-center text-muted-foreground">Only Nexora superusers can manage subscription plans.</CardContent></Card>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

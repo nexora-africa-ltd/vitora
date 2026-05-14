@@ -124,8 +124,10 @@ export default function LabResultDetailPage() {
   const criticalValues: string[] = Array.isArray((result as any)?.critical_values)
     ? (result as any).critical_values
     : [];
-  const components: Array<{ name?: string; reference_range?: string; value?: string; unit?: string }> =
-    Array.isArray((result as any)?.components) ? (result as any).components : [];
+  const components = useMemo<Array<{ name?: string; reference_range?: string; value?: string; unit?: string }>>(
+    () => Array.isArray((result as any)?.components) ? (result as any).components : [],
+    [result],
+  );
 
   const referenceRanges = (() => {
     // Ensure these common ranges exist for the E2E assertions.

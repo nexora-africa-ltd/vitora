@@ -1,6 +1,7 @@
 # SMART on FHIR OAuth2 Module
 
-> **Purpose**: Enables third-party healthcare applications to securely integrate with Vitora HMIS using the SMART on FHIR standard.
+> **Purpose**: Enables third-party healthcare applications to securely integrate with
+> Vitora HMIS using the SMART on FHIR standard.
 
 ---
 
@@ -19,7 +20,7 @@ Vitora HMIS supports **two authentication methods** that serve different purpose
 
 ### When to Use Which?
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        Vitora HMIS API                              │
 ├─────────────────────────────────────────────────────────────────────┤
@@ -81,7 +82,7 @@ Register via Django admin at `/admin/oauth2_provider/application/` or programmat
 
 #### Step 3: Authorization Flow
 
-```
+```text
 ┌────────────┐     ┌────────────┐     ┌────────────┐
 │  SMART App │     │   Vitora   │     │    User    │
 └─────┬──────┘     └─────┬──────┘     └─────┬──────┘
@@ -155,6 +156,7 @@ const tokenResponse = await fetch('https://vitora.example.com/oauth/token/', {
 ## 📋 Supported SMART Scopes
 
 ### OIDC Scopes
+
 | Scope | Description |
 |-------|-------------|
 | `openid` | OpenID Connect authentication |
@@ -163,6 +165,7 @@ const tokenResponse = await fetch('https://vitora.example.com/oauth/token/', {
 | `offline_access` | Refresh tokens for offline use |
 
 ### Launch Scopes
+
 | Scope | Description |
 |-------|-------------|
 | `launch` | Receive launch context from EHR |
@@ -170,6 +173,7 @@ const tokenResponse = await fetch('https://vitora.example.com/oauth/token/', {
 | `launch/encounter` | Request encounter context |
 
 ### Clinical Scopes (SMART v2 format)
+
 | Pattern | Example | Description |
 |---------|---------|-------------|
 | `patient/<Resource>.read` | `patient/Patient.read` | Read patient demographics |
@@ -199,12 +203,14 @@ openid fhirUser launch/patient launch/encounter patient/*.*
 ## 🔗 API Endpoints
 
 ### Discovery & Metadata
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/.well-known/smart-configuration` | GET | SMART configuration document |
 | `/fhir/metadata` | GET | FHIR CapabilityStatement |
 
 ### OAuth2 (django-oauth-toolkit)
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/oauth/authorize/` | GET | Authorization endpoint |
@@ -213,6 +219,7 @@ openid fhirUser launch/patient launch/encounter patient/*.*
 | `/oauth/introspect/` | POST | Token introspection |
 
 ### SMART-Specific
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/smart/launch` | GET | EHR launch handler |
@@ -282,7 +289,7 @@ class PatientViewSet(ModelViewSet):
 
 ## 📁 Module Structure
 
-```
+```text
 oauth/
 ├── __init__.py          # Module exports
 ├── scopes.py            # SMART scope definitions
@@ -298,12 +305,16 @@ oauth/
 ## 🔍 Troubleshooting
 
 ### "Invalid scope" error
+
 Ensure the requested scope follows SMART v2 syntax: `<context>/<Resource>.<action>`
 
 ### "Missing launch context" warning
-The `launch` scope requires an EHR-initiated launch. For standalone apps, use `launch/patient` to request patient selection.
+
+The `launch` scope requires an EHR-initiated launch. For standalone apps, use
+`launch/patient` to request patient selection.
 
 ### Token not working with existing endpoints
+
 Existing endpoints use JWT authentication by default. For SMART tokens to work, add `OAuth2Authentication` to the view:
 
 ```python
