@@ -33,6 +33,11 @@ SUBSCRIPTION_EXPIRY_ENFORCEMENT = (
     os.getenv("SUBSCRIPTION_EXPIRY_ENFORCEMENT", "false").lower() == "true"
 )
 
+# Subscription feature gate — disabled in tests by default
+SUBSCRIPTION_FEATURE_ENFORCEMENT = (
+    os.getenv("SUBSCRIPTION_FEATURE_ENFORCEMENT", "false").lower() == "true"
+)
+
 # In-memory SQLite for speed — migrations run once per pytest session (~2-4s).
 # WebSocket / Channels tests that need cross-thread visibility should use a
 # file-backed override (see conftest.py `ws_db` fixture).

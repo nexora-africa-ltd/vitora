@@ -120,6 +120,11 @@ SUBSCRIPTION_EXPIRY_ENFORCEMENT = (
     os.getenv("SUBSCRIPTION_EXPIRY_ENFORCEMENT", "false").lower() == "true"
 )
 
+# Subscription feature gate — disabled in development for convenience
+SUBSCRIPTION_FEATURE_ENFORCEMENT = (
+    os.getenv("SUBSCRIPTION_FEATURE_ENFORCEMENT", "false").lower() == "true"
+)
+
 # Email backend for development (console)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 

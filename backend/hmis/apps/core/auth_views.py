@@ -128,6 +128,22 @@ class StaffInvitationViewSet(viewsets.ModelViewSet):
         serializer = StaffInvitationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        # Enforce subscription staff limit before creating invitation
+        if not request.user.is_superuser:
+            profile = getattr(request.user, "staff_profile", None)
+            org = profile.organization if profile else None
+            if org and not org.can_add_user():
+                return Response(
+                    {
+                        "detail": (
+                            f"Staff limit reached ({org.max_users}). "
+                            "Upgrade your subscription plan to invite more staff."
+                        ),
+                        "code": "staff_limit_reached",
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
         data = serializer.validated_data
         secondary_roles = data.pop("secondary_roles", [])
         secondary_departments = data.pop("secondary_departments", [])
@@ -282,6 +298,20 @@ def invitation_accept(request):
         )
         return Response({"error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Enforce subscription staff limit before creating user
+    org = invitation.organization
+    if org and not org.can_add_user():
+        return Response(
+            {
+                "detail": (
+                    f"Staff limit reached ({org.max_users}). "
+                    "The organization must upgrade its subscription plan."
+                ),
+                "code": "staff_limit_reached",
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     with transaction.atomic():
         # Create user
         user = User.objects.create_user(
@@ -401,6 +431,20 @@ def accept_cross_org(request):
     if invitation.existing_user_id != request.user.pk:
         return Response(
             {"error": "This invitation is not for you."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    # Enforce subscription staff limit before adding member
+    org = invitation.organization
+    if org and not org.can_add_user():
+        return Response(
+            {
+                "detail": (
+                    f"Staff limit reached ({org.max_users}). "
+                    "The organization must upgrade its subscription plan."
+                ),
+                "code": "staff_limit_reached",
+            },
             status=status.HTTP_403_FORBIDDEN,
         )
 

@@ -37,6 +37,7 @@ from hmis.apps.analytics.serializers import (
     PatientDemographicSnapshotSerializer,
 )
 from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.permissions import SubscriptionFeaturePermission
 
 # ---------------------------------------------------------------------------
 # Filters
@@ -254,7 +255,8 @@ class SupersetGuestTokenView(APIView):
     data by the requesting user's ``facility_id``, ensuring tenant isolation.
     """
 
-    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    permission_classes = [IsAuthenticated, CanViewAnalytics, SubscriptionFeaturePermission]
+    subscription_feature = "custom_reports"
 
     def get(self, request: Request) -> Response:
         dashboard_id = request.query_params.get("dashboard_id")
@@ -415,7 +417,8 @@ class SupersetDashboardListView(APIView):
     Only returns dashboards that are published (``published=true``).
     """
 
-    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    permission_classes = [IsAuthenticated, CanViewAnalytics, SubscriptionFeaturePermission]
+    subscription_feature = "custom_reports"
 
     def get(self, request: Request) -> Response:
         base_url = getattr(settings, "SUPERSET_URL", "").rstrip("/")
@@ -518,7 +521,8 @@ class MetabaseEmbedView(APIView):
     row-level sandboxing filters data by tenant.
     """
 
-    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    permission_classes = [IsAuthenticated, CanViewAnalytics, SubscriptionFeaturePermission]
+    subscription_feature = "custom_reports"
 
     def get(self, request: Request) -> Response:
         serializer = MetabaseEmbedSerializer(data=request.query_params)
@@ -588,7 +592,8 @@ class MetabaseDashboardListView(APIView):
     Excludes the default E-commerce sample dashboard.
     """
 
-    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    permission_classes = [IsAuthenticated, CanViewAnalytics, SubscriptionFeaturePermission]
+    subscription_feature = "custom_reports"
 
     def get(self, request: Request) -> Response:
         api_url = getattr(settings, "METABASE_API_URL", "") or getattr(
