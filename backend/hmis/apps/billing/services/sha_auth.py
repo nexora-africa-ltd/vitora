@@ -80,10 +80,9 @@ class SHAAuthService:
         self.base_url = settings.SHA_API_BASE_URL.rstrip("/")
         self.auth_mode = getattr(settings, "SHA_AUTH_MODE", "legacy").strip().lower()
         self.auth_base_url = getattr(settings, "SHA_AUTH_BASE_URL", self.base_url).rstrip("/")
-        self.auth_token_endpoint = getattr(
-            settings,
-            "SHA_AUTH_TOKEN_ENDPOINT",
-            "/api/v1/tenants/token" if self.auth_mode == "ilm" else "/v1/hie-auth",
+        default_token_ep = "/api/v1/tenants/token" if self.auth_mode == "ilm" else "/v1/hie-auth"
+        self.auth_token_endpoint = (
+            getattr(settings, "SHA_AUTH_TOKEN_ENDPOINT", "") or default_token_ep
         )
         self.timeout = getattr(settings, "SHA_API_TIMEOUT", 19)
 
