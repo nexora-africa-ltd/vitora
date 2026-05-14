@@ -111,6 +111,7 @@ MIDDLEWARE = [
     "hmis.apps.core.middleware.MFAGraceEnforcementMiddleware",  # Block API after MFA grace period
     "hmis.apps.core.middleware.OnboardingEnforcementMiddleware",  # Block API after onboarding grace period
     "hmis.apps.core.middleware.SubscriptionExpiryMiddleware",  # Block writes when subscription expired
+    "hmis.apps.core.middleware.SubscriptionFeatureGateMiddleware",  # Gate modules by subscription features
     "hmis.apps.core.middleware.MediaSecurityMiddleware",  # Force Content-Disposition: attachment on /media/
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -257,6 +258,10 @@ ACTIVE_SHIFT_ENFORCEMENT = True
 # Subscription expiry enforcement — when True, write operations are blocked
 # for organizations whose subscription has expired. Read access remains.
 SUBSCRIPTION_EXPIRY_ENFORCEMENT = True
+
+# Subscription feature gate — when True, module-level access is restricted
+# based on the org's subscription plan feature flags.
+SUBSCRIPTION_FEATURE_ENFORCEMENT = True
 
 # WebAuthn / FIDO2 / Passkey settings
 # RP ID must match the domain the site is served from (no port, no scheme).
