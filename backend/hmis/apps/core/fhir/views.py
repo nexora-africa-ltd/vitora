@@ -646,11 +646,12 @@ class FHIRObservationView(PublicFHIRReadAPIView):
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
         description="Get a FHIR R4 Observation resource by ID",
     )
-    def get(self, request, pk: int) -> Response:
-        """Get an Observation resource by ID."""
+    def get(self, request, pk) -> Response:
+        """Get an Observation resource by ID (integer PK or UUID fhir_id)."""
         from hmis.apps.encounters.models import PregnancyObservation, SocialHistoryObservation
         from hmis.apps.imaging.models import DICOMStudy
 
+        # UUID-keyed observations (social history, pregnancy)
         try:
             social_history_observation = SocialHistoryObservation.objects.select_related(
                 "patient", "encounter"
@@ -659,7 +660,7 @@ class FHIRObservationView(PublicFHIRReadAPIView):
                 self._social_history_to_fhir(social_history_observation, request),
                 status=status.HTTP_200_OK,
             )
-        except SocialHistoryObservation.DoesNotExist:
+        except (SocialHistoryObservation.DoesNotExist, ValueError):
             pass
 
         try:
@@ -670,11 +671,29 @@ class FHIRObservationView(PublicFHIRReadAPIView):
                 self._pregnancy_observation_to_fhir(pregnancy_observation, request),
                 status=status.HTTP_200_OK,
             )
-        except PregnancyObservation.DoesNotExist:
+        except (PregnancyObservation.DoesNotExist, ValueError):
             pass
 
+        # Integer-keyed observations — guard against non-numeric pk
         try:
-            study = DICOMStudy.objects.prefetch_related("reports").get(pk=pk)
+            int_pk = int(pk)
+        except (ValueError, TypeError):
+            return Response(
+                {
+                    "resourceType": "OperationOutcome",
+                    "issue": [
+                        {
+                            "severity": "error",
+                            "code": "not-found",
+                            "diagnostics": f"Observation with ID {pk} not found",
+                        }
+                    ],
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            study = DICOMStudy.objects.prefetch_related("reports").get(pk=int_pk)
             return Response(
                 self._radiology_study_to_fhir(study, request),
                 status=status.HTTP_200_OK,
@@ -682,13 +701,13 @@ class FHIRObservationView(PublicFHIRReadAPIView):
         except DICOMStudy.DoesNotExist:
             pass
 
-        # Check lab results first
+        # Check lab results
         from hmis.apps.laboratory.models import LabResult
 
         try:
             lab_result = LabResult.objects.select_related(
                 "order_item__lab_order__patient",
-            ).get(pk=pk)
+            ).get(pk=int_pk)
             return Response(
                 self._lab_result_to_fhir(lab_result, request), status=status.HTTP_200_OK
             )
@@ -699,7 +718,7 @@ class FHIRObservationView(PublicFHIRReadAPIView):
         from hmis.apps.encounters.models import Encounter
 
         try:
-            encounter = Encounter.objects.select_related("patient").get(pk=pk)
+            encounter = Encounter.objects.select_related("patient").get(pk=int_pk)
             # Return first vital sign as observation
             return Response(
                 self._encounter_vitals_to_fhir(encounter, request), status=status.HTTP_200_OK
@@ -730,8 +749,14 @@ class FHIRObservationView(PublicFHIRReadAPIView):
         value_field = {}
         if lab_result.numeric_value is not None:
             numeric_unit = lab_result.result_unit or test.result_unit or ""
-            value_display = f"{float(lab_result.numeric_value):g} {numeric_unit}".strip()
-            value_field = {"valueString": value_display}
+            quantity: dict = {
+                "value": float(lab_result.numeric_value),
+                "system": "http://unitsofmeasure.org",
+            }
+            if numeric_unit:
+                quantity["unit"] = numeric_unit
+                quantity["code"] = numeric_unit
+            value_field = {"valueQuantity": quantity}
         elif lab_result.text_value:
             value_field = {"valueString": lab_result.text_value}
         elif lab_result.option_value:
@@ -751,7 +776,7 @@ class FHIRObservationView(PublicFHIRReadAPIView):
                 "versionId": "1",
                 "lastUpdated": format_date(lab_result.updated_at),
                 "profile": [
-                    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-laboratory-pathology-uv-ips",
+                    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-laboratory-uv-ips",
                     "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-uv-ips",
                 ],
             },
@@ -804,11 +829,17 @@ class FHIRObservationView(PublicFHIRReadAPIView):
             fhir_resource["specimen"] = {"reference": f"Specimen/{lab_result.specimen_id}"}
 
         fhir_resource.update(value_field)
+        # Build display value for narrative
+        if "valueQuantity" in value_field:
+            q = value_field["valueQuantity"]
+            result_display = f"{q['value']:g} {q.get('unit', '')}".strip()
+        else:
+            result_display = fhir_resource.get("valueString", "Not recorded")
         fhir_resource["text"] = build_generated_narrative(
             "Observation",
             [
                 f"Test: {canonical_display}",
-                f"Result: {fhir_resource.get('valueString', 'Not recorded')}",
+                f"Result: {result_display}",
             ],
         )
 
@@ -1639,7 +1670,7 @@ class FHIRCompositionView(APIView):
                         {
                             "system": "http://loinc.org",
                             "code": "30954-2",
-                            "display": "Relevant diagnostic tests/laboratory data Narrative",
+                            "display": "Relevant diagnostic tests/laboratory data note",
                         }
                     ]
                 },
@@ -1660,7 +1691,7 @@ class FHIRCompositionView(APIView):
                         {
                             "system": "http://loinc.org",
                             "code": "29762-2",
-                            "display": "Social history Narrative",
+                            "display": "Social history note",
                         }
                     ]
                 },
@@ -1708,7 +1739,7 @@ class FHIRCompositionView(APIView):
                         {
                             "system": "http://loinc.org",
                             "code": "11369-6",
-                            "display": "History of Immunization Narrative",
+                            "display": "History of Immunization note",
                         }
                     ]
                 },

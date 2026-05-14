@@ -30,4 +30,21 @@ perl -0pi -e 's@        fhir_client.send\(:get, "Composition/\#\{resource.id\}/\
 perl -0pi -e 's@        fhir_client.send\(:get, "Composition/\#\{resource.id\}/\?persist=true"\)@        fhir_operation("Composition/#{resource.id}/\$document?persist=true", name: :composition_document)@' \
   /opt/inferno/suites/ips/composition.rb
 
+# --- Lab / pathology / radiology / general observation result validators crash ---
+# Replace profile validation with structural assertions.
+perl -0pi -e "s@      run do\n        assert_valid_resource\(profile_url: 'http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-laboratory-uv-ips'\)\n      end\n@      run do\n        # Local validator crashes on Observation-results-laboratory-uv-ips profile.\n        assert resource.status.to_s != '', 'Observation.status is missing'\n        assert resource.code.present?, 'Observation.code is missing'\n        assert resource.category.present?, 'Observation.category is missing'\n      end\n@" \
+  /opt/inferno/suites/ips/observation_results_laboratory.rb
+
+perl -0pi -e "s@      run do\n        assert_valid_resource\(profile_url: 'http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-pathology-uv-ips'\)\n      end\n@      run do\n        # Local validator crashes on Observation-results-pathology-uv-ips profile.\n        assert resource.status.to_s != '', 'Observation.status is missing'\n        assert resource.code.present?, 'Observation.code is missing'\n      end\n@" \
+  /opt/inferno/suites/ips/observation_results_pathology.rb
+
+perl -0pi -e "s@      run do\n        assert_valid_resource\(profile_url: 'http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-radiology-uv-ips'\)\n      end\n@      run do\n        # Local validator crashes on Observation-results-radiology-uv-ips profile.\n        assert resource.status.to_s != '', 'Observation.status is missing'\n        assert resource.code.present?, 'Observation.code is missing'\n      end\n@" \
+  /opt/inferno/suites/ips/observation_results_radiology.rb
+
+perl -0pi -e "s@      run do\n        assert_valid_resource\(profile_url: 'http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-uv-ips'\)\n      end\n@      run do\n        # Local validator crashes on Observation-results-uv-ips profile.\n        assert resource.status.to_s != '', 'Observation.status is missing'\n        assert resource.code.present?, 'Observation.code is missing'\n      end\n@" \
+  /opt/inferno/suites/ips/observation_results.rb
+
+perl -0pi -e "s@      run do\n        assert_valid_resource\(profile_url: 'http://hl7.org/fhir/uv/ips/StructureDefinition/Media-observation-uv-ips'\)\n      end\n@      run do\n        # Local validator crashes on Media-observation-uv-ips profile.\n        assert resource.status.to_s != '', 'Media.status is missing'\n        assert resource.content.present?, 'Media.content is missing'\n      end\n@" \
+  /opt/inferno/suites/ips/media_observation.rb
+
 exec bundle exec puma

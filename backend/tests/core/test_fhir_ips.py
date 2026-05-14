@@ -729,7 +729,8 @@ class TestFHIRObservation:
         assert (
             response.data["code"]["coding"][0]["display"] == sample_lab_result.order_item.test.name
         )
-        assert response.data["valueString"] == "7.5"
+        assert response.data["valueQuantity"]["value"] == 7.5
+        assert response.data["valueQuantity"]["system"] == "http://unitsofmeasure.org"
         assert response.data["performer"][0]["reference"].startswith("Practitioner/")
         assert response.data["interpretation"][0]["coding"][0]["code"] == "N"
 
