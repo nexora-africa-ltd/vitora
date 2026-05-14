@@ -80,9 +80,9 @@ urlpatterns = [
         FHIROrganizationView.as_view(),
         name="organization-read",
     ),
-    # Observation resources (vitals, lab results)
+    # Observation resources (vitals, lab results, social history)
     path(
-        "Observation/<int:pk>",
+        "Observation/<str:pk>",
         FHIRObservationView.as_view(),
         name="observation-read",
     ),
