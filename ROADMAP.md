@@ -1,7 +1,7 @@
 # Vitora HMIS - Comprehensive Development Roadmap
 
-**Version**: 3.1
-**Last Updated**: April 16, 2026
+**Version**: 3.2
+**Last Updated**: May 14, 2026
 **Target Completion**: Q4 2027
 **Methodology**: Test-Driven Development (TDD) with Agile Sprints
 
@@ -15,9 +15,9 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - **Phase 0 (Sprints 0.1-0.7)**: All completed ✅
 - **Phase 1 (Sprint 1.x)**: All core clinical modules COMPLETE ✅
 - **Phase 2 (Sprint 2.x)**: In progress — surveillance, MCH, imaging, allied health, procedures, analytics, MOH reporting mostly complete 🚧
-- **Backend**: 33 Django apps, ~250+ models, 301 migrations
-- **Backend Tests**: 405 test files, 8,421 test functions
-- **Web App**: Next.js 16 (React 19) with 339 pages, 458 components, 49 API clients, 45 Zod schemas
+- **Backend**: 38 Django apps, 389 models, 458 migrations
+- **Backend Tests**: 494 test files, 10,241 test functions
+- **Web App**: Next.js 16 (React 19) with 404 pages, 518 components, 69 API clients, 62 Zod schemas
 - **Mobile App**: React Native 0.81 (Expo 54) with 40 screens, offline sync, biometric auth
 - **Desktop App**: Offline-first Electron with JWT auth, patient registration, encounters
 - **Security**: Fernet encryption, MFA/TOTP, PKI digital signatures, audit hash chain, DPIA completed
@@ -35,15 +35,15 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 
 | Dimension | Value |
 |-----------|-------|
-| Backend Django apps | **33** |
-| Total data models | **~250+** |
-| Database migrations | **301** |
-| Backend test files | **405** |
-| Backend test functions | **8,421** |
-| Web-app pages | **339** |
-| Web-app components | **458** |
-| API client modules | **49** |
-| Zod schema files | **45** |
+| Backend Django apps | **38** |
+| Total data models | **389** |
+| Database migrations | **458** |
+| Backend test files | **494** |
+| Backend test functions | **10,241** |
+| Web-app pages | **404** |
+| Web-app components | **518** |
+| API client modules | **69** |
+| Zod schema files | **62** |
 | Mobile app screens | **40** |
 | CI/CD workflows | **5** |
 
@@ -100,6 +100,8 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - ✅ Tamper-Resistant Audit Log (SHA-256 hash chain verification)
 - ✅ SHR Document Sharing (push/pull FHIR bundles to Kenya Shared Health Record)
 - ✅ FHIR R4 API endpoints (resource serving with profiles)
+- ✅ FHIR IPS conformance testing (Inferno IPS 2.0.0-ballot — all tests passing)
+- ✅ Subscription tier enforcement (FREE/BASIC/PROFESSIONAL/ENTERPRISE with 22 feature flags)
 - ✅ SNOMED CT integration (concept model + 108 common concepts seeded)
 - ✅ Feature Flags, Idempotency Keys, Active Shift Enforcement
 - ✅ KMS encryption for M-Pesa API credentials (write-only, never exposed in GET responses)
@@ -409,7 +411,7 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 | KRA eTIMS integration | ✅ Complete | Electronic tax invoicing via inventory eTIMS module |
 | PowerSync activation in production | 📋 Pending | Infrastructure fully wired, disabled in staging |
 | Kenya pilot deployments | 📋 Pending | 2 sites planned (1 rural, 1 urban) |
-| FHIR conformance testing (Inferno) | 📋 Pending | Test suite configured, not yet run |
+| FHIR conformance testing (Inferno) | ✅ Complete | IPS 2.0.0-ballot profile — all tests passing |
 | Advanced inventory (suppliers, POs) | ✅ Complete | 31 models, 29 pages, full procurement + forecasting |
 
 ### Phase 2 Risks & Mitigations
@@ -459,7 +461,7 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 
 #### Sprint 3.10-3.12: Multi-Site Expansion (Weeks 19-24)
 - [ ] Deploy to 5 additional sites (total: 7)
-- [ ] FHIR conformance testing (Inferno suite)
+- [x] FHIR conformance testing (Inferno suite) — completed in Phase 2
 - [ ] Performance optimization (query tuning, Redis caching)
 - [ ] Disaster recovery testing
 - [ ] Phase 3 retrospective
@@ -502,7 +504,7 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - [ ] ML model monitoring and drift detection
 
 #### Sprint 4.3-4.4: Advanced Interoperability (Weeks 5-8)
-- [ ] FHIR R4 conformance certification (Inferno)
+- [x] FHIR R4 conformance certification (Inferno) — completed in Phase 2
 - [ ] Bidirectional HL7v2 ↔ FHIR translation
 - [ ] Full SNOMED CT expansion (350K+ concepts)
 - [ ] FHIR Subscriptions for real-time interop
@@ -545,7 +547,7 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 | Mobile | React Native 0.81, Expo 54, expo-router |
 | Desktop | Electron with embedded Django |
 | State | React Query (TanStack), Zustand |
-| Validation | Zod (43 schema files) |
+| Validation | Zod (62 schema files) |
 | Charts | Recharts |
 | DICOM | Cornerstone.js |
 | Monitoring | Sentry |
@@ -559,7 +561,7 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 | Sync | PowerSync Cloud (EU Central) |
 | BI | Metabase (Azure Container Apps) |
 | AI | TibaBot API (self-hosted) |
-| CI/CD | GitHub Actions (5 workflows) |
+| CI/CD | GitHub Actions (5 workflows: CI, deploy, security, CodeQL, FHIR) |
 | Security | CodeQL, Bandit, dependency scanning |
 
 ---
@@ -685,12 +687,13 @@ By Q4 2027, Vitora HMIS will be considered successful if:
 ---
 
 **Document Control**
-- **Version**: 3.1
+- **Version**: 3.2
 - **Author**: Engineering Lead
 - **Review Cycle**: Monthly
-- **Next Review**: May 16, 2026
+- **Next Review**: June 14, 2026
 
 **Changelog**
+- 2026-05-14: v3.2 — FHIR IPS conformance testing complete (Inferno IPS 2.0.0-ballot, all tests passing). Subscription tier enforcement implemented (22 feature flags). Updated stats: 38 apps, 389 models, 458 migrations, 10,241 tests, 404 web pages, 518 components, 69 API clients, 62 Zod schemas.
 - 2026-04-16: v3.1 — Added Inventory module (33rd app): 31 models, 29 frontend pages, eTIMS integration, demand forecasting. M-Pesa credentials KMS-encrypted. Updated stats: 301 migrations, 8,421 tests, 339 web pages.
 - 2026-04-16: v3.0 — Major rewrite reflecting actual state: 32 apps, 294 migrations, 8,129 tests, 310 web pages, 40 mobile screens. Phase 0+1 complete. Phase 2 mostly complete. Azure Container Apps + Vercel deployment. Streamlined future phases.
 - 2026-03-21: v2.1 — Added undocumented features (AI/TibaBot, MFA, PKI, emergency access, FHIR, SNOMED, WebSockets)
