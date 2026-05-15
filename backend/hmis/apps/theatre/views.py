@@ -1186,12 +1186,12 @@ class TheatreEquipmentTypeViewSet(TenantScopedViewMixin, ReadOnCreateMixin, view
         GET    /api/theatre/equipment-types/{id}/availability/ - Unit availability
     """
 
-    queryset = TheatreEquipmentType.objects.all()
+    queryset = TheatreEquipmentType.objects.select_related("parent").all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["name", "code"]
+    search_fields = ["name", "code", "parent__name"]
     ordering_fields = ["name", "code", "category"]
-    filterset_fields = ["category", "is_portable", "is_active"]
+    filterset_fields = ["category", "is_portable", "is_active", "parent"]
     tenant_scope = "facility"
 
     def get_serializer_class(self):
@@ -1244,6 +1244,27 @@ class TheatreEquipmentTypeViewSet(TenantScopedViewMixin, ReadOnCreateMixin, view
             facility_id=equipment_type.facility_id,
         )
         return Response(result)
+
+    @action(detail=True, methods=["get"])
+    def children(self, request, pk=None):
+        """List direct children of this equipment type."""
+        equipment_type = self.get_object()
+        children = equipment_type.children.select_related("parent").all()
+        if request.query_params.get("active_only") == "true":
+            children = children.filter(is_active=True)
+        serializer = TheatreEquipmentTypeListSerializer(children, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def tree(self, request):
+        """List root equipment types (parent=null) for building a hierarchy tree."""
+        qs = self.get_queryset().filter(parent__isnull=True)
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = TheatreEquipmentTypeListSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = TheatreEquipmentTypeListSerializer(qs, many=True)
+        return Response(serializer.data)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

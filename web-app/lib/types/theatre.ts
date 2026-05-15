@@ -267,6 +267,7 @@ export interface TheatreEquipmentTypeCreateData {
   name: string;
   code: string;
   category: string;
+  parent?: number | null;
   description?: string;
   is_portable?: boolean;
   setup_time_minutes?: number;
@@ -280,6 +281,7 @@ export interface TheatreEquipmentTypeListParams {
   search?: string;
   category?: string;
   is_active?: boolean;
+  parent?: number | null;
 }
 
 export interface CaseEquipmentCreateData {

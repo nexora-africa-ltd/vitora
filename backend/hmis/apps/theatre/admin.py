@@ -212,14 +212,15 @@ class TheatreEquipmentTypeAdmin(admin.ModelAdmin):
     list_display = [
         "code",
         "name",
+        "parent",
         "category_badge",
         "is_portable",
         "is_active",
         "facility",
     ]
-    list_filter = ["category", "is_portable", "is_active", "facility"]
-    search_fields = ["name", "code"]
-    raw_id_fields = ("facility", "organization")
+    list_filter = ["category", "is_portable", "is_active", "facility", "parent"]
+    search_fields = ["name", "code", "parent__name"]
+    raw_id_fields = ("facility", "organization", "parent")
 
     @admin.display(description="Category")
     def category_badge(self, obj):

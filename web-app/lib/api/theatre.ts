@@ -517,6 +517,21 @@ export const theatreApi = {
     await apiClient.delete(`/api/theatre/equipment-types/${id}/`);
   },
 
+  async listEquipmentTypeChildren(id: number, activeOnly = false): Promise<TheatreEquipmentTypeList[]> {
+    const params = activeOnly ? { active_only: 'true' } : {};
+    const response = await apiClient.get(`/api/theatre/equipment-types/${id}/children/`, { params });
+    return parseResponse(z.array(TheatreEquipmentTypeListSchema), response.data, {
+      context: 'theatreApi.listEquipmentTypeChildren',
+    });
+  },
+
+  async listEquipmentTypeTree(params?: TheatreEquipmentTypeListParams): Promise<PaginatedTheatreEquipmentTypes> {
+    const response = await apiClient.get('/api/theatre/equipment-types/tree/', { params });
+    return parseResponse(PaginatedTheatreEquipmentTypeSchema, response.data, {
+      context: 'theatreApi.listEquipmentTypeTree',
+    });
+  },
+
   // =========================================================================
   //  Case Equipment Requirements
   // =========================================================================
