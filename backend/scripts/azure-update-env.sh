@@ -210,6 +210,7 @@ az containerapp update \
     "VAPID_PRIVATE_KEY=secretref:vapid-private-key" \
     "VAPID_CLAIM_EMAIL=${VAPID_CLAIM_EMAIL:-mailto:info@nexora.africa}" \
     "LIS_STANDALONE_MODE=${LIS_STANDALONE_MODE:-false}" \
+    "INSURANCE_ENABLED=${INSURANCE_ENABLED:-false}" \
     "DHIS2_BASE_URL=${DHIS2_BASE_URL:-}" \
     "DHIS2_USERNAME=secretref:dhis2-username" \
     "DHIS2_PASSWORD=secretref:dhis2-password" \
