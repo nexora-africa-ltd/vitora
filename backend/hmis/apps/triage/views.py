@@ -1552,25 +1552,64 @@ class ReportExportView(APIView):
         """Export triage report as CSV."""
         import csv
         import io
+        from datetime import datetime
 
         from django.http import HttpResponse
         from django.utils import timezone
 
+        resolve_request_tenant(request)
+
         date_range = request.query_params.get("date_range", "today")
+        custom_start = request.query_params.get("start_date")
+        custom_end = request.query_params.get("end_date")
 
-        if date_range == "today":
-            start_date = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        elif date_range == "week":
-            start_date = timezone.now() - timezone.timedelta(days=7)
-        elif date_range == "month":
-            start_date = timezone.now() - timezone.timedelta(days=30)
+        now = timezone.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        if date_range == "custom" and custom_start:
+            start_date = timezone.make_aware(datetime.strptime(custom_start, "%Y-%m-%d"))
+            end_date = (
+                timezone.make_aware(datetime.strptime(custom_end, "%Y-%m-%d"))
+                if custom_end
+                else now
+            )
+        elif date_range == "today":
+            start_date = today_start
+            end_date = now
+        elif date_range == "yesterday":
+            start_date = today_start - timezone.timedelta(days=1)
+            end_date = today_start
+        elif date_range in ("week", "last_7_days"):
+            start_date = now - timezone.timedelta(days=7)
+            end_date = now
+        elif date_range in ("month", "last_30_days"):
+            start_date = now - timezone.timedelta(days=30)
+            end_date = now
+        elif date_range == "this_month":
+            start_date = today_start.replace(day=1)
+            end_date = now
+        elif date_range == "last_month":
+            first_of_this_month = today_start.replace(day=1)
+            end_date = first_of_this_month
+            start_date = (first_of_this_month - timezone.timedelta(days=1)).replace(day=1)
+        elif date_range == "this_quarter":
+            quarter_month = ((now.month - 1) // 3) * 3 + 1
+            start_date = today_start.replace(month=quarter_month, day=1)
+            end_date = now
         else:
-            start_date = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            start_date = today_start
+            end_date = now
 
-        assessments = (
-            TriageAssessment.objects.filter(arrival_time__gte=start_date)
-            .select_related("encounter__patient", "triaged_by")
-            .order_by("-arrival_time")
+        facility = getattr(request, "facility", None)
+        assessments = TriageAssessment.objects.filter(
+            arrival_time__gte=start_date,
+            arrival_time__lte=end_date,
+        )
+        if facility:
+            assessments = assessments.filter(facility=facility)
+
+        assessments = assessments.select_related("encounter__patient", "triaged_by").order_by(
+            "-arrival_time"
         )
 
         # Build CSV
