@@ -129,7 +129,7 @@ class InsuranceHttpClient:
         return cls(
             base_url=config.api_base_url or "",
             auth_type=config.api_auth_type,
-            auth_credentials=config.api_credentials or {},
+            auth_credentials=config.get_credentials_dict(),
             provider=config.provider,
             facility=config.facility,
         )

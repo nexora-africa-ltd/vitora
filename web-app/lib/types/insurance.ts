@@ -170,6 +170,7 @@ export interface InsuranceProvider {
   address: string;
   website: string;
   api_integration_enabled: boolean;
+  logo: string | null;
   notes: string;
   plans_count: number;
   active_enrollments_count: number;
@@ -259,6 +260,8 @@ export interface PatientInsurance {
   verified_at: string | null;
   verified_by: number | null;
   notes: string;
+  card_image_front: string | null;
+  card_image_back: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -351,6 +354,12 @@ export interface InsuranceClaim {
   submitted_by: number | null;
   reviewed_by: number | null;
   notes: string;
+  attachments_meta: Array<{
+    filename: string;
+    url: string;
+    content_type?: string;
+    uploaded_at?: string;
+  }>;
   days_since_submission: number | null;
   is_overdue: boolean;
   is_appealable: boolean;
