@@ -391,19 +391,28 @@ def detect_equipment_conflicts(
     start_time,
     duration_minutes: int,
     exclude_case_id: int | None = None,
+    include_requested: bool = False,
 ) -> list[dict]:
     """
     Check if an equipment resource is already booked at overlapping times.
 
     Returns list of conflicting bookings with case details.
+
+    Args:
+        include_requested: When True, also considers cases in REQUESTED status
+            (useful for write-time validation to prevent double-booking).
     """
     start_dt = datetime.combine(scheduled_date, start_time)
     end_dt = start_dt + timedelta(minutes=duration_minutes)
 
+    statuses = list(ACTIVE_CASE_STATUSES)
+    if include_requested:
+        statuses.append(SurgeryCase.CaseStatus.REQUESTED)
+
     qs = CaseEquipmentRequirement.objects.filter(
         resource_id=resource_id,
         surgery_case__scheduled_date=scheduled_date,
-        surgery_case__status__in=ACTIVE_CASE_STATUSES,
+        surgery_case__status__in=statuses,
     ).select_related("surgery_case", "resource", "equipment_type")
 
     if exclude_case_id:

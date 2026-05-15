@@ -1284,8 +1284,14 @@ class CaseEquipmentRequirementViewSet(viewsets.ModelViewSet):
             return CaseEquipmentRequirementCreateSerializer
         return CaseEquipmentRequirementSerializer
 
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        if self.action == "create":
+            ctx["surgery_case"] = self.get_surgery_case()
+        return ctx
+
     def perform_create(self, serializer):
-        case = self.get_surgery_case()
+        case = serializer.context["surgery_case"]
         instance = serializer.save(
             surgery_case=case,
             added_by=self.request.user,

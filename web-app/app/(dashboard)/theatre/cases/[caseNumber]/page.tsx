@@ -318,8 +318,12 @@ export default function CaseDetailPage() {
       setEquipmentDialog(false);
       toast({ title: 'Equipment added', description: 'Equipment requirement has been added to the case.' });
       await fetchCase();
-    } catch {
-      toast({ title: 'Failed to add equipment', variant: 'destructive' });
+    } catch (error) {
+      toast({
+        title: 'Failed to add equipment',
+        description: getTeamAssignmentErrorMessage(error, 'The equipment could not be assigned.'),
+        variant: 'destructive',
+      });
     } finally {
       setEquipmentMutationLoading(false);
     }
@@ -332,8 +336,12 @@ export default function CaseDetailPage() {
       await theatreApi.removeCaseEquipment(surgeryCase.id, requirementId);
       toast({ title: 'Equipment removed' });
       await fetchCase();
-    } catch {
-      toast({ title: 'Failed to remove equipment', variant: 'destructive' });
+    } catch (error) {
+      toast({
+        title: 'Failed to remove equipment',
+        description: getTeamAssignmentErrorMessage(error, 'The equipment could not be removed.'),
+        variant: 'destructive',
+      });
     } finally {
       setEquipmentMutationLoading(false);
     }
