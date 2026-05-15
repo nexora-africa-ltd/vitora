@@ -46,6 +46,7 @@ export function EquipmentAssignDialog({
 }: EquipmentAssignDialogProps) {
   const [mode, setMode] = useState<'type' | 'resource'>('type');
   const [equipmentTypeId, setEquipmentTypeId] = useState<string>('');
+  const [quantity, setQuantity] = useState(1);
   const [reservedFrom, setReservedFrom] = useState(defaultStartTime);
   const [reservedUntil, setReservedUntil] = useState(defaultEndTime);
   const [notes, setNotes] = useState('');
@@ -62,6 +63,7 @@ export function EquipmentAssignDialog({
     const data: CaseEquipmentCreateData = {
       reserved_from: reservedFrom,
       reserved_until: reservedUntil,
+      quantity_required: quantity,
       notes: notes || undefined,
     };
     if (mode === 'type' && equipmentTypeId) {
@@ -73,6 +75,7 @@ export function EquipmentAssignDialog({
   function handleOpenChange(value: boolean) {
     if (!value) {
       setEquipmentTypeId('');
+      setQuantity(1);
       setNotes('');
       setReservedFrom(defaultStartTime);
       setReservedUntil(defaultEndTime);
@@ -107,7 +110,17 @@ export function EquipmentAssignDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="grid gap-4 grid-cols-2">
+          <div className="grid gap-4 grid-cols-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="eq-qty">Quantity</Label>
+              <Input
+                id="eq-qty"
+                type="number"
+                min={1}
+                value={quantity}
+                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+              />
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="eq-from">From</Label>
               <Input
