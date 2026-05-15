@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import {
   Plus,
   Clock,
@@ -58,13 +59,14 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { toast } from 'sonner';
-import { schedulesApi, resourcesApi } from '@/lib/api/scheduling';
+import { schedulesApi, resourcesApi, shiftsApi } from '@/lib/api/scheduling';
 import type {
   ScheduleType,
   Schedule,
   ScheduleCreateData,
   ScheduleBreakCreateData,
   ResourceType,
+  ShiftListItem,
 } from '@/lib/types/scheduling';
 
 const DAY_LABELS: Record<number, string> = {
@@ -355,6 +357,7 @@ function ResourceGroup({
 
 export default function SchedulesPage() {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
 
   const [resourceFilter, setResourceFilter] = useState<string>('');
@@ -437,6 +440,46 @@ export default function SchedulesPage() {
     }
     return byType;
   }, [schedules, resources]);
+
+  // This week's roster shifts (Staff tab only, fetched eagerly)
+  const weekDates = useMemo(() => {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0=Sun
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7)); // Roll back to Monday
+    const dates: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      dates.push(d.toISOString().split('T')[0]!);
+    }
+    return dates;
+  }, []);
+
+  const weekStart = weekDates[0] ?? '';
+  const weekEnd = weekDates[6] ?? '';
+
+  const { data: shiftsData } = useQuery({
+    queryKey: ['schedules-page-shifts', weekStart, weekEnd],
+    queryFn: () => shiftsApi.list({
+      from_date: weekStart,
+      to_date: weekEnd,
+      page_size: 500,
+      ordering: 'shift_date,start_time',
+    }),
+  });
+  const weekShifts = shiftsData?.results || [];
+
+  // Group shifts by staff name
+  const groupedShifts = useMemo(() => {
+    const groups: Record<string, ShiftListItem[]> = {};
+    for (const s of weekShifts) {
+      const key = s.staff_resource_name || `Staff ${s.staff_resource}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(s);
+    }
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [weekShifts]);
 
   const createMutation = useMutation({
     mutationFn: (d: ScheduleCreateData) => schedulesApi.create(d),
@@ -576,7 +619,17 @@ export default function SchedulesPage() {
 
           {/* Shared content area for all tabs */}
           {(['PERSON', 'PLACE', 'ASSET'] as ResourceType[]).map((tabType) => (
-            <TabsContent key={tabType} value={tabType} className="mt-4">
+            <TabsContent key={tabType} value={tabType} className="mt-4 space-y-4">
+              {/* Staff tab: This week's roster */}
+              {tabType === 'PERSON' && groupedShifts.length > 0 && (
+                <WeekRosterSection
+                  groupedShifts={groupedShifts}
+                  weekDates={weekDates}
+                  onViewRoster={() => router.push('/scheduling/roster')}
+                />
+              )}
+
+              {/* Availability schedules (shared across all tabs) */}
               {isLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 3 }, (_, i) => (
@@ -587,7 +640,7 @@ export default function SchedulesPage() {
                     </Card>
                   ))}
                 </div>
-              ) : tabGroupedSchedules.length === 0 ? (
+              ) : tabGroupedSchedules.length === 0 && (tabType !== 'PERSON' || groupedShifts.length === 0) ? (
                 <Card className="border-dashed">
                   <CardContent className="py-12 text-center">
                     <Settings className="h-10 w-10 mx-auto text-muted-foreground mb-3 opacity-50" />
@@ -597,22 +650,27 @@ export default function SchedulesPage() {
                     </p>
                   </CardContent>
                 </Card>
-              ) : (
-                <div className="space-y-3">
-                  {tabGroupedSchedules.map(([resourceName, groupSchedules], index) => (
-                    <ResourceGroup
-                      key={resourceName}
-                      resourceName={resourceName}
-                      schedules={groupSchedules}
-                      defaultOpen={index < 3}
-                      onAddBreak={setShowBreakDialog}
-                      onDelete={(id) => deleteMutation.mutate(id)}
-                      onRowClick={(s) => setSelectedScheduleId(selectedScheduleId === s.id ? null : s.id)}
-                      selectedId={selectedScheduleId}
-                    />
-                  ))}
-                </div>
-              )}
+              ) : tabGroupedSchedules.length > 0 ? (
+                <>
+                  {tabType === 'PERSON' && (
+                    <h3 className="text-sm font-medium text-muted-foreground">Appointment Availability</h3>
+                  )}
+                  <div className="space-y-3">
+                    {tabGroupedSchedules.map(([resourceName, groupSchedules], index) => (
+                      <ResourceGroup
+                        key={resourceName}
+                        resourceName={resourceName}
+                        schedules={groupSchedules}
+                        defaultOpen={index < 3}
+                        onAddBreak={setShowBreakDialog}
+                        onDelete={(id) => deleteMutation.mutate(id)}
+                        onRowClick={(s) => setSelectedScheduleId(selectedScheduleId === s.id ? null : s.id)}
+                        selectedId={selectedScheduleId}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </TabsContent>
           ))}
         </Tabs>
@@ -769,5 +827,94 @@ export default function SchedulesPage() {
         </DialogContent>
       </Dialog>
     </PullToRefresh>
+  );
+}
+
+// =============================================================================
+// Week Roster Section (Staff tab)
+// =============================================================================
+
+const SHORT_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const SHIFT_STATUS_COLORS: Record<string, string> = {
+  SCHEDULED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  ACTIVE: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  ON_BREAK: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+  COMPLETED: 'bg-gray-100 text-gray-600 dark:bg-gray-800/30 dark:text-gray-400',
+  CANCELLED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+  ABSENT: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+};
+
+function WeekRosterSection({
+  groupedShifts,
+  weekDates,
+  onViewRoster,
+}: {
+  groupedShifts: [string, ShiftListItem[]][];
+  weekDates: string[];
+  onViewRoster: () => void;
+}) {
+  const today = new Date().toISOString().split('T')[0];
+  return (
+    <Card>
+      <CardHeader className="pb-2 px-4 pt-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <CalendarDays className="h-4 w-4" />
+            This Week&apos;s Roster
+          </CardTitle>
+          <Button variant="ghost" size="sm" onClick={onViewRoster}>
+            Full Roster
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        {/* Compact roster grid */}
+        <div className="overflow-x-auto">
+          <Table className="min-w-[600px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[140px]">Staff</TableHead>
+                {weekDates.map((date, i) => (
+                  <TableHead key={date} className={`text-center text-xs ${date === today ? 'bg-primary/5 font-bold' : ''}`}>
+                    {SHORT_DAYS[i]}
+                    <br />
+                    <span className="text-muted-foreground font-normal">{date.slice(8)}</span>
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {groupedShifts.map(([staffName, shifts]) => (
+                <TableRow key={staffName}>
+                  <TableCell className="font-medium text-sm truncate max-w-[140px]">{staffName}</TableCell>
+                  {weekDates.map((date) => {
+                    const dayShifts = shifts.filter((s) => s.shift_date === date);
+                    return (
+                      <TableCell key={date} className={`text-center p-1 ${date === today ? 'bg-primary/5' : ''}`}>
+                        {dayShifts.length === 0 ? (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        ) : (
+                          <div className="space-y-0.5">
+                            {dayShifts.map((s) => (
+                              <Badge
+                                key={s.id}
+                                className={`text-[10px] px-1 py-0 block w-fit mx-auto ${SHIFT_STATUS_COLORS[s.status] || ''}`}
+                              >
+                                {s.shift_type_display || s.shift_type}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
