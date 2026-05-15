@@ -52,6 +52,7 @@ import {
   useUpdateProviderConfig,
 } from '@/lib/hooks/use-insurance';
 import { useToast } from '@/lib/hooks/use-toast';
+import usePermissions from '@/lib/hooks/use-permissions';
 import { PROVIDER_TYPE_LABELS } from '@/lib/types/insurance';
 import type {
   InsurancePlan,
@@ -474,7 +475,11 @@ export default function InsuranceProviderDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { canPerformAction } = usePermissions();
   const providerId = Number(params.id);
+
+  const canManageProviders = canPerformAction('billing.manage_insurance_providers');
+  const canManageConfig = canPerformAction('billing.manage_insurance_config');
 
   const { data: provider, isLoading, refetch: refetchProvider } = useInsuranceProvider(providerId);
   const { data: plansData, refetch: refetchPlans } = useInsurancePlans({ provider: providerId });
@@ -540,9 +545,11 @@ export default function InsuranceProviderDetailPage() {
         helpContent="View and manage provider details, plans, and facility-level API integration."
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setEditingProvider(!editingProvider)} className="gap-1">
-              <Pencil className="h-3 w-3" /> Edit
-            </Button>
+            {canManageProviders && (
+              <Button variant="outline" size="sm" onClick={() => setEditingProvider(!editingProvider)} className="gap-1">
+                <Pencil className="h-3 w-3" /> Edit
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => router.push('/insurance/providers')}>
               All Providers
             </Button>
@@ -645,11 +652,13 @@ export default function InsuranceProviderDetailPage() {
       </Card>
 
       {/* Facility Integration Config */}
-      <FacilityConfigCard
-        config={facilityConfig}
-        providerId={providerId}
-        onSaved={() => refetchConfigs()}
-      />
+      {canManageConfig && (
+        <FacilityConfigCard
+          config={facilityConfig}
+          providerId={providerId}
+          onSaved={() => refetchConfigs()}
+        />
+      )}
 
       {/* Plans Table */}
       <Card>
@@ -657,7 +666,7 @@ export default function InsuranceProviderDetailPage() {
           <CardTitle className="text-base">Insurance Plans</CardTitle>
           <div className="flex items-center gap-2">
             <Badge variant="secondary">{plans.length} plan{plans.length !== 1 ? 's' : ''}</Badge>
-            <AddPlanDialog providerId={providerId} onSuccess={() => refetchPlans()} />
+            {canManageProviders && <AddPlanDialog providerId={providerId} onSuccess={() => refetchPlans()} />}
           </div>
         </CardHeader>
         <CardContent className="px-0 sm:px-6">

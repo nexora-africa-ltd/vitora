@@ -43,6 +43,7 @@ import {
   useAppealClaim,
 } from '@/lib/hooks/use-insurance';
 import { useToast } from '@/lib/hooks/use-toast';
+import usePermissions from '@/lib/hooks/use-permissions';
 import { CLAIM_STATUS_LABELS } from '@/lib/types/insurance';
 import type { InsuranceClaimItem } from '@/lib/types/insurance';
 
@@ -73,7 +74,11 @@ export default function InsuranceClaimDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { canPerformAction } = usePermissions();
   const claimId = Number(params.id);
+
+  const canAdjudicate = canPerformAction('billing.adjudicate_claims');
+  const canSubmitClaims = canPerformAction('billing.submit_insurance_claim');
 
   const { data: claim, isLoading, refetch } = useInsuranceClaim(claimId);
   const submitClaim = useSubmitClaim();
@@ -185,14 +190,14 @@ export default function InsuranceClaimDetailPage() {
     return <div className="text-center py-10 text-muted-foreground">Claim not found.</div>;
   }
 
-  const canSubmit = claim.status === 'draft';
-  const canCancel = ['draft', 'submitted', 'acknowledged'].includes(claim.status);
-  const canApprove = ['submitted', 'acknowledged', 'under_review'].includes(claim.status);
-  const canReject = ['submitted', 'acknowledged', 'under_review'].includes(claim.status);
-  const canQuery = ['submitted', 'acknowledged', 'under_review'].includes(claim.status);
-  const canRespond = claim.status === 'query';
-  const canMarkPaid = ['approved', 'partially_approved'].includes(claim.status);
-  const canAppeal = claim.is_appealable;
+  const canSubmit = claim.status === 'draft' && canSubmitClaims;
+  const canCancel = ['draft', 'submitted', 'acknowledged'].includes(claim.status) && canSubmitClaims;
+  const canApprove = ['submitted', 'acknowledged', 'under_review'].includes(claim.status) && canAdjudicate;
+  const canReject = ['submitted', 'acknowledged', 'under_review'].includes(claim.status) && canAdjudicate;
+  const canQuery = ['submitted', 'acknowledged', 'under_review'].includes(claim.status) && canAdjudicate;
+  const canRespond = claim.status === 'query' && canSubmitClaims;
+  const canMarkPaid = ['approved', 'partially_approved'].includes(claim.status) && canAdjudicate;
+  const canAppeal = claim.is_appealable && canSubmitClaims;
 
   return (
     <div className="space-y-4 sm:space-y-6">

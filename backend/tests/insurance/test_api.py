@@ -16,7 +16,7 @@ class TestInsuranceProviderAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 1
 
-    def test_create_provider(self, authenticated_client):
+    def test_create_provider(self, admin_client):
         data = {
             "name": "CIC Group",
             "code": "CIC",
@@ -24,7 +24,7 @@ class TestInsuranceProviderAPI:
             "status": "active",
             "contact_email": "claims@cic.co.ke",
         }
-        response = authenticated_client.post("/api/insurance/providers/", data)
+        response = admin_client.post("/api/insurance/providers/", data)
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["name"] == "CIC Group"
         assert response.data["code"] == "CIC"
@@ -34,8 +34,8 @@ class TestInsuranceProviderAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["name"] == "Jubilee Health Insurance"
 
-    def test_update_provider(self, authenticated_client, insurance_provider):
-        response = authenticated_client.patch(
+    def test_update_provider(self, admin_client, insurance_provider):
+        response = admin_client.patch(
             f"/api/insurance/providers/{insurance_provider.pk}/",
             {"contact_person": "John Doe"},
         )
@@ -56,6 +56,20 @@ class TestInsuranceProviderAPI:
         response = api_client.get("/api/insurance/providers/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
+    def test_non_admin_create_forbidden(self, authenticated_client):
+        """Non-admin users cannot create providers."""
+        data = {"name": "Test", "code": "TST"}
+        response = authenticated_client.post("/api/insurance/providers/", data)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_non_admin_update_forbidden(self, authenticated_client, insurance_provider):
+        """Non-admin users cannot update providers."""
+        response = authenticated_client.patch(
+            f"/api/insurance/providers/{insurance_provider.pk}/",
+            {"contact_person": "Hacker"},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
 
 # ===================================================================
 # InsurancePlan API
@@ -66,7 +80,7 @@ class TestInsurancePlanAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 1
 
-    def test_create_plan(self, authenticated_client, insurance_provider):
+    def test_create_plan(self, admin_client, insurance_provider):
         data = {
             "provider": insurance_provider.pk,
             "name": "Silver Plan",
@@ -76,7 +90,7 @@ class TestInsurancePlanAPI:
             "default_copay_percent": "30.00",
             "status": "active",
         }
-        response = authenticated_client.post("/api/insurance/plans/", data, format="json")
+        response = admin_client.post("/api/insurance/plans/", data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["name"] == "Silver Plan"
 
@@ -200,9 +214,9 @@ class TestInsuranceClaimAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "submitted"
 
-    def test_approve_action(self, authenticated_client, insurance_claim):
+    def test_approve_action(self, admin_client, insurance_claim):
         insurance_claim.submit()
-        response = authenticated_client.post(
+        response = admin_client.post(
             f"/api/insurance/claims/{insurance_claim.pk}/approve/",
             {"approved_amount": "4500.00"},
             format="json",
@@ -211,9 +225,9 @@ class TestInsuranceClaimAPI:
         assert response.data["status"] == "approved"
         assert response.data["approved_amount"] == "4500.00"
 
-    def test_reject_action(self, authenticated_client, insurance_claim):
+    def test_reject_action(self, admin_client, insurance_claim):
         insurance_claim.submit()
-        response = authenticated_client.post(
+        response = admin_client.post(
             f"/api/insurance/claims/{insurance_claim.pk}/reject/",
             {"reason": "Invalid diagnosis"},
             format="json",
@@ -221,9 +235,9 @@ class TestInsuranceClaimAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "rejected"
 
-    def test_query_action(self, authenticated_client, insurance_claim):
+    def test_query_action(self, admin_client, insurance_claim):
         insurance_claim.submit()
-        response = authenticated_client.post(
+        response = admin_client.post(
             f"/api/insurance/claims/{insurance_claim.pk}/query/",
             {"details": "Need lab results"},
             format="json",
@@ -242,10 +256,10 @@ class TestInsuranceClaimAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "submitted"
 
-    def test_mark_paid_action(self, authenticated_client, insurance_claim):
+    def test_mark_paid_action(self, admin_client, insurance_claim):
         insurance_claim.submit()
         insurance_claim.approve(approved_amount=Decimal("5000.00"))
-        response = authenticated_client.post(
+        response = admin_client.post(
             f"/api/insurance/claims/{insurance_claim.pk}/mark-paid/",
             {"paid_amount": "5000.00"},
             format="json",
@@ -273,8 +287,8 @@ class TestInsuranceClaimAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "cancelled"
 
-    def test_write_off_action(self, authenticated_client, insurance_claim):
-        response = authenticated_client.post(
+    def test_write_off_action(self, admin_client, insurance_claim):
+        response = admin_client.post(
             f"/api/insurance/claims/{insurance_claim.pk}/write-off/",
             {"reason": "Uncollectable"},
             format="json",
@@ -293,6 +307,26 @@ class TestInsuranceClaimAPI:
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 1
+
+    def test_non_admin_approve_forbidden(self, authenticated_client, insurance_claim):
+        """Non-admin users cannot approve claims."""
+        insurance_claim.submit()
+        response = authenticated_client.post(
+            f"/api/insurance/claims/{insurance_claim.pk}/approve/",
+            {"approved_amount": "4500.00"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_non_admin_reject_forbidden(self, authenticated_client, insurance_claim):
+        """Non-admin users cannot reject claims."""
+        insurance_claim.submit()
+        response = authenticated_client.post(
+            f"/api/insurance/claims/{insurance_claim.pk}/reject/",
+            {"reason": "Invalid"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 # ===================================================================
@@ -332,9 +366,9 @@ class TestInsurancePreauthAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "submitted"
 
-    def test_approve_action(self, authenticated_client, insurance_preauth):
+    def test_approve_action(self, admin_client, insurance_preauth):
         insurance_preauth.submit()
-        response = authenticated_client.post(
+        response = admin_client.post(
             f"/api/insurance/preauths/{insurance_preauth.pk}/approve/",
             {"approved_amount": "45000.00", "validity_days": 14},
             format="json",
@@ -344,9 +378,9 @@ class TestInsurancePreauthAPI:
         assert response.data["approved_amount"] == "45000.00"
         assert response.data["expires_at"] is not None
 
-    def test_deny_action(self, authenticated_client, insurance_preauth):
+    def test_deny_action(self, admin_client, insurance_preauth):
         insurance_preauth.submit()
-        response = authenticated_client.post(
+        response = admin_client.post(
             f"/api/insurance/preauths/{insurance_preauth.pk}/deny/",
             {"reason": "Not medically necessary"},
             format="json",
@@ -373,18 +407,18 @@ class TestInsuranceRemittanceAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 1
 
-    def test_create_remittance(self, authenticated_client, insurance_provider):
+    def test_create_remittance(self, admin_client, insurance_provider):
         data = {
             "provider": insurance_provider.pk,
             "remittance_number": "REM-NEW-001",
             "remittance_date": str(date.today()),
             "total_amount": "200000.00",
         }
-        response = authenticated_client.post("/api/insurance/remittances/", data, format="json")
+        response = admin_client.post("/api/insurance/remittances/", data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
 
-    def test_reconcile_action(self, authenticated_client, insurance_remittance):
-        response = authenticated_client.post(
+    def test_reconcile_action(self, admin_client, insurance_remittance):
+        response = admin_client.post(
             f"/api/insurance/remittances/{insurance_remittance.pk}/reconcile/"
         )
         assert response.status_code == status.HTTP_200_OK
@@ -399,7 +433,7 @@ class TestPayerTariffAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 1
 
-    def test_create_tariff(self, authenticated_client, insurance_provider):
+    def test_create_tariff(self, admin_client, insurance_provider):
         data = {
             "provider": insurance_provider.pk,
             "service_code": "LAB-001",
@@ -408,7 +442,7 @@ class TestPayerTariffAPI:
             "tariff_amount": "800.00",
             "effective_from": str(date.today()),
         }
-        response = authenticated_client.post("/api/insurance/tariffs/", data, format="json")
+        response = admin_client.post("/api/insurance/tariffs/", data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["payer_code"] == "JUB-LAB-001"
 

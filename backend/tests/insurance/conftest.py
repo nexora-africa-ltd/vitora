@@ -20,6 +20,19 @@ from hmis.apps.insurance.models import (
 
 
 @pytest.fixture
+def admin_client(api_client, test_user, test_staff_profile):
+    """Authenticated API client with admin (is_staff) privileges.
+
+    Reuses the same test_user & staff profile, promoting to is_staff
+    so IsAdminUser passes while tenant scoping still works.
+    """
+    test_user.is_staff = True
+    test_user.save(update_fields=["is_staff"])
+    api_client.force_authenticate(user=test_user)
+    return api_client
+
+
+@pytest.fixture
 def insurance_provider(db, sample_organization):
     """Create a sample InsuranceProvider."""
     return InsuranceProvider.objects.create(

@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
@@ -72,7 +72,12 @@ class InsuranceProviderViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewset
     """CRUD for insurance providers (org-scoped)."""
 
     queryset = InsuranceProvider.objects.all()
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
     tenant_scope = "organization"
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = InsuranceProviderFilter
@@ -105,7 +110,12 @@ class InsurancePlanViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mo
     """CRUD for insurance plans (org-scoped)."""
 
     queryset = InsurancePlan.objects.select_related("provider").all()
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
     tenant_scope = "organization"
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = InsurancePlanFilter
@@ -128,7 +138,14 @@ class PatientInsuranceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
     queryset = PatientInsurance.objects.select_related(
         "patient", "plan", "plan__provider", "provider"
     ).all()
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action == "destroy":
+            return [IsAdminUser()]
+        if self.action in ["create", "update", "partial_update", "verify"]:
+            return [IsAuthenticated(), RequiresActiveShiftPermission()]
+        return [IsAuthenticated()]
+
     tenant_scope = "organization"
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = PatientInsuranceFilter
@@ -162,7 +179,12 @@ class InsuranceProviderConfigViewSet(
 
     queryset = InsuranceProviderConfig.objects.select_related("provider", "facility").all()
     serializer_class = InsuranceProviderConfigSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
     tenant_scope = "facility"
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["provider", "accreditation_status", "api_enabled"]
@@ -187,8 +209,27 @@ class InsuranceClaimViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
         .prefetch_related("items")
         .all()
     )
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     tenant_scope = "facility"
+
+    # -- Adjudication actions require admin; clinical ops require active shift --
+    _admin_actions = frozenset(
+        {
+            "approve",
+            "partially_approve",
+            "reject",
+            "query_claim",
+            "mark_paid",
+            "write_off",
+        }
+    )
+
+    def get_permissions(self):
+        if self.action in self._admin_actions:
+            return [IsAdminUser()]
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAuthenticated(), RequiresActiveShiftPermission()]
+        return [IsAuthenticated()]
+
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = InsuranceClaimFilter
     search_fields = ["claim_number", "patient__first_name", "patient__last_name"]
@@ -349,7 +390,7 @@ class InsuranceClaimItemViewSet(viewsets.ModelViewSet):
 
     queryset = InsuranceClaimItem.objects.all()
     serializer_class = InsuranceClaimItemSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
 
     def get_queryset(self):
         return self.queryset.filter(claim_id=self.kwargs.get("claim_pk"))
@@ -370,8 +411,18 @@ class InsurancePreauthViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
         "patient_insurance",
         "patient_insurance__plan",
     ).all()
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     tenant_scope = "facility"
+
+    # -- Adjudication actions require admin; clinical ops require active shift --
+    _admin_actions = frozenset({"approve", "deny"})
+
+    def get_permissions(self):
+        if self.action in self._admin_actions:
+            return [IsAdminUser()]
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAuthenticated(), RequiresActiveShiftPermission()]
+        return [IsAuthenticated()]
+
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = InsurancePreauthFilter
     search_fields = ["preauth_number", "patient__first_name", "patient__last_name"]
@@ -450,7 +501,12 @@ class InsuranceRemittanceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, views
         .prefetch_related("lines", "lines__claim")
         .all()
     )
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy", "reconcile"]:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
     tenant_scope = "facility"
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["provider", "status"]
@@ -480,7 +536,11 @@ class InsuranceRemittanceLineViewSet(viewsets.ModelViewSet):
 
     queryset = InsuranceRemittanceLine.objects.select_related("claim").all()
     serializer_class = InsuranceRemittanceLineSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         return self.queryset.filter(remittance_id=self.kwargs.get("remittance_pk"))
@@ -496,7 +556,12 @@ class PayerTariffViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mode
     """CRUD for payer tariff mappings (org-scoped)."""
 
     queryset = PayerTariff.objects.select_related("provider", "plan", "service").all()
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
     tenant_scope = "organization"
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = PayerTariffFilter

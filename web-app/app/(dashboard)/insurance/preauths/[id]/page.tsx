@@ -36,6 +36,7 @@ import {
   useCancelPreauth,
 } from '@/lib/hooks/use-insurance';
 import { useToast } from '@/lib/hooks/use-toast';
+import usePermissions from '@/lib/hooks/use-permissions';
 import { PREAUTH_STATUS_LABELS } from '@/lib/types/insurance';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -51,7 +52,11 @@ export default function PreauthDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { canPerformAction } = usePermissions();
   const preauthId = Number(params.id);
+
+  const canAdjudicate = canPerformAction('billing.adjudicate_claims');
+  const canSubmitClaims = canPerformAction('billing.submit_insurance_claim');
 
   const { data: preauth, isLoading, refetch } = useInsurancePreauth(preauthId);
   const submitPreauth = useSubmitPreauth();
@@ -133,10 +138,10 @@ export default function PreauthDetailPage() {
     );
   }
 
-  const canSubmit = preauth.status === 'draft';
-  const canApprove = preauth.status === 'submitted';
-  const canDeny = preauth.status === 'submitted';
-  const canCancel = ['draft', 'submitted'].includes(preauth.status);
+  const canSubmit = preauth.status === 'draft' && canSubmitClaims;
+  const canApprove = preauth.status === 'submitted' && canAdjudicate;
+  const canDeny = preauth.status === 'submitted' && canAdjudicate;
+  const canCancel = ['draft', 'submitted'].includes(preauth.status) && canSubmitClaims;
 
   return (
     <div className="space-y-4 sm:space-y-6">
