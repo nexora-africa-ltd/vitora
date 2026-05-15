@@ -912,6 +912,15 @@ FACILITY_HAS_PHARMACY = (
 LIS_STANDALONE_MODE = os.getenv("LIS_STANDALONE_MODE", "false").lower() == "true"
 
 # =============================================================================
+# PRIVATE INSURANCE INTEGRATION
+# =============================================================================
+# Feature flag: Set to true to enable private insurance API integrations.
+# When false, the insurance module still works but all adapter calls use
+# ManualAdapter (no outbound API calls). Per-provider API config in
+# InsuranceProviderConfig is still respected for submission_format.
+INSURANCE_ENABLED = os.getenv("INSURANCE_ENABLED", "false").lower() == "true"
+
+# =============================================================================
 # TIBABOT AI INTEGRATION
 # =============================================================================
 # Feature flag: Set to true to enable AI proxy endpoints (/api/ai/*).

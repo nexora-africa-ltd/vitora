@@ -1076,3 +1076,76 @@ class PayerTariff(OrganizationScopedModel):
         if self.effective_to:
             return self.effective_from <= today <= self.effective_to
         return today >= self.effective_from
+
+
+# ---------------------------------------------------------------------------
+# InsuranceOutboundCall — audit row for every outbound call to an insurer API
+# ---------------------------------------------------------------------------
+
+
+class InsuranceOutboundCall(FacilityScopedModel):
+    """Audit row for every outbound HTTP call to a private insurer API.
+
+    Mirrors ``DHAOutboundCall`` but scoped to the insurance provider.
+    PII is redacted from request/response payloads before persistence.
+    """
+
+    class Status(models.TextChoices):
+        SUCCESS = "SUCCESS", "Success"
+        CLIENT_ERROR = "CLIENT_ERROR", "Client Error (4xx)"
+        SERVER_ERROR = "SERVER_ERROR", "Server Error (5xx)"
+        TRANSPORT = "TRANSPORT", "Transport Error"
+        TIMEOUT = "TIMEOUT", "Timeout"
+
+    provider = models.ForeignKey(
+        "insurance.InsuranceProvider",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="outbound_calls",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="insurance_outbound_calls",
+        help_text="User who triggered the call (if request-scoped).",
+    )
+
+    method = models.CharField(max_length=10)
+    path = models.CharField(max_length=500, help_text="Path on the insurer API.")
+    base_url = models.CharField(max_length=500, blank=True, default="")
+    auth_mode = models.CharField(max_length=20, blank=True, default="")
+
+    status = models.CharField(max_length=20, choices=Status.choices)
+    status_code = models.IntegerField(null=True, blank=True)
+    duration_ms = models.IntegerField(null=True, blank=True)
+    attempt = models.PositiveSmallIntegerField(default=1)
+
+    correlation_id = models.CharField(max_length=64, blank=True, default="")
+    error_code = models.CharField(max_length=64, blank=True, default="")
+
+    request_payload = models.JSONField(
+        null=True, blank=True, help_text="PII-redacted request body."
+    )
+    response_excerpt = models.JSONField(null=True, blank=True, help_text="First 4 KB of response.")
+    error_message = models.TextField(blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["facility", "-created_at"]),
+            models.Index(fields=["provider", "-created_at"]),
+            models.Index(fields=["status", "-created_at"]),
+            models.Index(fields=["correlation_id"]),
+        ]
+        verbose_name = "Insurance Outbound Call"
+        verbose_name_plural = "Insurance Outbound Calls"
+
+    def __str__(self) -> str:  # pragma: no cover - cosmetic
+        ts = self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else "?"
+        return f"[{ts}] {self.method} {self.path} -> {self.status_code}"

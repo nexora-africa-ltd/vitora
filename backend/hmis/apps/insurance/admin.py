@@ -6,6 +6,7 @@ from django.utils.html import format_html
 from hmis.apps.insurance.models import (
     InsuranceClaim,
     InsuranceClaimItem,
+    InsuranceOutboundCall,
     InsurancePlan,
     InsurancePreauth,
     InsuranceProvider,
@@ -250,3 +251,54 @@ class PayerTariffAdmin(admin.ModelAdmin):
     list_filter = ["provider", "requires_preauth"]
     search_fields = ["service_code", "payer_code", "payer_description"]
     raw_id_fields = ["provider", "plan", "service", "organization"]
+
+
+@admin.register(InsuranceOutboundCall)
+class InsuranceOutboundCallAdmin(admin.ModelAdmin):
+    list_display = [
+        "created_at",
+        "provider",
+        "method",
+        "path",
+        "colored_status",
+        "status_code",
+        "duration_ms",
+        "attempt",
+    ]
+    list_filter = ["status", "method", "provider"]
+    search_fields = ["path", "correlation_id", "error_message"]
+    raw_id_fields = ["provider", "user", "facility", "organization"]
+    readonly_fields = [
+        "method",
+        "path",
+        "base_url",
+        "auth_mode",
+        "status",
+        "status_code",
+        "duration_ms",
+        "attempt",
+        "correlation_id",
+        "error_code",
+        "request_payload",
+        "response_excerpt",
+        "error_message",
+        "created_at",
+        "updated_at",
+    ]
+    ordering = ["-created_at"]
+
+    @admin.display(description="Status")
+    def colored_status(self, obj):
+        colors = {
+            "SUCCESS": "#28a745",
+            "CLIENT_ERROR": "#ffc107",
+            "SERVER_ERROR": "#dc3545",
+            "TRANSPORT": "#dc3545",
+            "TIMEOUT": "#fd7e14",
+        }
+        color = colors.get(obj.status, "#6c757d")
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            obj.get_status_display(),
+        )
