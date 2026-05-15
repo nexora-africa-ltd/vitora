@@ -1,26 +1,46 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   AlertCircle,
   Calendar,
+  Check,
   CreditCard,
+  DollarSign,
   FileText,
+  MessageSquare,
+  RotateCcw,
   Send,
+  Trash2,
   XCircle,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/shared/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
   useInsuranceClaim,
   useSubmitClaim,
   useCancelClaim,
+  useApproveClaim,
+  useRejectClaim,
+  useRespondToQuery,
+  useMarkClaimPaid,
+  useAppealClaim,
 } from '@/lib/hooks/use-insurance';
 import { useToast } from '@/lib/hooks/use-toast';
 import { CLAIM_STATUS_LABELS } from '@/lib/types/insurance';
@@ -58,6 +78,23 @@ export default function InsuranceClaimDetailPage() {
   const { data: claim, isLoading, refetch } = useInsuranceClaim(claimId);
   const submitClaim = useSubmitClaim();
   const cancelClaim = useCancelClaim();
+  const approveClaim = useApproveClaim();
+  const rejectClaim = useRejectClaim();
+  const respondToQuery = useRespondToQuery();
+  const markPaid = useMarkClaimPaid();
+  const appealClaim = useAppealClaim();
+
+  // Action dialog state
+  const [approveOpen, setApproveOpen] = useState(false);
+  const [approvedAmount, setApprovedAmount] = useState('');
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [respondOpen, setRespondOpen] = useState(false);
+  const [queryResponse, setQueryResponse] = useState('');
+  const [markPaidOpen, setMarkPaidOpen] = useState(false);
+  const [paidAmount, setPaidAmount] = useState('');
+  const [appealOpen, setAppealOpen] = useState(false);
+  const [appealNotes, setAppealNotes] = useState('');
 
   const handleSubmit = async () => {
     try {
@@ -79,6 +116,61 @@ export default function InsuranceClaimDetailPage() {
     }
   };
 
+  const handleApprove = async () => {
+    try {
+      await approveClaim.mutateAsync({ id: claimId, approved_amount: approvedAmount });
+      toast({ title: 'Claim approved' });
+      setApproveOpen(false);
+      refetch();
+    } catch {
+      toast({ title: 'Error', description: 'Failed to approve claim.', variant: 'destructive' });
+    }
+  };
+
+  const handleReject = async () => {
+    try {
+      await rejectClaim.mutateAsync({ id: claimId, reason: rejectReason });
+      toast({ title: 'Claim rejected' });
+      setRejectOpen(false);
+      refetch();
+    } catch {
+      toast({ title: 'Error', description: 'Failed to reject claim.', variant: 'destructive' });
+    }
+  };
+
+  const handleRespondToQuery = async () => {
+    try {
+      await respondToQuery.mutateAsync({ id: claimId, response: queryResponse });
+      toast({ title: 'Response sent' });
+      setRespondOpen(false);
+      refetch();
+    } catch {
+      toast({ title: 'Error', description: 'Failed to send response.', variant: 'destructive' });
+    }
+  };
+
+  const handleMarkPaid = async () => {
+    try {
+      await markPaid.mutateAsync({ id: claimId, paid_amount: paidAmount });
+      toast({ title: 'Claim marked as paid' });
+      setMarkPaidOpen(false);
+      refetch();
+    } catch {
+      toast({ title: 'Error', description: 'Failed to mark claim as paid.', variant: 'destructive' });
+    }
+  };
+
+  const handleAppeal = async () => {
+    try {
+      await appealClaim.mutateAsync({ id: claimId, notes: appealNotes || undefined });
+      toast({ title: 'Appeal submitted' });
+      setAppealOpen(false);
+      refetch();
+    } catch {
+      toast({ title: 'Error', description: 'Failed to submit appeal.', variant: 'destructive' });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -95,6 +187,12 @@ export default function InsuranceClaimDetailPage() {
 
   const canSubmit = claim.status === 'draft';
   const canCancel = ['draft', 'submitted', 'acknowledged'].includes(claim.status);
+  const canApprove = ['submitted', 'acknowledged', 'under_review'].includes(claim.status);
+  const canReject = ['submitted', 'acknowledged', 'under_review'].includes(claim.status);
+  const canQuery = ['submitted', 'acknowledged', 'under_review'].includes(claim.status);
+  const canRespond = claim.status === 'query';
+  const canMarkPaid = ['approved', 'partially_approved'].includes(claim.status);
+  const canAppeal = claim.is_appealable;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -102,21 +200,9 @@ export default function InsuranceClaimDetailPage() {
         title={`Claim ${claim.claim_number}`}
         helpContent="View claim details, line items, and manage claim lifecycle."
         actions={
-          <div className="flex flex-col gap-2 sm:flex-row">
-            {canSubmit && (
-              <Button onClick={handleSubmit} disabled={submitClaim.isPending} className="gap-2">
-                <Send className="h-4 w-4" /> Submit
-              </Button>
-            )}
-            {canCancel && (
-              <Button variant="destructive" onClick={handleCancel} disabled={cancelClaim.isPending} className="gap-2">
-                <XCircle className="h-4 w-4" /> Cancel
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => router.push('/insurance/claims')}>
-              All Claims
-            </Button>
-          </div>
+          <Button variant="outline" size="sm" onClick={() => router.push('/insurance/claims')}>
+            All Claims
+          </Button>
         }
       />
 
@@ -138,6 +224,155 @@ export default function InsuranceClaimDetailPage() {
           {claim.is_overdue && <Badge variant="destructive">Overdue</Badge>}
         </div>
       </div>
+
+      {/* Action Buttons */}
+      {(canSubmit || canCancel || canApprove || canReject || canRespond || canMarkPaid || canAppeal) && (
+        <Card>
+          <CardContent className="p-3">
+            <div className="flex flex-wrap gap-2">
+              {canSubmit && (
+                <Button size="sm" onClick={handleSubmit} disabled={submitClaim.isPending} className="gap-1">
+                  <Send className="h-3 w-3" /> Submit
+                </Button>
+              )}
+              {canApprove && (
+                <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="default" className="gap-1 bg-green-600 hover:bg-green-700">
+                      <Check className="h-3 w-3" /> Approve
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-sm">
+                    <DialogHeader><DialogTitle>Approve Claim</DialogTitle></DialogHeader>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <Label>Approved Amount (KES)</Label>
+                        <Input type="number" value={approvedAmount} onChange={e => setApprovedAmount(e.target.value)} placeholder={claim.total_amount} />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setApproveOpen(false)}>Cancel</Button>
+                        <Button onClick={handleApprove} disabled={approveClaim.isPending || !approvedAmount}>Approve</Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+              {canReject && (
+                <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="destructive" className="gap-1">
+                      <XCircle className="h-3 w-3" /> Reject
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-sm">
+                    <DialogHeader><DialogTitle>Reject Claim</DialogTitle></DialogHeader>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <Label>Reason *</Label>
+                        <Textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={3} />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setRejectOpen(false)}>Cancel</Button>
+                        <Button variant="destructive" onClick={handleReject} disabled={rejectClaim.isPending || !rejectReason}>Reject</Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+              {canQuery && (
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline" className="gap-1">
+                      <MessageSquare className="h-3 w-3" /> Query
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-sm">
+                    <DialogHeader><DialogTitle>Send Query</DialogTitle></DialogHeader>
+                    <p className="text-sm text-muted-foreground">Query functionality is available via the insurer portal integration.</p>
+                  </DialogContent>
+                </Dialog>
+              )}
+              {canRespond && (
+                <Dialog open={respondOpen} onOpenChange={setRespondOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="default" className="gap-1">
+                      <MessageSquare className="h-3 w-3" /> Respond to Query
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-sm">
+                    <DialogHeader><DialogTitle>Respond to Insurer Query</DialogTitle></DialogHeader>
+                    <div className="space-y-3">
+                      {claim.query_details && (
+                        <div className="rounded bg-muted p-2 text-sm">
+                          <p className="font-medium text-xs text-muted-foreground mb-1">Query:</p>
+                          <p>{claim.query_details}</p>
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        <Label>Response *</Label>
+                        <Textarea value={queryResponse} onChange={e => setQueryResponse(e.target.value)} rows={3} />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setRespondOpen(false)}>Cancel</Button>
+                        <Button onClick={handleRespondToQuery} disabled={respondToQuery.isPending || !queryResponse}>Send Response</Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+              {canMarkPaid && (
+                <Dialog open={markPaidOpen} onOpenChange={setMarkPaidOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="default" className="gap-1 bg-emerald-600 hover:bg-emerald-700">
+                      <DollarSign className="h-3 w-3" /> Mark Paid
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-sm">
+                    <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <Label>Paid Amount (KES)</Label>
+                        <Input type="number" value={paidAmount} onChange={e => setPaidAmount(e.target.value)} placeholder={claim.approved_amount} />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setMarkPaidOpen(false)}>Cancel</Button>
+                        <Button onClick={handleMarkPaid} disabled={markPaid.isPending || !paidAmount}>Confirm</Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+              {canAppeal && (
+                <Dialog open={appealOpen} onOpenChange={setAppealOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline" className="gap-1">
+                      <RotateCcw className="h-3 w-3" /> Appeal
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-sm">
+                    <DialogHeader><DialogTitle>Appeal Claim</DialogTitle></DialogHeader>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <Label>Notes (optional)</Label>
+                        <Textarea value={appealNotes} onChange={e => setAppealNotes(e.target.value)} rows={3} />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setAppealOpen(false)}>Cancel</Button>
+                        <Button onClick={handleAppeal} disabled={appealClaim.isPending}>Submit Appeal</Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+              {canCancel && (
+                <Button size="sm" variant="ghost" className="gap-1 text-destructive hover:text-destructive" onClick={handleCancel} disabled={cancelClaim.isPending}>
+                  <Trash2 className="h-3 w-3" /> Cancel
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Financial Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

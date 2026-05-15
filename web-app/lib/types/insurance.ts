@@ -305,6 +305,26 @@ export interface InsuranceProviderConfig {
   updated_at: string;
 }
 
+export interface InsuranceProviderConfigCreateInput {
+  provider: number;
+  contract_number?: string;
+  contract_start?: string | null;
+  contract_end?: string | null;
+  accreditation_status?: AccreditationStatus;
+  accreditation_number?: string;
+  api_base_url?: string;
+  api_auth_type?: ApiAuthType;
+  api_key?: string;
+  api_secret?: string;
+  api_username?: string;
+  api_password?: string;
+  api_token?: string;
+  api_enabled?: boolean;
+  max_claim_amount?: string | null;
+  submission_format?: SubmissionFormat;
+  notes?: string;
+}
+
 export interface InsuranceClaimItem {
   id: number;
   claim: number;
