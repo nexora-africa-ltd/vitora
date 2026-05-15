@@ -12,6 +12,8 @@ from hmis.apps.theatre.serializers import (
     AnesthesiaRecordCreateSerializer,
     AnesthesiaRecordSerializer,
     CaseCancelSerializer,
+    CaseEquipmentRequirementCreateSerializer,
+    CaseEquipmentRequirementSerializer,
     CasePostponeSerializer,
     CaseScheduleSerializer,
     IntraOpVitalReadingCreateSerializer,
@@ -34,6 +36,8 @@ from hmis.apps.theatre.serializers import (
     SurgicalTeamMemberSerializer,
     TheatreConsumableCreateSerializer,
     TheatreConsumableSerializer,
+    TheatreEquipmentTypeListSerializer,
+    TheatreEquipmentTypeSerializer,
     WHOSafetyChecklistSerializer,
     WHOSignInSerializer,
     WHOSignOutSerializer,
@@ -112,6 +116,44 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "reason",
+            }
+        ),
+    ),
+    (
+        CaseEquipmentRequirementCreateSerializer,
+        frozenset(
+            {
+                "equipment_type",
+                "is_confirmed",
+                "notes",
+                "quantity_required",
+                "reserved_from",
+                "reserved_until",
+                "resource",
+            }
+        ),
+    ),
+    (
+        CaseEquipmentRequirementSerializer,
+        frozenset(
+            {
+                "added_by",
+                "created_at",
+                "duration_minutes",
+                "equipment_type",
+                "equipment_type_category",
+                "equipment_type_name",
+                "id",
+                "is_confirmed",
+                "notes",
+                "quantity_required",
+                "reserved_from",
+                "reserved_until",
+                "resource",
+                "resource_code",
+                "resource_name",
+                "surgery_case",
+                "updated_at",
             }
         ),
     ),
@@ -591,6 +633,45 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "surgery_case",
                 "total_cost",
                 "unit_cost",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        TheatreEquipmentTypeListSerializer,
+        frozenset(
+            {
+                "category",
+                "code",
+                "created_at",
+                "id",
+                "is_active",
+                "is_portable",
+                "name",
+                "parent",
+                "parent_name",
+            }
+        ),
+    ),
+    (
+        TheatreEquipmentTypeSerializer,
+        frozenset(
+            {
+                "category",
+                "children_count",
+                "cleanup_time_minutes",
+                "code",
+                "created_at",
+                "depth",
+                "description",
+                "full_path",
+                "id",
+                "is_active",
+                "is_portable",
+                "name",
+                "parent",
+                "parent_name",
+                "setup_time_minutes",
                 "updated_at",
             }
         ),

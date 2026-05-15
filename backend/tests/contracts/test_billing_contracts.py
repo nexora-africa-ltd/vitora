@@ -13,6 +13,8 @@ from hmis.apps.billing.serializers import (
     FacilityBillingConfigCreateSerializer,
     FacilityBillingConfigSerializer,
     InvoiceItemSerializer,
+    InvoicePayerCreateSerializer,
+    InvoicePayerSerializer,
     InvoiceSerializer,
     PaymentPointSerializer,
     PaymentReverseSerializer,
@@ -172,6 +174,53 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        InvoicePayerCreateSerializer,
+        frozenset(
+            {
+                "allocated_amount",
+                "allocation_percent",
+                "approved_amount",
+                "insurance_claim",
+                "member_number",
+                "notes",
+                "paid_amount",
+                "patient_insurance",
+                "payer_type",
+                "priority",
+                "provider_name",
+                "sha_claim",
+                "status",
+            }
+        ),
+    ),
+    (
+        InvoicePayerSerializer,
+        frozenset(
+            {
+                "allocated_amount",
+                "allocation_percent",
+                "approved_amount",
+                "balance",
+                "created_at",
+                "id",
+                "insurance_claim",
+                "invoice",
+                "member_number",
+                "notes",
+                "paid_amount",
+                "patient_insurance",
+                "payer_type",
+                "payer_type_display",
+                "priority",
+                "provider_name",
+                "sha_claim",
+                "status",
+                "status_display",
+                "updated_at",
+            }
+        ),
+    ),
+    (
         InvoiceSerializer,
         frozenset(
             {
@@ -208,6 +257,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "patient",
                 "patient_mrn",
                 "patient_name",
+                "payers",
                 "payment_type",
                 "qr_code",
                 "sha_claim_number",

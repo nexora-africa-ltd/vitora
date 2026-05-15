@@ -372,6 +372,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "department",
                 "department_name",
                 "description",
+                "equipment_type",
+                "equipment_type_name",
                 "id",
                 "is_active",
                 "metadata",
