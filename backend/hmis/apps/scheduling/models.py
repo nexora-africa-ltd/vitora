@@ -107,6 +107,14 @@ class Resource(FacilityScopedModel, TimeStampedModel):
         related_name="scheduling_resources",
         help_text="Department this resource belongs to (e.g., Laboratory, Pharmacy, Outpatient)",
     )
+    equipment_type = models.ForeignKey(
+        "theatre.TheatreEquipmentType",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resources",
+        help_text="Equipment type catalog entry (for ASSET resources only)",
+    )
 
     class Meta(TimeStampedModel.Meta):
         """Meta options for Resource model."""

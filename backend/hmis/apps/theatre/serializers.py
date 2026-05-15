@@ -11,6 +11,7 @@ from hmis.apps.blood_bank.models import CrossMatch
 
 from .models import (
     AnesthesiaRecord,
+    CaseEquipmentRequirement,
     IntraOpVitalReading,
     OperatingTheatre,
     OperativeNote,
@@ -19,6 +20,7 @@ from .models import (
     SurgeryCase,
     SurgicalTeamMember,
     TheatreConsumable,
+    TheatreEquipmentType,
     WHOSafetyChecklist,
 )
 from .services import scheduling as theatre_scheduling
@@ -830,3 +832,114 @@ class CasePostponeSerializer(serializers.Serializer):
 
     postponed_to_date = serializers.DateField(required=False, allow_null=True)
     reason = serializers.CharField(required=False, default="", allow_blank=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Theatre Equipment Type
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TheatreEquipmentTypeListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for equipment type listings."""
+
+    class Meta:
+        model = TheatreEquipmentType
+        fields = [
+            "id",
+            "name",
+            "code",
+            "category",
+            "is_portable",
+            "is_active",
+            "created_at",
+        ]
+
+
+class TheatreEquipmentTypeSerializer(serializers.ModelSerializer):
+    """Full serializer for equipment type detail/create."""
+
+    class Meta:
+        model = TheatreEquipmentType
+        fields = [
+            "id",
+            "name",
+            "code",
+            "category",
+            "description",
+            "is_portable",
+            "setup_time_minutes",
+            "cleanup_time_minutes",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Case Equipment Requirement
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class CaseEquipmentRequirementSerializer(serializers.ModelSerializer):
+    """Read serializer for case equipment requirements."""
+
+    resource_name = serializers.CharField(source="resource.name", read_only=True, default=None)
+    resource_code = serializers.CharField(source="resource.code", read_only=True, default=None)
+    equipment_type_name = serializers.CharField(
+        source="equipment_type.name", read_only=True, default=None
+    )
+    equipment_type_category = serializers.CharField(
+        source="equipment_type.category", read_only=True, default=None
+    )
+    duration_minutes = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = CaseEquipmentRequirement
+        fields = [
+            "id",
+            "surgery_case",
+            "resource",
+            "resource_name",
+            "resource_code",
+            "equipment_type",
+            "equipment_type_name",
+            "equipment_type_category",
+            "quantity_required",
+            "is_confirmed",
+            "reserved_from",
+            "reserved_until",
+            "duration_minutes",
+            "notes",
+            "added_by",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "surgery_case", "added_by", "created_at", "updated_at"]
+
+
+class CaseEquipmentRequirementCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for creating case equipment requirements."""
+
+    class Meta:
+        model = CaseEquipmentRequirement
+        fields = [
+            "resource",
+            "equipment_type",
+            "quantity_required",
+            "is_confirmed",
+            "reserved_from",
+            "reserved_until",
+            "notes",
+        ]
+
+    def validate(self, attrs):
+        resource = attrs.get("resource")
+        equipment_type = attrs.get("equipment_type")
+        if not resource and not equipment_type:
+            raise serializers.ValidationError(
+                "Either 'resource' or 'equipment_type' must be provided."
+            )
+        if resource and resource.resource_type != "ASSET":
+            raise serializers.ValidationError({"resource": "Resource must be of type ASSET."})
+        return attrs

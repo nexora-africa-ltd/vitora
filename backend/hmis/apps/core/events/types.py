@@ -346,6 +346,9 @@ class TheatreEvents:
     INTRAOP_VITAL_RECORDED = "theatre.intraop_vital.recorded"
     PACU_ARRIVED = "theatre.pacu.arrived"
     PACU_DISCHARGED = "theatre.pacu.discharged"
+    EQUIPMENT_ASSIGNED = "theatre.equipment.assigned"
+    EQUIPMENT_RELEASED = "theatre.equipment.released"
+    EQUIPMENT_CONFLICT_DETECTED = "theatre.equipment.conflict_detected"
 
 
 class ReferralEvents:

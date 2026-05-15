@@ -29,6 +29,7 @@ from hmis.apps.pharmacy.services import InsufficientStockError
 from .filters import OperatingTheatreFilter, SurgeryCaseFilter
 from .models import (
     AnesthesiaRecord,
+    CaseEquipmentRequirement,
     IntraOpVitalReading,
     OperatingTheatre,
     OperativeNote,
@@ -36,6 +37,7 @@ from .models import (
     SurgeryCase,
     SurgicalTeamMember,
     TheatreConsumable,
+    TheatreEquipmentType,
     WHOSafetyChecklist,
 )
 from .permissions import CanDocumentSurgery, CanManageTheatre, CanManageTheatreSettings
@@ -43,6 +45,8 @@ from .serializers import (
     AnesthesiaRecordCreateSerializer,
     AnesthesiaRecordSerializer,
     CaseCancelSerializer,
+    CaseEquipmentRequirementCreateSerializer,
+    CaseEquipmentRequirementSerializer,
     CasePostponeSerializer,
     CaseScheduleSerializer,
     IntraOpVitalReadingCreateSerializer,
@@ -65,6 +69,8 @@ from .serializers import (
     SurgicalTeamMemberSerializer,
     TheatreConsumableCreateSerializer,
     TheatreConsumableSerializer,
+    TheatreEquipmentTypeListSerializer,
+    TheatreEquipmentTypeSerializer,
     WHOSafetyChecklistSerializer,
     WHOSignInSerializer,
     WHOSignOutSerializer,
@@ -73,7 +79,12 @@ from .serializers import (
 from .services.consumables import create_theatre_consumable, restore_theatre_consumable_stock
 from .services.pdf_exports import generate_operative_note_pdf, generate_pacu_summary_pdf
 from .services.reports import build_theatre_report_summary
-from .services.scheduling import get_available_slots, get_case_scheduling_context
+from .services.scheduling import (
+    detect_equipment_conflicts,
+    get_available_slots,
+    get_case_scheduling_context,
+    get_equipment_availability,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -143,13 +154,15 @@ class OperatingTheatreViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets
                 "theatre_id": theatre.id,
                 "theatre_name": theatre.name,
                 "scheduling_resource": theatre.scheduling_resource_id,
-                "integration_source": slots[0]["source"]
-                if slots
-                else (
-                    "scheduling_resource"
-                    if theatre.scheduling_resource_id
-                    and theatre.scheduling_resource.get_schedules().exists()
-                    else "theatre_hours"
+                "integration_source": (
+                    slots[0]["source"]
+                    if slots
+                    else (
+                        "scheduling_resource"
+                        if theatre.scheduling_resource_id
+                        and theatre.scheduling_resource.get_schedules().exists()
+                        else "theatre_hours"
+                    )
                 ),
                 "has_resource_schedule": bool(
                     theatre.scheduling_resource_id
@@ -1151,3 +1164,206 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         )
         serializer = SurgeryCaseListSerializer(cases, many=True)
         return Response(serializer.data)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  3. TheatreEquipmentTypeViewSet
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TheatreEquipmentTypeViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+    """
+    CRUD for theatre equipment type catalog.
+
+    Endpoints:
+        GET    /api/theatre/equipment-types/              - List equipment types
+        POST   /api/theatre/equipment-types/              - Create equipment type
+        GET    /api/theatre/equipment-types/{id}/         - Detail
+        PATCH  /api/theatre/equipment-types/{id}/         - Update
+        DELETE /api/theatre/equipment-types/{id}/         - Soft-delete (is_active=False)
+
+    Custom actions:
+        GET    /api/theatre/equipment-types/{id}/availability/ - Unit availability
+    """
+
+    queryset = TheatreEquipmentType.objects.all()
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "code"]
+    ordering_fields = ["name", "code", "category"]
+    filterset_fields = ["category", "is_portable", "is_active"]
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return TheatreEquipmentTypeListSerializer
+        return TheatreEquipmentTypeSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    def destroy(self, request, *args, **kwargs):
+        """Soft-delete: set is_active=False."""
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save(update_fields=["is_active", "updated_at"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["get"])
+    def availability(self, request, pk=None):
+        """
+        Check unit availability for an equipment type on a date.
+
+        Query params:
+            date: Target date (required)
+            start_time: Start time (required, HH:MM)
+            duration_minutes: Duration in minutes (required)
+        """
+        equipment_type = self.get_object()
+        date_str = request.query_params.get("date")
+        start_time_str = request.query_params.get("start_time")
+        duration_str = request.query_params.get("duration_minutes")
+
+        if not all([date_str, start_time_str, duration_str]):
+            return Response(
+                {"error": "date, start_time, and duration_minutes are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from datetime import datetime
+
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        start_time = datetime.strptime(start_time_str, "%H:%M").time()
+        duration_minutes = int(duration_str)
+
+        result = get_equipment_availability(
+            equipment_type_id=equipment_type.pk,
+            target_date=target_date,
+            start_time=start_time,
+            duration_minutes=duration_minutes,
+            facility_id=equipment_type.facility_id,
+        )
+        return Response(result)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  4. CaseEquipmentRequirementViewSet (nested under SurgeryCase)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class CaseEquipmentRequirementViewSet(viewsets.ModelViewSet):
+    """
+    Manage equipment requirements for a surgery case.
+
+    Nested under /api/theatre/cases/{case_pk}/equipment/.
+
+    Endpoints:
+        GET    .../equipment/                     - List requirements
+        POST   .../equipment/                     - Add requirement
+        GET    .../equipment/{id}/                - Detail
+        PATCH  .../equipment/{id}/                - Update
+        DELETE .../equipment/{id}/                - Remove
+
+    Custom actions:
+        GET    .../equipment/check-conflicts/     - Check all equipment for conflicts
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get_surgery_case(self) -> SurgeryCase:
+        case_pk = self.kwargs["case_pk"]
+        return SurgeryCase.objects.get(pk=case_pk)
+
+    def get_queryset(self):
+        return CaseEquipmentRequirement.objects.filter(
+            surgery_case_id=self.kwargs["case_pk"]
+        ).select_related("resource", "equipment_type", "added_by")
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return CaseEquipmentRequirementCreateSerializer
+        return CaseEquipmentRequirementSerializer
+
+    def perform_create(self, serializer):
+        case = self.get_surgery_case()
+        instance = serializer.save(
+            surgery_case=case,
+            added_by=self.request.user,
+        )
+        _audit(
+            self.request,
+            "equipment_assigned",
+            "SurgeryCase",
+            case.pk,
+            case_number=case.case_number,
+            equipment_resource_id=instance.resource_id,
+            equipment_type_id=instance.equipment_type_id,
+        )
+
+    def create(self, request, *args, **kwargs):
+        """Create and return with the read serializer."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        instance = CaseEquipmentRequirement.objects.select_related(
+            "resource", "equipment_type", "added_by"
+        ).get(pk=serializer.instance.pk)
+        read_serializer = CaseEquipmentRequirementSerializer(instance)
+        return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_destroy(self, instance):
+        _audit(
+            self.request,
+            "equipment_released",
+            "SurgeryCase",
+            instance.surgery_case_id,
+            case_number=instance.surgery_case.case_number,
+            equipment_resource_id=instance.resource_id,
+        )
+        instance.delete()
+
+    @action(detail=False, methods=["get"], url_path="check-conflicts")
+    def check_conflicts(self, request, case_pk=None):
+        """Check all equipment requirements for scheduling conflicts."""
+        case = self.get_surgery_case()
+        requirements = case.equipment_requirements.select_related(
+            "resource", "equipment_type"
+        ).all()
+
+        equipment_conflicts: list[dict] = []
+        for req in requirements:
+            if not req.resource_id:
+                equipment_conflicts.append(
+                    {
+                        "requirement_id": req.pk,
+                        "equipment_type": req.equipment_type.name if req.equipment_type else None,
+                        "status": "unassigned",
+                        "conflicts": [],
+                    }
+                )
+                continue
+
+            conflicts = detect_equipment_conflicts(
+                resource_id=req.resource_id,
+                scheduled_date=case.scheduled_date,
+                start_time=req.reserved_from,
+                duration_minutes=req.duration_minutes,
+                exclude_case_id=case.pk,
+            )
+            equipment_conflicts.append(
+                {
+                    "requirement_id": req.pk,
+                    "resource_name": req.resource.name,
+                    "resource_id": req.resource_id,
+                    "status": "conflict" if conflicts else "available",
+                    "conflicts": conflicts,
+                }
+            )
+
+        return Response(
+            {
+                "case_number": case.case_number,
+                "equipment_conflicts": equipment_conflicts,
+                "has_conflicts": any(c["status"] == "conflict" for c in equipment_conflicts),
+            }
+        )

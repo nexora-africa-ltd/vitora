@@ -593,6 +593,65 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             }
         )
 
+    @action(detail=False, methods=["post"], url_path="sync-from-theatre-equipment")
+    def sync_from_theatre_equipment(self, request):
+        """
+        Auto-create ASSET resources from TheatreEquipmentType catalog entries.
+
+        Creates one ASSET resource per active equipment type that doesn't yet
+        have a linked Resource at the current facility.
+        """
+        from hmis.apps.theatre.models import TheatreEquipmentType
+
+        facility = self._get_facility(request)
+        if not facility:
+            return Response(
+                {"error": "No facility context available"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        types_without_resource = TheatreEquipmentType.objects.filter(
+            is_active=True,
+            facility=facility,
+        ).exclude(
+            pk__in=Resource.objects.filter(
+                equipment_type__isnull=False,
+                facility=facility,
+            ).values_list("equipment_type_id", flat=True)
+        )
+
+        created_count = 0
+        for eq_type in types_without_resource:
+            code = f"THEATRE-EQ-{eq_type.code}"
+            if Resource.objects.filter(code=code, facility=facility).exists():
+                code = f"THEATRE-EQ-{eq_type.pk}"
+
+            Resource.objects.create(
+                name=eq_type.name,
+                resource_type="ASSET",
+                code=code,
+                is_active=True,
+                capacity=1,
+                description=eq_type.description or "",
+                equipment_type=eq_type,
+                facility=facility,
+                organization=facility.organization,
+                metadata={
+                    "synced_from": "theatre_equipment_type",
+                    "source_code": eq_type.code,
+                    "category": eq_type.category,
+                    "is_portable": eq_type.is_portable,
+                },
+            )
+            created_count += 1
+
+        return Response(
+            {
+                "created": created_count,
+                "message": f"Created {created_count} resource(s) from theatre equipment types",
+            }
+        )
+
 
 class ScheduleViewSet(NestedTenantScopeMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
     """
@@ -2507,9 +2566,11 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
                 "department": (
                     shift.department.name
                     if shift.department
-                    else shift.staff_resource.department.name
-                    if shift.staff_resource.department
-                    else ""
+                    else (
+                        shift.staff_resource.department.name
+                        if shift.staff_resource.department
+                        else ""
+                    )
                 ),
                 "room_name": shift.room.name if shift.room else None,
                 "clinic_name": shift.clinic.name if shift.clinic else None,

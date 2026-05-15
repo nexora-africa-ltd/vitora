@@ -3,12 +3,14 @@ from django.utils.html import format_html
 
 from .models import (
     AnesthesiaRecord,
+    CaseEquipmentRequirement,
     OperatingTheatre,
     OperativeNote,
     PACURecord,
     SurgeryCase,
     SurgicalTeamMember,
     TheatreConsumable,
+    TheatreEquipmentType,
     WHOSafetyChecklist,
 )
 
@@ -20,6 +22,13 @@ class SurgicalTeamInline(admin.TabularInline):
     model = SurgicalTeamMember
     extra = 0
     raw_id_fields = ("staff_member",)
+
+
+class CaseEquipmentInline(admin.TabularInline):
+    model = CaseEquipmentRequirement
+    extra = 0
+    raw_id_fields = ("resource", "equipment_type", "added_by")
+    readonly_fields = ("created_at",)
 
 
 # ---------------------------------------------------------------------------
@@ -83,7 +92,7 @@ class SurgeryCaseAdmin(admin.ModelAdmin):
         "organization",
     )
     readonly_fields = ("case_number", "requested_at", "status_changed_at")
-    inlines = [SurgicalTeamInline]
+    inlines = [SurgicalTeamInline, CaseEquipmentInline]
     date_hierarchy = "scheduled_date"
 
     @admin.display(description="Status")
@@ -193,3 +202,56 @@ class SurgicalTeamMemberAdmin(admin.ModelAdmin):
     list_display = ["surgery_case", "staff_member", "role"]
     list_filter = ["role"]
     raw_id_fields = ("surgery_case", "staff_member")
+
+
+# ---------------------------------------------------------------------------
+# Theatre Equipment Type
+# ---------------------------------------------------------------------------
+@admin.register(TheatreEquipmentType)
+class TheatreEquipmentTypeAdmin(admin.ModelAdmin):
+    list_display = [
+        "code",
+        "name",
+        "category_badge",
+        "is_portable",
+        "is_active",
+        "facility",
+    ]
+    list_filter = ["category", "is_portable", "is_active", "facility"]
+    search_fields = ["name", "code"]
+    raw_id_fields = ("facility", "organization")
+
+    @admin.display(description="Category")
+    def category_badge(self, obj):
+        colors = {
+            "IMAGING": "#3b82f6",
+            "MONITORING": "#06b6d4",
+            "SURGICAL_INSTRUMENT": "#8b5cf6",
+            "LIFE_SUPPORT": "#ef4444",
+            "STERILIZATION": "#22c55e",
+            "OTHER": "#6b7280",
+        }
+        bg = colors.get(obj.category, "#6b7280")
+        return format_html(
+            '<span style="background:{}; color:#fff; padding:2px 8px; '
+            'border-radius:4px;">{}</span>',
+            bg,
+            obj.get_category_display(),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Case Equipment Requirement
+# ---------------------------------------------------------------------------
+@admin.register(CaseEquipmentRequirement)
+class CaseEquipmentRequirementAdmin(admin.ModelAdmin):
+    list_display = [
+        "surgery_case",
+        "resource",
+        "equipment_type",
+        "is_confirmed",
+        "reserved_from",
+        "reserved_until",
+    ]
+    list_filter = ["is_confirmed", "equipment_type__category"]
+    raw_id_fields = ("surgery_case", "resource", "equipment_type", "added_by")

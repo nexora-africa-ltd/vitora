@@ -7,12 +7,13 @@ Publishes domain events for surgery case status changes via publish_event().
 import logging
 from datetime import date
 
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import TheatreEvents, publish_event
 from hmis.apps.scheduling.models import Resource, Schedule
 from hmis.apps.theatre.models import (
+    CaseEquipmentRequirement,
     IntraOpVitalReading,
     OperatingTheatre,
     PACURecord,
@@ -269,4 +270,42 @@ def publish_intraop_vital_event(sender, instance, created, **kwargs):
         },
         facility_id=getattr(case, "facility_id", None),
         organization_id=getattr(case, "organization_id", None),
+    )
+
+
+@receiver(post_save, sender=CaseEquipmentRequirement)
+def publish_equipment_assigned_event(sender, instance, created, **kwargs):
+    """Publish domain event when equipment is assigned to a surgery case."""
+    if not created:
+        return
+    publish_event(
+        event_type=TheatreEvents.EQUIPMENT_ASSIGNED,
+        aggregate_type="SurgeryCase",
+        aggregate_id=instance.surgery_case_id,
+        payload={
+            "case_number": instance.surgery_case.case_number,
+            "resource_id": instance.resource_id,
+            "equipment_type_id": instance.equipment_type_id,
+            "reserved_from": str(instance.reserved_from),
+            "reserved_until": str(instance.reserved_until),
+        },
+        facility_id=getattr(instance.surgery_case, "facility_id", None),
+        organization_id=getattr(instance.surgery_case, "organization_id", None),
+    )
+
+
+@receiver(post_delete, sender=CaseEquipmentRequirement)
+def publish_equipment_released_event(sender, instance, **kwargs):
+    """Publish domain event when equipment is released from a surgery case."""
+    publish_event(
+        event_type=TheatreEvents.EQUIPMENT_RELEASED,
+        aggregate_type="SurgeryCase",
+        aggregate_id=instance.surgery_case_id,
+        payload={
+            "case_number": instance.surgery_case.case_number,
+            "resource_id": instance.resource_id,
+            "equipment_type_id": instance.equipment_type_id,
+        },
+        facility_id=getattr(instance.surgery_case, "facility_id", None),
+        organization_id=getattr(instance.surgery_case, "organization_id", None),
     )

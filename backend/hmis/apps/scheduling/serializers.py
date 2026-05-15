@@ -24,6 +24,9 @@ class ResourceSerializer(serializers.ModelSerializer):
 
     staff_profile_name = serializers.SerializerMethodField()
     department_name = serializers.SerializerMethodField()
+    equipment_type_name = serializers.CharField(
+        source="equipment_type.name", read_only=True, default=None
+    )
 
     class Meta:
         """Meta options for ResourceSerializer."""
@@ -40,6 +43,8 @@ class ResourceSerializer(serializers.ModelSerializer):
             "staff_profile_name",
             "department",
             "department_name",
+            "equipment_type",
+            "equipment_type_name",
             "metadata",
             "description",
             "created_at",
