@@ -3701,6 +3701,7 @@ class Facility(TimeStampedModel):
                 "surveillance": True,
                 "allied_health": True,
                 "quality": True,
+                "private_insurance": True,
             },
         }
 
