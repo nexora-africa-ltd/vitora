@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   Search, User, ExternalLink, Globe, Database, Loader2,
   Shield, ShieldCheck, ShieldX, Users, UserPlus, ChevronDown, ChevronUp,
+  Fingerprint, Accessibility,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -302,6 +303,26 @@ export default function PatientLookupPage() {
 }
 
 // =============================================================================
+// Helpers
+// =============================================================================
+
+/** Render a label + value pair; returns null when value is falsy. */
+function DetailItem({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
+  if (!value) return null;
+  return (
+    <div className="min-w-0">
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className={`text-xs truncate ${mono ? 'font-mono' : ''}`}>{value}</p>
+    </div>
+  );
+}
+
+/** Build a location string from parts, e.g. "KIAMBU • LIMURU • LIMURU EAST" */
+function locationChain(...parts: (string | null | undefined)[]) {
+  return parts.filter(Boolean).join(' • ');
+}
+
+// =============================================================================
 // CR Result Card (with eligibility + dependants)
 // =============================================================================
 
@@ -338,6 +359,29 @@ function CRResultCard({
     router.push('/patients/new?from_cr=1');
   };
 
+  // Collect other-IDs & secondary IDs for the principal into badge-friendly tuples
+  const principalIds: { label: string; value: string }[] = [];
+  if (client.other_identifications) {
+    for (const oid of client.other_identifications) {
+      if (oid.identification_number) {
+        // Shorten well-known types
+        const shortLabel = oid.identification_type
+          ?.replace('Household Number', 'HH')
+          .replace('SHA Number', 'SHA') ?? 'ID';
+        principalIds.push({ label: shortLabel, value: oid.identification_number });
+      }
+    }
+  }
+  if (client.huduma_number) principalIds.push({ label: 'Huduma', value: client.huduma_number });
+  if (client.passport_number) principalIds.push({ label: 'Passport', value: client.passport_number });
+  if (client.alien_id) principalIds.push({ label: 'Alien ID', value: client.alien_id });
+  if (client.kra_pin) principalIds.push({ label: 'KRA', value: client.kra_pin });
+
+  const hasExtraLocation = client.sub_county || client.ward || client.village_estate;
+  const hasContactInfo = client.email || client.address || client.zip_code;
+  const hasDemographics = client.citizenship || client.civil_status || client.employment_type || client.place_of_birth || client.is_person_with_disability;
+  const hasDetailSection = hasExtraLocation || hasContactInfo || hasDemographics || principalIds.length > 0;
+
   return (
     <Card className="border-primary/30 overflow-hidden">
       {/* Main patient info */}
@@ -354,6 +398,12 @@ function CRResultCard({
               <Badge variant="default" size="sm">
                 CR: {client.client_number}
               </Badge>
+              {client.is_person_with_disability && (
+                <Badge variant="outline" size="sm" className="gap-1 border-amber-400 text-amber-700 dark:text-amber-400">
+                  <Accessibility className="h-3 w-3" />
+                  PWD
+                </Badge>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
               <span>{client.gender === 'M' ? 'Male' : client.gender === 'F' ? 'Female' : client.gender}</span>
@@ -375,10 +425,11 @@ function CRResultCard({
                   <span>{client.phone_number}</span>
                 </>
               )}
+              {/* Full location chain */}
               {client.county && (
                 <>
                   <span>•</span>
-                  <span>{client.county}</span>
+                  <span>{locationChain(client.county, client.sub_county, client.ward)}</span>
                 </>
               )}
             </div>
@@ -388,6 +439,44 @@ function CRResultCard({
           </Button>
         </div>
       </CardContent>
+
+      {/* Detailed CR Data */}
+      {hasDetailSection && (
+        <CardContent className="py-3 border-t space-y-3">
+          {/* Other Identifications */}
+          {principalIds.length > 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5">
+                <Fingerprint className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">Other Identifications</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {principalIds.map((oid, i) => (
+                  <Badge key={i} variant="outline" size="sm" className="font-mono text-[11px]">
+                    {oid.label}: {oid.value}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Demographics + Contact + Location detail grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-2">
+            {/* Demographics */}
+            <DetailItem label="Citizenship" value={client.citizenship} />
+            <DetailItem label="Civil Status" value={client.civil_status} />
+            <DetailItem label="Employment" value={client.employment_type} />
+            <DetailItem label="Place of Birth" value={client.place_of_birth} />
+            {/* Contact */}
+            <DetailItem label="Email" value={client.email} />
+            <DetailItem label="Address" value={client.address} />
+            <DetailItem label="Village/Estate" value={client.village_estate} />
+            <DetailItem label="Zip Code" value={client.zip_code} mono />
+            <DetailItem label="Country" value={client.country} />
+            {client.id_serial && <DetailItem label="ID Serial" value={client.id_serial} mono />}
+          </div>
+        </CardContent>
+      )}
 
       {/* SHA Eligibility */}
       <CardContent className="py-3 border-t">
@@ -515,66 +604,130 @@ function CRResultCard({
           {showDependants && (
             <div className="mt-2 space-y-2">
               {/* CR dependants (full details) */}
-              {crDependants.length > 0 && crDependants.map((dep, i) => (
-                <div
-                  key={`cr-${i}`}
-                  className="flex items-center gap-3 rounded-md border p-2.5 bg-muted/30"
-                >
-                  <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium truncate">
-                        {[dep.first_name, dep.middle_name, dep.last_name].filter(Boolean).join(' ') || 'Unknown'}
-                      </span>
-                      {dep.relationship && (
-                        <Badge variant="secondary" size="sm">{dep.relationship}</Badge>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground mt-0.5">
-                      {dep.gender && <span>{dep.gender === 'M' ? 'Male' : dep.gender === 'F' ? 'Female' : dep.gender}</span>}
-                      {dep.date_of_birth && (
-                        <>
-                          <span>•</span>
-                          <span>DOB: {dep.date_of_birth}</span>
-                        </>
-                      )}
-                      {dep.identification_number && (
-                        <>
-                          <span>•</span>
-                          <span>ID: {dep.identification_number}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="shrink-0 h-7 w-7 p-0"
-                    title="Register this dependant"
-                    onClick={() => {
-                      // Build a minimal CR-like object for the dependant
-                      const depClient: ClientRegistryClient = {
-                        client_number: '',
-                        first_name: dep.first_name || '',
-                        last_name: dep.last_name || '',
-                        middle_name: dep.middle_name,
-                        date_of_birth: dep.date_of_birth || '',
-                        gender: dep.gender || '',
-                        national_id: dep.identification_type === 'national_id' ? dep.identification_number : null,
-                        phone_number: dep.phone,
-                        county: dep.county,
-                        sub_county: dep.sub_county,
-                        ward: dep.ward,
-                        citizenship: dep.citizenship,
-                        place_of_birth: dep.place_of_birth,
-                      };
-                      handleRegister(depClient);
-                    }}
+              {crDependants.length > 0 && crDependants.map((dep, i) => {
+                // Collect dependant other IDs as badges
+                const depOtherIds: { label: string; value: string }[] = [];
+                if (dep.other_identifications) {
+                  for (const oid of dep.other_identifications) {
+                    if (oid.identification_number) {
+                      const shortLabel = oid.identification_type
+                        ?.replace('Household Number', 'HH')
+                        .replace('SHA Number', 'SHA') ?? 'ID';
+                      depOtherIds.push({ label: shortLabel, value: oid.identification_number });
+                    }
+                  }
+                }
+                const depLocationStr = locationChain(dep.county, dep.sub_county, dep.ward);
+
+                return (
+                  <div
+                    key={`cr-${dep.id || i}`}
+                    className="rounded-md border p-3 bg-muted/30 space-y-2"
                   >
-                    <UserPlus className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))}
+                    {/* Row 1: Name + relationship badge + register button */}
+                    <div className="flex items-start gap-3">
+                      <User className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium truncate">
+                            {[dep.first_name, dep.middle_name, dep.last_name].filter(Boolean).join(' ') || 'Unknown'}
+                          </span>
+                          {dep.relationship && (
+                            <Badge variant="secondary" size="sm">{dep.relationship}</Badge>
+                          )}
+                          {dep.id && (
+                            <Badge variant="outline" size="sm" className="font-mono text-[11px]">
+                              CR: {dep.id}
+                            </Badge>
+                          )}
+                        </div>
+                        {/* Row 2: Key metadata line */}
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
+                          {dep.gender && <span>{dep.gender === 'M' ? 'Male' : dep.gender === 'F' ? 'Female' : dep.gender}</span>}
+                          {dep.date_of_birth && (
+                            <>
+                              <span>•</span>
+                              <span>DOB: {dep.date_of_birth}</span>
+                            </>
+                          )}
+                          {dep.identification_number && (
+                            <>
+                              <span>•</span>
+                              <span>ID: {dep.identification_number}</span>
+                            </>
+                          )}
+                          {dep.phone && (
+                            <>
+                              <span>•</span>
+                              <span>{dep.phone}</span>
+                            </>
+                          )}
+                          {depLocationStr && (
+                            <>
+                              <span>•</span>
+                              <span>{depLocationStr}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0 h-7 w-7 p-0"
+                        title="Register this dependant"
+                        onClick={() => {
+                          const isNationalId = dep.identification_type?.toLowerCase().replace(/[\s_-]/g, '') === 'nationalid';
+                          const depClient: ClientRegistryClient = {
+                            client_number: dep.id || '',
+                            first_name: dep.first_name || '',
+                            last_name: dep.last_name || '',
+                            middle_name: dep.middle_name,
+                            date_of_birth: dep.date_of_birth || '',
+                            gender: dep.gender || '',
+                            national_id: isNationalId ? dep.identification_number : null,
+                            phone_number: dep.phone,
+                            county: dep.county,
+                            sub_county: dep.sub_county,
+                            ward: dep.ward,
+                            citizenship: dep.citizenship,
+                            place_of_birth: dep.place_of_birth,
+                            civil_status: dep.civil_status,
+                            employment_type: dep.employment_type,
+                            village_estate: dep.village_estate,
+                            country: dep.country,
+                            zip_code: dep.zip_code,
+                            other_identifications: dep.other_identifications,
+                          };
+                          handleRegister(depClient);
+                        }}
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+
+                    {/* Row 3: Other IDs + extra detail */}
+                    {(depOtherIds.length > 0 || dep.citizenship || dep.civil_status || dep.employment_type || dep.village_estate) && (
+                      <div className="pl-7 space-y-1.5">
+                        {depOtherIds.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {depOtherIds.map((oid, j) => (
+                              <Badge key={j} variant="outline" size="sm" className="font-mono text-[11px]">
+                                {oid.label}: {oid.value}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                          {dep.citizenship && <span>Citizenship: {dep.citizenship}</span>}
+                          {dep.civil_status && <span>Status: {dep.civil_status}</span>}
+                          {dep.employment_type && <span>Employment: {dep.employment_type}</span>}
+                          {dep.village_estate && <span>Village: {dep.village_estate}</span>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
 
               {/* SHA dependants (if no CR dependants available) */}
               {crDependants.length === 0 && shaDependants.length > 0 && shaDependants.map((dep, i) => (
