@@ -878,7 +878,6 @@ export function useExportTriageReport() {
       filters: ReportFilters;
     }) => {
       const params = new URLSearchParams();
-      params.append('format', format);
       params.append('date_range', filters.dateRange);
       if (filters.customStartDate) params.append('start_date', filters.customStartDate);
       if (filters.customEndDate) params.append('end_date', filters.customEndDate);
