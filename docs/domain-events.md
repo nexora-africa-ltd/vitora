@@ -381,6 +381,39 @@ Convention: `<domain>.<aggregate>.<action>`
 | `IN_PROGRESS` | `referrals.referral.in_progress` | `referrals/signals.py` |
 | `COMPLETED` | `referrals.referral.completed` | `referrals/signals.py` |
 
+### InsuranceEvents (28 constants)
+
+| Constant | Value | Published From |
+|----------|-------|---------------|
+| `PROVIDER_CREATED` | `insurance.provider.created` | `insurance/signals.py` |
+| `PROVIDER_UPDATED` | `insurance.provider.updated` | `insurance/signals.py` |
+| `PROVIDER_SUSPENDED` | `insurance.provider.suspended` | `insurance/signals.py` |
+| `PROVIDER_ACTIVATED` | `insurance.provider.activated` | `insurance/signals.py` |
+| `PLAN_CREATED` | `insurance.plan.created` | — (defined, not yet wired) |
+| `PLAN_UPDATED` | `insurance.plan.updated` | — (defined, not yet wired) |
+| `ENROLLMENT_CREATED` | `insurance.enrollment.created` | `insurance/signals.py` |
+| `ENROLLMENT_RENEWED` | `insurance.enrollment.renewed` | `insurance/signals.py` |
+| `ENROLLMENT_SUSPENDED` | `insurance.enrollment.suspended` | `insurance/signals.py` |
+| `ENROLLMENT_TERMINATED` | `insurance.enrollment.terminated` | `insurance/signals.py` |
+| `ENROLLMENT_VERIFIED` | `insurance.enrollment.verified` | `insurance/signals.py` |
+| `CLAIM_CREATED` | `insurance.claim.created` | `insurance/signals.py` |
+| `CLAIM_SUBMITTED` | `insurance.claim.submitted` | `insurance/signals.py` |
+| `CLAIM_APPROVED` | `insurance.claim.approved` | `insurance/signals.py` |
+| `CLAIM_REJECTED` | `insurance.claim.rejected` | `insurance/signals.py` |
+| `CLAIM_QUERIED` | `insurance.claim.queried` | `insurance/signals.py` |
+| `CLAIM_PAID` | `insurance.claim.paid` | `insurance/signals.py` |
+| `CLAIM_APPEALED` | `insurance.claim.appealed` | `insurance/signals.py` |
+| `CLAIM_CANCELLED` | `insurance.claim.cancelled` | `insurance/signals.py` |
+| `PREAUTH_CREATED` | `insurance.preauth.created` | `insurance/signals.py` |
+| `PREAUTH_SUBMITTED` | `insurance.preauth.submitted` | `insurance/signals.py` |
+| `PREAUTH_APPROVED` | `insurance.preauth.approved` | `insurance/signals.py` |
+| `PREAUTH_REJECTED` | `insurance.preauth.rejected` | `insurance/signals.py` |
+| `PREAUTH_QUERIED` | `insurance.preauth.queried` | `insurance/signals.py` |
+| `PREAUTH_EXPIRED` | `insurance.preauth.expired` | `insurance/signals.py` |
+| `PREAUTH_CANCELLED` | `insurance.preauth.cancelled` | `insurance/signals.py` |
+| `REMITTANCE_RECEIVED` | `insurance.remittance.received` | `insurance/signals.py` |
+| `REMITTANCE_RECONCILED` | `insurance.remittance.reconciled` | `insurance/signals.py` |
+
 ### Summary
 
 | Class | Defined | Wired | Coverage |
@@ -398,7 +431,8 @@ Convention: `<domain>.<aggregate>.<action>`
 | ImagingEvents | 3 | 1 | 33% |
 | TheatreEvents | 13 | 13 | 100% |
 | ReferralEvents | 7 | 7 | 100% |
-| **Total** | **94** | **73** | **78%** |
+| InsuranceEvents | 28 | 26 | 93% |
+| **Total** | **122** | **99** | **81%** |
 
 ---
 
@@ -523,6 +557,39 @@ Appointment status → Event mapping:
 | `publish_team_assigned_event` | `post_save` | `SurgicalTeamMember` | `TEAM_ASSIGNED` | `staff_member_id`, `role` |
 | `publish_checklist_event` | `post_save` | `WHOSafetyChecklist` | `CHECKLIST_SIGN_IN` / `CHECKLIST_TIME_OUT` / `CHECKLIST_SIGN_OUT` | `case_number` |
 | `publish_pacu_event` | `post_save` | `PACURecord` | `PACU_ARRIVED` | `initial_aldrete_score` |
+
+### Insurance (`hmis/apps/insurance/signals.py`)
+
+| Handler | Signal | Model | Event(s) Published | Payload |
+|---------|--------|-------|--------------------|---------|
+| `publish_provider_event` | `post_save` | `InsuranceProvider` | `PROVIDER_CREATED` / `PROVIDER_UPDATED` / `PROVIDER_SUSPENDED` / `PROVIDER_ACTIVATED` | `id`, `name`, `code`, `status` |
+| `publish_enrollment_event` | `post_save` | `PatientInsurance` | `ENROLLMENT_CREATED` / status-mapped (see below) | `id`, `patient_id`, `provider_id`, `member_number`, `status` |
+| `publish_claim_event` | `post_save` | `InsuranceClaim` | `CLAIM_CREATED` / status-mapped (see below) | `id`, `claim_number`, `provider_id`, `status`, `total_amount` |
+| `publish_preauth_event` | `post_save` | `InsurancePreauth` | `PREAUTH_CREATED` / status-mapped (see below) | `id`, `preauth_number`, `provider_id`, `status` |
+| `publish_remittance_event` | `post_save` | `InsuranceRemittance` | `REMITTANCE_RECEIVED` / `REMITTANCE_RECONCILED` | `id`, `remittance_number`, `provider_id`, `total_amount` |
+
+Insurance claim status → Event mapping:
+
+| Claim Status | Event Type |
+|-------------|------------|
+| `SUBMITTED` | `CLAIM_SUBMITTED` |
+| `APPROVED` | `CLAIM_APPROVED` |
+| `REJECTED` | `CLAIM_REJECTED` |
+| `QUERIED` | `CLAIM_QUERIED` |
+| `PAID` | `CLAIM_PAID` |
+| `APPEALED` | `CLAIM_APPEALED` |
+| `CANCELLED` | `CLAIM_CANCELLED` |
+
+Insurance preauth status → Event mapping:
+
+| Preauth Status | Event Type |
+|---------------|------------|
+| `SUBMITTED` | `PREAUTH_SUBMITTED` |
+| `APPROVED` | `PREAUTH_APPROVED` |
+| `REJECTED` | `PREAUTH_REJECTED` |
+| `QUERIED` | `PREAUTH_QUERIED` |
+| `EXPIRED` | `PREAUTH_EXPIRED` |
+| `CANCELLED` | `PREAUTH_CANCELLED` |
 
 ---
 

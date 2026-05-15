@@ -55,6 +55,14 @@ REDACTED_PII_FIELDS: set[str] = {
     "dha_admin_id",
     "dha_facility_phone",
     "dha_facility_email",
+    # Insurance PII
+    "member_number",
+    "policy_number",
+    "api_key",
+    "api_secret",
+    "api_username",
+    "api_password",
+    "api_token",
 }
 
 

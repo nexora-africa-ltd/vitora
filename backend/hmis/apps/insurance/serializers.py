@@ -37,6 +37,7 @@ class InsuranceProviderSerializer(serializers.ModelSerializer):
             "address",
             "website",
             "api_integration_enabled",
+            "logo",
             "notes",
             "plans_count",
             "active_enrollments_count",
@@ -60,6 +61,7 @@ class InsuranceProviderCreateSerializer(serializers.ModelSerializer):
             "address",
             "website",
             "api_integration_enabled",
+            "logo",
             "notes",
         ]
 
@@ -159,6 +161,8 @@ class PatientInsuranceSerializer(serializers.ModelSerializer):
             "verified_at",
             "verified_by",
             "notes",
+            "card_image_front",
+            "card_image_back",
             "created_at",
             "updated_at",
         ]
@@ -223,6 +227,11 @@ class InsuranceProviderConfigSerializer(serializers.ModelSerializer):
             "api_base_url",
             "api_auth_type",
             "api_credentials",
+            "api_key",
+            "api_secret",
+            "api_username",
+            "api_password",
+            "api_token",
             "api_enabled",
             "max_claim_amount",
             "submission_format",
@@ -234,6 +243,11 @@ class InsuranceProviderConfigSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "is_contract_active", "created_at", "updated_at"]
         extra_kwargs = {
             "api_credentials": {"write_only": True},
+            "api_key": {"write_only": True, "required": False},
+            "api_secret": {"write_only": True, "required": False},
+            "api_username": {"write_only": True, "required": False},
+            "api_password": {"write_only": True, "required": False},
+            "api_token": {"write_only": True, "required": False},
         }
 
 
@@ -306,6 +320,7 @@ class InsuranceClaimSerializer(serializers.ModelSerializer):
             "submitted_by",
             "reviewed_by",
             "notes",
+            "attachments_meta",
             "days_since_submission",
             "is_overdue",
             "is_appealable",

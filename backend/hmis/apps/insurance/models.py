@@ -24,6 +24,7 @@ from django.db import models
 from django.utils import timezone
 
 from hmis.apps.core.mixins import FacilityScopedModel, OrganizationScopedModel
+from hmis.apps.core.pii import encrypted_pii_property
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +60,7 @@ class InsuranceProvider(OrganizationScopedModel):
     api_integration_enabled = models.BooleanField(
         default=False, help_text="Whether this provider supports API integration"
     )
+    logo = models.ImageField(upload_to="insurance/provider_logos/", blank=True, null=True)
     notes = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -215,7 +217,20 @@ class PatientInsurance(OrganizationScopedModel):
         help_text="Denormalized from plan for fast filtering",
     )
     member_number = models.CharField(max_length=50)
+    member_number_encrypted = models.TextField(
+        blank=True, default="", help_text="KMS-encrypted member_number"
+    )
+    member_number_hmac = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="HMAC blind index for member_number lookup",
+    )
     policy_number = models.CharField(max_length=50, blank=True)
+    policy_number_encrypted = models.TextField(
+        blank=True, default="", help_text="KMS-encrypted policy_number"
+    )
     member_type = models.CharField(
         max_length=20,
         choices=MemberType.choices,
@@ -262,9 +277,25 @@ class PatientInsurance(OrganizationScopedModel):
         related_name="+",
     )
     notes = models.TextField(blank=True)
+    card_image_front = models.ImageField(
+        upload_to="insurance/cards/",
+        blank=True,
+        null=True,
+        help_text="Front image of insurance card",
+    )
+    card_image_back = models.ImageField(
+        upload_to="insurance/cards/",
+        blank=True,
+        null=True,
+        help_text="Back image of insurance card",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # PII encryption property descriptors
+    member_number_pii = encrypted_pii_property("member_number")
+    policy_number_pii = encrypted_pii_property("policy_number")
 
     class Meta:
         ordering = ["-is_primary", "-valid_to"]
@@ -294,6 +325,11 @@ class PatientInsurance(OrganizationScopedModel):
         # Auto-set provider from plan
         if self.plan_id and not self.provider_id:
             self.provider_id = self.plan.provider_id
+        # Dual-write: encrypt plain member_number/policy_number to _encrypted columns
+        if self.member_number:
+            self.member_number_pii = self.member_number
+        if self.policy_number:
+            self.policy_number_pii = self.policy_number
         super().save(*args, **kwargs)
 
     @property
@@ -365,7 +401,21 @@ class InsuranceProviderConfig(FacilityScopedModel):
     api_credentials = models.JSONField(
         default=dict,
         blank=True,
-        help_text="Encrypted credentials blob (keys vary by auth type)",
+        help_text="Legacy credentials (deprecated — use encrypted fields below)",
+    )
+    # KMS-encrypted credential fields (replaces plain api_credentials)
+    api_key_encrypted = models.TextField(blank=True, default="", help_text="KMS-encrypted API key")
+    api_secret_encrypted = models.TextField(
+        blank=True, default="", help_text="KMS-encrypted API secret"
+    )
+    api_username_encrypted = models.TextField(
+        blank=True, default="", help_text="KMS-encrypted API username"
+    )
+    api_password_encrypted = models.TextField(
+        blank=True, default="", help_text="KMS-encrypted API password"
+    )
+    api_token_encrypted = models.TextField(
+        blank=True, default="", help_text="KMS-encrypted bearer token"
     )
     api_enabled = models.BooleanField(default=False)
     max_claim_amount = models.DecimalField(
@@ -385,6 +435,13 @@ class InsuranceProviderConfig(FacilityScopedModel):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # PII encryption property descriptors for credentials
+    api_key = encrypted_pii_property("api_key")
+    api_secret = encrypted_pii_property("api_secret")
+    api_username = encrypted_pii_property("api_username")
+    api_password = encrypted_pii_property("api_password")
+    api_token = encrypted_pii_property("api_token")
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -397,6 +454,28 @@ class InsuranceProviderConfig(FacilityScopedModel):
 
     def __str__(self):
         return f"{self.provider.name} @ {self.facility.name}"
+
+    def get_credentials_dict(self) -> dict:
+        """Return credentials as a dict for the HTTP client.
+
+        Reads from KMS-encrypted fields first, falls back to legacy
+        ``api_credentials`` JSONField for backward compatibility.
+        """
+        creds: dict = {}
+        if self.api_key:
+            creds["api_key"] = self.api_key
+        if self.api_secret:
+            creds["api_secret"] = self.api_secret
+        if self.api_username:
+            creds["username"] = self.api_username
+        if self.api_password:
+            creds["password"] = self.api_password
+        if self.api_token:
+            creds["token"] = self.api_token
+        # Fall back to legacy JSONField if no encrypted fields populated
+        if not creds and self.api_credentials:
+            return self.api_credentials
+        return creds
 
     @property
     def is_contract_active(self) -> bool:
@@ -532,6 +611,11 @@ class InsuranceClaim(FacilityScopedModel):
         related_name="insurance_claims_reviewed",
     )
     notes = models.TextField(blank=True)
+    attachments_meta = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="File attachment references [{filename, url, content_type, uploaded_at}]",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
