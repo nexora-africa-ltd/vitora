@@ -244,21 +244,21 @@ def build_theatre_report_summary(*, cases, theatres, start_date, end_date):
                 "scheduled_minutes": theatre_scheduled_minutes,
                 "actual_minutes": theatre_actual_minutes,
                 "available_minutes": theatre_available_minutes,
-                "utilization_percent": round(
-                    (theatre_scheduled_minutes / theatre_available_minutes) * 100, 2
-                )
-                if theatre_available_minutes
-                else 0.0,
-                "average_case_duration_minutes": round(
-                    (theatre_actual_minutes / len(theatre_cases)), 2
-                )
-                if theatre_cases
-                else 0.0,
-                "turnaround_average_minutes": round(
-                    sum(theatre_turnarounds) / len(theatre_turnarounds), 2
-                )
-                if theatre_turnarounds
-                else 0.0,
+                "utilization_percent": (
+                    round((theatre_scheduled_minutes / theatre_available_minutes) * 100, 2)
+                    if theatre_available_minutes
+                    else 0.0
+                ),
+                "average_case_duration_minutes": (
+                    round((theatre_actual_minutes / len(theatre_cases)), 2)
+                    if theatre_cases
+                    else 0.0
+                ),
+                "turnaround_average_minutes": (
+                    round(sum(theatre_turnarounds) / len(theatre_turnarounds), 2)
+                    if theatre_turnarounds
+                    else 0.0
+                ),
             }
         )
 

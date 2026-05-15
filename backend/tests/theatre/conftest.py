@@ -293,3 +293,95 @@ def theatre_billing_service(db, theatre_billing_service_category, test_user):
         unit_price=Decimal("25000.00"),
         created_by=test_user,
     )
+
+
+# ---------------------------------------------------------------------------
+# Equipment fixtures
+# ---------------------------------------------------------------------------
+@pytest.fixture
+def sample_equipment_type(db, sample_organization, sample_facility):
+    """Create a TheatreEquipmentType for testing."""
+    from hmis.apps.theatre.models import TheatreEquipmentType
+
+    return TheatreEquipmentType.objects.create(
+        name="C-Arm Fluoroscope",
+        code="EQ-CARM-01",
+        category="IMAGING",
+        description="Mobile C-Arm for intraoperative imaging",
+        is_portable=True,
+        setup_time_minutes=10,
+        cleanup_time_minutes=5,
+        is_active=True,
+        organization=sample_organization,
+        facility=sample_facility,
+    )
+
+
+@pytest.fixture
+def sample_equipment_type_2(db, sample_organization, sample_facility):
+    """Create a second TheatreEquipmentType for testing."""
+    from hmis.apps.theatre.models import TheatreEquipmentType
+
+    return TheatreEquipmentType.objects.create(
+        name="Ventilator",
+        code="EQ-VENT-01",
+        category="LIFE_SUPPORT",
+        description="Mechanical ventilator",
+        is_portable=False,
+        setup_time_minutes=5,
+        cleanup_time_minutes=5,
+        is_active=True,
+        organization=sample_organization,
+        facility=sample_facility,
+    )
+
+
+@pytest.fixture
+def sample_equipment_resource(db, sample_equipment_type, sample_organization, sample_facility):
+    """Create an ASSET Resource linked to an equipment type."""
+    from hmis.apps.scheduling.models import Resource
+
+    return Resource.objects.create(
+        name="C-Arm Unit #1",
+        resource_type="ASSET",
+        code="ASSET-CARM-001",
+        is_active=True,
+        capacity=1,
+        equipment_type=sample_equipment_type,
+        organization=sample_organization,
+        facility=sample_facility,
+    )
+
+
+@pytest.fixture
+def sample_equipment_resource_2(db, sample_equipment_type, sample_organization, sample_facility):
+    """Create a second ASSET Resource of the same equipment type."""
+    from hmis.apps.scheduling.models import Resource
+
+    return Resource.objects.create(
+        name="C-Arm Unit #2",
+        resource_type="ASSET",
+        code="ASSET-CARM-002",
+        is_active=True,
+        capacity=1,
+        equipment_type=sample_equipment_type,
+        organization=sample_organization,
+        facility=sample_facility,
+    )
+
+
+@pytest.fixture
+def sample_case_equipment(db, sample_surgery_case, sample_equipment_resource, test_user):
+    """Create a CaseEquipmentRequirement linking a case to an equipment resource."""
+    from hmis.apps.theatre.models import CaseEquipmentRequirement
+
+    return CaseEquipmentRequirement.objects.create(
+        surgery_case=sample_surgery_case,
+        resource=sample_equipment_resource,
+        equipment_type=sample_equipment_resource.equipment_type,
+        quantity_required=1,
+        is_confirmed=True,
+        reserved_from=sample_surgery_case.scheduled_start_time,
+        reserved_until=time(10, 0),
+        added_by=test_user,
+    )

@@ -1113,3 +1113,143 @@ class PACUVitalReading(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"PACU Vitals @ {self.recorded_at}"
+
+
+# ---------------------------------------------------------------------------
+# 11. TheatreEquipmentType — Equipment Catalog
+# ---------------------------------------------------------------------------
+class TheatreEquipmentType(FacilityScopedModel, TimeStampedModel):
+    """
+    Catalog of surgical equipment types available at a facility.
+
+    Individual physical units are represented as ``scheduling.Resource``
+    instances with ``resource_type="ASSET"`` and an FK back to this type.
+    """
+
+    class EquipmentCategory(models.TextChoices):
+        IMAGING = "IMAGING", "Imaging"
+        MONITORING = "MONITORING", "Monitoring"
+        SURGICAL_INSTRUMENT = "SURGICAL_INSTRUMENT", "Surgical Instrument"
+        LIFE_SUPPORT = "LIFE_SUPPORT", "Life Support"
+        STERILIZATION = "STERILIZATION", "Sterilization"
+        OTHER = "OTHER", "Other"
+
+    name = models.CharField(max_length=200)
+    code = models.CharField(max_length=50, help_text='e.g. "EQ-CARM-01"')
+    category = models.CharField(
+        max_length=30,
+        choices=EquipmentCategory.choices,
+        default=EquipmentCategory.OTHER,
+    )
+    description = models.TextField(blank=True, default="")
+    is_portable = models.BooleanField(default=False)
+    setup_time_minutes = models.PositiveIntegerField(
+        default=0, help_text="Minutes to set up before surgery"
+    )
+    cleanup_time_minutes = models.PositiveIntegerField(
+        default=0, help_text="Minutes to clean/sterilize after surgery"
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["category", "name"]
+        verbose_name = "Theatre Equipment Type"
+        verbose_name_plural = "Theatre Equipment Types"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "code"],
+                name="theatre_equipment_type_unique_code_per_facility",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.code}: {self.name}"
+
+
+# ---------------------------------------------------------------------------
+# 12. CaseEquipmentRequirement — Case ↔ Equipment M2M
+# ---------------------------------------------------------------------------
+class CaseEquipmentRequirement(TimeStampedModel):
+    """
+    Links a SurgeryCase to a specific equipment resource (or type-level request).
+
+    Supports two-phase assignment:
+    1. **Type-level request** — ``equipment_type`` set, ``resource`` is null.
+       ("We need a C-Arm for this case.")
+    2. **Unit-level confirmation** — ``resource`` set to a specific ASSET resource.
+       ("C-Arm Unit #1 has been allocated.")
+
+    Time windows (``reserved_from`` / ``reserved_until``) allow equipment to
+    be booked for only part of the surgery duration.
+
+    Not FacilityScopedModel — nested under SurgeryCase which is already
+    facility-scoped.
+    """
+
+    surgery_case = models.ForeignKey(
+        SurgeryCase,
+        on_delete=models.CASCADE,
+        related_name="equipment_requirements",
+    )
+    resource = models.ForeignKey(
+        "scheduling.Resource",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="case_equipment_requirements",
+        limit_choices_to={"resource_type": "ASSET"},
+        help_text="Specific equipment unit (null for type-level requests)",
+    )
+    equipment_type = models.ForeignKey(
+        TheatreEquipmentType,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="case_requirements",
+        help_text="Equipment type catalog entry",
+    )
+    quantity_required = models.PositiveIntegerField(default=1)
+    is_confirmed = models.BooleanField(
+        default=False,
+        help_text="True when a specific unit has been allocated and confirmed",
+    )
+
+    # Time window for this equipment within the case
+    reserved_from = models.TimeField(help_text="Start of equipment reservation window")
+    reserved_until = models.TimeField(help_text="End of equipment reservation window")
+
+    notes = models.TextField(blank=True, default="")
+    added_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="equipment_requirements_added",
+    )
+
+    class Meta:
+        ordering = ["reserved_from"]
+        verbose_name = "Case Equipment Requirement"
+        verbose_name_plural = "Case Equipment Requirements"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["surgery_case", "resource"],
+                condition=models.Q(resource__isnull=False),
+                name="unique_case_equipment_resource",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        label = (
+            self.resource.name
+            if self.resource
+            else (self.equipment_type.name if self.equipment_type else "Unknown")
+        )
+        return f"{label} for {self.surgery_case.case_number}"
+
+    @property
+    def duration_minutes(self) -> int:
+        """Compute reservation duration in minutes."""
+        from datetime import datetime
+
+        start = datetime.combine(datetime.min, self.reserved_from)
+        end = datetime.combine(datetime.min, self.reserved_until)
+        return int((end - start).total_seconds() / 60)

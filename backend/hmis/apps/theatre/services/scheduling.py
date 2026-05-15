@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from hmis.apps.scheduling.models import Resource, Shift
 from hmis.apps.scheduling.services import check_slot_available as check_resource_slot_available
 from hmis.apps.scheduling.services import get_available_slots as get_resource_available_slots
-from hmis.apps.theatre.models import OperatingTheatre, SurgeryCase
+from hmis.apps.theatre.models import CaseEquipmentRequirement, OperatingTheatre, SurgeryCase
 
 ACTIVE_CASE_STATUSES = [
     SurgeryCase.CaseStatus.SCHEDULED,
@@ -376,4 +376,150 @@ def get_case_scheduling_context(surgery_case: SurgeryCase) -> dict:
             "coverage_complete": covered_members == len(members),
         },
         "members": members,
+        "equipment": _build_equipment_context(surgery_case),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Equipment conflict detection
+# ---------------------------------------------------------------------------
+
+
+def detect_equipment_conflicts(
+    resource_id: int,
+    scheduled_date,
+    start_time,
+    duration_minutes: int,
+    exclude_case_id: int | None = None,
+) -> list[dict]:
+    """
+    Check if an equipment resource is already booked at overlapping times.
+
+    Returns list of conflicting bookings with case details.
+    """
+    start_dt = datetime.combine(scheduled_date, start_time)
+    end_dt = start_dt + timedelta(minutes=duration_minutes)
+
+    qs = CaseEquipmentRequirement.objects.filter(
+        resource_id=resource_id,
+        surgery_case__scheduled_date=scheduled_date,
+        surgery_case__status__in=ACTIVE_CASE_STATUSES,
+    ).select_related("surgery_case", "resource", "equipment_type")
+
+    if exclude_case_id:
+        qs = qs.exclude(surgery_case_id=exclude_case_id)
+
+    conflicts: list[dict] = []
+    for req in qs:
+        req_start = datetime.combine(scheduled_date, req.reserved_from)
+        req_end = datetime.combine(scheduled_date, req.reserved_until)
+        if start_dt < req_end and end_dt > req_start:
+            conflicts.append(
+                {
+                    "case_number": req.surgery_case.case_number,
+                    "case_id": req.surgery_case_id,
+                    "reserved_from": str(req.reserved_from),
+                    "reserved_until": str(req.reserved_until),
+                    "equipment_name": req.resource.name if req.resource else "",
+                }
+            )
+
+    return conflicts
+
+
+def get_equipment_availability(
+    equipment_type_id: int,
+    target_date,
+    start_time,
+    duration_minutes: int,
+    facility_id: int,
+) -> dict:
+    """
+    Return availability of all units of a given equipment type on a date.
+
+    Checks each ASSET resource of the given type for conflicts in the
+    requested time window.
+    """
+    units = Resource.objects.filter(
+        equipment_type_id=equipment_type_id,
+        resource_type="ASSET",
+        is_active=True,
+        facility_id=facility_id,
+    )
+
+    result_units: list[dict] = []
+    available_count = 0
+
+    for unit in units:
+        conflicts = detect_equipment_conflicts(
+            resource_id=unit.pk,
+            scheduled_date=target_date,
+            start_time=start_time,
+            duration_minutes=duration_minutes,
+        )
+        is_available = len(conflicts) == 0
+        if is_available:
+            available_count += 1
+        result_units.append(
+            {
+                "resource_id": unit.pk,
+                "resource_name": unit.name,
+                "resource_code": unit.code,
+                "available": is_available,
+                "conflicts": conflicts,
+            }
+        )
+
+    return {
+        "equipment_type_id": equipment_type_id,
+        "date": str(target_date),
+        "start_time": str(start_time),
+        "duration_minutes": duration_minutes,
+        "total_units": len(result_units),
+        "available_units": available_count,
+        "units": result_units,
+    }
+
+
+def _build_equipment_context(surgery_case: SurgeryCase) -> dict:
+    """Build equipment section for case scheduling context."""
+    requirements = surgery_case.equipment_requirements.select_related(
+        "resource", "equipment_type"
+    ).all()
+
+    items: list[dict] = []
+    for req in requirements:
+        conflicts: list[dict] = []
+        if req.resource_id:
+            conflicts = detect_equipment_conflicts(
+                resource_id=req.resource_id,
+                scheduled_date=surgery_case.scheduled_date,
+                start_time=req.reserved_from,
+                duration_minutes=req.duration_minutes,
+                exclude_case_id=surgery_case.pk,
+            )
+        items.append(
+            {
+                "requirement_id": req.pk,
+                "equipment_type": req.equipment_type.name if req.equipment_type else None,
+                "resource_name": req.resource.name if req.resource else None,
+                "resource_id": req.resource_id,
+                "is_confirmed": req.is_confirmed,
+                "reserved_from": str(req.reserved_from),
+                "reserved_until": str(req.reserved_until),
+                "has_conflict": len(conflicts) > 0,
+                "conflicts": conflicts,
+            }
+        )
+
+    confirmed_items = sum(1 for item in items if item["is_confirmed"])
+    conflict_items = sum(1 for item in items if item["has_conflict"])
+
+    return {
+        "total_items": len(items),
+        "confirmed_items": confirmed_items,
+        "conflict_items": conflict_items,
+        "all_confirmed": confirmed_items == len(items) if items else True,
+        "has_conflicts": conflict_items > 0,
+        "items": items,
     }
