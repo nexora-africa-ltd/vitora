@@ -10,6 +10,7 @@ import type {
   InsurancePlanCreateInput,
   InsurancePreauthCreateInput,
   InsurancePreauthFilters,
+  InsuranceProviderConfigCreateInput,
   InsuranceProviderCreateInput,
   InsuranceRemittanceCreateInput,
   PatientInsuranceCreateInput,
@@ -216,6 +217,31 @@ export function useProviderConfig(id: number | undefined) {
     queryKey: insuranceQueryKeys.configDetail(id!),
     queryFn: () => insuranceApi.getProviderConfig(id!),
     enabled: !!id,
+  });
+}
+
+export function useCreateProviderConfig() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: InsuranceProviderConfigCreateInput) =>
+      insuranceApi.createProviderConfig(data as unknown as Record<string, unknown>),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.configs() });
+    },
+  });
+}
+
+export function useUpdateProviderConfig() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<InsuranceProviderConfigCreateInput> }) =>
+      insuranceApi.updateProviderConfig(id, data as Record<string, unknown>),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.configs() });
+      queryClient.invalidateQueries({
+        queryKey: insuranceQueryKeys.configDetail(variables.id),
+      });
+    },
   });
 }
 
