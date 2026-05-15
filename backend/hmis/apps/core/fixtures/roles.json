@@ -971,6 +971,72 @@
           "delete": true,
           "issue_sick_note": true,
           "revoke_sick_note": true
+        },
+        "InsuranceProvider": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "InsurancePlan": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "PatientInsurance": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "verify_enrollment": true
+        },
+        "InsuranceProviderConfig": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "InsuranceClaim": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "submit_insurance_claim": true,
+          "approve_insurance_claim": true,
+          "adjudicate_insurance_claim": true
+        },
+        "InsuranceClaimItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "InsurancePreauth": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "approve_insurance_preauth": true
+        },
+        "InsuranceRemittance": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "reconcile_remittance": true
+        },
+        "InsuranceRemittanceLine": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "PayerTariff": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
         }
       },
       "hierarchy_level": 0,
@@ -1541,6 +1607,30 @@
           "delete": false,
           "issue_sick_note": true,
           "revoke_sick_note": true
+        },
+        "PatientInsurance": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "InsurancePlan": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "InsuranceClaim": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "InsurancePreauth": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
         }
       },
       "hierarchy_level": 2,
@@ -2831,6 +2921,18 @@
           "delete": false,
           "issue_sick_note": false,
           "revoke_sick_note": false
+        },
+        "PatientInsurance": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "InsurancePlan": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
         }
       },
       "hierarchy_level": 4,
@@ -3281,6 +3383,24 @@
           "read": true,
           "update": false,
           "delete": false
+        },
+        "PatientInsurance": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "InsuranceProvider": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "InsurancePlan": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
         }
       },
       "hierarchy_level": 5,
@@ -3480,6 +3600,55 @@
           "delete": false
         },
         "Service": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "PatientInsurance": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "InsuranceProvider": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "InsurancePlan": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "InsuranceClaim": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "submit_insurance_claim": true
+        },
+        "InsuranceClaimItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "InsurancePreauth": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "InsuranceRemittance": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "PayerTariff": {
           "create": false,
           "read": true,
           "update": false,
@@ -4892,6 +5061,24 @@
           "read": true,
           "update": false,
           "delete": false
+        },
+        "PatientInsurance": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "InsurancePlan": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "InsuranceClaim": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
         }
       },
       "hierarchy_level": 5,
@@ -5004,6 +5191,72 @@
           "manage_etims": true
         },
         "ETIMSInvoice": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "InsuranceProvider": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "InsurancePlan": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "PatientInsurance": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "verify_enrollment": true
+        },
+        "InsuranceProviderConfig": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "InsuranceClaim": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "submit_insurance_claim": true,
+          "approve_insurance_claim": true,
+          "adjudicate_insurance_claim": true
+        },
+        "InsuranceClaimItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "InsurancePreauth": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "approve_insurance_preauth": true
+        },
+        "InsuranceRemittance": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "reconcile_remittance": true
+        },
+        "InsuranceRemittanceLine": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "PayerTariff": {
           "create": true,
           "read": true,
           "update": true,
@@ -5845,6 +6098,54 @@
           "update": true,
           "delete": false,
           "approve_swap": true
+        },
+        "InsuranceProvider": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "InsurancePlan": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "InsuranceProviderConfig": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "PatientInsurance": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "InsuranceClaim": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "InsurancePreauth": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "InsuranceRemittance": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "PayerTariff": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
         }
       },
       "hierarchy_level": 0,

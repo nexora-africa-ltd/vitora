@@ -434,7 +434,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Credit Notes', href: '/transactions/credit-notes', icon: ScrollText, actionKey: 'billing.view_credit_notes' },
       { label: 'SHA Claims', href: '/transactions/sha-claims', icon: SHAIcon, actionKey: 'billing.submit_sha_claim' },
       { label: 'OTP Whitelist', href: '/transactions/sha-claims/whitelist', icon: ShieldAlert, actionKey: 'billing.submit_sha_claim' },
-      { label: 'Insurance', href: '/insurance', icon: Shield, actionKey: 'billing.view_insurance' },
+      { label: 'Insurance', href: '/insurance', icon: Shield, actionKey: 'billing.view_insurance', facilityModule: 'private_insurance' },
       { label: 'Reports', href: '/transactions/reports', icon: BarChart3, actionKey: 'billing.view_reports' },
       { label: 'Reconciliation', href: '/transactions/reconciliation', icon: Scale, actionKey: 'billing.reconcile' },
       { label: 'Services', href: '/finance/services', icon: Tag, actionKey: 'billing.view_dashboard' },

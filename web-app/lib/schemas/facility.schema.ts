@@ -22,6 +22,7 @@ export const FacilityModulesSchema = z.object({
   allied_health: z.boolean().default(false),
   quality: z.boolean().default(false),
   billing: z.boolean().default(true),
+  private_insurance: z.boolean().default(false),
 });
 
 export const FacilityListItemSchema = z.object({
@@ -73,6 +74,7 @@ export const FacilityDetailSchema = FacilityListItemSchema.extend({
   has_allied_health: z.boolean().default(false),
   has_quality: z.boolean().default(false),
   has_billing: z.boolean().default(true),
+  has_private_insurance: z.boolean().default(false),
   // DHA Registry Cache
   dha_registry_synced_at: z.string().nullable().default(null),
   dha_fid_code: z.string().default(''),
