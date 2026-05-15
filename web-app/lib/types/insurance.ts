@@ -541,6 +541,7 @@ export interface PaginatedInsuranceResponse<T> {
 // ---------------------------------------------------------------------------
 
 export interface InsuranceClaimFilters {
+  search?: string;
   status?: InsuranceClaimStatus;
   provider?: number;
   patient?: number;
@@ -551,6 +552,7 @@ export interface InsuranceClaimFilters {
 }
 
 export interface InsurancePreauthFilters {
+  search?: string;
   status?: InsurancePreauthStatus;
   provider?: number;
   patient?: number;
