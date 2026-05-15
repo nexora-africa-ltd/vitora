@@ -350,6 +350,9 @@ export function TriageReportsPage({
   const [selectedArea, setSelectedArea] = React.useState<string>(filters.area || 'all');
   const [selectedCategory, setSelectedCategory] = React.useState<string>(filters.category || 'all');
 
+  const [customStart, setCustomStart] = React.useState<string>(filters.customStartDate || '');
+  const [customEnd, setCustomEnd] = React.useState<string>(filters.customEndDate || '');
+
   const handleDateRangeChange = (value: string) => {
     const preset = value as DateRangePreset;
     setSelectedDateRange(preset);
@@ -359,10 +362,12 @@ export function TriageReportsPage({
   };
 
   const handleCustomDateChange = (field: 'start' | 'end', value: string) => {
-    const start = field === 'start' ? value : filters.customStartDate || '';
-    const end = field === 'end' ? value : filters.customEndDate || '';
-    if (start && end) {
-      onDateRangeChange('custom', { start, end });
+    const newStart = field === 'start' ? value : customStart;
+    const newEnd = field === 'end' ? value : customEnd;
+    if (field === 'start') setCustomStart(value);
+    if (field === 'end') setCustomEnd(value);
+    if (newStart && newEnd) {
+      onDateRangeChange('custom', { start: newStart, end: newEnd });
     }
   };
 
@@ -395,7 +400,7 @@ export function TriageReportsPage({
         <p className="text-sm text-muted-foreground">
           {formatDateRange(reportData.date_range.start, reportData.date_range.end)}
         </p>
-        <Button variant="outline" size="sm" onClick={() => onExport('pdf')}>
+        <Button variant="outline" size="sm" onClick={() => onExport('csv')}>
           <Download className="h-4 w-4 mr-2" />
           <span className="sm:hidden">Export</span>
           <span className="hidden sm:inline">Export Report</span>
@@ -433,7 +438,7 @@ export function TriageReportsPage({
                     id="custom-start"
                     type="date"
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    value={filters.customStartDate || ''}
+                    value={customStart}
                     onChange={(e) => handleCustomDateChange('start', e.target.value)}
                   />
                 </div>
@@ -443,7 +448,7 @@ export function TriageReportsPage({
                     id="custom-end"
                     type="date"
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    value={filters.customEndDate || ''}
+                    value={customEnd}
                     onChange={(e) => handleCustomDateChange('end', e.target.value)}
                   />
                 </div>
@@ -678,6 +683,7 @@ export function TriageReportsPage({
                   })}
                   dataKeys={['avg_wait', 'median_wait']}
                   xAxisKey="name"
+                  xAxisFormatter={(v) => v}
                   showGrid
                   showXAxis
                   showYAxis
