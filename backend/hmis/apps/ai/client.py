@@ -408,6 +408,10 @@ class TibaBotClient:
         to TibaBot's ``POST /predict/condition`` endpoint for ML-based
         risk assessment.
 
+        TibaBot expects patient fields at the **request body root** (not
+        nested under ``patient_features``).  The view sends the envelope
+        format so we flatten here — same pattern as ``_prepare_icu_payload``.
+
         Args:
             payload: Dict containing patient_features with age, gender,
                      vitals, chief_complaint, etc.
@@ -416,10 +420,18 @@ class TibaBotClient:
             Dict with primary_condition, confidence, risk_factors, and
             differential_conditions.
         """
+        flat_payload = dict(payload.get("patient_features", {}))
+
+        # Include context fields at root if TibaBot accepts them
+        if "user_context" in payload:
+            flat_payload["user_context"] = payload["user_context"]
+        if "facility_context" in payload:
+            flat_payload["facility_context"] = payload["facility_context"]
+
         return self._request(
             method="POST",
             endpoint="/predict/condition",
-            data=payload,
+            data=flat_payload,
         )
 
     # -----------------------------------------------------------------
