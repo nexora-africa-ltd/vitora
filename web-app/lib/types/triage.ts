@@ -767,6 +767,8 @@ export type {
   VolumeByCategory,
   VolumeByArea,
   LWBSStats,
+  StaffPerformance,
+  WaitTimeTrend,
   TriageReportSummary,
   WaitTimeStatsResponse,
   VolumeReportResponse,

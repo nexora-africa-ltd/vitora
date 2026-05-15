@@ -360,6 +360,22 @@ export const LWBSStatsSchema = z.object({
   })),
 });
 
+export const StaffPerformanceSchema = z.object({
+  user_id: z.number(),
+  name: z.string(),
+  assessment_count: z.number(),
+  avg_wait_minutes: z.number(),
+  median_wait_minutes: z.number(),
+  keta_compliance_pct: z.number(),
+});
+
+export const WaitTimeTrendSchema = z.object({
+  timestamp: z.string(),
+  category: TriageCategorySchema,
+  avg_wait_minutes: z.number(),
+  count: z.number(),
+});
+
 export const TriageReportSummarySchema = z.object({
   date_range: z.object({
     start: z.string(),
@@ -372,6 +388,8 @@ export const TriageReportSummarySchema = z.object({
   wait_times_by_category: z.array(WaitTimeStatsSchema),
   volume_by_category: z.array(VolumeByCategorySchema),
   volume_by_area: z.array(VolumeByAreaSchema),
+  staff_performance: z.array(StaffPerformanceSchema),
+  wait_time_trend: z.array(WaitTimeTrendSchema),
   lwbs_stats: LWBSStatsSchema,
 });
 
@@ -492,6 +510,8 @@ export type WaitTimeStats = z.infer<typeof WaitTimeStatsSchema>;
 export type VolumeByCategory = z.infer<typeof VolumeByCategorySchema>;
 export type VolumeByArea = z.infer<typeof VolumeByAreaSchema>;
 export type LWBSStats = z.infer<typeof LWBSStatsSchema>;
+export type StaffPerformance = z.infer<typeof StaffPerformanceSchema>;
+export type WaitTimeTrend = z.infer<typeof WaitTimeTrendSchema>;
 export type TriageReportSummary = z.infer<typeof TriageReportSummarySchema>;
 export type WaitTimeStatsResponse = z.infer<typeof WaitTimeStatsResponseSchema>;
 export type VolumeReportResponse = z.infer<typeof VolumeReportResponseSchema>;

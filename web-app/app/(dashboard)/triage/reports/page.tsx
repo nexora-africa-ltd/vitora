@@ -9,10 +9,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Download, Calendar } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
-import { Button } from '@/components/ui/button';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { TriageReportsPage as TriageReportsComponent } from '@/components/triage';
 import { useTriageReports, useExportTriageReport } from '@/lib/hooks/use-triage';
 import { toast } from '@/lib/hooks/use-toast';
@@ -29,7 +27,6 @@ interface LocalReportFilters {
 }
 
 export default function TriageReportsPage() {
-  const router = useRouter();
 
   const [filters, setFilters] = useState<LocalReportFilters>({
     dateRange: 'last_7_days',
@@ -47,7 +44,7 @@ export default function TriageReportsPage() {
   });
 
   // Export mutation
-  const { mutateAsync: exportReport, isPending: isExporting } = useExportTriageReport();
+  const { mutateAsync: exportReport } = useExportTriageReport();
 
   const handleDateRangeChange = useCallback(
     (preset: DateRangePreset, customDates?: { start: string; end: string }) => {
@@ -94,10 +91,6 @@ export default function TriageReportsPage() {
     [exportReport, filters]
   );
 
-  const handleBack = useCallback(() => {
-    router.push('/triage');
-  }, [router]);
-
   // Default report data for loading state
   const defaultReportData = {
     date_range: { start: '', end: '' },
@@ -108,6 +101,8 @@ export default function TriageReportsPage() {
     wait_times_by_category: [],
     volume_by_category: [],
     volume_by_area: [],
+    staff_performance: [],
+    wait_time_trend: [],
     lwbs_stats: {
       total_lwbs: 0,
       lwbs_rate: 0,
@@ -117,16 +112,11 @@ export default function TriageReportsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <PullToRefresh onRefresh={() => { refetch(); }} isRefreshing={isLoading}>
+    <div className="space-y-4 sm:space-y-6">
       <PageHeader
         title="Triage Reports"
-        description="Performance analytics and statistics"
-        actions={
-          <Button variant="outline" onClick={handleBack}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Queue
-          </Button>
-        }
+        helpContent="Performance analytics for triage wait times, volume distribution, and LWBS (Left Without Being Seen) statistics. Use filters to narrow by date range, area, or category."
       />
 
       <TriageReportsComponent
@@ -138,5 +128,6 @@ export default function TriageReportsPage() {
         onExport={handleExport}
       />
     </div>
+    </PullToRefresh>
   );
 }
