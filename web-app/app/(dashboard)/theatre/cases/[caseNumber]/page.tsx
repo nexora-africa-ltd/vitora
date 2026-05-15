@@ -862,11 +862,15 @@ function EquipmentRow({
   removing: boolean;
 }) {
   const name = equipment.equipment_type_name || equipment.resource_name || 'Unknown';
+  const qty = equipment.quantity_required ?? 1;
   const timeRange = `${equipment.reserved_from?.slice(0, 5)} – ${equipment.reserved_until?.slice(0, 5)}`;
   return (
     <div className="flex items-start sm:items-center justify-between gap-2 text-sm">
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{name}</p>
+        <p className="truncate font-medium">
+          {name}
+          {qty > 1 && <span className="text-muted-foreground ml-1">×{qty}</span>}
+        </p>
         <div className="flex flex-wrap items-center gap-1.5 mt-1">
           <Badge variant="outline" className="text-xs shrink-0 w-fit">{timeRange}</Badge>
           {equipment.equipment_type_category && (
