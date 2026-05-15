@@ -48,9 +48,15 @@ export type {
   TheatreReportSummary,
   PACUVital,
   PACURecord,
+  // Equipment types
+  EquipmentCategory,
+  TheatreEquipmentTypeList,
+  TheatreEquipmentTypeDetail,
+  CaseEquipmentRequirement,
   // Paginated types
   PaginatedOperatingTheatres,
   PaginatedSurgeryCases,
+  PaginatedTheatreEquipmentTypes,
 } from '@/lib/schemas/theatre.schema';
 
 // =============================================================================
@@ -255,4 +261,33 @@ export interface SurgeryCaseListParams {
 export interface TheatreReportParams {
   date_from?: string;
   date_to?: string;
+}
+
+export interface TheatreEquipmentTypeCreateData {
+  name: string;
+  code: string;
+  category: string;
+  description?: string;
+  is_portable?: boolean;
+  setup_time_minutes?: number;
+  cleanup_time_minutes?: number;
+  is_active?: boolean;
+}
+
+export interface TheatreEquipmentTypeListParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  category?: string;
+  is_active?: boolean;
+}
+
+export interface CaseEquipmentCreateData {
+  resource?: number;
+  equipment_type?: number;
+  quantity_required?: number;
+  is_confirmed?: boolean;
+  reserved_from: string;
+  reserved_until: string;
+  notes?: string;
 }

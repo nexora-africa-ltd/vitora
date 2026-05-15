@@ -25,6 +25,7 @@ import {
   Stethoscope,
   HeartPulse,
   BedDouble,
+  Wrench,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
@@ -43,7 +44,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { theatreApi } from '@/lib/api/theatre';
 import { formatDate } from '@/lib/utils/format';
-import type { CaseSchedulingContext, SurgeryCaseDetail, SurgicalTeamMember } from '@/lib/types/theatre';
+import type { CaseSchedulingContext, CaseEquipmentRequirement, SurgeryCaseDetail, SurgicalTeamMember } from '@/lib/types/theatre';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
@@ -56,6 +57,7 @@ import {
 import { PreOpWorkspace } from '@/components/theatre/pre-op-workspace';
 import { IntraOpWorkspace } from '@/components/theatre/intra-op-workspace';
 import { PostOpWorkspace } from '@/components/theatre/post-op-workspace';
+import { EquipmentAssignDialog } from '@/components/theatre/equipment-assign-dialog';
 import {
   TheatreCasePriorityBadge,
   TheatreCaseStatusBadge,
@@ -114,6 +116,9 @@ export default function CaseDetailPage() {
   const [cancelReason, setCancelReason] = useState('');
   const [assignmentDialog, setAssignmentDialog] = useState(false);
   const [teamMutationLoading, setTeamMutationLoading] = useState(false);
+  const [equipmentList, setEquipmentList] = useState<CaseEquipmentRequirement[]>([]);
+  const [equipmentDialog, setEquipmentDialog] = useState(false);
+  const [equipmentMutationLoading, setEquipmentMutationLoading] = useState(false);
 
   const requestedTab = searchParams.get('tab');
   const derivedDefaultTab = requestedTab && ['overview', 'pre-op', 'intra-op', 'post-op'].includes(requestedTab)
@@ -141,10 +146,15 @@ export default function CaseDetailPage() {
       ]);
       setSurgeryCase(detail);
       setSchedulingContext(context);
+      // Fetch equipment list after we have the case ID
+      if (detail?.id) {
+        theatreApi.listCaseEquipment(detail.id).then(setEquipmentList).catch(() => setEquipmentList([]));
+      }
     } catch {
       // not found
       setSurgeryCase(null);
       setSchedulingContext(null);
+      setEquipmentList([]);
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -297,6 +307,35 @@ export default function CaseDetailPage() {
       });
     } finally {
       setTeamMutationLoading(false);
+    }
+  };
+
+  const handleAddEquipment = async (data: import('@/lib/types/theatre').CaseEquipmentCreateData) => {
+    if (!surgeryCase) return;
+    try {
+      setEquipmentMutationLoading(true);
+      await theatreApi.addCaseEquipment(surgeryCase.id, data);
+      setEquipmentDialog(false);
+      toast({ title: 'Equipment added', description: 'Equipment requirement has been added to the case.' });
+      await fetchCase();
+    } catch {
+      toast({ title: 'Failed to add equipment', variant: 'destructive' });
+    } finally {
+      setEquipmentMutationLoading(false);
+    }
+  };
+
+  const handleRemoveEquipment = async (requirementId: number) => {
+    if (!surgeryCase) return;
+    try {
+      setEquipmentMutationLoading(true);
+      await theatreApi.removeCaseEquipment(surgeryCase.id, requirementId);
+      toast({ title: 'Equipment removed' });
+      await fetchCase();
+    } catch {
+      toast({ title: 'Failed to remove equipment', variant: 'destructive' });
+    } finally {
+      setEquipmentMutationLoading(false);
     }
   };
 
@@ -578,6 +617,57 @@ export default function CaseDetailPage() {
               </CardContent>
             </Card>
 
+            {/* Equipment Requirements */}
+            <Card className="relative overflow-hidden">
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
+              <CardHeader className="relative pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Wrench className="h-4 w-4" /> Equipment
+                  <HelpPopover content="Surgical equipment assigned to this case. Shows confirmation status and scheduling conflicts." />
+                  <Badge variant="secondary" className="text-xs ml-auto shrink-0">{equipmentList.length}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="relative space-y-3">
+                {canManageTeam && (
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-dashed p-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Assign equipment</p>
+                      <p className="text-xs text-muted-foreground">Add required surgical equipment for this case.</p>
+                    </div>
+                    <Button type="button" size="sm" onClick={() => setEquipmentDialog(true)} className="w-full sm:w-auto">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add
+                    </Button>
+                  </div>
+                )}
+                {schedulingContext?.equipment?.has_conflicts && (
+                  <div className="rounded-md border border-amber-500/40 bg-amber-50 px-3 py-2 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100 text-xs sm:text-sm">
+                    <p className="font-medium">Equipment conflicts detected</p>
+                    <p className="mt-0.5">Some equipment is double-booked during this case&apos;s time window.</p>
+                  </div>
+                )}
+                {equipmentList.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No equipment assigned yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {equipmentList.map((eq) => (
+                      <EquipmentRow
+                        key={eq.id}
+                        equipment={eq}
+                        hasConflict={schedulingContext?.equipment?.items?.find(i => i.requirement_id === eq.id)?.has_conflict ?? false}
+                        canManage={canManageTeam}
+                        onRemove={() => handleRemoveEquipment(eq.id)}
+                        removing={equipmentMutationLoading}
+                      />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <Card className="relative overflow-hidden sm:col-span-2">
               <div
                 className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
@@ -663,6 +753,19 @@ export default function CaseDetailPage() {
         onSubmit={handleAssignTeamMember}
         submitting={teamMutationLoading}
       />
+
+      <EquipmentAssignDialog
+        open={equipmentDialog}
+        onOpenChange={setEquipmentDialog}
+        defaultStartTime={surgeryCase.scheduled_start_time?.slice(0, 5) || '08:00'}
+        defaultEndTime={(() => {
+          const parts = (surgeryCase.scheduled_start_time || '08:00').split(':').map(Number);
+          const totalMin = (parts[0] ?? 8) * 60 + (parts[1] ?? 0) + (surgeryCase.estimated_duration_minutes || 60);
+          return `${String(Math.floor(totalMin / 60) % 24).padStart(2, '0')}:${String(totalMin % 60).padStart(2, '0')}`;
+        })()}
+        onSubmit={handleAddEquipment}
+        submitting={equipmentMutationLoading}
+      />
     </div>
   );
 }
@@ -732,6 +835,62 @@ function DocStatus({ label, done }: { label: string; done: boolean }) {
         <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs shrink-0 w-fit">Complete</Badge>
       ) : (
         <Badge variant="outline" className="text-xs text-muted-foreground shrink-0 w-fit">Pending</Badge>
+      )}
+    </div>
+  );
+}
+
+function EquipmentRow({
+  equipment,
+  hasConflict,
+  canManage,
+  onRemove,
+  removing,
+}: {
+  equipment: CaseEquipmentRequirement;
+  hasConflict: boolean;
+  canManage: boolean;
+  onRemove: () => void;
+  removing: boolean;
+}) {
+  const name = equipment.equipment_type_name || equipment.resource_name || 'Unknown';
+  const timeRange = `${equipment.reserved_from?.slice(0, 5)} – ${equipment.reserved_until?.slice(0, 5)}`;
+  return (
+    <div className="flex items-start sm:items-center justify-between gap-2 text-sm">
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium">{name}</p>
+        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+          <Badge variant="outline" className="text-xs shrink-0 w-fit">{timeRange}</Badge>
+          {equipment.equipment_type_category && (
+            <Badge variant="secondary" className="text-xs shrink-0 w-fit">
+              {equipment.equipment_type_category.replace(/_/g, ' ')}
+            </Badge>
+          )}
+          {equipment.is_confirmed ? (
+            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs shrink-0 w-fit">Confirmed</Badge>
+          ) : (
+            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300 text-xs shrink-0 w-fit">Pending</Badge>
+          )}
+          {hasConflict && (
+            <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 text-xs shrink-0 w-fit">Conflict</Badge>
+          )}
+        </div>
+        {equipment.resource_code && (
+          <p className="text-xs text-muted-foreground mt-0.5 font-mono">{equipment.resource_code}</p>
+        )}
+      </div>
+      {canManage && (
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+          onClick={onRemove}
+          disabled={removing}
+          aria-label={`Remove ${name}`}
+        >
+          {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+        </Button>
       )}
     </div>
   );

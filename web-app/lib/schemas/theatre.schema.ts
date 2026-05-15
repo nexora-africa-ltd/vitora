@@ -273,6 +273,88 @@ export const CaseSchedulingContextSchema = z.object({
     coverage_complete: z.boolean(),
   }),
   members: z.array(CaseSchedulingContextMemberSchema),
+  equipment: z.object({
+    total_items: z.number(),
+    confirmed_items: z.number(),
+    conflict_items: z.number(),
+    all_confirmed: z.boolean(),
+    has_conflicts: z.boolean(),
+    items: z.array(
+      z.object({
+        requirement_id: z.number(),
+        equipment_type: z.string().nullable(),
+        resource_name: z.string().nullable(),
+        resource_id: z.number().nullable(),
+        is_confirmed: z.boolean(),
+        reserved_from: z.string(),
+        reserved_until: z.string(),
+        has_conflict: z.boolean(),
+        conflicts: z.array(
+          z.object({
+            case_number: z.string(),
+            case_id: z.number(),
+            reserved_from: z.string(),
+            reserved_until: z.string(),
+            equipment_name: z.string(),
+          })
+        ),
+      })
+    ),
+  }),
+});
+
+// =============================================================================
+// THEATRE EQUIPMENT TYPE
+// =============================================================================
+
+export const EQUIPMENT_CATEGORIES = [
+  'IMAGING', 'MONITORING', 'SURGICAL_INSTRUMENT', 'LIFE_SUPPORT', 'STERILIZATION', 'OTHER',
+] as const;
+
+export const EquipmentCategorySchema = caseInsensitiveEnum(EQUIPMENT_CATEGORIES);
+
+export const TheatreEquipmentTypeListSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  code: z.string(),
+  category: EquipmentCategorySchema,
+  is_portable: z.boolean(),
+  is_active: z.boolean(),
+  created_at: z.string(),
+});
+
+export const TheatreEquipmentTypeDetailSchema = TheatreEquipmentTypeListSchema.extend({
+  description: z.string(),
+  setup_time_minutes: z.number(),
+  cleanup_time_minutes: z.number(),
+  updated_at: z.string(),
+});
+
+export const CaseEquipmentRequirementSchema = z.object({
+  id: z.number(),
+  surgery_case: z.number(),
+  resource: z.number().nullable(),
+  resource_name: z.string().nullable(),
+  resource_code: z.string().nullable(),
+  equipment_type: z.number().nullable(),
+  equipment_type_name: z.string().nullable(),
+  equipment_type_category: z.string().nullable(),
+  quantity_required: z.number(),
+  is_confirmed: z.boolean(),
+  reserved_from: z.string(),
+  reserved_until: z.string(),
+  duration_minutes: z.number(),
+  notes: z.string(),
+  added_by: z.number().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedTheatreEquipmentTypeSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(TheatreEquipmentTypeListSchema),
 });
 
 // =============================================================================
@@ -663,3 +745,8 @@ export type PACUVital = z.infer<typeof PACUVitalSchema>;
 export type PACURecord = z.infer<typeof PACURecordSchema>;
 export type PaginatedOperatingTheatres = z.infer<typeof PaginatedOperatingTheatreSchema>;
 export type PaginatedSurgeryCases = z.infer<typeof PaginatedSurgeryCaseSchema>;
+export type EquipmentCategory = z.infer<typeof EquipmentCategorySchema>;
+export type TheatreEquipmentTypeList = z.infer<typeof TheatreEquipmentTypeListSchema>;
+export type TheatreEquipmentTypeDetail = z.infer<typeof TheatreEquipmentTypeDetailSchema>;
+export type CaseEquipmentRequirement = z.infer<typeof CaseEquipmentRequirementSchema>;
+export type PaginatedTheatreEquipmentTypes = z.infer<typeof PaginatedTheatreEquipmentTypeSchema>;
