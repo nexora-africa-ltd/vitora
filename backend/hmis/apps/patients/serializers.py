@@ -195,7 +195,19 @@ class PatientSerializer(serializers.ModelSerializer):
         return list(obj.allergies.filter(status="active").values_list("substance", flat=True))
 
     def get_chronic_conditions_summary(self, obj) -> str:
-        """Return chronic conditions text from the patient's most recent encounter."""
+        """Return chronic conditions from structured records, falling back to legacy text."""
+        from hmis.apps.encounters.models import ChronicCondition
+
+        # Primary: structured ChronicCondition records
+        structured = list(
+            ChronicCondition.objects.filter(
+                patient=obj, status=ChronicCondition.ConditionStatus.ACTIVE
+            ).values_list("condition_name", flat=True)
+        )
+        if structured:
+            return ", ".join(structured)
+
+        # Fallback: legacy free-text from most recent encounter
         latest = (
             obj.encounters.order_by("-created_at")
             .values_list("chronic_conditions", flat=True)

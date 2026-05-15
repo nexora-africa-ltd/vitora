@@ -56,30 +56,84 @@ def get_clinical_snapshot(patient) -> ClinicalSnapshot:
     """
     from hmis.apps.encounters.models import Encounter
     from hmis.apps.laboratory.models import LabOrder
+    from hmis.apps.patients.models import Allergy
 
     # Get most recent encounter with medical history
     last_encounter = (
         Encounter.objects.filter(patient=patient).order_by("-encounter_date", "-created_at").first()
     )
 
-    # Parse allergies
+    # Build allergies from structured Allergy records + legacy text field
     allergies = []
-    if last_encounter and last_encounter.allergies:
-        # Split by comma or newline
-        raw_allergies = last_encounter.allergies.replace("\n", ",")
-        allergies = [a.strip() for a in raw_allergies.split(",") if a.strip()]
 
-    # Parse chronic conditions
+    # 1. Structured allergy records (primary source)
+    structured_allergies = (
+        Allergy.objects.filter(patient=patient, status="active")
+        .exclude(verification_status="refuted")
+        .exclude(verification_status="entered_in_error")
+    )
+    for allergy in structured_allergies:
+        label = allergy.substance
+        if allergy.severity in ("severe", "life_threatening"):
+            label = f"{allergy.substance} (SEVERE)"
+        elif allergy.severity:
+            label = f"{allergy.substance} ({allergy.get_severity_display()})"
+        allergies.append(label)
+
+    # 2. Legacy: free-text allergies from latest encounter (fallback for old data)
+    if last_encounter and last_encounter.allergies:
+        raw_allergies = last_encounter.allergies.replace("\n", ",")
+        text_allergies = [a.strip() for a in raw_allergies.split(",") if a.strip()]
+        # Deduplicate: skip text entries already covered by structured records
+        structured_substances = {a.substance.lower() for a in structured_allergies}
+        for text_allergy in text_allergies:
+            if text_allergy.lower() not in structured_substances:
+                allergies.append(text_allergy)
+
+    # Build chronic conditions from structured records + legacy text field
     active_conditions = []
+    from hmis.apps.encounters.models import ChronicCondition, CurrentMedication
+
+    # 1. Structured ChronicCondition records (primary source)
+    structured_conditions = ChronicCondition.objects.filter(
+        patient=patient, status=ChronicCondition.ConditionStatus.ACTIVE
+    )
+    for condition in structured_conditions:
+        label = condition.condition_name
+        if condition.icd10_code:
+            label = f"{condition.condition_name} ({condition.icd10_code})"
+        active_conditions.append(label)
+
+    # 2. Legacy: free-text from latest encounter
     if last_encounter and last_encounter.chronic_conditions:
         raw_conditions = last_encounter.chronic_conditions.replace("\n", ",")
-        active_conditions = [c.strip() for c in raw_conditions.split(",") if c.strip()]
+        text_conditions = [c.strip() for c in raw_conditions.split(",") if c.strip()]
+        structured_names = {c.condition_name.lower() for c in structured_conditions}
+        for text_condition in text_conditions:
+            if text_condition.lower() not in structured_names:
+                active_conditions.append(text_condition)
 
-    # Parse current medications
+    # Build current medications from structured records + legacy text field
     current_medications = []
+
+    # 1. Structured CurrentMedication records (primary source)
+    structured_meds = CurrentMedication.objects.filter(
+        patient=patient, status=CurrentMedication.MedicationStatus.ACTIVE
+    )
+    for med in structured_meds:
+        label = med.medication_name
+        if med.dosage:
+            label = f"{med.medication_name} {med.dosage}"
+        current_medications.append(label)
+
+    # 2. Legacy: free-text from latest encounter
     if last_encounter and last_encounter.current_medications:
         raw_meds = last_encounter.current_medications.replace("\n", ",")
-        current_medications = [m.strip() for m in raw_meds.split(",") if m.strip()]
+        text_meds = [m.strip() for m in raw_meds.split(",") if m.strip()]
+        structured_med_names = {m.medication_name.lower() for m in structured_meds}
+        for text_med in text_meds:
+            if text_med.lower() not in structured_med_names:
+                current_medications.append(text_med)
 
     # Get last visit info
     last_visit_date = None
