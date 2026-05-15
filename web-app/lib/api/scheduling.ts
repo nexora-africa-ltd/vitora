@@ -154,6 +154,12 @@ export const resourcesApi = {
     return response.data;
   },
 
+  /** Auto-create ASSET resources from active theatre equipment types that don't have one yet. */
+  syncFromTheatreEquipment: async (): Promise<{ created: number; message: string }> => {
+    const response = await apiClient.post(`${BASE_URL}/resources/sync-from-theatre-equipment/`);
+    return response.data;
+  },
+
   /** Get available slots for a resource on a specific date. */
   getAvailability: async (id: number, date: string, appointmentType?: string): Promise<ResourceAvailability> => {
     const params: Record<string, string> = { date };
