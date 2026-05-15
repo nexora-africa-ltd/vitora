@@ -11,6 +11,7 @@ from .models import (
     ICD11CodeReference,
     Invoice,
     InvoiceItem,
+    InvoicePayer,
     Payment,
     PaymentPoint,
     Receipt,
@@ -27,6 +28,24 @@ class InvoiceItemInline(admin.TabularInline):
     fields = ["service", "description", "quantity", "unit_price", "line_total"]
     readonly_fields = ["line_total"]
     autocomplete_fields = ["service"]
+
+
+class InvoicePayerInline(admin.TabularInline):
+    """Inline admin for InvoicePayer on Invoice page."""
+
+    model = InvoicePayer
+    extra = 0
+    fields = [
+        "priority",
+        "payer_type",
+        "provider_name",
+        "member_number",
+        "allocated_amount",
+        "approved_amount",
+        "paid_amount",
+        "status",
+    ]
+    readonly_fields = ["created_at"]
 
 
 @admin.register(ServiceCategory)
@@ -127,7 +146,7 @@ class InvoiceAdmin(admin.ModelAdmin):
     ]
     ordering = ["-invoice_date", "-created_at"]
     autocomplete_fields = ["patient", "encounter"]
-    inlines = [InvoiceItemInline]
+    inlines = [InvoiceItemInline, InvoicePayerInline]
     date_hierarchy = "invoice_date"
 
     fieldsets = (

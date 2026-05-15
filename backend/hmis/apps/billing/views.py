@@ -31,6 +31,7 @@ from hmis.apps.billing.models import (
     FacilityBillingConfig,
     Invoice,
     InvoiceItem,
+    InvoicePayer,
     Payment,
     PaymentPoint,
     Receipt,
@@ -40,6 +41,8 @@ from hmis.apps.billing.models import (
 from hmis.apps.billing.serializers import (
     CreditNoteSerializer,
     InvoiceItemSerializer,
+    InvoicePayerCreateSerializer,
+    InvoicePayerSerializer,
     InvoiceSerializer,
     PaymentPointSerializer,
     PaymentReverseSerializer,
@@ -104,7 +107,7 @@ class InvoiceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = (
         Invoice.objects.select_related("patient", "encounter", "created_by", "cancelled_by")
-        .prefetch_related("items__service", "items__drug", "items__lab_order")
+        .prefetch_related("items__service", "items__drug", "items__lab_order", "payers")
         .all()
     )
     serializer_class = InvoiceSerializer
@@ -322,6 +325,43 @@ class InvoiceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         item = get_object_or_404(InvoiceItem, id=item_id, invoice=invoice)
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    # ------ Payers (nested) ------ #
+
+    @action(detail=True, methods=["get", "post"], url_path="payers")
+    def payers(self, request, pk=None):
+        """List or add payers for an invoice."""
+        invoice = self.get_object()
+        if request.method == "GET":
+            payers = invoice.payers.all()
+            serializer = InvoicePayerSerializer(payers, many=True)
+            return Response(serializer.data)
+        # POST
+        serializer = InvoicePayerCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(invoice=invoice)
+        return Response(
+            InvoicePayerSerializer(serializer.instance).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(
+        detail=True,
+        methods=["patch", "delete"],
+        url_path="payers/(?P<payer_id>[^/.]+)",
+    )
+    def payer_detail(self, request, pk=None, payer_id=None):
+        """Update or remove a payer from an invoice."""
+        invoice = self.get_object()
+        payer = get_object_or_404(InvoicePayer, id=payer_id, invoice=invoice)
+        if request.method == "DELETE":
+            payer.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        # PATCH
+        serializer = InvoicePayerCreateSerializer(payer, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(InvoicePayerSerializer(payer).data)
 
 
 class PaymentViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):

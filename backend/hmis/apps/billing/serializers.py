@@ -10,6 +10,7 @@ from hmis.apps.billing.models import (
     CreditNote,
     Invoice,
     InvoiceItem,
+    InvoicePayer,
     Payment,
     PaymentPoint,
     Receipt,
@@ -156,6 +157,72 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
         return None
 
 
+class InvoicePayerSerializer(serializers.ModelSerializer):
+    """Serializer for InvoicePayer model."""
+
+    balance = serializers.DecimalField(
+        max_digits=12, decimal_places=2, read_only=True, coerce_to_string=True
+    )
+    payer_type_display = serializers.CharField(source="get_payer_type_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = InvoicePayer
+        fields = [
+            "id",
+            "invoice",
+            "payer_type",
+            "payer_type_display",
+            "patient_insurance",
+            "insurance_claim",
+            "sha_claim",
+            "provider_name",
+            "member_number",
+            "priority",
+            "allocation_percent",
+            "allocated_amount",
+            "approved_amount",
+            "paid_amount",
+            "balance",
+            "status",
+            "status_display",
+            "notes",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "invoice",
+            "balance",
+            "payer_type_display",
+            "status_display",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class InvoicePayerCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for InvoicePayer."""
+
+    class Meta:
+        model = InvoicePayer
+        fields = [
+            "payer_type",
+            "patient_insurance",
+            "insurance_claim",
+            "sha_claim",
+            "provider_name",
+            "member_number",
+            "priority",
+            "allocation_percent",
+            "allocated_amount",
+            "approved_amount",
+            "paid_amount",
+            "status",
+            "notes",
+        ]
+
+
 class InvoiceSerializer(serializers.ModelSerializer):
     """Serializer for Invoice model."""
 
@@ -163,6 +230,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
     created_by_username = serializers.CharField(source="created_by.username", read_only=True)
     items = InvoiceItemSerializer(many=True, read_only=True)
+    payers = InvoicePayerSerializer(many=True, read_only=True)
     balance = serializers.SerializerMethodField()
     balance_due = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True, coerce_to_string=True
@@ -220,6 +288,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "created_by",
             "created_by_username",
             "items",
+            "payers",
             "qr_code",
             "created_at",
             "updated_at",
@@ -245,6 +314,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "created_by",
             "created_by_username",
             "items",
+            "payers",
             "qr_code",
             "created_at",
             "updated_at",
