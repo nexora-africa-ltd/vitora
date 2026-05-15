@@ -15,6 +15,8 @@ import {
   Calendar,
   Repeat,
   Ban,
+  MapPin,
+  Wrench,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -53,6 +55,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { toast } from 'sonner';
 import { schedulesApi, resourcesApi } from '@/lib/api/scheduling';
@@ -61,6 +64,7 @@ import type {
   Schedule,
   ScheduleCreateData,
   ScheduleBreakCreateData,
+  ResourceType,
 } from '@/lib/types/scheduling';
 
 const DAY_LABELS: Record<number, string> = {
@@ -354,6 +358,7 @@ export default function SchedulesPage() {
   const { refresh, isRefreshing } = usePageRefresh();
 
   const [resourceFilter, setResourceFilter] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<ResourceType>('PERSON');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
   const [showCreate, setShowCreate] = useState(false);
@@ -408,6 +413,30 @@ export default function SchedulesPage() {
     // Sort groups alphabetically
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [schedules]);
+
+  // Resources and schedules filtered by active tab
+  const tabResources = useMemo(
+    () => resources.filter((r) => r.resource_type === activeTab),
+    [resources, activeTab],
+  );
+  const tabResourceIds = useMemo(
+    () => new Set(tabResources.map((r) => r.id)),
+    [tabResources],
+  );
+  const tabGroupedSchedules = useMemo(
+    () => groupedSchedules.filter(([, scheds]) =>
+      scheds.some((s) => tabResourceIds.has(s.resource)),
+    ),
+    [groupedSchedules, tabResourceIds],
+  );
+  const tabCounts = useMemo(() => {
+    const byType: Record<ResourceType, number> = { PERSON: 0, PLACE: 0, ASSET: 0 };
+    for (const s of schedules) {
+      const res = resources.find((r) => r.id === s.resource);
+      if (res) byType[res.resource_type as ResourceType] = (byType[res.resource_type as ResourceType] || 0) + 1;
+    }
+    return byType;
+  }, [schedules, resources]);
 
   const createMutation = useMutation({
     mutationFn: (d: ScheduleCreateData) => schedulesApi.create(d),
@@ -498,59 +527,95 @@ export default function SchedulesPage() {
           <p className="text-sm text-muted-foreground">
             {totalCount} schedule{totalCount !== 1 ? 's' : ''} across {groupedSchedules.length} resource{groupedSchedules.length !== 1 ? 's' : ''}
           </p>
-          <Select
-            value={resourceFilter || '_all'}
-            onValueChange={(v) => { setResourceFilter(v === '_all' ? '' : v); setPage(1); }}
-          >
-            <SelectTrigger className="w-full sm:w-[220px]">
-              <SelectValue placeholder="Filter by resource" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="_all">All Resources</SelectItem>
-              {resources.map((r) => (
-                <SelectItem key={r.id} value={r.id.toString()}>
-                  {r.name} ({r.resource_type})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
-        {/* Collapsible Resource Groups */}
-        {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }, (_, i) => (
-              <Card key={i}>
-                <CardContent className="p-4">
-                  <Skeleton className="h-12 w-full" />
-                </CardContent>
-              </Card>
-            ))}
+        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as ResourceType); setResourceFilter(''); setPage(1); }}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <TabsList>
+              <TabsTrigger value="PERSON" className="gap-1.5">
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">Staff</span>
+                <span className="sm:hidden">Staff</span>
+                {tabCounts.PERSON > 0 && (
+                  <Badge variant="secondary" className="text-xs ml-1 h-5 px-1.5">{tabCounts.PERSON}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="PLACE" className="gap-1.5">
+                <MapPin className="h-4 w-4" />
+                <span>Rooms</span>
+                {tabCounts.PLACE > 0 && (
+                  <Badge variant="secondary" className="text-xs ml-1 h-5 px-1.5">{tabCounts.PLACE}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="ASSET" className="gap-1.5">
+                <Wrench className="h-4 w-4" />
+                <span className="hidden sm:inline">Equipment</span>
+                <span className="sm:hidden">Equip</span>
+                {tabCounts.ASSET > 0 && (
+                  <Badge variant="secondary" className="text-xs ml-1 h-5 px-1.5">{tabCounts.ASSET}</Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+            <Select
+              value={resourceFilter || '_all'}
+              onValueChange={(v) => { setResourceFilter(v === '_all' ? '' : v); setPage(1); }}
+            >
+              <SelectTrigger className="w-full sm:w-[220px]">
+                <SelectValue placeholder="Filter by resource" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All {activeTab === 'PERSON' ? 'Staff' : activeTab === 'PLACE' ? 'Rooms' : 'Equipment'}</SelectItem>
+                {tabResources.map((r) => (
+                  <SelectItem key={r.id} value={r.id.toString()}>
+                    {r.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        ) : groupedSchedules.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-12 text-center">
-              <Settings className="h-10 w-10 mx-auto text-muted-foreground mb-3 opacity-50" />
-              <p className="text-sm font-medium text-muted-foreground">No schedules defined</p>
-              <p className="text-xs text-muted-foreground mt-1">Add schedules to define when resources are available.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {groupedSchedules.map(([resourceName, groupSchedules], index) => (
-              <ResourceGroup
-                key={resourceName}
-                resourceName={resourceName}
-                schedules={groupSchedules}
-                defaultOpen={index < 3}
-                onAddBreak={setShowBreakDialog}
-                onDelete={(id) => deleteMutation.mutate(id)}
-                onRowClick={(s) => setSelectedScheduleId(selectedScheduleId === s.id ? null : s.id)}
-                selectedId={selectedScheduleId}
-              />
-            ))}
-          </div>
-        )}
+
+          {/* Shared content area for all tabs */}
+          {(['PERSON', 'PLACE', 'ASSET'] as ResourceType[]).map((tabType) => (
+            <TabsContent key={tabType} value={tabType} className="mt-4">
+              {isLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }, (_, i) => (
+                    <Card key={i}>
+                      <CardContent className="p-4">
+                        <Skeleton className="h-12 w-full" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : tabGroupedSchedules.length === 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="py-12 text-center">
+                    <Settings className="h-10 w-10 mx-auto text-muted-foreground mb-3 opacity-50" />
+                    <p className="text-sm font-medium text-muted-foreground">No schedules defined</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Add schedules to define when {tabType === 'PERSON' ? 'staff' : tabType === 'PLACE' ? 'rooms' : 'equipment'} are available.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {tabGroupedSchedules.map(([resourceName, groupSchedules], index) => (
+                    <ResourceGroup
+                      key={resourceName}
+                      resourceName={resourceName}
+                      schedules={groupSchedules}
+                      defaultOpen={index < 3}
+                      onAddBreak={setShowBreakDialog}
+                      onDelete={(id) => deleteMutation.mutate(id)}
+                      onRowClick={(s) => setSelectedScheduleId(selectedScheduleId === s.id ? null : s.id)}
+                      selectedId={selectedScheduleId}
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          ))}
+        </Tabs>
 
         {/* Pagination */}
         {totalPages > 1 && (
