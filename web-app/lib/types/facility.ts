@@ -53,6 +53,7 @@ export interface FacilityDetail extends FacilityListItem {
   has_allied_health: boolean;
   has_quality: boolean;
   has_billing: boolean;
+  has_private_insurance: boolean;
   /** Biometrics workstation ID for DHA HIE consent */
   workstation_id?: string;
   /** Agent national ID for biometric authorization */
@@ -118,6 +119,7 @@ export interface FacilityUpdateData {
   has_allied_health?: boolean;
   has_quality?: boolean;
   has_billing?: boolean;
+  has_private_insurance?: boolean;
   is_active?: boolean;
 }
 
@@ -156,5 +158,6 @@ export interface FacilityCreateData {
   has_allied_health?: boolean;
   has_quality?: boolean;
   has_billing?: boolean;
+  has_private_insurance?: boolean;
   is_active?: boolean;
 }

@@ -27,6 +27,7 @@ export interface FacilityModules {
   allied_health: boolean;
   quality: boolean;
   billing: boolean;
+  private_insurance: boolean;
 }
 
 // User's facility info included in auth response

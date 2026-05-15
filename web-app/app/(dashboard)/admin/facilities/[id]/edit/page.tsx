@@ -67,6 +67,7 @@ const MODULE_LABELS: { key: string; label: string }[] = [
   { key: 'has_allied_health', label: 'Allied Health' },
   { key: 'has_quality', label: 'Quality' },
   { key: 'has_billing', label: 'Finance / Billing' },
+  { key: 'has_private_insurance', label: 'Private Insurance' },
 ];
 
 export default function EditFacilityPage() {
@@ -115,6 +116,7 @@ export default function EditFacilityPage() {
     has_allied_health: false,
     has_quality: false,
     has_billing: true,
+    has_private_insurance: false,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -159,6 +161,7 @@ export default function EditFacilityPage() {
         has_allied_health: facility.has_allied_health,
         has_quality: facility.has_quality,
         has_billing: facility.has_billing,
+        has_private_insurance: facility.has_private_insurance,
       });
       setCountyId(facility.county);
       setSubCountyId(facility.sub_county);

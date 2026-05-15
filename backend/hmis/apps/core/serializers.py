@@ -1119,6 +1119,7 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "has_allied_health",
             "has_quality",
             "has_billing",
+            "has_private_insurance",
             # Status & timestamps
             "is_active",
             "created_at",
@@ -1224,6 +1225,7 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
             "has_allied_health",
             "has_quality",
             "has_billing",
+            "has_private_insurance",
             # Status
             "is_active",
         ]

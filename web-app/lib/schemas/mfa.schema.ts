@@ -93,6 +93,7 @@ const FacilityModulesSchema = z.object({
   allied_health: z.boolean().default(false),
   quality: z.boolean().default(false),
   billing: z.boolean().default(true),
+  private_insurance: z.boolean().default(false),
 });
 
 const UserFacilitySchema = z.object({

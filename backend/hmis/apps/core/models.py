@@ -3366,6 +3366,10 @@ class Facility(TimeStampedModel):
         default=True,
         help_text="Billing, invoicing, and financial management.",
     )
+    has_private_insurance = models.BooleanField(
+        default=False,
+        help_text="Private insurance claims, pre-authorizations, and remittances.",
+    )
 
     # ------------------------------------------------------------------
     # Status
@@ -3415,6 +3419,7 @@ class Facility(TimeStampedModel):
                 "has_allied_health",
                 "has_quality",
                 "has_billing",
+                "has_private_insurance",
             ]
             # Only apply defaults if no module was explicitly set beyond the
             # model-level defaults (outpatient=True, pharmacy=True, triage=True,
@@ -3473,6 +3478,7 @@ class Facility(TimeStampedModel):
             "allied_health": self.has_allied_health,
             "quality": self.has_quality,
             "billing": self.has_billing,
+            "private_insurance": self.has_private_insurance,
         }
 
     @property
@@ -3607,6 +3613,7 @@ class Facility(TimeStampedModel):
             "allied_health": False,
             "quality": False,
             "billing": False,
+            "private_insurance": False,
         }
 
         level_overrides: dict[str, dict[str, bool]] = {

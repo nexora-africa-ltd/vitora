@@ -91,6 +91,7 @@ const MODULE_FIELDS: Array<{
   { key: 'allied_health', field: 'has_allied_health', title: 'Allied Health', description: 'Physiotherapy, nutrition, occupational therapy, social work.' },
   { key: 'quality', field: 'has_quality', title: 'Quality', description: 'Clinical audit and quality improvement measures.' },
   { key: 'billing', field: 'has_billing', title: 'Finance / Billing', description: 'Invoicing, payments, and financial management.' },
+  { key: 'private_insurance', field: 'has_private_insurance', title: 'Private Insurance', description: 'Private insurance claims, pre-authorizations, and remittances.' },
 ];
 
 interface FacilityFormState {
@@ -126,6 +127,7 @@ interface FacilityFormState {
   has_allied_health: boolean;
   has_quality: boolean;
   has_billing: boolean;
+  has_private_insurance: boolean;
 }
 
 function createFormState(facility: FacilityDetail): FacilityFormState {
@@ -162,6 +164,7 @@ function createFormState(facility: FacilityDetail): FacilityFormState {
     has_allied_health: facility.has_allied_health,
     has_quality: facility.has_quality,
     has_billing: facility.has_billing,
+    has_private_insurance: facility.has_private_insurance,
   };
 }
 
@@ -220,6 +223,7 @@ function NoFacilityState() {
         allied_health: false,
         quality: false,
         billing: true,
+        private_insurance: false,
       },
     });
     // Page will re-render with the selected facility

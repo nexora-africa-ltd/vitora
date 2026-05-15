@@ -402,6 +402,13 @@ KNOWN_CUSTOM_ACTIONS = {
     # sick notes
     "issue_sick_note",
     "revoke_sick_note",
+    # insurance
+    "verify_enrollment",
+    "submit_insurance_claim",
+    "approve_insurance_claim",
+    "adjudicate_insurance_claim",
+    "approve_insurance_preauth",
+    "reconcile_remittance",
 }
 
 ALL_VALID_ACTIONS = STANDARD_ACTIONS | KNOWN_CUSTOM_ACTIONS
@@ -877,3 +884,125 @@ class TestExpandedPermissionMatrices:
         assert bs.permissions_matrix["ETIMSConfig"]["manage_etims"] is True
         assert "ETIMSInvoice" in bs.permissions_matrix
         assert bs.permissions_matrix["ETIMSInvoice"]["read"] is True
+
+    # ── Insurance RBAC ───────────────────────────────────────────────────
+
+    def test_admin_has_full_insurance_permissions(self):
+        """ADMIN should have full CRUD + custom actions on all insurance models."""
+        from hmis.apps.core.models import Role
+
+        admin = Role.objects.get(code="ADMIN")
+        insurance_models = [
+            "InsuranceProvider",
+            "InsurancePlan",
+            "PatientInsurance",
+            "InsuranceProviderConfig",
+            "InsuranceClaim",
+            "InsuranceClaimItem",
+            "InsurancePreauth",
+            "InsuranceRemittance",
+            "InsuranceRemittanceLine",
+            "PayerTariff",
+        ]
+        for model in insurance_models:
+            assert model in admin.permissions_matrix, f"ADMIN missing {model}"
+            assert admin.permissions_matrix[model]["create"] is True
+            assert admin.permissions_matrix[model]["read"] is True
+
+        # Custom actions
+        assert admin.permissions_matrix["InsuranceClaim"]["submit_insurance_claim"] is True
+        assert admin.permissions_matrix["InsuranceClaim"]["approve_insurance_claim"] is True
+        assert admin.permissions_matrix["InsuranceClaim"]["adjudicate_insurance_claim"] is True
+        assert admin.permissions_matrix["InsurancePreauth"]["approve_insurance_preauth"] is True
+        assert admin.permissions_matrix["PatientInsurance"]["verify_enrollment"] is True
+        assert admin.permissions_matrix["InsuranceRemittance"]["reconcile_remittance"] is True
+
+    def test_billing_supervisor_has_insurance_adjudication(self):
+        """BILLING_SUPERVISOR should have full insurance suite + adjudication."""
+        from hmis.apps.core.models import Role
+
+        bs = Role.objects.get(code="BILLING_SUPERVISOR")
+        for model in (
+            "InsuranceProvider",
+            "InsurancePlan",
+            "InsuranceClaim",
+            "InsurancePreauth",
+            "InsuranceRemittance",
+            "PayerTariff",
+        ):
+            assert model in bs.permissions_matrix, f"BILLING_SUPERVISOR missing {model}"
+            assert bs.permissions_matrix[model]["read"] is True
+
+        assert bs.permissions_matrix["InsuranceClaim"]["approve_insurance_claim"] is True
+        assert bs.permissions_matrix["InsuranceClaim"]["adjudicate_insurance_claim"] is True
+        assert bs.permissions_matrix["InsurancePreauth"]["approve_insurance_preauth"] is True
+        assert bs.permissions_matrix["InsuranceRemittance"]["reconcile_remittance"] is True
+
+    def test_billing_clerk_has_insurance_submit_no_adjudicate(self):
+        """BILLING_CLERK should submit claims but NOT adjudicate."""
+        from hmis.apps.core.models import Role
+
+        bc = Role.objects.get(code="BILLING_CLERK")
+        assert bc.permissions_matrix["InsuranceClaim"]["create"] is True
+        assert bc.permissions_matrix["InsuranceClaim"]["submit_insurance_claim"] is True
+        assert bc.permissions_matrix["InsuranceClaim"].get("approve_insurance_claim") is not True
+        assert bc.permissions_matrix["InsuranceClaim"].get("adjudicate_insurance_claim") is not True
+
+    def test_doctor_has_insurance_read_and_preauth_create(self):
+        """DOCTOR should read insurance status and create preauths."""
+        from hmis.apps.core.models import Role
+
+        doctor = Role.objects.get(code="DOCTOR")
+        assert doctor.permissions_matrix["PatientInsurance"]["read"] is True
+        assert doctor.permissions_matrix["PatientInsurance"]["create"] is False
+        assert doctor.permissions_matrix["InsurancePreauth"]["create"] is True
+
+    def test_nurse_has_insurance_read_only(self):
+        """NURSE should only read insurance coverage info."""
+        from hmis.apps.core.models import Role
+
+        nurse = Role.objects.get(code="NURSE")
+        assert nurse.permissions_matrix["PatientInsurance"]["read"] is True
+        assert nurse.permissions_matrix["PatientInsurance"]["create"] is False
+
+    def test_receptionist_has_enrollment_create(self):
+        """RECEPTIONIST should create/update patient insurance enrollments."""
+        from hmis.apps.core.models import Role
+
+        receptionist = Role.objects.get(code="RECEPTIONIST")
+        assert receptionist.permissions_matrix["PatientInsurance"]["create"] is True
+        assert receptionist.permissions_matrix["PatientInsurance"]["update"] is True
+        assert receptionist.permissions_matrix["InsuranceProvider"]["read"] is True
+        assert receptionist.permissions_matrix["InsuranceProvider"]["create"] is False
+
+    def test_cashier_has_insurance_read_only(self):
+        """CASHIER should read insurance coverage/claims for payment processing."""
+        from hmis.apps.core.models import Role
+
+        cashier = Role.objects.get(code="CASHIER")
+        assert cashier.permissions_matrix["PatientInsurance"]["read"] is True
+        assert cashier.permissions_matrix["InsuranceClaim"]["read"] is True
+        assert cashier.permissions_matrix["PatientInsurance"]["create"] is False
+
+    def test_org_admin_has_insurance_config(self):
+        """ORG-ADMIN should manage insurance providers/config but not clinical ops."""
+        from hmis.apps.core.models import Role
+
+        if not Role.objects.filter(code="ORG-ADMIN").exists():
+            fixture_path = (
+                Path(__file__).resolve().parent.parent.parent
+                / "hmis"
+                / "apps"
+                / "core"
+                / "fixtures"
+                / "roles.json"
+            )
+            call_command("loaddata", str(fixture_path), verbosity=0)
+
+        org_admin = Role.objects.get(code="ORG-ADMIN")
+        assert org_admin.permissions_matrix["InsuranceProvider"]["create"] is True
+        assert org_admin.permissions_matrix["InsuranceProviderConfig"]["create"] is True
+        assert org_admin.permissions_matrix["PayerTariff"]["create"] is True
+        # Should NOT create clinical records
+        assert org_admin.permissions_matrix["PatientInsurance"]["create"] is False
+        assert org_admin.permissions_matrix["InsuranceClaim"]["create"] is False

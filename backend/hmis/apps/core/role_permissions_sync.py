@@ -143,6 +143,17 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "ClinicalReferral": ("referrals", "clinicalreferral"),
     # sick notes
     "SickNote": ("sick_notes", "sicknote"),
+    # insurance
+    "InsuranceProvider": ("insurance", "insuranceprovider"),
+    "InsurancePlan": ("insurance", "insuranceplan"),
+    "PatientInsurance": ("insurance", "patientinsurance"),
+    "InsuranceProviderConfig": ("insurance", "insuranceproviderconfig"),
+    "InsuranceClaim": ("insurance", "insuranceclaim"),
+    "InsuranceClaimItem": ("insurance", "insuranceclaimitem"),
+    "InsurancePreauth": ("insurance", "insurancepreauth"),
+    "InsuranceRemittance": ("insurance", "insuranceremittance"),
+    "InsuranceRemittanceLine": ("insurance", "insuranceremittanceline"),
+    "PayerTariff": ("insurance", "payertariff"),
     # mch
     "MCHRegistration": ("mch", "mchregistration"),
     "ANCVisit": ("mch", "ancvisit"),
@@ -331,6 +342,13 @@ CUSTOM_ACTIONS: set[str] = {
     # sick notes
     "issue_sick_note",
     "revoke_sick_note",
+    # insurance
+    "verify_enrollment",
+    "submit_insurance_claim",
+    "approve_insurance_claim",
+    "adjudicate_insurance_claim",
+    "approve_insurance_preauth",
+    "reconcile_remittance",
 }
 
 # Actions following {action}_{model} pattern (e.g. view_sensitive_patient)
