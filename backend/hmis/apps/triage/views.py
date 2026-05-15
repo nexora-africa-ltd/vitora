@@ -17,7 +17,12 @@ from rest_framework.permissions import AllowAny, BasePermission, IsAdminUser, Is
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import (
+    NestedTenantScopeMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+    resolve_request_tenant,
+)
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import RequiresActiveShiftPermission, get_client_ip
 
@@ -1008,6 +1013,328 @@ class TriageQueueViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
             {
                 "zones": zone_stats,
                 "total_patients": sum(z["total"] for z in zone_stats),
+            }
+        )
+
+
+class TriageReportSummaryView(APIView):
+    """
+    Combined triage report summary endpoint.
+
+    GET /api/triage/reports/
+    Returns aggregated wait-time stats, volume breakdown, and LWBS stats.
+    Supports date_range, area, and category filters.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    KETA_TARGETS = {
+        "RED": 0,
+        "ORANGE": 10,
+        "YELLOW": 60,
+        "GREEN": 240,
+        "BLUE": 240,
+    }
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name="date_range", type=str, location=OpenApiParameter.QUERY),
+            OpenApiParameter(name="start_date", type=str, location=OpenApiParameter.QUERY),
+            OpenApiParameter(name="end_date", type=str, location=OpenApiParameter.QUERY),
+            OpenApiParameter(name="area", type=str, location=OpenApiParameter.QUERY),
+            OpenApiParameter(name="category", type=str, location=OpenApiParameter.QUERY),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    def get(self, request):
+        """Get combined triage report summary."""
+        import statistics
+        from datetime import datetime
+
+        # Ensure facility context is resolved (needed for APIView + DRF test client)
+        resolve_request_tenant(request)
+
+        date_range = request.query_params.get("date_range", "today")
+        custom_start = request.query_params.get("start_date")
+        custom_end = request.query_params.get("end_date")
+        area_filter = request.query_params.get("area")
+        category_filter = request.query_params.get("category")
+
+        # Determine date boundaries
+        now = timezone.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        if date_range == "custom" and custom_start:
+            start_date = timezone.make_aware(datetime.strptime(custom_start, "%Y-%m-%d"))
+            end_date = (
+                timezone.make_aware(datetime.strptime(custom_end, "%Y-%m-%d"))
+                if custom_end
+                else now
+            )
+        elif date_range == "today":
+            start_date = today_start
+            end_date = now
+        elif date_range == "yesterday":
+            start_date = today_start - timezone.timedelta(days=1)
+            end_date = today_start
+        elif date_range in ("week", "last_7_days"):
+            start_date = now - timezone.timedelta(days=7)
+            end_date = now
+        elif date_range in ("month", "last_30_days"):
+            start_date = now - timezone.timedelta(days=30)
+            end_date = now
+        elif date_range == "this_month":
+            start_date = today_start.replace(day=1)
+            end_date = now
+        elif date_range == "last_month":
+            first_of_this_month = today_start.replace(day=1)
+            end_date = first_of_this_month
+            start_date = (first_of_this_month - timezone.timedelta(days=1)).replace(day=1)
+        elif date_range == "this_quarter":
+            quarter_month = ((now.month - 1) // 3) * 3 + 1
+            start_date = today_start.replace(month=quarter_month, day=1)
+            end_date = now
+        else:
+            start_date = today_start
+            end_date = now
+
+        # Base queryset — scoped to user's facility
+        facility = getattr(request, "facility", None)
+        assessments = TriageAssessment.objects.filter(
+            arrival_time__gte=start_date,
+            arrival_time__lte=end_date,
+        )
+        if facility:
+            assessments = assessments.filter(facility=facility)
+        if area_filter:
+            assessments = assessments.filter(assigned_area=area_filter)
+        if category_filter:
+            assessments = assessments.filter(triage_category=category_filter)
+
+        # --- Wait time stats ---
+        wait_times = []
+        met_target_count = 0
+        total_with_category = 0
+
+        for a in assessments:
+            if a.triage_start_time:
+                wt = int((a.triage_start_time - a.arrival_time).total_seconds() / 60)
+                wait_times.append(wt)
+                if a.triage_category:
+                    total_with_category += 1
+                    if wt <= self.KETA_TARGETS.get(a.triage_category, 240):
+                        met_target_count += 1
+
+        avg_wait = round(sum(wait_times) / len(wait_times), 1) if wait_times else 0
+        median_wait = round(statistics.median(wait_times), 1) if wait_times else 0
+        target_met = (
+            round(met_target_count / total_with_category * 100, 1)
+            if total_with_category > 0
+            else 100
+        )
+
+        # --- Wait times by category ---
+        wait_times_by_category = []
+        for cat in ["RED", "ORANGE", "YELLOW", "GREEN", "BLUE"]:
+            cat_assessments = [a for a in assessments if a.triage_category == cat]
+            cat_waits = [
+                a.get_wait_time_minutes()
+                for a in cat_assessments
+                if a.get_wait_time_minutes() is not None
+            ]
+            target = self.KETA_TARGETS.get(cat, 240)
+            exceeded = [w for w in cat_waits if w > target]
+
+            wait_times_by_category.append(
+                {
+                    "category": cat,
+                    "target_minutes": target,
+                    "avg_wait_minutes": round(sum(cat_waits) / len(cat_waits), 1)
+                    if cat_waits
+                    else 0,
+                    "median_wait_minutes": (
+                        round(statistics.median(cat_waits), 1) if cat_waits else 0
+                    ),
+                    "exceeded_count": len(exceeded),
+                    "exceeded_percentage": (
+                        round(len(exceeded) / len(cat_waits) * 100, 1) if cat_waits else 0
+                    ),
+                    "total_count": len(cat_assessments),
+                }
+            )
+
+        # --- Volume by category ---
+        total = assessments.count()
+        volume_qs = (
+            assessments.values("triage_category").annotate(count=Count("id")).order_by("-count")
+        )
+        volume_by_category = [
+            {
+                "category": item["triage_category"],
+                "count": item["count"],
+                "percentage": round(item["count"] / total * 100, 1) if total else 0,
+            }
+            for item in volume_qs
+        ]
+
+        # --- Volume by area ---
+        area_labels = dict(TriageAssessment.ASSIGNED_AREA_CHOICES)
+        area_qs = assessments.values("assigned_area").annotate(count=Count("id")).order_by("-count")
+        volume_by_area = [
+            {
+                "area": item["assigned_area"] or "UNASSIGNED",
+                "area_label": area_labels.get(
+                    item["assigned_area"], item["assigned_area"] or "Not assigned"
+                ),
+                "count": item["count"],
+            }
+            for item in area_qs
+        ]
+
+        # --- Staff performance ---
+        from collections import defaultdict
+
+        staff_data: dict[int, dict] = {}
+        for a in assessments:
+            if a.triaged_by_id and a.triage_start_time:
+                uid = a.triaged_by_id
+                wt = int((a.triage_start_time - a.arrival_time).total_seconds() / 60)
+                if uid not in staff_data:
+                    staff_data[uid] = {
+                        "user_id": uid,
+                        "name": "",
+                        "assessment_count": 0,
+                        "wait_times": [],
+                        "met_target": 0,
+                        "with_category": 0,
+                    }
+                staff_data[uid]["assessment_count"] += 1
+                staff_data[uid]["wait_times"].append(wt)
+                if a.triage_category:
+                    staff_data[uid]["with_category"] += 1
+                    if wt <= self.KETA_TARGETS.get(a.triage_category, 240):
+                        staff_data[uid]["met_target"] += 1
+
+        # Bulk-fetch usernames
+        if staff_data:
+            from django.contrib.auth import get_user_model
+
+            User = get_user_model()
+            users = User.objects.filter(id__in=staff_data.keys()).values(
+                "id", "first_name", "last_name", "username"
+            )
+            user_map = {
+                u["id"]: f"{u['first_name']} {u['last_name']}".strip() or u["username"]
+                for u in users
+            }
+            for uid, sd in staff_data.items():
+                sd["name"] = user_map.get(uid, f"User #{uid}")
+
+        staff_performance = []
+        for sd in sorted(staff_data.values(), key=lambda x: x["assessment_count"], reverse=True):
+            wts = sd["wait_times"]
+            staff_performance.append(
+                {
+                    "user_id": sd["user_id"],
+                    "name": sd["name"],
+                    "assessment_count": sd["assessment_count"],
+                    "avg_wait_minutes": round(sum(wts) / len(wts), 1) if wts else 0,
+                    "median_wait_minutes": round(statistics.median(wts), 1) if wts else 0,
+                    "keta_compliance_pct": (
+                        round(sd["met_target"] / sd["with_category"] * 100, 1)
+                        if sd["with_category"] > 0
+                        else 100
+                    ),
+                }
+            )
+
+        # --- Wait time trend (time-series) ---
+        # Hourly for today/yesterday, daily for longer ranges
+        use_hourly = date_range in ("today", "yesterday")
+        trend_buckets: dict[str, dict[str, list[int]]] = defaultdict(lambda: defaultdict(list))
+
+        for a in assessments:
+            if a.triage_start_time and a.triage_category:
+                wt = int((a.triage_start_time - a.arrival_time).total_seconds() / 60)
+                if use_hourly:
+                    bucket = a.arrival_time.strftime("%Y-%m-%dT%H:00:00")
+                else:
+                    bucket = a.arrival_time.strftime("%Y-%m-%d")
+                trend_buckets[bucket][a.triage_category].append(wt)
+
+        wait_time_trend = []
+        for bucket in sorted(trend_buckets.keys()):
+            for cat, wts in sorted(trend_buckets[bucket].items()):
+                wait_time_trend.append(
+                    {
+                        "timestamp": bucket,
+                        "category": cat,
+                        "avg_wait_minutes": round(sum(wts) / len(wts), 1),
+                        "count": len(wts),
+                    }
+                )
+
+        # --- LWBS (Left Without Being Seen) stats ---
+        # LWBS status lives on TriageQueue, not TriageAssessment.
+        # Cross-reference via triage_assessment to get the category.
+        lwbs_qs = TriageQueue.objects.filter(
+            status="LEFT_WITHOUT_BEING_SEEN",
+            created_at__gte=start_date,
+            created_at__lte=end_date,
+        )
+        if facility:
+            lwbs_qs = lwbs_qs.filter(
+                triage_assessment__facility=facility,
+            )
+        lwbs_total = lwbs_qs.count()
+        lwbs_rate = round(lwbs_total / total * 100, 1) if total else 0
+
+        lwbs_wait_times = []
+        for entry in lwbs_qs:
+            if entry.updated_at and entry.created_at:
+                wt = int((entry.updated_at - entry.created_at).total_seconds() / 60)
+                lwbs_wait_times.append(wt)
+
+        # LWBS by triage category: look up via triage_assessment FK
+        lwbs_assessment_ids = lwbs_qs.values_list("triage_assessment_id", flat=True)
+        lwbs_assessments_qs = TriageAssessment.objects.filter(id__in=lwbs_assessment_ids)
+        lwbs_by_category = []
+        for cat in ["RED", "ORANGE", "YELLOW", "GREEN", "BLUE"]:
+            cat_lwbs = lwbs_assessments_qs.filter(triage_category=cat).count()
+            cat_total = assessments.filter(triage_category=cat).count()
+            lwbs_by_category.append(
+                {
+                    "category": cat,
+                    "count": cat_lwbs,
+                    "rate": round(cat_lwbs / cat_total * 100, 1) if cat_total else 0,
+                }
+            )
+
+        return Response(
+            {
+                "date_range": {
+                    "start": start_date.isoformat(),
+                    "end": end_date.isoformat(),
+                },
+                "total_assessments": total,
+                "avg_wait_time_minutes": avg_wait,
+                "median_wait_time_minutes": median_wait,
+                "target_met_percentage": target_met,
+                "wait_times_by_category": wait_times_by_category,
+                "volume_by_category": volume_by_category,
+                "volume_by_area": volume_by_area,
+                "staff_performance": staff_performance,
+                "wait_time_trend": wait_time_trend,
+                "lwbs_stats": {
+                    "total_lwbs": lwbs_total,
+                    "lwbs_rate": lwbs_rate,
+                    "avg_wait_before_lwbs_minutes": (
+                        round(sum(lwbs_wait_times) / len(lwbs_wait_times), 1)
+                        if lwbs_wait_times
+                        else 0
+                    ),
+                    "by_category": lwbs_by_category,
+                },
             }
         )
 

@@ -15,6 +15,7 @@ from .views import (
     ReportExportView,
     TriageAssessmentViewSet,
     TriageQueueViewSet,
+    TriageReportSummaryView,
     TriageSettingsViewSet,
     VitalThresholdsViewSet,
     VolumeReportView,
@@ -43,6 +44,7 @@ urlpatterns = [
         name="triage-public-queue",
     ),
     # Report endpoints
+    path("reports/", TriageReportSummaryView.as_view(), name="triage-report-summary"),
     path("reports/wait-times/", WaitTimesReportView.as_view(), name="wait-times-report"),
     path("reports/volume/", VolumeReportView.as_view(), name="volume-report"),
     path("reports/export/", ReportExportView.as_view(), name="report-export"),
