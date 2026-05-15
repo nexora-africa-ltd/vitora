@@ -86,6 +86,7 @@ import {
   Repeat2,
   BellRing,
   Inbox,
+  Wrench,
 } from 'lucide-react';
 
 import {
@@ -413,6 +414,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Checklists', href: '/theatre/checklists', icon: CheckSquare, actionKey: 'theatre.view_checklists' },
       { label: 'Cases', href: '/theatre/cases', icon: SquareDashedTopSolid, actionKey: 'theatre.schedule_case' },
       { label: 'Anesthesia', href: '/theatre/anesthesia', icon: Syringe, actionKey: 'theatre.record_notes' },
+      { label: 'Equipment', href: '/theatre/equipment', icon: Wrench, actionKey: 'theatre.manage_settings' },
       { label: 'Reports', href: '/theatre/reports', icon: BarChart3, actionKey: 'theatre.view_reports' },
       { label: 'Setup', href: '/theatre/settings', icon: Settings, actionKey: 'theatre.manage_settings' },
     ],

@@ -32,6 +32,10 @@ import {
   PACUVitalSchema,
   PaginatedOperatingTheatreSchema,
   PaginatedSurgeryCaseSchema,
+  TheatreEquipmentTypeListSchema,
+  TheatreEquipmentTypeDetailSchema,
+  CaseEquipmentRequirementSchema,
+  PaginatedTheatreEquipmentTypeSchema,
 } from '@/lib/schemas/theatre.schema';
 import type {
   OperatingTheatreList,
@@ -51,6 +55,10 @@ import type {
   PACUVital,
   PaginatedOperatingTheatres,
   PaginatedSurgeryCases,
+  TheatreEquipmentTypeList,
+  TheatreEquipmentTypeDetail,
+  CaseEquipmentRequirement,
+  PaginatedTheatreEquipmentTypes,
   OperatingTheatreCreateData,
   SurgeryCaseCreateData,
   CaseScheduleData,
@@ -67,6 +75,9 @@ import type {
   TheatreListParams,
   SurgeryCaseListParams,
   TheatreReportParams,
+  TheatreEquipmentTypeCreateData,
+  TheatreEquipmentTypeListParams,
+  CaseEquipmentCreateData,
 } from '@/lib/types/theatre';
 import { z } from 'zod';
 
@@ -468,5 +479,77 @@ export const theatreApi = {
       responseType: 'blob',
     });
     return response.data;
+  },
+
+  // =========================================================================
+  //  Theatre Equipment Types
+  // =========================================================================
+
+  async listEquipmentTypes(params?: TheatreEquipmentTypeListParams): Promise<PaginatedTheatreEquipmentTypes> {
+    const response = await apiClient.get('/api/theatre/equipment-types/', { params });
+    return parseResponse(PaginatedTheatreEquipmentTypeSchema, response.data, {
+      context: 'theatreApi.listEquipmentTypes',
+    });
+  },
+
+  async getEquipmentType(id: number): Promise<TheatreEquipmentTypeDetail> {
+    const response = await apiClient.get(`/api/theatre/equipment-types/${id}/`);
+    return parseResponse(TheatreEquipmentTypeDetailSchema, response.data, {
+      context: 'theatreApi.getEquipmentType',
+    });
+  },
+
+  async createEquipmentType(data: TheatreEquipmentTypeCreateData): Promise<TheatreEquipmentTypeDetail> {
+    const response = await apiClient.post('/api/theatre/equipment-types/', data);
+    return parseResponse(TheatreEquipmentTypeDetailSchema, response.data, {
+      context: 'theatreApi.createEquipmentType',
+    });
+  },
+
+  async updateEquipmentType(id: number, data: Partial<TheatreEquipmentTypeCreateData>): Promise<TheatreEquipmentTypeDetail> {
+    const response = await apiClient.patch(`/api/theatre/equipment-types/${id}/`, data);
+    return parseResponse(TheatreEquipmentTypeDetailSchema, response.data, {
+      context: 'theatreApi.updateEquipmentType',
+    });
+  },
+
+  async deleteEquipmentType(id: number): Promise<void> {
+    await apiClient.delete(`/api/theatre/equipment-types/${id}/`);
+  },
+
+  // =========================================================================
+  //  Case Equipment Requirements
+  // =========================================================================
+
+  async listCaseEquipment(caseId: number): Promise<CaseEquipmentRequirement[]> {
+    const response = await apiClient.get(`/api/theatre/cases/${caseId}/equipment/`);
+    return parseResponse(z.array(CaseEquipmentRequirementSchema), response.data, {
+      context: 'theatreApi.listCaseEquipment',
+    });
+  },
+
+  async addCaseEquipment(caseId: number, data: CaseEquipmentCreateData): Promise<CaseEquipmentRequirement> {
+    const response = await apiClient.post(`/api/theatre/cases/${caseId}/equipment/`, data);
+    return parseResponse(CaseEquipmentRequirementSchema, response.data, {
+      context: 'theatreApi.addCaseEquipment',
+    });
+  },
+
+  async updateCaseEquipment(caseId: number, requirementId: number, data: Partial<CaseEquipmentCreateData>): Promise<CaseEquipmentRequirement> {
+    const response = await apiClient.patch(`/api/theatre/cases/${caseId}/equipment/${requirementId}/`, data);
+    return parseResponse(CaseEquipmentRequirementSchema, response.data, {
+      context: 'theatreApi.updateCaseEquipment',
+    });
+  },
+
+  async removeCaseEquipment(caseId: number, requirementId: number): Promise<void> {
+    await apiClient.delete(`/api/theatre/cases/${caseId}/equipment/${requirementId}/`);
+  },
+
+  async checkCaseEquipmentConflicts(caseId: number): Promise<CaseEquipmentRequirement[]> {
+    const response = await apiClient.get(`/api/theatre/cases/${caseId}/equipment/check-conflicts/`);
+    return parseResponse(z.array(CaseEquipmentRequirementSchema), response.data, {
+      context: 'theatreApi.checkCaseEquipmentConflicts',
+    });
   },
 };
