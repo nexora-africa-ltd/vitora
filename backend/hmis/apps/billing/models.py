@@ -998,6 +998,126 @@ class InvoiceItem(models.Model):
         return line_total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
+# ---------------------------------------------------------------------------
+# InvoicePayer — multi-payer allocation per invoice
+# ---------------------------------------------------------------------------
+
+
+class InvoicePayer(models.Model):
+    """Tracks each payer's allocation on an invoice (multi-payer split).
+
+    Replaces the flat insurance_provider / insurance_amount fields on Invoice
+    with a structured M:1 relationship.  Each row represents one payer
+    (cash, SHA, private insurance, corporate) and its share of the invoice.
+    """
+
+    class PayerType(models.TextChoices):
+        CASH = "cash", "Cash / Self-Pay"
+        SHA = "sha", "SHA (Social Health Authority)"
+        PRIVATE_INSURANCE = "private_insurance", "Private Insurance"
+        CORPORATE = "corporate", "Corporate Account"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        CLAIMED = "claimed", "Claimed"
+        APPROVED = "approved", "Approved"
+        PAID = "paid", "Paid"
+        REJECTED = "rejected", "Rejected"
+        WRITTEN_OFF = "written_off", "Written Off"
+
+    invoice = models.ForeignKey(
+        Invoice,
+        on_delete=models.CASCADE,
+        related_name="payers",
+    )
+    payer_type = models.CharField(
+        max_length=20,
+        choices=PayerType.choices,
+        default=PayerType.CASH,
+    )
+    # Private insurance link (nullable — only for PRIVATE_INSURANCE payer type)
+    patient_insurance = models.ForeignKey(
+        "insurance.PatientInsurance",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="invoice_payers",
+    )
+    insurance_claim = models.ForeignKey(
+        "insurance.InsuranceClaim",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="invoice_payers",
+    )
+    sha_claim = models.ForeignKey(
+        "billing.SHAClaim",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="invoice_payers",
+    )
+
+    # Denormalized for display (avoids joins on list views)
+    provider_name = models.CharField(max_length=200, blank=True)
+    member_number = models.CharField(max_length=100, blank=True)
+
+    # Allocation
+    priority = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Payer order: 1 = primary, 2 = secondary, etc.",
+    )
+    allocation_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Percentage of invoice total allocated to this payer (0-100).",
+    )
+    allocated_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Absolute amount allocated to this payer.",
+    )
+    approved_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+    )
+    paid_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["priority"]
+        indexes = [
+            models.Index(fields=["invoice", "payer_type"]),
+        ]
+
+    def __str__(self):
+        return f"{self.get_payer_type_display()} — {self.provider_name or 'Self'} ({self.invoice})"
+
+    def clean(self):
+        if self.allocation_percent < 0 or self.allocation_percent > 100:
+            raise ValidationError({"allocation_percent": "Must be between 0 and 100."})
+
+    @property
+    def balance(self) -> Decimal:
+        """Amount still outstanding for this payer."""
+        return self.allocated_amount - self.paid_amount
+
+
 class Payment(models.Model):
     """Payment record against an invoice."""
 
