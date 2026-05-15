@@ -16,6 +16,7 @@ import {
   Building2,
   BedDouble,
   Wrench,
+  Scissors,
   ChevronRight,
   Pencil,
 } from 'lucide-react';
@@ -255,12 +256,21 @@ export default function SchedulingResourcesPage() {
     mutationFn: () => resourcesApi.syncFromEquipment(),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['scheduling-resources'] });
-      toast({ title: 'Equipment Synced', description: result.message });
+      toast({ title: 'Cold Chain Equipment Synced', description: result.message });
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to sync equipment.', variant: 'destructive' }),
+    onError: () => toast({ title: 'Error', description: 'Failed to sync cold chain equipment.', variant: 'destructive' }),
   });
 
-  const isSyncing = syncStaffMutation.isPending || syncClinicsMutation.isPending || syncWardsMutation.isPending || syncEquipmentMutation.isPending;
+  const syncTheatreEquipmentMutation = useMutation({
+    mutationFn: () => resourcesApi.syncFromTheatreEquipment(),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['scheduling-resources'] });
+      toast({ title: 'Theatre Equipment Synced', description: result.message });
+    },
+    onError: () => toast({ title: 'Error', description: 'Failed to sync theatre equipment.', variant: 'destructive' }),
+  });
+
+  const isSyncing = syncStaffMutation.isPending || syncClinicsMutation.isPending || syncWardsMutation.isPending || syncEquipmentMutation.isPending || syncTheatreEquipmentMutation.isPending;
 
   function closeDialog() {
     setShowCreate(false);
@@ -344,7 +354,11 @@ export default function SchedulingResourcesPage() {
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => syncEquipmentMutation.mutate()} disabled={isSyncing}>
                     <Wrench className="h-4 w-4 mr-2" />
-                    Sync Equipment
+                    Sync Cold Chain Equipment
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => syncTheatreEquipmentMutation.mutate()} disabled={isSyncing}>
+                    <Scissors className="h-4 w-4 mr-2" />
+                    Sync Theatre Equipment
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

@@ -523,7 +523,9 @@ export const theatreApi = {
 
   async listCaseEquipment(caseId: number): Promise<CaseEquipmentRequirement[]> {
     const response = await apiClient.get(`/api/theatre/cases/${caseId}/equipment/`);
-    return parseResponse(z.array(CaseEquipmentRequirementSchema), response.data, {
+    // API returns paginated response; extract results array
+    const data = response.data?.results ?? response.data;
+    return parseResponse(z.array(CaseEquipmentRequirementSchema), data, {
       context: 'theatreApi.listCaseEquipment',
     });
   },
