@@ -370,3 +370,40 @@ class SickNoteEvents:
     ISSUED = "sick_notes.note.issued"
     REVOKED = "sick_notes.note.revoked"
     CANCELLED = "sick_notes.note.cancelled"
+
+
+class InsuranceEvents:
+    """Private insurance domain event types."""
+
+    # Provider lifecycle
+    PROVIDER_CREATED = "insurance.provider.created"
+    PROVIDER_UPDATED = "insurance.provider.updated"
+
+    # Enrollment
+    ENROLLMENT_CREATED = "insurance.enrollment.created"
+    ENROLLMENT_VERIFIED = "insurance.enrollment.verified"
+    ENROLLMENT_EXPIRED = "insurance.enrollment.expired"
+
+    # Claims
+    CLAIM_CREATED = "insurance.claim.created"
+    CLAIM_SUBMITTED = "insurance.claim.submitted"
+    CLAIM_ACKNOWLEDGED = "insurance.claim.acknowledged"
+    CLAIM_APPROVED = "insurance.claim.approved"
+    CLAIM_PARTIALLY_APPROVED = "insurance.claim.partially_approved"
+    CLAIM_REJECTED = "insurance.claim.rejected"
+    CLAIM_QUERIED = "insurance.claim.queried"
+    CLAIM_PAID = "insurance.claim.paid"
+    CLAIM_APPEALED = "insurance.claim.appealed"
+    CLAIM_CANCELLED = "insurance.claim.cancelled"
+
+    # Pre-authorizations
+    PREAUTH_CREATED = "insurance.preauth.created"
+    PREAUTH_SUBMITTED = "insurance.preauth.submitted"
+    PREAUTH_APPROVED = "insurance.preauth.approved"
+    PREAUTH_DENIED = "insurance.preauth.denied"
+    PREAUTH_EXPIRED = "insurance.preauth.expired"
+    PREAUTH_CANCELLED = "insurance.preauth.cancelled"
+
+    # Remittances
+    REMITTANCE_RECEIVED = "insurance.remittance.received"
+    REMITTANCE_RECONCILED = "insurance.remittance.reconciled"
