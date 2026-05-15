@@ -310,6 +310,7 @@ class TestBuildUserInfo:
             "allied_health",
             "quality",
             "billing",
+            "private_insurance",
         }
         assert set(modules.keys()) == expected_modules
 
