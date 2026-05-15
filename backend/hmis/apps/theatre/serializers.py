@@ -942,4 +942,39 @@ class CaseEquipmentRequirementCreateSerializer(serializers.ModelSerializer):
             )
         if resource and resource.resource_type != "ASSET":
             raise serializers.ValidationError({"resource": "Resource must be of type ASSET."})
+
+        # Overlap check: prevent double-booking a specific resource
+        if resource:
+            surgery_case = self.context.get("surgery_case")
+            if surgery_case and surgery_case.scheduled_date:
+                from .services.scheduling import detect_equipment_conflicts
+
+                reserved_from = attrs.get("reserved_from")
+                reserved_until = attrs.get("reserved_until")
+                if reserved_from and reserved_until:
+                    from datetime import datetime
+
+                    start = datetime.combine(datetime.min, reserved_from)
+                    end = datetime.combine(datetime.min, reserved_until)
+                    duration = int((end - start).total_seconds() / 60)
+                    if duration > 0:
+                        conflicts = detect_equipment_conflicts(
+                            resource_id=resource.pk,
+                            scheduled_date=surgery_case.scheduled_date,
+                            start_time=reserved_from,
+                            duration_minutes=duration,
+                            exclude_case_id=surgery_case.pk,
+                            include_requested=True,
+                        )
+                        if conflicts:
+                            case_numbers = ", ".join(c["case_number"] for c in conflicts)
+                            raise serializers.ValidationError(
+                                {
+                                    "resource": (
+                                        f"This equipment is already booked during "
+                                        f"the requested time window on case(s): "
+                                        f"{case_numbers}."
+                                    )
+                                }
+                            )
         return attrs

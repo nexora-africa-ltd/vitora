@@ -468,6 +468,135 @@ class TestCaseEquipmentAPI:
         response = api_client.get(self._url(sample_surgery_case.pk))
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
+    def test_double_booking_same_resource_rejected(
+        self,
+        authenticated_client,
+        sample_surgery_case,
+        sample_case_equipment,
+        sample_equipment_resource,
+        sample_patient,
+        sample_encounter,
+        sample_theatre,
+        test_user,
+        sample_organization,
+        sample_facility,
+        sample_procedure_catalog,
+    ):
+        """Should reject assigning the same resource in an overlapping time window on another case."""
+        from hmis.apps.theatre.models import SurgeryCase
+
+        # Create a second case on the same date
+        other_case = SurgeryCase.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            primary_procedure=sample_procedure_catalog,
+            theatre=sample_theatre,
+            scheduled_date=sample_surgery_case.scheduled_date,
+            scheduled_start_time=time(9, 30),
+            estimated_duration_minutes=60,
+            priority="ELECTIVE",
+            diagnosis="Another surgery",
+            requesting_doctor=test_user,
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        # sample_case_equipment has resource booked 09:00–10:00
+        # Try to book the same resource 09:30–10:30 on the other case
+        data = {
+            "resource": sample_equipment_resource.pk,
+            "equipment_type": sample_equipment_resource.equipment_type_id,
+            "quantity_required": 1,
+            "reserved_from": "09:30",
+            "reserved_until": "10:30",
+        }
+        response = authenticated_client.post(self._url(other_case.pk), data)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "already booked" in str(response.data).lower()
+
+    def test_non_overlapping_resource_allowed(
+        self,
+        authenticated_client,
+        sample_surgery_case,
+        sample_case_equipment,
+        sample_equipment_resource,
+        sample_patient,
+        sample_encounter,
+        sample_theatre,
+        test_user,
+        sample_organization,
+        sample_facility,
+        sample_procedure_catalog,
+    ):
+        """Should allow the same resource in a non-overlapping time window on another case."""
+        from hmis.apps.theatre.models import SurgeryCase
+
+        other_case = SurgeryCase.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            primary_procedure=sample_procedure_catalog,
+            theatre=sample_theatre,
+            scheduled_date=sample_surgery_case.scheduled_date,
+            scheduled_start_time=time(11, 0),
+            estimated_duration_minutes=60,
+            priority="ELECTIVE",
+            diagnosis="Another surgery",
+            requesting_doctor=test_user,
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        # sample_case_equipment has resource booked 09:00–10:00
+        # Book the same resource 10:30–11:30 — no overlap
+        data = {
+            "resource": sample_equipment_resource.pk,
+            "equipment_type": sample_equipment_resource.equipment_type_id,
+            "quantity_required": 1,
+            "reserved_from": "10:30",
+            "reserved_until": "11:30",
+        }
+        response = authenticated_client.post(self._url(other_case.pk), data)
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_type_only_request_skips_overlap_check(
+        self,
+        authenticated_client,
+        sample_surgery_case,
+        sample_case_equipment,
+        sample_equipment_type,
+        sample_patient,
+        sample_encounter,
+        sample_theatre,
+        test_user,
+        sample_organization,
+        sample_facility,
+        sample_procedure_catalog,
+    ):
+        """Type-level requests (no specific resource) should not trigger overlap validation."""
+        from hmis.apps.theatre.models import SurgeryCase
+
+        other_case = SurgeryCase.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            primary_procedure=sample_procedure_catalog,
+            theatre=sample_theatre,
+            scheduled_date=sample_surgery_case.scheduled_date,
+            scheduled_start_time=time(9, 0),
+            estimated_duration_minutes=60,
+            priority="ELECTIVE",
+            diagnosis="Another surgery",
+            requesting_doctor=test_user,
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        # Type-level only — no resource, so no overlap to check
+        data = {
+            "equipment_type": sample_equipment_type.pk,
+            "quantity_required": 1,
+            "reserved_from": "09:00",
+            "reserved_until": "10:00",
+        }
+        response = authenticated_client.post(self._url(other_case.pk), data)
+        assert response.status_code == status.HTTP_201_CREATED
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 #  Domain Event Tests
