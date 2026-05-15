@@ -1134,6 +1134,14 @@ class TheatreEquipmentType(FacilityScopedModel, TimeStampedModel):
         STERILIZATION = "STERILIZATION", "Sterilization"
         OTHER = "OTHER", "Other"
 
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="children",
+        help_text="Parent equipment type for sub-type hierarchy",
+    )
     name = models.CharField(max_length=200)
     code = models.CharField(max_length=50, help_text='e.g. "EQ-CARM-01"')
     category = models.CharField(
@@ -1164,6 +1172,29 @@ class TheatreEquipmentType(FacilityScopedModel, TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.code}: {self.name}"
+
+    @property
+    def depth(self) -> int:
+        """Return depth in tree (0 = root)."""
+        d, node = 0, self
+        while node.parent_id:
+            d += 1
+            node = node.parent  # type: ignore[assignment]
+        return d
+
+    @property
+    def is_leaf(self) -> bool:
+        """True if this type has no children."""
+        return not self.children.exists()
+
+    @property
+    def full_path(self) -> str:
+        """Return 'Parent > Child > Grandchild' path string."""
+        parts, node = [], self
+        while node:
+            parts.append(node.name)
+            node = node.parent  # type: ignore[assignment]
+        return " > ".join(reversed(parts))
 
 
 # ---------------------------------------------------------------------------

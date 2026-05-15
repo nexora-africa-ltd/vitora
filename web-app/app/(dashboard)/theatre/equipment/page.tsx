@@ -13,6 +13,7 @@ import {
   Sparkles,
   Package,
   Loader2,
+  ChevronRight,
 } from 'lucide-react';
 import { AxiosError } from 'axios';
 import { PageHeader } from '@/components/shared/page-header';
@@ -208,6 +209,7 @@ export default function TheatreEquipmentPage() {
       name: eq.name,
       code: eq.code,
       category: eq.category,
+      parent: eq.parent ?? undefined,
       is_portable: eq.is_portable,
       is_active: eq.is_active,
     });
@@ -324,7 +326,17 @@ export default function TheatreEquipmentPage() {
               key: 'name',
               header: 'Name',
               sortable: true,
-              cell: (eq) => <span className="font-medium">{eq.name}</span>,
+              cell: (eq) => (
+                <div className="min-w-0">
+                  <span className="font-medium">{eq.name}</span>
+                  {eq.parent_name && (
+                    <span className="text-xs text-muted-foreground ml-1">
+                      <ChevronRight className="inline h-3 w-3" />
+                      {eq.parent_name}
+                    </span>
+                  )}
+                </div>
+              ),
             },
             {
               key: 'category',
@@ -363,6 +375,9 @@ export default function TheatreEquipmentPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium truncate">{eq.name}</p>
                   <p className="text-xs text-muted-foreground font-mono">{eq.code}</p>
+                  {eq.parent_name && (
+                    <p className="text-xs text-muted-foreground mt-0.5">Sub-type of {eq.parent_name}</p>
+                  )}
                 </div>
                 <Badge className={`text-xs shrink-0 ${eq.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'}`}>
                   {eq.is_active ? 'Active' : 'Inactive'}
@@ -422,6 +437,28 @@ export default function TheatreEquipmentPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Parent Type</Label>
+                <Select
+                  value={form.parent != null ? String(form.parent) : '__none__'}
+                  onValueChange={(v) => setForm({ ...form, parent: v === '__none__' ? undefined : parseInt(v) })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="None (root type)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None (root type)</SelectItem>
+                    {allEquipment
+                      .filter((eq) => eq.id !== editingId && eq.is_active)
+                      .map((eq) => (
+                        <SelectItem key={eq.id} value={String(eq.id)}>
+                          {eq.name} ({eq.code})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.parent && <p className="text-xs text-destructive">{formErrors.parent}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="eq-desc">Description</Label>

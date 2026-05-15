@@ -84,6 +84,179 @@ class TestTheatreEquipmentTypeModel:
         assert eq.pk is not None
 
 
+class TestTheatreEquipmentTypeHierarchy:
+    """Tests for parent-child hierarchy on TheatreEquipmentType."""
+
+    def test_create_child_type(self, sample_equipment_type, sample_organization, sample_facility):
+        """Should create a child equipment type under a parent."""
+        from hmis.apps.theatre.models import TheatreEquipmentType
+
+        child = TheatreEquipmentType.objects.create(
+            parent=sample_equipment_type,
+            name="Mini C-Arm",
+            code="EQ-CARM-MINI-01",
+            category="IMAGING",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        assert child.parent_id == sample_equipment_type.pk
+        assert sample_equipment_type.children.count() == 1
+
+    def test_depth_property(self, sample_equipment_type, sample_organization, sample_facility):
+        """Should compute depth correctly."""
+        from hmis.apps.theatre.models import TheatreEquipmentType
+
+        assert sample_equipment_type.depth == 0
+
+        child = TheatreEquipmentType.objects.create(
+            parent=sample_equipment_type,
+            name="Mini C-Arm",
+            code="EQ-CARM-MINI-01",
+            category="IMAGING",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        assert child.depth == 1
+
+        grandchild = TheatreEquipmentType.objects.create(
+            parent=child,
+            name="Micro C-Arm",
+            code="EQ-CARM-MICRO-01",
+            category="IMAGING",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        assert grandchild.depth == 2
+
+    def test_full_path_property(self, sample_equipment_type, sample_organization, sample_facility):
+        """Should build full path string."""
+        from hmis.apps.theatre.models import TheatreEquipmentType
+
+        child = TheatreEquipmentType.objects.create(
+            parent=sample_equipment_type,
+            name="Mini C-Arm",
+            code="EQ-CARM-MINI-01",
+            category="IMAGING",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        assert child.full_path == "C-Arm Fluoroscope > Mini C-Arm"
+
+    def test_is_leaf(self, sample_equipment_type, sample_organization, sample_facility):
+        """Root with no children is a leaf; root with children is not."""
+        from hmis.apps.theatre.models import TheatreEquipmentType
+
+        assert sample_equipment_type.is_leaf is True
+
+        TheatreEquipmentType.objects.create(
+            parent=sample_equipment_type,
+            name="Mini C-Arm",
+            code="EQ-CARM-MINI-01",
+            category="IMAGING",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        assert sample_equipment_type.is_leaf is False
+
+    def test_cascade_delete(self, sample_equipment_type, sample_organization, sample_facility):
+        """Deleting parent should cascade-delete children."""
+        from hmis.apps.theatre.models import TheatreEquipmentType
+
+        child = TheatreEquipmentType.objects.create(
+            parent=sample_equipment_type,
+            name="Mini C-Arm",
+            code="EQ-CARM-MINI-01",
+            category="IMAGING",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        child_id = child.pk
+        sample_equipment_type.delete()
+        assert not TheatreEquipmentType.objects.filter(pk=child_id).exists()
+
+    def test_self_parent_rejected_via_serializer(self, authenticated_client, sample_equipment_type):
+        """Serializer should reject an equipment type being its own parent."""
+        url = f"/api/theatre/equipment-types/{sample_equipment_type.pk}/"
+        response = authenticated_client.patch(url, {"parent": sample_equipment_type.pk})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "own parent" in str(response.data).lower()
+
+    def test_circular_reference_rejected(
+        self, authenticated_client, sample_equipment_type, sample_organization, sample_facility
+    ):
+        """Serializer should reject circular parent references (A→B→A)."""
+        from hmis.apps.theatre.models import TheatreEquipmentType
+
+        child = TheatreEquipmentType.objects.create(
+            parent=sample_equipment_type,
+            name="Mini C-Arm",
+            code="EQ-CARM-MINI-01",
+            category="IMAGING",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        # Try to make parent's parent = child (creates a loop)
+        url = f"/api/theatre/equipment-types/{sample_equipment_type.pk}/"
+        response = authenticated_client.patch(url, {"parent": child.pk})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "circular" in str(response.data).lower()
+
+    def test_children_endpoint(
+        self, authenticated_client, sample_equipment_type, sample_organization, sample_facility
+    ):
+        """GET /api/theatre/equipment-types/{id}/children/ should list direct children."""
+        from hmis.apps.theatre.models import TheatreEquipmentType
+
+        TheatreEquipmentType.objects.create(
+            parent=sample_equipment_type,
+            name="Mini C-Arm",
+            code="EQ-CARM-MINI-01",
+            category="IMAGING",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        url = f"/api/theatre/equipment-types/{sample_equipment_type.pk}/children/"
+        response = authenticated_client.get(url)
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 1
+        assert response.data[0]["name"] == "Mini C-Arm"
+
+    def test_tree_endpoint(
+        self, authenticated_client, sample_equipment_type, sample_organization, sample_facility
+    ):
+        """GET /api/theatre/equipment-types/tree/ should list only root types."""
+        from hmis.apps.theatre.models import TheatreEquipmentType
+
+        TheatreEquipmentType.objects.create(
+            parent=sample_equipment_type,
+            name="Mini C-Arm",
+            code="EQ-CARM-MINI-01",
+            category="IMAGING",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        url = "/api/theatre/equipment-types/tree/"
+        response = authenticated_client.get(url)
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get("results", response.data)
+        # All returned items should have parent=null
+        for item in results:
+            assert item["parent"] is None
+
+    def test_create_with_parent_via_api(self, authenticated_client, sample_equipment_type):
+        """Should create a child equipment type via POST with parent field."""
+        data = {
+            "parent": sample_equipment_type.pk,
+            "name": "Mini C-Arm",
+            "code": "EQ-CARM-MINI-01",
+            "category": "IMAGING",
+        }
+        response = authenticated_client.post("/api/theatre/equipment-types/", data)
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["parent"] == sample_equipment_type.pk
+        assert response.data["parent_name"] == sample_equipment_type.name
+
+
 class TestCaseEquipmentRequirementModel:
     """Tests for CaseEquipmentRequirement M2M model."""
 

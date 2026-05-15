@@ -842,10 +842,14 @@ class CasePostponeSerializer(serializers.Serializer):
 class TheatreEquipmentTypeListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for equipment type listings."""
 
+    parent_name = serializers.CharField(source="parent.name", read_only=True, default=None)
+
     class Meta:
         model = TheatreEquipmentType
         fields = [
             "id",
+            "parent",
+            "parent_name",
             "name",
             "code",
             "category",
@@ -858,10 +862,17 @@ class TheatreEquipmentTypeListSerializer(serializers.ModelSerializer):
 class TheatreEquipmentTypeSerializer(serializers.ModelSerializer):
     """Full serializer for equipment type detail/create."""
 
+    parent_name = serializers.CharField(source="parent.name", read_only=True, default=None)
+    children_count = serializers.SerializerMethodField()
+    full_path = serializers.CharField(read_only=True)
+    depth = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = TheatreEquipmentType
         fields = [
             "id",
+            "parent",
+            "parent_name",
             "name",
             "code",
             "category",
@@ -870,10 +881,37 @@ class TheatreEquipmentTypeSerializer(serializers.ModelSerializer):
             "setup_time_minutes",
             "cleanup_time_minutes",
             "is_active",
+            "children_count",
+            "full_path",
+            "depth",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "children_count",
+            "full_path",
+            "depth",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_children_count(self, obj) -> int:
+        return obj.children.count()
+
+    def validate_parent(self, value):
+        if value and self.instance and value.pk == self.instance.pk:
+            raise serializers.ValidationError("An equipment type cannot be its own parent.")
+        # Prevent circular references: walk up the chain
+        if value and self.instance:
+            node = value
+            while node.parent_id:
+                if node.parent_id == self.instance.pk:
+                    raise serializers.ValidationError(
+                        "Circular reference: this would create a loop in the hierarchy."
+                    )
+                node = node.parent
+        return value
 
 
 # ═══════════════════════════════════════════════════════════════════════════

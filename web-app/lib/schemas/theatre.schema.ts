@@ -315,6 +315,8 @@ export const EquipmentCategorySchema = caseInsensitiveEnum(EQUIPMENT_CATEGORIES)
 
 export const TheatreEquipmentTypeListSchema = z.object({
   id: z.number(),
+  parent: z.number().nullable(),
+  parent_name: z.string().nullable(),
   name: z.string(),
   code: z.string(),
   category: EquipmentCategorySchema,
@@ -327,6 +329,9 @@ export const TheatreEquipmentTypeDetailSchema = TheatreEquipmentTypeListSchema.e
   description: z.string(),
   setup_time_minutes: z.number(),
   cleanup_time_minutes: z.number(),
+  children_count: z.number(),
+  full_path: z.string(),
+  depth: z.number(),
   updated_at: z.string(),
 });
 
