@@ -353,7 +353,17 @@ export function TriageReportsPage({
   const handleDateRangeChange = (value: string) => {
     const preset = value as DateRangePreset;
     setSelectedDateRange(preset);
-    onDateRangeChange(preset);
+    if (preset !== 'custom') {
+      onDateRangeChange(preset);
+    }
+  };
+
+  const handleCustomDateChange = (field: 'start' | 'end', value: string) => {
+    const start = field === 'start' ? value : filters.customStartDate || '';
+    const end = field === 'end' ? value : filters.customEndDate || '';
+    if (start && end) {
+      onDateRangeChange('custom', { start, end });
+    }
   };
 
   const handleAreaFilterChange = (value: string) => {
@@ -413,6 +423,32 @@ export function TriageReportsPage({
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Custom Date Inputs */}
+            {selectedDateRange === 'custom' && (
+              <>
+                <div className="w-full sm:w-[160px]">
+                  <Label htmlFor="custom-start">Start Date</Label>
+                  <input
+                    id="custom-start"
+                    type="date"
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    value={filters.customStartDate || ''}
+                    onChange={(e) => handleCustomDateChange('start', e.target.value)}
+                  />
+                </div>
+                <div className="w-full sm:w-[160px]">
+                  <Label htmlFor="custom-end">End Date</Label>
+                  <input
+                    id="custom-end"
+                    type="date"
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    value={filters.customEndDate || ''}
+                    onChange={(e) => handleCustomDateChange('end', e.target.value)}
+                  />
+                </div>
+              </>
+            )}
 
             {/* Area Filter */}
             <div className="w-full sm:w-[180px]">
