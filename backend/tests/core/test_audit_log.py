@@ -258,8 +258,15 @@ class TestPatientAuditLogs:
         WHEN a user deletes the patient
         THEN an audit log entry should be created
         """
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
         from hmis.apps.core.models import AuditLog
 
+        User = get_user_model()
+        perm = Permission.objects.get(codename="delete_patient")
+        test_user.user_permissions.add(perm)
+        test_user = User.objects.get(pk=test_user.pk)
         api_client.force_authenticate(user=test_user)
         url = reverse("patient-detail", kwargs={"pk": sample_patient.id})
 

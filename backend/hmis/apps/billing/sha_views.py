@@ -2949,6 +2949,7 @@ class ConsentSendOTPView(APIView):
     """
 
     permission_classes = [IsAuthenticated]
+    throttle_scope = "otp"
 
     # Fallback intervention code when none selected by user
     DEFAULT_INTERVENTION = "SHA-01-001"
@@ -3104,6 +3105,7 @@ class ConsentValidateOTPView(APIView):
     """
 
     permission_classes = [IsAuthenticated]
+    throttle_scope = "otp"
 
     def _get_facility(self, request):
         """Resolve and return the request facility, or None."""

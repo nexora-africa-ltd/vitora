@@ -696,10 +696,14 @@ class PatientViewSet(
 
             kms = get_kms_provider()
             id_hmac = kms.compute_hmac(identification_number)
-            exact_match = Patient.objects.filter(
-                identification_type=identification_type,
-                identification_number_hmac=id_hmac,
-            ).first()
+            exact_match = (
+                self.get_queryset()
+                .filter(
+                    identification_type=identification_type,
+                    identification_number_hmac=id_hmac,
+                )
+                .first()
+            )
 
             if exact_match:
                 matches.append(
@@ -719,7 +723,7 @@ class PatientViewSet(
         if not matches and first_name and last_name and date_of_birth:
             try:
                 dob = datetime.strptime(date_of_birth, "%Y-%m-%d").date()
-                demographic_qs = Patient.objects.filter(
+                demographic_qs = self.get_queryset().filter(
                     first_name__iexact=first_name,
                     last_name__iexact=last_name,
                     date_of_birth=dob,
@@ -747,7 +751,7 @@ class PatientViewSet(
         # Priority 3: Partial name match (fuzzy)
         if not matches and first_name and last_name:
             # Look for similar names (case-insensitive contains)
-            partial_qs = Patient.objects.filter(
+            partial_qs = self.get_queryset().filter(
                 Q(first_name__icontains=first_name) | Q(last_name__icontains=last_name)
             )
 

@@ -1062,6 +1062,12 @@ class LabAttachmentViewSet(NestedTenantScopeMixin, viewsets.GenericViewSet):
 
     @extend_schema(responses={204: None})
     def destroy(self, request, pk=None):
+        if not request.user.has_perm("laboratory.delete_labresultattachment"):
+            return Response(
+                {"detail": "You do not have permission to delete this attachment."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         instance = self.get_object()
 
         if instance.file:

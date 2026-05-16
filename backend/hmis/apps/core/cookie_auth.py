@@ -235,7 +235,7 @@ class CookieRefreshView(APIView):
 
 class CookieLogoutView(APIView):
     """
-    Logout — clears httpOnly auth cookies.
+    Logout — blacklists the refresh token and clears httpOnly auth cookies.
 
     POST /api/auth/logout/
     """
@@ -243,6 +243,16 @@ class CookieLogoutView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
 
-    def post(self, _request):
+    def post(self, request):
+        # Attempt to blacklist the refresh token to prevent reuse
+        refresh_token = request.COOKIES.get(REFRESH_COOKIE)
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            except (TokenError, AttributeError):
+                # Token already expired/invalid or blacklist app issue — proceed with clearing
+                pass
+
         response = Response({"logged_out": True}, status=status.HTTP_200_OK)
         return _clear_auth_cookies(response)

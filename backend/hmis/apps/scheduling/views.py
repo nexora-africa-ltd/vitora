@@ -251,6 +251,12 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         """Soft delete resource by setting is_active=False."""
+        if not request.user.has_perm("scheduling.delete_resource"):
+            return Response(
+                {"detail": "You do not have permission to delete this resource."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         instance = self.get_object()
         instance.is_active = False
         instance.save()
