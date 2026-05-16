@@ -5,12 +5,6 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import {
   Move,
@@ -73,25 +67,20 @@ interface ToolButtonProps {
 
 function ToolButton({ tool, activeTool, onToolChange, icon, label, disabled }: ToolButtonProps) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant={activeTool === tool ? 'default' : 'ghost'}
-          size="icon"
-          className={cn(
-            'h-8 w-8',
-            activeTool === tool && 'bg-primary text-primary-foreground'
-          )}
-          onClick={() => onToolChange(tool)}
-          disabled={disabled}
-        >
-          {icon}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent side="bottom">
-        <p>{label}</p>
-      </TooltipContent>
-    </Tooltip>
+    <Button
+      variant={activeTool === tool ? 'default' : 'ghost'}
+      size="icon"
+      className={cn(
+        'h-8 w-8',
+        activeTool === tool && 'bg-primary text-primary-foreground'
+      )}
+      onClick={() => onToolChange(tool)}
+      disabled={disabled}
+      title={label}
+      aria-label={label}
+    >
+      {icon}
+    </Button>
   );
 }
 
@@ -104,22 +93,17 @@ interface ActionButtonProps {
 
 function ActionButton({ onClick, icon, label, disabled }: ActionButtonProps) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={onClick}
-          disabled={disabled}
-        >
-          {icon}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent side="bottom">
-        <p>{label}</p>
-      </TooltipContent>
-    </Tooltip>
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8"
+      onClick={onClick}
+      disabled={disabled}
+      title={label}
+      aria-label={label}
+    >
+      {icon}
+    </Button>
   );
 }
 
@@ -142,18 +126,17 @@ export function ViewerToolbar({
   const isHorizontal = orientation === 'horizontal';
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <div
-        className={cn(
-          'flex items-center gap-0.5 sm:gap-1 p-1 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg',
-          isHorizontal ? 'flex-row' : 'flex-col',
-          className
-        )}
-      >
-        {/* Navigation Tools - always visible */}
-        <div className={cn('flex gap-0.5', !isHorizontal && 'flex-col')}>
-          <ToolButton
-            tool="pan"
+    <div
+      className={cn(
+        'flex items-center gap-0.5 sm:gap-1 p-1 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg',
+        isHorizontal ? 'flex-row' : 'flex-col',
+        className
+      )}
+    >
+      {/* Navigation Tools - always visible */}
+      <div className={cn('flex gap-0.5', !isHorizontal && 'flex-col')}>
+        <ToolButton
+          tool="pan"
             activeTool={activeTool}
             onToolChange={onToolChange}
             icon={<Move className="h-4 w-4" />}
@@ -275,6 +258,5 @@ export function ViewerToolbar({
           />
         </div>
       </div>
-    </TooltipProvider>
   );
 }

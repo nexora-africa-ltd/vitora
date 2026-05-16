@@ -164,6 +164,23 @@ const nextConfig = {
       crypto: './empty-module.js',
     },
   },
+
+  // Allow next/image to load from the Django backend (thumbnails, media)
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: '127.0.0.1',
+        port: '9088',
+        pathname: '/media/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.azurecontainerapps.io',
+        pathname: '/media/**',
+      },
+    ],
+  },
 }
 
 module.exports = nextConfig
