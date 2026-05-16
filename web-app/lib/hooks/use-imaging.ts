@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { imagingApi } from '@/lib/api/imaging';
 import {
   ImagingProcedureListParams,
+  ImagingProcedureCreateData,
   ImagingOrderListParams,
   ImagingOrderCreateData,
   ImagingOrder,
@@ -101,6 +102,59 @@ export function useImagingProcedureSearch(query: string) {
     queryKey: imagingKeys.proceduresSearch(query),
     queryFn: () => imagingApi.searchProcedures(query),
     enabled: query.length >= 2,
+  });
+}
+
+/**
+ * Hook for creating a procedure.
+ */
+export function useCreateImagingProcedure() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ImagingProcedureCreateData) => imagingApi.createProcedure(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: imagingKeys.procedures() });
+    },
+  });
+}
+
+/**
+ * Hook for updating a procedure.
+ */
+export function useUpdateImagingProcedure() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ code, data }: { code: string; data: Partial<ImagingProcedureCreateData> }) =>
+      imagingApi.updateProcedure(code, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: imagingKeys.procedures() });
+    },
+  });
+}
+
+/**
+ * Hook for deleting (deactivating) a procedure.
+ */
+export function useDeleteImagingProcedure() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (code: string) => imagingApi.deleteProcedure(code),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: imagingKeys.procedures() });
+    },
+  });
+}
+
+/**
+ * Hook for seeding default procedures.
+ */
+export function useSeedDefaultProcedures() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => imagingApi.seedDefaultProcedures(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: imagingKeys.procedures() });
+    },
   });
 }
 

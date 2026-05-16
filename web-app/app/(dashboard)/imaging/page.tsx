@@ -35,7 +35,6 @@ import {
   CalendarDays,
   Image as ImageIcon,
   Search,
-  RefreshCw,
   Eye,
   ChevronLeft,
   ChevronRight,
@@ -64,7 +63,7 @@ export default function ImagingPage() {
   const [priorityFilter, setPriorityFilter] = useState<ImagingPriority | ''>('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data, isLoading, error, refetch } = useImagingOrders({
+  const { data, isLoading, error } = useImagingOrders({
     page,
     page_size: 20,
     status: statusFilter || undefined,
@@ -129,7 +128,6 @@ export default function ImagingPage() {
             onStatusFilter={setStatusFilter}
             onPriorityFilter={setPriorityFilter}
             onSearch={setSearchQuery}
-            onRefresh={() => refetch()}
           />
         </TabsContent>
 
@@ -214,9 +212,6 @@ function DICOMStudiesView() {
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="h-4 w-4" />
-            </Button>
           </div>
         </CardContent>
       </Card>

@@ -583,16 +583,39 @@ class Command(BaseCommand):
             action="store_true",
             help="Force update existing procedures (overwrite)",
         )
+        parser.add_argument(
+            "--facility",
+            type=int,
+            help="Facility ID to scope procedures to (required for multi-tenant)",
+        )
 
     def handle(self, *args, **options):
         force = options["force"]
+        facility_id = options.get("facility")
+
+        facility = None
+        organization = None
+        if facility_id:
+            from hmis.apps.core.models import Facility
+
+            try:
+                facility = Facility.objects.select_related("organization").get(pk=facility_id)
+                organization = facility.organization
+            except Facility.DoesNotExist:
+                self.stderr.write(self.style.ERROR(f"Facility with ID {facility_id} not found."))
+                return
+
         created_count = 0
         updated_count = 0
         skipped_count = 0
 
         for proc_data in self.IMAGING_PROCEDURES:
             code = proc_data["code"]
-            existing = ImagingProcedure.objects.filter(code=code).first()
+            filter_kwargs = {"code": code}
+            if facility:
+                filter_kwargs["facility"] = facility
+
+            existing = ImagingProcedure.objects.filter(**filter_kwargs).first()
 
             if existing:
                 if force:
@@ -605,7 +628,11 @@ class Command(BaseCommand):
                     skipped_count += 1
                     self.stdout.write(f"Skipped (exists): {code}")
             else:
-                ImagingProcedure.objects.create(**proc_data)
+                ImagingProcedure.objects.create(
+                    facility=facility,
+                    organization=organization,
+                    **proc_data,
+                )
                 created_count += 1
                 self.stdout.write(self.style.SUCCESS(f"Created: {code}"))
 

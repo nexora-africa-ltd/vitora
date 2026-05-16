@@ -16,6 +16,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from hmis.apps.core.mixins import FacilityScopedModel
+
 logger = logging.getLogger(__name__)
 
 User = get_user_model()
@@ -52,12 +54,13 @@ def generate_imaging_order_number():
     return f"{prefix}{sequence:04d}"
 
 
-class ImagingProcedure(models.Model):
+class ImagingProcedure(FacilityScopedModel):
     """
     Master catalog of imaging procedures.
 
     Stores information about available imaging procedures including modality,
-    body region, pricing, and SHA claimability.
+    body region, pricing, and SHA claimability. Facility-scoped so each
+    facility can maintain its own catalog/pricing.
     """
 
     MODALITY_CHOICES = [
@@ -85,7 +88,7 @@ class ImagingProcedure(models.Model):
     ]
 
     # Identity
-    code = models.CharField(max_length=50, unique=True, help_text="Unique procedure code")
+    code = models.CharField(max_length=50, help_text="Procedure code (unique per facility)")
     name = models.CharField(max_length=200, help_text="Full procedure name")
     modality = models.CharField(max_length=20, choices=MODALITY_CHOICES)
     body_region = models.CharField(max_length=30, choices=BODY_REGION_CHOICES)
@@ -123,11 +126,18 @@ class ImagingProcedure(models.Model):
         verbose_name = "Imaging Procedure"
         verbose_name_plural = "Imaging Procedures"
         ordering = ["modality", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "code"],
+                name="unique_procedure_code_per_facility",
+            ),
+        ]
         indexes = [
             models.Index(fields=["code"]),
             models.Index(fields=["modality"]),
             models.Index(fields=["body_region"]),
             models.Index(fields=["is_active"]),
+            models.Index(fields=["facility"]),
         ]
 
     def __str__(self):

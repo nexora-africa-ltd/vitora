@@ -46,8 +46,8 @@ class TestImagingProcedure:
         assert procedure.is_active is True
         assert procedure.sha_claimable is True
 
-    def test_procedure_code_uniqueness(self):
-        """Procedure code should be unique."""
+    def test_procedure_code_uniqueness(self, sample_facility):
+        """Procedure code should be unique per facility."""
         from hmis.apps.imaging.models import ImagingProcedure
 
         ImagingProcedure.objects.create(
@@ -55,13 +55,17 @@ class TestImagingProcedure:
             name="Abdominal Ultrasound",
             modality="US",
             body_region="ABDOMEN",
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
         with pytest.raises(IntegrityError):
             ImagingProcedure.objects.create(
-                code="US-ABD",  # Duplicate
+                code="US-ABD",  # Duplicate within same facility
                 name="Another Ultrasound",
                 modality="US",
                 body_region="ABDOMEN",
+                facility=sample_facility,
+                organization=sample_facility.organization,
             )
 
     def test_procedure_modality_choices(self):

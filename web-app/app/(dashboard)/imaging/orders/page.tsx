@@ -24,7 +24,7 @@ export default function ImagingOrdersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  const { data, isLoading, error, refetch } = useImagingOrders({
+  const { data, isLoading, error } = useImagingOrders({
     page,
     page_size: 20,
     status: statusFilter || undefined,
@@ -59,7 +59,6 @@ export default function ImagingOrdersPage() {
           onStatusFilter={(s) => { setStatusFilter(s); setPage(1); }}
           onPriorityFilter={(p) => { setPriorityFilter(p); setPage(1); }}
           onSearch={(q) => { setSearchQuery(q); setPage(1); }}
-          onRefresh={() => refetch()}
         />
       </div>
     </PullToRefresh>

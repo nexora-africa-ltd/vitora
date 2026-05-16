@@ -3,31 +3,24 @@
  */
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { ImagingWorklist } from '@/components/imaging';
 
 export default function ImagingWorklistPage() {
-  const router = useRouter();
+  const { refresh, isRefreshing } = usePageRefresh();
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.push('/imaging')}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">Imaging Worklist</h1>
-          <p className="text-muted-foreground">
-            Orders pending imaging - sorted by priority
-          </p>
-        </div>
-      </div>
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title="Imaging Worklist"
+          helpContent="Orders pending imaging, sorted by priority (STAT > Urgent > Routine) and then by order time. Start an order to begin the imaging procedure."
+        />
 
-      {/* Worklist */}
-      <ImagingWorklist />
-    </div>
+        <ImagingWorklist />
+      </div>
+    </PullToRefresh>
   );
 }

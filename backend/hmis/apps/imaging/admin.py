@@ -34,8 +34,10 @@ class ImagingProcedureAdmin(admin.ModelAdmin):
         "cost",
         "sha_claimable",
         "is_active",
+        "facility",
     )
     list_filter = (
+        "facility",
         "modality",
         "body_region",
         "is_active",
@@ -44,9 +46,10 @@ class ImagingProcedureAdmin(admin.ModelAdmin):
         "sha_claimable",
     )
     search_fields = ("code", "name", "radlex_code", "loinc_code", "sha_intervention_code")
+    raw_id_fields = ("facility", "organization")
     ordering = ("modality", "name")
     fieldsets = (
-        (None, {"fields": ("code", "name", "modality", "body_region")}),
+        (None, {"fields": ("facility", "organization", "code", "name", "modality", "body_region")}),
         (
             "Interoperability",
             {

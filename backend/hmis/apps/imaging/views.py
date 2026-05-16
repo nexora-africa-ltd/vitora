@@ -21,7 +21,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import NestedTenantScopeMixin, resolve_request_tenant
+from hmis.apps.core.mixins import (
+    NestedTenantScopeMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+    resolve_request_tenant,
+)
 from hmis.apps.core.models import AuditLog
 from hmis.apps.scheduling.models import Resource
 
@@ -45,6 +50,7 @@ from .serializers import (
     DICOMStudySerializer,
     ImagingOrderCreateSerializer,
     ImagingOrderSerializer,
+    ImagingProcedureCreateSerializer,
     ImagingProcedureDetailSerializer,
     ImagingProcedureSerializer,
     ImagingResourceSerializer,
@@ -321,23 +327,33 @@ class ImagingCalendarView(APIView):
         )
 
 
-class ImagingProcedureViewSet(viewsets.ReadOnlyModelViewSet):
+class ImagingProcedureViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for imaging procedure catalog.
-    Provides list and retrieve operations with search functionality.
+    Full CRUD with facility scoping and seed defaults action.
     """
 
-    queryset = ImagingProcedure.objects.filter(is_active=True)
+    queryset = ImagingProcedure.objects.all()
     permission_classes = [IsAuthenticated]
     lookup_field = "code"
+    tenant_scope = "facility"
 
     def get_serializer_class(self):
+        if self.action == "create":
+            return ImagingProcedureCreateSerializer
         if self.action == "retrieve":
             return ImagingProcedureDetailSerializer
         return ImagingProcedureSerializer
 
     def get_queryset(self):
         queryset = super().get_queryset()
+
+        # Default: only active unless explicitly requested
+        is_active = self.request.query_params.get("is_active", None)
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == "true")
+        else:
+            queryset = queryset.filter(is_active=True)
 
         # Search by name or code
         search = self.request.query_params.get("search", None)
@@ -356,7 +372,93 @@ class ImagingProcedureViewSet(viewsets.ReadOnlyModelViewSet):
         if body_region:
             queryset = queryset.filter(body_region=body_region)
 
+        # Filter by availability
+        available_in_house = self.request.query_params.get("available_in_house", None)
+        if available_in_house is not None:
+            queryset = queryset.filter(available_in_house=available_in_house.lower() == "true")
+
         return queryset
+
+    def perform_create(self, serializer):
+        if not self.request.user.has_perm("imaging.add_imagingprocedure"):
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("You do not have permission to create procedures.")
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    def perform_update(self, serializer):
+        if not self.request.user.has_perm("imaging.change_imagingprocedure"):
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("You do not have permission to edit procedures.")
+        serializer.save()
+
+    def destroy(self, request, *args, **kwargs):
+        """Soft-delete: deactivate instead of hard delete."""
+        if not request.user.has_perm("imaging.delete_imagingprocedure"):
+            return Response(
+                {"detail": "You do not have permission to delete procedures."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save(update_fields=["is_active"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=["post"])
+    def seed_defaults(self, request):
+        """
+        Seed default Kenya imaging procedures for the current facility.
+        Only seeds when the facility has no procedures.
+        """
+        if not request.user.has_perm("imaging.add_imagingprocedure"):
+            return Response(
+                {"detail": "You do not have permission to create procedures."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        from hmis.apps.imaging.management.commands.seed_imaging_catalog import Command
+
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+
+        if not facility:
+            return Response(
+                {"detail": "No facility context available."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Only seed if empty
+        existing_count = ImagingProcedure.objects.filter(facility=facility).count()
+        if existing_count > 0:
+            return Response(
+                {
+                    "detail": f"Facility already has {existing_count} procedures. Seed skipped.",
+                    "created": 0,
+                    "existing": existing_count,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # Create procedures for this facility
+        created = 0
+        for proc_data in Command.IMAGING_PROCEDURES:
+            ImagingProcedure.objects.create(
+                facility=facility,
+                organization=organization,
+                **proc_data,
+            )
+            created += 1
+
+        return Response(
+            {
+                "detail": f"Seeded {created} default procedures.",
+                "created": created,
+                "existing": 0,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):

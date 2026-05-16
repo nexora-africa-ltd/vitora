@@ -9,10 +9,10 @@ import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,7 +27,6 @@ import {
   AlertTriangle,
   Clock,
   Play,
-  RefreshCw,
   User,
   Zap,
   ChevronRight,
@@ -186,16 +185,11 @@ export function ImagingWorklist({ onOrderSelect }: ImagingWorklistProps) {
       <Card>
         <CardHeader className="pb-2 sm:pb-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
               <CardTitle className="text-base sm:text-lg">Orders Worklist</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">
-                Orders pending imaging - sorted by priority and order time
-              </CardDescription>
+              <HelpPopover content="Orders are sorted by priority (STAT first, then Urgent, then Routine) and by order time within each priority level." />
             </div>
-            <Button variant="outline" size="sm" onClick={() => refetch()} className="shrink-0 w-full sm:w-auto">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
+
           </div>
         </CardHeader>
         <CardContent className="px-3 sm:px-6">

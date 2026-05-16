@@ -8,6 +8,7 @@ import { apiClient, getApiBaseUrl } from './client';
 import {
   ImagingProcedure,
   ImagingProcedureDetail,
+  ImagingProcedureCreateData,
   ImagingOrder,
   ImagingOrderCreateData,
   ScheduleOrderData,
@@ -105,6 +106,49 @@ export const imagingApi = {
     return parseResponse(ImagingProcedureArraySchema, data.results || data, {
       context: 'imagingApi.searchProcedures',
     }) as ImagingProcedure[];
+  },
+
+  /**
+   * Create a new imaging procedure.
+   */
+  async createProcedure(data: ImagingProcedureCreateData): Promise<ImagingProcedureDetail> {
+    const response = await apiClient.post<ImagingProcedureDetail>(
+      '/api/imaging/procedures/',
+      data
+    );
+    return parseResponse(ImagingProcedureDetailSchema, response.data, {
+      context: 'imagingApi.createProcedure',
+    }) as ImagingProcedureDetail;
+  },
+
+  /**
+   * Update an existing imaging procedure.
+   */
+  async updateProcedure(code: string, data: Partial<ImagingProcedureCreateData>): Promise<ImagingProcedureDetail> {
+    const response = await apiClient.patch<ImagingProcedureDetail>(
+      `/api/imaging/procedures/${code}/`,
+      data
+    );
+    return parseResponse(ImagingProcedureDetailSchema, response.data, {
+      context: 'imagingApi.updateProcedure',
+    }) as ImagingProcedureDetail;
+  },
+
+  /**
+   * Delete (deactivate) an imaging procedure.
+   */
+  async deleteProcedure(code: string): Promise<void> {
+    await apiClient.delete(`/api/imaging/procedures/${code}/`);
+  },
+
+  /**
+   * Seed default procedures for the current facility.
+   */
+  async seedDefaultProcedures(): Promise<{ detail: string; created: number; existing: number }> {
+    const response = await apiClient.post<{ detail: string; created: number; existing: number }>(
+      '/api/imaging/procedures/seed_defaults/'
+    );
+    return response.data;
   },
 
   // ============ Imaging Orders ============
@@ -503,7 +547,11 @@ export const imagingApi = {
    */
   async uploadDICOM(
     files: File[],
-    options?: { imagingOrderId?: number; patientId?: number }
+    options?: {
+      imagingOrderId?: number;
+      patientId?: number;
+      onUploadProgress?: (progressEvent: { loaded: number; total: number }) => void;
+    }
   ): Promise<DICOMUploadResponse> {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
@@ -519,6 +567,14 @@ export const imagingApi = {
       formData,
       {
         headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: options?.onUploadProgress
+          ? (event) => {
+              options.onUploadProgress!({
+                loaded: event.loaded ?? 0,
+                total: event.total ?? 0,
+              });
+            }
+          : undefined,
       }
     );
     return parseResponse(DICOMUploadResponseSchema, response.data, {
