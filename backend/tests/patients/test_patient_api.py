@@ -195,9 +195,18 @@ class TestPatientAPIEndpoints:
         assert response.data["phone_number"] == "+254712345678"
         assert response.data["first_name"] == "John"  # Original data preserved
 
-    def test_delete_patient(self, auth_client, sample_organization):
+    def test_delete_patient(self, auth_client, sample_organization, auth_user):
         """Test DELETE /api/patients/{id}/ - Delete a patient."""
+        from django.contrib.auth.models import Permission
+
         from hmis.apps.patients.models import Patient
+
+        # Grant delete permission
+        perm = Permission.objects.get(codename="delete_patient")
+        auth_user.user_permissions.add(perm)
+        # Clear cached permissions
+        auth_user = User.objects.get(pk=auth_user.pk)
+        auth_client.force_authenticate(user=auth_user)
 
         patient = Patient.objects.create(
             first_name="John",
