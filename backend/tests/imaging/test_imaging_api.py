@@ -399,8 +399,17 @@ class TestImagingOrderAPI:
 
     # --- Delete Order Tests ---
 
-    def test_delete_draft_order(self, authenticated_client, sample_imaging_order):
-        """Should allow deleting draft orders."""
+    def test_delete_draft_order(self, authenticated_client, test_user, sample_imaging_order):
+        """Should allow deleting draft orders with delete permission."""
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
+        User = get_user_model()
+        perm = Permission.objects.get(codename="delete_imagingorder")
+        test_user.user_permissions.add(perm)
+        test_user = User.objects.get(pk=test_user.pk)
+        authenticated_client.force_authenticate(user=test_user)
+
         response = authenticated_client.delete(
             f"/api/imaging/orders/{sample_imaging_order.order_number}/"
         )
@@ -672,7 +681,16 @@ class TestImagingAuditLogging:
         self, authenticated_client, sample_patient, sample_encounter, test_user, procedure
     ):
         """Deleting order should create audit log entry."""
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
         from hmis.apps.core.models import AuditLog
+
+        User = get_user_model()
+        perm = Permission.objects.get(codename="delete_imagingorder")
+        test_user.user_permissions.add(perm)
+        test_user = User.objects.get(pk=test_user.pk)
+        authenticated_client.force_authenticate(user=test_user)
 
         order = ImagingOrder.objects.create(
             patient=sample_patient,
