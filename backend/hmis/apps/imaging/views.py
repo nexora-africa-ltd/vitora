@@ -796,7 +796,7 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 # ============================================================================
 
 
-class DICOMStudyViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
+class DICOMStudyViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for DICOM studies.
 
@@ -820,8 +820,6 @@ class DICOMStudyViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     lookup_field = "study_instance_uid"
     lookup_value_regex = r"[\d.]+"  # DICOM UIDs contain digits and dots
-    tenant_facility_chain = "imaging_order__encounter__facility"
-    tenant_org_chain = "imaging_order__encounter__organization"
 
     def get_serializer_class(self):
         if self.action == "retrieve":
@@ -830,6 +828,24 @@ class DICOMStudyViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        user = self.request.user
+
+        # Superusers see all studies
+        if user.is_superuser:
+            pass
+        else:
+            # Resolve tenant from request headers / user profile
+            resolve_request_tenant(self.request)
+            org = getattr(self.request, "organization", None)
+
+            if org:
+                # Show studies where patient belongs to same org, OR uploaded by current user
+                queryset = queryset.filter(
+                    models.Q(patient__organization=org) | models.Q(uploaded_by=user)
+                )
+            else:
+                # No org context — only show studies uploaded by this user
+                queryset = queryset.filter(uploaded_by=user)
 
         # Filter by patient
         patient = self.request.query_params.get("patient")
@@ -1134,6 +1150,15 @@ class DICOMUploadView(APIView):
 
         # If ALL files failed, return 400
         if instances_created == 0:
+            # Distinguish between "all invalid" and "all duplicates"
+            if not errors:
+                return Response(
+                    {
+                        "error": "All files already exist in PACS (duplicate SOP Instance UIDs). No new instances were created.",
+                        "details": [],
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
             return Response(
                 {
                     "error": "No valid DICOM files could be processed.",

@@ -37,7 +37,19 @@ export function Breadcrumb() {
     const href = '/' + segments.slice(0, index + 1).join('/');
     // Check if segment is an ID (numeric or UUID-like)
     const isId = /^[0-9]+$/.test(segment) || /^[a-f0-9-]{36}$/.test(segment);
-    const label = isId ? `#${segment}` : routeLabels[segment] || segment;
+    // DICOM UIDs: dot-separated numeric segments (e.g., 1.2.276.0.7230010...)
+    const isDicomUid = /^\d+(\.\d+){4,}$/.test(segment);
+
+    let label: string;
+    if (isDicomUid) {
+      // Show only the last dot-separated section (the unique part)
+      const lastPart = segment.split('.').pop() || segment;
+      label = `…${lastPart}`;
+    } else if (isId) {
+      label = `#${segment}`;
+    } else {
+      label = routeLabels[segment] || segment;
+    }
 
     return { label, href };
   });

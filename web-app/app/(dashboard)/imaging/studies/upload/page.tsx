@@ -9,7 +9,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,8 +18,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { imagingApi } from '@/lib/api/imaging';
-import { usePatients } from '@/lib/hooks/use-patients';
+import { patientsApi } from '@/lib/api/patients';
+import { Patient } from '@/lib/types/patient';
+import { ImagingOrder, PRIORITY_LABELS } from '@/lib/types/imaging';
+import { PaginatedResponse } from '@/lib/types';
 import {
   Upload,
   X,
@@ -30,9 +34,12 @@ import {
   User,
   ArrowRight,
   ArrowLeft,
+  Loader2,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { AxiosError } from 'axios';
 
 // File validation
 const ACCEPTED_EXTENSIONS = ['.dcm', '.dicom', '.DCM', '.DICOM'];
@@ -54,6 +61,27 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** Extract a human-readable error message from an Axios or generic error. */
+function getUploadErrorMessage(error: Error): string {
+  if (error instanceof AxiosError && error.response?.data) {
+    const data = error.response.data as Record<string, unknown>;
+    if (typeof data.error === 'string') return data.error;
+    if (typeof data.detail === 'string') return data.detail;
+  }
+  return error.message || 'Unknown error';
+}
+
+/** Extract per-file error details from the API response. */
+function getUploadErrorDetails(error: Error): { file: string; errors: string[] }[] {
+  if (error instanceof AxiosError && error.response?.data) {
+    const data = error.response.data as Record<string, unknown>;
+    if (Array.isArray(data.details) && data.details.length > 0) {
+      return data.details as { file: string; errors: string[] }[];
+    }
+  }
+  return [];
+}
+
 export default function DICOMUploadPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -67,14 +95,32 @@ export default function DICOMUploadPage() {
   const [patientId, setPatientId] = useState<number | null>(null);
   const [patientSearch, setPatientSearch] = useState('');
   const [showPatientSearch, setShowPatientSearch] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [uploadedBytes, setUploadedBytes] = useState(0);
   const [totalBytes, setTotalBytes] = useState(0);
+  const [serverProcessing, setServerProcessing] = useState(false);
 
-  // Patient search
-  const { data: patientsData, isLoading: searchingPatients } = usePatients({
-    search: patientSearch.length >= 2 ? patientSearch : undefined,
-    page_size: 10,
+  // Patient search — only fires when user is typing on step 2
+  const searchEnabled = step === 2 && patientSearch.length >= 2;
+  const { data: patientsData, isLoading: searchingPatients } = useQuery<PaginatedResponse<Patient>>({
+    queryKey: ['patients', 'search', patientSearch],
+    queryFn: () => patientsApi.getPatients({ search: patientSearch, page_size: 10 }),
+    enabled: searchEnabled,
+    staleTime: 15000,
   });
+
+  // Fetch unfulfilled imaging orders for the selected patient
+  const { data: patientOrders } = useQuery<PaginatedResponse<ImagingOrder>>({
+    queryKey: ['imaging-orders', 'patient', patientId],
+    queryFn: () => imagingApi.listOrders({ patient: patientId!, page_size: 20 }),
+    enabled: !!patientId,
+    staleTime: 30000,
+  });
+
+  // Filter to orders that can receive uploads (not cancelled, not yet completed with study)
+  const linkableOrders = (patientOrders?.results ?? []).filter(
+    (o) => ['ORDERED', 'SCHEDULED', 'IN_PROGRESS'].includes(o.status)
+  );
 
   // Upload mutation
   const uploadMutation = useMutation({
@@ -82,12 +128,19 @@ export default function DICOMUploadPage() {
       const total = filesToUpload.reduce((sum, f) => sum + f.size, 0);
       setTotalBytes(total);
       setUploadedBytes(0);
+      setServerProcessing(false);
 
       return imagingApi.uploadDICOM(filesToUpload, {
         patientId: patientId || undefined,
+        imagingOrderId: selectedOrderId || undefined,
         onUploadProgress: (event) => {
           setUploadedBytes(event.loaded);
           if (event.total > 0) setTotalBytes(event.total);
+          // When loaded >= total, browser finished sending bytes.
+          // Server is now parsing DICOM files — switch to processing phase.
+          if (event.total > 0 && event.loaded >= event.total) {
+            setServerProcessing(true);
+          }
         },
       });
     },
@@ -170,6 +223,7 @@ export default function DICOMUploadPage() {
   const clearPatient = useCallback(() => {
     setPatientId(null);
     setPatientSearch('');
+    setSelectedOrderId(null);
   }, []);
 
   // Computed
@@ -399,6 +453,55 @@ export default function DICOMUploadPage() {
               </div>
             )}
 
+            {/* Optional: Link to an existing imaging order */}
+            {patientId && linkableOrders.length > 0 && (
+              <div className="space-y-2 pt-2 border-t">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Link to Imaging Order</span>
+                  <span className="text-xs text-muted-foreground">(optional)</span>
+                </div>
+                <ScrollArea className="max-h-[180px]">
+                  <div className="space-y-2">
+                    {linkableOrders.map((order) => (
+                      <button
+                        key={order.id}
+                        type="button"
+                        onClick={() => setSelectedOrderId(
+                          selectedOrderId === order.id ? null : order.id
+                        )}
+                        className={cn(
+                          'w-full text-left p-3 rounded-md border transition-colors',
+                          selectedOrderId === order.id
+                            ? 'border-primary bg-primary/5'
+                            : 'border-muted hover:bg-muted/50'
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {order.order_number}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {order.items.map((i) => i.procedure_name).join(', ') || order.clinical_indication}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              {PRIORITY_LABELS[order.priority]}
+                            </Badge>
+                            {selectedOrderId === order.id && (
+                              <CheckCircle2 className="h-4 w-4 text-primary" />
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+
             {/* Navigation */}
             <div className="flex justify-between pt-2">
               <Button variant="outline" onClick={() => setStep(1)}>
@@ -435,10 +538,18 @@ export default function DICOMUploadPage() {
                 <span className="text-muted-foreground">Patient</span>
                 <span className="font-medium truncate ml-4">{patientSearch}</span>
               </div>
+              {selectedOrderId && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Linked Order</span>
+                  <span className="font-medium">
+                    {linkableOrders.find((o) => o.id === selectedOrderId)?.order_number ?? '—'}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Upload Progress */}
-            {uploadMutation.isPending && (
+            {uploadMutation.isPending && !serverProcessing && (
               <div className="space-y-3 py-2">
                 <Progress value={uploadPercent} className="h-3" />
                 <div className="flex justify-between text-sm">
@@ -446,6 +557,17 @@ export default function DICOMUploadPage() {
                     {formatFileSize(uploadedBytes)} / {formatFileSize(totalBytes)}
                   </span>
                   <span className="font-medium text-primary">{uploadPercent}%</span>
+                </div>
+              </div>
+            )}
+
+            {/* Server Processing Phase */}
+            {uploadMutation.isPending && serverProcessing && (
+              <div className="space-y-3 py-2">
+                <Progress value={100} className="h-3" />
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Processing DICOM files on server… This may take a moment.</span>
                 </div>
               </div>
             )}
@@ -465,8 +587,14 @@ export default function DICOMUploadPage() {
             {uploadMutation.isError && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Upload failed: {uploadMutation.error?.message || 'Unknown error'}
+                <AlertDescription className="space-y-2">
+                  <p>{getUploadErrorMessage(uploadMutation.error)}</p>
+                  {getUploadErrorDetails(uploadMutation.error).map((detail, i) => (
+                    <p key={i} className="text-xs">
+                      <span className="font-medium">{detail.file}:</span>{' '}
+                      {detail.errors.join('; ')}
+                    </p>
+                  ))}
                 </AlertDescription>
               </Alert>
             )}
@@ -488,7 +616,11 @@ export default function DICOMUploadPage() {
                   size="lg"
                 >
                   {uploadMutation.isPending ? (
-                    `Uploading... ${uploadPercent}%`
+                    serverProcessing ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</>
+                    ) : (
+                      `Uploading… ${uploadPercent}%`
+                    )
                   ) : uploadMutation.isError ? (
                     <>Retry Upload</>
                   ) : (
