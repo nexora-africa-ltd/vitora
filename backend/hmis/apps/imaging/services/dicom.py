@@ -109,6 +109,12 @@ class DICOMParsingService:
             "accession_number": str(cls._get_tag_value(ds, "AccessionNumber", "")),
             "referring_physician_name": str(cls._get_tag_value(ds, "ReferringPhysicianName", "")),
             "institution_name": str(cls._get_tag_value(ds, "InstitutionName", "")),
+            # Equipment-level tags
+            "station_name": str(cls._get_tag_value(ds, "StationName", "")),
+            "manufacturer": str(cls._get_tag_value(ds, "Manufacturer", "")),
+            "manufacturer_model_name": str(cls._get_tag_value(ds, "ManufacturerModelName", "")),
+            "device_serial_number": str(cls._get_tag_value(ds, "DeviceSerialNumber", "")),
+            "software_versions": str(cls._get_tag_value(ds, "SoftwareVersions", "")),
             # Series-level tags
             "series_instance_uid": str(cls._get_tag_value(ds, "SeriesInstanceUID", "")),
             "series_number": cls._get_int_tag(ds, "SeriesNumber"),

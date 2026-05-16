@@ -250,6 +250,29 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
         // Create viewport - use string literal for ViewportType in v4+
         // In CST3D v4, ViewportType values are: 'stack', 'orthographic', 'perspective', 'video'
         const element = containerRef.current;
+
+        // Wait for the container to have non-zero layout dimensions before
+        // calling enableElement().  In flex / dynamic-import layouts the
+        // container may still report 0×0 at this point which causes
+        // Cornerstone to create a degenerate canvas that cannot be recovered
+        // by later resize() calls.
+        if (element.clientWidth === 0 || element.clientHeight === 0) {
+          await new Promise<void>((resolve) => {
+            const ro = new ResizeObserver((entries) => {
+              for (const entry of entries) {
+                if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+                  ro.disconnect();
+                  resolve();
+                  return;
+                }
+              }
+            });
+            ro.observe(element);
+          });
+          // Bail out if the component was unmounted while we waited
+          if (!mounted) return;
+        }
+
         const viewportInput = {
           viewportId,
           element,
@@ -311,8 +334,25 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
           bindings: [{ mouseButton: MouseBindings.Wheel }],
         });
 
-        // Render
+        // Render initial frame
         viewport.render();
+
+        // Fit the image to the viewport once it has actually rendered.
+        // setStack() returns before the DICOM is loaded, so resetCamera()
+        // called here would have nothing to fit.  The CORNERSTONE_IMAGE_RENDERED
+        // event fires after the image is on the canvas.
+        const handleImageRendered = () => {
+          const engine = renderingEngineRef.current;
+          if (!engine || !mounted) return;
+          engine.resize(true, true);
+          const vp = engine.getViewport(viewportId);
+          if (vp) {
+            vp.resetCamera();
+            vp.render();
+          }
+          element.removeEventListener('CORNERSTONE_IMAGE_RENDERED', handleImageRendered);
+        };
+        element.addEventListener('CORNERSTONE_IMAGE_RENDERED', handleImageRendered);
 
         if (mounted) {
           setTotalImages(imageUrls.length);

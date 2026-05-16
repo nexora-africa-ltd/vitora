@@ -394,11 +394,86 @@ export const DICOMStudySchema = z.object({
   thumbnail_path: z.string().nullable().optional(),
   uploaded_by: z.number().nullable().optional(),
   uploaded_by_name: z.string().nullable().optional(),
+  station_name: z.string().nullable().optional(),
+  manufacturer: z.string().nullable().optional(),
+  manufacturer_model_name: z.string().nullable().optional(),
+  device_serial_number: z.string().nullable().optional(),
+  source: z.enum(['UPLOAD', 'CSTORE', 'EXTERNAL']).optional(),
+  calling_ae_title: z.string().nullable().optional(),
+  equipment: z.number().nullable().optional(),
+  equipment_name: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
 
 export type DICOMStudySchemaType = z.infer<typeof DICOMStudySchema>;
+
+/**
+ * Imaging Equipment schema.
+ */
+export const ImagingEquipmentSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  modality: z.string(),
+  modality_display: z.string().optional(),
+  ae_title: z.string().nullable().optional(),
+  station_name: z.string().nullable().optional(),
+  manufacturer: z.string().nullable().optional(),
+  model_name: z.string().nullable().optional(),
+  serial_number: z.string().nullable().optional(),
+  software_versions: z.string().nullable().optional(),
+  room: z.string().nullable().optional(),
+  scheduling_resource: z.number().nullable().optional(),
+  is_active: z.boolean(),
+  installed_date: z.string().nullable().optional(),
+  last_calibration_date: z.string().nullable().optional(),
+  next_calibration_due: z.string().nullable().optional(),
+  is_calibration_overdue: z.boolean(),
+  notes: z.string().nullable().optional(),
+  auto_registered: z.boolean(),
+  studies_count: z.number(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export type ImagingEquipmentSchemaType = z.infer<typeof ImagingEquipmentSchema>;
+
+export const PaginatedImagingEquipmentSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(ImagingEquipmentSchema),
+});
+
+/**
+ * Study share link schema.
+ */
+export const StudyShareLinkSchema = z.object({
+  id: z.number(),
+  token: z.string().optional(),
+  purpose: z.enum(['REFERRAL', 'PATIENT_COPY', 'RESEARCH', 'INSURANCE', 'OTHER']),
+  recipient_name: z.string().nullable().optional(),
+  recipient_email: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  expires_at: z.string(),
+  revoked_at: z.string().nullable().optional(),
+  max_views: z.number(),
+  view_count: z.number(),
+  allow_download: z.boolean(),
+  pin_protected: z.boolean().optional(),
+  created_at: z.string(),
+  created_by: z.number().nullable().optional(),
+  created_by_name: z.string().nullable().optional(),
+  last_accessed_at: z.string().nullable().optional(),
+  is_usable: z.boolean().optional(),
+  share_url: z.string().optional(),
+});
+
+export type StudyShareLinkSchemaType = z.infer<typeof StudyShareLinkSchema>;
+export const StudyShareLinkArraySchema = z.array(StudyShareLinkSchema);
+export const StudyShareLinkListResponseSchema = z.object({
+  results: z.array(StudyShareLinkSchema),
+});
 
 /**
  * Schema for DICOM study detail (with nested series).

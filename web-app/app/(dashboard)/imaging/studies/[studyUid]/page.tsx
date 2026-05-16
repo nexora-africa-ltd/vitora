@@ -6,7 +6,7 @@
  */
 'use client';
 
-import { use } from 'react';
+import { use, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -35,6 +35,8 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import Link from 'next/link';
+import { ShareStudyDialog } from '@/components/imaging/dicom/share-study-dialog';
+import { toast } from 'sonner';
 
 // Dynamic import to avoid SSR issues with Cornerstone.js WASM modules
 const DICOMViewer = dynamic(
@@ -83,6 +85,32 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
     }
   };
 
+  // Handle download
+  const [downloading, setDownloading] = useState(false);
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const blob = await imagingApi.downloadStudy(studyUid);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${studyUid}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Download started');
+    } catch (err) {
+      console.error('Failed to download study:', err);
+      toast.error('Failed to download study');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // Share dialog
+  const [shareOpen, setShareOpen] = useState(false);
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -127,11 +155,11 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
         helpContent="View and interact with DICOM imaging study. Use the viewer tab to examine images with measurement and annotation tools."
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled>
+            <Button variant="outline" size="sm" onClick={handleDownload} disabled={downloading}>
               <Download className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Download</span>
+              <span className="hidden sm:inline">{downloading ? 'Downloading...' : 'Download'}</span>
             </Button>
-            <Button variant="outline" size="sm" disabled>
+            <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
               <Share2 className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Share</span>
             </Button>
@@ -139,6 +167,12 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
               <Trash2 className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Delete</span>
             </Button>
+            <ShareStudyDialog
+              open={shareOpen}
+              onOpenChange={setShareOpen}
+              studyUid={studyUid}
+              studyDescription={study.study_description || undefined}
+            />
           </div>
         }
       />

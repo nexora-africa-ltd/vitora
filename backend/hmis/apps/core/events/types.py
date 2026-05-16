@@ -319,6 +319,14 @@ class ImagingEvents:
     ORDER_CREATED = "imaging.order.created"
     ORDER_ITEM_CREATED = "imaging.order_item.created"
     RESULT_COMPLETED = "imaging.result.completed"
+    # PACS / C-STORE arrivals
+    STUDY_RECEIVED = "imaging.study.received"
+    INSTANCE_RECEIVED = "imaging.instance.received"
+    # Equipment
+    EQUIPMENT_REGISTERED = "imaging.equipment.registered"
+    # Sharing
+    STUDY_SHARED = "imaging.study.shared"
+    STUDY_SHARE_ACCESSED = "imaging.study.share_accessed"
 
 
 class CommentEvents:

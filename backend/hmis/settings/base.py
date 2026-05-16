@@ -484,6 +484,7 @@ CORS_ALLOW_HEADERS = (
     "x-organization-id",
     "x-idempotency-key",
     "x-vitora-client",
+    "x-share-pin",  # Public DICOM share link PIN header
 )
 
 # ---------------------------------------------------------------------------
@@ -1008,3 +1009,11 @@ VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
 VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
 VAPID_CLAIM_EMAIL = os.getenv("VAPID_CLAIM_EMAIL", "mailto:support@nexora.africa")
 DHIS2_ORG_UNIT = os.getenv("DHIS2_ORG_UNIT", "")
+
+# DICOM C-STORE SCP listener (Phase E)
+DICOM_SCP_AE_TITLE = os.getenv("DICOM_SCP_AE_TITLE", "VITORA")
+DICOM_SCP_PORT = int(os.getenv("DICOM_SCP_PORT", "11112"))
+DICOM_SCP_BIND_HOST = os.getenv("DICOM_SCP_BIND_HOST", "0.0.0.0")  # noqa: S104
+DICOM_SCP_ALLOWED_PEERS = [
+    p.strip() for p in os.getenv("DICOM_SCP_ALLOWED_PEERS", "").split(",") if p.strip()
+]

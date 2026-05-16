@@ -145,3 +145,60 @@ def notify_imaging_results_ready(sender, instance, created, **kwargs):
         )
     except Exception:
         logger.exception("Failed to notify imaging results for order %s", instance.id)
+
+
+# ---------------------------------------------------------------------------
+# DICOMStudy → STUDY_RECEIVED event (Phase E)
+# ---------------------------------------------------------------------------
+
+
+@receiver(post_save, sender="imaging.DICOMStudy")
+def publish_study_received_event(sender, instance, created, **kwargs):
+    """Publish event when a new DICOM study lands (upload or C-STORE)."""
+    if not created:
+        return
+    try:
+        publish_event(
+            event_type=ImagingEvents.STUDY_RECEIVED,
+            aggregate_type="DICOMStudy",
+            aggregate_id=instance.id,
+            payload={
+                "study_instance_uid": instance.study_instance_uid,
+                "patient_id": getattr(instance, "patient_id", None),
+                "modality": instance.modality,
+                "source": instance.source,
+                "calling_ae_title": instance.calling_ae_title,
+                "equipment_id": getattr(instance, "equipment_id", None),
+                "station_name": instance.station_name,
+                "study_description": instance.study_description,
+            },
+            facility_id=getattr(instance, "facility_id", None),
+        )
+    except Exception:
+        logger.exception("Failed to publish STUDY_RECEIVED for %s", instance.pk)
+
+
+@receiver(post_save, sender="imaging.ImagingEquipment")
+def publish_equipment_registered_event(sender, instance, created, **kwargs):
+    """Publish event when new imaging equipment is registered."""
+    if not created:
+        return
+    try:
+        from hmis.apps.core.events import publish_event as _pub
+        from hmis.apps.core.events.types import ImagingEvents
+
+        _pub(
+            event_type=ImagingEvents.EQUIPMENT_REGISTERED,
+            aggregate_type="ImagingEquipment",
+            aggregate_id=instance.id,
+            payload={
+                "name": instance.name,
+                "modality": instance.modality,
+                "ae_title": instance.ae_title,
+                "serial_number": instance.serial_number,
+                "auto_registered": instance.auto_registered,
+            },
+            facility_id=getattr(instance, "facility_id", None),
+        )
+    except Exception:
+        logger.exception("Failed to publish equipment.registered for %s", instance.pk)

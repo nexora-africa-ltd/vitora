@@ -8,10 +8,50 @@ from .models import (
     DICOMInstance,
     DICOMSeries,
     DICOMStudy,
+    ImagingEquipment,
     ImagingOrder,
     ImagingOrderItem,
     ImagingProcedure,
+    StudyShareLink,
 )
+
+
+@admin.register(ImagingEquipment)
+class ImagingEquipmentAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "modality",
+        "room",
+        "ae_title",
+        "serial_number",
+        "is_active",
+        "is_calibration_overdue",
+        "facility",
+        "auto_registered",
+    )
+    list_filter = ("modality", "is_active", "auto_registered", "facility")
+    search_fields = ("name", "ae_title", "station_name", "serial_number", "model_name")
+    raw_id_fields = ("facility", "organization", "scheduling_resource")
+    readonly_fields = ("auto_registered", "created_at", "updated_at")
+
+
+@admin.register(StudyShareLink)
+class StudyShareLinkAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "study",
+        "purpose",
+        "created_by",
+        "expires_at",
+        "revoked_at",
+        "view_count",
+        "max_views",
+        "allow_download",
+    )
+    list_filter = ("purpose", "allow_download", "revoked_at")
+    search_fields = ("token", "recipient_name", "recipient_email", "study__study_instance_uid")
+    raw_id_fields = ("study", "created_by")
+    readonly_fields = ("token", "view_count", "last_accessed_at", "last_accessed_ip", "created_at")
 
 
 class ImagingOrderItemInline(admin.TabularInline):

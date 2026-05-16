@@ -464,6 +464,61 @@ class DICOMStudy(models.Model):
         help_text="Institution name (0008,0080)",
     )
 
+    # Equipment/modality identity (extracted from DICOM tags)
+    station_name = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Station name from DICOM (0008,1010) - typically the modality console hostname",
+    )
+    manufacturer = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="Manufacturer from DICOM (0008,0070)",
+    )
+    manufacturer_model_name = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="Manufacturer model name from DICOM (0008,1090)",
+    )
+    device_serial_number = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Device serial number from DICOM (0018,1000)",
+    )
+    equipment = models.ForeignKey(
+        "imaging.ImagingEquipment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="studies",
+        help_text="Imaging equipment that produced this study (auto-resolved from DICOM tags)",
+    )
+
+    # C-STORE ingest metadata (set when study arrives via C-STORE SCP rather than upload)
+    source = models.CharField(
+        max_length=20,
+        choices=[
+            ("UPLOAD", "Web Upload"),
+            ("CSTORE", "DICOM C-STORE"),
+            ("EXTERNAL", "External Import"),
+        ],
+        default="UPLOAD",
+        db_index=True,
+        help_text="How the study arrived in PACS",
+    )
+    calling_ae_title = models.CharField(
+        max_length=16,
+        blank=True,
+        default="",
+        help_text="Calling AE title (set for C-STORE arrivals)",
+    )
+
     # Study statistics
     number_of_series = models.PositiveIntegerField(
         default=0,
@@ -491,7 +546,9 @@ class DICOMStudy(models.Model):
         User,
         on_delete=models.PROTECT,
         related_name="uploaded_dicom_studies",
-        help_text="User who uploaded/imported this study",
+        null=True,
+        blank=True,
+        help_text="User who uploaded/imported this study (null for C-STORE arrivals)",
     )
 
     # Timestamps
@@ -1109,3 +1166,244 @@ class ReportAmendment(models.Model):
 
     def __str__(self):
         return f"{self.report.report_number} - Amendment #{self.amendment_number}"
+
+
+# ============================================================================
+# Equipment Registry (Phase E)
+# ============================================================================
+
+
+class ImagingEquipment(FacilityScopedModel):
+    """
+    Registry of physical imaging equipment / modalities.
+
+    Auto-populated from DICOM tags when studies arrive, and manually editable
+    to add room/AET/maintenance metadata. Each piece of equipment is uniquely
+    identified by (manufacturer, model, serial_number) when those are present,
+    or by AE title as a fallback.
+
+    Use cases:
+    - QA & maintenance scheduling (calibration tracking, downtime)
+    - Cost attribution per machine
+    - SHA claim evidence (which machine performed which study)
+    - Cold-chain-style drift monitoring (radiation output)
+    """
+
+    MODALITY_CHOICES = ImagingProcedure.MODALITY_CHOICES
+
+    # Identity
+    name = models.CharField(
+        max_length=200,
+        help_text="Display name (e.g., 'Siemens CT Scanner - Room 3')",
+    )
+    modality = models.CharField(
+        max_length=20,
+        choices=MODALITY_CHOICES,
+        db_index=True,
+        help_text="Primary modality",
+    )
+
+    # DICOM identity
+    ae_title = models.CharField(
+        max_length=16,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="DICOM AE Title (used for C-STORE/Worklist/MWL)",
+    )
+    station_name = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="DICOM Station Name (0008,1010)",
+    )
+
+    # Hardware identity
+    manufacturer = models.CharField(max_length=128, blank=True, default="")
+    model_name = models.CharField(max_length=128, blank=True, default="")
+    serial_number = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Manufacturer serial number (DICOM 0018,1000)",
+    )
+    software_versions = models.CharField(max_length=255, blank=True, default="")
+
+    # Physical location
+    room = models.CharField(max_length=100, blank=True, default="")
+    scheduling_resource = models.ForeignKey(
+        "scheduling.Resource",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="imaging_equipment",
+        help_text="Optional link to scheduling Resource (for QA/maintenance bookings)",
+    )
+
+    # Lifecycle
+    is_active = models.BooleanField(default=True, db_index=True)
+    installed_date = models.DateField(null=True, blank=True)
+    last_calibration_date = models.DateField(null=True, blank=True)
+    next_calibration_due = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True, default="")
+
+    # Tracking
+    auto_registered = models.BooleanField(
+        default=False,
+        help_text="True if this record was auto-created on first study arrival",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Imaging Equipment"
+        verbose_name_plural = "Imaging Equipment"
+        ordering = ["modality", "name"]
+        indexes = [
+            models.Index(fields=["modality", "is_active"]),
+            models.Index(fields=["ae_title"]),
+            models.Index(fields=["serial_number"]),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.get_modality_display()})"
+
+    @property
+    def is_calibration_overdue(self) -> bool:
+        """Return True if calibration is past due."""
+        if not self.next_calibration_due:
+            return False
+        return self.next_calibration_due < timezone.now().date()
+
+
+# ============================================================================
+# Study Sharing (Phase F)
+# ============================================================================
+
+
+class StudyShareLink(models.Model):
+    """
+    A revocable, time-limited share link for an external clinician to view a study.
+
+    Tokens are random URL-safe strings. Access via the public share endpoint is
+    audited every time. Optional PIN provides a second factor.
+
+    Kenya DPA 2019 considerations:
+    - Always require an explicit purpose at creation time
+    - Default expiry is 7 days, max 30 days
+    - All access is audit-logged with IP
+    """
+
+    PURPOSE_CHOICES = [
+        ("REFERRAL", "Referral / Second Opinion"),
+        ("PATIENT_COPY", "Patient Copy"),
+        ("RESEARCH", "Research (de-identified)"),
+        ("INSURANCE", "Insurance / SHA Claim"),
+        ("OTHER", "Other"),
+    ]
+
+    study = models.ForeignKey(
+        "imaging.DICOMStudy",
+        on_delete=models.CASCADE,
+        related_name="share_links",
+    )
+    token = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        help_text="Random URL-safe token used in the public share URL",
+    )
+    purpose = models.CharField(max_length=20, choices=PURPOSE_CHOICES, default="REFERRAL")
+    recipient_name = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Optional human-readable recipient (e.g., 'Dr. J. Mwangi, Aga Khan')",
+    )
+    recipient_email = models.CharField(max_length=200, blank=True, default="")
+    notes = models.TextField(blank=True, default="")
+
+    # Security
+    pin_hash = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="Optional PIN (hashed with Django's password hasher)",
+    )
+    expires_at = models.DateTimeField(db_index=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    max_views = models.PositiveIntegerField(
+        default=0,
+        help_text="0 = unlimited; otherwise number of times the link can be opened",
+    )
+    view_count = models.PositiveIntegerField(default=0)
+
+    # Permissions on what the recipient can do
+    allow_download = models.BooleanField(
+        default=False,
+        help_text="If true, recipient may download the original DICOM ZIP",
+    )
+
+    # Tracking
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="created_share_links",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_accessed_at = models.DateTimeField(null=True, blank=True)
+    last_accessed_ip = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Study Share Link"
+        verbose_name_plural = "Study Share Links"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["token"]),
+            models.Index(fields=["expires_at"]),
+        ]
+
+    def __str__(self):
+        return f"Share {self.token[:8]}… → {self.study.study_instance_uid[:20]}…"
+
+    @property
+    def is_revoked(self) -> bool:
+        return self.revoked_at is not None
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() >= self.expires_at
+
+    @property
+    def is_view_exhausted(self) -> bool:
+        return self.max_views > 0 and self.view_count >= self.max_views
+
+    @property
+    def is_usable(self) -> bool:
+        return not (self.is_revoked or self.is_expired or self.is_view_exhausted)
+
+    def revoke(self):
+        """Mark this link as revoked."""
+        if not self.revoked_at:
+            self.revoked_at = timezone.now()
+            self.save(update_fields=["revoked_at"])
+
+    def check_pin(self, pin: str) -> bool:
+        """Validate a provided PIN against the stored hash. No PIN = always True."""
+        if not self.pin_hash:
+            return True
+        from django.contrib.auth.hashers import check_password
+
+        return check_password(pin or "", self.pin_hash)
+
+    def record_access(self, ip_address: str | None = None):
+        """Increment view count + record access metadata."""
+        from django.db.models import F
+
+        StudyShareLink.objects.filter(pk=self.pk).update(
+            view_count=F("view_count") + 1,
+            last_accessed_at=timezone.now(),
+            last_accessed_ip=ip_address,
+        )
