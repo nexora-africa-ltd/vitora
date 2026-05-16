@@ -567,6 +567,7 @@ export const imagingApi = {
       formData,
       {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 10 * 60 * 1000, // 10 minutes for large DICOM uploads
         onUploadProgress: options?.onUploadProgress
           ? (event) => {
               options.onUploadProgress!({

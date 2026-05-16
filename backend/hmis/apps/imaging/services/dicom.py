@@ -79,11 +79,15 @@ class DICOMParsingService:
             raise FileNotFoundError(f"DICOM file not found: {file_path}")
 
         try:
-            ds = pydicom.dcmread(file_path, force=False)
+            ds = pydicom.dcmread(file_path, force=True)
         except pydicom.errors.InvalidDicomError as exc:
             raise ValueError(f"Invalid DICOM file: {file_path}") from exc
         except Exception as exc:
             raise ValueError(f"Could not parse DICOM file: {file_path} — {exc}") from exc
+
+        # Verify critical tags exist (force=True may "succeed" on non-DICOM data)
+        if not getattr(ds, "SOPInstanceUID", None):
+            raise ValueError(f"Invalid DICOM file: {file_path} — missing SOPInstanceUID")
 
         file_size = os.path.getsize(file_path)
 
@@ -152,7 +156,7 @@ class DICOMParsingService:
 
         # Try to read the file as DICOM
         try:
-            ds = pydicom.dcmread(file_path, force=False)
+            ds = pydicom.dcmread(file_path, force=True)
         except pydicom.errors.InvalidDicomError:
             return False, ["File is not a valid DICOM file"]
         except Exception as exc:

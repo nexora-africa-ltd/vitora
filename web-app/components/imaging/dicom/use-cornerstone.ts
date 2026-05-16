@@ -387,8 +387,17 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
     const toolName = TOOL_NAMES[tool];
     if (!toolName) return;
 
-    // Deactivate all annotation tools first
-    [TOOL_NAMES.ruler, TOOL_NAMES.angle, TOOL_NAMES.ellipse, TOOL_NAMES.rectangle]
+    // Deactivate ALL tools on primary mouse button (navigation + annotation)
+    // This prevents tool conflicts where two tools respond to the same click
+    [
+      TOOL_NAMES.window_level,
+      TOOL_NAMES.pan,
+      TOOL_NAMES.zoom,
+      TOOL_NAMES.ruler,
+      TOOL_NAMES.angle,
+      TOOL_NAMES.ellipse,
+      TOOL_NAMES.rectangle,
+    ]
       .filter(Boolean)
       .forEach((name) => {
         toolGroup.setToolPassive(name);
@@ -399,6 +408,19 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
     toolGroup.setToolActive(toolName, {
       bindings: [{ mouseButton: MouseBindings.Primary }],
     });
+
+    // Keep middle-button pan and right-button zoom as secondary bindings
+    // (unless the user explicitly selected those tools for primary)
+    if (toolName !== TOOL_NAMES.pan) {
+      toolGroup.setToolActive(TOOL_NAMES.pan, {
+        bindings: [{ mouseButton: MouseBindings.Auxiliary }],
+      });
+    }
+    if (toolName !== TOOL_NAMES.zoom) {
+      toolGroup.setToolActive(TOOL_NAMES.zoom, {
+        bindings: [{ mouseButton: MouseBindings.Secondary }],
+      });
+    }
   }, []);
 
   // Viewport manipulation
