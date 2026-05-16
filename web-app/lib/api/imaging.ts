@@ -34,6 +34,9 @@ import {
   RadiologyReportUpdateData,
   RadiologyReportAmendData,
   CommunicateCriticalData,
+  ImagingEquipment,
+  StudyShareLink,
+  CreateShareLinkData,
 } from '@/lib/types/imaging';
 import { PaginatedResponse } from '@/lib/types';
 import { parseResponse } from '@/lib/schemas/validation';
@@ -61,6 +64,10 @@ import {
   DICOMUploadResponseSchema,
   RadiologyReportSchema,
   PaginatedRadiologyReportSchema,
+  ImagingEquipmentSchema,
+  PaginatedImagingEquipmentSchema,
+  StudyShareLinkSchema,
+  StudyShareLinkListResponseSchema,
 } from '@/lib/schemas/imaging.schema';
 
 export const imagingApi = {
@@ -636,6 +643,131 @@ export const imagingApi = {
     const baseUrl = getApiBaseUrl();
     // thumbnail_path is relative to MEDIA_ROOT, served at /media/
     return `${baseUrl}/media/${thumbnailPath}`;
+  },
+
+  // ============ Study Download & Sharing (Phase E) ============
+
+  /**
+   * Download a DICOM study as a ZIP archive.
+   */
+  async downloadStudy(studyInstanceUid: string): Promise<Blob> {
+    const response = await apiClient.get(
+      `/api/imaging/studies/${studyInstanceUid}/download/`,
+      { responseType: 'blob' }
+    );
+    return response.data;
+  },
+
+  /**
+   * List share links for a study.
+   */
+  async listShareLinks(studyInstanceUid: string): Promise<StudyShareLink[]> {
+    const response = await apiClient.get(
+      `/api/imaging/studies/${studyInstanceUid}/share/`
+    );
+    const validated = parseResponse(StudyShareLinkListResponseSchema, response.data, {
+      context: 'imagingApi.listShareLinks',
+    }) as { results: StudyShareLink[] };
+    return validated.results;
+  },
+
+  /**
+   * Create a share link for a study.
+   */
+  async createShareLink(
+    studyInstanceUid: string,
+    data: CreateShareLinkData
+  ): Promise<StudyShareLink> {
+    const response = await apiClient.post<StudyShareLink>(
+      `/api/imaging/studies/${studyInstanceUid}/share/`,
+      data
+    );
+    return parseResponse(StudyShareLinkSchema, response.data, {
+      context: 'imagingApi.createShareLink',
+    }) as StudyShareLink;
+  },
+
+  /**
+   * Revoke a share link.
+   */
+  async revokeShareLink(
+    studyInstanceUid: string,
+    linkId: number
+  ): Promise<void> {
+    await apiClient.delete(
+      `/api/imaging/studies/${studyInstanceUid}/share/${linkId}/`
+    );
+  },
+
+  // ============ Imaging Equipment (Phase E) ============
+
+  /**
+   * List imaging equipment for the current facility.
+   */
+  async listEquipment(params?: {
+    modality?: string;
+    is_active?: string;
+    search?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<PaginatedResponse<ImagingEquipment>> {
+    const response = await apiClient.get<PaginatedResponse<ImagingEquipment>>(
+      '/api/imaging/equipment/',
+      { params }
+    );
+    return parseResponse(PaginatedImagingEquipmentSchema, response.data, {
+      context: 'imagingApi.listEquipment',
+    }) as PaginatedResponse<ImagingEquipment>;
+  },
+
+  /**
+   * Get a single equipment record.
+   */
+  async getEquipment(id: number): Promise<ImagingEquipment> {
+    const response = await apiClient.get<ImagingEquipment>(
+      `/api/imaging/equipment/${id}/`
+    );
+    return parseResponse(ImagingEquipmentSchema, response.data, {
+      context: 'imagingApi.getEquipment',
+    }) as ImagingEquipment;
+  },
+
+  /**
+   * Create new equipment record.
+   */
+  async createEquipment(
+    data: Partial<ImagingEquipment>
+  ): Promise<ImagingEquipment> {
+    const response = await apiClient.post<ImagingEquipment>(
+      '/api/imaging/equipment/',
+      data
+    );
+    return parseResponse(ImagingEquipmentSchema, response.data, {
+      context: 'imagingApi.createEquipment',
+    }) as ImagingEquipment;
+  },
+
+  /**
+   * Update equipment record.
+   */
+  async updateEquipment(
+    id: number,
+    data: Partial<ImagingEquipment>
+  ): Promise<ImagingEquipment> {
+    const response = await apiClient.patch<ImagingEquipment>(
+      `/api/imaging/equipment/${id}/`,
+      data
+    );
+    return parseResponse(ImagingEquipmentSchema, response.data, {
+      context: 'imagingApi.updateEquipment',
+    }) as ImagingEquipment;
+  },
+
+  /**
+   * Delete equipment (soft-deletes if studies exist).
+   */
+  async deleteEquipment(id: number): Promise<void> {
+    await apiClient.delete(`/api/imaging/equipment/${id}/`);
   },
 
   // ============ Radiology Reports (Phase D) ============

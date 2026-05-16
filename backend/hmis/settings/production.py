@@ -104,6 +104,7 @@ CORS_ALLOW_HEADERS = [
     "x-facility-id",  # Multi-facility: facility context header
     "x-organization-id",  # Multi-org: organization context header
     "x-vitora-client",  # Desktop app identifier: "desktop/<version>"
+    "x-share-pin",  # Public DICOM share link PIN header
 ]
 
 # CSRF trusted origins (required for Django 4.0+)

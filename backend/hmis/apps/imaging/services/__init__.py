@@ -8,6 +8,7 @@ Provides:
 """
 
 from hmis.apps.imaging.services.dicom import DICOMParsingService
+from hmis.apps.imaging.services.equipment import resolve_equipment, resolve_equipment_from_metadata
 from hmis.apps.imaging.services.pacs import PACSStorageService
 from hmis.apps.imaging.services.scheduling import ImagingSchedulingService
 
@@ -15,4 +16,6 @@ __all__ = [
     "ImagingSchedulingService",
     "DICOMParsingService",
     "PACSStorageService",
+    "resolve_equipment",
+    "resolve_equipment_from_metadata",
 ]

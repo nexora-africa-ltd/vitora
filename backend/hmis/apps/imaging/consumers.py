@@ -108,6 +108,14 @@ class ImagingConsumer(AsyncJsonWebsocketConsumer):
         """Handle stats updated event."""
         await self.imaging_update(event)
 
+    async def imaging_study_received(self, event):
+        """Handle DICOM study received (upload or C-STORE)."""
+        await self.imaging_update(event)
+
+    async def imaging_instance_received(self, event):
+        """Handle individual DICOM instance arrival from C-STORE SCP."""
+        await self.imaging_update(event)
+
     @database_sync_to_async
     def _facility_exists(self, facility_id):
         """Check if facility exists in database."""

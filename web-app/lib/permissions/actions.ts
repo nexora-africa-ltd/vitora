@@ -150,6 +150,7 @@ export const ACTION_PERMISSIONS = {
   'imaging.view_dashboard': ['RADIOGRAPHER', 'SONOGRAPHER', 'RADIOLOGIST', 'ADMIN'],
   'imaging.view_orders': ['RADIOGRAPHER', 'SONOGRAPHER', 'RADIOLOGIST', 'DOCTOR', 'NURSE'],
   'imaging.manage_catalog': ['RADIOLOGIST', 'ADMIN'],
+  'imaging.manage_equipment': ['RADIOGRAPHER', 'RADIOLOGIST', 'ADMIN'],
   'imaging.perform_scan': ['RADIOGRAPHER', 'SONOGRAPHER', 'MRI_TECHNOLOGIST', 'CT_TECHNOLOGIST', 'NUCLEAR_MED_TECH'],
   'imaging.upload_images': ['RADIOGRAPHER', 'SONOGRAPHER', 'MRI_TECHNOLOGIST', 'CT_TECHNOLOGIST', 'NUCLEAR_MED_TECH'],
   'imaging.view_studies': ['RADIOGRAPHER', 'SONOGRAPHER', 'RADIOLOGIST', 'DOCTOR'],

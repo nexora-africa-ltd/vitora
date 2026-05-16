@@ -343,13 +343,18 @@ Convention: `<domain>.<aggregate>.<action>`
 | `SHIFT_COMPLETED` | `scheduling.shift.completed` | `scheduling/signals.py` |
 | `SHIFT_CANCELLED` | `scheduling.shift.cancelled` | `scheduling/signals.py` |
 
-### ImagingEvents (3 constants)
+### ImagingEvents (8 constants)
 
 | Constant | Value | Published From |
 |----------|-------|---------------|
 | `ORDER_CREATED` | `imaging.order.created` | — (defined, not yet wired) |
 | `ORDER_ITEM_CREATED` | `imaging.order_item.created` | `imaging/signals.py` |
 | `RESULT_COMPLETED` | `imaging.result.completed` | — (defined, not yet wired) |
+| `STUDY_RECEIVED` | `imaging.study.received` | `imaging/signals.py` (post_save DICOMStudy) |
+| `INSTANCE_RECEIVED` | `imaging.instance.received` | `imaging/signals.py` (post_save DICOMInstance) |
+| `EQUIPMENT_REGISTERED` | `imaging.equipment.registered` | `imaging/signals.py` (post_save ImagingEquipment, created only) |
+| `STUDY_SHARED` | `imaging.study.shared` | `imaging/signals.py` (post_save StudyShareLink, created only) |
+| `STUDY_SHARE_ACCESSED` | `imaging.study.share_accessed` | `imaging/views.py` (StudyShareAccessView on valid access) |
 
 ### TheatreEvents (13 constants)
 

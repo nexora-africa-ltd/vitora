@@ -498,8 +498,81 @@ export interface DICOMStudy {
   thumbnail_path?: string | null;
   uploaded_by?: number | null;
   uploaded_by_name?: string | null;
+  station_name?: string | null;
+  manufacturer?: string | null;
+  manufacturer_model_name?: string | null;
+  device_serial_number?: string | null;
+  source?: 'UPLOAD' | 'CSTORE' | 'EXTERNAL';
+  calling_ae_title?: string | null;
+  equipment?: number | null;
+  equipment_name?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Imaging equipment record.
+ */
+export interface ImagingEquipment {
+  id: number;
+  name: string;
+  modality: string;
+  modality_display?: string;
+  ae_title?: string | null;
+  station_name?: string | null;
+  manufacturer?: string | null;
+  model_name?: string | null;
+  serial_number?: string | null;
+  software_versions?: string | null;
+  room?: string | null;
+  scheduling_resource?: number | null;
+  is_active: boolean;
+  installed_date?: string | null;
+  last_calibration_date?: string | null;
+  next_calibration_due?: string | null;
+  is_calibration_overdue: boolean;
+  notes?: string | null;
+  auto_registered: boolean;
+  studies_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Study share link.
+ */
+export interface StudyShareLink {
+  id: number;
+  token?: string;
+  purpose: 'REFERRAL' | 'PATIENT_COPY' | 'RESEARCH' | 'INSURANCE' | 'OTHER';
+  recipient_name?: string | null;
+  recipient_email?: string | null;
+  notes?: string | null;
+  expires_at: string;
+  revoked_at?: string | null;
+  max_views: number;
+  view_count: number;
+  allow_download: boolean;
+  pin_protected?: boolean;
+  created_at: string;
+  created_by?: number | null;
+  created_by_name?: string | null;
+  last_accessed_at?: string | null;
+  is_usable?: boolean;
+  share_url?: string;
+}
+
+/**
+ * Create share link request.
+ */
+export interface CreateShareLinkData {
+  purpose: StudyShareLink['purpose'];
+  recipient_name?: string;
+  recipient_email?: string;
+  pin?: string;
+  expires_in_hours?: number;
+  max_views?: number;
+  allow_download?: boolean;
 }
 
 /**

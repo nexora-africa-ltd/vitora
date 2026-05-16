@@ -387,6 +387,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Procedures Catalog', href: '/imaging/procedures', icon: BookOpen, actionKey: 'imaging.manage_catalog' },
       { label: 'Reports', href: '/imaging/reports', icon: FileText, actionKey: 'imaging.view_orders' },
       { label: 'DICOM Studies', href: '/imaging/studies', icon: ImageIcon, actionKey: 'imaging.view_studies' },
+      { label: 'Equipment', href: '/imaging/equipment', icon: Cpu, actionKey: 'imaging.manage_equipment' },
     ],
   },
   {

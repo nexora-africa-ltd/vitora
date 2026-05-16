@@ -348,6 +348,7 @@ class DICOMStudySerializer(serializers.ModelSerializer):
 
     patient_name = serializers.SerializerMethodField()
     uploaded_by_name = serializers.SerializerMethodField()
+    equipment_name = serializers.SerializerMethodField()
 
     class Meta:
         model = DICOMStudy
@@ -370,6 +371,14 @@ class DICOMStudySerializer(serializers.ModelSerializer):
             "thumbnail_path",
             "uploaded_by",
             "uploaded_by_name",
+            "station_name",
+            "manufacturer",
+            "manufacturer_model_name",
+            "device_serial_number",
+            "source",
+            "calling_ae_title",
+            "equipment",
+            "equipment_name",
             "created_at",
             "updated_at",
         ]
@@ -379,7 +388,12 @@ class DICOMStudySerializer(serializers.ModelSerializer):
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
     def get_uploaded_by_name(self, obj) -> str:
+        if not obj.uploaded_by:
+            return obj.calling_ae_title or "C-STORE"
         return obj.uploaded_by.get_full_name() or obj.uploaded_by.username
+
+    def get_equipment_name(self, obj) -> str | None:
+        return obj.equipment.name if obj.equipment_id else None
 
 
 class DICOMStudyDetailSerializer(DICOMStudySerializer):
@@ -625,3 +639,56 @@ class CommunicateCriticalSerializer(serializers.Serializer):
         ],
         default="phone",
     )
+
+
+# ============================================================================
+# Equipment Serializers (Phase E)
+# ============================================================================
+
+
+class ImagingEquipmentSerializer(serializers.ModelSerializer):
+    """Serializer for ImagingEquipment list/detail."""
+
+    modality_display = serializers.CharField(source="get_modality_display", read_only=True)
+    is_calibration_overdue = serializers.BooleanField(read_only=True)
+    studies_count = serializers.SerializerMethodField()
+
+    class Meta:
+        from hmis.apps.imaging.models import ImagingEquipment as _Equip
+
+        model = _Equip
+        fields = [
+            "id",
+            "name",
+            "modality",
+            "modality_display",
+            "ae_title",
+            "station_name",
+            "manufacturer",
+            "model_name",
+            "serial_number",
+            "software_versions",
+            "room",
+            "scheduling_resource",
+            "is_active",
+            "installed_date",
+            "last_calibration_date",
+            "next_calibration_due",
+            "is_calibration_overdue",
+            "notes",
+            "auto_registered",
+            "studies_count",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "auto_registered",
+            "is_calibration_overdue",
+            "studies_count",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_studies_count(self, obj) -> int:
+        return obj.studies.count()

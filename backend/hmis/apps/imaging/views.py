@@ -61,7 +61,12 @@ from .serializers import (
     ScheduleOrderWithResourceSerializer,
     SignReportSerializer,
 )
-from .services import DICOMParsingService, ImagingSchedulingService, PACSStorageService
+from .services import (
+    DICOMParsingService,
+    ImagingSchedulingService,
+    PACSStorageService,
+    resolve_equipment_from_metadata,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -926,6 +931,240 @@ class DICOMStudyViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = DICOMInstanceSerializer(instances_qs, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["get"], url_path="download")
+    def download(self, request, study_instance_uid=None):
+        """
+        Download all DICOM instances for a study as a single ZIP archive.
+
+        The archive layout is:
+            {study_uid}/
+                {series_uid}/
+                    {sop_uid}.dcm
+        """
+        import zipfile
+        from io import BytesIO
+
+        study = self.get_object()
+        instances = DICOMInstance.objects.filter(series__study=study).select_related("series")
+        if not instances.exists():
+            return Response(
+                {"error": "Study has no instances."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        pacs = PACSStorageService(base_path=str(settings.MEDIA_ROOT))
+        buf = BytesIO()
+        included = 0
+        with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_STORED) as zf:
+            for inst in instances:
+                abs_path = pacs.get_absolute_path(inst.file_path)
+                if not os.path.exists(abs_path):
+                    logger.warning("DICOM file missing during download: %s", inst.file_path)
+                    continue
+                arc = (
+                    f"{study.study_instance_uid}/"
+                    f"{inst.series.series_instance_uid}/"
+                    f"{inst.sop_instance_uid}.dcm"
+                )
+                zf.write(abs_path, arcname=arc)
+                included += 1
+
+        if included == 0:
+            return Response(
+                {"error": "No DICOM files available on disk."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        AuditLog.log(
+            action="dicom_download",
+            user=request.user,
+            resource_type="DICOMStudy",
+            resource_id=study.pk,
+            ip_address=get_client_ip(request),
+            details={
+                "study_instance_uid": study.study_instance_uid,
+                "instances_included": included,
+            },
+        )
+
+        buf.seek(0)
+        filename = f"study-{study.study_instance_uid[:30]}.zip"
+        response = HttpResponse(buf.getvalue(), content_type="application/zip")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        response["Content-Length"] = str(buf.tell())
+        return response
+
+    @action(detail=True, methods=["get", "post"], url_path="share")
+    def share(self, request, study_instance_uid=None):
+        """
+        GET  → list active share links for this study
+        POST → create a new share link
+
+        POST body:
+            purpose: REFERRAL|PATIENT_COPY|RESEARCH|INSURANCE|OTHER (default REFERRAL)
+            recipient_name: optional human-readable recipient
+            recipient_email: optional
+            notes: optional
+            pin: optional 4-12 digit PIN (will be hashed)
+            expires_in_hours: 1-720 (default 168 = 7 days)
+            max_views: 0 unlimited (default), else 1-1000
+            allow_download: bool (default false)
+        """
+        from django.contrib.auth.hashers import make_password
+        from django.utils import timezone
+
+        from .models import StudyShareLink
+
+        study = self.get_object()
+
+        if request.method.lower() == "get":
+            links = study.share_links.select_related("created_by").order_by("-created_at")
+            data = [
+                _serialize_share_link(link, request=request, include_token=True) for link in links
+            ]
+            return Response({"results": data})
+
+        # POST: create
+        purpose = request.data.get("purpose", "REFERRAL")
+        valid_purposes = {choice[0] for choice in StudyShareLink.PURPOSE_CHOICES}
+        if purpose not in valid_purposes:
+            return Response(
+                {"error": f"Invalid purpose. Must be one of {sorted(valid_purposes)}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            expires_in_hours = int(request.data.get("expires_in_hours", 168))
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "expires_in_hours must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not 1 <= expires_in_hours <= 720:
+            return Response(
+                {"error": "expires_in_hours must be between 1 and 720 (max 30 days)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            max_views = int(request.data.get("max_views", 0))
+        except (TypeError, ValueError):
+            max_views = 0
+        if max_views < 0 or max_views > 1000:
+            return Response(
+                {"error": "max_views must be between 0 and 1000."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        pin = (request.data.get("pin") or "").strip()
+        pin_hash = make_password(pin) if pin else ""
+
+        import secrets
+
+        token = secrets.token_urlsafe(32)
+
+        link = StudyShareLink.objects.create(
+            study=study,
+            token=token,
+            purpose=purpose,
+            recipient_name=request.data.get("recipient_name", "")[:200],
+            recipient_email=request.data.get("recipient_email", "")[:200],
+            notes=request.data.get("notes", ""),
+            pin_hash=pin_hash,
+            expires_at=timezone.now() + timezone.timedelta(hours=expires_in_hours),
+            max_views=max_views,
+            allow_download=bool(request.data.get("allow_download", False)),
+            created_by=request.user,
+        )
+
+        AuditLog.log(
+            action="dicom_share_created",
+            user=request.user,
+            resource_type="DICOMStudy",
+            resource_id=study.pk,
+            ip_address=get_client_ip(request),
+            details={
+                "study_instance_uid": study.study_instance_uid,
+                "share_link_id": link.pk,
+                "purpose": purpose,
+                "expires_at": link.expires_at.isoformat(),
+                "recipient_name": link.recipient_name,
+                "max_views": max_views,
+                "allow_download": link.allow_download,
+                "pin_protected": bool(pin),
+            },
+        )
+
+        return Response(
+            _serialize_share_link(link, request=request, include_token=True),
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(
+        detail=True,
+        methods=["delete"],
+        url_path=r"share/(?P<link_id>\d+)",
+    )
+    def revoke_share(self, request, study_instance_uid=None, link_id=None):
+        """Revoke an existing share link."""
+        study = self.get_object()
+        try:
+            link = study.share_links.get(pk=link_id)
+        except study.share_links.model.DoesNotExist:
+            return Response(
+                {"error": "Share link not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        link.revoke()
+        AuditLog.log(
+            action="dicom_share_revoked",
+            user=request.user,
+            resource_type="DICOMStudy",
+            resource_id=study.pk,
+            ip_address=get_client_ip(request),
+            details={
+                "study_instance_uid": study.study_instance_uid,
+                "share_link_id": link.pk,
+            },
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def _serialize_share_link(link, *, request=None, include_token: bool = False) -> dict:
+    """Lightweight serializer for StudyShareLink (avoid full DRF serializer overhead)."""
+    base_url = ""
+    if request is not None:
+        # Build absolute share URL (frontend route)
+        scheme = "https" if request.is_secure() else "http"
+        host = request.get_host()
+        base_url = f"{scheme}://{host}"
+
+    data = {
+        "id": link.pk,
+        "purpose": link.purpose,
+        "recipient_name": link.recipient_name,
+        "recipient_email": link.recipient_email,
+        "notes": link.notes,
+        "expires_at": link.expires_at.isoformat(),
+        "revoked_at": link.revoked_at.isoformat() if link.revoked_at else None,
+        "max_views": link.max_views,
+        "view_count": link.view_count,
+        "allow_download": link.allow_download,
+        "pin_protected": bool(link.pin_hash),
+        "created_at": link.created_at.isoformat(),
+        "created_by": link.created_by_id,
+        "created_by_name": (
+            link.created_by.get_full_name() or link.created_by.username if link.created_by else ""
+        ),
+        "last_accessed_at": (link.last_accessed_at.isoformat() if link.last_accessed_at else None),
+        "is_usable": link.is_usable,
+    }
+    if include_token:
+        data["token"] = link.token
+        if base_url:
+            data["share_url"] = f"{base_url}/imaging/share/{link.token}"
+    return data
+
 
 class DICOMUploadView(APIView):
     """
@@ -1087,9 +1326,32 @@ class DICOMUploadView(APIView):
                         "referring_physician_name": metadata.get("referring_physician_name", ""),
                         "modality": metadata["modality"],
                         "institution_name": metadata.get("institution_name", ""),
+                        "station_name": metadata.get("station_name", ""),
+                        "manufacturer": metadata.get("manufacturer", ""),
+                        "manufacturer_model_name": metadata.get("manufacturer_model_name", ""),
+                        "device_serial_number": metadata.get("device_serial_number", ""),
+                        "source": "UPLOAD",
                         "uploaded_by": request.user,
                     },
                 )
+
+                # Resolve equipment from DICOM tags (auto-registers on first contact)
+                if _created and dicom_study.equipment_id is None:
+                    facility = getattr(request, "facility", None) or getattr(
+                        patient, "facility", None
+                    )
+                    organization = getattr(request, "organization", None) or getattr(
+                        patient, "organization", None
+                    )
+                    if facility:
+                        equipment = resolve_equipment_from_metadata(
+                            metadata,
+                            facility=facility,
+                            organization=organization,
+                        )
+                        if equipment:
+                            dicom_study.equipment = equipment
+                            dicom_study.save(update_fields=["equipment"])
 
                 if study_uid is None:
                     study_uid = m_study_uid
@@ -1976,3 +2238,414 @@ class RadiologyReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{report.report_number}.pdf"'
         return response
+
+
+# ============================================================================
+# Public Share Views (token-authenticated, no JWT)
+# ============================================================================
+
+
+class StudyShareAccessView(APIView):
+    """
+    Public access to a shared study via token.
+
+    GET  /api/imaging/share/{token}/                  → study metadata (after PIN check)
+    POST /api/imaging/share/{token}/verify-pin/       → exchange PIN for access
+    GET  /api/imaging/share/{token}/instance/{sop}/   → DICOM file
+    GET  /api/imaging/share/{token}/download/         → ZIP download (if allow_download)
+
+    PIN is provided via X-Share-PIN header on subsequent requests.
+    """
+
+    permission_classes = []  # public
+    authentication_classes = []  # bypass JWT
+
+    def get(self, request, token):
+
+        link = self._resolve(token)
+        if isinstance(link, Response):
+            return link
+
+        pin_ok, pin_response = self._check_pin(request, link)
+        if not pin_ok:
+            return pin_response
+
+        study = link.study
+        link.record_access(ip_address=get_client_ip(request))
+
+        AuditLog.log(
+            action="dicom_share_accessed",
+            user=None,
+            resource_type="DICOMStudy",
+            resource_id=study.pk,
+            ip_address=get_client_ip(request),
+            details={
+                "study_instance_uid": study.study_instance_uid,
+                "share_link_id": link.pk,
+                "purpose": link.purpose,
+            },
+        )
+
+        # Minimal study payload — no PHI beyond what the share creator already exposed
+        series_payload = []
+        for series in study.series_set.all().prefetch_related("instances"):
+            series_payload.append(
+                {
+                    "series_instance_uid": series.series_instance_uid,
+                    "series_number": series.series_number,
+                    "series_description": series.series_description,
+                    "modality": series.modality,
+                    "body_part_examined": series.body_part_examined,
+                    "instances": [
+                        {
+                            "sop_instance_uid": inst.sop_instance_uid,
+                            "instance_number": inst.instance_number,
+                        }
+                        for inst in series.instances.all()
+                    ],
+                }
+            )
+
+        return Response(
+            {
+                "study_instance_uid": study.study_instance_uid,
+                "study_date": study.study_date.isoformat(),
+                "study_description": study.study_description,
+                "modality": study.modality,
+                "accession_number": study.accession_number,
+                "referring_physician_name": study.referring_physician_name,
+                "institution_name": study.institution_name,
+                "number_of_series": study.number_of_series,
+                "number_of_instances": study.number_of_instances,
+                "patient_name_display": (
+                    # Patient name preserved for clinical sharing; no MRN/contact info
+                    f"{study.patient.first_name} {study.patient.last_name}"
+                ),
+                "purpose": link.purpose,
+                "allow_download": link.allow_download,
+                "expires_at": link.expires_at.isoformat(),
+                "series": series_payload,
+            }
+        )
+
+    @classmethod
+    def _resolve(cls, token: str):
+        from .models import StudyShareLink
+
+        try:
+            link = StudyShareLink.objects.select_related("study", "study__patient").get(token=token)
+        except StudyShareLink.DoesNotExist:
+            return Response({"error": "Share link not found."}, status=status.HTTP_404_NOT_FOUND)
+        if link.is_revoked:
+            return Response(
+                {"error": "This share link has been revoked.", "code": "revoked"},
+                status=status.HTTP_410_GONE,
+            )
+        if link.is_expired:
+            return Response(
+                {"error": "This share link has expired.", "code": "expired"},
+                status=status.HTTP_410_GONE,
+            )
+        if link.is_view_exhausted:
+            return Response(
+                {"error": "This share link has reached its view limit.", "code": "exhausted"},
+                status=status.HTTP_410_GONE,
+            )
+        return link
+
+    @classmethod
+    def _check_pin(cls, request, link):
+        pin = request.headers.get("X-Share-PIN", "") or request.query_params.get("pin", "")
+        if link.pin_hash and not link.check_pin(pin):
+            return False, Response(
+                {"error": "PIN required or incorrect.", "code": "pin_required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        return True, None
+
+
+class StudyShareInstanceView(APIView):
+    """Serve an individual DICOM instance for a shared study."""
+
+    permission_classes = []
+    authentication_classes = []
+
+    def get(self, request, token, sop_instance_uid):
+        link = StudyShareAccessView._resolve(token)
+        if isinstance(link, Response):
+            return link
+        pin_ok, pin_response = StudyShareAccessView._check_pin(request, link)
+        if not pin_ok:
+            return pin_response
+
+        try:
+            instance = DICOMInstance.objects.select_related("series__study").get(
+                sop_instance_uid=sop_instance_uid,
+                series__study=link.study,
+            )
+        except DICOMInstance.DoesNotExist:
+            return Response(
+                {"error": "Instance not found in this study."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        pacs = PACSStorageService(base_path=str(settings.MEDIA_ROOT))
+        file_path = pacs.get_absolute_path(instance.file_path)
+        if not os.path.exists(file_path):
+            return Response(
+                {"error": "DICOM file missing on disk."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        link.record_access(ip_address=get_client_ip(request))
+
+        response = FileResponse(open(file_path, "rb"), content_type="application/dicom")
+        response["Content-Disposition"] = f'attachment; filename="{sop_instance_uid}.dcm"'
+        return response
+
+
+class StudyShareDownloadView(APIView):
+    """ZIP download of all instances for a shared study (if allow_download)."""
+
+    permission_classes = []
+    authentication_classes = []
+
+    def get(self, request, token):
+        import zipfile
+        from io import BytesIO
+
+        link = StudyShareAccessView._resolve(token)
+        if isinstance(link, Response):
+            return link
+        pin_ok, pin_response = StudyShareAccessView._check_pin(request, link)
+        if not pin_ok:
+            return pin_response
+
+        if not link.allow_download:
+            return Response(
+                {"error": "Download is not permitted for this share link."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        study = link.study
+        instances = DICOMInstance.objects.filter(series__study=study).select_related("series")
+        pacs = PACSStorageService(base_path=str(settings.MEDIA_ROOT))
+
+        buf = BytesIO()
+        included = 0
+        with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_STORED) as zf:
+            for inst in instances:
+                abs_path = pacs.get_absolute_path(inst.file_path)
+                if not os.path.exists(abs_path):
+                    continue
+                arc = (
+                    f"{study.study_instance_uid}/"
+                    f"{inst.series.series_instance_uid}/"
+                    f"{inst.sop_instance_uid}.dcm"
+                )
+                zf.write(abs_path, arcname=arc)
+                included += 1
+        if included == 0:
+            return Response(
+                {"error": "No DICOM files available."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        link.record_access(ip_address=get_client_ip(request))
+        AuditLog.log(
+            action="dicom_share_downloaded",
+            user=None,
+            resource_type="DICOMStudy",
+            resource_id=study.pk,
+            ip_address=get_client_ip(request),
+            details={
+                "study_instance_uid": study.study_instance_uid,
+                "share_link_id": link.pk,
+                "instances_included": included,
+            },
+        )
+
+        buf.seek(0)
+        response = HttpResponse(buf.getvalue(), content_type="application/zip")
+        response["Content-Disposition"] = (
+            f'attachment; filename="study-{study.study_instance_uid[:30]}.zip"'
+        )
+        return response
+
+
+class StudyShareFrameView(APIView):
+    """
+    Render a shared DICOM instance as a PNG image for web display.
+
+    GET /api/imaging/share/{token}/instance/{sop_instance_uid}/frame/
+
+    Same rendering logic as DICOMFrameRenderView but authenticated
+    via share token + optional PIN instead of JWT.
+
+    Query parameters:
+    - size: Maximum dimension in pixels (default: 512, max: 2048)
+    - frame: Frame index for multi-frame DICOM (default: 0)
+    - window_center: Window center for display (optional)
+    - window_width: Window width for display (optional)
+    - pin: Share link PIN (alternative to X-Share-PIN header)
+    """
+
+    permission_classes = []
+    authentication_classes = []
+
+    def get(self, request, token, sop_instance_uid):
+        """Render a shared DICOM instance as PNG."""
+        import io
+
+        import numpy as np
+        import pydicom
+        from PIL import Image
+
+        link = StudyShareAccessView._resolve(token)
+        if isinstance(link, Response):
+            return link
+        pin_ok, pin_response = StudyShareAccessView._check_pin(request, link)
+        if not pin_ok:
+            return pin_response
+
+        try:
+            instance = DICOMInstance.objects.select_related("series__study").get(
+                sop_instance_uid=sop_instance_uid,
+                series__study=link.study,
+            )
+        except DICOMInstance.DoesNotExist:
+            return Response(
+                {"error": "Instance not found in this study."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        pacs = PACSStorageService(base_path=str(settings.MEDIA_ROOT))
+        file_path = pacs.get_absolute_path(instance.file_path)
+
+        if not os.path.exists(file_path):
+            return Response(
+                {"error": "DICOM file not found on disk."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        max_size = min(int(request.query_params.get("size", 512)), 2048)
+        frame_index = int(request.query_params.get("frame", 0))
+        window_center = request.query_params.get("window_center")
+        window_width = request.query_params.get("window_width")
+
+        try:
+            ds = pydicom.dcmread(file_path)
+            if not hasattr(ds, "PixelData"):
+                return Response(
+                    {"error": "DICOM instance has no pixel data."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            pixel_array = ds.pixel_array.astype(float)
+
+            if pixel_array.ndim == 3 and hasattr(ds, "NumberOfFrames"):
+                num_frames = int(ds.NumberOfFrames)
+                if frame_index >= num_frames:
+                    frame_index = 0
+                pixel_array = pixel_array[frame_index]
+            elif pixel_array.ndim == 3:
+                if pixel_array.shape[2] not in (3, 4):
+                    pixel_array = pixel_array[0]
+
+            if window_center is not None and window_width is not None:
+                wc = float(window_center)
+                ww = float(window_width)
+                low = wc - ww / 2
+                high = wc + ww / 2
+                pixel_array = np.clip(pixel_array, low, high)
+            elif hasattr(ds, "WindowCenter") and hasattr(ds, "WindowWidth"):
+                wc = ds.WindowCenter
+                ww = ds.WindowWidth
+                if isinstance(wc, pydicom.multival.MultiValue):
+                    wc = wc[0]
+                if isinstance(ww, pydicom.multival.MultiValue):
+                    ww = ww[0]
+                low = float(wc) - float(ww) / 2
+                high = float(wc) + float(ww) / 2
+                pixel_array = np.clip(pixel_array, low, high)
+
+            p_min = pixel_array.min()
+            p_max = pixel_array.max()
+            if p_max > p_min:
+                pixel_array = ((pixel_array - p_min) / (p_max - p_min) * 255).astype(np.uint8)
+            else:
+                pixel_array = np.zeros_like(pixel_array, dtype=np.uint8)
+
+            img = Image.fromarray(pixel_array)
+            if img.mode not in ("L", "RGB"):
+                img = img.convert("L")
+
+            img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+
+            buffer = io.BytesIO()
+            img.save(buffer, format="PNG")
+            buffer.seek(0)
+
+            return HttpResponse(buffer.getvalue(), content_type="image/png")
+
+        except Exception as e:
+            logger.exception("Failed to render shared DICOM frame: %s", e)
+            return Response(
+                {"error": "Failed to render image."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+# ============================================================================
+# Imaging Equipment ViewSet (Phase E)
+# ============================================================================
+
+
+class ImagingEquipmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """
+    CRUD for imaging equipment registry.
+
+    Auto-registered equipment can be edited to add room/calibration metadata.
+    Manual creation is also supported for QA tracking before the first study arrives.
+    """
+
+    permission_classes = [IsAuthenticated]
+    tenant_scope = "facility"
+    filter_backends = [SearchFilter]
+    search_fields = ["name", "ae_title", "station_name", "serial_number", "model_name"]
+
+    def get_queryset(self):
+        from .models import ImagingEquipment
+
+        if getattr(self, "swagger_fake_view", False):
+            return ImagingEquipment.objects.none()
+        qs = ImagingEquipment.objects.all().select_related("scheduling_resource", "facility")
+        modality = self.request.query_params.get("modality")
+        if modality:
+            qs = qs.filter(modality=modality)
+        is_active = self.request.query_params.get("is_active")
+        if is_active is not None:
+            qs = qs.filter(is_active=is_active.lower() == "true")
+        return qs
+
+    def get_serializer_class(self):
+        from .serializers import ImagingEquipmentSerializer
+
+        return ImagingEquipmentSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(**self.get_tenant_save_kwargs(), auto_registered=False)
+
+    def destroy(self, request, *args, **kwargs):
+        if not request.user.has_perm("imaging.delete_imagingequipment"):
+            return Response(
+                {"detail": "You do not have permission to delete equipment."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        instance = self.get_object()
+        if instance.studies.exists():
+            # Soft-delete: deactivate to preserve study history
+            instance.is_active = False
+            instance.save(update_fields=["is_active", "updated_at"])
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return super().destroy(request, *args, **kwargs)
