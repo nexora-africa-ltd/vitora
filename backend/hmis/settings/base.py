@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     # Third-party apps
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "django_filters",
     "channels",  # Django Channels for WebSocket support
@@ -233,6 +234,8 @@ REST_FRAMEWORK = {
         "anon": "100/hour",
         "login": "5/minute",  # Password login - 5 attempts per minute
         "mfa_verify": "5/minute",  # MFA verification - 5 attempts per minute
+        "otp": "5/minute",  # OTP send/validate - 5 attempts per minute
+        "password_reset": "5/hour",  # Password reset requests
     },
 }
 
@@ -448,7 +451,7 @@ from datetime import timedelta  # noqa: E402
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
-    "ROTATE_REFRESH_TOKENS": False,
+    "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
     "ALGORITHM": "HS256",

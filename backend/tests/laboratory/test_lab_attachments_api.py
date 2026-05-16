@@ -131,6 +131,15 @@ class TestLabAttachmentsAPI:
     def test_delete_attachment_removes_record_and_file(
         self, authenticated_client, external_lab_order, pdf_file, test_user
     ):
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
+        User = get_user_model()
+        perm = Permission.objects.get(codename="delete_labresultattachment")
+        test_user.user_permissions.add(perm)
+        test_user = User.objects.get(pk=test_user.pk)
+        authenticated_client.force_authenticate(user=test_user)
+
         attachment = LabResultAttachment.objects.create(
             lab_order=external_lab_order,
             file=pdf_file,

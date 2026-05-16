@@ -123,8 +123,19 @@ class TestResourceAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["name"] == "Dr. Updated Name"
 
-    def test_delete_resource_soft_delete(self, authenticated_client, sample_person_resource):
+    def test_delete_resource_soft_delete(
+        self, authenticated_client, test_user, sample_person_resource
+    ):
         """Should soft delete (deactivate) a resource."""
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
+        User = get_user_model()
+        perm = Permission.objects.get(codename="delete_resource")
+        test_user.user_permissions.add(perm)
+        test_user = User.objects.get(pk=test_user.pk)
+        authenticated_client.force_authenticate(user=test_user)
+
         response = authenticated_client.delete(
             f"/api/scheduling/resources/{sample_person_resource.id}/"
         )
