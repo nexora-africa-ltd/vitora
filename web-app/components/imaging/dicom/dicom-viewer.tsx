@@ -224,7 +224,12 @@ export function DICOMViewer({
       <div className="h-full flex flex-col">
         {/* Toolbar */}
         {showToolbar && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 max-w-[calc(100%-6rem)] sm:max-w-none overflow-x-auto">
+          <div
+            className="absolute top-2 left-1/2 -translate-x-1/2 z-30 max-w-[calc(100%-6rem)] sm:max-w-none overflow-x-auto"
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
             <ViewerToolbar
               activeTool={activeTool}
               onToolChange={handleToolChange}
@@ -249,6 +254,7 @@ export function DICOMViewer({
             variant="ghost"
             size="icon"
             className="absolute top-2 right-2 z-30 bg-black/60 hover:bg-black/80 text-white"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={toggleFullscreen}
           >
             {isFullscreen ? (
@@ -265,6 +271,7 @@ export function DICOMViewer({
             variant="ghost"
             size="icon"
             className="absolute top-2 left-2 z-30 bg-black/60 hover:bg-black/80 text-white"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={() => setIsPanelCollapsed((prev) => !prev)}
           >
             {isPanelCollapsed ? (

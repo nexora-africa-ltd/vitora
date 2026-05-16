@@ -198,6 +198,11 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
   const containerRef = useRef<HTMLDivElement | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const renderingEngineRef = useRef<any>(null);
+  // Stash callbacks in refs so they don't trigger the setup effect when their identity changes
+  const onImageChangeRef = useRef(onImageChange);
+  useEffect(() => {
+    onImageChangeRef.current = onImageChange;
+  }, [onImageChange]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const toolGroupRef = useRef<any>(null);
 
@@ -314,7 +319,7 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
           setCurrentIndex(0);
           setIsReady(true);
           setLoadingProgress(100);
-          onImageChange?.(0, imageUrls.length);
+          onImageChangeRef.current?.(0, imageUrls.length);
         }
       } catch (err) {
         console.error('[useCornerstone] Setup error:', err);
@@ -340,7 +345,7 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
         toolGroupRef.current = null;
       }
     };
-  }, [imageUrls, onImageChange]);
+  }, [imageUrls]);
 
   // Navigation functions
   const goToImage = useCallback(
@@ -354,10 +359,10 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
         viewport.setImageIdIndex(clampedIndex);
         viewport.render();
         setCurrentIndex(clampedIndex);
-        onImageChange?.(clampedIndex, totalImages);
+        onImageChangeRef.current?.(clampedIndex, totalImages);
       }
     },
-    [totalImages, onImageChange]
+    [totalImages]
   );
 
   const nextImage = useCallback(() => {
