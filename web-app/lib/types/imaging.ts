@@ -131,6 +131,27 @@ export interface ImagingProcedureDetail extends ImagingProcedure {
   updated_at: string;
 }
 
+/**
+ * Data for creating/updating an imaging procedure.
+ */
+export interface ImagingProcedureCreateData {
+  code: string;
+  name: string;
+  modality: ImagingModality;
+  body_region: ImagingBodyRegion;
+  radlex_code?: string;
+  loinc_code?: string;
+  requires_contrast?: boolean;
+  requires_sedation?: boolean;
+  special_preparation?: string;
+  turnaround_hours?: number;
+  cost: number;
+  sha_claimable?: boolean;
+  sha_intervention_code?: string;
+  is_active?: boolean;
+  available_in_house?: boolean;
+}
+
 // =============================================================================
 // IMAGING ORDER ITEM
 // =============================================================================

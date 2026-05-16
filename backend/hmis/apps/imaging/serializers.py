@@ -34,6 +34,30 @@ class ImagingProcedureSerializer(serializers.ModelSerializer):
         ]
 
 
+class ImagingProcedureCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for creating/updating imaging procedures."""
+
+    class Meta:
+        model = ImagingProcedure
+        fields = [
+            "code",
+            "name",
+            "modality",
+            "body_region",
+            "radlex_code",
+            "loinc_code",
+            "requires_contrast",
+            "requires_sedation",
+            "special_preparation",
+            "turnaround_hours",
+            "cost",
+            "sha_claimable",
+            "sha_intervention_code",
+            "is_active",
+            "available_in_house",
+        ]
+
+
 class ImagingProcedureDetailSerializer(serializers.ModelSerializer):
     """Detailed serializer with all procedure fields."""
 

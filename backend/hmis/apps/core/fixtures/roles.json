@@ -3701,9 +3701,9 @@
           "delete": false
         },
         "ImagingProcedure": {
-          "create": false,
+          "create": true,
           "read": true,
-          "update": false,
+          "update": true,
           "delete": false
         },
         "DICOMStudy": {

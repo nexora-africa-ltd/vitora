@@ -29,7 +29,6 @@ import {
   ChevronRight,
   Search,
   Eye,
-  RefreshCw,
   Calendar,
   User,
 } from 'lucide-react';
@@ -42,7 +41,6 @@ import {
 } from '@/lib/types/imaging';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import { EmptyState } from '@/components/shared/empty-state';
-import { cn } from '@/lib/utils/cn';
 import { OrderStatusBadge } from './order-status-badge';
 import { PriorityBadge } from './priority-badge';
 import { ModalityBadge } from './modality-badge';
@@ -57,7 +55,6 @@ interface ImagingOrderTableProps {
   onStatusFilter?: (status: ImagingOrderStatus | '') => void;
   onPriorityFilter?: (priority: ImagingPriority | '') => void;
   onSearch?: (query: string) => void;
-  onRefresh?: () => void;
 }
 
 export function ImagingOrderTable({
@@ -70,23 +67,13 @@ export function ImagingOrderTable({
   onStatusFilter,
   onPriorityFilter,
   onSearch,
-  onRefresh,
 }: ImagingOrderTableProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     onSearch?.(searchQuery);
-  };
-
-  const handleRefresh = async () => {
-    if (onRefresh) {
-      setIsRefreshing(true);
-      await onRefresh();
-      setIsRefreshing(false);
-    }
   };
 
   if (error) {
@@ -160,17 +147,6 @@ export function ImagingOrderTable({
             </SelectContent>
           </Select>
 
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="shrink-0"
-          >
-            <RefreshCw
-              className={cn('h-4 w-4', isRefreshing && 'animate-spin')}
-            />
-          </Button>
         </div>
       </div>
 

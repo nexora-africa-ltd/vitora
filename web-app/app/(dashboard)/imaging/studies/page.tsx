@@ -42,7 +42,6 @@ import {
   Image as ImageIcon,
   Eye,
   Upload,
-  RefreshCw,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -104,16 +103,10 @@ export default function DICOMStudiesPage() {
         title="DICOM Studies"
         helpContent="Browse and view DICOM imaging studies. Search by patient name, accession number, or study description."
         actions={
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Refresh</span>
-            </Button>
-            <Button size="sm" onClick={() => router.push('/imaging/studies/upload')}>
-              <Upload className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Upload</span>
-            </Button>
-          </div>
+          <Button size="sm" onClick={() => router.push('/imaging/studies/upload')}>
+            <Upload className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Upload</span>
+          </Button>
         }
       />
 

@@ -38,7 +38,6 @@ import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import {
   ChevronLeft,
   ChevronRight,
-  RefreshCw,
   Calendar,
   Clock,
   User,
@@ -180,7 +179,6 @@ export function SchedulingCalendar({
               {description}
             </p>
             <Button onClick={() => refetch()} variant="outline">
-              <RefreshCw className="h-4 w-4 mr-2" />
               Retry
             </Button>
           </div>
@@ -306,17 +304,6 @@ export function SchedulingCalendar({
                 ))}
               </SelectContent>
             </Select>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => refetch()}
-              disabled={isFetching}
-              aria-label="Refresh calendar"
-              className="h-8 w-8 sm:h-9 sm:w-9 shrink-0"
-            >
-              <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
-            </Button>
           </div>
         </div>
       </CardHeader>

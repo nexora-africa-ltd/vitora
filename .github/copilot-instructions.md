@@ -1306,16 +1306,48 @@ AUTHENTICATION_BACKENDS = ["hmis.apps.core.backends.EmailOrUsernameBackend"]
 # 3. Serializers: validate_email() in StaffProfileCreateSerializer et al.
 ```
 
-### Encrypted Fields
+### Encrypted Fields & PII Convention
 
 ```python
-# These fields are encrypted at rest using Fernet (AES-128)
-Patient.national_id   # Encrypted
-Patient.phone_number  # Encrypted
+# These fields are encrypted at rest using Fernet (AES-128) via encrypted_pii_property()
+# See: hmis/apps/core/pii.py, hmis/apps/patients/models.py
+Patient.identification_number  # Encrypted (national ID / passport number)
+Patient.phone_number           # Encrypted
+Patient.email                  # Encrypted
+Patient.address                # Encrypted
+Patient.national_id            # Encrypted (legacy field)
+Patient.principal_national_id  # Encrypted (SHA principal)
 
 # Encryption key configured in settings
 ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY')  # 32-byte Fernet key
 ```
+
+**PII classification for Vitora (Kenya DPA 2019 § 41):**
+
+| Category | Examples | Encrypted? | Rationale |
+|----------|----------|------------|-----------|
+| **Direct identifiers** | National ID, phone, email, address, passport | ✅ Fernet | Can uniquely identify a person on their own |
+| **Patient names** | first_name, last_name | ❌ Not encrypted | Needed for clinical workflow display; protected by tenant scoping + RBAC |
+| **Staff names** | ordered_by, referring_physician_name | ❌ Not encrypted | Staff are not data subjects in the same sense; names needed for audit trails |
+| **Clinical data** | diagnoses, findings, indications, medications | ❌ Not encrypted | Protected by tenant scoping + RBAC + sensitive patient filtering |
+| **Communication recipients** | critical_communicated_to | ❌ Not encrypted | Staff/clinician workflow metadata |
+| **DICOM metadata** | PatientName, PatientID (from tags) | ❌ Not encrypted at rest | Used for matching/verification only; never surfaced in bulk listing APIs |
+| **Reference/catalog data** | procedure names, ICD codes, drug names | ❌ Not encrypted | Non-identifying clinical reference data |
+
+**PII encryption decision rules:**
+1. **Encrypt** if the field alone can identify a natural person (direct identifiers): national_id, phone, email, physical address, passport number, SHA principal ID
+2. **Do NOT encrypt** patient names — they require clinical context (FK lookup) and are protected by tenant scoping, RBAC, and `is_sensitive` filtering
+3. **Do NOT encrypt** staff/clinician names — staff are system users, not data subjects under the same DPA provisions
+4. **Do NOT encrypt** clinical notes, findings, indications, or any freetext clinical data — protected by tenant scoping and access controls
+5. **Do NOT encrypt** metadata fields extracted from DICOM headers (PatientName, PatientID) — used only for matching, never in bulk listing APIs
+6. **Never sync** encrypted fields via PowerSync (excluded in sync-streams.yaml)
+7. **Always audit** access to sensitive patient records (is_sensitive=True) via AuditLog
+
+**When adding new models:**
+- If the model stores direct patient identifiers (ID numbers, phone, email, address), use `encrypted_pii_property()` from `hmis.apps.core.pii`
+- Patient names derived via FK (e.g., `get_patient_name` on serializers) are acceptable as read-only computed fields
+- DICOM metadata containing patient names should only be used for matching/verification, never exposed in bulk listing APIs
+- Never expose encrypted fields through PowerSync (sync-streams.yaml excludes them)
 
 ### Sensitive Patient Filtering
 

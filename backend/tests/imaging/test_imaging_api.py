@@ -26,7 +26,7 @@ class TestImagingProcedureAPI:
     """Tests for ImagingProcedure (catalog) API endpoints."""
 
     @pytest.fixture
-    def procedures(self, db):
+    def procedures(self, db, sample_facility):
         """Create sample procedures for testing."""
         return [
             ImagingProcedure.objects.create(
@@ -36,6 +36,8 @@ class TestImagingProcedureAPI:
                 body_region="CHEST",
                 cost=Decimal("1500.00"),
                 sha_claimable=True,
+                facility=sample_facility,
+                organization=sample_facility.organization,
             ),
             ImagingProcedure.objects.create(
                 code="CT-HEAD-NC",
@@ -44,6 +46,8 @@ class TestImagingProcedureAPI:
                 body_region="HEAD",
                 cost=Decimal("8000.00"),
                 sha_claimable=True,
+                facility=sample_facility,
+                organization=sample_facility.organization,
             ),
             ImagingProcedure.objects.create(
                 code="US-ABDOMEN",
@@ -52,6 +56,8 @@ class TestImagingProcedureAPI:
                 body_region="ABDOMEN",
                 cost=Decimal("3000.00"),
                 sha_claimable=True,
+                facility=sample_facility,
+                organization=sample_facility.organization,
             ),
             ImagingProcedure.objects.create(
                 code="MRI-BRAIN",
@@ -60,6 +66,8 @@ class TestImagingProcedureAPI:
                 body_region="HEAD",
                 cost=Decimal("15000.00"),
                 sha_claimable=False,
+                facility=sample_facility,
+                organization=sample_facility.organization,
             ),
         ]
 
@@ -113,7 +121,7 @@ class TestImagingProcedureAPI:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 1
 
-    def test_filter_active_only(self, authenticated_client, db):
+    def test_filter_active_only(self, authenticated_client, sample_facility):
         """Should only list active procedures."""
         active = ImagingProcedure.objects.create(
             code="ACTIVE-PROC",
@@ -121,6 +129,8 @@ class TestImagingProcedureAPI:
             modality="XR",
             body_region="CHEST",
             is_active=True,
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
         inactive = ImagingProcedure.objects.create(
             code="INACTIVE-PROC",
@@ -128,6 +138,8 @@ class TestImagingProcedureAPI:
             modality="XR",
             body_region="CHEST",
             is_active=False,
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
         response = authenticated_client.get("/api/imaging/procedures/")
         codes = [p["code"] for p in response.data["results"]]
