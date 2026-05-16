@@ -286,14 +286,22 @@ class TestEncounterAPIEndpoints:
         assert response.data["notes"] == "Follow-up recommended"
         assert response.data["chief_complaint"] == "Headache"  # Unchanged
 
-    def test_delete_encounter(self, auth_client, sample_patient, sample_facility):
+    def test_delete_encounter(self, auth_client, auth_user, sample_patient, sample_facility):
         """Test DELETE /api/encounters/{id}/ - Delete an encounter with invoice.
 
         Since billing signals auto-create invoices for encounters,
         we need to delete the invoice first before deleting the encounter.
         """
+        from django.contrib.auth.models import Permission
+
         from hmis.apps.billing.models import Invoice
         from hmis.apps.encounters.models import Encounter
+
+        # Grant delete permission
+        perm = Permission.objects.get(codename="delete_encounter")
+        auth_user.user_permissions.add(perm)
+        auth_user = User.objects.get(pk=auth_user.pk)
+        auth_client.force_authenticate(user=auth_user)
 
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -312,10 +320,18 @@ class TestEncounterAPIEndpoints:
         assert not Encounter.objects.filter(id=encounter_id).exists()
 
     def test_delete_encounter_with_invoice_returns_conflict(
-        self, auth_client, sample_patient, sample_facility
+        self, auth_client, auth_user, sample_patient, sample_facility
     ):
         """Test DELETE /api/encounters/{id}/ with invoice returns 409 Conflict."""
+        from django.contrib.auth.models import Permission
+
         from hmis.apps.encounters.models import Encounter
+
+        # Grant delete permission
+        perm = Permission.objects.get(codename="delete_encounter")
+        auth_user.user_permissions.add(perm)
+        auth_user = User.objects.get(pk=auth_user.pk)
+        auth_client.force_authenticate(user=auth_user)
 
         encounter = Encounter.objects.create(
             patient=sample_patient,

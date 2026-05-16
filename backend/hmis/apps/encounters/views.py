@@ -214,7 +214,13 @@ class DiagnosisViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def destroy(self, request, *args, **kwargs):
-        """Delete diagnosis with audit logging."""
+        """Delete diagnosis with permission check and audit logging."""
+        if not request.user.has_perm("encounters.delete_diagnosis"):
+            return Response(
+                {"detail": "You do not have permission to delete diagnoses."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         diagnosis = self.get_object()
         diagnosis_id = diagnosis.id
         patient_id = diagnosis.encounter.patient_id
@@ -434,7 +440,13 @@ class EncounterViewSet(TenantScopedViewMixin, ModelHistoryMixin, viewsets.ModelV
         return response
 
     def destroy(self, request, *args, **kwargs):
-        """Override destroy to add audit logging and handle protected references."""
+        """Override destroy with permission check, audit logging, and protected reference handling."""
+        if not request.user.has_perm("encounters.delete_encounter"):
+            return Response(
+                {"detail": "You do not have permission to delete encounters."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         encounter = self.get_object()
         encounter_id = encounter.id
         patient_id = encounter.patient_id

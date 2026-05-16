@@ -372,7 +372,20 @@ class TestDiagnosisAPI:
 
     def test_delete_diagnosis(self, authenticated_client, sample_encounter, sample_icd10_code):
         """Test DELETE /api/encounters/{id}/diagnoses/{diagnosis_id}/ - Delete diagnosis."""
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
         from hmis.apps.encounters.models import Diagnosis
+
+        User = get_user_model()
+
+        # Grant delete permission to the authenticated user
+        user = authenticated_client.handler._force_user
+        perm = Permission.objects.get(codename="delete_diagnosis")
+        user.user_permissions.add(perm)
+        # Re-fetch to clear perm cache; re-authenticate to use fresh instance
+        user = User.objects.get(pk=user.pk)
+        authenticated_client.force_authenticate(user=user)
 
         diagnosis = Diagnosis.objects.create(
             encounter=sample_encounter,

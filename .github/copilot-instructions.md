@@ -1222,6 +1222,62 @@ def test_my_model_creation_publishes_event(self, db, mocker):
 - [ ] Tests verify event publication (mock `publish_event`)
 - [ ] `docs/domain-events.md` SSOT updated with new events
 
+### 14. Delete Endpoints MUST Enforce `has_perm` Checks
+
+> ⚠️ **CRITICAL**: Every `destroy()` method on a ViewSet **MUST** check `request.user.has_perm("{app_label}.delete_{model}")` before proceeding. Without this, any authenticated user can delete records regardless of their role's `permissions_matrix`.
+
+The `roles.json` fixture declares `"delete": true/false` per role, and `sync_role_group_permissions` maps these to Django's built-in `delete_{model}` permissions. But these are only enforced if the ViewSet explicitly checks them.
+
+**Pattern:**
+
+```python
+def destroy(self, request, *args, **kwargs):
+    """Delete with permission check and audit logging."""
+    if not request.user.has_perm("app_label.delete_modelname"):
+        return Response(
+            {"detail": "You do not have permission to delete this resource."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    instance = self.get_object()
+    # ... audit logging and deletion ...
+```
+
+**Already enforced on:**
+- `PatientViewSet` → `patients.delete_patient`
+- `EncounterViewSet` → `encounters.delete_encounter`
+- `DiagnosisViewSet` → `encounters.delete_diagnosis`
+- `ImagingOrderViewSet` → `imaging.delete_imagingorder`
+- `InventoryViewSet` → `check_write_permission()` (custom)
+- `CommentViewSet` → author-or-admin check
+- `ClinicalTemplateViewSet` → ownership + system template check
+
+**Checklist for every new ViewSet with destroy:**
+- [ ] `destroy()` calls `has_perm("{app_label}.delete_{model}")`
+- [ ] Returns 403 with clear error message if denied
+- [ ] Test exists verifying a user WITHOUT the permission gets 403
+- [ ] Test exists verifying a user WITH the permission can delete
+
+**Test pattern for granting permission in tests:**
+
+```python
+def test_delete_with_permission(self, authenticated_client):
+    from django.contrib.auth import get_user_model
+    from django.contrib.auth.models import Permission
+
+    User = get_user_model()
+    # Get the user from the client's internal state
+    user = authenticated_client.handler._force_user
+    perm = Permission.objects.get(codename="delete_mymodel")
+    user.user_permissions.add(perm)
+    # Re-fetch to clear Django's permission cache
+    user = User.objects.get(pk=user.pk)
+    authenticated_client.force_authenticate(user=user)
+
+    response = authenticated_client.delete(f"/api/mymodels/{instance.id}/")
+    assert response.status_code == 204
+```
+
 ---
 
 ## 🔐 Security & Compliance

@@ -456,7 +456,13 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
-        """Delete an imaging order."""
+        """Delete an imaging order with permission check."""
+        if not request.user.has_perm("imaging.delete_imagingorder"):
+            return Response(
+                {"detail": "You do not have permission to delete imaging orders."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         instance = self.get_object()
         order_id = instance.id
         order_number = instance.order_number
