@@ -280,7 +280,13 @@ class PatientViewSet(
         return response
 
     def destroy(self, request, *args, **kwargs):
-        """Override destroy to add audit logging."""
+        """Override destroy to add audit logging and permission check."""
+        if not request.user.has_perm("patients.delete_patient"):
+            return Response(
+                {"detail": "You do not have permission to delete patients."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         patient = self.get_object()
         patient_id = patient.id
         patient_mrn = patient.mrn
