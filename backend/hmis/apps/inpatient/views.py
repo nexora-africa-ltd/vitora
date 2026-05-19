@@ -1551,7 +1551,7 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         admission = self.get_object()
         orders = (
             ImagingOrder.objects.filter(self._admission_order_q(admission))
-            .select_related("patient", "encounter", "ordered_by")
+            .select_related("patient", "encounter", "ordered_by", "report")
             .prefetch_related("items__procedure")
             .distinct()
         )
@@ -1606,7 +1606,7 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         imaging_orders = (
             ImagingOrder.objects.filter(q)
-            .select_related("patient", "encounter", "ordered_by")
+            .select_related("patient", "encounter", "ordered_by", "report")
             .prefetch_related("items__procedure")
             .distinct()
         )

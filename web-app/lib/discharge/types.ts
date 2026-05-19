@@ -18,6 +18,8 @@ export interface DischargeSummarySection {
   advisories?: ParsedSection['advisories'];
   /** Whether this section is included in the printed document. Defaults to true. */
   printable?: boolean;
+  /** Template key for AI section-ID matching (e.g. 'hospital_course', 'investigations'). */
+  templateKey?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -34,6 +36,8 @@ export const ROUTED_SECTION_IDS = new Set([
 export const HIDDEN_SECTION_IDS = new Set([
   'patient_information', 'reason_for_admission', 'discharge_diagnosis',
   'patient_demographics', 'admission_details', 'diagnosis',
+  // Data-sourced sections: pre-filled from encounter/orders, not AI-generated
+  'complaints', 'physical_examination', 'investigations', 'history',
 ]);
 
 /**

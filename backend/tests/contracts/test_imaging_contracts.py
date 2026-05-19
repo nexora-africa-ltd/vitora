@@ -304,6 +304,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "patient_name",
                 "priority",
                 "relevant_clinical_history",
+                "report_summary",
                 "scheduled_datetime",
                 "scheduled_room",
                 "status",

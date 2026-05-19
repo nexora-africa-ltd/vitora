@@ -114,6 +114,7 @@ class ImagingOrderSerializer(serializers.ModelSerializer):
     items = ImagingOrderItemSerializer(many=True, read_only=True)
     patient_name = serializers.SerializerMethodField()
     ordered_by_name = serializers.SerializerMethodField()
+    report_summary = serializers.SerializerMethodField()
 
     class Meta:
         model = ImagingOrder
@@ -139,6 +140,7 @@ class ImagingOrderSerializer(serializers.ModelSerializer):
             "items",
             "ordered_at",
             "completed_at",
+            "report_summary",
         ]
         read_only_fields = ["order_number", "ordered_at", "ordered_by"]
 
@@ -147,6 +149,19 @@ class ImagingOrderSerializer(serializers.ModelSerializer):
 
     def get_ordered_by_name(self, obj) -> str:
         return obj.ordered_by.get_full_name() or obj.ordered_by.username
+
+    def get_report_summary(self, obj) -> dict | None:
+        """Return report findings/impression if a report exists."""
+        try:
+            report = obj.report
+        except self.Meta.model.report.RelatedObjectDoesNotExist:
+            return None
+        if report is None:
+            return None
+        return {
+            "findings": report.findings or "",
+            "impression": report.impression or "",
+        }
 
 
 class ImagingOrderItemCreateSerializer(serializers.Serializer):
