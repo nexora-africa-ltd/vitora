@@ -3821,6 +3821,7 @@ class DischargeTemplate(FacilityScopedModel, TimeStampedModel):
             {"key": "patient_demographics", "label": "Patient Information", "enabled": True},
             {"key": "admission_details", "label": "Admission Details", "enabled": True},
             {"key": "diagnosis", "label": "Diagnosis", "enabled": True},
+            {"key": "complaints", "label": "Complaints", "enabled": True},
             {"key": "history", "label": "History", "enabled": True},
             {"key": "hospital_course", "label": "Hospital Course", "enabled": True},
             {"key": "physical_examination", "label": "Physical Examination", "enabled": True},

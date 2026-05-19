@@ -3,7 +3,7 @@ import { useAIClinicalDocument } from '@/lib/hooks/use-ai';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { ClinicalDocAdmissionContext, ClinicalDocPatientContext, ClinicalDocGenerationMode, AIPatientContext, ClinicalDocSection, ClinicalDocEncounterContext } from '@/lib/types/ai';
 import type { Encounter } from '@/lib/types/encounter';
-import type { DischargeType, DischargeTemplateLayout, DischargeTemplateSectionConfig, DischargeMedication, AdmissionOrdersResponse, WardRound } from '@/lib/types/inpatient';
+import type { DischargeType, DischargeTemplateLayout, DischargeTemplateSectionConfig, DischargeMedication, AdmissionOrdersResponse, WardRound, TemperatureReading, BPMonitoringReading } from '@/lib/types/inpatient';
 import type { DiagnosisEntry } from '@/components/shared';
 import type { DischargeSummarySection, ParsedSection, SuggestedMedication } from './types';
 import { ROUTED_SECTION_IDS, HIDDEN_SECTION_IDS } from './types';
@@ -12,6 +12,7 @@ import {
   parseAdvisories,
   createSectionId,
   parseFullTextIntoSections,
+  splitWrapperSection,
   fuzzyTitleMatch,
   extractFollowUpDate,
   parseMedicationLines,
@@ -48,9 +49,10 @@ function stripInvestigationLines(text: string): string {
 // ---------------------------------------------------------------------------
 
 const LEGACY_KEY_MAP: Record<string, string> = {
-  reason_for_admission: 'complaints',
-  presenting_complaint: 'complaints',
-  chief_complaint: 'complaints',
+  reason_for_admission: 'history',
+  presenting_complaint: 'history',
+  chief_complaint: 'history',
+  complaints: 'history',
   history_of_present_illness: 'history',
   clinical_history: 'history',
   significant_findings: 'investigations',
@@ -95,6 +97,10 @@ interface UseDischargeAIParams {
   wardRounds?: { results: WardRound[] } | null;
   /** Stored AI care plans for management/follow-up context */
   storedCarePlans?: any[] | null;
+  /** Observation chart: temperature/pulse/RR readings */
+  temperatureReadings?: TemperatureReading[] | null;
+  /** Observation chart: BP readings */
+  bpReadings?: BPMonitoringReading[] | null;
   /** Facility's active discharge template layout */
   templateLayout?: DischargeTemplateLayout;
   /** Facility's active discharge template sections */
@@ -132,6 +138,8 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     orders,
     wardRounds,
     storedCarePlans,
+    temperatureReadings,
+    bpReadings,
     templateLayout,
     templateSections,
     followUpInstructions,
@@ -213,9 +221,16 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       for (const io of orders.imaging_orders) {
         if (io.status === 'CANCELLED') continue;
         for (const item of io.items) {
-          const dateStr = (io as any).completed_at?.slice(0, 10) || (io as any).ordered_at?.slice(0, 10) || '';
+          const dateStr = io.completed_at?.slice(0, 10) || io.ordered_at?.slice(0, 10) || '';
           const dateSuffix = dateStr ? ` (${dateStr})` : '';
-          keyInvestigations.push(`${item.procedure_name} (${item.modality}): ${io.status}${dateSuffix}`);
+          // Use actual report content if available
+          const report = io.report_summary;
+          if (report && (report.findings || report.impression)) {
+            const content = report.impression || report.findings;
+            keyInvestigations.push(`${item.procedure_name} (${item.modality}): ${content}${dateSuffix}`);
+          } else {
+            keyInvestigations.push(`${item.procedure_name} (${item.modality}): ${io.status}${dateSuffix}`);
+          }
         }
       }
     }
@@ -306,8 +321,6 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     const encounterCtx: ClinicalDocEncounterContext = {
       chief_complaint:
         sourceEncounter?.chief_complaint
-        || admission.admitting_diagnosis_text
-        || admission.admitting_diagnosis
         || '',
     };
 
@@ -334,8 +347,48 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       }
     }
 
+    // Vitals — prefer most recent observation chart data, fall back to source encounter
+    const latestBP = bpReadings?.[0];
+    const latestTPR = temperatureReadings?.[0];
+    const wardRoundVitals = wardRounds?.results?.[0]?.vital_signs;
+
+    const systolic = latestBP?.systolic
+      ?? (wardRoundVitals?.blood_pressure ? Number(wardRoundVitals.blood_pressure.split('/')[0]) : null)
+      ?? sourceEncounter?.systolic_bp
+      ?? null;
+    const diastolic = latestBP?.diastolic
+      ?? (wardRoundVitals?.blood_pressure ? Number(wardRoundVitals.blood_pressure.split('/')[1]) : null)
+      ?? sourceEncounter?.diastolic_bp
+      ?? null;
+    const heartRate = latestBP?.pulse ?? latestTPR?.pulse
+      ?? wardRoundVitals?.pulse
+      ?? sourceEncounter?.pulse
+      ?? null;
+    const temperature = (latestTPR?.temperature != null ? Number(latestTPR.temperature) : undefined)
+      ?? wardRoundVitals?.temperature
+      ?? sourceEncounter?.temperature
+      ?? null;
+    const respiratoryRate = latestTPR?.respiratory_rate
+      ?? wardRoundVitals?.respiratory_rate
+      ?? sourceEncounter?.respiratory_rate
+      ?? null;
+    const spo2 = wardRoundVitals?.spo2
+      ?? sourceEncounter?.spo2
+      ?? null;
+
+    if (systolic || diastolic || heartRate || temperature || respiratoryRate || spo2) {
+      encounterCtx.vitals = {
+        blood_pressure_systolic: systolic,
+        blood_pressure_diastolic: diastolic,
+        heart_rate: heartRate,
+        temperature,
+        respiratory_rate: respiratoryRate,
+        spo2,
+      };
+    }
+
     return { docPatientCtx, admissionCtx, encounterCtx };
-  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, patientCtx, sourceEncounter, orders, wardRounds, storedCarePlans, followUpInstructions, clinicalHistoryText]);
+  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, patientCtx, sourceEncounter, orders, wardRounds, storedCarePlans, followUpInstructions, clinicalHistoryText, temperatureReadings, bpReadings]);
 
   // Build template-alignment fields for TibaBot requests
   const templateFields = useCallback(() => {
@@ -360,11 +413,9 @@ export function useDischargeAI(params: UseDischargeAIParams) {
         generation_mode: generationMode,
         ...templateFields(),
         additional_instructions: [
-          'SECTION IDs to use: complaints, history, hospital_course, physical_examination, investigations, management, condition_at_discharge, discharge_medications, discharge_instructions, follow_up, diagnosis.',
+          'SECTION IDs to use: hospital_course, management, condition_at_discharge, discharge_medications, discharge_instructions, follow_up, diagnosis.',
+          'Do NOT generate sections for: complaints, physical_examination, investigations, history — these are pre-filled from clinical data.',
           'Hospital Course: flowing clinical narrative synthesizing ward rounds. Mention key dates and inflection points. Do NOT list each ward round as S/O/A/P.',
-          'Physical Examination: ONLY physical exam findings (inspection, palpation, auscultation, vital signs on examination). Never place lab values here.',
-          'Investigations: table with columns Investigation, Result, Date. Exclude CANCELLED. Group components under parent order.',
-          'Complaints: the presenting complaint and reason for admission.',
           'Management: treatment given during admission (medications, procedures, nursing interventions).',
           'Only include documented clinical facts. No advisory notes or placeholders.',
         ].filter(Boolean).join(' '),
@@ -373,6 +424,12 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       // Normalize legacy section keys in the response
       if (result.sections?.length) {
         result.sections = normalizeSections(result.sections);
+
+        // Split any "wrapper" sections (e.g. a single "Document" section containing all content)
+        result.sections = result.sections.flatMap((s) => splitWrapperSection(s));
+        // Re-normalize after splitting (sub-section IDs may need mapping)
+        result.sections = normalizeSections(result.sections);
+
         for (const section of result.sections) {
           const { cleanContent } = parseAdvisories(section.content);
           const sid = section.section_id;
@@ -412,8 +469,12 @@ export function useDischargeAI(params: UseDischargeAIParams) {
             const { cleanContent, advisories } = parseAdvisories(aiSection.content);
             const provenance = result.section_provenance?.[aiSection.section_id];
 
+            // Match by template key first (exact), then fall back to fuzzy title
             const match = updated.find((s) =>
-              !matchedIds.has(s.id) && fuzzyTitleMatch(s.title, aiSection.title)
+              !matchedIds.has(s.id) && (
+                (s.templateKey && s.templateKey === aiSection.section_id) ||
+                fuzzyTitleMatch(s.title, aiSection.title)
+              )
             );
 
             if (match) {

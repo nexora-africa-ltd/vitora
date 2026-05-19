@@ -171,13 +171,14 @@ export function buildTemplateAlignedContent(
   return outputParts.join('\n\n');
 }
 
-/** Parse flat AI text (with ## headings) into sections. */
+/** Parse flat AI text (with ## headings) into sections. Falls back to bold headings if no ## found. */
 export function parseFullTextIntoSections(text: string): DischargeSummarySection[] {
   const lines = text.split('\n');
   const result: DischargeSummarySection[] = [];
   let currentTitle = '';
   let currentLines: string[] = [];
 
+  // First pass: try ## headings
   for (const line of lines) {
     const headingMatch = line.match(/^##\s+(.+)/);
     if (headingMatch) {
@@ -193,10 +194,83 @@ export function parseFullTextIntoSections(text: string): DischargeSummarySection
   if (currentTitle) {
     result.push({ id: createSectionId(), title: currentTitle, content: currentLines.join('\n').trim(), source: 'ai' });
   }
+
+  // If ## headings found sections, return them
+  if (result.length > 0) return result;
+
+  // Fallback: try bold headings (standalone **Heading** lines)
+  currentTitle = '';
+  currentLines = [];
+  for (const line of lines) {
+    const boldMatch = line.match(/^\*\*([^*]+)\*\*\s*(.*)/);
+    const isBulletItem = /^\s*[-•*]\s/.test(line) || /^\s*\d+[.)]\s/.test(line);
+    const heading = (!isBulletItem && boldMatch?.[1]?.trim()) || '';
+
+    if (heading) {
+      if (currentTitle) {
+        result.push({ id: createSectionId(), title: currentTitle, content: currentLines.join('\n').trim(), source: 'ai' });
+      }
+      currentTitle = heading;
+      const trailingText = boldMatch?.[2]?.trim() || '';
+      currentLines = trailingText ? [trailingText] : [];
+    } else {
+      currentLines.push(line);
+    }
+  }
+  if (currentTitle) {
+    result.push({ id: createSectionId(), title: currentTitle, content: currentLines.join('\n').trim(), source: 'ai' });
+  }
+
   if (result.length === 0 && text.trim()) {
     result.push({ id: createSectionId(), title: 'Discharge Summary', content: text.trim(), source: 'ai' });
   }
   return result;
+}
+
+/**
+ * Split a "wrapper" section (e.g. title "Document") whose content contains
+ * bold sub-headings into individual sections. Returns the original section
+ * unchanged if no sub-headings are detected.
+ */
+export function splitWrapperSection(section: { section_id: string; title: string; content: string }): { section_id: string; title: string; content: string }[] {
+  // Only split if section looks like a generic wrapper (not a real clinical section)
+  const wrapperTitles = /^(document|discharge summary|summary|clinical document|full document)$/i;
+  if (!wrapperTitles.test(section.title.trim())) return [section];
+
+  const lines = section.content.split('\n');
+  const subSections: { section_id: string; title: string; content: string }[] = [];
+  let currentTitle = '';
+  let currentId = '';
+  let currentLines: string[] = [];
+
+  for (const line of lines) {
+    // Detect ## heading or standalone **Bold Heading** (not bullet sub-items)
+    const h2Match = line.match(/^##\s+(.+)/);
+    const boldMatch = h2Match ? null : line.match(/^\*\*([^*]+)\*\*\s*(.*)/);
+    const isBulletItem = /^\s*[-•*]\s/.test(line) || /^\s*\d+[.)]\s/.test(line);
+    // Trailing colon indicates a label/sub-item, not a section heading
+    const hasTrailingColon = boldMatch?.[2]?.trim().startsWith(':') || boldMatch?.[1]?.trim().endsWith(':');
+    const heading = h2Match?.[1]?.trim() || (!isBulletItem && !hasTrailingColon && boldMatch?.[1]?.trim()) || '';
+
+    if (heading) {
+      if (currentTitle && currentLines.some((l) => l.trim())) {
+        subSections.push({ section_id: currentId, title: currentTitle, content: currentLines.join('\n').trim() });
+      }
+      currentTitle = heading;
+      currentId = heading.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+      // Include trailing text after bold heading as first content line
+      const trailingText = h2Match ? '' : (boldMatch?.[2]?.trim() || '');
+      currentLines = trailingText ? [trailingText] : [];
+    } else {
+      currentLines.push(line);
+    }
+  }
+  if (currentTitle && currentLines.some((l) => l.trim())) {
+    subSections.push({ section_id: currentId, title: currentTitle, content: currentLines.join('\n').trim() });
+  }
+
+  // Only split if we found multiple sub-sections; otherwise return original
+  return subSections.length >= 2 ? subSections : [section];
 }
 
 /** Case-insensitive fuzzy title match with keyword awareness. */

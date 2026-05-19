@@ -201,6 +201,7 @@ export interface ImagingOrder {
   items: ImagingOrderItem[];
   ordered_at: string;
   completed_at?: string | null;
+  report_summary?: { findings: string; impression: string } | null;
 }
 
 // =============================================================================

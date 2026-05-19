@@ -269,6 +269,7 @@ export default function DischargePage() {
         title: s.label,
         content: '',
         source: 'template' as const,
+        templateKey: s.key,
       }));
 
     if (templateSections.length > 0) {
@@ -276,6 +277,104 @@ export default function DischargePage() {
     }
     setSectionsInitFromTemplate(true);
   }, [defaultTemplate, hasDraft, sectionsInitFromTemplate]);
+
+  // Pre-fill data-sourced sections from encounter and orders (no AI needed)
+  const [dataPreFilled, setDataPreFilled] = useState(false);
+  useEffect(() => {
+    if (dataPreFilled) return;
+    if (!sectionsInitFromTemplate) return;
+    if (hasDraft) return;
+
+    // Need at least the encounter or orders to pre-fill
+    if (!sourceEncounter && !orders) return;
+
+    setSections((prev) => {
+      let updated = [...prev];
+      let changed = false;
+
+      // Complaints → chief complaint from encounter
+      const chiefComplaint = sourceEncounter?.chief_complaint;
+      if (chiefComplaint) {
+        updated = updated.map((s) => {
+          if (s.templateKey === 'complaints' && !s.content) {
+            changed = true;
+            return { ...s, content: chiefComplaint, source: 'template' as const };
+          }
+          return s;
+        });
+      }
+
+      // Physical Examination → physical_examination from encounter
+      const physicalExam = sourceEncounter?.physical_examination;
+      if (physicalExam) {
+        updated = updated.map((s) => {
+          if (s.templateKey === 'physical_examination' && !s.content) {
+            changed = true;
+            return { ...s, content: physicalExam, source: 'template' as const };
+          }
+          return s;
+        });
+      }
+
+      // History → HPI from encounter
+      const hpi = sourceEncounter?.history_of_present_illness;
+      if (hpi) {
+        updated = updated.map((s) => {
+          if (s.templateKey === 'history' && !s.content) {
+            changed = true;
+            return { ...s, content: hpi, source: 'template' as const };
+          }
+          return s;
+        });
+      }
+
+      // Investigations → lab and imaging results from orders
+      if (orders) {
+        const lines: string[] = [];
+        const cleanValue = (v: string) => v.replace(/(\d+\.\d*?)0+(\s)/g, '$1$2').replace(/\.(\s)/g, '$1');
+        if (orders.lab_orders) {
+          for (const lo of orders.lab_orders) {
+            if (lo.status === 'CANCELLED') continue;
+            for (const item of lo.items) {
+              if (item.status === 'CANCELLED') continue;
+              const r = item.result;
+              if (r?.formatted_value) {
+                lines.push(`${item.test_name}: ${cleanValue(r.formatted_value)}${r.is_critical_result ? ' [CRITICAL]' : ''}`);
+              } else {
+                lines.push(`${item.test_name}: ${lo.status}`);
+              }
+            }
+          }
+        }
+        if (orders.imaging_orders) {
+          for (const io of orders.imaging_orders) {
+            if (io.status === 'CANCELLED') continue;
+            for (const item of io.items) {
+              const report = io.report_summary;
+              if (report && (report.findings || report.impression)) {
+                const content = report.impression || report.findings;
+                lines.push(`${item.procedure_name} (${item.modality}): ${content}`);
+              } else {
+                lines.push(`${item.procedure_name} (${item.modality}): ${io.status}`);
+              }
+            }
+          }
+        }
+        if (lines.length) {
+          updated = updated.map((s) => {
+            if (s.templateKey === 'investigations' && !s.content) {
+              changed = true;
+              return { ...s, content: lines.join('\n'), source: 'template' as const };
+            }
+            return s;
+          });
+        }
+      }
+
+      if (changed) setDataPreFilled(true);
+      return changed ? updated : prev;
+    });
+  }, [sectionsInitFromTemplate, hasDraft, dataPreFilled, sourceEncounter, orders]);
 
   // Computed discharge summary from sections (for form submission and validation)
   const dischargeSummary = useMemo(() => assembleSectionsText(sections), [sections]);
@@ -315,7 +414,7 @@ export default function DischargePage() {
     }
 
     // Chief complaint / complaints
-    const complaint = admission?.admitting_diagnosis_text || admission?.admitting_diagnosis;
+    const complaint = sourceEncounter?.chief_complaint || '';
     if (complaint) dedicatedContent['complaints'] = complaint;
 
     // Investigations from admission orders
@@ -337,8 +436,15 @@ export default function DischargePage() {
       }
       if (orders.imaging_orders) {
         for (const io of orders.imaging_orders) {
+          if (io.status === 'CANCELLED') continue;
           for (const item of io.items) {
-            lines.push(`- ${item.procedure_name} (${item.modality}): ${io.status}`);
+            const report = io.report_summary;
+            if (report && (report.findings || report.impression)) {
+              const content = report.impression || report.findings;
+              lines.push(`- ${item.procedure_name} (${item.modality}): ${content}`);
+            } else {
+              lines.push(`- ${item.procedure_name} (${item.modality}): ${io.status}`);
+            }
           }
         }
       }
@@ -772,6 +878,8 @@ export default function DischargePage() {
     orders,
     wardRounds,
     storedCarePlans: storedCarePlans as any[] | undefined,
+    temperatureReadings: temperatureData?.results,
+    bpReadings: bpData?.results,
     templateLayout: defaultTemplate?.layout,
     templateSections: defaultTemplate?.sections,
     followUpInstructions,
