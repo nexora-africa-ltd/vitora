@@ -148,6 +148,12 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "vitora.db",
+        # SQLite serializes writers. Without a longer busy-timeout, concurrent
+        # requests (e.g. parallel AI section generations) raise
+        # "database is locked". 30s gives writers room to queue.
+        "OPTIONS": {
+            "timeout": 30,
+        },
     }
 }
 

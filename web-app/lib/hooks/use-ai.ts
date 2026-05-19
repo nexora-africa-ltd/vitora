@@ -475,6 +475,8 @@ export function useAIClinicalDocument() {
   return useMutation<AIClinicalDocumentResponse, Error, AIClinicalDocumentRequest>({
     mutationFn: (data) => aiApi.generateClinicalDocument(data),
     retry: false,
+    // All callers use mutateAsync with local try/catch — suppress noisy global console.error
+    meta: { skipGlobalErrorHandler: true },
   });
 }
 

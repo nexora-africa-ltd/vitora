@@ -59,7 +59,7 @@ import type { DischargeType, DischargeMedication, MaternityContinuityAction } fr
 import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocGenerationMode } from '@/lib/types/ai';
 import type { DischargeSummarySection, SuggestedMedication } from '@/lib/discharge/types';
 import { DEFAULT_SECTION_TEMPLATES, DEDICATED_FIELD_KEYS, DISCHARGE_TYPES, MATERNITY_CONTINUITY_ACTIONS } from '@/lib/discharge/types';
-import { createSectionId, assembleSectionsText, buildTemplateAlignedContent } from '@/lib/discharge/utils';
+import { createSectionId, assembleSectionsText, buildTemplateAlignedContent, mergeEncounterClinicalText } from '@/lib/discharge/utils';
 import { useDischargeAI } from '@/lib/discharge/use-discharge-ai';
 import { useDischargeDraft } from '@/lib/discharge/use-discharge-draft';
 import { buildAdmissionAIClinicalNotes, getLatestWardRound } from '@/lib/utils/inpatient-ai-context';
@@ -138,7 +138,9 @@ export default function DischargePage() {
 
   // Fetch encounter diagnoses for pre-population suggestions
   const sourceEncounterId = admission?.source_encounter || admission?.opd_encounter || 0;
+  const ipdEncounterId = admission?.ipd_encounter || 0;
   const { data: sourceEncounter } = useEncounter(sourceEncounterId);
+  const { data: ipdEncounter } = useEncounter(ipdEncounterId);
   const { data: encounterDiagnoses } = useEncounterDiagnoses(sourceEncounterId);
   const { data: storedCarePlans } = useStoredCarePlans({ encounter_id: sourceEncounterId || undefined, admission_id: admissionId });
   const chatCtx = useOptionalAIChatContext();
@@ -278,55 +280,62 @@ export default function DischargePage() {
     setSectionsInitFromTemplate(true);
   }, [defaultTemplate, hasDraft, sectionsInitFromTemplate]);
 
-  // Pre-fill data-sourced sections from encounter and orders (no AI needed)
-  const [dataPreFilled, setDataPreFilled] = useState(false);
+  // Pre-fill data-sourced sections from encounter, ward rounds, and orders (no AI needed).
+  // Re-runs as data sources arrive; only fills empty sections so it never overwrites.
   useEffect(() => {
-    if (dataPreFilled) return;
     if (!sectionsInitFromTemplate) return;
     if (hasDraft) return;
-
-    // Need at least the encounter or orders to pre-fill
-    if (!sourceEncounter && !orders) return;
+    if (!sourceEncounter && !ipdEncounter && !orders && !wardRounds?.results?.length) return;
 
     setSections((prev) => {
       let updated = [...prev];
       let changed = false;
 
-      // Complaints → chief complaint from encounter
-      const chiefComplaint = sourceEncounter?.chief_complaint;
-      if (chiefComplaint) {
+      const fillIfEmpty = (key: string, content: string | null | undefined) => {
+        if (!content || !content.trim()) return;
         updated = updated.map((s) => {
-          if (s.templateKey === 'complaints' && !s.content) {
+          if (s.templateKey === key && !s.content) {
             changed = true;
-            return { ...s, content: chiefComplaint, source: 'template' as const };
+            return { ...s, content: content.trim(), source: 'template' as const };
           }
           return s;
         });
-      }
+      };
 
-      // Physical Examination → physical_examination from encounter
-      const physicalExam = sourceEncounter?.physical_examination;
-      if (physicalExam) {
-        updated = updated.map((s) => {
-          if (s.templateKey === 'physical_examination' && !s.content) {
-            changed = true;
-            return { ...s, content: physicalExam, source: 'template' as const };
-          }
-          return s;
-        });
-      }
+      // Ward rounds (oldest first) for subjective/objective fallbacks
+      const rounds = wardRounds?.results ?? [];
+      const firstRound = rounds.length ? rounds[rounds.length - 1] : null;
+      const latestRound = rounds.length ? rounds[0] : null;
 
-      // History → HPI from encounter
-      const hpi = sourceEncounter?.history_of_present_illness;
-      if (hpi) {
-        updated = updated.map((s) => {
-          if (s.templateKey === 'history' && !s.content) {
-            changed = true;
-            return { ...s, content: hpi, source: 'template' as const };
-          }
-          return s;
-        });
-      }
+      // Complaints → OPD chief complaint merged with IPD chief complaint → first ward round subjective.
+      // Never fall back to admitting_diagnosis_text — that is a DIAGNOSIS, not a complaint.
+      fillIfEmpty(
+        'complaints',
+        mergeEncounterClinicalText(sourceEncounter?.chief_complaint, ipdEncounter?.chief_complaint)
+          || firstRound?.subjective
+      );
+
+      // Physical Examination → encounter physical_examination → latest ward round objective (stripped of lab/imaging lines)
+      const stripInvestigations = (text: string) => {
+        const patterns = [
+          /^\s*[\w\s-]+:\s*[\d.]+\s*(?:x?\s*10[\^⁹⁶³]?\/?[Ll]|[mµμ]?(?:g|mol|IU|U|mmol|mg|mcg)\/(?:[dDlL]|mL)|%|mm\/h|mEq\/L)/i,
+          /^\s*[\w\s-]+:\s*(?:COMPLETED|CANCELLED|PENDING|REPORTED|ORDERED|COLLECTED)/i,
+          /^\s*(?:ultrasound|CT|MRI|X-?ray|echo|ECG|EEG)\b/i,
+        ];
+        return text.split('\n').filter((l) => !patterns.some((p) => p.test(l))).join('\n').trim();
+      };
+      fillIfEmpty(
+        'physical_examination',
+        mergeEncounterClinicalText(sourceEncounter?.physical_examination, ipdEncounter?.physical_examination)
+          || (latestRound?.objective ? stripInvestigations(latestRound.objective) : null)
+      );
+
+      // History → OPD HPI merged with IPD HPI → first ward round subjective
+      fillIfEmpty(
+        'history',
+        mergeEncounterClinicalText(sourceEncounter?.history_of_present_illness, ipdEncounter?.history_of_present_illness)
+          || firstRound?.subjective
+      );
 
       // Investigations → lab and imaging results from orders
       if (orders) {
@@ -360,21 +369,12 @@ export default function DischargePage() {
             }
           }
         }
-        if (lines.length) {
-          updated = updated.map((s) => {
-            if (s.templateKey === 'investigations' && !s.content) {
-              changed = true;
-              return { ...s, content: lines.join('\n'), source: 'template' as const };
-            }
-            return s;
-          });
-        }
+        fillIfEmpty('investigations', lines.join('\n'));
       }
 
-      if (changed) setDataPreFilled(true);
       return changed ? updated : prev;
     });
-  }, [sectionsInitFromTemplate, hasDraft, dataPreFilled, sourceEncounter, orders]);
+  }, [sectionsInitFromTemplate, hasDraft, sourceEncounter, ipdEncounter, orders, wardRounds?.results]);
 
   // Computed discharge summary from sections (for form submission and validation)
   const dischargeSummary = useMemo(() => assembleSectionsText(sections), [sections]);
@@ -413,8 +413,11 @@ export default function DischargePage() {
       if (admittingDx) dedicatedContent['diagnosis'] = admittingDx;
     }
 
-    // Chief complaint / complaints
-    const complaint = sourceEncounter?.chief_complaint || '';
+    // Chief complaint / complaints — SSOT is OPD + IPD encounters merged
+    const complaint = mergeEncounterClinicalText(
+      sourceEncounter?.chief_complaint,
+      ipdEncounter?.chief_complaint,
+    );
     if (complaint) dedicatedContent['complaints'] = complaint;
 
     // Investigations from admission orders
@@ -873,6 +876,7 @@ export default function DischargePage() {
     dischargeType,
     patientCtx,
     sourceEncounter,
+    ipdEncounter,
     clinicalHistoryText,
     generationMode,
     orders,
