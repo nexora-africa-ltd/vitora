@@ -1898,7 +1898,7 @@ class ClinicalDocGenerateRequestSerializer(serializers.Serializer):
     additional_instructions = serializers.CharField(
         required=False,
         allow_blank=True,
-        max_length=2000,
+        max_length=4000,
     )
     generation_mode = serializers.ChoiceField(
         choices=GENERATION_MODE_CHOICES,

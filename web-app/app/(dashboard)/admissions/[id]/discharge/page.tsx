@@ -63,6 +63,52 @@ import { createSectionId, assembleSectionsText, buildTemplateAlignedContent } fr
 import { useDischargeAI } from '@/lib/discharge/use-discharge-ai';
 import { useDischargeDraft } from '@/lib/discharge/use-discharge-draft';
 import { buildAdmissionAIClinicalNotes, getLatestWardRound } from '@/lib/utils/inpatient-ai-context';
+import type { WardRound } from '@/lib/types/inpatient';
+
+/**
+ * Derive the attending consultant name from available data sources:
+ * 1. admission.attending_doctor_username (explicitly set)
+ * 2. Most recent CONSULTANT_REVIEW ward round's conducted_by_name
+ * 3. Most frequent ward round conductor (majority doctor)
+ * 4. Admitting officer as last resort
+ */
+function deriveConsultantName(
+  admission: any,
+  wardRoundResults?: WardRound[],
+): string {
+  // 1. Explicit attending doctor on the admission
+  if (admission?.attending_doctor_username) {
+    return admission.attending_doctor_username;
+  }
+
+  if (wardRoundResults?.length) {
+    // 2. Most recent consultant review
+    const consultantReview = wardRoundResults.find(
+      (wr) => wr.review_type === 'CONSULTANT_REVIEW'
+    );
+    if (consultantReview?.conducted_by_name) {
+      return consultantReview.conducted_by_name;
+    }
+
+    // 3. Most frequent conductor (majority doctor)
+    const conductorCounts = new Map<string, number>();
+    for (const wr of wardRoundResults) {
+      const name = wr.conducted_by_name || wr.conducted_by_username;
+      if (name) {
+        conductorCounts.set(name, (conductorCounts.get(name) || 0) + 1);
+      }
+    }
+    if (conductorCounts.size > 0) {
+      const sorted = [...conductorCounts.entries()].sort(
+        (a, b) => b[1] - a[1]
+      );
+      if (sorted[0]) return sorted[0][0];
+    }
+  }
+
+  // 4. Admitting officer as fallback
+  return admission?.admitting_officer_username || '';
+}
 
 export default function DischargePage() {
   const params = useParams();
@@ -725,6 +771,7 @@ export default function DischargePage() {
     generationMode,
     orders,
     wardRounds,
+    storedCarePlans: storedCarePlans as any[] | undefined,
     templateLayout: defaultTemplate?.layout,
     templateSections: defaultTemplate?.sections,
     followUpInstructions,
@@ -961,6 +1008,8 @@ export default function DischargePage() {
       facilityMflCode: facility?.mfl_code,
       facilityLocation: facilityDetail ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}` : undefined,
       facilityLogoUrl: facilityDetail?.effective_logo_url,
+      consultantName: deriveConsultantName(admission, wardRounds?.results),
+      departmentName: admission?.ward_name || '',
       layout: defaultTemplate?.layout,
       showSignatureLines: defaultTemplate?.show_signature_lines,
       showQrCode: defaultTemplate?.show_qr_code,
@@ -1484,7 +1533,7 @@ export default function DischargePage() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-amber-300">
                 {MATERNITY_CONTINUITY_ACTIONS.find((action) => action.value === maternityContinuityAction)?.description}
               </p>
             </div>

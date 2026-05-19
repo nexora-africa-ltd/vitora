@@ -132,7 +132,7 @@ export function ShiftGreetingLine({ greetingLabel, nameWithTitle, attendanceStat
             {greetingLabel}, {nameWithTitle}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Your <span className="font-medium text-foreground">{typeLabel}</span> shift {info?.label ?? ''}
+            Your <span className="font-medium text-foreground">{typeLabel}</span> {info?.label ?? ''}
           </p>
         </div>
       );
@@ -146,7 +146,7 @@ export function ShiftGreetingLine({ greetingLabel, nameWithTitle, attendanceStat
             {greetingLabel}, {nameWithTitle}
           </h2>
           <p className="text-sm text-destructive font-medium">
-            Your <span>{typeLabel}</span> shift {info?.label ?? ''} — please clock in
+            Your <span>{typeLabel}</span> {info?.label ?? ''} — please clock in
           </p>
         </div>
       );
