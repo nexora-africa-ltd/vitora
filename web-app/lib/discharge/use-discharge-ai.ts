@@ -18,15 +18,50 @@ import {
 } from './utils';
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Remove lines from ward round 'objective' text that are clearly
+ * investigation results (lab values, imaging reports) rather than
+ * physical examination findings.
+ */
+function stripInvestigationLines(text: string): string {
+  const investigationPatterns = [
+    // Lab values with units: "WBC 15.6 x10^9/L", "CRP: 42 mg/L"
+    /^\s*[\w\s-]+:\s*[\d.]+\s*(?:x?\s*10[\^⁹⁶³]?\/?[Ll]|[mµμ]?(?:g|mol|IU|U|mmol|mg|mcg)\/(?:[dDlL]|mL)|%|mm\/h|mEq\/L)/i,
+    // Lab status lines: "Full Blood Count: COMPLETED", "Urinalysis: CANCELLED"
+    /^\s*[\w\s-]+:\s*(?:COMPLETED|CANCELLED|PENDING|REPORTED|ORDERED|COLLECTED)/i,
+    // Imaging reports: "Ultrasound: ...", "CT scan: ...", "X-ray: ..."
+    /^\s*(?:ultrasound|CT|MRI|X-?ray|echo|ECG|EEG)\b/i,
+  ];
+
+  return text
+    .split('\n')
+    .filter((line) => !investigationPatterns.some((p) => p.test(line)))
+    .join('\n')
+    .trim();
+}
+
+// ---------------------------------------------------------------------------
 // Legacy → new section key mapping (for backward compatibility with TibaBot)
 // ---------------------------------------------------------------------------
 
 const LEGACY_KEY_MAP: Record<string, string> = {
-  reason_for_admission: 'history',
+  reason_for_admission: 'complaints',
+  presenting_complaint: 'complaints',
+  chief_complaint: 'complaints',
+  history_of_present_illness: 'history',
+  clinical_history: 'history',
   significant_findings: 'investigations',
+  investigations_done: 'investigations',
   patient_education: 'discharge_instructions',
   discharge_diagnosis: 'diagnosis',
   follow_up_plan: 'follow_up',
+  treatment: 'management',
+  treatment_given: 'management',
+  physical_findings: 'physical_examination',
+  examination: 'physical_examination',
 };
 
 function normalizeSectionKey(key: string): string {
@@ -58,6 +93,8 @@ interface UseDischargeAIParams {
   orders?: AdmissionOrdersResponse | null;
   /** Ward rounds for condition-at-discharge and complication extraction */
   wardRounds?: { results: WardRound[] } | null;
+  /** Stored AI care plans for management/follow-up context */
+  storedCarePlans?: any[] | null;
   /** Facility's active discharge template layout */
   templateLayout?: DischargeTemplateLayout;
   /** Facility's active discharge template sections */
@@ -94,6 +131,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     generationMode,
     orders,
     wardRounds,
+    storedCarePlans,
     templateLayout,
     templateSections,
     followUpInstructions,
@@ -153,14 +191,18 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       }
     }
 
-    // Key investigations from lab and imaging orders
+    // Key investigations from lab and imaging orders (exclude cancelled)
     const keyInvestigations: string[] = [];
     if (orders?.lab_orders) {
       for (const lo of orders.lab_orders) {
+        if (lo.status === 'CANCELLED') continue;
         for (const item of lo.items) {
+          if (item.status === 'CANCELLED') continue;
           const r = item.result;
           if (r?.formatted_value) {
-            keyInvestigations.push(`${item.test_name}: ${r.formatted_value}${r.is_critical_result ? ' [CRITICAL]' : ''}`);
+            const dateStr = r.entered_at?.slice(0, 10) || lo.ordered_at?.slice(0, 10) || '';
+            const dateSuffix = dateStr ? ` (${dateStr})` : '';
+            keyInvestigations.push(`${item.test_name}: ${r.formatted_value}${r.is_critical_result ? ' [CRITICAL]' : ''}${dateSuffix}`);
           } else {
             keyInvestigations.push(`${item.test_name}: ${lo.status}`);
           }
@@ -169,8 +211,11 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     }
     if (orders?.imaging_orders) {
       for (const io of orders.imaging_orders) {
+        if (io.status === 'CANCELLED') continue;
         for (const item of io.items) {
-          keyInvestigations.push(`${item.procedure_name} (${item.modality}): ${io.status}`);
+          const dateStr = (io as any).completed_at?.slice(0, 10) || (io as any).ordered_at?.slice(0, 10) || '';
+          const dateSuffix = dateStr ? ` (${dateStr})` : '';
+          keyInvestigations.push(`${item.procedure_name} (${item.modality}): ${io.status}${dateSuffix}`);
         }
       }
     }
@@ -229,7 +274,32 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       key_investigations: keyInvestigations.length > 0 ? keyInvestigations : undefined,
       condition_at_discharge: conditionAtDischarge || undefined,
       follow_up_instructions: followUpInstructions || undefined,
-      clinical_notes: clinicalNotes.length > 0 ? clinicalNotes : undefined,
+      clinical_notes: (() => {
+        const notes = clinicalNotes.length > 0 ? [...clinicalNotes] : [];
+        // Append supplementary clinical history (labs, imaging, prescriptions, kardex, vitals)
+        if (clinicalHistoryText) notes.push(clinicalHistoryText);
+        // Append AI care plan summary (goals, interventions, discharge criteria)
+        if (storedCarePlans?.length) {
+          const latestPlan = storedCarePlans[0]?.result_data as any;
+          if (latestPlan?.goals?.length || latestPlan?.interventions?.length) {
+            const parts: string[] = [`Care Plan (${storedCarePlans[0].primary_diagnosis || 'admission'}):`];
+            if (latestPlan.goals?.length) {
+              parts.push(`Goals: ${latestPlan.goals.map((g: any) => g.description || g.goal || g).join('; ')}`);
+            }
+            if (latestPlan.interventions?.length) {
+              const interventionItems = latestPlan.interventions.flatMap((cat: any) =>
+                (cat.items || [cat]).map((i: any) => i.action || i.description || i.name || String(i))
+              );
+              if (interventionItems.length) parts.push(`Interventions: ${interventionItems.slice(0, 10).join('; ')}`);
+            }
+            if (latestPlan.discharge_criteria?.length) {
+              parts.push(`Discharge criteria: ${latestPlan.discharge_criteria.join('; ')}`);
+            }
+            notes.push(parts.join(' '));
+          }
+        }
+        return notes.length > 0 ? notes : undefined;
+      })(),
     };
 
     // Encounter context — enrich with ward round data for Complaints & Physical Findings
@@ -250,12 +320,14 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     }
 
     // Examination findings from ward round objectives (most recent)
+    // Strip investigation-like lines to prevent labs leaking into Physical Findings
     if (sourceEncounter?.physical_examination) {
       encounterCtx.examination_findings = sourceEncounter.physical_examination;
     } else if (wardRounds?.results?.length) {
       const objectiveFindings = wardRounds.results
         .filter((r) => r.objective)
-        .map((r) => r.objective!)
+        .map((r) => stripInvestigationLines(r.objective!))
+        .filter(Boolean)
         .slice(0, 3); // Latest 3 rounds
       if (objectiveFindings.length) {
         encounterCtx.examination_findings = objectiveFindings.join('\n\n');
@@ -263,7 +335,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     }
 
     return { docPatientCtx, admissionCtx, encounterCtx };
-  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, patientCtx, sourceEncounter, orders, wardRounds, followUpInstructions]);
+  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, patientCtx, sourceEncounter, orders, wardRounds, storedCarePlans, followUpInstructions, clinicalHistoryText]);
 
   // Build template-alignment fields for TibaBot requests
   const templateFields = useCallback(() => {
@@ -288,10 +360,13 @@ export function useDischargeAI(params: UseDischargeAIParams) {
         generation_mode: generationMode,
         ...templateFields(),
         additional_instructions: [
-          'For the Hospital Course section, write a flowing clinical narrative that synthesizes the ward round findings into a coherent story of the admission.',
-          'Mention key dates and clinical inflection points (e.g. when symptoms improved, when antibiotics were changed, when a complication arose) but do NOT list each ward round as separate S/O/A/P entries.',
-          'Omit advisory notes, placeholder text like "Not documented", and parenthetical instructions — only include documented clinical facts.',
-          clinicalHistoryText || '',
+          'SECTION IDs to use: complaints, history, hospital_course, physical_examination, investigations, management, condition_at_discharge, discharge_medications, discharge_instructions, follow_up, diagnosis.',
+          'Hospital Course: flowing clinical narrative synthesizing ward rounds. Mention key dates and inflection points. Do NOT list each ward round as S/O/A/P.',
+          'Physical Examination: ONLY physical exam findings (inspection, palpation, auscultation, vital signs on examination). Never place lab values here.',
+          'Investigations: table with columns Investigation, Result, Date. Exclude CANCELLED. Group components under parent order.',
+          'Complaints: the presenting complaint and reason for admission.',
+          'Management: treatment given during admission (medications, procedures, nursing interventions).',
+          'Only include documented clinical facts. No advisory notes or placeholders.',
         ].filter(Boolean).join(' '),
       });
 
@@ -398,7 +473,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     } catch {
       toast({ title: 'Generation Failed', description: 'Could not generate discharge summary. Please write sections manually.', variant: 'destructive' });
     }
-  }, [admission, buildAIContext, clinicalDocument, toast, clinicalHistoryText, generationMode, patientInstructions, followUpInstructions, followUpDate, setSections, setEditingSectionId, setSuggestedMeds, setFollowUpInstructions, setFollowUpDate, setPatientInstructions, setInstructionsGenerated]);
+  }, [admission, buildAIContext, clinicalDocument, toast, generationMode, patientInstructions, followUpInstructions, followUpDate, setSections, setEditingSectionId, setSuggestedMeds, setFollowUpInstructions, setFollowUpDate, setPatientInstructions, setInstructionsGenerated]);
 
   // Generate a single section
   const handleGenerateSection = useCallback(async (sectionId: string) => {
@@ -422,7 +497,12 @@ export function useDischargeAI(params: UseDischargeAIParams) {
           section.title.toLowerCase().includes('hospital course')
             ? 'Write a flowing clinical narrative that synthesizes ward round findings into a coherent story of the admission. Mention key dates and clinical inflection points.'
             : '',
-          clinicalHistoryText || '',
+          section.title.toLowerCase().includes('physical') || section.title.toLowerCase().includes('examination')
+            ? 'This section must contain ONLY physical examination findings (inspection, palpation, auscultation, percussion, vital signs on examination). Never place laboratory results or investigation values here.'
+            : '',
+          section.title.toLowerCase().includes('investigation')
+            ? 'Present results in a table with columns: Investigation, Result, Date. Exclude CANCELLED orders. Group component results under their parent order (e.g. WBC under Full Blood Count).'
+            : '',
         ].filter(Boolean).join(' '),
       });
 
@@ -472,7 +552,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     } finally {
       setGeneratingSectionId(null);
     }
-  }, [admission, sections, buildAIContext, clinicalDocument, toast, clinicalHistoryText, generationMode, setSections, setGeneratingSectionId]);
+  }, [admission, sections, buildAIContext, clinicalDocument, toast, generationMode, setSections, setGeneratingSectionId]);
 
   // Generate follow-up instructions
   const handleGenerateFollowUp = useCallback(async () => {
@@ -491,7 +571,6 @@ export function useDischargeAI(params: UseDischargeAIParams) {
         additional_instructions: [
           'Generate ONLY the Follow-up Plan section. Include specific follow-up appointments, timeline, warning signs to watch for, and when to return to hospital.',
           'Be specific with timing (e.g., "Return in 2 weeks" or "Follow-up on 2026-04-06").',
-          clinicalHistoryText || '',
         ].filter(Boolean).join(' '),
       });
 
@@ -521,7 +600,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     } finally {
       setGeneratingFollowUp(false);
     }
-  }, [admission, buildAIContext, clinicalDocument, toast, clinicalHistoryText, generationMode, followUpDate, setGeneratingFollowUp, setFollowUpInstructions, setFollowUpDate]);
+  }, [admission, buildAIContext, clinicalDocument, toast, generationMode, followUpDate, setGeneratingFollowUp, setFollowUpInstructions, setFollowUpDate]);
 
   // Generate patient instructions
   const handleGeneratePatientInstructions = useCallback(async () => {
@@ -543,7 +622,6 @@ export function useDischargeAI(params: UseDischargeAIParams) {
           'Each item should be one sentence. Examples: "Take Paracetamol 1g every 8 hours for 3 days.", "Return to clinic if fever exceeds 38.5°C or wound becomes red/swollen.", "Avoid heavy lifting for 2 weeks."',
           'Do NOT explain what the condition is, how vaccines work, or why treatment was given — that belongs in Patient Education, not here.',
           'Focus on: medications to take, activity restrictions, warning signs requiring return, follow-up appointments, and wound/site care.',
-          clinicalHistoryText || '',
         ].filter(Boolean).join(' '),
       });
 
@@ -571,7 +649,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     } finally {
       setGeneratingPatientInstructions(false);
     }
-  }, [admission, buildAIContext, clinicalDocument, toast, clinicalHistoryText, generationMode, setGeneratingPatientInstructions, setPatientInstructions, setInstructionsGenerated]);
+  }, [admission, buildAIContext, clinicalDocument, toast, generationMode, setGeneratingPatientInstructions, setPatientInstructions, setInstructionsGenerated]);
 
   // Generate medication suggestions
   const handleGenerateMedSuggestions = useCallback(async () => {
@@ -592,7 +670,6 @@ export function useDischargeAI(params: UseDischargeAIParams) {
           'For each medication, provide the drug name, suggested dosage, frequency, and duration on separate lines.',
           'Format each medication as: "- Drug Name | Dosage | Frequency | Duration".',
           'Only include medications that are clinically appropriate for discharge continuity.',
-          clinicalHistoryText || '',
         ].filter(Boolean).join(' '),
       });
 
@@ -625,7 +702,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     } finally {
       setGeneratingMeds(false);
     }
-  }, [admission, buildAIContext, clinicalDocument, toast, clinicalHistoryText, setGeneratingMeds, setSuggestedMeds]);
+  }, [admission, buildAIContext, clinicalDocument, toast, setGeneratingMeds, setSuggestedMeds]);
 
   return {
     clinicalDocument,
