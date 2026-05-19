@@ -36,8 +36,6 @@ export const ROUTED_SECTION_IDS = new Set([
 export const HIDDEN_SECTION_IDS = new Set([
   'patient_information', 'reason_for_admission', 'discharge_diagnosis',
   'patient_demographics', 'admission_details', 'diagnosis',
-  // Data-sourced sections: pre-filled from encounter/orders, not AI-generated
-  'complaints', 'physical_examination', 'investigations', 'history',
 ]);
 
 /**

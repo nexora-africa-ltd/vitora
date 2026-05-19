@@ -57,6 +57,30 @@ export function createSectionId(): string {
   return crypto.randomUUID();
 }
 
+/**
+ * Merge clinical text from the OPD/ER source encounter and the IPD encounter.
+ * Both are considered SSOT for complaints/HPI/physical examination on a
+ * discharge summary. Combines with labels when both are present and differ.
+ */
+export function mergeEncounterClinicalText(
+  opdText?: string | null,
+  ipdText?: string | null,
+  opts?: { opdLabel?: string; ipdLabel?: string }
+): string {
+  const opd = (opdText || '').trim();
+  const ipd = (ipdText || '').trim();
+  if (!opd && !ipd) return '';
+  if (!opd) return ipd;
+  if (!ipd) return opd;
+  if (opd === ipd) return opd;
+  // If one fully contains the other (e.g. IPD copied OPD then appended), keep the longer.
+  if (opd.includes(ipd)) return opd;
+  if (ipd.includes(opd)) return ipd;
+  const opdLabel = opts?.opdLabel ?? 'At presentation (ER/OPD):';
+  const ipdLabel = opts?.ipdLabel ?? 'On admission (IPD):';
+  return `${opdLabel}\n${opd}\n\n${ipdLabel}\n${ipd}`;
+}
+
 /** Assemble sections into flat markdown text for submission and printing.
  *  When `printOnly` is true, excludes sections marked as non-printable. */
 export function assembleSectionsText(secs: DischargeSummarySection[], printOnly = false): string {
@@ -244,13 +268,16 @@ export function splitWrapperSection(section: { section_id: string; title: string
   let currentLines: string[] = [];
 
   for (const line of lines) {
-    // Detect ## heading or standalone **Bold Heading** (not bullet sub-items)
+    // Detect ## heading or standalone **Bold Heading** (with or without trailing colon).
     const h2Match = line.match(/^##\s+(.+)/);
-    const boldMatch = h2Match ? null : line.match(/^\*\*([^*]+)\*\*\s*(.*)/);
-    const isBulletItem = /^\s*[-•*]\s/.test(line) || /^\s*\d+[.)]\s/.test(line);
-    // Trailing colon indicates a label/sub-item, not a section heading
-    const hasTrailingColon = boldMatch?.[2]?.trim().startsWith(':') || boldMatch?.[1]?.trim().endsWith(':');
-    const heading = h2Match?.[1]?.trim() || (!isBulletItem && !hasTrailingColon && boldMatch?.[1]?.trim()) || '';
+    // Match: optional leading bullet, **Bold text** optional colon, optional trailing content
+    const boldMatch = h2Match ? null : line.match(/^\s*(?:[-•*]\s+)?\*\*([^*]+?)\*\*\s*:?\s*(.*)/);
+    const isNumberedBullet = /^\s*\d+[.)]\s/.test(line);
+    // Strip trailing colon from bold heading (the AI uses "**Heading**:" format)
+    const boldHeading = boldMatch?.[1]?.trim().replace(/:$/, '') || '';
+    // Only treat as heading if bold text is reasonably short (real headings are 1-6 words, not full sentences)
+    const isHeadingLike = boldHeading && boldHeading.split(/\s+/).length <= 6;
+    const heading = h2Match?.[1]?.trim() || (!isNumberedBullet && isHeadingLike ? boldHeading : '') || '';
 
     if (heading) {
       if (currentTitle && currentLines.some((l) => l.trim())) {
@@ -269,8 +296,10 @@ export function splitWrapperSection(section: { section_id: string; title: string
     subSections.push({ section_id: currentId, title: currentTitle, content: currentLines.join('\n').trim() });
   }
 
-  // Only split if we found multiple sub-sections; otherwise return original
-  return subSections.length >= 2 ? subSections : [section];
+  // If we extracted any sub-sections, use them (and drop the wrapper).
+  // If nothing extractable, drop the wrapper entirely — it duplicates content
+  // already in the properly-mapped sections.
+  return subSections.length > 0 ? subSections : [];
 }
 
 /** Case-insensitive fuzzy title match with keyword awareness. */

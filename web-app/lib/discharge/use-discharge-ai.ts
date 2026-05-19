@@ -6,16 +6,15 @@ import type { Encounter } from '@/lib/types/encounter';
 import type { DischargeType, DischargeTemplateLayout, DischargeTemplateSectionConfig, DischargeMedication, AdmissionOrdersResponse, WardRound, TemperatureReading, BPMonitoringReading } from '@/lib/types/inpatient';
 import type { DiagnosisEntry } from '@/components/shared';
 import type { DischargeSummarySection, ParsedSection, SuggestedMedication } from './types';
-import { ROUTED_SECTION_IDS, HIDDEN_SECTION_IDS } from './types';
+import { ROUTED_SECTION_IDS, HIDDEN_SECTION_IDS, DEDICATED_FIELD_KEYS } from './types';
 import { buildSourceEncounterClinicalSummary } from '@/lib/utils/inpatient-ai-context';
 import {
   parseAdvisories,
   createSectionId,
-  parseFullTextIntoSections,
-  splitWrapperSection,
   fuzzyTitleMatch,
   extractFollowUpDate,
   parseMedicationLines,
+  mergeEncounterClinicalText,
 } from './utils';
 
 // ---------------------------------------------------------------------------
@@ -62,6 +61,16 @@ const LEGACY_KEY_MAP: Record<string, string> = {
   follow_up_plan: 'follow_up',
   treatment: 'management',
   treatment_given: 'management',
+  medications_given: 'management',
+  medications_given_during_admission: 'management',
+  medications_administered_during_admission: 'management',
+  medications_administered: 'management',
+  procedures: 'management',
+  nursing_interventions: 'management',
+  clinical_notes_events: 'hospital_course',
+  clinical_notes: 'hospital_course',
+  clinical_events: 'hospital_course',
+  complications: 'hospital_course',
   physical_findings: 'physical_examination',
   examination: 'physical_examination',
 };
@@ -89,6 +98,8 @@ interface UseDischargeAIParams {
   dischargeType: DischargeType;
   patientCtx: AIPatientContext;
   sourceEncounter?: Encounter | null;
+  /** The IPD encounter created on admission (co-SSOT for complaints/HPI/exam) */
+  ipdEncounter?: Encounter | null;
   clinicalHistoryText: string;
   generationMode: ClinicalDocGenerationMode;
   /** Admission orders (labs, imaging, prescriptions) for context enrichment */
@@ -133,6 +144,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     dischargeType,
     patientCtx,
     sourceEncounter,
+    ipdEncounter,
     clinicalHistoryText,
     generationMode,
     orders,
@@ -317,25 +329,36 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       })(),
     };
 
-    // Encounter context — enrich with ward round data for Complaints & Physical Findings
+    // Encounter context — SSOT for Complaints, HPI, and Physical Findings is the
+    // pair of (OPD/ER source encounter, IPD encounter). Ward rounds are a fallback.
+    const mergedComplaint = mergeEncounterClinicalText(
+      sourceEncounter?.chief_complaint,
+      ipdEncounter?.chief_complaint,
+    );
     const encounterCtx: ClinicalDocEncounterContext = {
-      chief_complaint:
-        sourceEncounter?.chief_complaint
-        || '',
+      chief_complaint: mergedComplaint || '',
     };
 
-    // HPI from the earliest ward round's subjective (presenting complaint detail)
-    if (sourceEncounter?.history_of_present_illness) {
-      encounterCtx.hpi = sourceEncounter.history_of_present_illness;
+    // HPI from OPD + IPD encounters; fall back to earliest ward round subjective.
+    const mergedHpi = mergeEncounterClinicalText(
+      sourceEncounter?.history_of_present_illness,
+      ipdEncounter?.history_of_present_illness,
+    );
+    if (mergedHpi) {
+      encounterCtx.hpi = mergedHpi;
     } else if (wardRounds?.results?.length) {
       const earliest = wardRounds.results[wardRounds.results.length - 1];
       if (earliest?.subjective) encounterCtx.hpi = earliest.subjective;
     }
 
-    // Examination findings from ward round objectives (most recent)
-    // Strip investigation-like lines to prevent labs leaking into Physical Findings
-    if (sourceEncounter?.physical_examination) {
-      encounterCtx.examination_findings = sourceEncounter.physical_examination;
+    // Examination findings from OPD + IPD encounters; fall back to recent ward
+    // round objectives (stripped of lab/imaging lines to keep PE clean).
+    const mergedExam = mergeEncounterClinicalText(
+      sourceEncounter?.physical_examination,
+      ipdEncounter?.physical_examination,
+    );
+    if (mergedExam) {
+      encounterCtx.examination_findings = mergedExam;
     } else if (wardRounds?.results?.length) {
       const objectiveFindings = wardRounds.results
         .filter((r) => r.objective)
@@ -388,153 +411,316 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     }
 
     return { docPatientCtx, admissionCtx, encounterCtx };
-  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, patientCtx, sourceEncounter, orders, wardRounds, storedCarePlans, followUpInstructions, clinicalHistoryText, temperatureReadings, bpReadings]);
+  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, patientCtx, sourceEncounter, ipdEncounter, orders, wardRounds, storedCarePlans, followUpInstructions, clinicalHistoryText, temperatureReadings, bpReadings]);
 
   // Build template-alignment fields for TibaBot requests
   const templateFields = useCallback(() => {
     const fields: Record<string, unknown> = {};
     if (templateLayout) fields.discharge_layout = templateLayout;
-    if (templateSections?.length) fields.template_sections = templateSections;
+    if (templateSections?.length) {
+      // Only send sections TibaBot should generate — exclude data-sourced and dedicated-field sections
+      const aiSections = templateSections.filter(
+        (s: any) => s.enabled && !HIDDEN_SECTION_IDS.has(s.key) && !DEDICATED_FIELD_KEYS.has(s.key)
+      );
+      // Re-add routed sections that TibaBot should still produce content for
+      const routedSections = templateSections.filter(
+        (s: any) => s.enabled && ROUTED_SECTION_IDS.has(s.key)
+      );
+      fields.template_sections = [...aiSections, ...routedSections];
+    }
     return fields;
   }, [templateLayout, templateSections]);
 
-  // Generate ALL sections
+  // Generate ALL sections — fires one focused TibaBot call per section,
+  // run in parallel with a small concurrency cap. This avoids the batch-merge
+  // problems (sections collapsing into one, "Document" wrappers, duplication)
+  // by giving each section a single-purpose prompt.
   const handleGenerateAll = useCallback(async () => {
     const ctx = buildAIContext();
     if (!ctx || !admission) return;
 
-    try {
-      const result = await clinicalDocument.mutateAsync({
-        document_type: 'discharge_summary',
-        patient_context: ctx.docPatientCtx,
-        admission_context: ctx.admissionCtx,
-        encounter_context: ctx.encounterCtx,
-        output_format: 'structured',
-        generation_mode: generationMode,
-        ...templateFields(),
-        additional_instructions: [
-          'SECTION IDs to use: hospital_course, management, condition_at_discharge, discharge_medications, discharge_instructions, follow_up, diagnosis.',
-          'Do NOT generate sections for: complaints, physical_examination, investigations, history — these are pre-filled from clinical data.',
-          'Hospital Course: flowing clinical narrative synthesizing ward rounds. Mention key dates and inflection points. Do NOT list each ward round as S/O/A/P.',
-          'Management: treatment given during admission (medications, procedures, nursing interventions).',
-          'Only include documented clinical facts. No advisory notes or placeholders.',
-        ].filter(Boolean).join(' '),
-      });
+    // Build a focused prompt for a narrative section based on its title.
+    const promptFor = (title: string): string => {
+      const t = title.toLowerCase();
+      const hints: string[] = [
+        `Generate ONLY the "${title}" section of a discharge summary. Return focused, detailed content for this section only — do NOT include other sections.`,
+      ];
+      if (t.includes('complaint')) {
+        hints.push(
+          'This section must contain the patient\'s presenting SYMPTOMS and COMPLAINTS — what the patient reported (e.g. "abdominal pain for 2 days", "fever and vomiting").',
+          'NEVER put the medical diagnosis here (e.g. "Acute Appendicitis" is a DIAGNOSIS, not a complaint).',
+          'If chief_complaint is empty in the context, infer symptoms from the HPI or ward round subjective notes.',
+        );
+      }
+      if (t.includes('hospital course')) {
+        hints.push('Write a flowing clinical narrative that synthesizes ward round findings into a coherent story of the admission. Mention key dates and clinical inflection points. Do NOT list medications or treatments here — those belong in Management.');
+      }
+      if (t.includes('management') || t.includes('treatment')) {
+        hints.push('List specific treatments administered: medications given during admission, procedures performed, nursing interventions. Do NOT repeat the hospital course narrative.');
+      }
+      if (t.includes('condition') && t.includes('discharge')) {
+        hints.push("Describe the patient's clinical state at time of discharge: vitals, mobility, mental status, residual symptoms.");
+      }
+      if (t.includes('physical') || t.includes('examination')) {
+        hints.push('This section must contain ONLY physical examination findings (inspection, palpation, auscultation, percussion, vital signs on examination). Never place laboratory results or investigation values here.');
+      }
+      if (t.includes('investigation')) {
+        hints.push(
+          'List ALL investigations done during the admission with their results.',
+          'Use the key_investigations from the admission context as your primary data source.',
+          'Format as a list: "- Investigation: Result (Date)". Include ALL available results, not just abnormal ones.',
+          'If no investigation results are available in the context, state "No investigations recorded during this admission."',
+        );
+      }
+      hints.push('Only include documented clinical facts. No advisory notes or placeholders.');
+      return hints.join(' ');
+    };
 
-      // Normalize legacy section keys in the response
-      if (result.sections?.length) {
-        result.sections = normalizeSections(result.sections);
+    // Narrative sections to generate (excludes routed/dedicated/hidden keys).
+    const narrativeSections = sections.filter((s) => {
+      const key = s.templateKey ?? '';
+      return !ROUTED_SECTION_IDS.has(key)
+        && !DEDICATED_FIELD_KEYS.has(key)
+        && !HIDDEN_SECTION_IDS.has(key);
+    });
 
-        // Split any "wrapper" sections (e.g. a single "Document" section containing all content)
-        result.sections = result.sections.flatMap((s) => splitWrapperSection(s));
-        // Re-normalize after splitting (sub-section IDs may need mapping)
-        result.sections = normalizeSections(result.sections);
+    type TaskResult = { ok: boolean; label: string };
 
-        for (const section of result.sections) {
-          const { cleanContent } = parseAdvisories(section.content);
-          const sid = section.section_id;
+    const generateNarrativeTask = async (section: DischargeSummarySection): Promise<TaskResult> => {
+      try {
+        const result = await clinicalDocument.mutateAsync({
+          document_type: 'discharge_summary',
+          patient_context: ctx.docPatientCtx,
+          admission_context: ctx.admissionCtx,
+          encounter_context: ctx.encounterCtx,
+          output_format: 'structured',
+          generation_mode: generationMode,
+          ...templateFields(),
+          additional_instructions: promptFor(section.title),
+        });
 
-          if ((sid === 'follow_up' || sid === 'follow_up_plan') && cleanContent) {
-            if (!followUpInstructions) {
-              const firstLine = cleanContent.split('\n').find((l) => l.trim());
-              if (firstLine) setFollowUpInstructions(firstLine.replace(/^[-*\d.]+\s*/, '').replace(/\*\*/g, '').trim());
-            }
-            if (!followUpDate) {
-              const extractedDate = extractFollowUpDate(cleanContent);
-              if (extractedDate) setFollowUpDate(extractedDate);
-            }
+        let content = '';
+        let advisories: ParsedSection['advisories'] = [];
+        let provenance: string | undefined;
+
+        if (result.sections?.length) {
+          const normalized = normalizeSections(result.sections);
+          const match = normalized.find((s: any) =>
+            (section.templateKey && s.section_id === section.templateKey) ||
+            fuzzyTitleMatch(s.title, section.title)
+          ) ?? normalized[0];
+          if (match) {
+            const parsed = parseAdvisories(match.content);
+            content = parsed.cleanContent;
+            advisories = parsed.advisories;
+            provenance = result.section_provenance?.[match.section_id] || 'llm_generated';
           }
-
-          if (sid === 'discharge_medications' && cleanContent) {
-            const medLines = cleanContent.split('\n').filter((l) => l.trim());
-            const medParsed = parseMedicationLines(medLines);
-            if (medParsed.length > 0) setSuggestedMeds(medParsed);
-          }
-
-          if (sid === 'discharge_instructions' && cleanContent && !patientInstructions) {
-            setPatientInstructions(cleanContent);
-            setInstructionsGenerated(true);
-          }
+        } else if (result.full_text) {
+          const parsed = parseAdvisories(result.full_text);
+          content = parsed.cleanContent;
+          advisories = parsed.advisories;
+          provenance = 'llm_generated';
         }
 
-        const aiNarrativeSections = result.sections.filter(
-          (s: any) => !ROUTED_SECTION_IDS.has(s.section_id) && !HIDDEN_SECTION_IDS.has(s.section_id)
-        );
-
-        setSections((prev) => {
-          let updated = [...prev];
-          const matchedIds = new Set<string>();
-
-          for (const aiSection of aiNarrativeSections) {
-            const { cleanContent, advisories } = parseAdvisories(aiSection.content);
-            const provenance = result.section_provenance?.[aiSection.section_id];
-
-            // Match by template key first (exact), then fall back to fuzzy title
-            const match = updated.find((s) =>
-              !matchedIds.has(s.id) && (
-                (s.templateKey && s.templateKey === aiSection.section_id) ||
-                fuzzyTitleMatch(s.title, aiSection.title)
-              )
-            );
-
-            if (match) {
-              matchedIds.add(match.id);
-              updated = updated.map((s) =>
-                s.id === match.id
-                  ? { ...s, content: cleanContent, source: 'ai' as const, provenance, advisories }
-                  : s
-              );
-            } else {
-              updated.push({
-                id: createSectionId(),
-                title: aiSection.title,
-                content: cleanContent,
-                source: 'ai',
-                provenance,
-                advisories,
-              });
-            }
-          }
-          return updated;
-        });
-
-        setEditingSectionId(null);
-        toast({
-          title: generationMode === 'generate' ? 'Strict Draft Generated' : 'Draft Generated',
-          description: generationMode === 'generate'
-            ? 'Facts-only discharge summary generated. Audit-safe — review before filing.'
-            : 'TibaBot drafted all sections. Edit individually as needed.',
-        });
-      } else if (result.full_text) {
-        const parsedSections = parseFullTextIntoSections(result.full_text);
-        setSections((prev) => {
-          let updated = [...prev];
-          const matchedIds = new Set<string>();
-
-          for (const parsed of parsedSections) {
-            const match = updated.find((s) =>
-              !matchedIds.has(s.id) && fuzzyTitleMatch(s.title, parsed.title)
-            );
-            if (match) {
-              matchedIds.add(match.id);
-              updated = updated.map((s) =>
-                s.id === match.id ? { ...s, content: parsed.content, source: 'ai' as const } : s
-              );
-            } else {
-              updated.push(parsed);
-            }
-          }
-          return updated;
-        });
-        toast({
-          title: generationMode === 'generate' ? 'Strict Draft Generated' : 'Draft Generated',
-          description: 'TibaBot generated a discharge summary. Review and edit sections as needed.',
-        });
+        if (content) {
+          setSections((prev) =>
+            prev.map((s) =>
+              s.id === section.id
+                ? { ...s, content, source: 'ai' as const, provenance, advisories }
+                : s
+            )
+          );
+        }
+        return { ok: !!content, label: section.title };
+      } catch {
+        return { ok: false, label: section.title };
       }
-    } catch {
-      toast({ title: 'Generation Failed', description: 'Could not generate discharge summary. Please write sections manually.', variant: 'destructive' });
+    };
+
+    const generateMedsTask = async (): Promise<TaskResult> => {
+      try {
+        const result = await clinicalDocument.mutateAsync({
+          document_type: 'discharge_summary',
+          patient_context: ctx.docPatientCtx,
+          admission_context: ctx.admissionCtx,
+          encounter_context: ctx.encounterCtx,
+          output_format: 'structured',
+          generation_mode: 'generate',
+          ...templateFields(),
+          additional_instructions: [
+            'Generate ONLY the Discharge Medications section.',
+            'For each medication, provide the drug name, suggested dosage, frequency, and duration on separate lines.',
+            'Format each medication as: "- Drug Name | Dosage | Frequency | Duration".',
+            'Only include medications that are clinically appropriate for discharge continuity.',
+          ].join(' '),
+        });
+
+        let medText = '';
+        if (result.sections?.length) {
+          const match = result.sections.find((s: any) => /medication/i.test(s.title)) || result.sections[0];
+          if (match) medText = parseAdvisories(match.content).cleanContent;
+        } else if (result.full_text) {
+          medText = parseAdvisories(result.full_text).cleanContent;
+        }
+
+        if (medText) {
+          const lines = medText.split('\n').filter((l) => l.trim());
+          const parsed = parseMedicationLines(lines);
+          if (parsed.length > 0) setSuggestedMeds(parsed);
+        }
+        return { ok: true, label: 'Discharge Medications' };
+      } catch {
+        return { ok: false, label: 'Discharge Medications' };
+      }
+    };
+
+    const generateInstructionsTask = async (): Promise<TaskResult> => {
+      try {
+        const result = await clinicalDocument.mutateAsync({
+          document_type: 'discharge_summary',
+          patient_context: ctx.docPatientCtx,
+          admission_context: ctx.admissionCtx,
+          encounter_context: ctx.encounterCtx,
+          output_format: 'structured',
+          generation_mode: generationMode,
+          ...templateFields(),
+          additional_instructions: [
+            'Generate concise, actionable patient discharge instructions — NOT patient education.',
+            'Format as a short numbered list of 4-8 practical instructions the patient must follow at home.',
+            'Each item should be one sentence. Examples: "Take Paracetamol 1g every 8 hours for 3 days.", "Return to clinic if fever exceeds 38.5°C or wound becomes red/swollen.", "Avoid heavy lifting for 2 weeks."',
+            'Do NOT explain what the condition is, how vaccines work, or why treatment was given — that belongs in Patient Education, not here.',
+            'Focus on: medications to take, activity restrictions, warning signs requiring return, follow-up appointments, and wound/site care.',
+          ].join(' '),
+        });
+
+        let content = '';
+        if (result.sections?.length) {
+          const match = result.sections.find((s: any) => /patient|education|instruction|discharge/i.test(s.title)) || result.sections[0];
+          if (match) content = parseAdvisories(match.content).cleanContent;
+        } else if (result.full_text) {
+          content = parseAdvisories(result.full_text).cleanContent;
+        }
+
+        if (content) {
+          setPatientInstructions(content);
+          setInstructionsGenerated(true);
+        }
+        return { ok: true, label: 'Patient Instructions' };
+      } catch {
+        return { ok: false, label: 'Patient Instructions' };
+      }
+    };
+
+    const generateFollowUpTask = async (): Promise<TaskResult> => {
+      try {
+        const result = await clinicalDocument.mutateAsync({
+          document_type: 'discharge_summary',
+          patient_context: ctx.docPatientCtx,
+          admission_context: ctx.admissionCtx,
+          encounter_context: ctx.encounterCtx,
+          output_format: 'structured',
+          generation_mode: generationMode,
+          ...templateFields(),
+          additional_instructions: [
+            'Generate ONLY the Follow-up Plan section. Include specific follow-up appointments, timeline, warning signs to watch for, and when to return to hospital.',
+            'Be specific with timing (e.g., "Return in 2 weeks" or "Follow-up on 2026-04-06").',
+          ].join(' '),
+        });
+
+        let content = '';
+        if (result.sections?.length) {
+          const match = result.sections.find((s: any) => /follow.?up|plan/i.test(s.title)) || result.sections[0];
+          if (match) content = parseAdvisories(match.content).cleanContent;
+        } else if (result.full_text) {
+          content = parseAdvisories(result.full_text).cleanContent;
+        }
+
+        if (content) {
+          if (!followUpInstructions) {
+            const firstLine = content.split('\n').find((l) => l.trim());
+            if (firstLine) setFollowUpInstructions(firstLine.replace(/^[-*\d.]+\s*/, '').replace(/\*\*/g, '').trim());
+          }
+          if (!followUpDate) {
+            const extractedDate = extractFollowUpDate(content);
+            if (extractedDate) setFollowUpDate(extractedDate);
+          }
+        }
+        return { ok: true, label: 'Follow-up' };
+      } catch {
+        return { ok: false, label: 'Follow-up' };
+      }
+    };
+
+    // Simple concurrency-limited task runner (cap = 2 in-flight calls).
+    // Kept low so dev SQLite (single writer) doesn't hit "database is locked".
+    const runWithLimit = async <T,>(tasks: Array<() => Promise<T>>, limit: number): Promise<T[]> => {
+      const results: T[] = new Array(tasks.length);
+      let idx = 0;
+      const workers = Array.from({ length: Math.min(limit, tasks.length) }, async () => {
+        while (true) {
+          const myIdx = idx++;
+          if (myIdx >= tasks.length) return;
+          const task = tasks[myIdx]!;
+          results[myIdx] = await task();
+        }
+      });
+      await Promise.all(workers);
+      return results;
+    };
+
+    setEditingSectionId(null);
+
+    const allTasks: Array<() => Promise<TaskResult>> = [
+      ...narrativeSections.map((s) => () => generateNarrativeTask(s)),
+      () => generateMedsTask(),
+      () => generateInstructionsTask(),
+      () => generateFollowUpTask(),
+    ];
+
+    if (allTasks.length === 0) {
+      toast({ title: 'Nothing to generate', description: 'All sections are pre-filled or hidden.' });
+      return;
     }
-  }, [admission, buildAIContext, clinicalDocument, toast, generationMode, patientInstructions, followUpInstructions, followUpDate, setSections, setEditingSectionId, setSuggestedMeds, setFollowUpInstructions, setFollowUpDate, setPatientInstructions, setInstructionsGenerated]);
+
+    const results = await runWithLimit(allTasks, 2);
+    const failed = results.filter((r) => !r.ok);
+    const success = results.length - failed.length;
+
+    if (failed.length === 0) {
+      toast({
+        title: generationMode === 'generate' ? 'Strict Draft Generated' : 'Draft Generated',
+        description: `TibaBot generated ${success} section(s). Review and edit as needed.`,
+      });
+    } else if (success === 0) {
+      toast({
+        title: 'Generation Failed',
+        description: 'Could not generate any sections. Please write them manually.',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Partial Generation',
+        description: `${success} succeeded, ${failed.length} failed (${failed.map((r) => r.label).join(', ')}).`,
+        variant: 'destructive',
+      });
+    }
+  }, [
+    admission,
+    sections,
+    buildAIContext,
+    clinicalDocument,
+    toast,
+    generationMode,
+    followUpInstructions,
+    followUpDate,
+    setSections,
+    setEditingSectionId,
+    setSuggestedMeds,
+    setFollowUpInstructions,
+    setFollowUpDate,
+    setPatientInstructions,
+    setInstructionsGenerated,
+  ]);
 
   // Generate a single section
   const handleGenerateSection = useCallback(async (sectionId: string) => {

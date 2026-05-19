@@ -29,3 +29,14 @@ class CoreConfig(AppConfig):
             from hmis.apps.core.projections.setup import register_projections
 
             register_projections()
+
+        # Enable WAL mode for SQLite to allow concurrent reads during writes.
+        from django.db.backends.signals import connection_created
+
+        def _enable_wal(sender, connection, **kwargs):  # noqa: ARG001
+            if connection.vendor == "sqlite":
+                cursor = connection.cursor()
+                cursor.execute("PRAGMA journal_mode=WAL;")
+                cursor.execute("PRAGMA synchronous=NORMAL;")
+
+        connection_created.connect(_enable_wal, dispatch_uid="sqlite_wal_mode")
