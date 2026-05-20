@@ -73,7 +73,7 @@ class DrugViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["generic_name", "brand_names", "code"]
-    filterset_fields = ["form", "schedule", "is_essential", "is_active"]
+    filterset_fields = ["form", "schedule", "is_essential", "is_active", "item_type"]
     ordering_fields = ["generic_name", "created_at"]
     ordering = ["generic_name"]
 
@@ -193,14 +193,15 @@ class StockBatchViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     ).all()
     serializer_class = StockBatchSerializer
     permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ["drug", "status"]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["drug", "status", "drug__item_type", "store_location"]
+    search_fields = ["batch_number", "drug__generic_name", "drug__brand_name", "supplier__name"]
     ordering_fields = ["expiry_date", "received_date", "created_at"]
     ordering = ["expiry_date"]
 
     def perform_create(self, serializer):
-        """Set received_by to current user when creating new stock."""
-        serializer.save(received_by=self.request.user)
+        """Set received_by and tenant context when creating new stock."""
+        serializer.save(received_by=self.request.user, **self.get_tenant_save_kwargs())
 
     @action(detail=False, methods=["get"])
     def by_drug(self, request):

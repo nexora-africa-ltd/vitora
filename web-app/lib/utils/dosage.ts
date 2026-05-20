@@ -121,6 +121,8 @@ export function getUnitDisplayName(form: DrugForm, plural = false): string {
     GEL: ['application', 'applications'],
     PATCH: ['patch', 'patches'],
     SPRAY: ['spray', 'sprays'],
+    UNIT: ['unit', 'units'],
+    OTHER: ['unit', 'units'],
   };
 
   const [singular, pluralForm] = units[form] || ['unit', 'units'];
@@ -320,6 +322,8 @@ export function getSuggestedRoute(form: DrugForm): RouteSuggestion {
     SPRAY: { value: 'INH', label: 'Inhaled', isDefault: true },
     SUPPOSITORY: { value: 'PR', label: 'Rectal (PR)', isDefault: true },
     PATCH: { value: 'TOPICAL', label: 'Topical', isDefault: true },
+    UNIT: { value: 'TOPICAL', label: 'Topical', isDefault: true },
+    OTHER: { value: 'PO', label: 'Oral (PO)', isDefault: true },
   };
 
   return routeMap[form] || { value: 'PO', label: 'Oral (PO)', isDefault: true };

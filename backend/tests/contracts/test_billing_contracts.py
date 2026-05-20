@@ -24,6 +24,11 @@ from hmis.apps.billing.serializers import (
     ServiceCategorySerializer,
     ServiceSerializer,
     SHAContractSummarySerializer,
+    SupplierBillCreateSerializer,
+    SupplierBillItemSerializer,
+    SupplierBillSerializer,
+    SupplierPaymentCreateSerializer,
+    SupplierPaymentSerializer,
 )
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
@@ -429,6 +434,120 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "requires_quantity",
                 "sha_code",
                 "unit_price",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        SupplierBillCreateSerializer,
+        frozenset(
+            {
+                "amount_invoiced",
+                "bill_date",
+                "due_date",
+                "grn",
+                "items",
+                "notes",
+                "purchase_order",
+                "supplier",
+                "supplier_invoice_number",
+                "tax_amount",
+            }
+        ),
+    ),
+    (
+        SupplierBillItemSerializer,
+        frozenset(
+            {
+                "description",
+                "grn_item",
+                "id",
+                "line_total",
+                "quantity",
+                "unit_cost",
+            }
+        ),
+    ),
+    (
+        SupplierBillSerializer,
+        frozenset(
+            {
+                "aging_bucket",
+                "amount_invoiced",
+                "amount_paid",
+                "approved_at",
+                "approved_by",
+                "approved_by_username",
+                "balance",
+                "bill_date",
+                "bill_number",
+                "created_at",
+                "created_by",
+                "created_by_username",
+                "days_overdue",
+                "due_date",
+                "grn",
+                "grn_amount",
+                "grn_number",
+                "id",
+                "is_matched",
+                "is_overdue",
+                "items",
+                "match_notes",
+                "match_variance",
+                "notes",
+                "po_amount",
+                "po_number",
+                "purchase_order",
+                "received_date",
+                "status",
+                "supplier",
+                "supplier_invoice_number",
+                "supplier_name",
+                "tax_amount",
+                "total_amount",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        SupplierPaymentCreateSerializer,
+        frozenset(
+            {
+                "amount",
+                "bill",
+                "method",
+                "notes",
+                "payment_date",
+                "payment_details",
+                "supplier",
+                "transaction_reference",
+            }
+        ),
+    ),
+    (
+        SupplierPaymentSerializer,
+        frozenset(
+            {
+                "amount",
+                "bill",
+                "bill_number",
+                "created_at",
+                "currency",
+                "failure_reason",
+                "id",
+                "method",
+                "notes",
+                "paid_by",
+                "paid_by_username",
+                "payment_date",
+                "payment_details",
+                "payment_reference",
+                "processed_at",
+                "status",
+                "supplier",
+                "supplier_name",
+                "transaction_reference",
                 "updated_at",
             }
         ),

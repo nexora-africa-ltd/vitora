@@ -231,7 +231,7 @@ export function AlertsPanel({
   const handleExport = () => {
     try {
       // Create CSV content
-      const headers = ['Drug Name', 'Drug Code', 'Alert Type', 'Severity', 'Message', 'Batch Number', 'Created At', 'Acknowledged', 'Resolved'];
+      const headers = ['Item Name', 'Item Code', 'Alert Type', 'Severity', 'Message', 'Batch Number', 'Created At', 'Acknowledged', 'Resolved'];
       const rows = filteredAlerts.map(alert => [
         alert.drug_name || '',
         alert.drug_code || '',

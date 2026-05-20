@@ -92,6 +92,7 @@ class DrugSerializer(serializers.ModelSerializer):
             "category",  # Primary category (backward compatible)
             "categories",  # All categories (new)
             "unit",
+            "item_type",
             "schedule",
             "is_essential",
             "keml_code",

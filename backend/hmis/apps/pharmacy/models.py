@@ -62,7 +62,17 @@ def generate_prescription_number():
 
 
 class Drug(models.Model):
-    """Drug master catalog entry."""
+    """Drug master catalog entry.
+
+    Despite the name 'Drug', this model represents any stockable item
+    in the pharmacy/stores — medications, consumables, and reagents.
+    The `item_type` field distinguishes between them.
+    """
+
+    class ItemType(models.TextChoices):
+        MEDICATION = "MEDICATION", "Medication"
+        CONSUMABLE = "CONSUMABLE", "Consumable"
+        REAGENT = "REAGENT", "Reagent"
 
     DRUG_FORMS = [
         ("TABLET", "Tablet"),
@@ -80,6 +90,8 @@ class Drug(models.Model):
         ("GEL", "Gel"),
         ("PATCH", "Patch"),
         ("SPRAY", "Spray"),
+        ("UNIT", "Unit/Piece"),
+        ("OTHER", "Other"),
     ]
 
     DRUG_CATEGORIES = [
@@ -127,6 +139,15 @@ class Drug(models.Model):
     requires_prescription = models.BooleanField(default=True)
     is_controlled = models.BooleanField(default=False)
     is_narcotic = models.BooleanField(default=False)
+
+    # Item type (distinguishes medications from consumables/reagents)
+    item_type = models.CharField(
+        max_length=20,
+        choices=ItemType.choices,
+        default=ItemType.MEDICATION,
+        db_index=True,
+        help_text="MEDICATION for drugs, CONSUMABLE for medical supplies, REAGENT for lab reagents",
+    )
 
     # Kenya-specific
     keml_code = models.CharField(max_length=20, blank=True)

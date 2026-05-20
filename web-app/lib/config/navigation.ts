@@ -340,7 +340,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Dashboard', href: '/pharmacy', icon: LayoutDashboard, actionKey: 'pharmacy.view_dashboard' },
       { label: 'Dispensing', href: '/pharmacy/dispensing', icon: FlaskConical, actionKey: 'pharmacy.dispense' },
       { label: 'Prescriptions', href: '/pharmacy/prescriptions', icon: FileText, actionKey: 'pharmacy.view_prescriptions' },
-      { label: 'Drug Catalog', href: '/pharmacy/drugs', icon: Pill, actionKey: 'pharmacy.view_drugs' },
+      { label: 'Item Catalog', href: '/pharmacy/drugs', icon: Pill, actionKey: 'pharmacy.view_drugs' },
       { label: 'Quick Receive', href: '/pharmacy/stock/receive', icon: ClipboardList, actionKey: 'pharmacy.manage_stock' },
       { label: 'Adjustments', href: '/pharmacy/stock/adjustments', icon: Scale, actionKey: 'pharmacy.manage_stock' },
       { label: 'Reports', href: '/pharmacy/reports', icon: BarChart3, actionKey: 'pharmacy.view_reports' },

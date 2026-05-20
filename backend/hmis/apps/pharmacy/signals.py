@@ -444,3 +444,71 @@ def _notify_stock_alert(instance, critical: bool):
         )
     except Exception:
         logger.exception("Failed to notify about stock alert for batch %s", instance.id)
+
+
+# ---------------------------------------------------------------------------
+# Ward stock auto-sync on batch receive
+# ---------------------------------------------------------------------------
+
+
+@receiver(post_save, sender=StockBatch)
+def sync_ward_stock_on_batch_receive(sender, instance, created, **kwargs):
+    """
+    When a StockBatch is created at a WARD_STORE location, auto-create/update
+    the corresponding WardStock record and log a REPLENISH transaction.
+
+    This bridges the gap between pharmacy stock (batch-level) and ward stock
+    (aggregate level tracking).
+    """
+    if not created:
+        return
+
+    store_location = instance.store_location
+    if not store_location:
+        return
+
+    try:
+        from hmis.apps.inventory.models import (
+            StoreLocationType,
+            WardStock,
+            WardStockTransaction,
+            WardTransactionType,
+        )
+
+        if store_location.location_type != StoreLocationType.WARD_STORE:
+            return
+
+        facility = instance.facility
+        if not facility:
+            return
+
+        # Get or create the WardStock record for this drug + store location
+        ward_stock, _ = WardStock.objects.get_or_create(
+            store_location=store_location,
+            drug=instance.drug,
+            defaults={
+                "facility": facility,
+                "organization": instance.organization,
+                "quantity_available": 0,
+            },
+        )
+
+        # Create a REPLENISH transaction
+        WardStockTransaction.objects.create(
+            ward_stock=ward_stock,
+            transaction_type=WardTransactionType.REPLENISH,
+            quantity=instance.quantity_received,
+            batch=instance,
+            performed_by=instance.received_by,
+            notes=f"Auto-synced from batch {instance.batch_number}",
+        )
+
+        logger.info(
+            "Auto-synced batch %s to ward stock (drug=%s, store=%s, qty=%d)",
+            instance.batch_number,
+            instance.drug_id,
+            store_location.code,
+            instance.quantity_received,
+        )
+    except Exception:
+        logger.exception("Failed to sync batch %s to ward stock", instance.batch_number)

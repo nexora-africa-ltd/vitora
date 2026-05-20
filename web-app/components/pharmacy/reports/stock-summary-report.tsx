@@ -89,7 +89,7 @@ export function StockSummaryReport() {
   const handleExport = () => {
     try {
       const csvContent = [
-        ['Drug Name', 'Total Quantity', 'Reorder Level', 'Status', 'Batches'].join(','),
+        ['Item Name', 'Total Quantity', 'Reorder Level', 'Status', 'Batches'].join(','),
         ...filteredData.map((item: StockSummaryItem) => [
           `"${item.drug_name}"`,
           item.total_quantity,
@@ -161,7 +161,7 @@ export function StockSummaryReport() {
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Package className="h-5 w-5" />
             Stock Summary
-            <HelpPopover content="Current inventory levels by drug with batch breakdown. Expand rows to view individual batch details." />
+            <HelpPopover content="Current inventory levels by item with batch breakdown. Expand rows to view individual batch details." />
           </CardTitle>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExport}>
@@ -181,7 +181,7 @@ export function StockSummaryReport() {
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search drugs..."
+              placeholder="Search items..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -216,7 +216,7 @@ export function StockSummaryReport() {
         {/* Summary Stats */}
         <div className="grid grid-cols-3 gap-4">
           <div className="p-4 rounded-lg bg-muted/50">
-            <p className="text-sm text-muted-foreground">Total Drugs</p>
+            <p className="text-sm text-muted-foreground">Total Items</p>
             <p className="text-2xl font-bold">{filteredData.length}</p>
           </div>
           <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
@@ -239,7 +239,7 @@ export function StockSummaryReport() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[40px]"></TableHead>
-                <TableHead>Drug Name</TableHead>
+                <TableHead>Item Name</TableHead>
                 <TableHead className="text-right">Total Qty</TableHead>
                 <TableHead className="text-right">Reorder Level</TableHead>
                 <TableHead>Status</TableHead>
@@ -250,7 +250,7 @@ export function StockSummaryReport() {
               {paginatedData.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No drugs found
+                    No items found
                   </TableCell>
                 </TableRow>
               ) : (
@@ -449,7 +449,7 @@ export function StockSummaryReport() {
         {totalPages > 1 && (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-4 border-t">
             <p className="text-sm text-muted-foreground text-center sm:text-left">
-              Showing {paginatedData.length} of {filteredData.length} drugs (page {currentPage} of {totalPages})
+              Showing {paginatedData.length} of {filteredData.length} items (page {currentPage} of {totalPages})
             </p>
             <div className="flex items-center justify-center gap-2">
               <Button

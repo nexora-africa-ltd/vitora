@@ -15,8 +15,8 @@ export default function NewDrugPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
-        title="Add New Drug"
-        helpContent="Add a new drug to the pharmacy catalog. Fill in the basic info, regulatory details, and inventory settings. Required fields are marked with an asterisk (*)."
+        title="Add to Catalog"
+        helpContent="Add a medication, consumable, or reagent to the catalog. Choose the item type first, then fill in the relevant details."
       />
 
       <div className="max-w-3xl mx-auto">

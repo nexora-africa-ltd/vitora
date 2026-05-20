@@ -200,7 +200,7 @@ export function DispensingHistoryTable({
   const columns = [
     {
       key: 'drug_name',
-      header: 'Drug',
+      header: 'Item',
       cell: (dispensing: Dispensing) => (
         <div>
           <p className="font-medium">{dispensing.drug_name}</p>
@@ -317,12 +317,12 @@ export function DispensingHistoryTable({
       <div className="space-y-2">
         <Label htmlFor="drug-filter" className="flex items-center gap-2">
           <Pill className="h-4 w-4" />
-          Drug
+          Item
         </Label>
         <Input
           id="drug-filter"
           data-testid="drug-filter"
-          placeholder="Drug name..."
+          placeholder="Item name..."
           value={drugSearch}
           onChange={(e) => setDrugSearch(e.target.value)}
         />

@@ -7,13 +7,13 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format, parseISO } from 'date-fns';
 import * as z from 'zod';
-import { Loader2 } from 'lucide-react';
+import { Check, Loader2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -35,25 +35,30 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Combobox,
-  ComboboxTrigger,
-  ComboboxContent,
-  ComboboxInput,
-  ComboboxList,
-  ComboboxEmpty,
-  ComboboxGroup,
-  ComboboxItem,
-} from '@/components/kibo-ui/combobox';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { PageHeader } from '@/components/shared/page-header';
 import { useDrugs, useCreateStockBatch } from '@/lib/hooks/use-pharmacy';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import { useQuery } from '@tanstack/react-query';
 import { inventoryApi } from '@/lib/api/inventory';
 import { useToast } from '@/lib/hooks/use-toast';
-import type { StockBatchCreateData } from '@/lib/types/pharmacy';
+import { cn } from '@/lib/utils/cn';
+import type { Drug, StockBatchCreateData } from '@/lib/types/pharmacy';
 
 // Form validation schema - matches StockBatchCreateData type
 const receiveStockSchema = z.object({
-  drug: z.number({ required_error: 'Please select a drug' }),
+  drug: z.number({ required_error: 'Please select an item' }),
   batch_number: z.string().min(1, 'Batch number is required'),
   barcode: z.string().optional(),
   quantity_received: z.number().min(1, 'Quantity must be at least 1'),
@@ -79,11 +84,19 @@ export default function ReceiveStockPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Fetch all active drugs (client-side filtering via cmdk)
+  // Server-side drug search
+  const [drugSearch, setDrugSearch] = useState('');
+  const [drugOpen, setDrugOpen] = useState(false);
+  const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
+  const debouncedDrugSearch = useDebounce(drugSearch, 300);
+
+  // Fetch drugs with server-side search
   const { data: drugsData, isLoading: drugsLoading } = useDrugs({
     is_active: true,
-    page_size: 100,
+    search: debouncedDrugSearch || undefined,
+    page_size: 30,
   });
+  const drugs = useMemo(() => drugsData?.results || [], [drugsData]);
 
   // Fetch store locations
   const { data: storesData } = useQuery({
@@ -121,14 +134,6 @@ export default function ReceiveStockPage() {
     },
   });
 
-  // Prepare drug options for combobox
-  const drugOptions = useMemo(() => {
-    return (drugsData?.results || []).map((drug) => ({
-      label: `${drug.generic_name} ${drug.strength} ${drug.form}`,
-      value: drug.id.toString(),
-    }));
-  }, [drugsData?.results]);
-
   const onSubmit = async (data: ReceiveStockFormValues) => {
     try {
       const batch = await createStockBatch.mutateAsync(data);
@@ -147,7 +152,7 @@ export default function ReceiveStockPage() {
         if (errorMessage.includes('batch') && errorMessage.includes('exists')) {
           form.setError('batch_number', {
             type: 'manual',
-            message: 'A batch with this number already exists for this drug',
+            message: 'A batch with this number already exists for this item',
           });
           return;
         }
@@ -173,54 +178,84 @@ export default function ReceiveStockPage() {
           {/* Drug & Batch Details */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base sm:text-lg">Drug & Batch Details</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Item & Batch Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Drug Selection with debounced search */}
+              {/* Drug Selection with server-side search */}
               <FormField
                 control={form.control}
                 name="drug"
-                render={({ field, fieldState }) => (
+                render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Drug <span className="text-destructive">*</span></FormLabel>
-                    <Combobox
-                      data={drugOptions}
-                      type="drug"
-                      value={field.value?.toString() || ''}
-                      onValueChange={(value) => field.onChange(parseInt(value))}
-                    >
+                    <FormLabel>Item <span className="text-destructive">*</span></FormLabel>
+                    <Popover open={drugOpen} onOpenChange={setDrugOpen}>
                       <FormControl>
-                        <ComboboxTrigger
-                          className="w-full justify-between"
-                          disabled={drugsLoading}
-                          aria-label="Select drug"
-                        />
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={drugOpen}
+                            className="w-full justify-between font-normal"
+                          >
+                            {selectedDrug
+                              ? `${selectedDrug.generic_name} ${selectedDrug.strength || ''} ${selectedDrug.form || ''}`.trim()
+                              : 'Select item...'}
+                            <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
                       </FormControl>
-                      <ComboboxContent>
-                        <ComboboxInput placeholder="Search drugs..." />
-                        <ComboboxList className="max-h-[300px]">
-                          {drugsLoading ? (
-                            <div className="flex items-center justify-center py-6">
-                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                              <span className="ml-2 text-sm text-muted-foreground">Loading drugs...</span>
-                            </div>
-                          ) : (
-                            <>
-                              <ComboboxEmpty>No drugs found.</ComboboxEmpty>
-                              <ComboboxGroup>
-                                {drugOptions.map((drug) => (
-                                  <ComboboxItem key={drug.value} value={drug.value} keywords={[drug.label]}>
-                                    {drug.label}
-                                  </ComboboxItem>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <Command shouldFilter={false}>
+                          <CommandInput
+                            placeholder="Search items by name or code..."
+                            value={drugSearch}
+                            onValueChange={setDrugSearch}
+                          />
+                          <CommandList className="max-h-[250px]">
+                            {drugsLoading ? (
+                              <div className="flex items-center justify-center py-6">
+                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                <span className="ml-2 text-sm text-muted-foreground">Searching...</span>
+                              </div>
+                            ) : drugs.length === 0 ? (
+                              <CommandEmpty>
+                                {drugSearch ? 'No items found.' : 'Type to search items...'}
+                              </CommandEmpty>
+                            ) : (
+                              <CommandGroup>
+                                {drugs.map((drug) => (
+                                  <CommandItem
+                                    key={drug.id}
+                                    value={drug.id.toString()}
+                                    onSelect={() => {
+                                      setSelectedDrug(drug);
+                                      field.onChange(drug.id);
+                                      setDrugOpen(false);
+                                      setDrugSearch('');
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        'mr-2 h-4 w-4',
+                                        selectedDrug?.id === drug.id ? 'opacity-100' : 'opacity-0'
+                                      )}
+                                    />
+                                    <div className="flex flex-col">
+                                      <span>{drug.generic_name} {drug.strength || ''} {drug.form || ''}</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {drug.code} · {drug.item_type} · Stock: {drug.current_stock ?? 0}
+                                      </span>
+                                    </div>
+                                  </CommandItem>
                                 ))}
-                              </ComboboxGroup>
-                            </>
-                          )}
-                        </ComboboxList>
-                      </ComboboxContent>
-                    </Combobox>
+                              </CommandGroup>
+                            )}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormDescription>
-                      Search from {drugsData?.count ?? '...'} drugs in catalog
+                      Search items by name, brand, or code
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
