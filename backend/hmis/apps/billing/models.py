@@ -1776,6 +1776,11 @@ class SHAMember(models.Model):
     )
 
     # SHA identification
+    # NOTE: sha_number is the SHA *membership* number (format: SHA-XXXXXXXXXX).
+    # It is NOT the Client Registry number (CR number, format: CR{digits}-{digit})
+    # used as ``patient_id`` in ILM API calls.  The CR number lives on
+    # Patient.cr_number and is obtained from the ILM eligibility response
+    # field ``memberCrNumber``.
     sha_number = models.CharField(
         max_length=20, unique=True, help_text="SHA member number (format: SHA-XXXXXXXXXX)"
     )

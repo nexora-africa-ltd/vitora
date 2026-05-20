@@ -6,9 +6,8 @@
 
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/shared/page-header';
 import { InvoiceForm } from '@/components/billing/InvoiceForm';
 import { EligibilityBanner } from '@/components/billing/sha';
 import { useCreateInvoice, useServices } from '@/lib/hooks/billing';
@@ -67,16 +66,11 @@ export default function NewInvoicePage() {
     })) || [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">New Invoice</h1>
-          <p className="text-muted-foreground">Create a new invoice for a patient</p>
-        </div>
-      </div>
+    <div className="space-y-4 sm:space-y-6">
+      <PageHeader
+        title="New Invoice"
+        helpContent="Create a new invoice for a patient. Select the patient, add line items with services, and set a due date."
+      />
 
       {selectedPatientId && (
         <EligibilityBanner patientId={selectedPatientId} compact />

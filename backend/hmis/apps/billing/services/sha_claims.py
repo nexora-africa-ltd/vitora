@@ -376,7 +376,11 @@ class SHAClaimsService:
         # Generate unique bundle ID (same as claim ID in FHIR)
         bundle_guid = str(uuid.uuid4())
 
-        # Get SHA CR Number (used as patient identifier in SHA system)
+        # Get SHA member number (used as patient identifier in legacy FHIR bundle).
+        # NOTE: For ILM endpoints, the correct patient identifier is
+        # Patient.cr_number (the Client Registry number from eligibility),
+        # not sha_number.  This legacy builder uses sha_number for backward
+        # compatibility with the older SHR bundle flow.
         cr_number = claim.sha_member.sha_number
 
         # Get practitioner from encounter
