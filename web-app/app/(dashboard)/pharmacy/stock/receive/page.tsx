@@ -164,8 +164,8 @@ export default function ReceiveStockPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
-        title="Receive Stock"
-        helpContent="Add a new stock batch to inventory. Select a drug from the catalog, enter batch details, pricing, and storage information."
+        title="Quick Receive"
+        helpContent="Quickly add a stock batch without a formal purchase order. For procurement-linked receiving, use Inventory → Formal Goods Receipt instead."
       />
 
       <Form {...form}>
@@ -548,7 +548,7 @@ export default function ReceiveStockPage() {
               className="w-full sm:w-auto"
             >
               {createStockBatch.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Receive Stock
+              Receive
             </Button>
           </div>
         </form>

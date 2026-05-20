@@ -66,8 +66,8 @@ export default function GoodsReceiptPage() {
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title="Goods Receipt"
-          helpContent="Record incoming deliveries against purchase orders. Confirm receipts to update inventory stock levels."
+          title="Formal Goods Receipt"
+          helpContent="Record incoming deliveries against purchase orders. Confirm receipts to update inventory stock levels automatically."
           actions={
             <Button onClick={() => router.push('/inventory/goods-receipt/new')} className="gap-2 w-full sm:w-auto">
               <Plus className="h-4 w-4" />

@@ -308,7 +308,7 @@ export default function PharmacyPage() {
           <div className="flex justify-end">
             <Button onClick={() => router.push('/pharmacy/stock/receive')} size="sm">
               <Plus className="h-4 w-4 mr-1.5" />
-              Receive Stock
+              Quick Receive
             </Button>
           </div>
           <StockTable
