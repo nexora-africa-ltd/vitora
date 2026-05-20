@@ -22,6 +22,7 @@ from hmis.apps.inventory.serializers import (
     GoodsReceiptNoteListSerializer,
     GRNItemCreateSerializer,
     GRNItemSerializer,
+    PaymentTermSerializer,
     POApproveSerializer,
     POCancelSerializer,
     PurchaseOrderCreateSerializer,
@@ -298,6 +299,20 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "reason",
+            }
+        ),
+    ),
+    (
+        PaymentTermSerializer,
+        frozenset(
+            {
+                "code",
+                "created_at",
+                "days",
+                "id",
+                "is_active",
+                "name",
+                "updated_at",
             }
         ),
     ),
