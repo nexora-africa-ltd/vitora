@@ -262,7 +262,6 @@ def theatre_stock_batch(
         received_date=date.today() - timedelta(days=10),
         cost_price=Decimal("950.00"),
         selling_price=Decimal("1200.00"),
-        supplier="Theatre Supplier Ltd",
         received_by=test_user,
         status="AVAILABLE",
         organization=sample_organization,

@@ -275,8 +275,20 @@ class StockBatch(FacilityScopedModel):
     selling_price = models.DecimalField(max_digits=10, decimal_places=2)
 
     # Source
-    supplier = models.CharField(max_length=200, blank=True)
-    purchase_order = models.CharField(max_length=50, blank=True)
+    supplier = models.ForeignKey(
+        "inventory.Supplier",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stock_batches",
+    )
+    purchase_order = models.ForeignKey(
+        "inventory.PurchaseOrder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stock_batches",
+    )
     received_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -286,7 +298,19 @@ class StockBatch(FacilityScopedModel):
 
     # Status
     status = models.CharField(max_length=20, choices=STOCK_STATUS, default="AVAILABLE")
-    location = models.CharField(max_length=100, blank=True)
+    store_location = models.ForeignKey(
+        "inventory.StoreLocation",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stock_batches",
+        help_text="Store where this batch is physically stored",
+    )
+    location = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Shelf/bin within the store (e.g. Shelf A1)",
+    )
 
     # Tracking
     created_at = models.DateTimeField(auto_now_add=True)
@@ -798,6 +822,16 @@ class Dispensing(FacilityScopedModel):
     # Batch tracking (FEFO)
     batch = models.ForeignKey(StockBatch, on_delete=models.PROTECT, related_name="dispensings")
 
+    # Ward/store tracking (optional — auto-deducts ward stock when set)
+    store_location = models.ForeignKey(
+        "inventory.StoreLocation",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="dispensings",
+        help_text="If set, auto-deducts from ward stock at this store.",
+    )
+
     # Quantities
     quantity_dispensed = models.PositiveIntegerField()
     quantity_returned = models.PositiveIntegerField(default=0)
@@ -853,7 +887,7 @@ class Dispensing(FacilityScopedModel):
             )
 
     def save(self, *args, **kwargs):
-        """Override save to update batch stock."""
+        """Override save to update batch stock and ward stock."""
         is_new = self.pk is None
 
         if is_new:
@@ -872,6 +906,29 @@ class Dispensing(FacilityScopedModel):
                 self.prescription_item.prescription.update_status()
 
         super().save(*args, **kwargs)
+
+        # Auto-deduct from ward stock if store_location is set
+        if is_new and self.store_location_id:
+            self._deduct_ward_stock()
+
+    def _deduct_ward_stock(self):
+        """Create a CONSUME transaction on the matching WardStock record."""
+        from hmis.apps.inventory.models import WardStock, WardStockTransaction, WardTransactionType
+
+        ward_stock = WardStock.objects.filter(
+            drug=self.drug,
+            store_location=self.store_location,
+            facility=self.facility,
+        ).first()
+        if ward_stock:
+            WardStockTransaction.objects.create(
+                ward_stock=ward_stock,
+                transaction_type=WardTransactionType.CONSUME,
+                quantity=-self.quantity_dispensed,
+                patient=self.patient,
+                performed_by=self.dispensed_by,
+                notes=f"Auto-consumed via dispensing #{self.pk}",
+            )
 
     def process_return(self, quantity: int, reason: str) -> None:
         """

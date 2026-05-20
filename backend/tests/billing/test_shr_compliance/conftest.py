@@ -197,7 +197,6 @@ def sample_stock_batch(db, sample_drug, shr_test_user):
         received_date=date.today() - timedelta(days=30),
         cost_price=Decimal("30.00"),
         selling_price=Decimal("50.00"),
-        supplier="Kenya Medical Supplies",
         received_by=shr_test_user,
     )
     return batch

@@ -327,7 +327,6 @@ def source_stock_batch(db, sample_drug, sample_facility, sample_organization, te
         received_date=date.today(),
         cost_price=Decimal("4.50"),
         selling_price=Decimal("8.00"),
-        supplier="KEMSA",
         received_by=test_user,
         location="Shelf A-1",
         organization=sample_organization,

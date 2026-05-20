@@ -367,6 +367,7 @@ export const pharmacyApi = {
     patient_id: number;
     prescription_item_id?: number;
     counseling_notes?: string;
+    store_location_id?: number;
   }): Promise<Dispensing[]> {
     const response = await apiClient.post<Dispensing[]>('/api/pharmacy/dispensings/dispense/', data);
     return parseResponse(z.array(DispensingSchema), response.data, { context: 'pharmacyApi.dispenseFromPrescription' });

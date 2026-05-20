@@ -52,18 +52,6 @@ class Command(BaseCommand):
         batches_skipped = 0
         total_stock_value = Decimal("0.00")
 
-        # Supplier options (realistic Kenyan suppliers)
-        SUPPLIERS = [
-            "Kenya Medical Supplies Authority (KEMSA)",
-            "Mission for Essential Drugs & Supplies (MEDS)",
-            "Philips Pharmaceuticals Ltd",
-            "Cosmos Limited",
-            "Dawa Limited",
-            "Beta Healthcare (K) Ltd",
-            "Nairobi Pharma Ltd",
-            "Elys Chemical Industries Ltd",
-        ]
-
         # Storage locations
         LOCATIONS = [
             "Main Pharmacy - Shelf A1",
@@ -157,8 +145,6 @@ class Command(BaseCommand):
                             "received_date": batch_date,
                             "cost_price": round(cost_price, 2),
                             "selling_price": round(selling_price, 2),
-                            "supplier": choice(SUPPLIERS),
-                            "purchase_order": f"PO-{batch_date.strftime('%Y%m')}-{randint(100, 999)}",
                             "received_by": pharmacist,
                             "status": "AVAILABLE",
                             "location": location,

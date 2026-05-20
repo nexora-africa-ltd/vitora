@@ -12,13 +12,15 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { HelpCircle, Loader2, Plus, X } from 'lucide-react';
+import { Loader2, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { HelpPopover } from '@/components/shared/help-popover';
 import {
   MultiSelect,
   MultiSelectTrigger,
@@ -33,17 +35,11 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { Drug, DrugCreateData, DrugCategory, DrugForm as DrugFormType, DrugSchedule } from '@/lib/types/pharmacy';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 import { getApiErrorMessage } from '@/lib/api/client';
@@ -304,434 +300,433 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" data-testid="drug-form">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6" data-testid="drug-form">
         {/* Basic Information */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Basic Information</h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="code"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Drug Code *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="DRG-001" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="generic_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Generic Name *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Paracetamol" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          {/* Brand Names */}
-          <div className="space-y-2">
-            <Label htmlFor="brand-names-input">Brand Names</Label>
-            <div className="flex gap-2">
-              <Input
-                id="brand-names-input"
-                placeholder="e.g., Panadol, Tylenol"
-                value={brandNameInput}
-                onChange={(e) => setBrandNameInput(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addBrandName();
-                  }
-                }}
-                aria-label="Brand Names"
-              />
-              <Button type="button" variant="outline" onClick={addBrandName}>
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            {brandNames.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {brandNames.map((name, index) => (
-                  <Badge key={index} variant="secondary" className="gap-1">
-                    {name}
-                    <button
-                      type="button"
-                      onClick={() => removeBrandName(index)}
-                      className="ml-1 hover:bg-secondary-foreground/20 rounded-full"
-                      title={`Remove ${name}`}
-                      aria-label={`Remove ${name}`}
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Categories (Multi-select with Kibo UI) */}
-          <FormField
-            control={form.control}
-            name="categories"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Categories *</FormLabel>
-                <MultiSelect
-                  data={categoryOptions}
-                  type="category"
-                  values={field.value || []}
-                  onValuesChange={field.onChange}
-                >
-                  <FormControl>
-                    <MultiSelectTrigger className="w-full" placeholder="Select categories..." />
-                  </FormControl>
-                  <MultiSelectContent>
-                    <MultiSelectInput />
-                    <MultiSelectList>
-                      <MultiSelectEmpty>
-                        {isLoadingCategories ? 'Loading categories...' : 'No categories found.'}
-                      </MultiSelectEmpty>
-                      <MultiSelectGroup>
-                        {categoryOptions.map((option) => (
-                          <MultiSelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </MultiSelectItem>
-                        ))}
-                      </MultiSelectGroup>
-                    </MultiSelectList>
-                  </MultiSelectContent>
-                  <MultiSelectBadges />
-                </MultiSelect>
-
-                <FormDescription>
-                  Categories are loaded from the backend. You can add a new one if needed.
-                </FormDescription>
-
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add new category (e.g., Herbal Medicine)"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    disabled={isCreatingCategory}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addNewCategory}
-                    disabled={isCreatingCategory || !newCategoryName.trim()}
-                  >
-                    {isCreatingCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
-                  </Button>
-                </div>
-
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="form"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Form *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base sm:text-lg">Basic Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Drug Code <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select form" />
-                      </SelectTrigger>
+                      <Input placeholder="DRG-001" {...field} />
                     </FormControl>
-                    <SelectContent>
-                      {Object.entries(FORM_LABELS).map(([key, label]) => (
-                        <SelectItem key={key} value={key}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="generic_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Generic Name <span className="text-destructive">*</span></FormLabel>
+                    <FormControl>
+                      <Input placeholder="Paracetamol" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Brand Names */}
+            <div className="space-y-2">
+              <Label htmlFor="brand-names-input">Brand Names</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="brand-names-input"
+                  placeholder="e.g., Panadol, Tylenol"
+                  value={brandNameInput}
+                  onChange={(e) => setBrandNameInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addBrandName();
+                    }
+                  }}
+                />
+                <Button type="button" variant="outline" size="icon" onClick={addBrandName}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {brandNames.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {brandNames.map((name, index) => (
+                    <Badge key={index} variant="secondary" className="gap-1">
+                      {name}
+                      <button
+                        type="button"
+                        onClick={() => removeBrandName(index)}
+                        className="ml-0.5 hover:bg-secondary-foreground/20 rounded-full"
+                        aria-label={`Remove ${name}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Categories */}
+            <FormField
+              control={form.control}
+              name="categories"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Categories <span className="text-destructive">*</span></FormLabel>
+                  <MultiSelect
+                    data={categoryOptions}
+                    type="category"
+                    values={field.value || []}
+                    onValuesChange={field.onChange}
+                  >
+                    <FormControl>
+                      <MultiSelectTrigger className="w-full" placeholder="Select categories..." />
+                    </FormControl>
+                    <MultiSelectContent>
+                      <MultiSelectInput />
+                      <MultiSelectList>
+                        <MultiSelectEmpty>
+                          {isLoadingCategories ? 'Loading...' : 'No categories found.'}
+                        </MultiSelectEmpty>
+                        <MultiSelectGroup>
+                          {categoryOptions.map((option) => (
+                            <MultiSelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </MultiSelectItem>
+                          ))}
+                        </MultiSelectGroup>
+                      </MultiSelectList>
+                    </MultiSelectContent>
+                    <MultiSelectBadges />
+                  </MultiSelect>
+
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="New category name"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      disabled={isCreatingCategory}
+                      className="h-8 text-sm"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addNewCategory}
+                      disabled={isCreatingCategory || !newCategoryName.trim()}
+                    >
+                      {isCreatingCategory ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Add'}
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="strength"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Strength *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="500mg" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="form"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Form <span className="text-destructive">*</span></FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select form" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.entries(FORM_LABELS).map(([key, label]) => (
+                          <SelectItem key={key} value={key}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="unit"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Unit *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="tablet" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
+              <FormField
+                control={form.control}
+                name="strength"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Strength <span className="text-destructive">*</span></FormLabel>
+                    <FormControl>
+                      <Input placeholder="500mg" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="unit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unit <span className="text-destructive">*</span></FormLabel>
+                    <FormControl>
+                      <Input placeholder="tablet" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Regulatory Information */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Regulatory Information</h3>
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base sm:text-lg">Regulatory</CardTitle>
+              <HelpPopover content="Schedule, controlled substance status, KEML and SHA codes for regulatory compliance and insurance claims." />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="schedule"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Schedule</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="OTC">OTC</SelectItem>
+                        <SelectItem value="POM">POM</SelectItem>
+                        <SelectItem value="P">Pharmacy</SelectItem>
+                        <SelectItem value="CD">Controlled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="schedule"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Schedule</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+              <FormField
+                control={form.control}
+                name="keml_code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>KEML Code</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select schedule" />
-                      </SelectTrigger>
+                      <Input placeholder="e.g., 01.01.01" {...field} />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="OTC">OTC - Over The Counter</SelectItem>
-                      <SelectItem value="POM">POM - Prescription Only Medicine</SelectItem>
-                      <SelectItem value="P">P - Pharmacy Medicine</SelectItem>
-                      <SelectItem value="CD">CD - Controlled Drug</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="keml_code"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>KEML ID</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Essential Medicines List code" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Kenya Essential Medicines List code
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="nhif_code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>SHA Code</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Insurance code" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-            <FormField
-              control={form.control}
-              name="nhif_code"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>NHIF/SHA ID</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Insurance code" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    NHIF (now SHA) code for insurance claims
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-3">
+              <FormField
+                control={form.control}
+                name="is_essential"
+                render={({ field }) => (
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                    <FormLabel className="text-sm font-normal">Essential (KEML)</FormLabel>
+                  </FormItem>
+                )}
+              />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="is_essential"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>Essential Medicine (KEML)</FormLabel>
-                    <FormDescription>
-                      Part of Kenya Essential Medicines List
-                    </FormDescription>
-                  </div>
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="requires_prescription"
+                render={({ field }) => (
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                    <FormLabel className="text-sm font-normal">Requires Prescription</FormLabel>
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="is_controlled"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>Controlled Substance</FormLabel>
-                    <FormDescription>
-                      Requires special tracking and verification
-                    </FormDescription>
-                  </div>
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
+              <FormField
+                control={form.control}
+                name="is_controlled"
+                render={({ field }) => (
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                    <FormLabel className="text-sm font-normal">Controlled</FormLabel>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="is_narcotic"
+                render={({ field }) => (
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                    <FormLabel className="text-sm font-normal">Narcotic</FormLabel>
+                  </FormItem>
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Inventory Settings */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Inventory Settings</h3>
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base sm:text-lg">Inventory</CardTitle>
+              <HelpPopover content="Reorder levels trigger stock alerts. Reference price is the baseline unit cost for reporting — actual selling prices are set per batch at stock receipt." />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <FormField
+                control={form.control}
+                name="default_reorder_level"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reorder Level</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="100"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="default_reorder_quantity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reorder Qty</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="500"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="shelf_life_months"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Shelf Life (mo)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="24"
+                        {...field}
+                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="reference_price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ref. Price (KES)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="50.00"
+                        {...field}
+                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
-              name="default_reorder_level"
+              name="storage_requirements"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reorder Level</FormLabel>
+                  <FormLabel>Storage Requirements</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="100"
-                      {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                    />
+                    <Input placeholder="Store below 25°C, protect from light" {...field} />
                   </FormControl>
-                  <FormDescription>
-                    Minimum stock level before reordering
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
-            <FormField
-              control={form.control}
-              name="default_reorder_quantity"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Reorder Quantity</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="500"
-                      {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Quantity to order when restocking
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="shelf_life_months"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Shelf Life (Months)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="24"
-                      {...field}
-                      value={field.value ?? ''}
-                      onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="reference_price"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-1">
-                    Reference Price (KES)
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button type="button" className="inline-flex">
-                          <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="max-w-xs text-sm">
-                        <p>
-                          The standard unit cost for this drug, used as a baseline for pricing and reporting.
-                          Actual selling prices are set per batch at stock receipt.
-                        </p>
-                      </PopoverContent>
-                    </Popover>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="50.00"
-                      {...field}
-                      value={field.value ?? ''}
-                      onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <FormField
-            control={form.control}
-            name="storage_requirements"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Storage Requirements</FormLabel>
-                <FormControl>
-                  <Input placeholder="Store below 25°C, protect from light" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Action Buttons */}
-        <div className="flex justify-end gap-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           {onCancel && (
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
           )}
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {drug ? 'Update Drug' : 'Create Drug'}
           </Button>

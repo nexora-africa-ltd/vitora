@@ -28,6 +28,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Combobox,
   ComboboxTrigger,
   ComboboxContent,
@@ -39,6 +46,8 @@ import {
 } from '@/components/kibo-ui/combobox';
 import { PageHeader } from '@/components/shared/page-header';
 import { useDrugs, useCreateStockBatch } from '@/lib/hooks/use-pharmacy';
+import { useQuery } from '@tanstack/react-query';
+import { inventoryApi } from '@/lib/api/inventory';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { StockBatchCreateData } from '@/lib/types/pharmacy';
 
@@ -58,8 +67,9 @@ const receiveStockSchema = z.object({
   received_date: z.string().min(1, 'Received date is required'),
   cost_price: z.number().min(0, 'Cost price must be positive'),
   selling_price: z.number().min(0, 'Selling price must be positive'),
-  supplier: z.string().optional(),
-  purchase_order: z.string().optional(),
+  supplier: z.number().optional(),
+  purchase_order: z.number().optional(),
+  store_location: z.number({ required_error: 'Please select a store' }),
   location: z.string().optional(),
 }) satisfies z.ZodType<StockBatchCreateData>;
 
@@ -75,6 +85,28 @@ export default function ReceiveStockPage() {
     page_size: 100,
   });
 
+  // Fetch store locations
+  const { data: storesData } = useQuery({
+    queryKey: ['inventory-store-locations-all'],
+    queryFn: () => inventoryApi.listStoreLocations({ page_size: 200, is_active: true }),
+  });
+
+  // Fetch suppliers
+  const { data: suppliersData } = useQuery({
+    queryKey: ['inventory-suppliers-active'],
+    queryFn: () => inventoryApi.listSuppliers({ page_size: 200, is_active: true }),
+  });
+
+  // Fetch approved purchase orders (that can still receive stock)
+  const { data: posData } = useQuery({
+    queryKey: ['inventory-purchase-orders-receivable'],
+    queryFn: () => inventoryApi.listPurchaseOrders({ page_size: 200, status: 'APPROVED' }),
+  });
+
+  const stores = useMemo(() => storesData?.results || [], [storesData]);
+  const suppliers = useMemo(() => suppliersData?.results || [], [suppliersData]);
+  const purchaseOrders = useMemo(() => posData?.results || [], [posData]);
+
   // Create stock batch mutation
   const createStockBatch = useCreateStockBatch();
 
@@ -84,9 +116,8 @@ export default function ReceiveStockPage() {
       received_date: new Date().toISOString().split('T')[0],
       batch_number: '',
       barcode: '',
-      supplier: '',
-      purchase_order: '',
       location: '',
+      ...(stores.length === 1 ? { store_location: stores[0]!.id } : {}),
     },
   });
 
@@ -384,13 +415,23 @@ export default function ReceiveStockPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Supplier</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g., Kenya Pharma Supplies"
-                          aria-label="Supplier"
-                          {...field}
-                        />
-                      </FormControl>
+                      <Select
+                        value={field.value?.toString() || ''}
+                        onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select supplier" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {suppliers.map((s) => (
+                            <SelectItem key={s.id} value={String(s.id)}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -402,13 +443,51 @@ export default function ReceiveStockPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Purchase Order</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g., PO-2026-001"
-                          aria-label="Purchase Order"
-                          {...field}
-                        />
-                      </FormControl>
+                      <Select
+                        value={field.value?.toString() || ''}
+                        onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select PO" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {purchaseOrders.map((po) => (
+                            <SelectItem key={po.id} value={String(po.id)}>
+                              {po.po_number} — {po.supplier_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="store_location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Store <span className="text-destructive">*</span></FormLabel>
+                      <Select
+                        value={field.value?.toString() || ''}
+                        onValueChange={(v) => field.onChange(parseInt(v))}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select store" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {stores.map((store) => (
+                            <SelectItem key={store.id} value={String(store.id)}>
+                              {store.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -419,11 +498,11 @@ export default function ReceiveStockPage() {
                   name="location"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Storage Location / Shelf</FormLabel>
+                      <FormLabel>Shelf / Bin</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="e.g., Shelf A1"
-                          aria-label="Location"
+                          placeholder="e.g., Shelf A1, Bin 3"
+                          aria-label="Shelf location"
                           {...field}
                         />
                       </FormControl>

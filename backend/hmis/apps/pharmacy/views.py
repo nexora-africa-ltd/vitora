@@ -188,7 +188,9 @@ class StockBatchViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     - PATCH /api/pharmacy/stock/{id}/ - Update batch
     """
 
-    queryset = StockBatch.objects.select_related("drug", "received_by").all()
+    queryset = StockBatch.objects.select_related(
+        "drug", "received_by", "store_location", "supplier", "purchase_order"
+    ).all()
     serializer_class = StockBatchSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
@@ -391,13 +393,15 @@ class DispensingViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             "drug_id": 1,
             "quantity": 30,
             "patient_id": 1,
-            "prescription_item_id": 1  # optional
+            "prescription_item_id": 1,  # optional
+            "store_location_id": 5      # optional — auto-deducts ward stock
         }
         """
         drug_id = request.data.get("drug_id")
         quantity = request.data.get("quantity")
         patient_id = request.data.get("patient_id")
         prescription_item_id = request.data.get("prescription_item_id")
+        store_location_id = request.data.get("store_location_id")
 
         if not drug_id or not quantity or not patient_id:
             return Response(
@@ -440,6 +444,8 @@ class DispensingViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             kwargs = {"patient_id": patient_id}
             if prescription_item_id:
                 kwargs["prescription_item_id"] = prescription_item_id
+            if store_location_id:
+                kwargs["store_location_id"] = int(store_location_id)
 
             dispensings = FEFODispenser.dispense(
                 drug=drug,

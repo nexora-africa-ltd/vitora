@@ -157,6 +157,13 @@ class StockBatchSerializer(serializers.ModelSerializer):
     """Serializer for StockBatch model."""
 
     drug_name = serializers.CharField(source="drug.generic_name", read_only=True)
+    supplier_name = serializers.CharField(source="supplier.name", read_only=True, default=None)
+    purchase_order_number = serializers.CharField(
+        source="purchase_order.po_number", read_only=True, default=None
+    )
+    store_location_name = serializers.CharField(
+        source="store_location.name", read_only=True, default=None
+    )
     # Aliases with _status suffix (legacy)
     days_until_expiry = serializers.IntegerField(source="days_to_expiry", read_only=True)
     is_expired_status = serializers.BooleanField(source="is_expired", read_only=True)
@@ -178,11 +185,13 @@ class StockBatchSerializer(serializers.ModelSerializer):
             "drug",
             "drug_name",
             "batch_number",
+            "barcode",
             "quantity_received",
             "quantity_available",
             "quantity_dispensed",
             "quantity_damaged",
             "quantity_expired",
+            "manufacture_date",
             "expiry_date",
             "days_until_expiry",
             "days_to_expiry",
@@ -194,9 +203,14 @@ class StockBatchSerializer(serializers.ModelSerializer):
             "cost_price",
             "selling_price",
             "supplier",
+            "supplier_name",
             "purchase_order",
+            "purchase_order_number",
             "received_date",
             "received_by",
+            "store_location",
+            "store_location_name",
+            "location",
             "created_at",
             "updated_at",
         ]
@@ -601,6 +615,9 @@ class DispensingSerializer(serializers.ModelSerializer):
     dispensed_by_name = serializers.SerializerMethodField()
     verified_by_name = serializers.SerializerMethodField()
     batch_number = serializers.CharField(source="batch.batch_number", read_only=True)
+    store_location_name = serializers.CharField(
+        source="store_location.name", read_only=True, default=""
+    )
 
     class Meta:
         model = Dispensing
@@ -613,6 +630,8 @@ class DispensingSerializer(serializers.ModelSerializer):
             "drug_name",
             "batch",
             "batch_number",
+            "store_location",
+            "store_location_name",
             "quantity_dispensed",
             "quantity_returned",
             "unit_price",
@@ -640,6 +659,7 @@ class DispensingSerializer(serializers.ModelSerializer):
             "dispensed_by_name",
             "verified_by_name",
             "batch_number",
+            "store_location_name",
         ]
 
     def get_patient_name(self, obj) -> str:
