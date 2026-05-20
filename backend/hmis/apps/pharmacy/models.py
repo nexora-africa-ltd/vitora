@@ -212,14 +212,12 @@ class Drug(models.Model):
         """Return formatted display name with generic name, strength, and form."""
         return f"{self.generic_name} {self.strength} {self.get_form_display()}"
 
-    def get_current_stock(self) -> int:
-        """Get total available stock across all batches."""
-        return (
-            self.batches.filter(status="AVAILABLE").aggregate(
-                total=models.Sum("quantity_available")
-            )["total"]
-            or 0
-        )
+    def get_current_stock(self, facility_id: int | None = None) -> int:
+        """Get total available stock across batches, optionally filtered by facility."""
+        qs = self.batches.filter(status="AVAILABLE")
+        if facility_id is not None:
+            qs = qs.filter(facility_id=facility_id)
+        return qs.aggregate(total=models.Sum("quantity_available"))["total"] or 0
 
 
 class DrugCategory(models.Model):
@@ -449,41 +447,47 @@ class StockAlert(FacilityScopedModel):
         self.save()
 
     @classmethod
-    def generate_low_stock_alerts(cls) -> list["StockAlert"]:
-        """Generate alerts for drugs with low stock levels."""
+    def generate_low_stock_alerts(cls, facility_id: int | None = None) -> list["StockAlert"]:
+        """Generate alerts for drugs with low stock levels at a facility."""
+        from hmis.apps.core.models import Facility
 
         alerts = []
 
-        # Get all drugs with total stock below reorder level
-        for drug in Drug.objects.filter(is_active=True):
-            total_stock = drug.get_current_stock()
+        # If no facility specified, generate for all facilities
+        facility_ids = (
+            [facility_id] if facility_id else list(Facility.objects.values_list("id", flat=True))
+        )
 
-            if total_stock == 0:
-                # Out of stock - critical
-                alert, created = cls.objects.get_or_create(
-                    drug=drug,
-                    alert_type="OUT_OF_STOCK",
-                    is_resolved=False,
-                    defaults={
-                        "severity": "CRITICAL",
-                        "message": f"{drug.generic_name} is completely out of stock",
-                    },
-                )
-                if created:
-                    alerts.append(alert)
-            elif total_stock < drug.default_reorder_level:
-                # Low stock
-                alert, created = cls.objects.get_or_create(
-                    drug=drug,
-                    alert_type="LOW_STOCK",
-                    is_resolved=False,
-                    defaults={
-                        "severity": "MEDIUM",
-                        "message": f"{drug.generic_name} is below reorder level ({total_stock} remaining)",
-                    },
-                )
-                if created:
-                    alerts.append(alert)
+        for fac_id in facility_ids:
+            for drug in Drug.objects.filter(is_active=True):
+                total_stock = drug.get_current_stock(facility_id=fac_id)
+
+                if total_stock == 0:
+                    alert, created = cls.objects.get_or_create(
+                        drug=drug,
+                        alert_type="OUT_OF_STOCK",
+                        is_resolved=False,
+                        facility_id=fac_id,
+                        defaults={
+                            "severity": "CRITICAL",
+                            "message": f"{drug.generic_name} is completely out of stock",
+                        },
+                    )
+                    if created:
+                        alerts.append(alert)
+                elif total_stock < drug.default_reorder_level:
+                    alert, created = cls.objects.get_or_create(
+                        drug=drug,
+                        alert_type="LOW_STOCK",
+                        is_resolved=False,
+                        facility_id=fac_id,
+                        defaults={
+                            "severity": "MEDIUM",
+                            "message": f"{drug.generic_name} is below reorder level ({total_stock} remaining)",
+                        },
+                    )
+                    if created:
+                        alerts.append(alert)
 
         return alerts
 

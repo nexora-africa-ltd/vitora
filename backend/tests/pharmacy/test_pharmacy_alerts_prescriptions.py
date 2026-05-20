@@ -253,7 +253,7 @@ class TestStockAlertModel:
         assert alert.resolved_at is not None
         assert alert.resolution_notes == "New stock received"
 
-    def test_auto_generate_low_stock_alerts(self):
+    def test_auto_generate_low_stock_alerts(self, sample_facility):
         """System should auto-generate alerts for low stock."""
         from django.contrib.auth import get_user_model
 
@@ -283,10 +283,11 @@ class TestStockAlertModel:
             cost_price=Decimal("5.00"),
             selling_price=Decimal("10.00"),
             received_by=user,
+            facility=sample_facility,
         )
 
         # Generate alerts
-        alerts = StockAlert.generate_low_stock_alerts()
+        alerts = StockAlert.generate_low_stock_alerts(facility_id=sample_facility.id)
 
         assert len(alerts) > 0
         assert any(alert.drug == drug for alert in alerts)

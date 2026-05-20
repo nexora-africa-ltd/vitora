@@ -1486,6 +1486,10 @@ class SupplierBillViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mod
         return qs
 
     def perform_create(self, serializer):
+        if not self.request.user.has_perm("billing.add_supplierbill"):
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("You do not have permission to create supplier bills.")
         instance = serializer.save(
             created_by=self.request.user,
             **self.get_tenant_save_kwargs(),
@@ -1502,6 +1506,24 @@ class SupplierBillViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mod
             },
         )
 
+    def destroy(self, request, *args, **kwargs):
+        """Delete with permission check and audit logging."""
+        if not request.user.has_perm("billing.delete_supplierbill"):
+            return Response(
+                {"detail": "You do not have permission to delete supplier bills."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        instance = self.get_object()
+        AuditLog.log(
+            action="supplier_bill_delete",
+            user=request.user,
+            resource_type="SupplierBill",
+            resource_id=instance.id,
+            details={"bill_number": instance.bill_number},
+        )
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=True, methods=["post"])
     def receive(self, request, pk=None):
         """Mark a DRAFT bill as RECEIVED."""
@@ -1517,6 +1539,11 @@ class SupplierBillViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mod
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
         """Approve a RECEIVED bill for payment."""
+        if not request.user.has_perm("billing.approve_supplierbill"):
+            return Response(
+                {"detail": "You do not have permission to approve supplier bills."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         bill = self.get_object()
         try:
             bill.approve(user=request.user)
@@ -1648,6 +1675,10 @@ class SupplierPaymentViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.
         return qs
 
     def perform_create(self, serializer):
+        if not self.request.user.has_perm("billing.add_supplierpayment"):
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("You do not have permission to record supplier payments.")
         instance = serializer.save(
             paid_by=self.request.user,
             **self.get_tenant_save_kwargs(),
@@ -1664,6 +1695,24 @@ class SupplierPaymentViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.
                 "method": instance.method,
             },
         )
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete with permission check and audit logging."""
+        if not request.user.has_perm("billing.delete_supplierpayment"):
+            return Response(
+                {"detail": "You do not have permission to delete supplier payments."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        instance = self.get_object()
+        AuditLog.log(
+            action="supplier_payment_delete",
+            user=request.user,
+            resource_type="SupplierPayment",
+            resource_id=instance.id,
+            details={"payment_reference": instance.payment_reference},
+        )
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"])
     def reverse(self, request, pk=None):

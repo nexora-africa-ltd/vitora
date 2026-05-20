@@ -395,11 +395,18 @@ export const StockCountListSchema = z.object({
 
 export const StockCountDetailSchema = StockCountListSchema.extend({
   notes: z.string(),
-  items: z.array(StockCountItemSchema),
+  item_count: z.number(),
   approved_by: z.number().nullable(),
   approved_by_name: z.string(),
   approved_at: z.string().nullable(),
   updated_at: z.string(),
+});
+
+export const PaginatedStockCountItemSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(StockCountItemSchema),
 });
 
 export const PaginatedStockCountSchema = z.object({

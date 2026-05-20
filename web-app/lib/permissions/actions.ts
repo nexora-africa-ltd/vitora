@@ -265,6 +265,10 @@ export const ACTION_PERMISSIONS = {
   'billing.manage_services': ['ADMIN', 'ORG-ADMIN', 'BILLING_SUPERVISOR'],
   'billing.manage_tariffs': ['ADMIN', 'ORG-ADMIN', 'BILLING_SUPERVISOR'],
   'billing.manage_config': ['ADMIN', 'ORG-ADMIN'],
+  'billing.view_supplier_bills': ['BILLING_CLERK', 'BILLING_SUPERVISOR', 'STORE_KEEPER', 'ADMIN', 'ORG-ADMIN'],
+  'billing.create_supplier_bill': ['BILLING_CLERK', 'BILLING_SUPERVISOR', 'ADMIN'],
+  'billing.approve_supplier_bill': ['BILLING_SUPERVISOR', 'ADMIN'],
+  'billing.record_supplier_payment': ['BILLING_CLERK', 'BILLING_SUPERVISOR', 'CASHIER', 'ADMIN'],
 
   // === Quality Module ===
   'quality.view_dashboard': ['ADMIN', 'QUALITY_OFFICER', 'DOCTOR', 'CLINICAL_OFFICER'],
@@ -298,6 +302,8 @@ export const ACTION_PERMISSIONS = {
   'inventory.view_etims': ['ADMIN', 'ORG-ADMIN', 'BILLING_CLERK', 'BILLING_SUPERVISOR'],
   'inventory.view_forecasts': ['ADMIN', 'ORG-ADMIN', 'PHARMACIST', 'PHARMACY_TECH', 'STORE_KEEPER'],
   'inventory.manage_procurement': ['ADMIN', 'ORG-ADMIN', 'PHARMACIST', 'STORE_KEEPER'],
+  'inventory.manage_ward_stock': ['ADMIN', 'ORG-ADMIN', 'PHARMACIST', 'PHARMACY_TECH', 'STORE_KEEPER', 'NURSE'],
+  'inventory.add_ward_stock': ['ADMIN', 'ORG-ADMIN', 'PHARMACIST', 'STORE_KEEPER'],
   'inventory.approve_po': ['ADMIN', 'ORG-ADMIN'],
   'inventory.approve_transfer': ['ADMIN', 'ORG-ADMIN'],
   'inventory.approve_stock_count': ['ADMIN', 'ORG-ADMIN'],

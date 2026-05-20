@@ -363,7 +363,7 @@ export interface StockCount {
  */
 export interface StockCountDetail extends StockCount {
   notes: string;
-  items: StockCountItem[];
+  item_count: number;
   approved_by: number | null;
   approved_by_name: string;
   approved_at: string | null;

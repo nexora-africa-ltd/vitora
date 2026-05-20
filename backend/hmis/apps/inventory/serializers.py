@@ -948,11 +948,11 @@ class StockCountListSerializer(serializers.ModelSerializer):
 
 
 class StockCountDetailSerializer(serializers.ModelSerializer):
-    """Full detail serializer for a stock count."""
+    """Full detail serializer for a stock count (items fetched separately via /items/)."""
 
     total_items_counted = serializers.IntegerField(read_only=True)
     total_discrepancies = serializers.IntegerField(read_only=True)
-    items = StockCountItemSerializer(many=True, read_only=True)
+    item_count = serializers.SerializerMethodField()
     started_by_name = serializers.SerializerMethodField()
     approved_by_name = serializers.SerializerMethodField()
     store_location_name = serializers.CharField(
@@ -969,7 +969,7 @@ class StockCountDetailSerializer(serializers.ModelSerializer):
             "store_location_name",
             "status",
             "notes",
-            "items",
+            "item_count",
             "started_by",
             "started_by_name",
             "started_at",
@@ -983,6 +983,9 @@ class StockCountDetailSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = fields
+
+    def get_item_count(self, obj):
+        return obj.items.count()
 
     def get_started_by_name(self, obj):
         return _user_display_name(obj.started_by)

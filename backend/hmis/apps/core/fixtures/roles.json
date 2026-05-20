@@ -1037,6 +1037,19 @@
           "read": true,
           "update": true,
           "delete": true
+        },
+        "SupplierBill": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "approve_supplierbill": true
+        },
+        "SupplierPayment": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
         }
       },
       "hierarchy_level": 0,
@@ -3653,6 +3666,18 @@
           "read": true,
           "update": false,
           "delete": false
+        },
+        "SupplierBill": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "SupplierPayment": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
         }
       },
       "hierarchy_level": 5,
@@ -5257,6 +5282,19 @@
           "delete": false
         },
         "PayerTariff": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "SupplierBill": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "approve_supplierbill": true
+        },
+        "SupplierPayment": {
           "create": true,
           "read": true,
           "update": true,

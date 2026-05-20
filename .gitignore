@@ -137,6 +137,8 @@ dist
 # Vitora-specific
 backend/vitora.db
 backend/vitora.db-journal
+backend/vitora.db-shm
+backend/vitora.db-wal
 *.sqlite
 *.sqlite3
 *.db

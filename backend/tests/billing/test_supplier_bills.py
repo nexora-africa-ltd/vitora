@@ -13,8 +13,28 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest  # type: ignore
+from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
 from rest_framework import status
+
+
+@pytest.fixture(autouse=True)
+def _grant_billing_permissions(db, test_user):
+    """Grant supplier bill/payment permissions to the test user for all tests."""
+    perms = Permission.objects.filter(
+        codename__in=[
+            "add_supplierbill",
+            "change_supplierbill",
+            "delete_supplierbill",
+            "view_supplierbill",
+            "approve_supplierbill",
+            "add_supplierpayment",
+            "change_supplierpayment",
+            "delete_supplierpayment",
+            "view_supplierpayment",
+        ]
+    )
+    test_user.user_permissions.add(*perms)
 
 
 @pytest.fixture
@@ -625,3 +645,79 @@ class TestSupplierPaymentAPI:
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 1
+
+
+# ===========================================================================
+# RBAC Permission Tests
+# ===========================================================================
+
+
+class TestSupplierBillRBAC:
+    """Tests that RBAC is enforced on supplier bill endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def _strip_permissions(self, test_user):
+        """Remove all supplier bill permissions from the test user."""
+        test_user.user_permissions.clear()
+
+    def test_create_bill_without_permission(
+        self, authenticated_client, sample_supplier, sample_grn, sample_facility
+    ):
+        """Should return 403 when user lacks add_supplierbill permission."""
+        data = {
+            "supplier": sample_supplier.id,
+            "grn": sample_grn.id,
+            "supplier_invoice_number": "INV-RBAC-001",
+            "amount_invoiced": "5000.00",
+            "tax_amount": "800.00",
+            "bill_date": str(date.today()),
+        }
+        response = authenticated_client.post("/api/billing/supplier-bills/", data)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_delete_bill_without_permission(self, authenticated_client, sample_bill):
+        """Should return 403 when user lacks delete_supplierbill permission."""
+        response = authenticated_client.delete(f"/api/billing/supplier-bills/{sample_bill.id}/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_approve_bill_without_permission(self, authenticated_client, sample_bill):
+        """Should return 403 when user lacks approve_supplierbill permission."""
+        sample_bill.receive()
+        response = authenticated_client.post(
+            f"/api/billing/supplier-bills/{sample_bill.id}/approve/"
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_create_payment_without_permission(self, authenticated_client, sample_bill):
+        """Should return 403 when user lacks add_supplierpayment permission."""
+        sample_bill.receive()
+        sample_bill.approve(sample_bill.created_by)
+        data = {
+            "bill": sample_bill.id,
+            "supplier": sample_bill.supplier_id,
+            "method": "cash",
+            "amount": "1000.00",
+        }
+        response = authenticated_client.post("/api/billing/supplier-payments/", data)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_delete_payment_without_permission(
+        self, authenticated_client, sample_bill, test_user, sample_facility
+    ):
+        """Should return 403 when user lacks delete_supplierpayment permission."""
+        from hmis.apps.billing.models import SupplierPayment
+
+        sample_bill.receive()
+        sample_bill.approve(test_user)
+
+        payment = SupplierPayment.objects.create(
+            bill=sample_bill,
+            supplier=sample_bill.supplier,
+            method="cash",
+            amount=Decimal("1000.00"),
+            paid_by=test_user,
+            organization=sample_facility.organization,
+            facility=sample_facility,
+        )
+        response = authenticated_client.delete(f"/api/billing/supplier-payments/{payment.id}/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN

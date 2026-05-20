@@ -144,9 +144,19 @@ export default function StockCountDetailPage({
     enabled: !isNaN(id),
   });
 
+  const [itemsPage, setItemsPage] = useState(1);
+  const { data: itemsData } = useQuery({
+    queryKey: ['inventory-stock-count-items', id, itemsPage],
+    queryFn: () => inventoryApi.listStockCountItems(id, { page: itemsPage, page_size: 50 }),
+    enabled: !isNaN(id) && !!count,
+  });
+  const items = itemsData?.results || [];
+  const totalItemPages = Math.ceil((itemsData?.count || 0) / 50);
+
   function onActionSuccess(updated: StockCountDetail, label: string) {
     queryClient.setQueryData(['inventory-stock-count', id], updated);
     queryClient.invalidateQueries({ queryKey: ['inventory-stock-counts'] });
+    queryClient.invalidateQueries({ queryKey: ['inventory-stock-count-items', id] });
     toast({ variant: 'success', title: `Count ${label}` });
   }
 
@@ -163,6 +173,7 @@ export default function StockCountDetailPage({
     onSuccess: (result) => {
       // generate_items returns {created, total}, refetch full detail
       queryClient.invalidateQueries({ queryKey: ['inventory-stock-count', id] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-stock-count-items', id] });
       queryClient.invalidateQueries({ queryKey: ['inventory-stock-counts'] });
       toast({
         variant: 'success',
@@ -212,6 +223,7 @@ export default function StockCountDetailPage({
       });
       // Refetch to update all computed fields
       queryClient.invalidateQueries({ queryKey: ['inventory-stock-count', id] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-stock-count-items', id] });
       setEditedItems((prev) => {
         const next = { ...prev };
         delete next[item.id];
@@ -240,7 +252,7 @@ export default function StockCountDetailPage({
     setEditedItems((prev) => ({
       ...prev,
       [itemId]: {
-        ...getEditValue(count!.items.find((i) => i.id === itemId)!),
+        ...getEditValue(items.find((i) => i.id === itemId)!),
         ...prev[itemId],
         [field]: value,
       },
@@ -270,7 +282,7 @@ export default function StockCountDetailPage({
   const isCompleted = count.status === 'COMPLETED';
   const canApproveCount = isCompleted && canPerformAction('inventory.approve_stock_count' as never);
   const canCancel = !['APPROVED', 'CANCELLED'].includes(count.status);
-  const hasItems = (count.items?.length || 0) > 0;
+  const hasItems = count.item_count > 0;
   const anyPending =
     generateMutation.isPending ||
     startMutation.isPending ||
@@ -436,7 +448,7 @@ export default function StockCountDetailPage({
             />
             <CardContent className="relative p-3">
               <p className="text-xs text-muted-foreground">Total Items</p>
-              <p className="text-lg font-bold">{count.items.length}</p>
+              <p className="text-lg font-bold">{count.item_count}</p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
@@ -456,7 +468,7 @@ export default function StockCountDetailPage({
             />
             <CardContent className="relative p-3">
               <p className="text-xs text-muted-foreground">Remaining</p>
-              <p className="text-lg font-bold">{count.items.length - count.total_items_counted}</p>
+              <p className="text-lg font-bold">{count.item_count - count.total_items_counted}</p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
@@ -478,7 +490,7 @@ export default function StockCountDetailPage({
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            Count Items ({count.items?.length || 0})
+            Count Items ({count.item_count})
           </CardTitle>
         </CardHeader>
         <CardContent className="px-0 sm:px-6">
@@ -510,7 +522,7 @@ export default function StockCountDetailPage({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {count.items.map((item) => {
+                  {items.map((item) => {
                     const edit = getEditValue(item);
                     const isSaving = savingItemId === item.id;
                     const hasEdit = editedItems[item.id] != null;
@@ -599,6 +611,21 @@ export default function StockCountDetailPage({
                   })}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          {totalItemPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t">
+              <p className="text-sm text-muted-foreground">
+                Page {itemsPage} of {totalItemPages}
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setItemsPage((p) => Math.max(1, p - 1))} disabled={itemsPage <= 1}>
+                  Previous
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setItemsPage((p) => Math.min(totalItemPages, p + 1))} disabled={itemsPage >= totalItemPages}>
+                  Next
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

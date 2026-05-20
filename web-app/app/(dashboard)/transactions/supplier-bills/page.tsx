@@ -35,6 +35,7 @@ import {
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { billingApi } from '@/lib/api/billing';
 import { formatCurrency } from '@/lib/utils/format';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { SupplierBillList } from '@/lib/schemas/billing.schema';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -55,6 +56,8 @@ const MATCH_COLORS: Record<string, string> = {
 export default function SupplierBillsPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { canPerformAction } = usePermissions();
+  const canCreate = canPerformAction('billing.create_supplier_bill');
   const [search, setSearch] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [page, setPage] = React.useState(1);
@@ -85,11 +88,13 @@ export default function SupplierBillsPage() {
           title="Supplier Bills"
           helpContent="Track supplier invoices (accounts payable). Record payments, view aging reports, and verify 3-way matching between PO, GRN, and supplier invoice."
           actions={
+            canCreate ? (
             <Button onClick={() => router.push('/transactions/supplier-bills/new')}>
               <Plus className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">New Bill</span>
               <span className="sm:hidden">New</span>
             </Button>
+            ) : undefined
           }
         />
 

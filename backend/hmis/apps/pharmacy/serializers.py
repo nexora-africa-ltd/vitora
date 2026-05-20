@@ -65,7 +65,18 @@ class DrugSerializer(serializers.ModelSerializer):
     """Serializer for Drug model."""
 
     display_name = serializers.CharField(source="get_display_name", read_only=True)
-    current_stock = serializers.IntegerField(source="get_current_stock", read_only=True)
+    current_stock = serializers.SerializerMethodField()
+
+    def get_current_stock(self, obj) -> int:
+        """Return stock scoped to the requesting user's facility."""
+        request = self.context.get("request")
+        facility_id = None
+        if request and hasattr(request.user, "staff_profile"):
+            profile = getattr(request.user, "staff_profile", None)
+            if profile and profile.primary_facility_id:
+                facility_id = profile.primary_facility_id
+        return obj.get_current_stock(facility_id=facility_id)
+
     # Backward compatibility: expose both 'category' (primary) and 'categories' (all)
     category = serializers.SerializerMethodField()
 

@@ -44,6 +44,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { billingApi } from '@/lib/api/billing';
 import { formatCurrency } from '@/lib/utils/format';
 import { useToast } from '@/lib/hooks/use-toast';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
@@ -65,6 +66,9 @@ export default function SupplierBillDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { canPerformAction } = usePermissions();
+  const canApprove = canPerformAction('billing.approve_supplier_bill');
+  const canRecordPayment = canPerformAction('billing.record_supplier_payment');
   const billId = Number(params.id);
 
   const [showPaymentDialog, setShowPaymentDialog] = React.useState(false);
@@ -134,9 +138,9 @@ export default function SupplierBillDetailPage() {
     return <div className="flex items-center justify-center py-12 text-muted-foreground">Bill not found</div>;
   }
 
-  const canApprove = bill.status === 'RECEIVED' || bill.status === 'DRAFT';
-  const canPay = bill.status === 'APPROVED' || bill.status === 'PARTIAL';
-  const canCancel = bill.status !== 'PAID' && bill.status !== 'CANCELLED';
+  const canApproveBill = canApprove && (bill.status === 'RECEIVED' || bill.status === 'DRAFT');
+  const canPay = canRecordPayment && (bill.status === 'APPROVED' || bill.status === 'PARTIAL');
+  const canCancelBill = bill.status !== 'PAID' && bill.status !== 'CANCELLED';
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -145,7 +149,7 @@ export default function SupplierBillDetailPage() {
         helpContent="Supplier bill detail. Approve bills, record payments, and verify 3-way matching between Purchase Order, GRN, and supplier invoice."
         actions={
           <div className="flex flex-col gap-2 sm:flex-row">
-            {canApprove && (
+            {canApproveBill && (
               <Button onClick={handleApprove} variant="outline">
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 Approve
@@ -157,7 +161,7 @@ export default function SupplierBillDetailPage() {
                 Record Payment
               </Button>
             )}
-            {canCancel && (
+            {canCancelBill && (
               <Button onClick={handleCancel} variant="destructive" size="sm">
                 <XCircle className="h-4 w-4 mr-2" />
                 Cancel
