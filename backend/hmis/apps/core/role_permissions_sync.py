@@ -130,6 +130,8 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "SHAMember": ("billing", "shamember"),
     "SHATariff": ("billing", "shatariff"),
     "FacilityBillingConfig": ("billing", "facilitybillingconfig"),
+    "SupplierBill": ("billing", "supplierbill"),
+    "SupplierPayment": ("billing", "supplierpayment"),
     # procedures
     "ProcedureOrder": ("procedures", "procedureorder"),
     "ProcedureConsent": ("procedures", "procedureconsent"),
@@ -349,6 +351,8 @@ CUSTOM_ACTIONS: set[str] = {
     "adjudicate_insurance_claim",
     "approve_insurance_preauth",
     "reconcile_remittance",
+    # supplier bills
+    "approve_supplierbill",
 }
 
 # Actions following {action}_{model} pattern (e.g. view_sensitive_patient)
