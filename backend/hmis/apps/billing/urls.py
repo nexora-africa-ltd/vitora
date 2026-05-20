@@ -26,6 +26,8 @@ from hmis.apps.billing.views import (
     ReportViewSet,
     ServiceCategoryViewSet,
     ServiceViewSet,
+    SupplierBillViewSet,
+    SupplierPaymentViewSet,
 )
 
 router = routers.DefaultRouter()
@@ -38,6 +40,8 @@ router.register(r"credit-notes", CreditNoteViewSet, basename="creditnote")
 router.register(r"mpesa", MpesaViewSet, basename="mpesa")
 router.register(r"reports", ReportViewSet, basename="reports")
 router.register(r"facility-configs", FacilityBillingConfigViewSet, basename="facilitybillingconfig")
+router.register(r"supplier-bills", SupplierBillViewSet, basename="supplierbill")
+router.register(r"supplier-payments", SupplierPaymentViewSet, basename="supplierpayment")
 
 # SHA-related endpoints
 router.register(r"sha-members", SHAMemberViewSet, basename="sha-member")

@@ -41,6 +41,10 @@ import {
   FacilityBillingConfigSchema,
   SHAContractSummarySchema,
   PaginatedFacilityBillingConfigSchema,
+  SupplierBillSchema,
+  PaginatedSupplierBillSchema,
+  SupplierBillAgingSummarySchema,
+  SupplierPaymentSchema,
 } from '@/lib/schemas/billing.schema';
 import type {
   // Service types
@@ -101,6 +105,14 @@ import type {
   FacilityBillingConfigListParams,
   SHAContractSummary,
   PaginatedFacilityBillingConfigs,
+  // Supplier Bills (Accounts Payable)
+  SupplierBill,
+  SupplierBillCreateData,
+  SupplierBillUpdateData,
+  SupplierBillListParams,
+  SupplierPaymentCreateData,
+  PaginatedSupplierBills,
+  SupplierBillAgingSummary,
 } from '@/lib/types/billing';
 
 // ============================================================================
@@ -743,4 +755,42 @@ export const billingApi = {
   createFacilityBillingConfig,
   updateFacilityBillingConfig,
   getSHAContractSummaries,
+
+  // Supplier Bills (Accounts Payable)
+  supplierBills: {
+    list: async (params?: SupplierBillListParams): Promise<PaginatedSupplierBills> => {
+      const response = await apiClient.get('/api/billing/supplier-bills/', { params });
+      return parseResponse(PaginatedSupplierBillSchema, response.data, { context: 'billingApi.supplierBills.list' });
+    },
+    get: async (id: number): Promise<SupplierBill> => {
+      const response = await apiClient.get(`/api/billing/supplier-bills/${id}/`);
+      return parseResponse(SupplierBillSchema, response.data, { context: 'billingApi.supplierBills.get' });
+    },
+    create: async (data: SupplierBillCreateData): Promise<SupplierBill> => {
+      const response = await apiClient.post('/api/billing/supplier-bills/', data);
+      return parseResponse(SupplierBillSchema, response.data, { context: 'billingApi.supplierBills.create' });
+    },
+    update: async (id: number, data: SupplierBillUpdateData): Promise<SupplierBill> => {
+      const response = await apiClient.patch(`/api/billing/supplier-bills/${id}/`, data);
+      return parseResponse(SupplierBillSchema, response.data, { context: 'billingApi.supplierBills.update' });
+    },
+    approve: async (id: number): Promise<SupplierBill> => {
+      const response = await apiClient.post(`/api/billing/supplier-bills/${id}/approve/`);
+      return parseResponse(SupplierBillSchema, response.data, { context: 'billingApi.supplierBills.approve' });
+    },
+    cancel: async (id: number): Promise<SupplierBill> => {
+      const response = await apiClient.post(`/api/billing/supplier-bills/${id}/cancel/`);
+      return parseResponse(SupplierBillSchema, response.data, { context: 'billingApi.supplierBills.cancel' });
+    },
+    agingSummary: async (): Promise<SupplierBillAgingSummary> => {
+      const response = await apiClient.get('/api/billing/supplier-bills/aging_summary/');
+      return parseResponse(SupplierBillAgingSummarySchema, response.data, { context: 'billingApi.supplierBills.agingSummary' });
+    },
+    recordPayment: async (data: SupplierPaymentCreateData): Promise<SupplierBill> => {
+      const response = await apiClient.post('/api/billing/supplier-payments/', data);
+      // After payment, fetch the updated bill
+      const billResponse = await apiClient.get(`/api/billing/supplier-bills/${data.bill}/`);
+      return parseResponse(SupplierBillSchema, billResponse.data, { context: 'billingApi.supplierBills.recordPayment' });
+    },
+  },
 };
