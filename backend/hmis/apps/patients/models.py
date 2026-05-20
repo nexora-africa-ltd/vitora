@@ -498,6 +498,18 @@ class Patient(HistoryMixin, models.Model):
                 }
             )
 
+        # Validate CR number format if provided (expected from ILM eligibility: CR{digits}-{digit})
+        if self.cr_number:
+            import re
+
+            if not re.match(r"^CR\d+-\d$", self.cr_number):
+                raise ValidationError(
+                    {
+                        "cr_number": "Client Registry number must match format CR{digits}-{digit} "
+                        "(e.g. CR1481274185029-8)."
+                    }
+                )
+
         # Validate county and sub_county are provided (mandatory)
         if not self.county_id:
             raise ValidationError({"county": "County is required."})

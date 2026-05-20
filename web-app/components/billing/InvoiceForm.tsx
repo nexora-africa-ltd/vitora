@@ -178,14 +178,14 @@ export function InvoiceForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 sm:space-y-6">
         {/* Invoice Type Toggle */}
         {showTypeToggle && !isEditing && (
           <Card>
-            <CardHeader>
-              <CardTitle>Document Type</CardTitle>
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="text-base sm:text-lg">Document Type</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-4 sm:px-6">
               <FormField
                 control={form.control}
                 name="invoice_type"
@@ -195,7 +195,7 @@ export function InvoiceForm({
                       <RadioGroup
                         value={field.value}
                         onValueChange={field.onChange}
-                        className="flex gap-4"
+                        className="flex flex-col gap-3 sm:flex-row sm:gap-4"
                       >
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="invoice" id="type-invoice" />
@@ -236,10 +236,10 @@ export function InvoiceForm({
         {/* Payment Type */}
         {!isProforma && (
           <Card>
-            <CardHeader>
-              <CardTitle>Payment Type</CardTitle>
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="text-base sm:text-lg">Payment Type</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-4 sm:px-6">
               <FormField
                 control={form.control}
                 name="payment_type"
@@ -278,10 +278,10 @@ export function InvoiceForm({
 
         {/* Patient & Due Date */}
         <Card>
-          <CardHeader>
-            <CardTitle>{isProforma ? 'Proforma Details' : 'Invoice Details'}</CardTitle>
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="text-base sm:text-lg">{isProforma ? 'Proforma Details' : 'Invoice Details'}</CardTitle>
           </CardHeader>
-          <CardContent className="grid md:grid-cols-2 gap-4">
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 px-4 sm:px-6">
             {/* Patient */}
             <FormField
               control={form.control}
@@ -367,7 +367,7 @@ export function InvoiceForm({
               control={form.control}
               name="notes"
               render={({ field }) => (
-                <FormItem className="md:col-span-2">
+                <FormItem className="sm:col-span-2">
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
                     <Textarea
@@ -384,33 +384,34 @@ export function InvoiceForm({
 
         {/* Line Items */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Line Items</CardTitle>
+          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-2 sm:pb-3">
+            <CardTitle className="text-base sm:text-lg">Line Items</CardTitle>
             <Button
               type="button"
               variant="outline"
               size="sm"
+              className="w-full sm:w-auto"
               onClick={() => append({ service_id: 0, quantity: 1, unit_price: 0 })}
             >
               <Plus className="h-4 w-4 mr-1" />
               Add Item
             </Button>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="px-3 sm:px-6">
+            <div className="space-y-3 sm:space-y-4">
               {fields.map((field, index) => (
                 <div
                   key={field.id}
-                  className="grid grid-cols-12 gap-2 items-end"
+                  className="flex flex-col gap-2 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end p-3 sm:p-0 border sm:border-0 rounded-lg sm:rounded-none"
                 >
                   {/* Service */}
-                  <div className="col-span-5">
+                  <div className="sm:col-span-5">
                     <FormField
                       control={form.control}
                       name={`items.${index}.service_id`}
                       render={({ field: serviceField }) => (
                         <FormItem>
-                          {index === 0 && <FormLabel>Service</FormLabel>}
+                          <FormLabel className={index === 0 ? '' : 'sm:hidden'}>Service</FormLabel>
                           <Select
                             value={serviceField.value?.toString() || ''}
                             onValueChange={(value) =>
@@ -439,66 +440,68 @@ export function InvoiceForm({
                     />
                   </div>
 
-                  {/* Quantity */}
-                  <div className="col-span-2">
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.quantity`}
-                      render={({ field: qtyField }) => (
-                        <FormItem>
-                          {index === 0 && <FormLabel>Qty</FormLabel>}
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="1"
-                              {...qtyField}
-                              onChange={(e) =>
-                                qtyField.onChange(parseInt(e.target.value) || 1)
-                              }
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  {/* Quantity & Unit Price row on mobile */}
+                  <div className="grid grid-cols-2 gap-2 sm:contents">
+                    <div className="sm:col-span-2">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.quantity`}
+                        render={({ field: qtyField }) => (
+                          <FormItem>
+                            <FormLabel className={index === 0 ? '' : 'sm:hidden'}>Qty</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min="1"
+                                {...qtyField}
+                                onChange={(e) =>
+                                  qtyField.onChange(parseInt(e.target.value) || 1)
+                                }
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-                  {/* Unit Price */}
-                  <div className="col-span-3">
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.unit_price`}
-                      render={({ field: priceField }) => (
-                        <FormItem>
-                          {index === 0 && <FormLabel>Unit Price</FormLabel>}
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              {...priceField}
-                              onChange={(e) =>
-                                priceField.onChange(parseFloat(e.target.value) || 0)
-                              }
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="sm:col-span-3">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.unit_price`}
+                        render={({ field: priceField }) => (
+                          <FormItem>
+                            <FormLabel className={index === 0 ? '' : 'sm:hidden'}>Unit Price</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                {...priceField}
+                                onChange={(e) =>
+                                  priceField.onChange(parseFloat(e.target.value) || 0)
+                                }
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
 
                   {/* Remove Button */}
-                  <div className="col-span-2 flex justify-end">
+                  <div className="sm:col-span-2 flex justify-end">
                     {fields.length > 1 && (
                       <Button
                         type="button"
                         variant="ghost"
-                        size="icon"
-                        className="text-red-500 hover:text-red-700"
+                        size="sm"
+                        className="text-destructive hover:text-destructive/80 gap-1 sm:p-2"
                         onClick={() => remove(index)}
                       >
                         <Trash2 className="h-4 w-4" />
+                        <span className="sm:hidden text-xs">Remove</span>
                       </Button>
                     )}
                   </div>
@@ -507,27 +510,25 @@ export function InvoiceForm({
             </div>
 
             {/* Total */}
-            <div className="flex justify-end mt-6 pt-4 border-t">
-              <div className="text-right">
-                <span className="text-muted-foreground mr-4">Subtotal:</span>
-                <span className="text-xl font-bold">
-                  {formatCurrency(subtotal)}
-                </span>
-              </div>
+            <div className="flex justify-between sm:justify-end mt-4 sm:mt-6 pt-3 sm:pt-4 border-t">
+              <span className="text-sm sm:text-base text-muted-foreground sm:mr-4">Subtotal:</span>
+              <span className="text-lg sm:text-xl font-bold">
+                {formatCurrency(subtotal)}
+              </span>
             </div>
           </CardContent>
         </Card>
 
         {/* Form Actions */}
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onCancel}>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" onClick={onCancel} className="w-full sm:w-auto">
             Cancel
           </Button>
           <ShiftGate>
           <Button
             type="submit"
             disabled={isLoading || (isProforma && !onSubmitProforma)}
-            className={isProforma ? 'bg-purple-600 hover:bg-purple-700' : ''}
+            className={`w-full sm:w-auto ${isProforma ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
           >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isProforma ? (

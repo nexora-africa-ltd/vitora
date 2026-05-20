@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import re
 
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -102,6 +103,24 @@ def _resolve_sha_member(request) -> SHAMember | None:
 
 def _facility(request):
     return getattr(request.user, "primary_facility", None)
+
+
+_CR_NUMBER_RE = re.compile(r"^CR\d+-\d$")
+
+
+def _validate_patient_id(patient_id: str) -> str | None:
+    """Return an error message if patient_id doesn't look like a CR number.
+
+    ILM expects patient_id to be the Client Registry number (format:
+    CR{digits}-{check_digit}, e.g. CR1481274185029-8) returned by the
+    eligibility endpoint's ``memberCrNumber`` field.
+    """
+    if not _CR_NUMBER_RE.match(patient_id):
+        return (
+            f"patient_id '{patient_id}' does not match expected CR number format "
+            "(CR{{digits}}-{{digit}}). Pass the memberCrNumber from the eligibility response."
+        )
+    return None
 
 
 def _result_to_response(result) -> Response:
@@ -247,6 +266,9 @@ class IlmBenefitsView(APIView):
                 {"error": "patient_id is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        fmt_err = _validate_patient_id(patient_id)
+        if fmt_err:
+            logger.warning("IlmBenefitsView: %s", fmt_err)
         is_unique_raw = request.query_params.get("is_unique_benefit")
         is_unique = None
         if is_unique_raw is not None:
@@ -278,6 +300,9 @@ class IlmSubBenefitsView(APIView):
                 {"error": "patient_id is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        fmt_err = _validate_patient_id(patient_id)
+        if fmt_err:
+            logger.warning("IlmSubBenefitsView: %s", fmt_err)
         parent_benefit_code = request.query_params.get("parent_benefit_code")
         try:
             result = IlmRegistriesService().fetch_sub_benefits(
@@ -306,6 +331,9 @@ class IlmBenefitInterventionsView(APIView):
                 {"error": "patient_id and sub_benefit_code are required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        fmt_err = _validate_patient_id(patient_id)
+        if fmt_err:
+            logger.warning("IlmBenefitInterventionsView: %s", fmt_err)
         try:
             result = IlmRegistriesService().fetch_benefit_interventions(
                 patient_id=patient_id,
@@ -337,6 +365,9 @@ class IlmUtilizationView(APIView):
                 {"error": "patient_id and intervention_code are required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        fmt_err = _validate_patient_id(patient_id)
+        if fmt_err:
+            logger.warning("IlmUtilizationView: %s", fmt_err)
         try:
             result = IlmRegistriesService().fetch_utilization(
                 patient_id=patient_id,
