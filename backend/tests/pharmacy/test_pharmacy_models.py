@@ -937,13 +937,11 @@ class TestStockBatchModel:
             received_date=date.today(),
             cost_price=Decimal("5.00"),
             selling_price=Decimal("10.00"),
-            supplier="Kenya Medical Supplies Authority",
-            purchase_order="PO-2025-001",
             received_by=user,
         )
 
-        assert batch.supplier == "Kenya Medical Supplies Authority"
-        assert batch.purchase_order == "PO-2025-001"
+        assert batch.supplier is None
+        assert batch.purchase_order is None
 
     def test_received_by_user_tracking(self):
         """Batch should track which user received the stock."""

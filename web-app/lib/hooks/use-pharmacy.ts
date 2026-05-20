@@ -495,6 +495,7 @@ export function useDispenseFromPrescription() {
       patient_id: number;
       prescription_item_id?: number;
       counseling_notes?: string;
+      store_location_id?: number;
     }) => pharmacyApi.dispenseFromPrescription(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dispensings'] });
@@ -502,6 +503,7 @@ export function useDispenseFromPrescription() {
       queryClient.invalidateQueries({ queryKey: ['stock-batches'] });
       queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
       queryClient.invalidateQueries({ queryKey: ['drugs'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-ward-stock'] });
     },
   });
 }

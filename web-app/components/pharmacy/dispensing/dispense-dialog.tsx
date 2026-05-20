@@ -8,7 +8,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -36,6 +36,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useDispenseFromPrescription, useBatchesForDrug } from '@/lib/hooks/use-pharmacy';
+import { useQuery } from '@tanstack/react-query';
+import { inventoryApi } from '@/lib/api/inventory';
 import { Prescription, PrescriptionItem, StockBatch } from '@/lib/types/pharmacy';
 
 // Form validation schema
@@ -67,9 +69,25 @@ export function DispenseDialog({
 }: DispenseDialogProps) {
   const { toast } = useToast();
   const [selectedBatch, setSelectedBatch] = useState<StockBatch | null>(null);
+  const [selectedStore, setSelectedStore] = useState<string>('');
 
   // Fetch available batches for the drug
   const { data: batches, isLoading: batchesLoading } = useBatchesForDrug(prescriptionItem.drug);
+
+  // Fetch store locations
+  const { data: storesData } = useQuery({
+    queryKey: ['inventory-store-locations-all'],
+    queryFn: () => inventoryApi.listStoreLocations({ page_size: 200, is_active: true }),
+  });
+
+  const stores = useMemo(() => storesData?.results || [], [storesData]);
+
+  // Auto-select store if only one exists
+  useEffect(() => {
+    if (stores.length === 1 && !selectedStore) {
+      setSelectedStore(String(stores[0]!.id));
+    }
+  }, [stores, selectedStore]);
 
   // Dispensing mutation
   const dispense = useDispenseFromPrescription();
@@ -99,6 +117,10 @@ export function DispenseDialog({
       if (fefoBatch) {
         setSelectedBatch(fefoBatch);
         setValue('batch_id', fefoBatch.id.toString());
+        // Auto-select the batch's store
+        if (fefoBatch.store_location) {
+          setSelectedStore(String(fefoBatch.store_location));
+        }
       }
     }
   }, [batches, selectedBatch, setValue]);
@@ -108,6 +130,10 @@ export function DispenseDialog({
     const batch = batches?.find((b) => b.id.toString() === batchId);
     if (batch) {
       setSelectedBatch(batch);
+      // Auto-set store from the batch
+      if (batch.store_location) {
+        setSelectedStore(String(batch.store_location));
+      }
     }
   };
 
@@ -136,6 +162,7 @@ export function DispenseDialog({
         patient_id: prescription.patient,
         prescription_item_id: prescriptionItem.id,
         counseling_notes: data.counseling_notes,
+        ...(selectedStore ? { store_location_id: Number(selectedStore) } : {}),
       });
 
       toast({
@@ -160,13 +187,14 @@ export function DispenseDialog({
     if (!dispense.isPending) {
       reset();
       setSelectedBatch(null);
+      setSelectedStore('');
       onClose();
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dispensing-form">
+      <DialogContent className="max-w-xl" data-testid="dispensing-form">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Pill className="h-5 w-5" />
@@ -177,65 +205,38 @@ export function DispenseDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Drug Information */}
-          <div className="rounded-lg border p-4 space-y-2 bg-muted/50">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="font-semibold text-lg">{prescriptionItem.drug_name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {prescriptionItem.drug_code}
-                </p>
-              </div>
+          <div className="rounded-md border p-3 bg-muted/50">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="font-semibold">{prescriptionItem.drug_name}</p>
               {prescription.status === 'PARTIAL' && (
-                <Badge variant="outline">Partially Dispensed</Badge>
+                <Badge variant="outline" className="text-xs">Partial</Badge>
               )}
             </div>
-
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Dosage:</span>{' '}
-                <span className="font-medium">{prescriptionItem.dosage}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Frequency:</span>{' '}
-                <span className="font-medium">{prescriptionItem.frequency}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Duration:</span>{' '}
-                <span className="font-medium">{prescriptionItem.duration}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Prescribed:</span>{' '}
-                <span className="font-medium">{prescriptionItem.quantity_prescribed} units</span>
-              </div>
-              <div className="col-span-2">
-                <span className="text-muted-foreground">Remaining:</span>{' '}
-                <span className="font-semibold text-primary">
-                  {prescriptionItem.remaining_quantity} units
-                </span>
-              </div>
+            <div className="grid grid-cols-3 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <span>{prescriptionItem.dosage} · {prescriptionItem.frequency}</span>
+              <span>{prescriptionItem.duration}</span>
+              <span className="text-right font-medium text-primary">
+                {prescriptionItem.remaining_quantity}/{prescriptionItem.quantity_prescribed} remaining
+              </span>
             </div>
-
             {prescriptionItem.instructions && (
-              <div className="pt-2 border-t">
-                <p className="text-sm">
-                  <span className="text-muted-foreground">Instructions:</span>{' '}
-                  {prescriptionItem.instructions}
-                </p>
-              </div>
+              <p className="text-xs text-muted-foreground mt-1.5 pt-1.5 border-t">
+                {prescriptionItem.instructions}
+              </p>
             )}
           </div>
 
           {/* Batch Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="batch">
+          <div className="space-y-1.5">
+            <Label htmlFor="batch" className="text-xs">
               Batch <span className="text-destructive">*</span>
             </Label>
             {batchesLoading ? (
-              <div className="flex items-center gap-2 p-3 border rounded-md">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm text-muted-foreground">Loading batches...</span>
+              <div className="flex items-center gap-2 p-2 border rounded-md">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span className="text-xs text-muted-foreground">Loading batches...</span>
               </div>
             ) : batches && batches.length > 0 ? (
               <>
@@ -245,138 +246,116 @@ export function DispenseDialog({
                   value={selectedBatch?.id.toString()}
                   data-testid="batch-select"
                 >
-                  <SelectTrigger id="batch">
-                    <SelectValue placeholder="Select batch (FEFO order)" />
+                  <SelectTrigger id="batch" className="h-9">
+                    <SelectValue placeholder="Select batch (FEFO)" />
                   </SelectTrigger>
                   <SelectContent>
                     {batches.map((batch, index) => (
                       <SelectItem key={batch.id} value={batch.id.toString()}>
-                        <div className="flex items-center justify-between w-full">
-                          <span className="font-medium">{batch.batch_number}</span>
-                          {index === 0 && (
-                            <Badge variant="outline" className="ml-2">
-                              Auto-selected (Earliest Expiry)
-                            </Badge>
-                          )}
-                        </div>
+                        {batch.batch_number}
+                        {index === 0 ? ' (earliest expiry)' : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
 
-                {/* Batch Details */}
+                {/* Batch Details - compact inline */}
                 {selectedBatch && (
-                  <div className="p-3 border rounded-md bg-muted/30 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Batch Number:</span>
-                      <span className="font-medium">{selectedBatch.batch_number}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Expiry Date:</span>
-                      <span className="font-medium">
+                  <div className="grid grid-cols-4 gap-2 p-2 border rounded-md bg-muted/30 text-xs">
+                    <div>
+                      <span className="text-muted-foreground">Expires</span>
+                      <p className="font-medium">
                         {formatDate(selectedBatch.expiry_date, 'MMM dd, yyyy')}
                         {selectedBatch.days_to_expiry < 90 && (
-                          <Badge variant="destructive" className="ml-2">
-                            {selectedBatch.days_to_expiry} days left
-                          </Badge>
+                          <span className="text-destructive ml-1">({selectedBatch.days_to_expiry}d)</span>
                         )}
-                      </span>
+                      </p>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Available:</span>
-                      <span className="font-semibold">
-                        {selectedBatch.quantity_available} units
-                      </span>
+                    <div>
+                      <span className="text-muted-foreground">Available</span>
+                      <p className="font-semibold">{selectedBatch.quantity_available}</p>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Unit Price:</span>
-                      <span className="font-medium">
-                        KSh {(Number(selectedBatch.selling_price) || 0).toFixed(2)}
-                      </span>
+                    <div>
+                      <span className="text-muted-foreground">Unit Price</span>
+                      <p className="font-medium">KSh {(Number(selectedBatch.selling_price) || 0).toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Total</span>
+                      <p className="font-bold">KSh {totalPrice.toFixed(2)}</p>
                     </div>
                   </div>
                 )}
               </>
             ) : (
-              <div className="p-4 border border-destructive rounded-md bg-destructive/10">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-5 w-5 text-destructive mt-0.5" />
-                  <div>
-                    <p className="font-medium text-destructive">No Stock Available</p>
-                    <p className="text-sm text-muted-foreground">
-                      There are no available batches for this drug. Please receive stock first.
-                    </p>
-                  </div>
-                </div>
+              <div className="flex items-center gap-2 p-2 border border-destructive rounded-md bg-destructive/10">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <p className="text-xs text-destructive">No stock available. Receive stock first.</p>
               </div>
             )}
           </div>
 
+          {/* Store Location */}
+          {stores.length > 0 && (
+            <div className="space-y-1.5">
+              <Label htmlFor="store_location" className="text-xs">
+                Dispensing From <span className="text-destructive">*</span>
+              </Label>
+              <Select value={selectedStore} onValueChange={setSelectedStore}>
+                <SelectTrigger id="store_location" className="h-9">
+                  <SelectValue placeholder="Select store" />
+                </SelectTrigger>
+                <SelectContent>
+                  {stores.map((store) => (
+                    <SelectItem key={store.id} value={String(store.id)}>
+                      {store.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Quantity Input */}
-          <div className="space-y-2">
-            <Label htmlFor="quantity">
-              Quantity to Dispense <span className="text-destructive">*</span>
+          <div className="space-y-1.5">
+            <Label htmlFor="quantity" className="text-xs">
+              Quantity <span className="text-destructive">*</span>
             </Label>
             <Input
               id="quantity"
               type="number"
               min="1"
+              className="h-9"
               {...register('quantity')}
               placeholder="Enter quantity"
               disabled={!selectedBatch}
             />
             {errors.quantity && (
-              <p className="text-sm text-destructive">{errors.quantity.message}</p>
+              <p className="text-xs text-destructive">{errors.quantity.message}</p>
             )}
-
-            {/* Validation Warnings */}
             {exceedsStock && (
-              <div className="flex items-start gap-2 p-3 border border-destructive rounded-md bg-destructive/10">
-                <AlertTriangle className="h-4 w-4 text-destructive mt-0.5" />
-                <p className="text-sm text-destructive">
-                  Insufficient stock! Only {selectedBatch?.quantity_available} units available.
-                </p>
-              </div>
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Only {selectedBatch?.quantity_available} available in batch.
+              </p>
             )}
-
             {exceedsPrescribed && (
-              <div className="flex items-start gap-2 p-3 border border-yellow-600 rounded-md bg-yellow-50 dark:bg-yellow-900/20">
-                <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
-                <p className="text-sm text-yellow-700 dark:text-yellow-500">
-                  Warning: Quantity exceeds prescribed amount ({prescriptionItem.remaining_quantity}{' '}
-                  units).
-                </p>
-              </div>
+              <p className="text-xs text-yellow-600 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Exceeds prescribed ({prescriptionItem.remaining_quantity} remaining).
+              </p>
             )}
           </div>
 
-          {/* Price Display */}
-          {selectedBatch && quantity > 0 && (
-            <div className="p-4 border rounded-md bg-muted/50">
-              <div className="flex items-center justify-between text-lg">
-                <span className="text-muted-foreground">Total Cost:</span>
-                <span className="font-bold">KSh {totalPrice.toFixed(2)}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {quantity} units × KSh {(Number(selectedBatch.selling_price) || 0).toFixed(2)}
-              </p>
-            </div>
-          )}
-
           {/* Counseling Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="counseling_notes">
-              Counseling Notes / Patient Advice
-            </Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="counseling_notes" className="text-xs">Counseling Notes</Label>
             <Textarea
               id="counseling_notes"
               {...register('counseling_notes')}
-              placeholder="Enter counseling notes, instructions, or advice for the patient..."
-              rows={4}
+              placeholder="Instructions or advice for the patient..."
+              rows={2}
+              className="resize-none"
             />
-            <p className="text-xs text-muted-foreground">
-              Provide important information for the patient about how to take the medication.
-            </p>
           </div>
 
           {/* Action Buttons */}
@@ -397,7 +376,8 @@ export function DispenseDialog({
                 !quantity ||
                 quantity <= 0 ||
                 exceedsStock ||
-                batchesLoading
+                batchesLoading ||
+                (stores.length > 0 && !selectedStore)
               }
             >
               {dispense.isPending ? (

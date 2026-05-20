@@ -179,11 +179,15 @@ export interface StockBatch {
   received_date: string;
   cost_price: number;
   selling_price: number;
-  supplier?: string | null;
-  purchase_order?: string | null;
+  supplier?: number | null;
+  supplier_name?: string | null;
+  purchase_order?: number | null;
+  purchase_order_number?: string | null;
   received_by: number;
   received_by_name?: string | null;
   status: StockStatus;
+  store_location?: number | null;
+  store_location_name?: string | null;
   location?: string | null;
   days_to_expiry: number;
   is_expired: boolean;
@@ -473,8 +477,9 @@ export interface StockBatchCreateData {
   received_date: string;
   cost_price: number;
   selling_price: number;
-  supplier?: string;
-  purchase_order?: string;
+  supplier?: number;
+  purchase_order?: number;
+  store_location?: number;
   location?: string;
 }
 

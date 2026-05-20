@@ -92,7 +92,6 @@ def stock_batch(db, sample_drug, test_user):
         received_date=date.today() - timedelta(days=10),
         cost_price=Decimal("5.00"),
         selling_price=Decimal("10.00"),
-        supplier="Test Supplier Ltd",
         received_by=test_user,
         status="AVAILABLE",
     )
@@ -113,7 +112,6 @@ def expiring_batch(db, sample_drug, test_user):
         received_date=date.today() - timedelta(days=720),
         cost_price=Decimal("5.00"),
         selling_price=Decimal("10.00"),
-        supplier="Test Supplier Ltd",
         received_by=test_user,
         status="AVAILABLE",
     )
@@ -134,7 +132,6 @@ def expired_batch(db, sample_drug, test_user):
         received_date=date.today() - timedelta(days=1080),
         cost_price=Decimal("5.00"),
         selling_price=Decimal("10.00"),
-        supplier="Test Supplier Ltd",
         received_by=test_user,
         status="EXPIRED",
     )
@@ -186,7 +183,6 @@ def sample_stock_batch(db, sample_drug, test_user):
         received_date=date.today() - timedelta(days=10),
         cost_price=Decimal("5.00"),
         selling_price=Decimal("10.00"),
-        supplier="Test Supplier Ltd",
         received_by=test_user,
         status="AVAILABLE",
     )
