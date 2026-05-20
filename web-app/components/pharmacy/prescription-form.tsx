@@ -310,7 +310,7 @@ MEDICATIONS
     const newErrors: Record<string, string> = {};
 
     if (!currentItem.drug) {
-      newErrors.drug = 'Please select a drug';
+      newErrors.drug = 'Please select a medication';
     }
     if (!currentItem.quantity_prescribed || currentItem.quantity_prescribed < 1) {
       newErrors.quantity = 'Quantity must be at least 1';
@@ -659,7 +659,7 @@ MEDICATIONS
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="drug-search-form"
-                      placeholder="Search drugs by name or generic name..."
+                      placeholder="Search medications by name..."
                       value={drugSearch}
                       onChange={(e) => {
                         setDrugSearch(e.target.value);
@@ -697,7 +697,7 @@ MEDICATIONS
                           ))
                         ) : (
                           <div className="p-4 text-center text-muted-foreground">
-                            No drugs found
+                            No medications found
                           </div>
                         )}
                       </div>
@@ -778,7 +778,7 @@ MEDICATIONS
               ) : (
                 <Input
                   id="dosage-form"
-                  placeholder="Select a drug first..."
+                  placeholder="Select a medication first..."
                   value={currentItem.dosage || ''}
                   onChange={(e) =>
                     setCurrentItem((prev) => ({ ...prev, dosage: e.target.value }))

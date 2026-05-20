@@ -41,16 +41,16 @@ export function BatchDetailDialog({ batch, open, onOpenChange, onEdit }: BatchDe
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Drug Information */}
+          {/* Item Information */}
           <div>
-            <h3 className="font-semibold mb-2">Drug Information</h3>
+            <h3 className="font-semibold mb-2">Item Information</h3>
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Drug:</span>
+                <span className="text-muted-foreground">Item:</span>
                 <span className="font-medium">{batch.drug_name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Drug Code:</span>
+                <span className="text-muted-foreground">Item Code:</span>
                 <span className="font-mono text-sm">{batch.drug_code}</span>
               </div>
             </div>

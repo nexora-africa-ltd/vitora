@@ -27,7 +27,7 @@ import { getApiErrorMessage } from '@/lib/api/client';
 import { useToast } from '@/lib/hooks/use-toast';
 
 const poItemSchema = z.object({
-  drug: z.coerce.number().min(1, 'Select a drug'),
+  drug: z.coerce.number().min(1, 'Select an item'),
   drug_name: z.string().optional(), // display only
   quantity_ordered: z.coerce.number().int().min(1, 'Quantity required'),
   unit_cost: z.coerce.number().min(0, 'Unit cost required'),
@@ -111,7 +111,7 @@ export default function NewPurchaseOrderPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto">
-      <PageHeader title="New Purchase Order" helpContent="Create a purchase order for a supplier. Add line items with drugs, quantities, and prices." />
+      <PageHeader title="New Purchase Order" helpContent="Create a purchase order for a supplier. Add line items with items, quantities, and prices." />
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
@@ -198,7 +198,7 @@ export default function NewPurchaseOrderPage() {
                 <table className="w-full min-w-[600px] text-sm">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 pr-3 font-medium">Drug *</th>
+                      <th className="pb-2 pr-3 font-medium">Item *</th>
                       <th className="pb-2 pr-3 font-medium w-24 text-right">Qty *</th>
                       <th className="pb-2 pr-3 font-medium w-32 text-right">Unit Cost *</th>
                       <th className="pb-2 pr-3 font-medium w-32 text-right">Total</th>
@@ -222,9 +222,9 @@ export default function NewPurchaseOrderPage() {
                                     options={drugs.map((d) => ({ value: String(d.id), label: d.generic_name, sublabel: d.code }))}
                                     value={String(drugField.value || '')}
                                     onValueChange={drugField.onChange}
-                                    placeholder="Select drug"
-                                    searchPlaceholder="Search drugs..."
-                                    emptyMessage="No drugs found."
+                                    placeholder="Select item"
+                                    searchPlaceholder="Search items..."
+                                    emptyMessage="No items found."
                                     className="h-8 text-xs"
                                   />
                                   <FormMessage className="text-xs" />

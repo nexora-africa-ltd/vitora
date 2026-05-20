@@ -16,7 +16,7 @@ import { DrugTable } from '@/components/pharmacy';
 import { useDrugs } from '@/lib/hooks/use-pharmacy';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useDebounce } from '@/lib/hooks/use-debounce';
-import type { DrugCategory, DrugForm, DrugSchedule } from '@/lib/types/pharmacy';
+import type { DrugCategory, DrugForm, DrugSchedule, ItemType } from '@/lib/types/pharmacy';
 
 export default function DrugCatalogPage() {
   const router = useRouter();
@@ -29,6 +29,7 @@ export default function DrugCatalogPage() {
     category?: DrugCategory;
     form?: DrugForm;
     schedule?: DrugSchedule;
+    item_type?: ItemType;
     is_essential?: boolean;
     is_active?: boolean;
   }>({});
@@ -53,12 +54,12 @@ export default function DrugCatalogPage() {
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title="Drug Catalog"
-          helpContent="Browse and manage the pharmacy drug catalog. Add new drugs, view details, and manage stock levels."
+          title="Item Catalog"
+          helpContent="Browse and manage medications, consumables, and reagents. Add new items, view details, and manage stock levels."
           actions={
             <Button onClick={() => router.push('/pharmacy/drugs/new')}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Drug
+              Add Item
             </Button>
           }
         />

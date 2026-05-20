@@ -1,5 +1,5 @@
 /**
- * Edit Drug Page
+ * Edit Drug/Item Page
  * Sprint 1.3-1.4 Track A: Pharmacy Module
  */
 
@@ -8,11 +8,10 @@
 import { use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { DrugForm } from '@/components/pharmacy/drug-form';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PageHeader } from '@/components/shared/page-header';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 import { Drug } from '@/lib/types/pharmacy';
 
@@ -27,19 +26,16 @@ export default function EditDrugPage({ params }: { params: Promise<{ id: string 
   });
 
   const handleSuccess = (updatedDrug: Drug) => {
-    // Navigate back to detail page after successful update
     router.push(`/pharmacy/drugs/${updatedDrug.id}`);
   };
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-10 w-20" />
-          <Skeleton className="h-8 w-64" />
-        </div>
-        <div className="max-w-4xl space-y-6">
-          <Skeleton className="h-96" />
+      <div className="space-y-4 sm:space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <div className="max-w-3xl mx-auto space-y-4">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-48" />
         </div>
       </div>
     );
@@ -47,48 +43,31 @@ export default function EditDrugPage({ params }: { params: Promise<{ id: string 
 
   if (error || !drug) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-        </div>
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="Item Not Found" />
         <Alert variant="destructive">
           <AlertDescription>
-            {error instanceof Error ? error.message : 'Drug not found'}
+            {error instanceof Error ? error.message : 'Item not found'}
           </AlertDescription>
         </Alert>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.back()}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">Edit Drug</h1>
-          <p className="text-muted-foreground">
-            {drug.generic_name} ({drug.code})
-          </p>
-        </div>
-      </div>
+  const typeLabel = drug.item_type === 'REAGENT' ? 'Reagent' : drug.item_type === 'CONSUMABLE' ? 'Consumable' : 'Drug';
 
-      {/* Form */}
-      <div className="max-w-4xl">
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <PageHeader
+        title={`Edit ${drug.generic_name}`}
+        helpContent={`Update this ${typeLabel.toLowerCase()}'s details, categories, and inventory settings.`}
+      />
+
+      <div className="max-w-3xl mx-auto">
         <DrugForm
           drug={drug}
           onSuccess={handleSuccess}
-          onCancel={() => router.back()}
+          onCancel={() => router.push(`/pharmacy/drugs/${drug.id}`)}
         />
       </div>
     </div>

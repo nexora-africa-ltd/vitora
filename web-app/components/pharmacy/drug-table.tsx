@@ -35,7 +35,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
-import { Drug, DrugCategory, DrugForm, DrugSchedule } from '@/lib/types/pharmacy';
+import { Drug, DrugCategory, DrugForm, DrugSchedule, ItemType } from '@/lib/types/pharmacy';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 
 interface DrugTableProps {
@@ -51,6 +51,7 @@ interface DrugTableProps {
     category?: DrugCategory;
     form?: DrugForm;
     schedule?: DrugSchedule;
+    item_type?: ItemType;
     is_essential?: boolean;
     is_active?: boolean;
   }) => void;
@@ -73,6 +74,8 @@ const FORM_LABELS: Record<DrugForm, string> = {
   GEL: 'Gel',
   PATCH: 'Patch',
   SPRAY: 'Spray',
+  UNIT: 'Unit/Piece',
+  OTHER: 'Other',
 };
 
 // Human-readable labels for drug categories
@@ -90,6 +93,18 @@ const CATEGORY_LABELS: Record<DrugCategory, string> = {
   PSYCHOTROPIC: 'Psychotropic',
   CONTROLLED: 'Controlled',
   OTHER: 'Other',
+  MEDICAL_SUPPLY: 'Medical Supply',
+  SURGICAL_CONSUMABLE: 'Surgical Consumable',
+  REAGENT: 'Reagent',
+  PPE: 'PPE',
+  WOUND_CARE: 'Wound Care',
+  DISPOSABLE: 'Disposable',
+};
+
+const ITEM_TYPE_LABELS: Record<ItemType, string> = {
+  MEDICATION: 'Medication',
+  CONSUMABLE: 'Consumable',
+  REAGENT: 'Reagent',
 };
 
 // Schedule badge colors using semantic classes
@@ -116,6 +131,7 @@ export function DrugTable({
   const [categoryFilter, setCategoryFilter] = useState<DrugCategory | ''>('');
   const [formFilter, setFormFilter] = useState<DrugForm | ''>('');
   const [scheduleFilter, setScheduleFilter] = useState<DrugSchedule | ''>('');
+  const [itemTypeFilter, setItemTypeFilter] = useState<ItemType | ''>('');
   const [essentialOnly, setEssentialOnly] = useState(false);
   const [activeOnly, setActiveOnly] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -137,6 +153,7 @@ export function DrugTable({
           category: (value as DrugCategory) || undefined,
           form: formFilter || undefined,
           schedule: scheduleFilter || undefined,
+          item_type: itemTypeFilter || undefined,
           is_essential: essentialOnly || undefined,
           is_active: activeOnly || undefined,
         });
@@ -152,6 +169,7 @@ export function DrugTable({
           category: categoryFilter || undefined,
           form: (value as DrugForm) || undefined,
           schedule: scheduleFilter || undefined,
+          item_type: itemTypeFilter || undefined,
           is_essential: essentialOnly || undefined,
           is_active: activeOnly || undefined,
         });
@@ -167,6 +185,23 @@ export function DrugTable({
           category: categoryFilter || undefined,
           form: formFilter || undefined,
           schedule: (value as DrugSchedule) || undefined,
+          item_type: itemTypeFilter || undefined,
+          is_essential: essentialOnly || undefined,
+          is_active: activeOnly || undefined,
+        });
+      }
+    }, 0);
+  };
+
+  const handleItemTypeChange = (value: string) => {
+    setItemTypeFilter(value as ItemType | '');
+    setTimeout(() => {
+      if (onFiltersChange) {
+        onFiltersChange({
+          category: categoryFilter || undefined,
+          form: formFilter || undefined,
+          schedule: scheduleFilter || undefined,
+          item_type: (value as ItemType) || undefined,
           is_essential: essentialOnly || undefined,
           is_active: activeOnly || undefined,
         });
@@ -183,6 +218,7 @@ export function DrugTable({
           category: categoryFilter || undefined,
           form: formFilter || undefined,
           schedule: scheduleFilter || undefined,
+          item_type: itemTypeFilter || undefined,
           is_essential: isChecked || undefined,
           is_active: activeOnly || undefined,
         });
@@ -199,6 +235,7 @@ export function DrugTable({
           category: categoryFilter || undefined,
           form: formFilter || undefined,
           schedule: scheduleFilter || undefined,
+          item_type: itemTypeFilter || undefined,
           is_essential: essentialOnly || undefined,
           is_active: isChecked || undefined,
         });
@@ -229,7 +266,7 @@ export function DrugTable({
       setDeleteError(
         error.response?.data?.detail ||
         error.message ||
-        'Cannot delete drug with existing stock'
+        'Cannot delete item with existing stock'
       );
     } finally {
       setIsDeleting(false);
@@ -352,7 +389,7 @@ export function DrugTable({
     },
     {
       key: 'generic_name',
-      header: 'Drug Name',
+      header: 'Item Name',
       cell: (drug: Drug) => {
         return (
           <div className="flex flex-col gap-1">
@@ -514,16 +551,16 @@ export function DrugTable({
       {/* Search and Filters */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm" role="search" aria-label="Search drugs">
+          <div className="relative flex-1 max-w-sm" role="search" aria-label="Search items">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search drugs..."
+              placeholder="Search items..."
               value={searchValue}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-9"
               data-testid="drug-search"
-              aria-label="Search drugs"
+              aria-label="Search items"
             />
           </div>
           {onFiltersChange && (
@@ -574,7 +611,19 @@ export function DrugTable({
                 <SelectItem value="OTC">OTC - Over The Counter</SelectItem>
                 <SelectItem value="POM">POM - Prescription Only</SelectItem>
                 <SelectItem value="P">P - Pharmacy Medicine</SelectItem>
-                <SelectItem value="CD">CD - Controlled Drug</SelectItem>
+                <SelectItem value="CD">CD - Controlled</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={itemTypeFilter} onValueChange={handleItemTypeChange}>
+              <SelectTrigger data-testid="item-type-filter">
+                <SelectValue placeholder="Item Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Types</SelectItem>
+                {Object.entries(ITEM_TYPE_LABELS).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -613,7 +662,7 @@ export function DrugTable({
           keyExtractor={(drug) => drug.id}
           onRowClick={(drug) => router.push(`/pharmacy/drugs/${drug.id}`)}
           mobileCard={renderMobileCard}
-          emptyMessage="No drugs found"
+          emptyMessage="No items found"
         />
       </div>
 
@@ -622,7 +671,7 @@ export function DrugTable({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" data-testid="pagination">
           <p className="text-sm text-muted-foreground text-center sm:text-left">
             {totalCount ? (
-              <>Showing {drugs.length} of {totalCount} drugs</>
+              <>Showing {drugs.length} of {totalCount} items</>
             ) : (
               <>Page {page} of {totalPages}</>
             )}
@@ -662,7 +711,7 @@ export function DrugTable({
               This action cannot be undone.
               {drugToDelete && drugToDelete.current_stock > 0 && (
                 <span className="block mt-2 text-destructive font-semibold">
-                  Warning: This drug has {drugToDelete.current_stock} units in stock and cannot be deleted.
+                  Warning: This item has {drugToDelete.current_stock} units in stock and cannot be deleted.
                 </span>
               )}
             </AlertDialogDescription>

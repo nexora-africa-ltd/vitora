@@ -67,6 +67,8 @@ export default function PharmacyPage() {
   // Stock batches state
   const [stockPage, setStockPage] = useState(1);
   const [stockStatus, setStockStatus] = useState<StockStatus | ''>('');
+  const [stockSearch, setStockSearch] = useState('');
+  const debouncedStockSearch = useDebounce(stockSearch, 300);
   const stockPageSize = 20;
 
   // Prescriptions state
@@ -109,6 +111,7 @@ export default function PharmacyPage() {
     page: stockPage,
     page_size: stockPageSize,
     status: stockStatus || undefined,
+    search: debouncedStockSearch || undefined,
   });
 
   const {
@@ -163,9 +166,9 @@ export default function PharmacyPage() {
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="Pharmacy"
-          helpContent="Manage drugs, inventory, prescriptions, and dispensing workflows."
+          helpContent="Manage medications, consumables, inventory, prescriptions, and dispensing workflows."
         />
-        <div className="flex items-center justify-center py-12" data-testid="loading-spinner">
+        <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </div>
@@ -177,7 +180,7 @@ export default function PharmacyPage() {
       {/* Header */}
       <PageHeader
         title="Pharmacy"
-        helpContent="Manage drugs, inventory, prescriptions, and dispensing workflows."
+        helpContent="Manage medications, consumables, inventory, prescriptions, and dispensing workflows."
         actions={
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button
@@ -214,7 +217,7 @@ export default function PharmacyPage() {
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-0.5">
-                <p className="text-xs sm:text-sm text-muted-foreground">Total Drugs</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Total Items</p>
                 <p className="text-xl sm:text-2xl font-bold">{drugsData?.count ?? 0}</p>
               </div>
               <div className="space-y-0.5">
@@ -239,7 +242,7 @@ export default function PharmacyPage() {
         <TabsList className="w-full flex flex-wrap h-auto gap-1 p-1 sm:grid sm:grid-cols-5">
           <TabsTrigger value="drugs" className="flex-1 gap-1.5 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
             <Pill className="h-4 w-4" />
-            <span className="hidden sm:inline">Drugs</span>
+            <span className="hidden sm:inline">Catalog</span>
           </TabsTrigger>
           <TabsTrigger value="inventory" className="flex-1 gap-1.5 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
             <Package className="h-4 w-4" />
@@ -281,7 +284,7 @@ export default function PharmacyPage() {
           <div className="flex justify-end">
             <Button onClick={() => router.push('/pharmacy/drugs/new')} data-testid="add-drug-button" size="sm">
               <Plus className="h-4 w-4 mr-1.5" />
-              Add Drug
+              Add Item
             </Button>
           </div>
           <DrugTable
@@ -320,6 +323,10 @@ export default function PharmacyPage() {
             onPageChange={setStockPage}
             onStatusFilter={(status) => {
               setStockStatus(status);
+              setStockPage(1);
+            }}
+            onSearchFilter={(query) => {
+              setStockSearch(query);
               setStockPage(1);
             }}
             drugs={drugsData?.results.map(d => ({ id: d.id, display_name: d.generic_name + ' ' + d.strength }))}

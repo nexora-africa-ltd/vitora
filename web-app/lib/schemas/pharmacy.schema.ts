@@ -26,6 +26,8 @@ export const DrugFormSchema = z.enum([
   'GEL',
   'PATCH',
   'SPRAY',
+  'UNIT',
+  'OTHER',
 ]);
 
 export const DrugCategoryEnumSchema = z.enum([
@@ -42,9 +44,17 @@ export const DrugCategoryEnumSchema = z.enum([
   'PSYCHOTROPIC',
   'CONTROLLED',
   'OTHER',
+  'MEDICAL_SUPPLY',
+  'SURGICAL_CONSUMABLE',
+  'REAGENT',
+  'PPE',
+  'WOUND_CARE',
+  'DISPOSABLE',
 ]);
 
 export const DrugScheduleSchema = z.enum(['OTC', 'POM', 'P', 'CD']);
+
+export const ItemTypeSchema = z.enum(['MEDICATION', 'CONSUMABLE', 'REAGENT']);
 
 export const StockStatusSchema = z.enum([
   'AVAILABLE',
@@ -130,6 +140,7 @@ export const DrugSchema = z.object({
   form: DrugFormSchema,
   strength: z.string(),
   unit: z.string(),
+  item_type: ItemTypeSchema.optional().default('MEDICATION'),
   schedule: DrugScheduleSchema,
   requires_prescription: z.boolean(),
   is_controlled: z.boolean(),

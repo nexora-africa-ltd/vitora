@@ -429,7 +429,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "count_type",
                 "created_at",
                 "id",
-                "items",
+                "item_count",
                 "notes",
                 "started_at",
                 "started_by",

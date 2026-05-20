@@ -21,7 +21,9 @@ export type DrugForm =
   | 'SOLUTION'
   | 'GEL'
   | 'PATCH'
-  | 'SPRAY';
+  | 'SPRAY'
+  | 'UNIT'
+  | 'OTHER';
 
 // Drug category options
 export type DrugCategory =
@@ -37,10 +39,19 @@ export type DrugCategory =
   | 'CONTRACEPTIVE'
   | 'PSYCHOTROPIC'
   | 'CONTROLLED'
-  | 'OTHER';
+  | 'OTHER'
+  | 'MEDICAL_SUPPLY'
+  | 'SURGICAL_CONSUMABLE'
+  | 'REAGENT'
+  | 'PPE'
+  | 'WOUND_CARE'
+  | 'DISPOSABLE';
 
 // Drug schedule options
 export type DrugSchedule = 'OTC' | 'POM' | 'P' | 'CD';
+
+// Item type (distinguishes medications from consumables/reagents)
+export type ItemType = 'MEDICATION' | 'CONSUMABLE' | 'REAGENT';
 
 // Stock status options
 export type StockStatus =
@@ -116,6 +127,8 @@ export interface Drug {
   form: DrugForm;
   strength: string;
   unit: string;
+  /** Distinguishes medications from consumables/reagents */
+  item_type: ItemType;
   schedule: DrugSchedule;
   requires_prescription: boolean;
   is_controlled: boolean;
@@ -349,6 +362,7 @@ export interface DrugListParams {
   category?: DrugCategory;
   form?: DrugForm;
   schedule?: DrugSchedule;
+  item_type?: ItemType;
   is_essential?: boolean;
   is_active?: boolean;
   ordering?: string;
@@ -360,8 +374,11 @@ export interface DrugListParams {
 export interface StockBatchListParams {
   page?: number;
   page_size?: number;
+  search?: string;
   drug?: number;
   status?: StockStatus;
+  drug__item_type?: ItemType;
+  store_location?: number;
   expiring_within_days?: number;
   ordering?: string;
 }
@@ -435,6 +452,7 @@ export interface DrugCreateData {
   form: DrugForm;
   strength: string;
   unit: string;
+  item_type?: ItemType;
   schedule?: DrugSchedule;
   requires_prescription?: boolean;
   is_controlled?: boolean;

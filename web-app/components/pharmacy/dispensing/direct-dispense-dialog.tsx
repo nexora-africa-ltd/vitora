@@ -47,7 +47,7 @@ import { cn } from '@/lib/utils/cn';
 // Form validation schema
 const directDispenseSchema = z.object({
   patient_id: z.string().min(1, 'Patient is required'),
-  drug_id: z.string().min(1, 'Drug is required'),
+  drug_id: z.string().min(1, 'Item is required'),
   quantity: z.coerce
     .number()
     .min(1, 'Quantity must be at least 1')
@@ -140,7 +140,7 @@ export function DirectDispenseDialog({
     if (!selectedBatch) {
       toast({
         title: 'No Stock Available',
-        description: 'Please select a drug with available stock.',
+        description: 'Please select an item with available stock.',
         variant: 'destructive',
       });
       return;
@@ -191,7 +191,7 @@ export function DirectDispenseDialog({
           <div className="flex items-center gap-2">
             <Pill className="h-5 w-5" />
             <DialogTitle>Direct Dispense (OTC)</DialogTitle>
-            <HelpPopover content="Dispense over-the-counter medications directly without a prescription. Only OTC-scheduled drugs are available." />
+            <HelpPopover content="Dispense over-the-counter medications directly without a prescription. Only OTC-scheduled items are available." />
           </div>
         </DialogHeader>
 
@@ -263,7 +263,7 @@ export function DirectDispenseDialog({
 
           {/* Drug Selection */}
           <div className="space-y-2">
-            <Label htmlFor="drug">Drug (OTC Only) *</Label>
+            <Label htmlFor="drug">Item (OTC Only) *</Label>
             <Popover open={drugOpen} onOpenChange={setDrugOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -274,14 +274,14 @@ export function DirectDispenseDialog({
                 >
                   {selectedDrug
                     ? `${selectedDrug.generic_name} (${selectedDrug.form} ${selectedDrug.strength})`
-                    : "Select OTC drug..."}
+                    : "Select OTC item..."}
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                 <Command shouldFilter={false}>
                   <CommandInput
-                    placeholder="Search drugs by name..."
+                    placeholder="Search items by name..."
                     value={drugSearch}
                     onValueChange={setDrugSearch}
                   />
@@ -293,7 +293,7 @@ export function DirectDispenseDialog({
                       </div>
                     ) : otcDrugs.length === 0 ? (
                       <CommandEmpty>
-                        {drugSearch ? 'No OTC drugs found.' : 'Type to search drugs...'}
+                        {drugSearch ? 'No OTC items found.' : 'Type to search items...'}
                       </CommandEmpty>
                     ) : (
                       <CommandGroup>
@@ -353,6 +353,12 @@ export function DirectDispenseDialog({
                 <span className="text-secondary-foreground/70">Expiry:</span>{' '}
                 {selectedBatch.expiry_date}
               </p>
+              {selectedBatch.store_location_name && (
+                <p>
+                  <span className="text-secondary-foreground/70">Store:</span>{' '}
+                  {selectedBatch.store_location_name}
+                </p>
+              )}
             </div>
           )}
 
