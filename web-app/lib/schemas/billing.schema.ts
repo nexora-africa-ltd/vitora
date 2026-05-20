@@ -725,3 +725,89 @@ export type PaginatedPaymentPoints = z.infer<typeof PaginatedPaymentPointSchema>
 export type PaginatedCreditNotes = z.infer<typeof PaginatedCreditNoteSchema>;
 export type PaginatedReceipts = z.infer<typeof PaginatedReceiptSchema>;
 export type PaginatedFacilityBillingConfigs = z.infer<typeof PaginatedFacilityBillingConfigSchema>;
+
+// =============================================================================
+// SUPPLIER BILL (ACCOUNTS PAYABLE) SCHEMAS
+// =============================================================================
+
+export const SUPPLIER_BILL_STATUSES = ['DRAFT', 'RECEIVED', 'APPROVED', 'PARTIAL', 'PAID', 'CANCELLED'] as const;
+export const SUPPLIER_BILL_PAYMENT_METHODS = ['CASH', 'MPESA', 'BANK_TRANSFER', 'CHEQUE'] as const;
+export const SUPPLIER_BILL_MATCH_STATUSES = ['MATCHED', 'VARIANCE', 'UNMATCHED'] as const;
+
+export const SupplierBillStatusSchema = caseInsensitiveEnum(SUPPLIER_BILL_STATUSES);
+export const SupplierBillPaymentMethodSchema = caseInsensitiveEnum(SUPPLIER_BILL_PAYMENT_METHODS);
+export const SupplierBillMatchStatusSchema = caseInsensitiveEnum(SUPPLIER_BILL_MATCH_STATUSES);
+
+export const SupplierBillItemSchema = z.object({
+  id: z.number(),
+  description: z.string(),
+  quantity: z.coerce.number(),
+  unit_cost: z.string(),
+  total_cost: z.string(),
+  grn_item: z.number().nullable().optional(),
+});
+
+export const SupplierPaymentSchema = z.object({
+  id: z.number(),
+  bill: z.number(),
+  amount: z.string(),
+  payment_method: SupplierBillPaymentMethodSchema,
+  reference_number: z.string().nullable().optional(),
+  payment_date: z.string(),
+  notes: z.string().nullable().optional(),
+  recorded_by_name: z.string().nullable().optional(),
+  created_at: z.string(),
+});
+
+export const SupplierBillSchema = z.object({
+  id: z.number(),
+  bill_number: z.string(),
+  supplier: z.number(),
+  supplier_name: z.string(),
+  grn: z.number().nullable().optional(),
+  grn_number: z.string().nullable().optional(),
+  purchase_order: z.number().nullable().optional(),
+  po_number: z.string().nullable().optional(),
+  supplier_invoice_ref: z.string().nullable().optional(),
+  status: SupplierBillStatusSchema,
+  match_status: SupplierBillMatchStatusSchema,
+  issue_date: z.string(),
+  due_date: z.string().nullable().optional(),
+  total_amount: z.string(),
+  amount_paid: z.string(),
+  balance: z.string(),
+  notes: z.string().nullable().optional(),
+  items: z.array(SupplierBillItemSchema).optional(),
+  payments: z.array(SupplierPaymentSchema).optional(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const SupplierBillListSchema = SupplierBillSchema.omit({ items: true, payments: true });
+
+export const PaginatedSupplierBillSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(SupplierBillListSchema),
+});
+
+export const SupplierBillAgingSummarySchema = z.object({
+  current: z.string(),
+  days_30: z.string(),
+  days_60: z.string(),
+  days_90: z.string(),
+  over_90: z.string(),
+  total: z.string(),
+});
+
+// Supplier Bill type exports
+export type SupplierBillStatus = z.infer<typeof SupplierBillStatusSchema>;
+export type SupplierBillPaymentMethod = z.infer<typeof SupplierBillPaymentMethodSchema>;
+export type SupplierBillMatchStatus = z.infer<typeof SupplierBillMatchStatusSchema>;
+export type SupplierBillItem = z.infer<typeof SupplierBillItemSchema>;
+export type SupplierPayment = z.infer<typeof SupplierPaymentSchema>;
+export type SupplierBill = z.infer<typeof SupplierBillSchema>;
+export type SupplierBillList = z.infer<typeof SupplierBillListSchema>;
+export type PaginatedSupplierBills = z.infer<typeof PaginatedSupplierBillSchema>;
+export type SupplierBillAgingSummary = z.infer<typeof SupplierBillAgingSummarySchema>;

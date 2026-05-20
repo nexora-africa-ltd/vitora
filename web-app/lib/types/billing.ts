@@ -376,3 +376,64 @@ export interface FacilityBillingConfigListParams {
   sha_accreditation_status?: string;
   is_sha_contract_active?: boolean;
 }
+
+// =============================================================================
+// SUPPLIER BILL (ACCOUNTS PAYABLE) TYPES
+// =============================================================================
+
+export type {
+  SupplierBillStatus,
+  SupplierBillPaymentMethod,
+  SupplierBillMatchStatus,
+  SupplierBillItem,
+  SupplierPayment,
+  SupplierBill,
+  SupplierBillList,
+  PaginatedSupplierBills,
+  SupplierBillAgingSummary,
+} from '@/lib/schemas/billing.schema';
+
+export interface SupplierBillCreateData {
+  supplier: number;
+  grn?: number;
+  supplier_invoice_ref?: string;
+  issue_date: string;
+  due_date?: string;
+  notes?: string;
+  items?: SupplierBillItemCreateData[];
+}
+
+export interface SupplierBillItemCreateData {
+  description: string;
+  quantity: number;
+  unit_cost: string;
+  grn_item?: number;
+}
+
+export interface SupplierBillUpdateData {
+  supplier_invoice_ref?: string;
+  due_date?: string;
+  notes?: string;
+  status?: string;
+}
+
+export interface SupplierPaymentCreateData {
+  bill: number;
+  amount: string;
+  payment_method: string;
+  reference_number?: string;
+  payment_date: string;
+  notes?: string;
+}
+
+export interface SupplierBillListParams {
+  page?: number;
+  page_size?: number;
+  supplier?: number;
+  status?: string;
+  match_status?: string;
+  due_date_before?: string;
+  due_date_after?: string;
+  ordering?: string;
+  search?: string;
+}

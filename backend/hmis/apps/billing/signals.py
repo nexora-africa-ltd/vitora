@@ -17,7 +17,7 @@ from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from hmis.apps.billing.models import Invoice, Payment
+from hmis.apps.billing.models import Invoice, Payment, SupplierBill, SupplierPayment
 from hmis.apps.core.events import BillingEvents, publish_event
 from hmis.apps.encounters.models import Encounter
 
@@ -372,3 +372,53 @@ def _notify_preauth_decision(instance):
         )
     except Exception:
         logger.exception("Failed to notify preauth decision for %s", instance.id)
+
+
+# ---------------------------------------------------------------------------
+# Supplier Bill & Payment domain events
+# ---------------------------------------------------------------------------
+
+
+@receiver(post_save, sender=SupplierBill)
+def publish_supplier_bill_event(sender, instance, created, **kwargs):
+    """Publish domain event when a supplier bill is created or updated."""
+    if created:
+        event_type = BillingEvents.SUPPLIER_BILL_CREATED
+    else:
+        event_type = BillingEvents.SUPPLIER_BILL_UPDATED
+
+    publish_event(
+        event_type=event_type,
+        aggregate_type="SupplierBill",
+        aggregate_id=instance.id,
+        payload={
+            "bill_number": instance.bill_number,
+            "supplier_id": instance.supplier_id,
+            "status": instance.status,
+            "total_amount": str(instance.total_amount),
+            "amount_paid": str(instance.amount_paid),
+        },
+        facility_id=getattr(instance, "facility_id", None),
+        organization_id=getattr(instance, "organization_id", None),
+    )
+
+
+@receiver(post_save, sender=SupplierPayment)
+def publish_supplier_payment_event(sender, instance, created, **kwargs):
+    """Publish domain event when a supplier payment is recorded."""
+    if not created:
+        return
+
+    publish_event(
+        event_type=BillingEvents.SUPPLIER_PAYMENT_RECEIVED,
+        aggregate_type="SupplierPayment",
+        aggregate_id=instance.id,
+        payload={
+            "bill_id": instance.bill_id,
+            "amount": str(instance.amount),
+            "payment_method": instance.method,
+            "reference_number": instance.transaction_reference or "",
+        },
+        facility_id=getattr(instance.bill, "facility_id", None),
+        organization_id=getattr(instance.bill, "organization_id", None),
+    )

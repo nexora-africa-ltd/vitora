@@ -17,6 +17,9 @@ from .models import (
     Receipt,
     Service,
     ServiceCategory,
+    SupplierBill,
+    SupplierBillItem,
+    SupplierPayment,
 )
 
 
@@ -908,3 +911,147 @@ class SHADhaPrescriptionAdmin(admin.ModelAdmin):
         "created_at",
         "dispensed_at",
     )
+
+
+# ===========================================================================
+# Accounts Payable: Supplier Bills & Payments
+# ===========================================================================
+
+
+class SupplierBillItemInline(admin.TabularInline):
+    model = SupplierBillItem
+    extra = 0
+    fields = ("description", "quantity", "unit_cost", "grn_item")
+    raw_id_fields = ("grn_item",)
+
+
+@admin.register(SupplierBill)
+class SupplierBillAdmin(admin.ModelAdmin):
+    list_display = (
+        "bill_number",
+        "supplier",
+        "amount_invoiced",
+        "amount_paid",
+        "status_badge",
+        "due_date",
+        "is_matched",
+        "facility",
+        "created_at",
+    )
+    list_filter = ("status", "is_matched", "facility")
+    search_fields = ("bill_number", "supplier_invoice_number", "supplier__name")
+    raw_id_fields = (
+        "supplier",
+        "grn",
+        "purchase_order",
+        "created_by",
+        "approved_by",
+        "facility",
+        "organization",
+    )
+    readonly_fields = (
+        "bill_number",
+        "amount_paid",
+        "po_amount",
+        "grn_amount",
+        "is_matched",
+        "match_variance",
+        "approved_at",
+        "created_at",
+        "updated_at",
+    )
+    inlines = [SupplierBillItemInline]
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "bill_number",
+                    "supplier_invoice_number",
+                    "supplier",
+                    "grn",
+                    "purchase_order",
+                    "status",
+                )
+            },
+        ),
+        (
+            "Financial",
+            {
+                "fields": (
+                    "amount_invoiced",
+                    "tax_amount",
+                    "amount_paid",
+                    "bill_date",
+                    "due_date",
+                    "received_date",
+                )
+            },
+        ),
+        (
+            "3-Way Matching",
+            {
+                "fields": (
+                    "po_amount",
+                    "grn_amount",
+                    "is_matched",
+                    "match_variance",
+                    "match_notes",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Audit",
+            {
+                "fields": (
+                    "created_by",
+                    "approved_by",
+                    "approved_at",
+                    "notes",
+                    "facility",
+                    "organization",
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    @admin.display(description="Status")
+    def status_badge(self, obj):
+        colors = {
+            "draft": "#6c757d",
+            "received": "#17a2b8",
+            "approved": "#28a745",
+            "partially_paid": "#ffc107",
+            "paid": "#155724",
+            "disputed": "#dc3545",
+            "cancelled": "#343a40",
+        }
+        color = colors.get(obj.status, "#6c757d")
+        return format_html(
+            '<span style="background:{}; color:white; padding:2px 8px; '
+            'border-radius:4px; font-size:11px;">{}</span>',
+            color,
+            obj.get_status_display(),
+        )
+
+
+@admin.register(SupplierPayment)
+class SupplierPaymentAdmin(admin.ModelAdmin):
+    list_display = (
+        "payment_reference",
+        "bill",
+        "supplier",
+        "amount",
+        "method",
+        "status",
+        "payment_date",
+        "facility",
+    )
+    list_filter = ("status", "method", "facility")
+    search_fields = ("payment_reference", "transaction_reference", "supplier__name")
+    raw_id_fields = ("bill", "supplier", "paid_by", "facility", "organization")
+    readonly_fields = ("payment_reference", "processed_at", "created_at", "updated_at")

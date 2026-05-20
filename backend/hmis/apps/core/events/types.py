@@ -77,6 +77,11 @@ class BillingEvents:
     DHA_FILE_UPLOADED = "billing.dha_upload.uploaded"
     DHA_FILE_URL_GENERATED = "billing.dha_upload.url_generated"
     DHA_LIFECYCLE_CALL_FAILED = "billing.dha_lifecycle.call_failed"
+    # Supplier Bills (Accounts Payable)
+    SUPPLIER_BILL_CREATED = "billing.supplier_bill.created"
+    SUPPLIER_BILL_UPDATED = "billing.supplier_bill.updated"
+    SUPPLIER_BILL_STATUS_CHANGED = "billing.supplier_bill.status_changed"
+    SUPPLIER_PAYMENT_RECEIVED = "billing.supplier_payment.received"
 
     # DHA HIE Middleware (ILM) — Phase 5: ePrescriptions
     DHA_PRESCRIPTION_CREATED = "billing.dha_prescription.created"
