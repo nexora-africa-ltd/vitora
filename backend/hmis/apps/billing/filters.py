@@ -28,6 +28,19 @@ class CaseInsensitiveCharFilter(filters.CharFilter):
         return super().filter(qs, value)
 
 
+class CaseInsensitiveInFilter(filters.BaseInFilter, filters.CharFilter):
+    """
+    A filter that supports comma-separated values with case-insensitive matching.
+
+    Allows: ?status__in=PENDING,PARTIAL,OVERDUE
+    """
+
+    def filter(self, qs, value):
+        if value:
+            value = [v.lower() for v in value]
+        return super().filter(qs, value)
+
+
 class InvoiceFilter(django_filters.FilterSet):
     """
     FilterSet for Invoice model with case-insensitive status filtering.
@@ -35,9 +48,11 @@ class InvoiceFilter(django_filters.FilterSet):
     Supports both uppercase and lowercase status values:
     - ?status=PROFORMA -> matches 'proforma'
     - ?status=proforma -> matches 'proforma'
+    - ?status__in=PENDING,PARTIAL,OVERDUE -> matches multiple statuses
     """
 
     status = CaseInsensitiveCharFilter(field_name="status")
+    status__in = CaseInsensitiveInFilter(field_name="status", lookup_expr="in")
     payment_type = CaseInsensitiveCharFilter(field_name="payment_type")
 
     class Meta:

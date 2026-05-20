@@ -240,6 +240,7 @@ export interface InvoiceListParams {
   page_size?: number;
   search?: string;
   status?: 'PROFORMA' | 'DRAFT' | 'PENDING' | 'PARTIAL' | 'PAID' | 'CANCELLED' | 'OVERDUE' | 'WRITTEN_OFF';
+  status__in?: string;
   payment_type?: 'CASH' | 'MPESA' | 'INSURANCE' | 'CORPORATE' | 'MIXED';
   patient?: number;
   start_date?: string;
