@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +33,7 @@ const supplierFormSchema = z.object({
   phone: z.string().optional(),
   address: z.string().optional(),
   tax_pin: z.string().optional(),
-  payment_terms: z.string().optional(),
+  payment_term: z.coerce.number().optional(),
   lead_time_days: z.coerce.number().int().min(0).default(7),
   notes: z.string().optional(),
 });
@@ -42,6 +43,11 @@ type SupplierFormValues = z.infer<typeof supplierFormSchema>;
 export default function NewSupplierPage() {
   const router = useRouter();
   const { toast } = useToast();
+
+  const { data: paymentTerms = [] } = useQuery({
+    queryKey: ['payment-terms'],
+    queryFn: () => inventoryApi.listPaymentTerms(),
+  });
 
   const form = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierFormSchema),
@@ -54,7 +60,7 @@ export default function NewSupplierPage() {
       phone: '',
       address: '',
       tax_pin: '',
-      payment_terms: '',
+      payment_term: undefined,
       lead_time_days: 7,
       notes: '',
     },
@@ -64,7 +70,10 @@ export default function NewSupplierPage() {
 
   async function onSubmit(data: SupplierFormValues) {
     try {
-      const created = await inventoryApi.createSupplier(data);
+      const created = await inventoryApi.createSupplier({
+        ...data,
+        payment_term: data.payment_term || null,
+      });
       toast({ variant: 'success', title: 'Supplier created successfully' });
       router.push(`/inventory/suppliers/${created.id}`);
     } catch (err) {
@@ -201,11 +210,25 @@ export default function NewSupplierPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="payment_terms"
+                  name="payment_term"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Payment Terms</FormLabel>
-                      <FormControl><Input placeholder="e.g. Net 30" {...field} /></FormControl>
+                      <Select
+                        onValueChange={(val) => field.onChange(val ? parseInt(val) : undefined)}
+                        value={field.value?.toString() ?? ''}
+                      >
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Select payment terms" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {paymentTerms.filter(t => t.is_active).map((term) => (
+                            <SelectItem key={term.id} value={term.id.toString()}>
+                              {term.name} ({term.days} days)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

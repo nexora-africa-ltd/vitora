@@ -13,6 +13,7 @@ import {
   Palette,
   Shield,
   Database,
+  CreditCard,
 } from 'lucide-react';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +24,7 @@ import { FacilitySettingsTab } from '@/components/settings/facility-settings';
 import { DischargeTemplateSettings } from '@/components/settings/discharge-template-settings';
 import { DHIS2SettingsTab } from '@/components/settings/dhis2-settings';
 import { AppearanceSettings } from '@/components/settings/appearance-settings';
+import { BillingSettingsTab } from '@/components/settings/billing-settings';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 
@@ -56,6 +58,11 @@ export default function SettingsPage() {
             <span className="sm:hidden">Facility</span>
             <span className="hidden sm:inline">Facility</span>
           </TabsTrigger>
+          <TabsTrigger value="billing" className="gap-1.5 text-xs sm:text-sm">
+            <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="sm:hidden">Billing</span>
+            <span className="hidden sm:inline">Billing</span>
+          </TabsTrigger>
           <TabsTrigger value="dhis2" className="gap-1.5 text-xs sm:text-sm">
             <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="sm:hidden">DHIS2</span>
@@ -87,6 +94,11 @@ export default function SettingsPage() {
         <TabsContent value="facility" className="space-y-4 mt-4">
           <FacilitySettingsTab />
           <DischargeTemplateSettings />
+        </TabsContent>
+
+        {/* Billing Settings */}
+        <TabsContent value="billing" className="space-y-4 mt-4">
+          <BillingSettingsTab />
         </TabsContent>
 
         {/* DHIS2 / KHIS Settings */}

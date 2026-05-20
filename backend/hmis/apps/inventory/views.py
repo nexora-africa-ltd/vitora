@@ -39,6 +39,7 @@ from hmis.apps.inventory.models import (
     ETIMSConfig,
     ETIMSInvoice,
     GoodsReceiptNote,
+    PaymentTerm,
     PurchaseOrder,
     ReorderSuggestion,
     StockCount,
@@ -57,6 +58,7 @@ from hmis.apps.inventory.serializers import (
     GoodsReceiptNoteCreateSerializer,
     GoodsReceiptNoteDetailSerializer,
     GoodsReceiptNoteListSerializer,
+    PaymentTermSerializer,
     POApproveSerializer,
     POCancelSerializer,
     PurchaseOrderCreateSerializer,
@@ -85,6 +87,21 @@ from hmis.apps.inventory.serializers import (
     WardStockSerializer,
     WardStockTransactionSerializer,
 )
+
+# ---------------------------------------------------------------------------
+# Payment Terms
+# ---------------------------------------------------------------------------
+
+
+class PaymentTermViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """CRUD for configurable payment terms. Organization-scoped."""
+
+    queryset = PaymentTerm.objects.all()
+    serializer_class = PaymentTermSerializer
+    permission_classes = [IsAuthenticated]
+    tenant_scope = "organization"
+    search_fields = ["code", "name"]
+
 
 # ---------------------------------------------------------------------------
 # Supplier

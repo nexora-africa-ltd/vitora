@@ -100,6 +100,8 @@ export const SupplierSchema = z.object({
   address: z.string(),
   tax_pin: z.string(),
   payment_terms: z.string(),
+  payment_term: z.number().nullable().default(null),
+  payment_term_name: z.string().nullable().default(null),
   lead_time_days: z.number(),
   rating: decimal,
   is_active: z.boolean(),

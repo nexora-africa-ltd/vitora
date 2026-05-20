@@ -105,7 +105,7 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
             <span className="text-muted-foreground"> · {typeLabels[supplier.supplier_type]}</span>
           </p>
           <p className="text-xs text-muted-foreground">
-            Lead time: {supplier.lead_time_days} days · Payment: {supplier.payment_terms || '—'}
+            Lead time: {supplier.lead_time_days} days · Payment: {supplier.payment_term_name || supplier.payment_terms || '—'}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
