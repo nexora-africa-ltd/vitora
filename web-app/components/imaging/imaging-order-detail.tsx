@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Card,
@@ -75,6 +75,7 @@ import {
 import { OrderStatusBadge } from './order-status-badge';
 import { PriorityBadge } from './priority-badge';
 import { ModalityBadge } from './modality-badge';
+import { shaApi } from '@/lib/api/sha';
 
 interface ImagingOrderDetailProps {
   orderNumber: string;
@@ -101,6 +102,8 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
   const [scheduleRoom, setScheduleRoom] = useState('');
   const [cancelReason, setCancelReason] = useState('');
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [eligibilityStatus, setEligibilityStatus] = useState<boolean | null>(null);
+  const [eligibilityLoading, setEligibilityLoading] = useState(false);
 
   const { data: order, isLoading, error } = useImagingOrder(orderNumber);
   const submitOrder = useSubmitImagingOrder();
@@ -115,6 +118,29 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
     startOrder.isPending ||
     completeOrder.isPending ||
     cancelOrder.isPending;
+
+  const handleCheckEligibility = useCallback(async () => {
+    if (!order) return;
+    setEligibilityLoading(true);
+    try {
+      const result = await shaApi.checkPatientEligibility(order.patient);
+      setEligibilityStatus(result.is_eligible);
+      toast({
+        title: result.is_eligible ? 'Patient is eligible' : 'Patient not eligible',
+        description: result.message,
+        variant: result.is_eligible ? 'default' : 'destructive',
+      });
+    } catch (err) {
+      setEligibilityStatus(false);
+      toast({
+        title: 'Eligibility check failed',
+        description: err instanceof Error ? err.message : 'An error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setEligibilityLoading(false);
+    }
+  }, [order]);
 
   const handleSubmit = async () => {
     try {
@@ -385,10 +411,41 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
             {(order.items ?? []).some((item) => item.procedure_code) && (
               <div className="pt-2">
                 <p className="text-xs sm:text-sm text-muted-foreground mb-2">SHA Coverage</p>
-                <Badge variant="outline" className="gap-1 text-xs">
-                  <DollarSign className="h-3 w-3" />
-                  Check Patient Eligibility
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    disabled={eligibilityLoading}
+                    onClick={handleCheckEligibility}
+                  >
+                    {eligibilityLoading ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <DollarSign className="h-3 w-3" />
+                    )}
+                    Check Patient Eligibility
+                  </Button>
+                  {eligibilityStatus !== null && (
+                    <span className="relative flex h-3 w-3">
+                      <span
+                        className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${
+                          eligibilityStatus ? 'bg-green-400' : 'bg-red-400'
+                        }`}
+                      />
+                      <span
+                        className={`relative inline-flex h-3 w-3 rounded-full ${
+                          eligibilityStatus ? 'bg-green-500' : 'bg-red-500'
+                        }`}
+                      />
+                    </span>
+                  )}
+                  {eligibilityStatus !== null && (
+                    <span className={`text-xs font-medium ${eligibilityStatus ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {eligibilityStatus ? 'Eligible' : 'Not Eligible'}
+                    </span>
+                  )}
+                </div>
               </div>
             )}
           </CardContent>
