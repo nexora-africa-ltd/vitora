@@ -53,6 +53,46 @@ def generate_grn_number():
 
 
 # ---------------------------------------------------------------------------
+# Payment Terms (configurable options)
+# ---------------------------------------------------------------------------
+
+
+class PaymentTerm(OrganizationScopedModel, TimeStampedModel):
+    """
+    Configurable payment term options for supplier contracts.
+
+    Organization-scoped: shared across all facilities in the org.
+    Managed from billing settings.
+    """
+
+    code = models.CharField(
+        max_length=50,
+        help_text="Short code e.g. NET30, COD",
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text="Display name e.g. 'Net 30 Days', 'Cash on Delivery'",
+    )
+    days = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of days until payment is due. 0 = immediate.",
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["days", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "code"],
+                name="unique_payment_term_per_org",
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+# ---------------------------------------------------------------------------
 # Supplier
 # ---------------------------------------------------------------------------
 
@@ -100,6 +140,14 @@ class Supplier(OrganizationScopedModel, TimeStampedModel):
         max_length=100,
         blank=True,
         help_text="e.g. Net 30, Cash on Delivery",
+    )
+    payment_term = models.ForeignKey(
+        "inventory.PaymentTerm",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="suppliers",
+        help_text="Configurable payment term from billing settings.",
     )
     lead_time_days = models.PositiveIntegerField(
         default=7,

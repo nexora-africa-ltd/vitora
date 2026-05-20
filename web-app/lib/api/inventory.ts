@@ -47,6 +47,8 @@ import type {
   Supplier,
   SupplierCreateData,
   SupplierListParams,
+  PaymentTerm,
+  PaymentTermCreateData,
   PurchaseOrder,
   PurchaseOrderDetail,
   PurchaseOrderCreateData,
@@ -139,6 +141,31 @@ export const inventoryApi = {
     return parseResponse(SupplierSchema, response.data, {
       context: 'inventoryApi.toggleSupplierActive',
     });
+  },
+
+  // ==========================================================================
+  // Payment Terms
+  // ==========================================================================
+
+  async listPaymentTerms(): Promise<PaymentTerm[]> {
+    const response = await apiClient.get(`${BASE}/payment-terms/`, {
+      params: { page_size: 100 },
+    });
+    return response.data.results ?? response.data;
+  },
+
+  async createPaymentTerm(data: PaymentTermCreateData): Promise<PaymentTerm> {
+    const response = await apiClient.post(`${BASE}/payment-terms/`, data);
+    return response.data;
+  },
+
+  async updatePaymentTerm(id: number, data: Partial<PaymentTermCreateData>): Promise<PaymentTerm> {
+    const response = await apiClient.patch(`${BASE}/payment-terms/${id}/`, data);
+    return response.data;
+  },
+
+  async deletePaymentTerm(id: number): Promise<void> {
+    await apiClient.delete(`${BASE}/payment-terms/${id}/`);
   },
 
   // ==========================================================================

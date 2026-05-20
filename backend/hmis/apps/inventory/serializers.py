@@ -14,6 +14,7 @@ from hmis.apps.inventory.models import (
     ETIMSItem,
     GoodsReceiptNote,
     GRNItem,
+    PaymentTerm,
     PurchaseOrder,
     PurchaseOrderItem,
     ReorderSuggestion,
@@ -28,6 +29,28 @@ from hmis.apps.inventory.models import (
 )
 
 # ---------------------------------------------------------------------------
+# Payment Terms
+# ---------------------------------------------------------------------------
+
+
+class PaymentTermSerializer(serializers.ModelSerializer):
+    """Read/write serializer for PaymentTerm."""
+
+    class Meta:
+        model = PaymentTerm
+        fields = [
+            "id",
+            "code",
+            "name",
+            "days",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+# ---------------------------------------------------------------------------
 # Supplier
 # ---------------------------------------------------------------------------
 
@@ -39,6 +62,9 @@ class SupplierSerializer(serializers.ModelSerializer):
     email = serializers.CharField(required=False, allow_blank=True, default="")
     phone = serializers.CharField(required=False, allow_blank=True, default="")
     address = serializers.CharField(required=False, allow_blank=True, default="")
+    payment_term_name = serializers.CharField(
+        source="payment_term.name", read_only=True, default=None
+    )
 
     class Meta:
         model = Supplier
@@ -53,6 +79,8 @@ class SupplierSerializer(serializers.ModelSerializer):
             "address",
             "tax_pin",
             "payment_terms",
+            "payment_term",
+            "payment_term_name",
             "lead_time_days",
             "rating",
             "is_active",
@@ -83,6 +111,7 @@ class SupplierCreateSerializer(serializers.ModelSerializer):
             "address",
             "tax_pin",
             "payment_terms",
+            "payment_term",
             "lead_time_days",
             "notes",
         ]

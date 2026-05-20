@@ -9,6 +9,7 @@ from hmis.apps.inventory.views import (
     ETIMSConfigViewSet,
     ETIMSInvoiceViewSet,
     GoodsReceiptNoteViewSet,
+    PaymentTermViewSet,
     PurchaseOrderViewSet,
     ReorderSuggestionViewSet,
     StockCountViewSet,
@@ -20,6 +21,7 @@ from hmis.apps.inventory.views import (
 )
 
 router = DefaultRouter()
+router.register(r"payment-terms", PaymentTermViewSet, basename="paymentterm")
 router.register(r"suppliers", SupplierViewSet, basename="supplier")
 router.register(r"purchase-orders", PurchaseOrderViewSet, basename="purchaseorder")
 router.register(r"goods-receipts", GoodsReceiptNoteViewSet, basename="goodsreceiptnote")

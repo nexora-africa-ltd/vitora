@@ -67,6 +67,27 @@ export type ReorderStatus = 'PENDING' | 'CONVERTED_TO_PO' | 'DISMISSED';
 // =============================================================================
 
 /**
+ * Configurable payment term option.
+ * Matches PaymentTermSerializer fields.
+ */
+export interface PaymentTerm {
+  id: number;
+  code: string;
+  name: string;
+  days: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaymentTermCreateData {
+  code: string;
+  name: string;
+  days: number;
+  is_active?: boolean;
+}
+
+/**
  * Supplier — shared across facilities in an organization.
  * Matches SupplierSerializer fields.
  */
@@ -81,6 +102,8 @@ export interface Supplier {
   address: string;
   tax_pin: string;
   payment_terms: string;
+  payment_term: number | null;
+  payment_term_name: string | null;
   lead_time_days: number;
   rating: number | string;
   is_active: boolean;
@@ -500,6 +523,7 @@ export interface SupplierCreateData {
   address?: string;
   tax_pin?: string;
   payment_terms?: string;
+  payment_term?: number | null;
   lead_time_days?: number;
   notes?: string;
 }
