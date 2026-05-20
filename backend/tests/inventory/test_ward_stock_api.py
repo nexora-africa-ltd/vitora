@@ -3,9 +3,24 @@ Tests for Ward Stock API endpoints (Phase 3).
 """
 
 import pytest  # type: ignore
+from django.contrib.auth.models import Permission
 from rest_framework import status
 
 pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(autouse=True)
+def _grant_ward_stock_permissions(db, test_user):
+    """Grant ward stock permissions to the test user for all tests."""
+    perms = Permission.objects.filter(
+        codename__in=[
+            "add_wardstock",
+            "change_wardstock",
+            "delete_wardstock",
+            "view_wardstock",
+        ]
+    )
+    test_user.user_permissions.add(*perms)
 
 
 class TestWardStockAPI:

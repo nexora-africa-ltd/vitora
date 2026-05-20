@@ -5103,6 +5103,9 @@ class SupplierBill(FacilityScopedModel):
             models.Index(fields=["due_date"]),
             models.Index(fields=["supplier"]),
         ]
+        permissions = [
+            ("approve_supplierbill", "Can approve supplier bills for payment"),
+        ]
 
     def __str__(self):
         return f"{self.bill_number} ({self.supplier.name})"

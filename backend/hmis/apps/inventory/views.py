@@ -432,9 +432,32 @@ class WardStockViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelV
             return WardReturnSerializer
         return WardStockSerializer
 
+    def perform_create(self, serializer):
+        if not self.request.user.has_perm("inventory.add_wardstock"):
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("You do not have permission to add ward stock.")
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete with permission check."""
+        if not request.user.has_perm("inventory.delete_wardstock"):
+            return Response(
+                {"detail": "You do not have permission to delete ward stock."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        instance = self.get_object()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=True, methods=["post"])
     def consume(self, request, pk=None):
         """Consume stock at the ward (e.g. patient use)."""
+        if not request.user.has_perm("inventory.change_wardstock"):
+            return Response(
+                {"detail": "You do not have permission to consume ward stock."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         ws = self.get_object()
         serializer = WardConsumeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -461,6 +484,11 @@ class WardStockViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelV
     @action(detail=True, methods=["post"])
     def replenish(self, request, pk=None):
         """Replenish ward stock (from main store)."""
+        if not request.user.has_perm("inventory.change_wardstock"):
+            return Response(
+                {"detail": "You do not have permission to replenish ward stock."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         ws = self.get_object()
         serializer = WardReplenishSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -479,6 +507,11 @@ class WardStockViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelV
     @action(detail=True, methods=["post"])
     def return_to_store(self, request, pk=None):
         """Return stock from ward back to main store."""
+        if not request.user.has_perm("inventory.change_wardstock"):
+            return Response(
+                {"detail": "You do not have permission to return ward stock."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         ws = self.get_object()
         serializer = WardReturnSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -524,9 +557,7 @@ class WardStockTransactionViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelV
 class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
     """CRUD + lifecycle actions for stock counts. Facility-scoped."""
 
-    queryset = StockCount.objects.select_related(
-        "store_location", "started_by", "approved_by"
-    ).prefetch_related("items__drug", "items__batch")
+    queryset = StockCount.objects.select_related("store_location", "started_by", "approved_by")
     permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filterset_class = StockCountFilter
     tenant_scope = "facility"
@@ -613,22 +644,64 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
             OpenApiParameter("item_pk", OpenApiTypes.INT, OpenApiParameter.PATH),
         ]
     )
-    @action(detail=True, methods=["get", "patch"], url_path="items/(?P<item_pk>[^/.]+)")
+    @action(detail=True, methods=["get"], url_path="items/(?P<item_pk>[^/.]+)")
     def item_detail(self, request, pk=None, item_pk=None):
         """Get or update a specific count item (record physical count)."""
         count = self.get_object()
         try:
-            item = count.items.get(pk=item_pk)
+            item = count.items.select_related("drug", "batch").get(pk=item_pk)
+        except StockCount.items.rel.related_model.DoesNotExist:
+            return Response({"error": "Item not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(StockCountItemSerializer(item).data)
+
+    @item_detail.mapping.patch
+    def item_update(self, request, pk=None, item_pk=None):
+        """Update a specific count item (record physical count)."""
+        count = self.get_object()
+        try:
+            item = count.items.select_related("drug", "batch").get(pk=item_pk)
         except StockCount.items.rel.related_model.DoesNotExist:
             return Response({"error": "Item not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        if request.method == "PATCH":
-            serializer = StockCountItemUpdateSerializer(item, data=request.data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            serializer.save(counted_by=request.user, counted_at=timezone.now())
-            item.refresh_from_db()
-
+        serializer = StockCountItemUpdateSerializer(item, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(counted_by=request.user, counted_at=timezone.now())
+        item.refresh_from_db()
         return Response(StockCountItemSerializer(item).data)
+
+    @action(detail=True, methods=["get"])
+    def items(self, request, pk=None):
+        """Paginated list of count items (avoids SQLite expression-tree limit)."""
+        count = self.get_object()
+        qs = count.items.select_related("drug", "batch", "counted_by").order_by(
+            "drug__generic_name"
+        )
+
+        # Optional filters
+        has_discrepancy = request.query_params.get("has_discrepancy")
+        if has_discrepancy == "true":
+            from django.db.models import F
+
+            qs = qs.exclude(counted_quantity__isnull=True).exclude(
+                counted_quantity=F("system_quantity")
+            )
+        elif has_discrepancy == "false":
+            from django.db.models import F, Q
+
+            qs = qs.filter(
+                Q(counted_quantity__isnull=True) | Q(counted_quantity=F("system_quantity"))
+            )
+
+        uncounted = request.query_params.get("uncounted")
+        if uncounted == "true":
+            qs = qs.filter(counted_quantity__isnull=True)
+
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = StockCountItemSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = StockCountItemSerializer(qs, many=True)
+        return Response(serializer.data)
 
 
 # ===========================================================================

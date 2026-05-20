@@ -32,6 +32,7 @@ import {
   StockCountDetailSchema,
   StockCountItemSchema,
   PaginatedStockCountSchema,
+  PaginatedStockCountItemSchema,
   ETIMSConfigSchema,
   ETIMSInvoiceSchema,
   PaginatedETIMSInvoiceSchema,
@@ -442,6 +443,10 @@ export const inventoryApi = {
     });
   },
 
+  async deleteWardStock(id: number): Promise<void> {
+    await apiClient.delete(`${BASE}/ward-stock/${id}/`);
+  },
+
   // ==========================================================================
   // Ward Stock Transactions (read-only)
   // ==========================================================================
@@ -472,6 +477,16 @@ export const inventoryApi = {
     const response = await apiClient.get(`${BASE}/stock-counts/${id}/`);
     return parseResponse(StockCountDetailSchema, response.data, {
       context: 'inventoryApi.getStockCount',
+    });
+  },
+
+  async listStockCountItems(
+    countId: number,
+    params?: { page?: number; page_size?: number; has_discrepancy?: string; uncounted?: string }
+  ): Promise<PaginatedResponse<StockCountItem>> {
+    const response = await apiClient.get(`${BASE}/stock-counts/${countId}/items/`, { params });
+    return parseResponse(PaginatedStockCountItemSchema, response.data, {
+      context: 'inventoryApi.listStockCountItems',
     });
   },
 

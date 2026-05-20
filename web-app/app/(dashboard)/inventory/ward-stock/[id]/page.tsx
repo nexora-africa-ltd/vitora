@@ -39,6 +39,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { inventoryApi } from '@/lib/api/inventory';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { useToast } from '@/lib/hooks/use-toast';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { WardStock, WardTransactionType } from '@/lib/types/inventory';
 
 const transactionTypeLabels: Record<WardTransactionType, string> = {
@@ -64,6 +65,8 @@ export default function WardStockDetailPage({
   const id = parseInt(resolvedParams.id, 10);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { canPerformAction } = usePermissions();
+  const canManageWardStock = canPerformAction('inventory.manage_ward_stock');
 
   // Action dialog states
   const [consumeOpen, setConsumeOpen] = useState(false);
@@ -187,6 +190,7 @@ export default function WardStockDetailPage({
         title={wardStock.drug_name}
         helpContent="View ward stock levels and perform consume, replenish, or return actions. Transaction history shows all movements."
         actions={
+          canManageWardStock ? (
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
@@ -211,6 +215,7 @@ export default function WardStockDetailPage({
               Return to Store
             </Button>
           </div>
+          ) : undefined
         }
       />
 
