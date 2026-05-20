@@ -279,6 +279,7 @@ export default function StockCountDetailPage({
 
   const isDraft = count.status === 'DRAFT';
   const isInProgress = count.status === 'IN_PROGRESS';
+  const isEditable = isDraft || isInProgress;
   const isCompleted = count.status === 'COMPLETED';
   const canApproveCount = isCompleted && canPerformAction('inventory.approve_stock_count' as never);
   const canCancel = !['APPROVED', 'CANCELLED'].includes(count.status);
@@ -514,11 +515,11 @@ export default function StockCountDetailPage({
                     <TableHead>Batch #</TableHead>
                     <TableHead className="text-right">System Qty</TableHead>
                     <TableHead className="text-right">
-                      {isInProgress ? 'Counted Qty *' : 'Counted Qty'}
+                      {isEditable ? 'Counted Qty *' : 'Counted Qty'}
                     </TableHead>
                     <TableHead className="text-right">Variance</TableHead>
-                    {isInProgress && <TableHead>Reason</TableHead>}
-                    {isInProgress && <TableHead className="w-[60px]" />}
+                    {isEditable && <TableHead>Reason</TableHead>}
+                    {isEditable && <TableHead className="w-[60px]" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -543,7 +544,7 @@ export default function StockCountDetailPage({
                           {item.system_quantity}
                         </TableCell>
                         <TableCell className="text-right">
-                          {isInProgress ? (
+                          {isEditable ? (
                             <Input
                               type="number"
                               min={0}
@@ -560,24 +561,28 @@ export default function StockCountDetailPage({
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {item.variance != null ? (
-                            <span
-                              className={`text-sm font-medium ${
-                                item.variance !== 0
-                                  ? item.variance > 0
-                                    ? 'text-green-600 dark:text-green-400'
-                                    : 'text-destructive'
-                                  : ''
-                              }`}
-                            >
-                              {item.variance > 0 ? '+' : ''}
-                              {item.variance}
-                            </span>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">—</span>
-                          )}
+                          {(() => {
+                            const countedStr = edit.counted_quantity;
+                            const counted = countedStr !== '' ? parseInt(countedStr, 10) : NaN;
+                            const variance = !isNaN(counted) ? counted - item.system_quantity : (item.variance ?? NaN);
+                            if (isNaN(variance)) return <span className="text-sm text-muted-foreground">—</span>;
+                            return (
+                              <span
+                                className={`text-sm font-medium ${
+                                  variance !== 0
+                                    ? variance > 0
+                                      ? 'text-green-600 dark:text-green-400'
+                                      : 'text-destructive'
+                                    : ''
+                                }`}
+                              >
+                                {variance > 0 ? '+' : ''}
+                                {variance}
+                              </span>
+                            );
+                          })()}
                         </TableCell>
-                        {isInProgress && (
+                        {isEditable && (
                           <TableCell>
                             <Input
                               className="w-32 h-8 text-sm"
@@ -589,7 +594,7 @@ export default function StockCountDetailPage({
                             />
                           </TableCell>
                         )}
-                        {isInProgress && (
+                        {isEditable && (
                           <TableCell>
                             <Button
                               size="sm"
