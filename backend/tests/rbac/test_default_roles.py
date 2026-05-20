@@ -409,6 +409,8 @@ KNOWN_CUSTOM_ACTIONS = {
     "adjudicate_insurance_claim",
     "approve_insurance_preauth",
     "reconcile_remittance",
+    # supplier bills
+    "approve_supplierbill",
 }
 
 ALL_VALID_ACTIONS = STANDARD_ACTIONS | KNOWN_CUSTOM_ACTIONS
