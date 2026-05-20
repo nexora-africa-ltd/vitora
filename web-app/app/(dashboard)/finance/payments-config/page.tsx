@@ -57,6 +57,7 @@ import {
 } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { BillingSettingsTab } from '@/components/settings/billing-settings';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -548,6 +549,11 @@ export default function PaymentsConfigPage() {
             <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="sm:hidden">SHA</span>
             <span className="hidden sm:inline">SHA/DHA Credentials</span>
+          </TabsTrigger>
+          <TabsTrigger value="terms" className="gap-1.5 text-xs sm:text-sm">
+            <BadgeCent className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="sm:hidden">Terms</span>
+            <span className="hidden sm:inline">Payment Terms</span>
           </TabsTrigger>
         </TabsList>
 
@@ -1135,6 +1141,14 @@ export default function PaymentsConfigPage() {
               </Button>
             </CardFooter>
           </Card>
+        </TabsContent>
+
+        {/* ================================================================ */}
+        {/* TAB 5: Payment Terms */}
+        {/* ================================================================ */}
+
+        <TabsContent value="terms" className="space-y-4 mt-4">
+          <BillingSettingsTab />
         </TabsContent>
       </Tabs>
     </div>
