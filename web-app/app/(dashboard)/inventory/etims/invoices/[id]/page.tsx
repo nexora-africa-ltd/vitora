@@ -11,6 +11,8 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
+  FileX2,
+  QrCode,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -137,6 +139,21 @@ export default function ETIMSInvoiceDetailPage({
     },
   });
 
+  const creditNoteMutation = useMutation({
+    mutationFn: () => inventoryApi.createCreditNote(id, { reason: 'Credit note issued' }),
+    onSuccess: () => {
+      invalidate();
+      toast({ variant: 'success', title: 'Credit note created', description: 'Credit note has been queued for KRA submission.' });
+    },
+    onError: (err) => {
+      toast({
+        variant: 'destructive',
+        title: 'Credit note failed',
+        description: getApiErrorMessage(err),
+      });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-4 sm:space-y-6">
@@ -155,10 +172,11 @@ export default function ETIMSInvoiceDetailPage({
     );
   }
 
-  const anyPending = submitMutation.isPending || retryMutation.isPending || cancelMutation.isPending;
+  const anyPending = submitMutation.isPending || retryMutation.isPending || cancelMutation.isPending || creditNoteMutation.isPending;
   const canSubmit = invoice.status === 'PENDING';
   const canRetry = invoice.status === 'FAILED';
   const canCancel = invoice.status === 'FAILED' || invoice.status === 'PENDING';
+  const canCreditNote = invoice.status === 'CONFIRMED' && invoice.transaction_type !== 'NC';
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -255,6 +273,34 @@ export default function ETIMSInvoiceDetailPage({
                 </AlertDialogContent>
               </AlertDialog>
             )}
+            {canCreditNote && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="outline" disabled={anyPending}>
+                    {creditNoteMutation.isPending ? (
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileX2 className="mr-1 h-4 w-4" />
+                    )}
+                    Credit Note
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Issue Credit Note?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will create a credit note (NC) for invoice {invoice.invoice_number} and submit it to KRA. This reverses the original transaction.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => creditNoteMutation.mutate()}>
+                      Issue Credit Note
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         }
       />
@@ -333,9 +379,25 @@ export default function ETIMSInvoiceDetailPage({
               <span className="font-medium">{invoice.etims_receipt_number || '—'}</span>
             </div>
             <div className="flex justify-between">
+              <span className="text-muted-foreground">Receipt Type</span>
+              <span>{invoice.receipt_label} ({invoice.transaction_type === 'NC' ? 'Credit Note' : 'Sale'})</span>
+            </div>
+            <div className="flex justify-between">
               <span className="text-muted-foreground">Status</span>
               <StatusBadge status={invoice.status} />
             </div>
+            {invoice.buyer_pin && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Buyer PIN</span>
+                <span className="font-mono">{invoice.buyer_pin}</span>
+              </div>
+            )}
+            {invoice.original_cu_invoice_number && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Original Invoice</span>
+                <span className="font-mono text-xs">{invoice.original_cu_invoice_number}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Submitted At</span>
               <span>{invoice.submitted_at ? new Date(invoice.submitted_at).toLocaleString() : '—'}</span>
@@ -345,12 +407,76 @@ export default function ETIMSInvoiceDetailPage({
               <span>{invoice.confirmed_at ? new Date(invoice.confirmed_at).toLocaleString() : '—'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Retry Count</span>
-              <span>{invoice.retry_count}</span>
+              <span className="text-muted-foreground">EJ Data Sent</span>
+              <span>{invoice.ej_data_sent ? '✓' : '—'}</span>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* SCU Details (shown only when confirmed) */}
+      {invoice.scu_id && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <QrCode className="h-4 w-4" />
+              <CardTitle className="text-base">SCU Response & Receipt Data</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-muted-foreground text-xs">CU Invoice Number</p>
+                <p className="font-mono text-sm">{invoice.cu_invoice_number || '—'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">SCU ID</p>
+                <p className="font-mono text-sm">{invoice.scu_id}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">SCU Date/Time</p>
+                <p className="text-sm">{invoice.scu_datetime ? new Date(invoice.scu_datetime).toLocaleString() : '—'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Receipt Counter (Type)</p>
+                <p className="font-mono text-sm">{invoice.scu_receipt_counter || '—'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Total Receipt Counter</p>
+                <p className="font-mono text-sm">{invoice.scu_total_counter || '—'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Receipt Type Counter</p>
+                <p className="font-mono text-sm">{invoice.receipt_type_counter || '—'}</p>
+              </div>
+            </div>
+            {invoice.formatted_internal_data && (
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Internal Data</p>
+                <p className="font-mono text-xs bg-muted/50 p-2 rounded break-all">
+                  {invoice.formatted_internal_data}
+                </p>
+              </div>
+            )}
+            {invoice.formatted_receipt_signature && (
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Receipt Signature</p>
+                <p className="font-mono text-xs bg-muted/50 p-2 rounded break-all">
+                  {invoice.formatted_receipt_signature}
+                </p>
+              </div>
+            )}
+            {invoice.qr_code_data && (
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">QR Code Data</p>
+                <p className="font-mono text-xs bg-muted/50 p-2 rounded break-all">
+                  {invoice.qr_code_data}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Line Items */}
       {invoice.items && invoice.items.length > 0 && (

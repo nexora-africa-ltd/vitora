@@ -7,6 +7,7 @@ from .models import (
     ConsumptionRecord,
     DemandForecast,
     ETIMSConfig,
+    ETIMSDailyReport,
     ETIMSInvoice,
     ETIMSItem,
     GoodsReceiptNote,
@@ -378,6 +379,23 @@ class ETIMSInvoiceAdmin(admin.ModelAdmin):
             color,
             obj.get_status_display(),
         )
+
+
+@admin.register(ETIMSDailyReport)
+class ETIMSDailyReportAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "report_type",
+        "report_date",
+        "report_number",
+        "total_ns_amount",
+        "total_nc_amount",
+        "facility",
+        "created_at",
+    )
+    list_filter = ("report_type", "facility")
+    date_hierarchy = "report_date"
+    raw_id_fields = ("facility", "organization", "generated_by")
 
 
 # ===========================================================================

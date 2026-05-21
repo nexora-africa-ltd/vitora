@@ -67,6 +67,11 @@ export const StockCountStatusSchema = z.enum([
 
 export const ETIMSEnvironmentSchema = z.enum(['SANDBOX', 'PRODUCTION']);
 
+export const ETIMSReceiptTypeSchema = z.enum(['N', 'C', 'T', 'P']);
+export const ETIMSTransactionTypeSchema = z.enum(['S', 'NC']);
+export const ETIMSReceiptLabelSchema = z.enum(['NS', 'NC', 'CS', 'CC', 'TS', 'TC', 'PS']);
+export const ETIMSDailyReportTypeSchema = z.enum(['X', 'Z']);
+
 export const ETIMSInvoiceStatusSchema = z.enum([
   'PENDING',
   'SUBMITTED',
@@ -432,6 +437,13 @@ export const ETIMSConfigSchema = z.object({
   last_sync_at: z.string().nullable(),
   environment: ETIMSEnvironmentSchema,
   facility: z.number(),
+  counter_ns: z.number(),
+  counter_nc: z.number(),
+  counter_cs: z.number(),
+  counter_cc: z.number(),
+  counter_ts: z.number(),
+  counter_tc: z.number(),
+  counter_ps: z.number(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -453,8 +465,31 @@ export const ETIMSInvoiceSchema = z.object({
   patient_name: z.string(),
   invoice_total: decimal,
   dispensing: z.number().nullable(),
+  // Receipt classification
+  receipt_type: ETIMSReceiptTypeSchema,
+  transaction_type: ETIMSTransactionTypeSchema,
+  receipt_label: ETIMSReceiptLabelSchema,
+  receipt_type_counter: z.number(),
+  // Credit note reference
+  original_etims_invoice: z.number().nullable(),
+  original_cu_invoice_number: z.string(),
+  buyer_pin: z.string(),
+  // KRA response
   etims_receipt_number: z.string(),
   etims_internal_data: z.record(z.unknown()).nullable(),
+  // SCU response fields
+  scu_id: z.string(),
+  scu_datetime: z.string().nullable(),
+  scu_receipt_counter: z.number(),
+  scu_total_counter: z.number(),
+  scu_internal_data: z.string(),
+  scu_receipt_signature: z.string(),
+  cu_invoice_number: z.string(),
+  formatted_internal_data: z.string(),
+  formatted_receipt_signature: z.string(),
+  qr_code_data: z.string(),
+  ej_data_sent: z.boolean(),
+  // Lifecycle
   status: ETIMSInvoiceStatusSchema,
   submitted_at: z.string().nullable(),
   confirmed_at: z.string().nullable(),
@@ -471,6 +506,51 @@ export const PaginatedETIMSInvoiceSchema = z.object({
   next: z.string().nullable(),
   previous: z.string().nullable(),
   results: z.array(ETIMSInvoiceSchema),
+});
+
+export const ETIMSDailyReportSchema = z.object({
+  id: z.number(),
+  facility: z.number(),
+  report_type: ETIMSDailyReportTypeSchema,
+  report_date: z.string(),
+  report_number: z.number(),
+  taxable_amount_a: decimal,
+  tax_amount_a: decimal,
+  taxable_amount_b: decimal,
+  tax_amount_b: decimal,
+  taxable_amount_c: decimal,
+  tax_amount_c: decimal,
+  taxable_amount_d: decimal,
+  tax_amount_d: decimal,
+  taxable_amount_e: decimal,
+  tax_amount_e: decimal,
+  total_ns_amount: decimal,
+  total_ns_count: z.number(),
+  total_nc_amount: decimal,
+  total_nc_count: z.number(),
+  total_items_sold: z.number(),
+  total_cs_cc_count: z.number(),
+  total_cs_cc_amount: decimal,
+  total_ts_tc_count: z.number(),
+  total_ts_tc_amount: decimal,
+  total_ps_count: z.number(),
+  total_ps_amount: decimal,
+  payment_cash: decimal,
+  payment_mpesa: decimal,
+  payment_insurance: decimal,
+  payment_other: decimal,
+  total_discounts: decimal,
+  incomplete_sales_count: z.number(),
+  generated_by: z.number().nullable(),
+  generated_by_name: z.string().nullable(),
+  created_at: z.string(),
+});
+
+export const PaginatedETIMSDailyReportSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(ETIMSDailyReportSchema),
 });
 
 // =============================================================================

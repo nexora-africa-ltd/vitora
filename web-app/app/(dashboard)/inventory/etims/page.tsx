@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Settings, FileText } from 'lucide-react';
+import { Settings, FileText, BarChart3 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/page-header';
 
@@ -18,6 +18,12 @@ const sections = [
     href: '/inventory/etims/invoices',
     icon: FileText,
   },
+  {
+    title: 'Daily Reports',
+    description: 'Generate and view X/Z daily sales reports for KRA compliance',
+    href: '/inventory/etims/reports',
+    icon: BarChart3,
+  },
 ];
 
 export default function ETIMSPage() {
@@ -29,7 +35,7 @@ export default function ETIMSPage() {
         title="eTIMS"
         helpContent="KRA electronic Tax Invoice Management System integration. Configure your device credentials and track invoice submissions."
       />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {sections.map((s) => (
           <Card
             key={s.href}

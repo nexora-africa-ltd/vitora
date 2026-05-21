@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, PlugZap, Save, ShieldCheck } from 'lucide-react';
+import { Loader2, PlugZap, Save, ShieldCheck, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { inventoryApi } from '@/lib/api/inventory';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -188,6 +189,40 @@ export default function ETIMSConfigPage() {
         </div>
       )}
 
+      {/* Receipt Counters (read-only, informational) */}
+      {config && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Hash className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">Receipt Counters</CardTitle>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Next sequential receipt number per label. Managed automatically.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+              {([
+                { label: 'NS', value: config.counter_ns, desc: 'Normal Sale' },
+                { label: 'NC', value: config.counter_nc, desc: 'Normal Credit' },
+                { label: 'CS', value: config.counter_cs, desc: 'Copy Sale' },
+                { label: 'CC', value: config.counter_cc, desc: 'Copy Credit' },
+                { label: 'TS', value: config.counter_ts, desc: 'Training Sale' },
+                { label: 'TC', value: config.counter_tc, desc: 'Training Credit' },
+                { label: 'PS', value: config.counter_ps, desc: 'Proforma Sale' },
+              ] as const).map((c) => (
+                <div key={c.label} className="rounded-md border p-2 text-center">
+                  <p className="text-xs text-muted-foreground">{c.label}</p>
+                  <p className="text-lg font-bold font-mono">{c.value}</p>
+                  <p className="text-[10px] text-muted-foreground leading-tight">{c.desc}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -224,12 +259,15 @@ export default function ETIMSConfigPage() {
             </div>
 
             <div>
-              <Label htmlFor="dvc-srl-no">Device Serial Number *</Label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Label htmlFor="dvc-srl-no" className="mb-0">VSCU Serial Number *</Label>
+                <HelpPopover content="For Online eTIMS (VSCU), this is the virtual serial number assigned by KRA during eTIMS registration on iTax. For on-site devices (OSCU), use the physical hardware serial." />
+              </div>
               <Input
                 id="dvc-srl-no"
                 value={dvcSrlNo}
                 onChange={(e) => setDvcSrlNo(e.target.value)}
-                placeholder="eTIMS device serial"
+                placeholder="Virtual or device serial from KRA iTax"
                 required
               />
             </div>

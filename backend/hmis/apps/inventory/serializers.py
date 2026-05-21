@@ -1055,10 +1055,30 @@ class ETIMSConfigSerializer(serializers.ModelSerializer):
             "last_sync_at",
             "environment",
             "facility",
+            "counter_ns",
+            "counter_nc",
+            "counter_cs",
+            "counter_cc",
+            "counter_ts",
+            "counter_tc",
+            "counter_ps",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "facility", "created_at", "updated_at", "last_sync_at"]
+        read_only_fields = [
+            "id",
+            "facility",
+            "counter_ns",
+            "counter_nc",
+            "counter_cs",
+            "counter_cc",
+            "counter_ts",
+            "counter_tc",
+            "counter_ps",
+            "created_at",
+            "updated_at",
+            "last_sync_at",
+        ]
 
 
 class ETIMSConfigCreateSerializer(serializers.ModelSerializer):
@@ -1121,6 +1141,9 @@ class ETIMSInvoiceSerializer(serializers.ModelSerializer):
     invoice_total = serializers.DecimalField(
         source="invoice.total_amount", max_digits=12, decimal_places=2, read_only=True
     )
+    cu_invoice_number = serializers.CharField(read_only=True)
+    formatted_internal_data = serializers.CharField(read_only=True)
+    formatted_receipt_signature = serializers.CharField(read_only=True)
 
     class Meta:
         model = ETIMSInvoice
@@ -1131,8 +1154,31 @@ class ETIMSInvoiceSerializer(serializers.ModelSerializer):
             "patient_name",
             "invoice_total",
             "dispensing",
+            # Receipt classification
+            "receipt_type",
+            "transaction_type",
+            "receipt_label",
+            "receipt_type_counter",
+            # Credit note reference
+            "original_etims_invoice",
+            "original_cu_invoice_number",
+            "buyer_pin",
+            # KRA response
             "etims_receipt_number",
             "etims_internal_data",
+            # SCU response fields (§5.3)
+            "scu_id",
+            "scu_datetime",
+            "scu_receipt_counter",
+            "scu_total_counter",
+            "scu_internal_data",
+            "scu_receipt_signature",
+            "cu_invoice_number",
+            "formatted_internal_data",
+            "formatted_receipt_signature",
+            "qr_code_data",
+            "ej_data_sent",
+            # Lifecycle
             "status",
             "submitted_at",
             "confirmed_at",
@@ -1147,6 +1193,18 @@ class ETIMSInvoiceSerializer(serializers.ModelSerializer):
             "id",
             "etims_receipt_number",
             "etims_internal_data",
+            "scu_id",
+            "scu_datetime",
+            "scu_receipt_counter",
+            "scu_total_counter",
+            "scu_internal_data",
+            "scu_receipt_signature",
+            "cu_invoice_number",
+            "formatted_internal_data",
+            "formatted_receipt_signature",
+            "qr_code_data",
+            "ej_data_sent",
+            "receipt_type_counter",
             "status",
             "submitted_at",
             "confirmed_at",
@@ -1167,7 +1225,121 @@ class ETIMSInvoiceCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ETIMSInvoice
-        fields = ["invoice", "dispensing"]
+        fields = [
+            "invoice",
+            "dispensing",
+            "receipt_type",
+            "transaction_type",
+            "receipt_label",
+            "original_etims_invoice",
+            "original_cu_invoice_number",
+            "buyer_pin",
+        ]
+
+    def validate(self, attrs):
+        """Validate receipt label matches receipt_type + transaction_type."""
+        receipt_type = attrs.get("receipt_type", "N")
+        transaction_type = attrs.get("transaction_type", "S")
+        receipt_label = attrs.get("receipt_label")
+
+        # Auto-derive receipt label if not provided
+        if not receipt_label:
+            label_map = {
+                ("N", "S"): "NS",
+                ("N", "NC"): "NC",
+                ("C", "S"): "CS",
+                ("C", "NC"): "CC",
+                ("T", "S"): "TS",
+                ("T", "NC"): "TC",
+                ("P", "S"): "PS",
+            }
+            attrs["receipt_label"] = label_map.get((receipt_type, transaction_type), "NS")
+
+        # Credit notes require original reference
+        if (
+            transaction_type == "NC"
+            and not attrs.get("original_etims_invoice")
+            and not attrs.get("original_cu_invoice_number")
+        ):
+            raise serializers.ValidationError(
+                "Credit notes require original_etims_invoice or original_cu_invoice_number."
+            )
+
+        return attrs
+
+
+class ETIMSCreditNoteSerializer(serializers.Serializer):
+    """Serializer for creating a credit note from an existing eTIMS invoice."""
+
+    reason = serializers.CharField(max_length=500, required=True)
+
+    def validate(self, attrs):
+        return attrs
+
+
+class ETIMSDailyReportSerializer(serializers.ModelSerializer):
+    """Read serializer for eTIMS daily X/Z reports."""
+
+    generated_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        from hmis.apps.inventory.models import ETIMSDailyReport
+
+        model = ETIMSDailyReport
+        fields = [
+            "id",
+            "facility",
+            "report_type",
+            "report_date",
+            "report_number",
+            # Tax breakdown
+            "taxable_amount_a",
+            "tax_amount_a",
+            "taxable_amount_b",
+            "tax_amount_b",
+            "taxable_amount_c",
+            "tax_amount_c",
+            "taxable_amount_d",
+            "tax_amount_d",
+            "taxable_amount_e",
+            "tax_amount_e",
+            # Sales totals
+            "total_ns_amount",
+            "total_ns_count",
+            "total_nc_amount",
+            "total_nc_count",
+            "total_items_sold",
+            "total_cs_cc_count",
+            "total_cs_cc_amount",
+            "total_ts_tc_count",
+            "total_ts_tc_amount",
+            "total_ps_count",
+            "total_ps_amount",
+            # Payment breakdown
+            "payment_cash",
+            "payment_mpesa",
+            "payment_insurance",
+            "payment_other",
+            # Misc
+            "total_discounts",
+            "incomplete_sales_count",
+            "generated_by",
+            "generated_by_name",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_generated_by_name(self, obj):
+        if obj.generated_by:
+            return f"{obj.generated_by.first_name} {obj.generated_by.last_name}".strip()
+        return None
+
+
+class ETIMSDailyReportGenerateSerializer(serializers.Serializer):
+    """Serializer for generating a daily report."""
+
+    report_type = serializers.ChoiceField(choices=[("X", "X Report"), ("Z", "Z Report")])
+    report_date = serializers.DateField(required=False, help_text="Defaults to today if omitted.")
 
 
 # ===========================================================================

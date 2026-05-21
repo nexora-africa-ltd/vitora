@@ -79,7 +79,7 @@ class TestBuildETIMSPayload:
         assert payload["tin"] == etims_config.tin
         assert payload["bhfId"] == etims_config.bhf_id
         assert payload["invcNo"] == etims_invoice.invoice.invoice_number
-        assert payload["rcptTyCd"] == "S"
+        assert payload["rcptTyCd"] == "NS"
         assert payload["totItemCnt"] == 2
         assert len(payload["itemList"]) == 2
 

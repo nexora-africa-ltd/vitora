@@ -34,7 +34,9 @@ import {
   PaginatedStockCountSchema,
   PaginatedStockCountItemSchema,
   ETIMSConfigSchema,
+  ETIMSDailyReportSchema,
   ETIMSInvoiceSchema,
+  PaginatedETIMSDailyReportSchema,
   PaginatedETIMSInvoiceSchema,
   ConsumptionRecordSchema,
   PaginatedConsumptionRecordSchema,
@@ -82,6 +84,9 @@ import type {
   StockCountItemUpdateData,
   ETIMSConfig,
   ETIMSConfigCreateData,
+  ETIMSCreditNoteData,
+  ETIMSDailyReport,
+  ETIMSDailyReportGenerateData,
   ETIMSInvoice,
   ETIMSInvoiceCreateData,
   ETIMSInvoiceListParams,
@@ -655,6 +660,44 @@ export const inventoryApi = {
     const response = await apiClient.post(`${BASE}/etims-invoices/${id}/cancel/`);
     return parseResponse(ETIMSInvoiceSchema, response.data, {
       context: 'inventoryApi.cancelETIMSInvoice',
+    });
+  },
+
+  async createCreditNote(
+    id: number,
+    data: ETIMSCreditNoteData
+  ): Promise<ETIMSInvoice> {
+    const response = await apiClient.post(
+      `${BASE}/etims-invoices/${id}/credit-note/`,
+      data
+    );
+    return parseResponse(ETIMSInvoiceSchema, response.data, {
+      context: 'inventoryApi.createCreditNote',
+    });
+  },
+
+  // ==========================================================================
+  // eTIMS Daily Reports
+  // ==========================================================================
+
+  async listETIMSDailyReports(
+    params?: { page?: number; page_size?: number; report_type?: string }
+  ): Promise<PaginatedResponse<ETIMSDailyReport>> {
+    const response = await apiClient.get(`${BASE}/etims-daily-reports/`, { params });
+    return parseResponse(PaginatedETIMSDailyReportSchema, response.data, {
+      context: 'inventoryApi.listETIMSDailyReports',
+    });
+  },
+
+  async generateETIMSDailyReport(
+    data: ETIMSDailyReportGenerateData
+  ): Promise<ETIMSDailyReport> {
+    const response = await apiClient.post(
+      `${BASE}/etims-daily-reports/generate/`,
+      data
+    );
+    return parseResponse(ETIMSDailyReportSchema, response.data, {
+      context: 'inventoryApi.generateETIMSDailyReport',
     });
   },
 
