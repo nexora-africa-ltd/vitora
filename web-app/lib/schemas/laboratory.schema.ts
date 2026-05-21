@@ -92,6 +92,7 @@ export const ResultFlagSchema = z.enum([
   'NORMAL',
   'LOW',
   'HIGH',
+  'CRITICAL',
   'CRITICAL_LOW',
   'CRITICAL_HIGH',
   'ABNORMAL',
