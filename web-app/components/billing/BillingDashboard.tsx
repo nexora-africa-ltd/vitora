@@ -47,7 +47,7 @@ const methodConfig: Record<PaymentMethod, { icon: React.ReactNode; label: string
   BANK_TRANSFER: { icon: <Building className="h-4 w-4" />, label: 'Bank Transfer', color: 'text-purple-600' },
   INSURANCE: { icon: <Building className="h-4 w-4" />, label: 'Insurance', color: 'text-orange-600' },
   CORPORATE: { icon: <Building className="h-4 w-4" />, label: 'Corporate', color: 'text-indigo-600' },
-  CHEQUE: { icon: <Receipt className="h-4 w-4" />, label: 'Cheque', color: 'text-gray-600' },
+  CHEQUE: { icon: <Receipt className="h-4 w-4" />, label: 'Cheque', color: 'text-muted-foreground' },
 };
 
 // ============================================================================
@@ -57,7 +57,7 @@ const methodConfig: Record<PaymentMethod, { icon: React.ReactNode; label: string
 function DashboardSkeleton() {
   return (
     <div role="status" aria-label="Loading dashboard">
-      <div className="grid md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
         {[...Array(4)].map((_, i) => (
           <Skeleton key={i} className="h-24" />
         ))}
@@ -98,33 +98,28 @@ export function BillingDashboard({
   const byMethod: Record<string, number | string> = dailyReport?.by_payment_method || {};
 
   return (
-    <div className="space-y-6">
-      {/* Header with Date Picker */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Billing Dashboard</h2>
-          <p className="text-muted-foreground">
-            Financial overview and daily collections
-          </p>
-        </div>
+    <div className="space-y-4 sm:space-y-6">
+      {/* Date picker for filtering by day */}
+      <div className="flex justify-end">
         <DatePicker
           value={date}
           onChange={(newDate) => newDate && handleDateSelect(newDate)}
-          className="w-[240px]"
+          className="w-[200px] sm:w-[240px]"
           placeholder="Pick a date"
         />
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {/* Today's Collection */}
-        <Card variant="primary">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today&apos;s Collection</CardTitle>
+        <Card className="relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Today&apos;s Collection</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalCollected)}</div>
+          <CardContent className="relative">
+            <div className="text-lg sm:text-2xl font-bold">{formatCurrency(totalCollected)}</div>
             <p className="text-xs text-muted-foreground">
               {invoiceCount} invoices
             </p>
@@ -132,13 +127,14 @@ export function BillingDashboard({
         </Card>
 
         {/* Pending Invoices */}
-        <Card variant="warning">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+        <Card className="relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Pending</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pendingInvoicesCount}</div>
+          <CardContent className="relative">
+            <div className="text-lg sm:text-2xl font-bold">{pendingInvoicesCount}</div>
             <p className="text-xs text-muted-foreground">
               awaiting payment
             </p>
@@ -146,13 +142,14 @@ export function BillingDashboard({
         </Card>
 
         {/* Overdue Invoices */}
-        <Card variant="critical">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overdue</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-500" />
+        <Card className="relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Overdue</CardTitle>
+            <AlertCircle className="h-4 w-4 text-destructive" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{overdueInvoicesCount}</div>
+          <CardContent className="relative">
+            <div className="text-lg sm:text-2xl font-bold text-destructive">{overdueInvoicesCount}</div>
             <p className="text-xs text-muted-foreground">
               past due date
             </p>
@@ -160,13 +157,14 @@ export function BillingDashboard({
         </Card>
 
         {/* Total Invoices Today */}
-        <Card variant="accent">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Processed Today</CardTitle>
+        <Card className="relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Processed Today</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{invoiceCount}</div>
+          <CardContent className="relative">
+            <div className="text-lg sm:text-2xl font-bold">{invoiceCount}</div>
             <p className="text-xs text-muted-foreground">
               processed today
             </p>
@@ -175,12 +173,12 @@ export function BillingDashboard({
       </div>
 
       {/* Payment Method Breakdown */}
-      <Card variant="outline">
+      <Card>
         <CardHeader>
-          <CardTitle>Collection by Payment Method</CardTitle>
+          <CardTitle className="text-base sm:text-lg">Collection by Payment Method</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
             {(Object.keys(methodConfig) as PaymentMethod[]).map((method) => {
               const config = methodConfig[method];
               if (!config) return null;
@@ -190,14 +188,14 @@ export function BillingDashboard({
               return (
                 <div
                   key={method}
-                  className="flex items-center space-x-3 p-3 rounded-lg border"
+                  className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border"
                 >
-                  <div className={cn('p-2 rounded-full bg-gray-100', config.color)}>
+                  <div className={cn('p-1.5 sm:p-2 rounded-full bg-muted/50 shrink-0', config.color)}>
                     {config.icon}
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">{config.label}</p>
-                    <p className="text-lg font-bold">{formatCurrency(amount)}</p>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm font-medium truncate">{config.label}</p>
+                    <p className="text-sm sm:text-lg font-bold">{formatCurrency(amount)}</p>
                   </div>
                 </div>
               );

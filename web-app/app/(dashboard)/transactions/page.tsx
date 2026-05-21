@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, FileText, CreditCard, Receipt } from 'lucide-react';
 
 import { BillingDashboard } from '@/components/billing/BillingDashboard';
+import { PageHeader } from '@/components/shared/page-header';
 import { InvoiceList } from '@/components/billing/InvoiceList';
 import { PaymentList } from '@/components/billing/PaymentList';
 import { Button } from '@/components/ui/button';
@@ -81,21 +82,17 @@ export default function TransactionsPage() {
     invoicesData?.results?.filter((inv) => inv.status === 'OVERDUE').length || 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Transactions</h1>
-          <p className="text-muted-foreground">
-            Manage invoices, payments, and bills
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={handleCreateInvoice}>
-            <Plus className="h-4 w-4 mr-2" />
+    <div className="space-y-4 sm:space-y-6">
+      <PageHeader
+        title="Transactions"
+        helpContent="Manage invoices, payments, and bills. View daily collections and track outstanding balances."
+        actions={
+          <Button onClick={handleCreateInvoice} size="sm">
+            <Plus className="h-4 w-4 mr-1" />
             New Invoice
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <BillingDashboard
         dailyReport={dailyReport || null}
@@ -145,17 +142,21 @@ export default function TransactionsPage() {
         </TabsContent>
 
         <TabsContent value="bills" className="space-y-4">
-          <Card variant="dashed">
+          <Card
+            className="cursor-pointer hover:border-primary/40 transition-colors"
+            onClick={() => router.push('/transactions/supplier-bills')}
+          >
             <CardHeader>
-              <CardTitle>Bills (Coming Soon)</CardTitle>
+              <CardTitle className="text-base">Supplier Bills</CardTitle>
               <CardDescription>
-                Supplier bills and payables will be implemented in a future phase.
+                View and manage supplier bills, approvals, and payment scheduling.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Placeholder: bill capture, approvals, and payment scheduling.
-              </p>
+              <Button variant="outline" size="sm">
+                <Receipt className="h-4 w-4 mr-1" />
+                Open Supplier Bills
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
