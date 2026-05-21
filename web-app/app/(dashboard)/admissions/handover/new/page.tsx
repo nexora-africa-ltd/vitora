@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Save, Users, AlertTriangle, Clock, Pill } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
-import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -17,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useInpatientWards, useCreateShiftHandover } from '@/lib/hooks/use-inpatient';
+import { useMyStaffProfile, useStaffList } from '@/lib/hooks/use-rbac';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { ShiftEndingType } from '@/lib/types/inpatient';
 
@@ -30,18 +30,21 @@ export default function NewHandoverPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { data: wards } = useInpatientWards();
+  const { data: staffProfile } = useMyStaffProfile();
+  const { data: staffList } = useStaffList({ page_size: 100 });
   const createHandover = useCreateShiftHandover();
 
   const [wardId, setWardId] = useState<string>('');
   const [outgoingShift, setOutgoingShift] = useState<ShiftEndingType | ''>('');
   const [incomingShift, setIncomingShift] = useState<ShiftEndingType | ''>('');
+  const [incomingNurseId, setIncomingNurseId] = useState<string>('');
   const [summary, setSummary] = useState('');
   const [criticalPatients, setCriticalPatients] = useState('');
   const [pendingTasks, setPendingTasks] = useState('');
   const [medicationsDue, setMedicationsDue] = useState('');
 
   const handleSubmit = async () => {
-    if (!wardId || !outgoingShift || !incomingShift || !summary) {
+    if (!wardId || !outgoingShift || !incomingShift || !summary || !incomingNurseId) {
       toast({
         title: 'Validation Error',
         description: 'Please fill in all required fields',
@@ -50,7 +53,17 @@ export default function NewHandoverPage() {
       return;
     }
 
+    if (!staffProfile?.id) {
+      toast({
+        title: 'Error',
+        description: 'Unable to identify your staff profile. Please try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
+      const selectedWard = wards?.results?.find((w) => w.id === Number(wardId));
       // Build general_notes from the text fields
       const notes = [
         summary,
@@ -63,9 +76,9 @@ export default function NewHandoverPage() {
         ward: Number(wardId),
         shift_date: new Date().toISOString().slice(0, 10),
         shift_ending: outgoingShift,
-        outgoing_nurse: 0, // TODO: Get from authenticated user
-        incoming_nurse: 0, // TODO: Get from form or user selection
-        total_patients: 0, // TODO: Calculate from ward data
+        outgoing_nurse: staffProfile.id,
+        incoming_nurse: Number(incomingNurseId),
+        total_patients: selectedWard?.occupied_beds ?? 0,
         general_notes: notes,
       });
       toast({
@@ -82,7 +95,7 @@ export default function NewHandoverPage() {
     }
   };
 
-  const isFormValid = wardId && outgoingShift && incomingShift && summary;
+  const isFormValid = wardId && outgoingShift && incomingShift && incomingNurseId && summary;
 
   return (
     <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
@@ -103,7 +116,7 @@ export default function NewHandoverPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="ward">Ward *</Label>
               <Select value={wardId} onValueChange={setWardId}>
@@ -148,6 +161,24 @@ export default function NewHandoverPage() {
                       {shift.label}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="incoming-nurse">Incoming Nurse *</Label>
+              <Select value={incomingNurseId} onValueChange={setIncomingNurseId}>
+                <SelectTrigger id="incoming-nurse" aria-label="Incoming Nurse">
+                  <SelectValue placeholder="Select nurse" />
+                </SelectTrigger>
+                <SelectContent>
+                  {staffList?.results
+                    ?.filter((s) => s.id !== staffProfile?.id)
+                    .map((staff) => (
+                      <SelectItem key={staff.id} value={String(staff.id)}>
+                        {staff.full_name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

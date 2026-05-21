@@ -77,6 +77,7 @@ import {
   Monitor,
   UserPlus,
   BotIcon,
+  MessageSquare,
   Droplets,
   CircleDot,
   Award,
@@ -504,12 +505,14 @@ const _allNavItems: NavItemType[] = [
   },
   {
     label: 'TibaBot®',
-    href: '/ai',
     icon: BotIcon,
     moduleKey: 'ai',
-    actionKey: 'ai.use_chat',
     planFeature: 'ai_assistant',
     featureFlag: ENABLE_AI,
+    children: [
+      { label: 'Chat', href: '/ai', icon: MessageSquare, actionKey: 'ai.use_chat' },
+      { label: 'Insights', href: '/ai/insights', icon: BarChart3, actionKey: 'ai.view_insights' },
+    ],
   } as NavItem & { featureFlag?: boolean },
   {
     label: 'Admin',

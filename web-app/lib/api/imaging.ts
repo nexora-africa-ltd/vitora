@@ -535,11 +535,12 @@ export const imagingApi = {
   },
 
   /**
-   * Get all instances for a DICOM study.
+   * Get all instances for a DICOM study, optionally filtered by series.
    */
-  async getStudyInstances(studyInstanceUid: string): Promise<DICOMInstance[]> {
+  async getStudyInstances(studyInstanceUid: string, seriesInstanceUid?: string): Promise<DICOMInstance[]> {
+    const params = seriesInstanceUid ? `?series=${seriesInstanceUid}` : '';
     const response = await apiClient.get<DICOMInstance[]>(
-      `/api/imaging/studies/${studyInstanceUid}/instances/`
+      `/api/imaging/studies/${studyInstanceUid}/instances/${params}`
     );
     return parseResponse(DICOMInstanceArraySchema, response.data, {
       context: 'imagingApi.getStudyInstances',

@@ -925,9 +925,18 @@ class DICOMStudyViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=["get"])
     def instances(self, request, study_instance_uid=None):
-        """List all instances across all series in a study."""
+        """List all instances across all series in a study.
+
+        Query Parameters:
+            series: Filter by series_instance_uid (optional).
+        """
         study = self.get_object()
         instances_qs = DICOMInstance.objects.filter(series__study=study).select_related("series")
+
+        series_uid = request.query_params.get("series")
+        if series_uid:
+            instances_qs = instances_qs.filter(series__series_instance_uid=series_uid)
+
         serializer = DICOMInstanceSerializer(instances_qs, many=True)
         return Response(serializer.data)
 

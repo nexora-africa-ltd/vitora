@@ -1090,6 +1090,146 @@ class AIFeedbackStatsView(AIFeatureGatedMixin, APIView):
         return Response(response_data)
 
 
+class AIInsightsView(AIFeatureGatedMixin, APIView):
+    """
+    GET /api/ai/insights/
+
+    Aggregated AI usage insights for the admin dashboard.
+
+    Returns:
+    - Stored result counts (per type)
+    - Suggestion audit accept/reject rates
+    - Feedback stats (proxied from TibaBot)
+    - Chat session metrics
+    - Usage breakdown by action type (last 30 days)
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        from datetime import timedelta
+
+        from django.db.models import Count, Q
+
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+
+        # Date range for recent stats
+        now = timezone.now()
+        thirty_days_ago = now - timedelta(days=30)
+        seven_days_ago = now - timedelta(days=7)
+
+        # -- Stored result counts (facility-scoped) --
+        result_filters = {}
+        if facility:
+            result_filters["facility"] = facility
+
+        stored_results = {
+            "care_plans": AICarePlanResult.objects.filter(**result_filters).count(),
+            "cds_evaluations": AICDSResult.objects.filter(**result_filters).count(),
+            "lab_interpretations": AILabInterpretResult.objects.filter(**result_filters).count(),
+            "discharge_assessments": AIDischargeResult.objects.filter(**result_filters).count(),
+            "icu_risk_predictions": AIICURiskResult.objects.filter(**result_filters).count(),
+            "investigation_suggestions": AIInvestigationSuggestResult.objects.filter(
+                **result_filters
+            ).count(),
+            "surgical_pre_op": AISurgicalPreOpAssessResult.objects.filter(**result_filters).count(),
+            "surgical_checklists": AISurgicalChecklistSessionResult.objects.filter(
+                **result_filters
+            ).count(),
+            "surgical_post_op": AISurgicalPostOpCarePlanResult.objects.filter(
+                **result_filters
+            ).count(),
+        }
+        stored_results["total"] = sum(stored_results.values())
+
+        # -- Suggestion audit rates (from AuditLog) --
+        audit_base = AuditLog.objects.filter(
+            action__startswith="ai_suggestion_",
+            timestamp__gte=thirty_days_ago,
+        )
+        if facility:
+            audit_base = audit_base.filter(facility=facility)
+
+        suggestion_stats = audit_base.aggregate(
+            accepted=Count("id", filter=Q(action="ai_suggestion_accepted")),
+            applied=Count("id", filter=Q(action="ai_suggestion_applied")),
+            acknowledged=Count("id", filter=Q(action="ai_suggestion_acknowledged")),
+        )
+        suggestion_total = sum(v for v in suggestion_stats.values() if v)
+        suggestion_stats["total"] = suggestion_total
+
+        # -- Chat session metrics --
+        chat_filters: dict = {}
+        if facility:
+            chat_filters["facility"] = facility
+
+        chat_metrics = {
+            "total_sessions": ChatSession.objects.filter(**chat_filters).count(),
+            "recent_sessions": ChatSession.objects.filter(
+                **chat_filters, created_at__gte=seven_days_ago
+            ).count(),
+            "total_messages": ChatMessage.objects.filter(
+                session__in=ChatSession.objects.filter(**chat_filters)
+            ).count(),
+        }
+
+        # -- AI usage by action (last 30 days from AuditLog) --
+        usage_base = AuditLog.objects.filter(
+            action__startswith="ai_",
+            timestamp__gte=thirty_days_ago,
+        )
+        if facility:
+            usage_base = usage_base.filter(facility=facility)
+
+        usage_breakdown = list(
+            usage_base.values("action").annotate(count=Count("id")).order_by("-count")[:15]
+        )
+
+        total_ai_actions = usage_base.count()
+
+        # -- Feedback stats (proxy from TibaBot, graceful fallback) --
+        feedback_stats = {"total_up": 0, "total_down": 0, "recent_negatives": 0}
+        try:
+            client = get_tibabot_client()
+            result = client.get_feedback_stats()
+            feedback_stats = {
+                "total_up": result.get("total_up", 0),
+                "total_down": result.get("total_down", 0),
+                "recent_negatives": result.get("recent_negatives", 0),
+            }
+        except (TibaBotError, TibaBotUnavailableError, Exception):  # noqa: S110
+            pass
+
+        # -- Advisory link stats --
+        advisory_base = AIAdvisoryOrderLink.objects.all()
+        if facility:
+            advisory_base = advisory_base.filter(facility=facility)
+
+        advisory_stats = {
+            "total": advisory_base.count(),
+            "ordered": advisory_base.filter(status=AIAdvisoryOrderLinkStatus.ORDERED).count(),
+            "declined": advisory_base.filter(status=AIAdvisoryOrderLinkStatus.DECLINED).count(),
+            "suggested": advisory_base.filter(status=AIAdvisoryOrderLinkStatus.SUGGESTED).count(),
+        }
+
+        return Response(
+            {
+                "stored_results": stored_results,
+                "suggestion_audit": suggestion_stats,
+                "chat_metrics": chat_metrics,
+                "usage_breakdown": usage_breakdown,
+                "total_ai_actions_30d": total_ai_actions,
+                "feedback": feedback_stats,
+                "advisory_links": advisory_stats,
+                "period": {
+                    "start": thirty_days_ago.isoformat(),
+                    "end": now.isoformat(),
+                },
+            }
+        )
+
+
 # =============================================================================
 # Phase 4 — ICU Predictor
 # =============================================================================
