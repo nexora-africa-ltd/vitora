@@ -990,6 +990,9 @@ class OrganizationAdmin(admin.ModelAdmin):
         "ai_tokens_reset_at",
         "ai_tokens_remaining_display",
         "tibabot_keys_summary",
+        "display_contact_email",
+        "display_contact_phone",
+        "display_address",
     ]
     inlines = [FacilityInline, OrgStaffInline]
 
@@ -1008,9 +1011,9 @@ class OrganizationAdmin(admin.ModelAdmin):
             "Contact",
             {
                 "fields": (
-                    "contact_email",
-                    "contact_phone",
-                    "address",
+                    "display_contact_email",
+                    "display_contact_phone",
+                    "display_address",
                 )
             },
         ),
@@ -1087,6 +1090,21 @@ class OrganizationAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+    @admin.display(description="Contact Email")
+    def display_contact_email(self, obj: Organization) -> str:
+        """Display decrypted contact email."""
+        return obj.contact_email or "—"
+
+    @admin.display(description="Contact Phone")
+    def display_contact_phone(self, obj: Organization) -> str:
+        """Display decrypted contact phone."""
+        return obj.contact_phone or "—"
+
+    @admin.display(description="Address")
+    def display_address(self, obj: Organization) -> str:
+        """Display decrypted address."""
+        return obj.address or "—"
 
     @admin.display(description="AI Keys")
     def tibabot_keys_count(self, obj: Organization) -> str:
