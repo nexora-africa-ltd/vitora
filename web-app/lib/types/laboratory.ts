@@ -615,6 +615,7 @@ export type ResultFlag =
   | 'NORMAL'
   | 'LOW'
   | 'HIGH'
+  | 'CRITICAL'
   | 'CRITICAL_LOW'
   | 'CRITICAL_HIGH'
   | 'ABNORMAL'
