@@ -167,14 +167,12 @@ export function DICOMViewer({
       setInstanceError(null);
 
       try {
-        // Get all instances for the study
-        const allInstances = await imagingApi.getStudyInstances(study.study_instance_uid);
-
-        // Filter to current series (match by series_instance_uid via the instance's series relation)
-        // Since instances don't have series_uid directly, we need to fetch them differently
-        // For now, use all instances from the study
-        // TODO: Add series-specific instance endpoint
-        setInstances(allInstances);
+        // Get instances filtered by current series
+        const seriesInstances = await imagingApi.getStudyInstances(
+          study.study_instance_uid,
+          currentSeries.series_instance_uid
+        );
+        setInstances(seriesInstances);
       } catch (error) {
         console.error('Failed to load DICOM instances:', error);
         setInstanceError(

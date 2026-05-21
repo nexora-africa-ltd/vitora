@@ -398,7 +398,7 @@ export default function TriageAssessmentPage() {
     async (data: AssessmentFormData) => {
       // Validate override reason if category changed
       if (isOverridden && !data.category_override_reason?.trim()) {
-        return; // TODO: Show error - handled by zod refinement
+        return; // Zod refinement handles the validation error display
       }
 
       // Store assessment in triage store

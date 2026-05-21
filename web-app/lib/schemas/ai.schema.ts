@@ -708,3 +708,59 @@ export const AIAdvisoryBulkSeedResponseSchema = z.object({
 export const AIAdvisoryHasOrdersResponseSchema = z.object({
   has_orders: z.boolean(),
 });
+
+// =============================================================================
+// Insights (aggregation endpoint)
+// =============================================================================
+
+export const AIInsightsStoredResultsSchema = z.object({
+  care_plans: z.number(),
+  cds_evaluations: z.number(),
+  lab_interpretations: z.number(),
+  discharge_assessments: z.number(),
+  icu_risk_predictions: z.number(),
+  investigation_suggestions: z.number(),
+  surgical_pre_op: z.number(),
+  surgical_checklists: z.number(),
+  surgical_post_op: z.number(),
+  total: z.number(),
+});
+
+export const AIInsightsSuggestionAuditSchema = z.object({
+  accepted: z.number(),
+  applied: z.number(),
+  acknowledged: z.number(),
+  total: z.number(),
+});
+
+export const AIInsightsChatMetricsSchema = z.object({
+  total_sessions: z.number(),
+  recent_sessions: z.number(),
+  total_messages: z.number(),
+});
+
+export const AIInsightsUsageBreakdownItemSchema = z.object({
+  action: z.string(),
+  count: z.number(),
+});
+
+export const AIInsightsAdvisoryLinksSchema = z.object({
+  total: z.number(),
+  ordered: z.number(),
+  declined: z.number(),
+  suggested: z.number(),
+});
+
+export const AIInsightsResponseSchema = z.object({
+  stored_results: AIInsightsStoredResultsSchema,
+  suggestion_audit: AIInsightsSuggestionAuditSchema,
+  chat_metrics: AIInsightsChatMetricsSchema,
+  usage_breakdown: z.array(AIInsightsUsageBreakdownItemSchema),
+  total_ai_actions_30d: z.number(),
+  feedback: AIFeedbackStatsSchema,
+  advisory_links: AIInsightsAdvisoryLinksSchema,
+  period: z.object({
+    start: z.string(),
+    end: z.string(),
+  }),
+});

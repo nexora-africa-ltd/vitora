@@ -130,12 +130,10 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
         setEncounter(patientId, encounter.id, encounter.encounter_type);
 
         // Sync triage and consultation status from encounter
-        // Use type assertion for fields that may exist on backend but not in TS types yet
-        const encounterAny = encounter as unknown as Record<string, unknown>;
         const triageStatus = (encounter.triage_status || 'PENDING') as TriageStatus;
-        const consultationStatus = (encounterAny.consultation_status as string || 'WAITING') as ConsultationStatus;
-        const triageBypassReason = encounterAny.triage_bypass_reason as TriageBypassReason | undefined;
-        const triageCategory = encounterAny.triage_category as 'RED' | 'ORANGE' | 'YELLOW' | 'GREEN' | 'BLUE' | undefined;
+        const consultationStatus = (encounter.consultation_status || 'WAITING') as ConsultationStatus;
+        const triageBypassReason = (encounter as unknown as Record<string, unknown>).triage_bypass_reason as TriageBypassReason | undefined;
+        const triageCategory = (encounter as unknown as Record<string, unknown>).triage_category as 'RED' | 'ORANGE' | 'YELLOW' | 'GREEN' | 'BLUE' | undefined;
 
         syncFromEncounter(patientId, {
           triage_status: triageStatus,
@@ -152,9 +150,8 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
         });
 
         // Then sync status
-        const encounterAny = encounter as unknown as Record<string, unknown>;
         const triageStatus = (encounter.triage_status || 'PENDING') as TriageStatus;
-        const consultationStatus = (encounterAny.consultation_status as string || 'WAITING') as ConsultationStatus;
+        const consultationStatus = (encounter.consultation_status || 'WAITING') as ConsultationStatus;
 
         syncFromEncounter(patientId, {
           triage_status: triageStatus,
@@ -180,7 +177,7 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
 
   // Extract statuses
   const triageStatus = encounter?.triage_status ?? null;
-  const consultationStatus = null; // TODO: Add when backend provides this field
+  const consultationStatus = encounter?.consultation_status ?? null;
 
   // Combine errors (validation takes precedence)
   const error = validationError ?? (fetchError as Error | null);

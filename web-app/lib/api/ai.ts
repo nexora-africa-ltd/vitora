@@ -46,6 +46,7 @@ import {
   AIAdvisoryOrderLinkSchema,
   AIAdvisoryBulkSeedResponseSchema,
   AIAdvisoryHasOrdersResponseSchema,
+  AIInsightsResponseSchema,
 } from '@/lib/schemas/ai.schema';
 import { parseResponse } from '@/lib/schemas/validation';
 import type {
@@ -109,6 +110,7 @@ import type {
   AIAdvisoryBulkSeedResponse,
   AIAdvisoryOrderLinkActionRequest,
   AIAdvisoryHasOrdersResponse,
+  AIInsightsResponse,
 } from '@/lib/types/ai';
 
 export const aiApi = {
@@ -716,6 +718,18 @@ export const aiApi = {
     });
     return parseResponse(AIAdvisoryHasOrdersResponseSchema, response.data, {
       context: 'aiApi.advisoryHasOrders',
+    });
+  },
+
+  // ===========================================================================
+  // Insights
+  // ===========================================================================
+
+  /** Get aggregated AI usage insights for the admin dashboard. */
+  getInsights: async (): Promise<AIInsightsResponse> => {
+    const response = await apiClient.get('/api/ai/insights/');
+    return parseResponse(AIInsightsResponseSchema, response.data, {
+      context: 'aiApi.getInsights',
     });
   },
 };

@@ -1344,3 +1344,59 @@ export interface AIAdvisoryOrderLinkActionRequest {
 export interface AIAdvisoryHasOrdersResponse {
   has_orders: boolean;
 }
+
+// =============================================================================
+// Insights
+// =============================================================================
+
+export interface AIInsightsStoredResults {
+  care_plans: number;
+  cds_evaluations: number;
+  lab_interpretations: number;
+  discharge_assessments: number;
+  icu_risk_predictions: number;
+  investigation_suggestions: number;
+  surgical_pre_op: number;
+  surgical_checklists: number;
+  surgical_post_op: number;
+  total: number;
+}
+
+export interface AIInsightsSuggestionAudit {
+  accepted: number;
+  applied: number;
+  acknowledged: number;
+  total: number;
+}
+
+export interface AIInsightsChatMetrics {
+  total_sessions: number;
+  recent_sessions: number;
+  total_messages: number;
+}
+
+export interface AIInsightsUsageBreakdownItem {
+  action: string;
+  count: number;
+}
+
+export interface AIInsightsAdvisoryLinks {
+  total: number;
+  ordered: number;
+  declined: number;
+  suggested: number;
+}
+
+export interface AIInsightsResponse {
+  stored_results: AIInsightsStoredResults;
+  suggestion_audit: AIInsightsSuggestionAudit;
+  chat_metrics: AIInsightsChatMetrics;
+  usage_breakdown: AIInsightsUsageBreakdownItem[];
+  total_ai_actions_30d: number;
+  feedback: AIFeedbackStats;
+  advisory_links: AIInsightsAdvisoryLinks;
+  period: {
+    start: string;
+    end: string;
+  };
+}

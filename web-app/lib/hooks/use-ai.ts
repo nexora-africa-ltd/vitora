@@ -51,6 +51,7 @@ import type {
   AIInvestigationSuggestRequest,
   AIInvestigationSuggestResponse,
   StoredInvestigationSuggestResult,
+  AIInsightsResponse,
 } from '@/lib/types/ai';
 
 // =============================================================================
@@ -79,6 +80,7 @@ export const aiKeys = {
     [...aiKeys.all, 'icu-labs', admissionId] as const,
   storedInvestigationSuggestions: (encounterId: number) =>
     [...aiKeys.all, 'stored-investigation-suggestions', encounterId] as const,
+  insights: () => [...aiKeys.all, 'insights'] as const,
 };
 
 // =============================================================================
@@ -580,5 +582,18 @@ export function useStoredInvestigationSuggestions(encounterId: number | undefine
     queryFn: () => aiApi.getStoredInvestigationSuggestions({ encounter_id: encounterId! }),
     enabled: ENABLE_AI && Boolean(encounterId),
     staleTime: 30_000,
+  });
+}
+
+// =============================================================================
+// Insights
+// =============================================================================
+
+export function useAIInsights() {
+  return useQuery<AIInsightsResponse, Error>({
+    queryKey: aiKeys.insights(),
+    queryFn: () => aiApi.getInsights(),
+    enabled: ENABLE_AI,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 }

@@ -20,6 +20,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useMyStaffProfile } from '@/lib/hooks/use-rbac';
 import {
   useAdmissionRecommendations,
   useDeclineAdmissionRecommendation,
@@ -41,6 +42,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function AdmissionRecommendationsPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { data: staffProfile } = useMyStaffProfile();
   const [selectedRecommendation, setSelectedRecommendation] = useState<any>(null);
   const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
@@ -69,7 +71,7 @@ export default function AdmissionRecommendationsPage() {
     try {
       await declineRecommendation.mutateAsync({
         id: selectedRecommendation.id,
-        userId: 1, // TODO: Get from auth context
+        userId: staffProfile?.user ?? 0,
         reason: declineReason.trim(),
       });
 
