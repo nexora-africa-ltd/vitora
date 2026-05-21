@@ -56,6 +56,14 @@ export type ETIMSInvoiceStatus =
   | 'FAILED'
   | 'CANCELLED';
 
+export type ETIMSReceiptType = 'N' | 'C' | 'T' | 'P';
+
+export type ETIMSTransactionType = 'S' | 'NC';
+
+export type ETIMSReceiptLabel = 'NS' | 'NC' | 'CS' | 'CC' | 'TS' | 'TC' | 'PS';
+
+export type ETIMSDailyReportType = 'X' | 'Z';
+
 export type ForecastMethod = 'MOVING_AVERAGE' | 'EXPONENTIAL_SMOOTHING' | 'SEASONAL';
 
 export type ReorderUrgency = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -407,6 +415,13 @@ export interface ETIMSConfig {
   last_sync_at: string | null;
   environment: ETIMSEnvironment;
   facility: number;
+  counter_ns: number;
+  counter_nc: number;
+  counter_cs: number;
+  counter_cc: number;
+  counter_ts: number;
+  counter_tc: number;
+  counter_ps: number;
   created_at: string;
   updated_at: string;
 }
@@ -436,8 +451,31 @@ export interface ETIMSInvoice {
   patient_name: string;
   invoice_total: number | string;
   dispensing: number | null;
+  // Receipt classification
+  receipt_type: ETIMSReceiptType;
+  transaction_type: ETIMSTransactionType;
+  receipt_label: ETIMSReceiptLabel;
+  receipt_type_counter: number;
+  // Credit note reference
+  original_etims_invoice: number | null;
+  original_cu_invoice_number: string;
+  buyer_pin: string;
+  // KRA response
   etims_receipt_number: string;
   etims_internal_data: Record<string, unknown> | null;
+  // SCU response fields (§5.3)
+  scu_id: string;
+  scu_datetime: string | null;
+  scu_receipt_counter: number;
+  scu_total_counter: number;
+  scu_internal_data: string;
+  scu_receipt_signature: string;
+  cu_invoice_number: string;
+  formatted_internal_data: string;
+  formatted_receipt_signature: string;
+  qr_code_data: string;
+  ej_data_sent: boolean;
+  // Lifecycle
   status: ETIMSInvoiceStatus;
   submitted_at: string | null;
   confirmed_at: string | null;
@@ -643,6 +681,63 @@ export interface ETIMSConfigCreateData {
 export interface ETIMSInvoiceCreateData {
   invoice: number;
   dispensing?: number | null;
+  receipt_type?: ETIMSReceiptType;
+  transaction_type?: ETIMSTransactionType;
+  receipt_label?: ETIMSReceiptLabel;
+  original_etims_invoice?: number | null;
+  original_cu_invoice_number?: string;
+  buyer_pin?: string;
+}
+
+export interface ETIMSCreditNoteData {
+  reason: string;
+}
+
+export interface ETIMSDailyReport {
+  id: number;
+  facility: number;
+  report_type: ETIMSDailyReportType;
+  report_date: string;
+  report_number: number;
+  // Tax breakdown
+  taxable_amount_a: number | string;
+  tax_amount_a: number | string;
+  taxable_amount_b: number | string;
+  tax_amount_b: number | string;
+  taxable_amount_c: number | string;
+  tax_amount_c: number | string;
+  taxable_amount_d: number | string;
+  tax_amount_d: number | string;
+  taxable_amount_e: number | string;
+  tax_amount_e: number | string;
+  // Sales totals
+  total_ns_amount: number | string;
+  total_ns_count: number;
+  total_nc_amount: number | string;
+  total_nc_count: number;
+  total_items_sold: number;
+  total_cs_cc_count: number;
+  total_cs_cc_amount: number | string;
+  total_ts_tc_count: number;
+  total_ts_tc_amount: number | string;
+  total_ps_count: number;
+  total_ps_amount: number | string;
+  // Payment breakdown
+  payment_cash: number | string;
+  payment_mpesa: number | string;
+  payment_insurance: number | string;
+  payment_other: number | string;
+  // Misc
+  total_discounts: number | string;
+  incomplete_sales_count: number;
+  generated_by: number | null;
+  generated_by_name: string | null;
+  created_at: string;
+}
+
+export interface ETIMSDailyReportGenerateData {
+  report_type: ETIMSDailyReportType;
+  report_date?: string;
 }
 
 export interface DemandForecastGenerateData {

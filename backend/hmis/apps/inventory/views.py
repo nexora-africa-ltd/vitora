@@ -849,6 +849,122 @@ class ETIMSInvoiceViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mod
         etims_inv.mark_cancelled()
         return Response(ETIMSInvoiceSerializer(etims_inv).data)
 
+    @action(detail=True, methods=["post"], url_path="credit-note")
+    def credit_note(self, request, pk=None):
+        """
+        Create a credit note (NC) for a CONFIRMED eTIMS invoice (§6.16).
+
+        This creates a new ETIMSInvoice with transaction_type='NC' referencing
+        the original, then queues it for submission to KRA.
+        """
+        from hmis.apps.inventory.serializers import ETIMSCreditNoteSerializer
+
+        original = self.get_object()
+        if original.status != "CONFIRMED":
+            return Response(
+                {"error": "Credit notes can only be issued for CONFIRMED invoices."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if original.transaction_type == "NC":
+            return Response(
+                {"error": "Cannot issue a credit note for another credit note."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = ETIMSCreditNoteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Determine credit note receipt label
+        cn_label_map = {"NS": "NC", "CS": "CC", "TS": "TC"}
+        cn_receipt_label = cn_label_map.get(original.receipt_label, "NC")
+
+        # Create credit note ETIMSInvoice
+        credit_inv = ETIMSInvoice.objects.create(
+            invoice=original.invoice,
+            dispensing=original.dispensing,
+            facility=original.facility,
+            organization=original.organization,
+            receipt_type=original.receipt_type,
+            transaction_type="NC",
+            receipt_label=cn_receipt_label,
+            original_etims_invoice=original,
+            original_cu_invoice_number=original.cu_invoice_number,
+            buyer_pin=original.buyer_pin,
+        )
+
+        # Copy items from original
+        for item in original.items.all():
+            credit_inv.items.create(
+                item_code=item.item_code,
+                item_name=item.item_name,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                tax_amount=item.tax_amount,
+                total=item.total,
+            )
+
+        # Queue for submission
+        from hmis.apps.inventory.tasks import submit_etims_invoice_task
+
+        submit_etims_invoice_task.delay(credit_inv.pk)
+
+        return Response(
+            ETIMSInvoiceSerializer(credit_inv).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ETIMSDailyReportViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
+    """Read-only access to eTIMS daily X/Z reports + on-demand generation."""
+
+    from hmis.apps.inventory.models import ETIMSDailyReport
+
+    queryset = ETIMSDailyReport.objects.all()
+    permission_classes = [IsAuthenticated]
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):
+        from hmis.apps.inventory.serializers import (
+            ETIMSDailyReportGenerateSerializer,
+            ETIMSDailyReportSerializer,
+        )
+
+        if self.action == "generate":
+            return ETIMSDailyReportGenerateSerializer
+        return ETIMSDailyReportSerializer
+
+    @action(detail=False, methods=["post"])
+    def generate(self, request):
+        """Generate an X or Z daily report for the current facility."""
+        from hmis.apps.inventory.serializers import (
+            ETIMSDailyReportGenerateSerializer,
+            ETIMSDailyReportSerializer,
+        )
+        from hmis.apps.inventory.services.etims import generate_daily_report
+
+        serializer = ETIMSDailyReportGenerateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        self._resolve_tenant_context()
+        facility = getattr(self.request, "facility", None)
+        if not facility:
+            return Response(
+                {"error": "No facility context available."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        report = generate_daily_report(
+            facility_id=facility.pk,
+            report_type=serializer.validated_data["report_type"],
+            report_date=serializer.validated_data.get("report_date"),
+            user=request.user,
+        )
+
+        return Response(
+            ETIMSDailyReportSerializer(report).data,
+            status=status.HTTP_201_CREATED,
+        )
+
 
 # ===========================================================================
 # Phase 6: Predictive Analytics / Demand Forecasting

@@ -7,6 +7,7 @@ from hmis.apps.inventory.views import (
     ConsumptionRecordViewSet,
     DemandForecastViewSet,
     ETIMSConfigViewSet,
+    ETIMSDailyReportViewSet,
     ETIMSInvoiceViewSet,
     GoodsReceiptNoteViewSet,
     PaymentTermViewSet,
@@ -32,6 +33,7 @@ router.register(r"ward-transactions", WardStockTransactionViewSet, basename="war
 router.register(r"stock-counts", StockCountViewSet, basename="stockcount")
 router.register(r"etims-config", ETIMSConfigViewSet, basename="etimsconfig")
 router.register(r"etims-invoices", ETIMSInvoiceViewSet, basename="etimsinvoice")
+router.register(r"etims-daily-reports", ETIMSDailyReportViewSet, basename="etimsdailyreport")
 router.register(r"consumption", ConsumptionRecordViewSet, basename="consumptionrecord")
 router.register(r"forecasts", DemandForecastViewSet, basename="demandforecast")
 router.register(r"reorder-suggestions", ReorderSuggestionViewSet, basename="reordersuggestion")

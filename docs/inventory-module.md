@@ -372,7 +372,7 @@ KRA eTIMS configuration per facility.
 
 | Field | Type | Constraints | Notes |
 |-------|------|-------------|-------|
-| `device_serial` | `CharField(100)` | Required | eTIMS device serial |
+| `device_serial` | `CharField(100)` | Required | VSCU serial (virtual from iTax) or OSCU hardware serial |
 | `environment` | `CharField(15)` | SANDBOX / PRODUCTION | Default: `SANDBOX` |
 | `api_url` | `URLField` | Required | KRA eTIMS endpoint |
 | `api_key` | `CharField(255)` | Required | Encrypted at rest |
@@ -380,6 +380,15 @@ KRA eTIMS configuration per facility.
 | `bhf_id` | `CharField(10)` | Default: "00" | Branch ID |
 | `is_active` | `BooleanField` | Default: True | |
 | `last_sync_at` | `DateTimeField` | Nullable | |
+| `counter_ns` | `PositiveIntegerField` | Default: 1 | Next Normal Sale receipt number |
+| `counter_nc` | `PositiveIntegerField` | Default: 1 | Next Normal Credit receipt number |
+| `counter_cs` | `PositiveIntegerField` | Default: 1 | Next Copy Sale receipt number |
+| `counter_cc` | `PositiveIntegerField` | Default: 1 | Next Copy Credit receipt number |
+| `counter_ts` | `PositiveIntegerField` | Default: 1 | Next Training Sale receipt number |
+| `counter_tc` | `PositiveIntegerField` | Default: 1 | Next Training Credit receipt number |
+| `counter_ps` | `PositiveIntegerField` | Default: 1 | Next Proforma Sale receipt number |
+
+**Methods**: `get_next_receipt_number(label: ETIMSReceiptLabel) → int` — atomically increments and returns the next sequential receipt number for the given label.
 
 ---
 
@@ -393,9 +402,21 @@ KRA eTIMS fiscal invoice record with submission lifecycle.
 |-------|------|-------------|-------|
 | `invoice` | `FK → billing.Invoice` | PROTECT | related_name: `etims_invoices` |
 | `status` | `CharField(15)` | `ETIMSInvoiceStatus` choices | Default: `PENDING` |
-| `scu_number` | `CharField(100)` | Blank OK | SCU control number from KRA |
-| `internal_data` | `CharField(255)` | Blank OK | Internal reference |
-| `receipt_signature` | `CharField(500)` | Blank OK | Digital signature from KRA |
+| `receipt_type` | `CharField(2)` | `ETIMSReceiptType` (N/C/T/P) | Default: `N` (Normal) |
+| `transaction_type` | `CharField(2)` | `ETIMSTransactionType` (S/C) | Default: `S` (Sale) |
+| `receipt_label` | `CharField(2)` | `ETIMSReceiptLabel` (NS/NC/CS/CC/TS/TC/PS) | Auto-derived |
+| `etims_receipt_number` | `PositiveIntegerField` | Nullable | Sequential per-label counter |
+| `buyer_pin` | `CharField(20)` | Blank OK | Buyer's KRA PIN (B2B) |
+| `original_invoice` | `FK → self` | SET_NULL, Nullable | Credit note reference |
+| `scu_id` | `CharField(50)` | Blank OK | SCU device ID from response |
+| `scu_datetime` | `DateTimeField` | Nullable | SCU timestamp from response |
+| `scu_receipt_counter` | `PositiveIntegerField` | Nullable | SCU's receipt-type counter |
+| `scu_total_counter` | `PositiveIntegerField` | Nullable | SCU's total receipt counter |
+| `receipt_type_counter` | `PositiveIntegerField` | Nullable | Receipt type counter |
+| `internal_data` | `CharField(255)` | Blank OK | Internal reference from SCU |
+| `receipt_signature` | `CharField(500)` | Blank OK | Digital signature from SCU |
+| `qr_code_data` | `TextField` | Blank OK | QR code URL for receipt verification |
+| `ej_data_sent` | `BooleanField` | Default: False | Electronic journal submitted |
 | `submitted_at` | `DateTimeField` | Nullable | |
 | `confirmed_at` | `DateTimeField` | Nullable | |
 | `error_message` | `TextField` | Blank OK | |
@@ -403,7 +424,9 @@ KRA eTIMS fiscal invoice record with submission lifecycle.
 | `raw_request` | `JSONField` | Nullable | Sent payload |
 | `raw_response` | `JSONField` | Nullable | KRA response |
 
-**Methods**: `mark_submitted(scu_number)`, `mark_confirmed(receipt_signature)`, `mark_failed(error)`, `mark_cancelled()`
+**Properties**: `cu_invoice_number` (format: `{scu_id}/{etims_receipt_number}`), `formatted_internal_data`, `formatted_receipt_signature` (dash-separated every 4 chars)
+
+**Methods**: `mark_submitted(scu_number)`, `mark_confirmed(receipt_number, response_data=None, scu_data=None)`, `mark_failed(error)`, `mark_cancelled()`, `generate_qr_code_data()`
 
 **State Machine**:
 ```
@@ -426,11 +449,40 @@ PENDING/FAILED → mark_cancelled() → CANCELLED
 | `quantity` | `DecimalField(12,2)` | Required | |
 | `unit_price` | `DecimalField(12,2)` | Required | |
 | `tax_amount` | `DecimalField(12,2)` | Default: 0 | |
-| `total_amount` | `DecimalField(12,2)` | Required | |
+| `total` | `DecimalField(12,2)` | Required | |
 
 ---
 
-### 3.16 ConsumptionRecord
+### 3.16 ETIMSDailyReport
+
+> **File**: `models.py` | **Scope**: `FacilityScopedModel` | **Migration**: 0009
+
+KRA-compliant X (interim) and Z (end-of-day) daily sales reports.
+
+| Field | Type | Constraints | Notes |
+|-------|------|-------------|-------|
+| `report_type` | `CharField(1)` | `X` or `Z` | X=interim, Z=end-of-day |
+| `report_date` | `DateField` | Required | Date the report covers |
+| `report_number` | `PositiveIntegerField` | Required | Sequential per facility |
+| `total_ns_count` | `PositiveIntegerField` | Default: 0 | Normal Sale receipt count |
+| `total_ns_amount` | `DecimalField(14,2)` | Default: 0 | Total Normal Sales amount |
+| `total_nc_count` | `PositiveIntegerField` | Default: 0 | Normal Credit note count |
+| `total_nc_amount` | `DecimalField(14,2)` | Default: 0 | Total Credit Notes amount |
+| `taxable_amount_a` | `DecimalField(14,2)` | Default: 0 | Tax slot A taxable amount |
+| `tax_amount_a` | `DecimalField(14,2)` | Default: 0 | Tax slot A tax amount |
+| `taxable_amount_b` | `DecimalField(14,2)` | Default: 0 | Tax slot B taxable amount |
+| `tax_amount_b` | `DecimalField(14,2)` | Default: 0 | Tax slot B tax amount |
+| `taxable_amount_c` | `DecimalField(14,2)` | Default: 0 | Tax slot C (exempt) |
+| `taxable_amount_d` | `DecimalField(14,2)` | Default: 0 | Tax slot D taxable amount |
+| `tax_amount_d` | `DecimalField(14,2)` | Default: 0 | Tax slot D tax amount |
+| `taxable_amount_e` | `DecimalField(14,2)` | Default: 0 | Tax slot E (zero-rated) |
+| `incomplete_sales_count` | `PositiveIntegerField` | Default: 0 | Unconfirmed invoices |
+| `generated_by` | `FK → User` | SET_NULL, Nullable | Who generated |
+| `generated_by_name` | `CharField(150)` | Blank OK | Denormalized name |
+
+---
+
+### 3.17 ConsumptionRecord
 
 > **File**: `models.py` | **Scope**: `FacilityScopedModel` | **Migration**: 0005
 
@@ -671,13 +723,25 @@ All use date-based prefix + sequential 4-digit suffix, querying the latest recor
 | Method | URL | Action | Notes |
 |--------|-----|--------|-------|
 | `GET` | `/etims-invoices/` | List | Facility-scoped |
-| `POST` | `/etims-invoices/` | Create | Links to billing.Invoice |
-| `GET` | `/etims-invoices/{id}/` | Retrieve | Nested items |
+| `POST` | `/etims-invoices/` | Create | Links to billing.Invoice, auto-derives receipt_label |
+| `GET` | `/etims-invoices/{id}/` | Retrieve | Nested items, SCU data, QR |
 | `POST` | `/etims-invoices/{id}/submit/` | Submit | Triggers async Celery task |
 | `POST` | `/etims-invoices/{id}/retry/` | Retry | FAILED → re-submit |
 | `POST` | `/etims-invoices/{id}/cancel/` | Cancel | PENDING/FAILED → CANCELLED |
+| `POST` | `/etims-invoices/{id}/credit_note/` | Credit Note | Creates NC invoice referencing original |
 
 **ViewSet**: `ETIMSInvoiceViewSet` — `TenantScopedViewMixin`, `ReadOnCreateMixin`, `ModelViewSet`
+**Tenant scope**: `facility`
+
+### 6.11 eTIMS Daily Reports — `/api/inventory/etims-daily-reports/`
+
+| Method | URL | Action | Notes |
+|--------|-----|--------|-------|
+| `GET` | `/etims-daily-reports/` | List | Facility-scoped, paginated |
+| `GET` | `/etims-daily-reports/{id}/` | Retrieve | |
+| `POST` | `/etims-daily-reports/generate/` | Generate | Creates X or Z report for date |
+
+**ViewSet**: `ETIMSDailyReportViewSet` — `TenantScopedViewMixin`, `ReadOnlyModelViewSet`
 **Tenant scope**: `facility`
 
 ### 6.11 Consumption Records — `/api/inventory/consumption/`
@@ -807,10 +871,19 @@ Low-level KRA API client.
 | `check_status(scu_number: str) → dict` | GET status of a submitted invoice |
 
 **`build_etims_payload(etims_invoice: ETIMSInvoice) → dict`**
-Constructs the KRA-compliant JSON payload from an ETIMSInvoice + linked billing.Invoice + items.
+Constructs the KRA TIS v2.0-compliant JSON payload. Supports 5 tax slots (A-E), credit note negatives, buyer PIN for B2B, and `orgInvcNo` for credit note references.
 
 **`submit_etims_invoice(etims_invoice_id: int) → ETIMSInvoice`**
-End-to-end flow: loads ETIMSInvoice → builds payload → submits via client → marks submitted/confirmed/failed → stores raw request/response.
+End-to-end flow: loads ETIMSInvoice → atomically assigns receipt counter → builds payload → submits via client → parses SCU response → generates QR code → submits EJ data → marks confirmed/failed → stores raw request/response.
+
+**`generate_daily_report(facility_id, report_type, report_date, user) → ETIMSDailyReport`**
+Generates X or Z report: queries confirmed invoices since last Z report (for X) or for the full day (for Z), aggregates amounts by receipt label and tax slot.
+
+**`validate_stock_for_submission(etims_invoice) → list[str]`**
+Checks that all invoice items have sufficient stock (uses `quantity_available` on `StockBatch`). Returns list of validation errors.
+
+**`submit_ej_data(etims_invoice) → bool`**
+Submits Electronic Journal data to KRA after successful confirmation.
 
 ### 9.2 Forecasting Service — `services/forecasting.py`
 
