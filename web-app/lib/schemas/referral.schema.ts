@@ -64,6 +64,7 @@ export const ClinicalReferralSchema = z.object({
   destination_clinic_name: z.string().default(''),
   reason: z.string(),
   clinical_notes: z.string().default(''),
+  hospital_course: z.string().default(''),
   priority: ReferralPrioritySchema,
   priority_display: z.string(),
   relevant_diagnoses: z.array(ReferralDiagnosisSnapshotSchema).default([]),

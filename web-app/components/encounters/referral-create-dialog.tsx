@@ -78,6 +78,7 @@ export function ReferralCreateDialog({
   const [reason, setReason] = React.useState('');
   const [priority, setPriority] = React.useState<ReferralPriority>('ROUTINE');
   const [clinicalNotes, setClinicalNotes] = React.useState('');
+  const [hospitalCourse, setHospitalCourse] = React.useState('');
   const [isSensitive, setIsSensitive] = React.useState(false);
 
   // Admission-specific
@@ -167,6 +168,7 @@ export function ReferralCreateDialog({
     setReason('');
     setPriority('ROUTINE');
     setClinicalNotes('');
+    setHospitalCourse('');
     setIsSensitive(false);
     setProvisionalDiagnosisText('');
     setProvisionalDiagnosis('');
@@ -194,6 +196,7 @@ export function ReferralCreateDialog({
         reason: reason.trim(),
         priority,
         clinical_notes: clinicalNotes.trim() || undefined,
+        hospital_course: hospitalCourse.trim() || undefined,
         is_sensitive: isSensitive,
         // Admission fields
         ...(isAdmission && {
@@ -331,6 +334,18 @@ export function ReferralCreateDialog({
               onChange={(e) => setClinicalNotes(e.target.value)}
               placeholder="Any additional context for the receiving service..."
               rows={2}
+            />
+          </div>
+
+          {/* Hospital Course */}
+          <div className="space-y-2">
+            <Label htmlFor="hospital-course">Hospital Course</Label>
+            <Textarea
+              id="hospital-course"
+              value={hospitalCourse}
+              onChange={(e) => setHospitalCourse(e.target.value)}
+              placeholder="Summary of interventions, treatments, and procedures done on the patient..."
+              rows={3}
             />
           </div>
 

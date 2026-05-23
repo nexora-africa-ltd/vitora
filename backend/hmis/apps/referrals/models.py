@@ -303,6 +303,15 @@ class ClinicalReferral(HistoryMixin, FacilityScopedModel, TimeStampedModel):
     )
 
     # =========================================================================
+    # Hospital Course (interventions done before referral)
+    # =========================================================================
+    hospital_course = models.TextField(
+        blank=True,
+        default="",
+        help_text="Summary of interventions and treatments given before referral",
+    )
+
+    # =========================================================================
     # Admission-specific fields (only for ADMISSION type)
     # =========================================================================
     provisional_diagnosis = models.CharField(
