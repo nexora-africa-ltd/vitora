@@ -2,10 +2,8 @@ name: Deploy Superset to Azure Container Apps
 
 on:
   push:
-    branches: [main]
-    paths:
-      - 'docker/superset/**'
-      - '.github/workflows/deploy-superset.yml'
+    tags:
+      - 'production'
   workflow_dispatch:
 
 env:
