@@ -40,14 +40,6 @@ const SICK_NOTE_TEMPLATE = `
   </div>
 
   <div class="section">
-    <div class="section-title">Medical Details</div>
-    <div class="detail-block">
-      <p><strong>Diagnosis:</strong> {{diagnosis_text}}</p>
-      {{#diagnosis_code}}<p><strong>ICD-10 Code:</strong> {{diagnosis_code}}</p>{{/diagnosis_code}}
-    </div>
-  </div>
-
-  <div class="section">
     <div class="section-title">Leave Period</div>
     <div class="leave-block">
       <p>This is to certify that the above-named patient has been examined and is advised to rest from
@@ -159,15 +151,6 @@ export function printSickNote(options: PrintSickNoteOptions): Window | null {
   // Patient
   html = html.replace(/\{\{patient_name\}\}/g, escapeHtml(patient?.full_name || sickNote.patient_name));
   html = html.replace(/\{\{patient_mrn\}\}/g, escapeHtml(patient?.mrn || sickNote.patient_mrn));
-
-  // Diagnosis
-  html = html.replace(/\{\{diagnosis_text\}\}/g, escapeHtml(sickNote.diagnosis_text));
-  if (sickNote.diagnosis_code) {
-    html = html.replace(/\{\{#diagnosis_code\}\}([\s\S]*?)\{\{\/diagnosis_code\}\}/g, '$1');
-    html = html.replace(/\{\{diagnosis_code\}\}/g, escapeHtml(sickNote.diagnosis_code));
-  } else {
-    html = html.replace(/\{\{#diagnosis_code\}\}[\s\S]*?\{\{\/diagnosis_code\}\}/g, '');
-  }
 
   // Leave
   html = html.replace(/\{\{leave_start\}\}/g, formatDate(sickNote.leave_start_date));

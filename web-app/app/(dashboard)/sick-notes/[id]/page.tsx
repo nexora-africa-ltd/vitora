@@ -13,7 +13,6 @@ import {
   FileText,
   User,
   Calendar,
-  Stethoscope,
   Building2,
   Printer,
   CheckCircle2,
@@ -242,29 +241,7 @@ export default function SickNoteDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Diagnosis */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Stethoscope className="h-4 w-4" />
-              Diagnosis
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="text-sm">
-              <span className="text-muted-foreground block mb-1">Diagnosis</span>
-              <span>{sickNote.diagnosis_text}</span>
-            </div>
-            {sickNote.diagnosis_code && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">ICD-10 Code</span>
-                <span className="font-mono">{sickNote.diagnosis_code}</span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Clinical Details */}
+        {/* Clinical Details */
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
