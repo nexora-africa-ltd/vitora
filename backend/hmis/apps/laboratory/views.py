@@ -515,8 +515,15 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         )
     )
     permission_classes = [IsAuthenticated, LaboratoryModuleRequired, RequiresActiveShiftPermission]
-    filter_backends = [filters.DjangoFilterBackend]
+    filter_backends = [filters.DjangoFilterBackend, SearchFilter]
     filterset_fields = ["patient", "encounter", "status", "priority", "order_type"]
+    search_fields = [
+        "order_number",
+        "patient__first_name",
+        "patient__last_name",
+        "patient__mrn",
+        "items__test__name",
+    ]
     lookup_field = "order_number"
 
     # Per-action role gating (additive to base permission_classes).
@@ -547,6 +554,36 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         output_serializer = LabOrderSerializer(order)
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
+    def retrieve(self, request, *args, **kwargs):
+        """Retrieve order — auto-expands legacy panel items without children."""
+        order = self.get_object()
+        self._auto_expand_legacy_panels(order)
+        serializer = self.get_serializer(order)
+        return Response(serializer.data)
+
+    def _auto_expand_legacy_panels(self, order):
+        """For orders created before panel explosion, expand panel items on first access."""
+        panel_items = order.items.filter(test__is_panel=True)
+        created = False
+        for parent_item in panel_items:
+            if parent_item.panel_children.exists():
+                continue
+            components = parent_item.test.panel_components.filter(is_active=True)
+            for component_test in components:
+                LabOrderItem.objects.create(
+                    lab_order=order,
+                    test=component_test,
+                    unit_cost=component_test.cost,
+                    panel_parent=parent_item,
+                    special_instructions=parent_item.special_instructions,
+                )
+                created = True
+        if created:
+            order.calculate_total_cost()
+            # Refresh prefetched relations
+            order.refresh_from_db()
+            order.items.all()  # Reset prefetch cache
+
     def get_queryset(self):
         queryset = super().get_queryset()
 
@@ -558,7 +595,43 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if date_to:
             queryset = queryset.filter(ordered_at__lte=date_to)
 
-        return queryset
+        # SearchFilter across items__test__name can produce duplicates
+        return queryset.distinct()
+
+    @action(detail=True, methods=["post"], url_path="expand-panels")
+    def expand_panels(self, request, order_number=None):
+        """
+        Retroactively expand panel items into component items.
+
+        For orders created before panel explosion was implemented:
+        finds panel items without children and creates component items.
+        """
+        order = self.get_object()
+        created_count = 0
+
+        panel_items = order.items.filter(test__is_panel=True)
+        for parent_item in panel_items:
+            # Skip if already has children
+            if parent_item.panel_children.exists():
+                continue
+            components = parent_item.test.panel_components.filter(is_active=True)
+            for component_test in components:
+                LabOrderItem.objects.create(
+                    lab_order=order,
+                    test=component_test,
+                    unit_cost=component_test.cost,
+                    panel_parent=parent_item,
+                    special_instructions=parent_item.special_instructions,
+                )
+                created_count += 1
+
+        if created_count > 0:
+            order.calculate_total_cost()
+
+        # Return the updated order
+        order.refresh_from_db()
+        serializer = self.get_serializer(order)
+        return Response(serializer.data)
 
     @action(detail=True, methods=["post"])
     def submit(self, request, order_number=None):

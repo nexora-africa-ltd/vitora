@@ -181,12 +181,14 @@ class TestLoadLabReferenceRangesCommand:
         assert hgb.critical_high is not None
 
     def test_all_parameters_have_units(self):
-        """All parameters should have units specified."""
+        """All parameters should have units specified (except unitless like pH, INR)."""
         # Load all panels
         call_command("load_lab_reference_ranges", stdout=StringIO())
 
-        # Check all have units
-        params_without_units = LabResultTemplate.objects.filter(unit="")
+        # Check all have units except known unitless params (pH, INR)
+        params_without_units = LabResultTemplate.objects.filter(unit="").exclude(
+            parameter_code__in=["PH", "INR"]
+        )
         assert params_without_units.count() == 0
 
     def test_panels_have_correct_parameter_counts(self):
@@ -212,8 +214,17 @@ class TestLoadLabReferenceRangesCommand:
         # ELECTROLYTES should have 4 parameters
         assert LabResultTemplate.objects.filter(test_code="ELECTROLYTES").count() == 4
 
-        # THYROID should have 3 parameters
-        assert LabResultTemplate.objects.filter(test_code="THYROID").count() == 3
+        # THYROID should have 4 parameters
+        assert LabResultTemplate.objects.filter(test_code="THYROID").count() == 4
+
+        # New panels
+        assert LabResultTemplate.objects.filter(test_code="COAGULATION").count() == 5
+        assert LabResultTemplate.objects.filter(test_code="CARDIAC").count() == 6
+        assert LabResultTemplate.objects.filter(test_code="ABG").count() == 6
+        assert LabResultTemplate.objects.filter(test_code="MINERALS").count() == 4
+        assert LabResultTemplate.objects.filter(test_code="PANCREATIC").count() == 2
+        assert LabResultTemplate.objects.filter(test_code="CSF").count() == 3
+        assert LabResultTemplate.objects.filter(test_code="IRON").count() == 3
 
     def test_is_active_flag_set(self):
         """All loaded parameters should be active."""

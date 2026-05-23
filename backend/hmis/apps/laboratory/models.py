@@ -694,6 +694,17 @@ class LabOrderItem(models.Model):
     lab_order = models.ForeignKey(LabOrder, on_delete=models.CASCADE, related_name="items")
     test = models.ForeignKey(TestCatalog, on_delete=models.PROTECT)
 
+    # Panel grouping: if this item was auto-expanded from a panel order,
+    # panel_parent points to the parent panel LabOrderItem.
+    panel_parent = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="panel_children",
+        help_text="Parent panel item if this is an expanded component",
+    )
+
     # Status
     status = models.CharField(max_length=20, choices=ITEM_STATUS, default="PENDING")
 
