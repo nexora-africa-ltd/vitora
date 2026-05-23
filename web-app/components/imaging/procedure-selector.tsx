@@ -101,7 +101,7 @@ export function ProcedureSelector({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[240px] p-0" align="start">
-        <Command shouldFilter={false}>
+        <Command shouldFilter={false} disablePointerSelection>
           <CommandInput
             placeholder="Search procedures..."
             value={searchQuery}
