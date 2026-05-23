@@ -1,12 +1,13 @@
 /**
  * Imaging procedure selector (combobox) component.
  * Provides searchable dropdown for selecting imaging procedures.
+ * Uses the same Command + Popover pattern as LocationCombobox for proper scroll.
  */
 'use client';
 
 import * as React from 'react';
 import { useState, useCallback } from 'react';
-import { Check, ChevronsUpDown, Loader2, Search, X } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,7 +25,7 @@ import {
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { useImagingProcedureSearch } from '@/lib/hooks/use-imaging';
-import { ImagingProcedure, MODALITY_LABELS } from '@/lib/types/imaging';
+import { ImagingProcedure } from '@/lib/types/imaging';
 import { ModalityBadge } from './modality-badge';
 import { useDebounce } from '@/lib/hooks';
 
@@ -99,19 +100,19 @@ export function ProcedureSelector({
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-[240px] p-0" align="start">
+      <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[240px] p-0" align="start">
         <Command shouldFilter={false}>
-          <div className="flex items-center border-b px-2 sm:px-3">
-            <Search className="mr-1.5 sm:mr-2 h-4 w-4 shrink-0 opacity-50" />
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search procedures..."
-              className="flex h-9 sm:h-10 w-full rounded-md bg-transparent py-2 sm:py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            />
-            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-          </div>
-          <CommandList className="max-h-[250px] sm:max-h-[300px] overflow-y-auto">
+          <CommandInput
+            placeholder="Search procedures..."
+            value={searchQuery}
+            onValueChange={setSearchQuery}
+          />
+          {isLoading && (
+            <div className="flex items-center justify-center py-2">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          <CommandList>
             {!isLoading && (!procedures || procedures.length === 0) && (
               <CommandEmpty className="text-xs sm:text-sm py-4 sm:py-6">
                 {searchQuery.length < 2
