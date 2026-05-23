@@ -101,34 +101,34 @@ export function ProcedureSelector({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[240px] p-0" align="start">
-        <Command shouldFilter={false} disablePointerSelection>
+        <Command shouldFilter={false}>
           <CommandInput
             placeholder="Search procedures..."
             value={searchQuery}
             onValueChange={setSearchQuery}
           />
-          {isLoading && (
-            <div className="flex items-center justify-center py-2">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            </div>
-          )}
-          <CommandList>
-            {!isLoading && (!procedures || procedures.length === 0) && (
-              <CommandEmpty className="text-xs sm:text-sm py-4 sm:py-6">
-                {searchQuery.length < 2
-                  ? 'Type at least 2 characters to search...'
-                  : 'No procedures found.'}
-              </CommandEmpty>
+          <CommandList
+            onWheel={(e) => e.stopPropagation()}
+            className="overscroll-contain"
+          >
+            {isLoading && (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
             )}
-            {procedures && procedures.length > 0 && (
-              <CommandGroup>
-                {procedures.map((procedure) => (
-                  <CommandItem
-                    key={procedure.id}
-                    value={procedure.code}
-                    onSelect={() => handleSelect(procedure)}
-                    className="px-2 sm:px-3 py-1.5 sm:py-2"
-                  >
+            <CommandEmpty className="text-xs sm:text-sm py-4 sm:py-6">
+              {searchQuery.length < 2
+                ? 'Type at least 2 characters to search...'
+                : 'No procedures found.'}
+            </CommandEmpty>
+            <CommandGroup>
+              {(procedures || []).map((procedure) => (
+                <CommandItem
+                  key={procedure.id}
+                  value={procedure.code}
+                  onSelect={() => handleSelect(procedure)}
+                  className="px-2 sm:px-3 py-1.5 sm:py-2"
+                >
                     <Check
                       className={cn(
                         'mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0',
@@ -154,10 +154,9 @@ export function ProcedureSelector({
                         )}
                       </div>
                     </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
+                </CommandItem>
+              ))}
+            </CommandGroup>
           </CommandList>
         </Command>
       </PopoverContent>
