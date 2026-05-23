@@ -156,7 +156,7 @@ export default function ReferralsPage() {
         <ResponsiveTable
           data={referrals}
           keyExtractor={(item) => item.id}
-          onRowClick={(item) => router.push(`/encounters/${item.encounter}`)}
+          onRowClick={(item) => router.push(`/referrals/${item.id}`)}
           emptyMessage="No referrals found."
           columns={[
             {
@@ -211,7 +211,7 @@ export default function ReferralsPage() {
             },
           ]}
           mobileCard={(item: ClinicalReferralListItem) => (
-            <Card className="p-3" onClick={() => router.push(`/encounters/${item.encounter}`)}>
+            <Card className="p-3" onClick={() => router.push(`/referrals/${item.id}`)}>
               <div className="flex justify-between items-start gap-2">
                 <div className="min-w-0">
                   <p className="font-medium truncate">{item.patient_name}</p>

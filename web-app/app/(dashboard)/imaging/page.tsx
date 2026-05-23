@@ -346,21 +346,38 @@ function DICOMStudiesView() {
 function ProcedureCatalogView() {
   const [page, setPage] = useState(1);
   const [modalityFilter, setModalityFilter] = useState<ImagingModality | ''>('');
+  const pageSize = 50;
 
   const { data, isLoading } = useImagingProcedures({
     page,
-    page_size: 50,
+    page_size: pageSize,
     modality: modalityFilter || undefined,
   });
 
   const procedures = data?.results || [];
+  const totalCount = data?.count || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-lg font-semibold">
-          Procedure Catalog ({data?.count || 0} procedures)
+          Procedure Catalog ({totalCount} procedures)
         </h3>
+        <Select
+          value={modalityFilter}
+          onValueChange={(v) => { setModalityFilter(v as ImagingModality | ''); setPage(1); }}
+        >
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="All modalities" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All modalities</SelectItem>
+            {Object.entries(MODALITY_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -398,6 +415,35 @@ function ProcedureCatalogView() {
           ))
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <p className="text-sm text-muted-foreground">
+            Page {page} of {totalPages}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
