@@ -68,6 +68,13 @@ const REFERRAL_TEMPLATE = `
   </div>
   {{/hospital_course}}
 
+  {{#referral_letter}}
+  <div class="section">
+    <div class="section-title">Additional Notes</div>
+    <div class="content-block">{{referral_letter}}</div>
+  </div>
+  {{/referral_letter}}
+
   {{#has_diagnoses}}
   <div class="section">
     <div class="section-title">Relevant Diagnoses</div>
@@ -211,6 +218,14 @@ export function printReferralLetter(options: PrintReferralOptions): Window | nul
     html = html.replace(/\{\{hospital_course\}\}/g, escapeHtml(referral.hospital_course));
   } else {
     html = html.replace(/\{\{#hospital_course\}\}[\s\S]*?\{\{\/hospital_course\}\}/g, '');
+  }
+
+  // Additional notes (referral_letter)
+  if (referral.referral_letter) {
+    html = html.replace(/\{\{#referral_letter\}\}([\s\S]*?)\{\{\/referral_letter\}\}/g, '$1');
+    html = html.replace(/\{\{referral_letter\}\}/g, escapeHtml(referral.referral_letter));
+  } else {
+    html = html.replace(/\{\{#referral_letter\}\}[\s\S]*?\{\{\/referral_letter\}\}/g, '');
   }
 
   // Diagnoses
