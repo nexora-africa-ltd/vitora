@@ -99,7 +99,7 @@ export function ProcedureSelector({
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[400px] p-0" align="start">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
         <Command shouldFilter={false}>
           <div className="flex items-center border-b px-2 sm:px-3">
             <Search className="mr-1.5 sm:mr-2 h-4 w-4 shrink-0 opacity-50" />

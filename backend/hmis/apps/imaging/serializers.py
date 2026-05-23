@@ -194,16 +194,27 @@ class ImagingOrderCreateSerializer(serializers.ModelSerializer):
         ordered_by = self.context["request"].user
         order = ImagingOrder.objects.create(ordered_by=ordered_by, **validated_data)
 
+        facility = order.encounter.facility
         for item_data in items_data:
             procedure_code = item_data["procedure_code"]
             try:
-                procedure = ImagingProcedure.objects.get(code=procedure_code)
+                procedure = ImagingProcedure.objects.get(code=procedure_code, facility=facility)
             except ImagingProcedure.DoesNotExist as e:
                 # Rollback by deleting the order
                 order.delete()
                 raise serializers.ValidationError(
                     {"items": f"Procedure with code '{procedure_code}' not found in catalog."}
                 ) from e
+            except ImagingProcedure.MultipleObjectsReturned:
+                # Fallback: pick the active one
+                procedure = ImagingProcedure.objects.filter(
+                    code=procedure_code, facility=facility, is_active=True
+                ).first()
+                if procedure is None:
+                    order.delete()
+                    raise serializers.ValidationError(
+                        {"items": f"Procedure with code '{procedure_code}' not found in catalog."}
+                    ) from None
 
             laterality = item_data.get("laterality", "NA")
             specific_instructions = item_data.get("specific_instructions", "")
