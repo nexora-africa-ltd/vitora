@@ -93,7 +93,7 @@ export interface Encounter {
   triage_status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'BYPASSED' | 'NOT_APPLICABLE';
 
   // Consultation tracking
-  consultation_status?: ConsultationStatus;
+  consultation_status?: ConsultationStatus | null;
 
   // Clinician Assignment (Data Integrity - Sprint 1.7)
   assigned_clinician?: number | null;
