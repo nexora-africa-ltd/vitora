@@ -179,7 +179,7 @@ class Command(BaseCommand):
                         "pediatric": {"low": 100, "high": 320},
                     },
                     "critical_low": None,
-                    "critical_high": None,
+                    "critical_high": Decimal("1000.0"),
                 },
                 {
                     "parameter_code": "TBIL",
@@ -249,7 +249,7 @@ class Command(BaseCommand):
                         "pediatric": {"low": 2.0, "high": 5.5},
                     },
                     "critical_low": None,
-                    "critical_high": None,
+                    "critical_high": Decimal("12.0"),
                 },
             ],
         },
@@ -413,8 +413,8 @@ class Command(BaseCommand):
                     "reference_ranges": {
                         "default": {"low": 80, "high": 200},
                     },
-                    "critical_low": None,
-                    "critical_high": None,
+                    "critical_low": Decimal("40.0"),
+                    "critical_high": Decimal("400.0"),
                 },
                 {
                     "parameter_code": "T4",
@@ -423,6 +423,377 @@ class Command(BaseCommand):
                     "display_order": 3,
                     "reference_ranges": {
                         "default": {"low": 5.0, "high": 12.0},
+                    },
+                    "critical_low": Decimal("2.0"),
+                    "critical_high": Decimal("20.0"),
+                },
+                {
+                    "parameter_code": "FT4",
+                    "parameter_name": "Free Thyroxine",
+                    "unit": "ng/dL",
+                    "display_order": 4,
+                    "reference_ranges": {
+                        "default": {"low": 0.8, "high": 1.8},
+                    },
+                    "critical_low": Decimal("0.3"),
+                    "critical_high": Decimal("5.0"),
+                },
+            ],
+        },
+        "COAGULATION": {
+            "test_name": "Coagulation Studies",
+            "parameters": [
+                {
+                    "parameter_code": "PT",
+                    "parameter_name": "Prothrombin Time",
+                    "unit": "seconds",
+                    "display_order": 1,
+                    "reference_ranges": {
+                        "default": {"low": 11.0, "high": 13.5},
+                    },
+                    "critical_low": None,
+                    "critical_high": Decimal("30.0"),
+                },
+                {
+                    "parameter_code": "INR",
+                    "parameter_name": "International Normalized Ratio",
+                    "unit": "",
+                    "display_order": 2,
+                    "reference_ranges": {
+                        "default": {"low": 0.9, "high": 1.1},
+                    },
+                    "critical_low": None,
+                    "critical_high": Decimal("5.0"),
+                },
+                {
+                    "parameter_code": "APTT",
+                    "parameter_name": "Activated Partial Thromboplastin Time",
+                    "unit": "seconds",
+                    "display_order": 3,
+                    "reference_ranges": {
+                        "default": {"low": 25, "high": 35},
+                    },
+                    "critical_low": None,
+                    "critical_high": Decimal("100.0"),
+                },
+                {
+                    "parameter_code": "FIB",
+                    "parameter_name": "Fibrinogen",
+                    "unit": "mg/dL",
+                    "display_order": 4,
+                    "reference_ranges": {
+                        "default": {"low": 200, "high": 400},
+                    },
+                    "critical_low": Decimal("100.0"),
+                    "critical_high": Decimal("800.0"),
+                },
+                {
+                    "parameter_code": "DDIMER",
+                    "parameter_name": "D-Dimer",
+                    "unit": "µg/mL",
+                    "display_order": 5,
+                    "reference_ranges": {
+                        "default": {"low": 0, "high": 0.5},
+                    },
+                    "critical_low": None,
+                    "critical_high": Decimal("4.0"),
+                },
+            ],
+        },
+        "CARDIAC": {
+            "test_name": "Cardiac Markers",
+            "parameters": [
+                {
+                    "parameter_code": "TROP_I",
+                    "parameter_name": "Troponin I",
+                    "unit": "ng/mL",
+                    "display_order": 1,
+                    "reference_ranges": {
+                        "default": {"low": 0, "high": 0.04},
+                    },
+                    "critical_low": None,
+                    "critical_high": Decimal("2.0"),
+                },
+                {
+                    "parameter_code": "TROP_T",
+                    "parameter_name": "Troponin T",
+                    "unit": "ng/mL",
+                    "display_order": 2,
+                    "reference_ranges": {
+                        "default": {"low": 0, "high": 0.01},
+                    },
+                    "critical_low": None,
+                    "critical_high": Decimal("0.1"),
+                },
+                {
+                    "parameter_code": "CKMB",
+                    "parameter_name": "Creatine Kinase-MB",
+                    "unit": "U/L",
+                    "display_order": 3,
+                    "reference_ranges": {
+                        "default": {"low": 0, "high": 25},
+                    },
+                    "critical_low": None,
+                    "critical_high": Decimal("100.0"),
+                },
+                {
+                    "parameter_code": "BNP",
+                    "parameter_name": "B-type Natriuretic Peptide",
+                    "unit": "pg/mL",
+                    "display_order": 4,
+                    "reference_ranges": {
+                        "default": {"low": 0, "high": 100},
+                    },
+                    "critical_low": None,
+                    "critical_high": Decimal("900.0"),
+                },
+                {
+                    "parameter_code": "LDH",
+                    "parameter_name": "Lactate Dehydrogenase",
+                    "unit": "U/L",
+                    "display_order": 5,
+                    "reference_ranges": {
+                        "default": {"low": 140, "high": 280},
+                    },
+                    "critical_low": None,
+                    "critical_high": Decimal("1000.0"),
+                },
+                {
+                    "parameter_code": "CK",
+                    "parameter_name": "Creatine Kinase (Total)",
+                    "unit": "U/L",
+                    "display_order": 6,
+                    "reference_ranges": {
+                        "adult_male": {"low": 39, "high": 308},
+                        "adult_female": {"low": 26, "high": 192},
+                    },
+                    "critical_low": None,
+                    "critical_high": Decimal("5000.0"),
+                },
+            ],
+        },
+        "ABG": {
+            "test_name": "Arterial Blood Gas",
+            "parameters": [
+                {
+                    "parameter_code": "PH",
+                    "parameter_name": "Blood pH",
+                    "unit": "",
+                    "display_order": 1,
+                    "reference_ranges": {
+                        "default": {"low": 7.35, "high": 7.45},
+                    },
+                    "critical_low": Decimal("7.20"),
+                    "critical_high": Decimal("7.60"),
+                },
+                {
+                    "parameter_code": "PO2",
+                    "parameter_name": "Partial Pressure O₂",
+                    "unit": "mmHg",
+                    "display_order": 2,
+                    "reference_ranges": {
+                        "default": {"low": 80, "high": 100},
+                    },
+                    "critical_low": Decimal("40.0"),
+                    "critical_high": None,
+                },
+                {
+                    "parameter_code": "PCO2",
+                    "parameter_name": "Partial Pressure CO₂",
+                    "unit": "mmHg",
+                    "display_order": 3,
+                    "reference_ranges": {
+                        "default": {"low": 35, "high": 45},
+                    },
+                    "critical_low": Decimal("20.0"),
+                    "critical_high": Decimal("70.0"),
+                },
+                {
+                    "parameter_code": "HCO3",
+                    "parameter_name": "Bicarbonate",
+                    "unit": "mEq/L",
+                    "display_order": 4,
+                    "reference_ranges": {
+                        "default": {"low": 22, "high": 26},
+                    },
+                    "critical_low": Decimal("10.0"),
+                    "critical_high": Decimal("40.0"),
+                },
+                {
+                    "parameter_code": "LACTATE",
+                    "parameter_name": "Lactate",
+                    "unit": "mmol/L",
+                    "display_order": 5,
+                    "reference_ranges": {
+                        "default": {"low": 0.5, "high": 2.2},
+                    },
+                    "critical_low": None,
+                    "critical_high": Decimal("4.0"),
+                },
+                {
+                    "parameter_code": "BE",
+                    "parameter_name": "Base Excess",
+                    "unit": "mEq/L",
+                    "display_order": 6,
+                    "reference_ranges": {
+                        "default": {"low": -2, "high": 2},
+                    },
+                    "critical_low": Decimal("-10.0"),
+                    "critical_high": Decimal("10.0"),
+                },
+            ],
+        },
+        "MINERALS": {
+            "test_name": "Calcium & Minerals",
+            "parameters": [
+                {
+                    "parameter_code": "CA",
+                    "parameter_name": "Total Calcium",
+                    "unit": "mg/dL",
+                    "display_order": 1,
+                    "reference_ranges": {
+                        "default": {"low": 8.5, "high": 10.5},
+                    },
+                    "critical_low": Decimal("6.0"),
+                    "critical_high": Decimal("13.0"),
+                },
+                {
+                    "parameter_code": "CA_ION",
+                    "parameter_name": "Ionized Calcium",
+                    "unit": "mmol/L",
+                    "display_order": 2,
+                    "reference_ranges": {
+                        "default": {"low": 1.12, "high": 1.32},
+                    },
+                    "critical_low": Decimal("0.8"),
+                    "critical_high": Decimal("1.6"),
+                },
+                {
+                    "parameter_code": "MG",
+                    "parameter_name": "Magnesium",
+                    "unit": "mg/dL",
+                    "display_order": 3,
+                    "reference_ranges": {
+                        "default": {"low": 1.7, "high": 2.2},
+                    },
+                    "critical_low": Decimal("1.0"),
+                    "critical_high": Decimal("4.7"),
+                },
+                {
+                    "parameter_code": "PHOS",
+                    "parameter_name": "Phosphate",
+                    "unit": "mg/dL",
+                    "display_order": 4,
+                    "reference_ranges": {
+                        "adult_male": {"low": 2.5, "high": 4.5},
+                        "adult_female": {"low": 2.5, "high": 4.5},
+                        "pediatric": {"low": 4.0, "high": 7.0},
+                    },
+                    "critical_low": Decimal("1.0"),
+                    "critical_high": Decimal("8.9"),
+                },
+            ],
+        },
+        "PANCREATIC": {
+            "test_name": "Pancreatic Enzymes",
+            "parameters": [
+                {
+                    "parameter_code": "AMYLASE",
+                    "parameter_name": "Amylase",
+                    "unit": "U/L",
+                    "display_order": 1,
+                    "reference_ranges": {
+                        "default": {"low": 28, "high": 100},
+                    },
+                    "critical_low": None,
+                    "critical_high": Decimal("500.0"),
+                },
+                {
+                    "parameter_code": "LIPASE",
+                    "parameter_name": "Lipase",
+                    "unit": "U/L",
+                    "display_order": 2,
+                    "reference_ranges": {
+                        "default": {"low": 0, "high": 60},
+                    },
+                    "critical_low": None,
+                    "critical_high": Decimal("600.0"),
+                },
+            ],
+        },
+        "CSF": {
+            "test_name": "Cerebrospinal Fluid",
+            "parameters": [
+                {
+                    "parameter_code": "CSF_GLU",
+                    "parameter_name": "CSF Glucose",
+                    "unit": "mg/dL",
+                    "display_order": 1,
+                    "reference_ranges": {
+                        "default": {"low": 40, "high": 70},
+                    },
+                    "critical_low": Decimal("20.0"),
+                    "critical_high": None,
+                },
+                {
+                    "parameter_code": "CSF_PROT",
+                    "parameter_name": "CSF Protein",
+                    "unit": "mg/dL",
+                    "display_order": 2,
+                    "reference_ranges": {
+                        "default": {"low": 15, "high": 45},
+                    },
+                    "critical_low": None,
+                    "critical_high": Decimal("500.0"),
+                },
+                {
+                    "parameter_code": "CSF_WBC",
+                    "parameter_name": "CSF White Cell Count",
+                    "unit": "cells/µL",
+                    "display_order": 3,
+                    "reference_ranges": {
+                        "default": {"low": 0, "high": 5},
+                    },
+                    "critical_low": None,
+                    "critical_high": Decimal("100.0"),
+                },
+            ],
+        },
+        "IRON": {
+            "test_name": "Iron Studies",
+            "parameters": [
+                {
+                    "parameter_code": "FE",
+                    "parameter_name": "Serum Iron",
+                    "unit": "µg/dL",
+                    "display_order": 1,
+                    "reference_ranges": {
+                        "adult_male": {"low": 65, "high": 176},
+                        "adult_female": {"low": 50, "high": 170},
+                    },
+                    "critical_low": Decimal("20.0"),
+                    "critical_high": Decimal("400.0"),
+                },
+                {
+                    "parameter_code": "FERRITIN",
+                    "parameter_name": "Ferritin",
+                    "unit": "ng/mL",
+                    "display_order": 2,
+                    "reference_ranges": {
+                        "adult_male": {"low": 24, "high": 336},
+                        "adult_female": {"low": 11, "high": 307},
+                        "pediatric": {"low": 7, "high": 140},
+                    },
+                    "critical_low": Decimal("5.0"),
+                    "critical_high": Decimal("1000.0"),
+                },
+                {
+                    "parameter_code": "TIBC",
+                    "parameter_name": "Total Iron Binding Capacity",
+                    "unit": "µg/dL",
+                    "display_order": 3,
+                    "reference_ranges": {
+                        "default": {"low": 250, "high": 370},
                     },
                     "critical_low": None,
                     "critical_high": None,
@@ -437,7 +808,7 @@ class Command(BaseCommand):
             "--panel",
             type=str,
             choices=list(self.REFERENCE_RANGE_DATA.keys()),
-            help="Load specific panel only (CBC, LIVER, RENAL, LIPID, GLUCOSE, ELECTROLYTES, THYROID)",
+            help="Load specific panel only (CBC, LIVER, RENAL, LIPID, GLUCOSE, ELECTROLYTES, THYROID, COAGULATION, CARDIAC, ABG, MINERALS, PANCREATIC, CSF, IRON)",
         )
         parser.add_argument(
             "--clear",

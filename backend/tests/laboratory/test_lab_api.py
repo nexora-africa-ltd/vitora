@@ -278,6 +278,51 @@ class TestLabOrderAPI:
 
         assert response.status_code == status.HTTP_200_OK
 
+    def test_search_orders_by_patient_name(
+        self, auth_client, sample_encounter, sample_test_catalog
+    ):
+        """Should search orders by patient first/last name."""
+        order_data = {
+            "patient": sample_encounter.patient.id,
+            "encounter": sample_encounter.id,
+            "items": [{"test_code": "CBC"}],
+        }
+        auth_client.post("/api/lab/orders/", order_data, format="json")
+
+        response = auth_client.get("/api/lab/orders/?search=Test")
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) >= 1
+
+    def test_search_orders_by_order_number(
+        self, auth_client, sample_encounter, sample_test_catalog
+    ):
+        """Should search orders by order number."""
+        order_data = {
+            "patient": sample_encounter.patient.id,
+            "encounter": sample_encounter.id,
+            "items": [{"test_code": "CBC"}],
+        }
+        create_resp = auth_client.post("/api/lab/orders/", order_data, format="json")
+        order_number = create_resp.data["order_number"]
+
+        response = auth_client.get(f"/api/lab/orders/?search={order_number}")
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["order_number"] == order_number
+
+    def test_search_orders_by_test_name(self, auth_client, sample_encounter, sample_test_catalog):
+        """Should search orders by test name in items."""
+        order_data = {
+            "patient": sample_encounter.patient.id,
+            "encounter": sample_encounter.id,
+            "items": [{"test_code": "RBS"}],
+        }
+        auth_client.post("/api/lab/orders/", order_data, format="json")
+
+        response = auth_client.get("/api/lab/orders/?search=Random Blood")
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) >= 1
+
 
 @pytest.mark.django_db
 class TestLabOrderWorkflowAPI:

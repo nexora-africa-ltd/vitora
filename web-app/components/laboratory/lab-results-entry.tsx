@@ -77,53 +77,23 @@ const RESULT_FLAGS: { value: ResultFlag; label: string; color: string }[] = [
 ];
 
 // Common lab result units used in Kenya
-const RESULT_UNITS = [
-  // Concentrations
-  { value: 'g/dL', label: 'g/dL' },
-  { value: 'g/L', label: 'g/L' },
-  { value: 'mg/dL', label: 'mg/dL' },
-  { value: 'mg/L', label: 'mg/L' },
-  { value: 'µg/dL', label: 'µg/dL' },
-  { value: 'µg/L', label: 'µg/L' },
-  { value: 'ng/dL', label: 'ng/dL' },
-  { value: 'ng/mL', label: 'ng/mL' },
-  { value: 'pg/mL', label: 'pg/mL' },
-  // Molar concentrations
-  { value: 'mmol/L', label: 'mmol/L' },
-  { value: 'µmol/L', label: 'µmol/L' },
-  { value: 'nmol/L', label: 'nmol/L' },
-  { value: 'mEq/L', label: 'mEq/L' },
-  // Enzyme activity
-  { value: 'U/L', label: 'U/L' },
-  { value: 'IU/L', label: 'IU/L' },
-  { value: 'mU/L', label: 'mU/L' },
-  // Cell counts
-  { value: 'cells/µL', label: 'cells/µL' },
-  { value: 'x10^9/L', label: 'x10⁹/L' },
-  { value: 'x10^12/L', label: 'x10¹²/L' },
-  { value: 'x10^6/µL', label: 'x10⁶/µL' },
-  { value: '/µL', label: '/µL' },
-  // Percentages
-  { value: '%', label: '%' },
-  // Time
-  { value: 'sec', label: 'seconds' },
-  { value: 'min', label: 'minutes' },
-  // Other
-  { value: 'mm/hr', label: 'mm/hr' },
-  { value: 'mOsm/kg', label: 'mOsm/kg' },
-  { value: 'ratio', label: 'ratio' },
-  { value: 'titer', label: 'titer' },
-  { value: 'copies/mL', label: 'copies/mL' },
-  { value: 'CFU/mL', label: 'CFU/mL' },
-];
+
 
 export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded, patientGender, patientAge }: LabResultsEntryProps) {
   const { toast } = useToast();
   const { canPerformAction } = usePermissions();
   const canInterpret = canPerformAction('laboratory.interpret_results');
   const canVerify = canPerformAction('laboratory.verify_results');
+
+  // A panel is only a "true header" if it actually has children in the response.
+  // Legacy orders (created before panel explosion) have is_panel=true but no children —
+  // treat those as regular resultable items.
+  const hasChildren = (item: LabOrderItem) =>
+    items.some(child => child.panel_parent === item.id);
+  const isEffectivePanel = (item: LabOrderItem) => item.is_panel && hasChildren(item);
+
   const [activeItemId, setActiveItemId] = useState<number | null>(
-    items.find(item => !item.has_result)?.id || items[0]?.id || null
+    items.find(item => !item.has_result && !isEffectivePanel(item))?.id || items.find(item => !isEffectivePanel(item))?.id || null
   );
 
   // Get order details for the WebSocket connection
@@ -160,8 +130,10 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
   const verifyResult = useVerifyLabResult();
 
   const activeItem = items.find(item => item.id === activeItemId);
-  const pendingItems = items.filter(item => !item.has_result);
-  const completedItems = items.filter(item => item.has_result);
+  // For counting: only non-panel-parent items (children + standalone) need results
+  const resultableItems = items.filter(item => !isEffectivePanel(item));
+  const pendingItems = resultableItems.filter(item => !item.has_result);
+  const completedItems = resultableItems.filter(item => item.has_result);
 
   // Fetch test catalog detail for active item to get reference ranges and units
   const activeTestCode = activeItem?.test_code;
@@ -174,17 +146,22 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
   const catalogTest = catalogQuery.data;
 
   // Determine the appropriate reference range based on patient demographics
+  // Uses item data (immediately available) with catalog as fallback
   const getPatientReferenceRange = useCallback(() => {
-    if (!catalogTest) return '';
+    // Primary source: item data from order response (always available)
+    const rangeMale = activeItem?.normal_range_male || catalogTest?.normal_range_male || '';
+    const rangeFemale = activeItem?.normal_range_female || catalogTest?.normal_range_female || '';
+    const rangeChild = activeItem?.normal_range_child || catalogTest?.normal_range_child || '';
+
     // Child takes precedence if age < 18
-    if (patientAge !== undefined && patientAge < 18 && catalogTest.normal_range_child) {
-      return catalogTest.normal_range_child;
+    if (patientAge !== undefined && patientAge < 18 && rangeChild) {
+      return rangeChild;
     }
-    if (patientGender === 'M' && catalogTest.normal_range_male) return catalogTest.normal_range_male;
-    if (patientGender === 'F' && catalogTest.normal_range_female) return catalogTest.normal_range_female;
+    if (patientGender === 'M' && rangeMale) return rangeMale;
+    if (patientGender === 'F' && rangeFemale) return rangeFemale;
     // Fallback
-    return catalogTest.normal_range_male || catalogTest.normal_range_female || '';
-  }, [catalogTest, patientGender, patientAge]);
+    return rangeMale || rangeFemale || '';
+  }, [activeItem, catalogTest, patientGender, patientAge]);
 
   // Parse a range string like "4.5-5.5" into [low, high]
   const parseRange = useCallback((range: string): [number, number] | null => {
@@ -220,7 +197,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
     // If current active item now has a result, move to next pending
     const currentItem = items.find(item => item.id === activeItemId);
     if (currentItem?.has_result) {
-      const nextPending = items.find(item => !item.has_result);
+      const nextPending = items.find(item => !item.has_result && !item.is_panel);
       if (nextPending) {
         setActiveItemId(nextPending.id);
       }
@@ -243,26 +220,43 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
     },
   });
 
-  // Auto-populate form from catalog when test changes
+  // Auto-populate form from item data (immediate) or catalog (async fallback)
   useEffect(() => {
-    if (!catalogTest || !activeItem || activeItem.has_result) return;
+    if (!activeItem || activeItem.has_result) return;
+    // Reset form first to clear stale values from previous item
+    form.reset({
+      numeric_value: undefined,
+      text_value: '',
+      option_value: '',
+      reference_range_text: '',
+      result_flag: '',
+      result_unit: '',
+      interpretation: '',
+      method: '',
+      equipment: '',
+      is_critical_result: false,
+    });
+    // Use item's result_unit directly (available from order response)
+    const unit = activeItem.result_unit || catalogTest?.result_unit || '';
     const refRange = getPatientReferenceRange();
     const parsed = parseRange(refRange);
-    form.setValue('result_unit', catalogTest.result_unit || '');
+    form.setValue('result_unit', unit);
     form.setValue('reference_range_text', refRange);
     if (parsed) {
       form.setValue('reference_low', parsed[0]);
       form.setValue('reference_high', parsed[1]);
     }
-  }, [catalogTest, activeItem, getPatientReferenceRange, parseRange, form]);
+  }, [activeItem, catalogTest, getPatientReferenceRange, parseRange, form]);
 
   const resultFlag = form.watch('result_flag');
   const numericValue = form.watch('numeric_value');
   const referenceRangeText = form.watch('reference_range_text');
 
   // Auto-compute flag when numeric value changes
+  const effectiveResultType = activeItem?.result_type || catalogTest?.result_type;
   useEffect(() => {
-    if (catalogTest?.result_type !== 'NUMERIC') return;
+    if (effectiveResultType !== 'NUMERIC') return;
+    if (numericValue === undefined || numericValue === null) return;
     const computed = autoComputeFlag(numericValue, referenceRangeText || '');
     if (computed) {
       form.setValue('result_flag', computed);
@@ -272,7 +266,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
         form.setValue('is_critical_result', false);
       }
     }
-  }, [numericValue, referenceRangeText, catalogTest?.result_type, autoComputeFlag, form]);
+  }, [numericValue, referenceRangeText, effectiveResultType, autoComputeFlag, form]);
 
   // Auto-set critical flag for critical values
   const handleFlagChange = (flag: string) => {
@@ -315,7 +309,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
       form.reset();
 
       // Check if there are more pending items (using updated items from parent)
-      const currentPendingCount = items.filter(item => !item.has_result && item.id !== activeItem.id).length;
+      const currentPendingCount = items.filter(item => !item.has_result && !item.is_panel && item.id !== activeItem.id).length;
 
       if (currentPendingCount === 0) {
         toast({
@@ -363,34 +357,75 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
           </p>
         </CardHeader>
         <CardContent className="space-y-2">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className={cn(
-                'p-3 rounded-lg cursor-pointer transition-colors border',
-                activeItemId === item.id && 'border-primary bg-primary/5',
-                item.has_result && 'bg-green-50 dark:bg-green-950/30',
-                item.result?.is_critical_result && 'bg-red-50 dark:bg-red-950/30 border-red-200',
-                activeItemId !== item.id && 'hover:bg-muted/50'
-              )}
-              onClick={() => setActiveItemId(item.id)}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-sm text-foreground">{item.test_name}</p>
-                  <p className="text-xs text-muted-foreground">{item.test_code}</p>
-                </div>
-                {item.has_result ? (
-                  <div className="flex items-center gap-1">
-                    {item.result?.is_critical_result && (
-                      <AlertTriangle className="h-4 w-4 text-red-500" />
-                    )}
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                  </div>
-                ) : (
-                  <Badge variant="outline" className="text-xs">Pending</Badge>
+          {items.filter(item => !item.panel_parent).map((item) => (
+            <div key={item.id}>
+              {/* Panel header or standalone item */}
+              <div
+                className={cn(
+                  'p-3 rounded-lg transition-colors border',
+                  !isEffectivePanel(item) && 'cursor-pointer',
+                  activeItemId === item.id && !isEffectivePanel(item) && 'border-primary bg-primary/5',
+                  !isEffectivePanel(item) && item.has_result && 'bg-green-50 dark:bg-green-950/30',
+                  !isEffectivePanel(item) && item.result?.is_critical_result && 'bg-red-50 dark:bg-red-950/30 border-red-200',
+                  !isEffectivePanel(item) && activeItemId !== item.id && 'hover:bg-muted/50',
+                  isEffectivePanel(item) && 'bg-muted/30 border-muted cursor-default',
                 )}
+                onClick={() => !isEffectivePanel(item) && setActiveItemId(item.id)}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={cn('font-medium text-sm text-foreground', isEffectivePanel(item) && 'font-semibold')}>{item.test_name}</p>
+                    <p className="text-xs text-muted-foreground">{item.test_code}{isEffectivePanel(item) ? ' (Panel)' : ''}</p>
+                  </div>
+                  {!isEffectivePanel(item) && (
+                    item.has_result ? (
+                      <div className="flex items-center gap-1">
+                        {item.result?.is_critical_result && (
+                          <AlertTriangle className="h-4 w-4 text-red-500" />
+                        )}
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      </div>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">Pending</Badge>
+                    )
+                  )}
+                </div>
               </div>
+              {/* Panel children (indented) */}
+              {isEffectivePanel(item) && (
+                <div className="ml-4 mt-1 space-y-1">
+                  {items.filter(child => child.panel_parent === item.id).map((child) => (
+                    <div
+                      key={child.id}
+                      className={cn(
+                        'p-2 rounded-md cursor-pointer transition-colors border text-sm',
+                        activeItemId === child.id && 'border-primary bg-primary/5',
+                        child.has_result && 'bg-green-50 dark:bg-green-950/30',
+                        child.result?.is_critical_result && 'bg-red-50 dark:bg-red-950/30 border-red-200',
+                        activeItemId !== child.id && 'hover:bg-muted/50'
+                      )}
+                      onClick={() => setActiveItemId(child.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-foreground">{child.test_name}</p>
+                          <p className="text-xs text-muted-foreground">{child.test_code}</p>
+                        </div>
+                        {child.has_result ? (
+                          <div className="flex items-center gap-1">
+                            {child.result?.is_critical_result && (
+                              <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                            )}
+                            <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                          </div>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px]">Pending</Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </CardContent>
@@ -443,23 +478,14 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Unit</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select unit" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {RESULT_UNITS.map((unit) => (
-                              <SelectItem key={unit.value} value={unit.value}>
-                                {unit.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <Input
+                            placeholder="e.g., g/dL"
+                            {...field}
+                            readOnly={!!field.value}
+                            className={field.value ? 'bg-muted/50' : ''}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -508,7 +534,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
                       <FormLabel>Result Flag</FormLabel>
                       <Select
                         onValueChange={handleFlagChange}
-                        defaultValue={field.value}
+                        value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>

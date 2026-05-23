@@ -260,6 +260,19 @@ class LabOrderItemSerializer(serializers.ModelSerializer):
     test = serializers.PrimaryKeyRelatedField(read_only=True)
     test_name = serializers.CharField(source="test.name", read_only=True)
     test_code = serializers.CharField(source="test.code", read_only=True)
+    is_panel = serializers.BooleanField(source="test.is_panel", read_only=True)
+    result_type = serializers.CharField(source="test.result_type", read_only=True)
+    result_unit = serializers.CharField(source="test.result_unit", read_only=True, default="")
+    normal_range_male = serializers.CharField(
+        source="test.normal_range_male", read_only=True, default=""
+    )
+    normal_range_female = serializers.CharField(
+        source="test.normal_range_female", read_only=True, default=""
+    )
+    normal_range_child = serializers.CharField(
+        source="test.normal_range_child", read_only=True, default=""
+    )
+    panel_parent = serializers.PrimaryKeyRelatedField(read_only=True)
     has_result = serializers.SerializerMethodField()
     result = serializers.SerializerMethodField()
     # Coerce unit_cost to float for frontend compatibility
@@ -273,6 +286,13 @@ class LabOrderItemSerializer(serializers.ModelSerializer):
             "test",
             "test_name",
             "test_code",
+            "is_panel",
+            "result_type",
+            "result_unit",
+            "normal_range_male",
+            "normal_range_female",
+            "normal_range_child",
+            "panel_parent",
             "status",
             "unit_cost",
             "special_instructions",
@@ -407,12 +427,24 @@ class LabOrderCreateSerializer(serializers.ModelSerializer):
                 ) from e
 
             special_instructions = item_data.get("special_instructions", "")
-            LabOrderItem.objects.create(
+            parent_item = LabOrderItem.objects.create(
                 lab_order=order,
                 test=test,
                 unit_cost=test.cost,
                 special_instructions=special_instructions,
             )
+
+            # If this is a panel test, expand into component items
+            if test.is_panel:
+                components = test.panel_components.filter(is_active=True)
+                for component_test in components:
+                    LabOrderItem.objects.create(
+                        lab_order=order,
+                        test=component_test,
+                        unit_cost=component_test.cost,
+                        panel_parent=parent_item,
+                        special_instructions=special_instructions,
+                    )
 
         order.calculate_total_cost()
         return order

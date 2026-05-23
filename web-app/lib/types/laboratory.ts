@@ -514,6 +514,7 @@ export interface LabOrder {
   cancelled_at?: string | null;
   items: LabOrderItem[];
   total_cost: number;
+  bill_patient: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -538,6 +539,13 @@ export interface LabOrderItem {
   test: number;
   test_code: string;
   test_name: string;
+  is_panel: boolean;
+  result_type: ResultType;
+  result_unit?: string;
+  normal_range_male?: string;
+  normal_range_female?: string;
+  normal_range_child?: string;
+  panel_parent?: number | null;
   unit_cost: number;
   status: LabOrderItemStatus;
   special_instructions?: string | null;

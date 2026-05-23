@@ -83,7 +83,7 @@ function ResultValue({ item }: { item: LabOrderItem }) {
 /** Convert completed order items to AILabResultItem[] for the interpret panel */
 function orderItemsToAILabResults(items: LabOrderItem[]): AILabResultItem[] {
   return items
-    .filter((i) => i.has_result && i.result)
+    .filter((i) => i.has_result && i.result && !i.is_panel)
     .map((i) => ({
       test_name: i.test_name,
       value: i.result!.numeric_value ?? (parseFloat(String(i.result!.text_value)) || 0),
@@ -104,9 +104,23 @@ function LabOrderResults({
 }) {
   const [isOpen, setIsOpen] = useState(true);
 
-  const completedItems = order.items?.filter(i => i.has_result) || [];
-  const pendingItems = order.items?.filter(i => !i.has_result) || [];
+  const completedItems = order.items?.filter(i => i.has_result && !i.is_panel) || [];
+  const pendingItems = order.items?.filter(i => !i.has_result && !i.is_panel) || [];
   const hasCritical = order.items?.some(i => i.result?.is_critical_result);
+
+  // Group items by panel parent for display
+  const panelParents = order.items?.filter(i => i.is_panel) || [];
+  const panelChildMap = new Map<number, LabOrderItem[]>();
+  for (const item of order.items || []) {
+    if (item.panel_parent) {
+      const children = panelChildMap.get(item.panel_parent) || [];
+      children.push(item);
+      panelChildMap.set(item.panel_parent, children);
+    }
+  }
+  // Standalone items (not panel parents, not panel children)
+  const standaloneCompleted = completedItems.filter(i => !i.panel_parent);
+  const standalonePending = pendingItems.filter(i => !i.panel_parent);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -162,10 +176,55 @@ function LabOrderResults({
 
         <CollapsibleContent>
           <div className="border-t p-3 space-y-2 bg-muted/30">
-            {/* Completed Results */}
-            {completedItems.length > 0 && (
+            {/* Completed Results — Panel groups */}
+            {panelParents.map((panel) => {
+              const children = panelChildMap.get(panel.id) || [];
+              const completedChildren = children.filter(c => c.has_result);
+              const pendingChildren = children.filter(c => !c.has_result);
+              if (children.length === 0) return null;
+              return (
+                <div key={panel.id} className="space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {panel.test_name}
+                  </p>
+                  {completedChildren.map((item) => (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        'flex items-center justify-between p-2 rounded-md ml-2',
+                        item.result?.is_critical_result && 'bg-destructive/10 border border-destructive/20'
+                      )}
+                    >
+                      <div>
+                        <p className="text-sm font-medium">{item.test_name}</p>
+                        {item.result?.reference_range_text && (
+                          <p className="text-xs text-muted-foreground">
+                            Ref: {item.result.reference_range_text}
+                          </p>
+                        )}
+                      </div>
+                      <ResultValue item={item} />
+                    </div>
+                  ))}
+                  {pendingChildren.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-2 rounded-md ml-2 bg-muted/50"
+                    >
+                      <p className="text-sm">{item.test_name}</p>
+                      <Badge variant="outline" className="text-xs">
+                        <span className="animate-pulse">Awaiting</span>
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+
+            {/* Completed Results — Standalone */}
+            {standaloneCompleted.length > 0 && (
               <div className="space-y-1">
-                {completedItems.map((item) => (
+                {standaloneCompleted.map((item) => (
                   <div
                     key={item.id}
                     className={cn(
@@ -187,11 +246,11 @@ function LabOrderResults({
               </div>
             )}
 
-            {/* Pending Items */}
-            {pendingItems.length > 0 && (
+            {/* Pending Items — Standalone only (panel pending shown above) */}
+            {standalonePending.length > 0 && (
               <div className="pt-2 border-t space-y-1">
                 <p className="text-xs text-muted-foreground font-medium mb-2">Pending Results</p>
-                {pendingItems.map((item) => (
+                {standalonePending.map((item) => (
                   <div
                     key={item.id}
                     className="flex items-center justify-between p-2 rounded-md bg-muted/50"

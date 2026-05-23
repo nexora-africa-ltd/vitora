@@ -100,17 +100,77 @@ _REFERENCE_RANGES: dict[str, dict[str, tuple[float, float, str]]] = {
 }
 
 # Critical thresholds — values beyond these need immediate attention
+# Format: {test_name: (critical_low | None, critical_high | None)}
 _CRITICAL_THRESHOLDS: dict[str, tuple[float | None, float | None]] = {
+    # Electrolytes
     "potassium": (2.5, 6.5),
     "sodium": (120.0, 160.0),
+    "chloride": (80.0, 120.0),
+    "bicarbonate": (10.0, 40.0),
+    # Glucose
     "glucose_fasting": (40.0, 500.0),
     "glucose_random": (40.0, 500.0),
+    "hba1c": (None, 14.0),
+    # Hematology
     "hemoglobin": (5.0, 20.0),
-    "platelets": (50.0, None),
-    "troponin_i": (None, 0.4),
-    "lactate": (None, 4.0),
+    "wbc": (2.0, 30.0),
+    "platelets": (20.0, 1000.0),
+    "hematocrit": (20.0, 60.0),
+    "rbc": (2.5, 7.0),
+    # Coagulation
     "inr": (None, 5.0),
+    "pt": (None, 30.0),
+    "aptt": (None, 100.0),
+    "fibrinogen": (100.0, 800.0),
+    "d_dimer": (None, 4.0),
+    # Cardiac markers
+    "troponin_i": (None, 2.0),
+    "troponin_t": (None, 0.1),
+    "bnp": (None, 900.0),
+    "ck": (None, 5000.0),
+    "ldh": (None, 1000.0),
+    # Liver
+    "alt": (None, 500.0),
+    "ast": (None, 500.0),
+    "alkaline_phosphatase": (None, 1000.0),
+    "total_bilirubin": (None, 15.0),
+    "albumin": (2.0, None),
+    # Renal
+    "serum_creatinine": (None, 10.0),
+    "blood_urea_nitrogen": (None, 100.0),
+    "uric_acid": (None, 12.0),
+    # Minerals / Calcium
+    "calcium": (6.0, 13.0),
+    "ionized_calcium": (0.8, 1.6),
+    "magnesium": (1.0, 4.7),
+    "phosphorus": (1.0, 8.9),
+    # Thyroid
+    "tsh": (0.01, 20.0),
+    "free_t4": (0.3, 5.0),
+    "free_t3": (None, None),
+    "t3": (40.0, 400.0),
+    "t4": (2.0, 20.0),
+    # ABG
+    "ph": (7.20, 7.60),
+    "po2": (40.0, None),
+    "pco2": (20.0, 70.0),
+    "lactate": (None, 4.0),
+    # Iron
+    "iron": (20.0, 400.0),
+    "ferritin": (5.0, 1000.0),
+    # Pancreatic
+    "amylase": (None, 500.0),
+    "lipase": (None, 600.0),
+    # Lipids
+    "cholesterol_total": (None, 400.0),
+    "ldl": (None, 300.0),
+    "hdl": (20.0, None),
+    "triglycerides": (None, 1000.0),
+    # Inflammatory
     "crp": (None, 100.0),
+    # CSF
+    "csf_glucose": (20.0, None),
+    "csf_protein": (None, 500.0),
 }
 
 

@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -68,12 +67,6 @@ export function LabOrderTable({
   onSearch,
 }: LabOrderTableProps) {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSearch?.(searchQuery);
-  };
 
   const hasCriticalResults = (order: LabOrder) => {
     return order.items?.some(item => item.result?.is_critical_result);
@@ -109,20 +102,16 @@ export function LabOrderTable({
     <div className="space-y-4">
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative w-full sm:w-auto">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by patient or order #..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => onSearch?.(e.target.value)}
               className="pl-8 w-full sm:w-48 lg:w-56 xl:w-64"
             />
           </div>
-          <Button type="submit" variant="secondary" size="sm" className="w-full sm:w-auto">
-            Search
-          </Button>
-        </form>
+        </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
           {onStatusFilter && (
