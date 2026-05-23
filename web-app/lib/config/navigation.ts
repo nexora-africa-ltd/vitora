@@ -513,7 +513,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Chat', href: '/ai', icon: MessageSquare, actionKey: 'ai.use_chat' },
       { label: 'Insights', href: '/ai/insights', icon: BarChart3, actionKey: 'ai.view_insights' },
     ],
-  } as NavItem & { featureFlag?: boolean },
+  } as NavItemWithChildren,
   {
     label: 'Admin',
     icon: ShieldUser,
