@@ -247,6 +247,7 @@ export interface ClinicalReferral {
   // Clinician input
   reason: string;
   clinical_notes: string;
+  hospital_course: string;
   priority: ReferralPriority;
   priority_display: string;
   // Clinical context
@@ -344,6 +345,7 @@ export interface ReferralCreateData {
   destination_clinic?: number;
   reason: string;
   clinical_notes?: string;
+  hospital_course?: string;
   priority?: ReferralPriority;
   // Admission (optional)
   provisional_diagnosis?: string;

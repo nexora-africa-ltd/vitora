@@ -129,6 +129,7 @@ class ClinicalReferralSerializer(serializers.ModelSerializer):
             # Clinician input
             "reason",
             "clinical_notes",
+            "hospital_course",
             "priority",
             "priority_display",
             # Clinical context
@@ -256,6 +257,7 @@ class ClinicalReferralCreateSerializer(serializers.ModelSerializer):
             "destination_clinic",
             "reason",
             "clinical_notes",
+            "hospital_course",
             "priority",
             # Admission-specific (optional)
             "provisional_diagnosis",

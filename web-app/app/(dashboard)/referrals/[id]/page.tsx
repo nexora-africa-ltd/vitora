@@ -340,6 +340,21 @@ export default function ReferralDetailPage() {
           </CardContent>
         </Card>
 
+        {/* Hospital Course */}
+        {referral.hospital_course && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Stethoscope className="h-4 w-4" />
+                Hospital Course
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm whitespace-pre-wrap">{referral.hospital_course}</p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Vitals Snapshot */}
         {referral.relevant_vitals && Object.values(referral.relevant_vitals).some(Boolean) && (
           <Card>
