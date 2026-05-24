@@ -405,6 +405,26 @@ export function useAddLabResult() {
 }
 
 /**
+ * Hook for batch-creating multiple results in one request.
+ */
+export function useAddLabResultsBatch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ orderNumber, results }: { orderNumber: string; results: LabResultCreateData[] }) =>
+      laboratoryApi.addResultsBatch(orderNumber, results),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['lab-orders', variables.orderNumber],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['lab-orders', variables.orderNumber, 'results'],
+      });
+    },
+  });
+}
+
+/**
  * Hook for updating a result.
  */
 export function useUpdateLabResult() {

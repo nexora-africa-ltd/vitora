@@ -1,14 +1,16 @@
 'use client';
 
-import { use } from 'react';
+import { use, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { LabResultsEntry } from '@/components/laboratory/lab-results-entry';
+import { LabResultsGrid } from '@/components/laboratory/lab-results-grid';
 import { useLabOrder } from '@/lib/hooks/use-laboratory';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import type { LabOrderItem } from '@/lib/types/laboratory';
 
 interface ResultsEntryPageProps {
   params: Promise<{
@@ -56,6 +58,25 @@ export default function ResultsEntryPage({ params }: ResultsEntryPageProps) {
     await refetch();
   };
 
+  // Determine if we should use grid mode (numeric-only panel items)
+  const { gridItems, formItems, useGrid } = useMemo(() => {
+    const hasChildren = (item: LabOrderItem) =>
+      order.items.some((child: LabOrderItem) => child.panel_parent === item.id);
+    const resultable = order.items.filter((item: LabOrderItem) => !(item.is_panel && hasChildren(item)));
+    const pending = resultable.filter((item: LabOrderItem) => !item.has_result);
+
+    // Use grid if: all pending items are numeric type AND there are 3+ pending items
+    const allNumeric = pending.length >= 3 && pending.every(
+      (item: LabOrderItem) => item.result_type === 'NUMERIC'
+    );
+
+    return {
+      gridItems: allNumeric ? resultable : [],
+      formItems: allNumeric ? [] : order.items,
+      useGrid: allNumeric,
+    };
+  }, [order.items]);
+
   return (
     <PullToRefresh
       onRefresh={refresh}
@@ -78,12 +99,21 @@ export default function ResultsEntryPage({ params }: ResultsEntryPageProps) {
           </div>
         </div>
 
-        <LabResultsEntry
-          orderNumber={orderNumber}
-          items={order.items}
-          onComplete={() => router.push(`/laboratory/orders/${orderNumber}`)}
-          onResultAdded={handleResultAdded}
-        />
+        {useGrid ? (
+          <LabResultsGrid
+            orderNumber={orderNumber}
+            items={gridItems}
+            onComplete={() => router.push(`/laboratory/orders/${orderNumber}`)}
+            onResultAdded={handleResultAdded}
+          />
+        ) : (
+          <LabResultsEntry
+            orderNumber={orderNumber}
+            items={formItems.length > 0 ? formItems : order.items}
+            onComplete={() => router.push(`/laboratory/orders/${orderNumber}`)}
+            onResultAdded={handleResultAdded}
+          />
+        )}
       </div>
     </PullToRefresh>
   );

@@ -6,7 +6,7 @@ import logging
 from datetime import date
 from difflib import SequenceMatcher
 
-from django.db import models
+from django.db import models, transaction
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers as drf_serializers
@@ -696,6 +696,93 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             result = serializer.save()
             return Response(LabResultSerializer(result).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=["post"], url_path="results/batch")
+    def batch_results(self, request, order_number=None):
+        """Create multiple results in a single atomic transaction.
+
+        Accepts an array of results, validates all upfront, then creates
+        them in bulk. Status cascade (item → order) runs once at the end.
+
+        Request body: { "results": [ { order_item, numeric_value, ... }, ... ] }
+        """
+        order = self.get_object()
+        results_data = request.data.get("results")
+
+        if not results_data or not isinstance(results_data, list):
+            return Response(
+                {"detail": "Field 'results' is required and must be a non-empty list."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(results_data) > 100:
+            return Response(
+                {"detail": "Maximum 100 results per batch."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate all results upfront before creating any
+        serializers_list = []
+        errors = []
+        for i, item_data in enumerate(results_data):
+            serializer = LabResultCreateSerializer(data=item_data, context={"request": request})
+            if serializer.is_valid():
+                # Verify item belongs to this order
+                order_item = serializer.validated_data["order_item"]
+                if order_item.lab_order_id != order.pk:
+                    errors.append(
+                        {
+                            "index": i,
+                            "errors": {"order_item": ["Item does not belong to this order."]},
+                        }
+                    )
+                elif order_item.has_result():
+                    errors.append(
+                        {"index": i, "errors": {"order_item": ["This item already has a result."]}}
+                    )
+                else:
+                    serializers_list.append(serializer)
+            else:
+                errors.append({"index": i, "errors": serializer.errors})
+
+        if errors:
+            return Response(
+                {"detail": "Validation failed for some results.", "errors": errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # All valid — create in a single transaction
+        created_results = []
+        with transaction.atomic():
+            entered_by = request.user
+            for serializer in serializers_list:
+                validated = serializer.validated_data
+                result = LabResult.objects.create(entered_by=entered_by, **validated)
+
+                # Attach specimen from queue if available
+                if result.specimen is None:
+                    queue_entry = getattr(order, "queue_entry", None)
+                    if queue_entry and queue_entry.specimen:
+                        result.specimen = queue_entry.specimen
+                        result.save(update_fields=["specimen"])
+
+                # Auto-flag numeric results
+                if result.numeric_value is not None and not result.result_flag:
+                    result.auto_flag_result()
+
+                created_results.append(result)
+
+            # Cascade status once for all affected items
+            affected_items = LabOrderItem.objects.filter(
+                pk__in=[r.order_item_id for r in created_results]
+            )
+            for item in affected_items:
+                item.update_status_from_result()
+
+        return Response(
+            LabResultSerializer(created_results, many=True).data,
+            status=status.HTTP_201_CREATED,
+        )
 
     @action(detail=True, methods=["get"])
     def requisition(self, request, order_number=None):
