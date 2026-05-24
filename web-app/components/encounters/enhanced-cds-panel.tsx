@@ -18,6 +18,7 @@
 import * as React from 'react';
 import {
   AlertTriangle,
+  BookOpen,
   ChevronDown,
   ChevronUp,
   Info,
@@ -34,6 +35,15 @@ import { useAICDSEvaluate, useAIEnabled, useStoredCDSResults, aiKeys } from '@/l
 import { toast } from 'sonner';
 import { AIFeedbackButtons } from '@/components/shared/ai-feedback-buttons';
 import { useQueryClient } from '@tanstack/react-query';
+import { useFormularySearch, useSmpcDetail } from '@/lib/hooks/use-formulary';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { AICDSAlertItem, AICDSEvaluateRequest, AICDSEvaluateResponse } from '@/lib/types/ai';
 
 // =============================================================================
@@ -129,7 +139,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 // SUB-COMPONENTS
 // =============================================================================
 
-function CDSAlertCard({ alert }: { alert: AICDSAlertItem }) {
+function CDSAlertCard({ alert, onViewSmpc }: { alert: AICDSAlertItem; onViewSmpc?: (drugName: string) => void }) {
   const config = SEVERITY_CONFIG[alert.severity] ?? SEVERITY_CONFIG.low!;
   const { icon: Icon, bgColor, borderColor, color, label: severityLabel } = config!;
 
@@ -157,6 +167,17 @@ function CDSAlertCard({ alert }: { alert: AICDSAlertItem }) {
             <p className="text-xs text-muted-foreground">
               Evidence: {alert.evidence_level}
             </p>
+          )}
+          {/* Formulary/interaction alerts — link to SmPC monograph */}
+          {(alert.category === 'formulary' || alert.category === 'drug-interaction' || alert.category === 'contraindication') && onViewSmpc && alert.title && (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-0.5"
+              onClick={() => onViewSmpc(alert.title)}
+            >
+              <BookOpen className="h-3 w-3" />
+              View SmPC Monograph
+            </button>
           )}
         </div>
       </div>
@@ -190,8 +211,23 @@ export function EnhancedCDSPanel({
   const queryClient = useQueryClient();
   const { mutate, data: result, isPending, isError, reset } = useAICDSEvaluate();
   const [showRecommendations, setShowRecommendations] = React.useState(false);
+  const [smpcSearchQuery, setSmpcSearchQuery] = React.useState('');
+  const [smpcModalOpen, setSmpcModalOpen] = React.useState(false);
   const hasRun = React.useRef(false);
   const panelId = React.useId();
+
+  // Formulary search for SmPC linking
+  const { data: formularyData } = useFormularySearch(smpcSearchQuery);
+  const smpcDocId = formularyData?.smpc?.[0]?.id ?? null;
+  const { data: smpcDetail, isLoading: smpcLoading } = useSmpcDetail(smpcModalOpen ? smpcDocId : null);
+
+  const handleViewSmpc = React.useCallback((drugName: string) => {
+    // Extract a useful drug name from the alert title
+    // Alert titles often look like "Metformin — KEML Level Warning" or "Drug Interaction: Metformin + Warfarin"
+    const cleanName = drugName.split(/[—:+]/)[0]?.trim() || drugName;
+    setSmpcSearchQuery(cleanName);
+    setSmpcModalOpen(true);
+  }, []);
 
   // Load stored CDS results
   const { data: storedResults } = useStoredCDSResults(encounterId);
@@ -340,7 +376,7 @@ export function EnhancedCDSPanel({
               return (
                 <div key={severity} className="space-y-2">
                   {alerts.map((alert, i) => (
-                    <CDSAlertCard key={`${severity}-${i}`} alert={alert} />
+                    <CDSAlertCard key={`${severity}-${i}`} alert={alert} onViewSmpc={handleViewSmpc} />
                   ))}
                 </div>
               );
@@ -362,7 +398,7 @@ export function EnhancedCDSPanel({
                 {showRecommendations && (
                   <div className="space-y-2">
                     {displayResult.recommendations!.map((rec, i) => (
-                      <CDSAlertCard key={`rec-${i}`} alert={rec} />
+                      <CDSAlertCard key={`rec-${i}`} alert={rec} onViewSmpc={handleViewSmpc} />
                     ))}
                   </div>
                 )}
@@ -435,6 +471,67 @@ export function EnhancedCDSPanel({
           </div>
         )}
       </CardContent>
+
+      {/* SmPC Monograph Modal — triggered from CDS alert "View SmPC" links */}
+      <Dialog open={smpcModalOpen} onOpenChange={setSmpcModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle className="text-base">
+              {smpcLoading ? 'Loading...' : smpcDetail?.product_name || `SmPC — ${smpcSearchQuery}`}
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[65vh] pr-4">
+            {smpcLoading ? (
+              <div className="space-y-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-16 w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : smpcDetail ? (
+              <div className="space-y-3 text-sm">
+                {smpcDetail.pharmaceutical_form && (
+                  <p><span className="font-medium text-xs text-muted-foreground">Form:</span> {smpcDetail.pharmaceutical_form}</p>
+                )}
+                {smpcDetail.active_ingredients.length > 0 && (
+                  <p><span className="font-medium text-xs text-muted-foreground">Active Ingredients:</span> {smpcDetail.active_ingredients.join(', ')}</p>
+                )}
+                {smpcDetail.indications && (
+                  <div><h4 className="text-xs font-medium mb-0.5">Indications</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{smpcDetail.indications}</p></div>
+                )}
+                {smpcDetail.contraindications && (
+                  <div><h4 className="text-xs font-medium mb-0.5">Contraindications</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{smpcDetail.contraindications}</p></div>
+                )}
+                {smpcDetail.interactions && (
+                  <div><h4 className="text-xs font-medium mb-0.5">Drug Interactions</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{smpcDetail.interactions}</p></div>
+                )}
+                {smpcDetail.warnings && (
+                  <div><h4 className="text-xs font-medium mb-0.5">Warnings</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{smpcDetail.warnings}</p></div>
+                )}
+                {smpcDetail.adverse_effects && (
+                  <div><h4 className="text-xs font-medium mb-0.5">Adverse Effects</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{smpcDetail.adverse_effects}</p></div>
+                )}
+                {smpcDetail.pregnancy_lactation && (
+                  <div><h4 className="text-xs font-medium mb-0.5">Pregnancy & Lactation</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{smpcDetail.pregnancy_lactation}</p></div>
+                )}
+                {smpcDetail.posology && (
+                  <div><h4 className="text-xs font-medium mb-0.5">Posology</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{smpcDetail.posology}</p></div>
+                )}
+              </div>
+            ) : formularyData && formularyData.total_results === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                No SmPC monograph found for &ldquo;{smpcSearchQuery}&rdquo;
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                Searching formulary...
+              </p>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

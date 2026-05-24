@@ -90,6 +90,7 @@ import {
 import { PageHeader } from '@/components/shared/page-header';
 import { ShiftGate } from '@/components/shared/shift-gate';
 import { PatientSelector } from '@/components/encounters/patient-selector';
+import { FormularyInfoPopover } from '@/components/pharmacy/formulary-info-popover';
 import type { Drug, PrescriptionItemCreateData } from '@/lib/types/pharmacy';
 
 // SHA Drug type for selected drug
@@ -791,6 +792,11 @@ Prescribed by: ${prescriberName}
                       </Button>
                     </div>
                   </div>
+
+                  {/* Formulary enrichment — KEML level, PPB status, SmPC quick view */}
+                  <FormularyInfoPopover
+                    drugName={selectedDrug?.generic_name || selectedSHADrug?.name || ''}
+                  />
                 </div>
               ) : (
                 <div className="space-y-3">
