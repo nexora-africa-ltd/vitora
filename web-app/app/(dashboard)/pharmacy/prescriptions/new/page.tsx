@@ -733,10 +733,10 @@ Prescribed by: ${prescriberName}
               {/* Show selected drug if any */}
               {(selectedDrug || selectedSHADrug) ? (
                 <div className="p-3 rounded-lg bg-muted/50 border">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <span className="font-medium text-sm break-words">
                           {selectedDrug
                             ? (selectedDrug.brand_names?.[0] || selectedDrug.generic_name)
                             : selectedSHADrug?.name
@@ -765,7 +765,7 @@ Prescribed by: ${prescriberName}
                         </div>
                       )}
                     </div>
-                    <div className="flex gap-1 items-center">
+                    <div className="flex flex-wrap gap-1 items-center shrink-0">
                       {selectedDrug?.requires_prescription && (
                         <Badge variant="outline" className="text-xs">Rx</Badge>
                       )}
@@ -776,6 +776,7 @@ Prescribed by: ${prescriberName}
                         type="button"
                         variant="outline"
                         size="sm"
+                        className="h-7 w-7 p-0 sm:h-8 sm:w-auto sm:px-3"
                         onClick={() => {
                           setSelectedDrug(null);
                           setSelectedSHADrug(null);
@@ -788,7 +789,8 @@ Prescribed by: ${prescriberName}
                           }));
                         }}
                       >
-                        Change
+                        <RefreshCcw className="h-3.5 w-3.5 sm:hidden" />
+                        <span className="hidden sm:inline">Change</span>
                       </Button>
                     </div>
                   </div>
@@ -1131,30 +1133,32 @@ Prescribed by: ${prescriberName}
         {/* Prescription Items */}
         {items.length > 0 && (
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle>Prescription Items ({items.length})</CardTitle>
+            <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-2">
+              <CardTitle className="text-base">Prescription Items ({items.length})</CardTitle>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
+                  className="h-8 px-2 sm:px-3"
                   onClick={handleCopyToClipboard}
                   disabled={items.length === 0}
                 >
                   {copied ? (
-                    <Check className="h-4 w-4 mr-1 text-green-600" />
+                    <Check className="h-4 w-4 sm:mr-1 text-green-600" />
                   ) : (
-                    <Copy className="h-4 w-4 mr-1" />
+                    <Copy className="h-4 w-4 sm:mr-1" />
                   )}
-                  {copied ? 'Copied!' : 'Copy'}
+                  <span className="hidden sm:inline">{copied ? 'Copied!' : 'Copy'}</span>
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
+                  className="h-8 px-2 sm:px-3"
                   onClick={handlePrint}
                   disabled={items.length === 0}
                 >
-                  <Printer className="h-4 w-4 mr-1" />
-                  Print
+                  <Printer className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Print</span>
                 </Button>
               </div>
             </CardHeader>
@@ -1163,15 +1167,15 @@ Prescribed by: ${prescriberName}
                 {items.map((item, index) => (
                   <div
                     key={index}
-                    className="flex items-start justify-between p-3 border rounded-lg bg-muted/30"
+                    className="flex items-start justify-between gap-2 p-3 border rounded-lg bg-muted/30"
                   >
-                    <div className="space-y-1">
-                      <div className="font-medium">{item.drug_name}</div>
-                      <div className="text-sm text-muted-foreground">
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="font-medium text-sm truncate">{item.drug_name}</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground break-words">
                         {item.dosage} • {item.frequency} • {item.duration} •{' '}
                         {item.route || 'PO'}
                       </div>
-                      <div className="text-sm">
+                      <div className="text-xs sm:text-sm">
                         Qty: <strong>{item.quantity_prescribed}</strong>
                         {item.instructions && (
                           <span className="ml-2 text-muted-foreground">
@@ -1188,7 +1192,7 @@ Prescribed by: ${prescriberName}
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="text-destructive hover:text-destructive"
+                      className="text-destructive hover:text-destructive shrink-0 h-8 w-8"
                       onClick={() => handleRemoveItem(index)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -1217,17 +1221,17 @@ Prescribed by: ${prescriberName}
               <RadioGroup
                 value={dispensingType}
                 onValueChange={(v) => setDispensingType(v as 'INTERNAL' | 'EXTERNAL')}
-                className="flex items-center gap-4"
+                className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4"
               >
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <RadioGroupItem value="INTERNAL" />
-                  <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-sm">Internal (Hospital Pharmacy)</span>
+                  <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-sm"><span className="sm:hidden">Internal</span><span className="hidden sm:inline">Internal (Hospital Pharmacy)</span></span>
                 </label>
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <RadioGroupItem value="EXTERNAL" />
-                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-sm">External (Outside Pharmacy)</span>
+                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-sm"><span className="sm:hidden">External</span><span className="hidden sm:inline">External (Outside Pharmacy)</span></span>
                 </label>
               </RadioGroup>
             </div>

@@ -35,7 +35,7 @@ function KemlLevelBadge({ level, description }: { level: number; description: st
     5: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   };
   return (
-    <Badge className={`${colors[level] || colors[3]} shrink-0 w-fit`}>
+    <Badge className={`${colors[level] || colors[3]} shrink-0 w-fit max-w-full truncate text-xs`}>
       H{level} — {description}
     </Badge>
   );
@@ -68,27 +68,27 @@ function ValidityBadge({ isValid, expiryDate }: { isValid: boolean; expiryDate: 
 function SmpcCard({ item, onViewDetail }: { item: SmpcSummary; onViewDetail: (id: string) => void }) {
   return (
     <Card className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-blue-500" onClick={() => onViewDetail(item.id)}>
-      <CardContent className="p-4">
+      <CardContent className="p-3 sm:p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
             <h3 className="font-medium text-sm truncate">{item.product_name}</h3>
             {item.active_ingredients.length > 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1 truncate">
                 {item.active_ingredients.join(', ')}
               </p>
             )}
             {item.pharmaceutical_form && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground truncate">
                 {item.pharmaceutical_form}
               </p>
             )}
             {item.indications && (
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-1 sm:line-clamp-2">
                 {item.indications}
               </p>
             )}
           </div>
-          <Button variant="ghost" size="sm" className="shrink-0 self-start">
+          <Button variant="ghost" size="sm" className="shrink-0 self-start hidden sm:inline-flex">
             View Details
           </Button>
         </div>
@@ -104,17 +104,17 @@ function SmpcCard({ item, onViewDetail }: { item: SmpcSummary; onViewDetail: (id
 function PpbProductCard({ item }: { item: PpbProduct }) {
   return (
     <Card className="border-l-4 border-l-emerald-500">
-      <CardContent className="p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <h3 className="font-medium text-sm">{item.trade_name}</h3>
-            <p className="text-xs text-muted-foreground mt-1">
+            <h3 className="font-medium text-sm truncate">{item.trade_name}</h3>
+            <p className="text-xs text-muted-foreground mt-1 truncate">
               {item.active_ingredient} • {item.dosage_form}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground truncate">
               {item.manufacturer} ({item.country_of_origin})
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground truncate sm:overflow-visible sm:text-clip">
               Reg: {item.registration_no} • {item.category}
             </p>
           </div>
@@ -132,18 +132,18 @@ function PpbProductCard({ item }: { item: PpbProduct }) {
 function KemlCard({ item }: { item: KemlEntry }) {
   return (
     <Card className="border-l-4 border-l-purple-500">
-      <CardContent className="p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <h3 className="font-medium text-sm">{item.name}</h3>
-            <p className="text-xs text-muted-foreground mt-1">
+            <h3 className="font-medium text-sm truncate">{item.name}</h3>
+            <p className="text-xs text-muted-foreground mt-1 truncate">
               Code: {item.code} • {item.subcategory}
             </p>
             {item.sub_subcategory && (
-              <p className="text-xs text-muted-foreground">{item.sub_subcategory}</p>
+              <p className="text-xs text-muted-foreground truncate">{item.sub_subcategory}</p>
             )}
             {item.dose_forms.length > 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-1 sm:line-clamp-none">
                 {item.dose_forms.map((df) => {
                   const s = df.strengths?.join(', ') || df.strength || '';
                   return s ? `${df.form} (${s})` : df.form;
@@ -151,7 +151,7 @@ function KemlCard({ item }: { item: KemlEntry }) {
               </p>
             )}
             {item.footnotes && (
-              <p className="text-xs text-muted-foreground italic mt-1">{item.footnotes}</p>
+              <p className="hidden sm:block text-xs text-muted-foreground italic mt-1">{item.footnotes}</p>
             )}
           </div>
           <KemlLevelBadge level={item.level_of_use} description={item.level_description} />
@@ -211,7 +211,7 @@ function SmpcDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh]">
+      <DialogContent className="max-w-2xl max-h-[85vh] w-[95vw] sm:w-full">
         <DialogHeader>
           <DialogTitle className="text-base">
             {isLoading ? 'Loading...' : data?.product_name || 'SmPC Detail'}
@@ -324,18 +324,21 @@ export default function DrugFormularyPage() {
 
         {/* Stats bar */}
         {stats?.loaded && (
-          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+          <div className="flex flex-wrap gap-2 sm:gap-3 text-[11px] sm:text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
-              <BookOpen className="h-3 w-3 text-blue-500" />
-              {stats.smpc_count.toLocaleString()} SmPC monographs
+              <BookOpen className="h-3 w-3 text-blue-500 shrink-0" />
+              <span className="sm:hidden">{stats.smpc_count.toLocaleString()} SmPC</span>
+              <span className="hidden sm:inline">{stats.smpc_count.toLocaleString()} SmPC monographs</span>
             </span>
             <span className="inline-flex items-center gap-1">
-              <ShieldCheck className="h-3 w-3 text-emerald-500" />
-              {stats.ppb_products_count.toLocaleString()} PPB products
+              <ShieldCheck className="h-3 w-3 text-emerald-500 shrink-0" />
+              <span className="sm:hidden">{stats.ppb_products_count.toLocaleString()} PPB</span>
+              <span className="hidden sm:inline">{stats.ppb_products_count.toLocaleString()} PPB products</span>
             </span>
             <span className="inline-flex items-center gap-1">
-              <Pill className="h-3 w-3 text-purple-500" />
-              {stats.keml_count.toLocaleString()} KEML entries
+              <Pill className="h-3 w-3 text-purple-500 shrink-0" />
+              <span className="sm:hidden">{stats.keml_count.toLocaleString()} KEML</span>
+              <span className="hidden sm:inline">{stats.keml_count.toLocaleString()} KEML entries</span>
             </span>
           </div>
         )}
@@ -371,37 +374,38 @@ export default function DrugFormularyPage() {
               <ResultsSkeleton />
             ) : hasResults ? (
               <Tabs defaultValue="smpc" className="w-full">
-                <TabsList className="w-full justify-start">
-                  <TabsTrigger value="smpc" className="gap-1.5">
-                    <BookOpen className="h-3.5 w-3.5 text-blue-500" />
-                    <span className="sm:hidden">SmPC</span>
-                    <span className="hidden sm:inline">SmPC</span>
-                    {smpcCount > 0 && (
-                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                        {smpcCount}
-                      </Badge>
-                    )}
-                  </TabsTrigger>
-                  <TabsTrigger value="ppb" className="gap-1.5">
-                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
-                    <span className="sm:hidden">PPB</span>
-                    <span className="hidden sm:inline">PPB Products</span>
-                    {ppbCount > 0 && (
-                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                        {ppbCount}
-                      </Badge>
-                    )}
-                  </TabsTrigger>
-                  <TabsTrigger value="keml" className="gap-1.5">
-                    <Pill className="h-3.5 w-3.5 text-purple-500" />
-                    <span>KEML</span>
-                    {kemlCount > 0 && (
-                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                        {kemlCount}
-                      </Badge>
-                    )}
-                  </TabsTrigger>
-                </TabsList>
+                <div className="overflow-x-auto -mx-1 px-1">
+                  <TabsList className="inline-flex w-auto min-w-full sm:w-full justify-start">
+                    <TabsTrigger value="smpc" className="gap-1 sm:gap-1.5 text-xs sm:text-sm px-2 sm:px-3">
+                      <BookOpen className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                      <span>SmPC</span>
+                      {smpcCount > 0 && (
+                        <Badge variant="secondary" className="ml-0.5 sm:ml-1 h-5 px-1 sm:px-1.5 text-[10px] sm:text-xs">
+                          {smpcCount}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="ppb" className="gap-1 sm:gap-1.5 text-xs sm:text-sm px-2 sm:px-3">
+                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                      <span className="sm:hidden">PPB</span>
+                      <span className="hidden sm:inline">PPB Products</span>
+                      {ppbCount > 0 && (
+                        <Badge variant="secondary" className="ml-0.5 sm:ml-1 h-5 px-1 sm:px-1.5 text-[10px] sm:text-xs">
+                          {ppbCount}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="keml" className="gap-1 sm:gap-1.5 text-xs sm:text-sm px-2 sm:px-3">
+                      <Pill className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                      <span>KEML</span>
+                      {kemlCount > 0 && (
+                        <Badge variant="secondary" className="ml-0.5 sm:ml-1 h-5 px-1 sm:px-1.5 text-[10px] sm:text-xs">
+                          {kemlCount}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
 
                 <TabsContent value="smpc" className="mt-4 space-y-3">
                   {smpcCount === 0 ? (
