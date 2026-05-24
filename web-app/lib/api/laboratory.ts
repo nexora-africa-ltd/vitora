@@ -410,6 +410,18 @@ export const laboratoryApi = {
   },
 
   /**
+   * Create multiple results in a single batch.
+   * All-or-nothing: if any result fails validation, none are saved.
+   */
+  async addResultsBatch(orderNumber: string, results: LabResultCreateData[]): Promise<LabResult[]> {
+    const response = await apiClient.post<LabResult[]>(
+      `/api/lab/orders/${orderNumber}/results/batch/`,
+      { results }
+    );
+    return parseResponse(z.array(LabResultSchema), response.data, { context: 'laboratoryApi.addResultsBatch' });
+  },
+
+  /**
    * Update a result.
    */
   async updateResult(resultId: number, data: Partial<LabResult>): Promise<LabResult> {
