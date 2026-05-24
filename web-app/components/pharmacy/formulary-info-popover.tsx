@@ -209,10 +209,10 @@ export function FormularyInfoPopover({ drugName, facilityLevel }: FormularyInfoP
         <div className="mt-2 rounded-md border bg-muted/30 px-3 py-2">
           {/* Summary line — always visible */}
           <CollapsibleTrigger asChild>
-            <button type="button" className="flex items-center gap-2 w-full text-left">
+            <button type="button" className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full text-left">
               <BookOpen className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-              <span className="text-xs font-medium flex-1">Formulary Info</span>
-              <div className="flex items-center gap-1.5">
+              <span className="text-xs font-medium flex-1 min-w-0">Formulary Info</span>
+              <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
                 {firstKeml && (
                   <KemlLevelBadge
                     level={firstKeml.level_of_use}
@@ -231,7 +231,7 @@ export function FormularyInfoPopover({ drugName, facilityLevel }: FormularyInfoP
                     {ppbExpired ? 'PPB Expired' : 'PPB Valid'}
                   </Badge>
                 )}
-                {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                {expanded ? <ChevronUp className="h-3.5 w-3.5 shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0" />}
               </div>
             </button>
           </CollapsibleTrigger>
