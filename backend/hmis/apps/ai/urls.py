@@ -51,6 +51,7 @@ from .views import (
     SurgicalProcedureDetailView,
     SurgicalProcedureListView,
 )
+from .views_formulary import FormularySearchView, FormularySmpcDetailView, FormularyStatsView
 
 app_name = "ai"
 
@@ -231,5 +232,21 @@ urlpatterns = [
         "advisory-links/<int:pk>/action/",
         AIAdvisoryOrderLinkActionView.as_view(),
         name="advisory-links-action",
+    ),
+    # ── Drug Formulary ────────────────────────────────────────────────
+    path(
+        "formulary/search/",
+        FormularySearchView.as_view(),
+        name="formulary-search",
+    ),
+    path(
+        "formulary/smpc/<str:doc_id>/",
+        FormularySmpcDetailView.as_view(),
+        name="formulary-smpc-detail",
+    ),
+    path(
+        "formulary/stats/",
+        FormularyStatsView.as_view(),
+        name="formulary-stats",
     ),
 ]

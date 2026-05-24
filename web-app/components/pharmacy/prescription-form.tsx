@@ -71,6 +71,7 @@ import {
   type DosageSuggestion,
 } from '@/lib/utils/dosage';
 import { ShiftGate } from '@/components/shared/shift-gate';
+import { FormularyInfoPopover } from '@/components/pharmacy/formulary-info-popover';
 import type { Drug, PrescriptionItemCreateData } from '@/lib/types/pharmacy';
 
 // SHA Drug type for selected drug
@@ -630,6 +631,11 @@ MEDICATIONS
                     </Button>
                   </div>
                 </div>
+
+                {/* Formulary enrichment — KEML level, PPB status, SmPC quick view */}
+                <FormularyInfoPopover
+                  drugName={selectedDrug?.generic_name || selectedSHADrug?.name || ''}
+                />
               </div>
             ) : (
               <div className="space-y-3">

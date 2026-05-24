@@ -511,6 +511,7 @@ const _allNavItems: NavItemType[] = [
     featureFlag: ENABLE_AI,
     children: [
       { label: 'Chat', href: '/ai', icon: MessageSquare, actionKey: 'ai.use_chat' },
+      { label: 'Drug Formulary', href: '/ai/formulary', icon: Pill, actionKey: 'ai.use_chat' },
       { label: 'Insights', href: '/ai/insights', icon: BarChart3, actionKey: 'ai.view_insights' },
     ],
   } as NavItemWithChildren,
