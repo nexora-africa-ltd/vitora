@@ -133,10 +133,10 @@ class TestFacilityModel:
         assert str(sample_facility) == "Sample District Hospital (99999)"
 
     def test_modules_property_returns_dict(self, sample_facility):
-        """The ``modules`` property should return all 22 module flags."""
+        """The ``modules`` property should return all 24 module flags."""
         modules = sample_facility.modules
         assert isinstance(modules, dict)
-        assert len(modules) == 22
+        assert len(modules) == 24
         assert modules["outpatient"] is True
         assert modules["inpatient"] is True
         assert modules["mortuary"] is False

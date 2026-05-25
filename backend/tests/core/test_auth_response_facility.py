@@ -303,6 +303,8 @@ class TestBuildUserInfo:
             "blood_bank",
             "inventory",
             "lis_standalone",
+            "pharmacy_standalone",
+            "imaging_standalone",
             "triage",
             "scheduling",
             "surveillance",

@@ -73,6 +73,9 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "RadiologyReport": ("imaging", "radiologyreport"),
     "ImagingReport": ("imaging", "radiologyreport"),
     "DICOMStudy": ("imaging", "dicomstudy"),
+    # imaging — standalone
+    "WalkInImagingPatient": ("imaging", "walkinimagingpatient"),
+    "ExternalImagingOrderRequest": ("imaging", "externalimagingorderrequest"),
     # pharmacy
     "Prescription": ("pharmacy", "prescription"),
     "PrescriptionItem": ("pharmacy", "prescriptionitem"),
@@ -83,6 +86,9 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "StockBatch": ("pharmacy", "stockbatch"),
     "StockAdjustment": ("pharmacy", "stockadjustment"),
     "StockAlert": ("pharmacy", "stockalert"),
+    # pharmacy — standalone
+    "WalkInCustomer": ("pharmacy", "walkincustomer"),
+    "ExternalPrescriptionRequest": ("pharmacy", "externalprescriptionrequest"),
     # inpatient
     "Admission": ("inpatient", "admission"),
     "Discharge": ("inpatient", "discharge"),
