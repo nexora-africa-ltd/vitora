@@ -2,6 +2,12 @@ import type { FacilityModules } from '@/lib/auth/context';
 
 export type FacilityLevel = '1' | '2' | '3' | '4' | '5' | '6';
 export type FacilityOwnership = 'GOK' | 'FBO' | 'NGO' | 'PRIVATE';
+export type FacilityOperatingMode =
+  | 'FULL_HMIS'
+  | 'STANDALONE_LAB'
+  | 'STANDALONE_PHARMACY'
+  | 'STANDALONE_IMAGING'
+  | 'STANDALONE_DIAGNOSTIC';
 
 export interface FacilityListItem {
   id: number;
@@ -18,6 +24,7 @@ export interface FacilityListItem {
   is_headquarters: boolean;
   branch_code: string;
   sha_contracted: boolean;
+  operating_mode?: FacilityOperatingMode;
   is_active: boolean;
 }
 
@@ -124,6 +131,7 @@ export interface FacilityUpdateData {
   has_quality?: boolean;
   has_billing?: boolean;
   has_private_insurance?: boolean;
+  operating_mode?: FacilityOperatingMode;
   is_active?: boolean;
 }
 

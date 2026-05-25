@@ -1000,6 +1000,7 @@ class FacilityListSerializer(serializers.ModelSerializer):
             "is_headquarters",
             "branch_code",
             "sha_contracted",
+            "operating_mode",
             "is_active",
         ]
         read_only_fields = ["id"]
@@ -1122,6 +1123,8 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "has_quality",
             "has_billing",
             "has_private_insurance",
+            # Operating mode
+            "operating_mode",
             # Status & timestamps
             "is_active",
             "created_at",
@@ -1230,6 +1233,8 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
             "has_quality",
             "has_billing",
             "has_private_insurance",
+            # Operating mode
+            "operating_mode",
             # Status
             "is_active",
         ]

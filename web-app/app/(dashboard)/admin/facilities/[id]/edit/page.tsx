@@ -27,7 +27,7 @@ import { useCounties, useSubCounties, useWards } from '@/lib/hooks/use-locations
 import { facilitiesApi, toUserFacility } from '@/lib/api/facilities';
 import { useAuth } from '@/lib/auth/context';
 import { useFacility } from '@/lib/context/facility-context';
-import type { FacilityLevel, FacilityOwnership, FacilityUpdateData } from '@/lib/types/facility';
+import type { FacilityLevel, FacilityOwnership, FacilityOperatingMode, FacilityUpdateData } from '@/lib/types/facility';
 
 const LEVELS: { value: FacilityLevel; label: string }[] = [
   { value: '1', label: 'Level 1 – Community Unit' },
@@ -43,6 +43,14 @@ const OWNERSHIPS: { value: FacilityOwnership; label: string }[] = [
   { value: 'FBO', label: 'Faith-Based Organization' },
   { value: 'NGO', label: 'Non-Governmental Organization' },
   { value: 'PRIVATE', label: 'Private' },
+];
+
+const OPERATING_MODES: { value: FacilityOperatingMode; label: string; description: string }[] = [
+  { value: 'FULL_HMIS', label: 'Full HMIS', description: 'All clinical workflow modules are managed individually below.' },
+  { value: 'STANDALONE_LAB', label: 'Standalone Lab', description: 'Lab-only operation. Inpatient, ER, triage, scheduling, etc. will be disabled on save.' },
+  { value: 'STANDALONE_PHARMACY', label: 'Standalone Pharmacy', description: 'Retail/walk-in pharmacy. Clinical workflow modules will be disabled on save.' },
+  { value: 'STANDALONE_IMAGING', label: 'Standalone Imaging', description: 'Imaging-only operation. Clinical workflow modules will be disabled on save.' },
+  { value: 'STANDALONE_DIAGNOSTIC', label: 'Standalone Diagnostic Centre', description: 'Lab + imaging diagnostic centre. Clinical workflow modules will be disabled on save.' },
 ];
 
 const MODULE_LABELS: { key: string; label: string }[] = [
@@ -95,6 +103,7 @@ export default function EditFacilityPage() {
     sha_contracted: false,
     sha_facility_code: '',
     sha_contract_expiry: '',
+    operating_mode: 'FULL_HMIS' as FacilityOperatingMode,
     is_active: true,
     // Module flags
     has_outpatient: false,
@@ -143,6 +152,7 @@ export default function EditFacilityPage() {
         sha_contracted: facility.sha_contracted,
         sha_facility_code: facility.sha_facility_code || '',
         sha_contract_expiry: facility.sha_contract_expiry || '',
+        operating_mode: (facility.operating_mode as FacilityOperatingMode | undefined) ?? 'FULL_HMIS',
         is_active: facility.is_active,
         has_outpatient: facility.has_outpatient,
         has_inpatient: facility.has_inpatient,
@@ -245,6 +255,7 @@ export default function EditFacilityPage() {
       sha_contracted: formData.sha_contracted,
       sha_facility_code: formData.sha_facility_code || undefined,
       sha_contract_expiry: formData.sha_contract_expiry || null,
+      operating_mode: formData.operating_mode,
       is_active: formData.is_active,
       has_outpatient: formData.has_outpatient,
       has_inpatient: formData.has_inpatient,
@@ -398,6 +409,44 @@ export default function EditFacilityPage() {
               Module Capabilities
             </CardTitle>
           </CardHeader>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Boxes className="h-4 w-4 text-muted-foreground" />
+              Operating Mode
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2">
+              <Label>Mode</Label>
+              <Select
+                value={formData.operating_mode}
+                onValueChange={(v) => handleChange('operating_mode', v)}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {OPERATING_MODES.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {OPERATING_MODES.find((m) => m.value === formData.operating_mode)?.description}
+              </p>
+              {formData.operating_mode !== 'FULL_HMIS' && (
+                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-100">
+                  Saving will cascade module flags below: clinical workflow modules
+                  (inpatient, emergency, triage, maternity, theatre, dialysis, ICU,
+                  mortuary, blood bank, allied health, scheduling, surveillance,
+                  immunizations, outpatient) will be turned OFF and the relevant
+                  standalone module + billing + inventory will be turned ON.
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Modules */}
+        <Card>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {MODULE_LABELS.map(({ key, label }) => (

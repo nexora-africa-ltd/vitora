@@ -3010,6 +3010,23 @@ class Facility(TimeStampedModel):
         NGO = "NGO", "Non-Governmental Organization"
         PRIVATE = "PRIVATE", "Private Practice"
 
+    class OperatingMode(models.TextChoices):
+        """
+        Top-level facility operating mode.
+
+        Selecting a standalone mode cascades the relevant ``has_*`` module
+        flags off (clinical workflow modules) and on (the chosen standalone
+        module + billing + inventory). Switching back to FULL_HMIS does
+        **not** auto-restore previous flags; admins must re-enable them or
+        rely on KEPH-level defaults.
+        """
+
+        FULL_HMIS = "FULL_HMIS", "Full HMIS"
+        STANDALONE_LAB = "STANDALONE_LAB", "Standalone Lab"
+        STANDALONE_PHARMACY = "STANDALONE_PHARMACY", "Standalone Pharmacy"
+        STANDALONE_IMAGING = "STANDALONE_IMAGING", "Standalone Imaging"
+        STANDALONE_DIAGNOSTIC = "STANDALONE_DIAGNOSTIC", "Standalone Diagnostic Centre"
+
     # ------------------------------------------------------------------
     # Identity
     # ------------------------------------------------------------------
@@ -3388,6 +3405,17 @@ class Facility(TimeStampedModel):
         help_text="Whether the facility is currently operational.",
     )
 
+    operating_mode = models.CharField(
+        max_length=30,
+        choices=OperatingMode.choices,
+        default=OperatingMode.FULL_HMIS,
+        help_text=(
+            "Top-level facility mode. Choosing a standalone mode disables "
+            "clinical workflow modules (inpatient, ER, triage, etc.) and "
+            "enables the relevant standalone module + billing + inventory."
+        ),
+    )
+
     # ------------------------------------------------------------------
     # Meta & Magic Methods
     # ------------------------------------------------------------------
@@ -3405,6 +3433,19 @@ class Facility(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         """Auto-apply default modules based on KEPH level on creation."""
+        # Detect operating_mode changes so we cascade module flags on save.
+        apply_mode_cascade = False
+        if self._state.adding:
+            if self.operating_mode and self.operating_mode != self.OperatingMode.FULL_HMIS:
+                apply_mode_cascade = True
+        else:
+            try:
+                previous = type(self).objects.only("operating_mode").get(pk=self.pk)
+            except type(self).DoesNotExist:
+                previous = None
+            if previous and previous.operating_mode != self.operating_mode:
+                apply_mode_cascade = True
+
         if self._state.adding and not getattr(self, "_skip_module_defaults", False):
             module_fields = [
                 "has_outpatient",
@@ -3446,7 +3487,82 @@ class Facility(TimeStampedModel):
                 level_defaults = self.default_modules_for_level(self.level)
                 for module_name, enabled in level_defaults.items():
                     setattr(self, f"has_{module_name}", enabled)
+
+        if apply_mode_cascade:
+            self._apply_operating_mode_cascade()
+
         super().save(*args, **kwargs)
+
+    # ------------------------------------------------------------------
+    # Operating-mode cascade
+    # ------------------------------------------------------------------
+
+    # Clinical workflow modules disabled in any standalone mode.
+    _STANDALONE_DISABLES = (
+        "has_inpatient",
+        "has_emergency",
+        "has_triage",
+        "has_maternity",
+        "has_theatre",
+        "has_dialysis",
+        "has_icu",
+        "has_mortuary",
+        "has_blood_bank",
+        "has_allied_health",
+        "has_scheduling",
+        "has_surveillance",
+        "has_immunizations",
+        "has_outpatient",
+    )
+
+    # Per-mode flags to force-enable.
+    _MODE_ENABLES: dict[str, tuple[str, ...]] = {
+        "STANDALONE_LAB": (
+            "has_laboratory",
+            "has_lis_standalone",
+            "has_billing",
+            "has_inventory",
+        ),
+        "STANDALONE_PHARMACY": (
+            "has_pharmacy",
+            "has_pharmacy_standalone",
+            "has_billing",
+            "has_inventory",
+        ),
+        "STANDALONE_IMAGING": (
+            "has_imaging",
+            "has_imaging_standalone",
+            "has_billing",
+            "has_inventory",
+        ),
+        "STANDALONE_DIAGNOSTIC": (
+            "has_laboratory",
+            "has_imaging",
+            "has_lis_standalone",
+            "has_imaging_standalone",
+            "has_billing",
+            "has_inventory",
+        ),
+    }
+
+    def _apply_operating_mode_cascade(self) -> None:
+        """
+        Cascade ``has_*`` flags based on ``operating_mode``.
+
+        FULL_HMIS does not alter flags (admin manages individually).
+        Any STANDALONE_* mode disables clinical workflow modules and
+        force-enables the relevant standalone module plus billing/inventory.
+        """
+        mode = self.operating_mode
+        if not mode or mode == self.OperatingMode.FULL_HMIS:
+            return
+
+        enables = self._MODE_ENABLES.get(str(mode), ())
+        for flag in self._STANDALONE_DISABLES:
+            if flag not in enables:
+                setattr(self, flag, False)
+        for flag in enables:
+            setattr(self, flag, True)
 
     # ------------------------------------------------------------------
     # Properties

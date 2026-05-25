@@ -1238,6 +1238,7 @@ class FacilityAdmin(admin.ModelAdmin):
         "name",
         "organization",
         "level_badge",
+        "operating_mode",
         "ownership",
         "county",
         "is_headquarters",
@@ -1247,6 +1248,7 @@ class FacilityAdmin(admin.ModelAdmin):
     list_filter = [
         "organization",
         "level",
+        "operating_mode",
         "ownership",
         "county",
         "sha_contracted",
@@ -1347,7 +1349,10 @@ class FacilityAdmin(admin.ModelAdmin):
         ),
         (
             "Status",
-            {"fields": ("is_active",)},
+            {
+                "fields": ("is_active", "operating_mode"),
+                "description": "Selecting a standalone operating mode will cascade module flags off/on on save.",
+            },
         ),
         (
             "AI Token Usage",
