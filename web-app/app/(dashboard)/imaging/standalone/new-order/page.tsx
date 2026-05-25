@@ -72,7 +72,7 @@ export default function NewStandaloneImagingOrderPage() {
     value: string,
   ) => {
     const updated = [...items];
-    updated[index] = { ...updated[index], [field]: value };
+    updated[index] = { ...updated[index], [field]: value } as StandaloneImagingOrderItem;
     setItems(updated);
   };
 
