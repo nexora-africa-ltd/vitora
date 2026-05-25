@@ -290,11 +290,13 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "accession_number",
                 "admission",
+                "bill_patient",
                 "clinical_indication",
                 "completed_at",
                 "encounter",
                 "id",
                 "is_paid",
+                "is_walkin",
                 "items",
                 "order_number",
                 "ordered_at",
@@ -310,6 +312,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "status",
                 "study_instance_uid",
                 "total_cost",
+                "walkin_patient_name",
             }
         ),
     ),
