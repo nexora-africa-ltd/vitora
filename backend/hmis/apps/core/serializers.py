@@ -964,6 +964,28 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
 # ============================================================================
 
 
+def _plan_allowed_module_flags(instance, request) -> set[str] | None:
+    """Return the set of ``has_*`` flags an org's subscription plan allows,
+    or ``None`` if no filtering should be applied (enforcement off, no org,
+    or caller is a superuser).
+    """
+    from django.conf import settings as dj_settings
+
+    if not getattr(dj_settings, "SUBSCRIPTION_FEATURE_ENFORCEMENT", False):
+        return None
+    user = getattr(request, "user", None) if request else None
+    if user is not None and getattr(user, "is_superuser", False):
+        return None
+    org = getattr(instance, "organization", None)
+    if org is None:
+        return None
+    allowed: set[str] = set()
+    for flag, feature_key in Facility.MODULE_FLAG_TO_FEATURE.items():
+        if org.has_feature(feature_key):
+            allowed.add(flag)
+    return allowed
+
+
 def _validate_facility_tier(serializer, attrs: dict, instance=None) -> None:
     """Reject ``has_*`` flag flips and ``operating_mode`` changes that the
     org's subscription plan does not cover.
@@ -1238,6 +1260,32 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
         """Subscription tier gating for module flags and operating_mode."""
         _validate_facility_tier(self, attrs, instance=self.instance)
         return attrs
+
+    def to_representation(self, instance):
+        """Strip ``has_*`` flags, ``modules`` entries, and
+        ``enabled_module_names`` for modules not covered by the org's
+        subscription plan. Superusers and ``SUBSCRIPTION_FEATURE_ENFORCEMENT=False``
+        bypass the filter and see the full module surface.
+        """
+        data = super().to_representation(instance)
+        allowed = _plan_allowed_module_flags(instance, self.context.get("request"))
+        if allowed is None:
+            return data
+        # 1) Drop has_* fields the plan does not cover.
+        for flag in Facility.MODULE_FLAG_TO_FEATURE:
+            if flag not in allowed and flag in data:
+                data.pop(flag, None)
+        # 2) Filter the modules dict.
+        modules = data.get("modules")
+        if isinstance(modules, dict):
+            data["modules"] = {
+                name: enabled for name, enabled in modules.items() if f"has_{name}" in allowed
+            }
+        # 3) Filter enabled_module_names.
+        names = data.get("enabled_module_names")
+        if isinstance(names, list):
+            data["enabled_module_names"] = [name for name in names if f"has_{name}" in allowed]
+        return data
 
 
 class FacilityCreateSerializer(serializers.ModelSerializer):
