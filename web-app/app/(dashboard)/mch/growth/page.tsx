@@ -92,30 +92,51 @@ export default function GrowthChartPage() {
       <div className="space-y-6">
         <PageHeader
           title="Growth Charts"
-          helpContent="View and track child growth against WHO growth standards. Search for a child patient to view their growth chart with weight-for-age, height-for-age, and other indicators."
+          helpContent="View and track child growth against WHO growth standards. Search for a child patient to view their growth chart with weight-for-age, height-for-age, and other indicators. Use 'Create Growth Chart' to record a new measurement for any child."
           actions={
-            selectedPatientId ? (
-              <Dialog open={measureDialogOpen} onOpenChange={setMeasureDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    <span className="hidden sm:inline">Record Measurement</span>
-                    <span className="sm:hidden">Record</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle>Record Growth Measurement</DialogTitle>
-                  </DialogHeader>
+            <Dialog open={measureDialogOpen} onOpenChange={setMeasureDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">
+                    {selectedPatientId ? 'Record Measurement' : 'Create Growth Chart'}
+                  </span>
+                  <span className="sm:hidden">
+                    {selectedPatientId ? 'Record' : 'Create'}
+                  </span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>
+                    {selectedPatientId ? 'Record Growth Measurement' : 'Create Growth Chart'}
+                  </DialogTitle>
+                </DialogHeader>
+                {!selectedPatientId ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Search for a child patient to start tracking their growth.
+                      The chart will be created automatically once the first measurement is recorded.
+                    </p>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Child Patient</label>
+                      <PatientSearchInput
+                        value={selectedPatientId}
+                        onChange={(id) => setSelectedPatientId(id)}
+                        placeholder="Search by name or MRN..."
+                      />
+                    </div>
+                  </div>
+                ) : (
                   <GrowthMeasurementForm
                     patientId={selectedPatientId}
                     patientDob={patient?.date_of_birth}
                     onSuccess={() => setMeasureDialogOpen(false)}
                     onCancel={() => setMeasureDialogOpen(false)}
                   />
-                </DialogContent>
-              </Dialog>
-            ) : undefined
+                )}
+              </DialogContent>
+            </Dialog>
           }
         />
 
@@ -134,17 +155,42 @@ export default function GrowthChartPage() {
         </Card>
 
         {!selectedPatientId ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium text-muted-foreground">
-                Select a Child Patient
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Search for a child patient above to view their growth chart.
-              </p>
-            </CardContent>
-          </Card>
+          <>
+            <Card>
+              <CardContent className="py-12 text-center">
+                <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium text-muted-foreground">
+                  Select a Child Patient
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Search for a child patient above to view their growth chart,
+                  or browse the WHO reference charts below.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Generic / reference WHO growth chart (no patient required).
+                Users can switch indicator and Boys/Girls via the controls inside the chart. */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-semibold">WHO Reference Growth Chart</h2>
+                <span className="text-xs text-muted-foreground">
+                  (use the controls below to switch indicator or sex)
+                </span>
+              </div>
+              <Card>
+                <CardContent className="pt-6">
+                  <GrowthChart
+                    measurements={[]}
+                    sex="M"
+                    defaultIndicator="weight_for_age"
+                    ageRange="0_5"
+                    hidePatientContext
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </>
         ) : (
           <>
             {/* Patient Summary */}

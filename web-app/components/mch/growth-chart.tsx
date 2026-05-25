@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   LineChart,
   Line,
@@ -10,6 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceArea,
+  ReferenceLine,
   Legend,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,6 +42,8 @@ interface GrowthChartProps {
   apiPercentileLines?: Record<string, { x: number; y: number }[]>;
   /** Age range for reference data: '0_5' (default), '5_19', '5_10', or 'all' */
   ageRange?: AgeRange;
+  /** When true, suppress patient-context badges (used for the generic reference chart) */
+  hidePatientContext?: boolean;
 }
 
 const INDICATOR_OPTIONS: { value: GrowthIndicator; label: string }[] = [
@@ -49,67 +52,91 @@ const INDICATOR_OPTIONS: { value: GrowthIndicator; label: string }[] = [
   { value: 'weight_for_height', label: 'Weight-for-Height' },
   { value: 'head_circumference_for_age', label: 'Head Circumference' },
   { value: 'bmi_for_age', label: 'BMI-for-Age' },
+  { value: 'muac_for_age', label: 'MUAC-for-Age' },
 ];
+
+/** MUAC severity cutoffs (cm) — used as horizontal reference lines */
+const MUAC_SAM_CUTOFF = 11.5; // < 11.5 = Severe Acute Malnutrition
+const MUAC_MAM_CUTOFF = 12.5; // 11.5–12.4 = Moderate Acute Malnutrition
 
 /**
  * Merge WHO percentile-line reference data + patient measurement data
  * into a single dataset suitable for Recharts.
  *
- * Each element has:
- *   x (age_months), z_neg3, z_neg2, z_neg1, z_0, z_pos1, z_pos2, z_pos3, patient
+ * X dimension depends on indicator:
+ *   - weight_for_height: x = length/height in cm
+ *   - all other indicators: x = age in months
  */
 function buildChartData(
   percentileLines: Record<string, { x: number; y: number }[]>,
   measurements: GrowthMeasurementListItem[],
   indicator: GrowthIndicator,
 ) {
-  // Build a map of age_months → merged row
+  const isHeightAxis = indicator === 'weight_for_height';
   const map = new Map<number, Record<string, number | null>>();
 
-  // Add percentile reference points
+  // Add percentile reference points. For age-based indicators, the source x is
+  // in days; we convert to months. For weight_for_height the source x is
+  // already in centimetres and is used as-is.
   for (const [key, points] of Object.entries(percentileLines)) {
     for (const pt of points) {
-      const ageMonths = Math.round(ageDaysToMonths(pt.x) * 10) / 10;
-      if (!map.has(ageMonths)) {
-        map.set(ageMonths, { x: ageMonths, patient: null });
+      const x = isHeightAxis
+        ? Math.round(pt.x * 10) / 10
+        : Math.round(ageDaysToMonths(pt.x) * 10) / 10;
+      if (!map.has(x)) {
+        map.set(x, { x, patient: null });
       }
-      map.get(ageMonths)![key] = pt.y;
+      map.get(x)![key] = pt.y;
     }
   }
 
   // Add patient measurements
   for (const m of measurements) {
-    const ageMonths = Math.round(ageDaysToMonths(m.age_in_days) * 10) / 10;
-    if (!map.has(ageMonths)) {
-      map.set(ageMonths, { x: ageMonths });
-    }
-    const row = map.get(ageMonths)!;
-
-    // Map measurement value based on indicator
+    let x: number | null = null;
     let value: number | null = null;
-    switch (indicator) {
-      case 'weight_for_age':
-        value = m.weight;
-        break;
-      case 'height_for_age':
-        value = m.height;
-        break;
-      case 'head_circumference_for_age':
-        // head_circumference not in list item, use weight as fallback label
-        value = m.weight; // This will be overridden if full measurements available
-        break;
-      case 'bmi_for_age':
-        if (m.weight && m.height) {
-          const heightM = m.height / 100;
-          value = Math.round((m.weight / (heightM * heightM)) * 100) / 100;
-        }
-        break;
+
+    if (indicator === 'weight_for_height') {
+      if (m.height == null || m.weight == null) continue;
+      x = Math.round(m.height * 10) / 10;
+      value = m.weight;
+    } else {
+      x = Math.round(ageDaysToMonths(m.age_in_days) * 10) / 10;
+      switch (indicator) {
+        case 'weight_for_age':
+          value = m.weight;
+          break;
+        case 'height_for_age':
+          value = m.height;
+          break;
+        case 'head_circumference_for_age':
+          // head_circumference is not exposed on the list-item serializer;
+          // patient line stays null until the detail field is wired through.
+          value = null;
+          break;
+        case 'bmi_for_age':
+          if (m.weight && m.height) {
+            const heightM = m.height / 100;
+            value = Math.round((m.weight / (heightM * heightM)) * 100) / 100;
+          }
+          break;
+        case 'muac_for_age':
+          value = m.muac;
+          break;
+      }
     }
+
+    if (x == null) continue;
+    if (!map.has(x)) {
+      map.set(x, { x });
+    }
+    const row = map.get(x)!;
     row.patient = value;
   }
 
-  // Sort by age
-  return Array.from(map.values()).sort((a, b) => (a.x as number) - (b.x as number));
+  // Sort ascending so Recharts draws a clean line
+  return Array.from(map.values()).sort(
+    (a, b) => (a.x as number) - (b.x as number),
+  );
 }
 
 /**
@@ -124,9 +151,16 @@ export function GrowthChart({
   defaultIndicator = 'weight_for_age',
   apiPercentileLines,
   ageRange = '0_5',
+  hidePatientContext = false,
 }: GrowthChartProps) {
   const [indicator, setIndicator] = useState<GrowthIndicator>(defaultIndicator);
   const [displaySex, setDisplaySex] = useState<Sex>(sex);
+
+  // Keep displaySex in sync when the patient (sex prop) changes — without this,
+  // selecting a different patient leaves the toggle stuck on the previous sex.
+  useEffect(() => {
+    setDisplaySex(sex);
+  }, [sex]);
 
   const meta = getIndicatorMeta(indicator);
 
@@ -141,11 +175,15 @@ export function GrowthChart({
     return ageRange;
   }, [indicator, ageRange]);
 
-  // Compute or use API percentile lines
-  const percentileLines = useMemo(() => {
-    if (apiPercentileLines) return apiPercentileLines;
-    return generatePercentileLines(indicator, displaySex, effectiveAgeRange);
-  }, [indicator, displaySex, apiPercentileLines, effectiveAgeRange]);
+  // Compute percentile lines client-side from bundled WHO LMS data.
+  // We intentionally ignore `apiPercentileLines` here because the API value is
+  // fetched for a single (indicator, sex) pair, so it would not update when the
+  // user toggles indicator or boys/girls in this component.
+  void apiPercentileLines;
+  const percentileLines = useMemo(
+    () => generatePercentileLines(indicator, displaySex, effectiveAgeRange),
+    [indicator, displaySex, effectiveAgeRange],
+  );
 
   // Build merged chart data
   const chartData = useMemo(
@@ -153,16 +191,42 @@ export function GrowthChart({
     [percentileLines, measurements, indicator],
   );
 
-  // Get min/max for reference area bands
-  const hasData = chartData.length > 0;
+  const isMuac = indicator === 'muac_for_age';
+  const isHeightAxis = indicator === 'weight_for_height';
+
+  // For MUAC we have no WHO LMS bands — synthesise an age span (0–60 months)
+  // so the chart always renders, then overlay horizontal SAM/MAM cutoff lines.
+  const muacChartData = useMemo(() => {
+    if (!isMuac) return chartData;
+    const rows: Record<string, number | null>[] = [];
+    for (let m = 0; m <= 60; m += 6) {
+      rows.push({ x: m, patient: null });
+    }
+    // Merge in any actual patient points
+    for (const row of chartData) {
+      rows.push(row);
+    }
+    return rows.sort((a, b) => (a.x as number) - (b.x as number));
+  }, [isMuac, chartData]);
+
+  const effectiveChartData = isMuac ? muacChartData : chartData;
+  const hasData = effectiveChartData.length > 0;
 
   return (
     <div className="space-y-4">
       {/* Controls */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <h3 className="text-lg font-semibold">{meta.label}</h3>
-          <HelpPopover content="WHO growth chart showing your child's measurements against international reference standards. Green zone is normal (-1 to +1 Z), yellow is mild concern (-2 to -1), orange is moderate (-3 to -2), red is severe (below -3)." />
+          <Badge variant={displaySex === 'M' ? 'default' : 'secondary'} className="text-xs">
+            {displaySex === 'M' ? 'Boys' : 'Girls'} reference
+          </Badge>
+          {!hidePatientContext && displaySex !== sex && (
+            <Badge variant="outline" className="text-xs">
+              Patient is {sex === 'M' ? 'Male' : 'Female'}
+            </Badge>
+          )}
+          <HelpPopover content="WHO growth chart showing the child's measurements against international reference standards. The reference bands are sex-specific: switch the Boys/Girls toggle to compare. Green zone is normal (-1 to +1 Z), yellow is mild concern (-2 to -1), orange is moderate (-3 to -2), red is severe (below -3)." />
         </div>
         <div className="flex gap-2">
           <Select value={indicator} onValueChange={(v) => setIndicator(v as GrowthIndicator)}>
@@ -191,22 +255,41 @@ export function GrowthChart({
 
       {/* Legend */}
       <div className="flex flex-wrap gap-3 text-xs">
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-red-500/30 border border-red-500" />
-          <span>Severe (&lt; -3 Z)</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-orange-500/30 border border-orange-500" />
-          <span>Moderate (-3 to -2 Z)</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-yellow-500/30 border border-yellow-500" />
-          <span>Mild (-2 to -1 Z)</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-green-500/30 border border-green-500" />
-          <span>Normal (-1 to +1 Z)</span>
-        </div>
+        {isMuac ? (
+          <>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-red-500/30 border border-red-500" />
+              <span>SAM (&lt; 11.5 cm)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-yellow-500/30 border border-yellow-500" />
+              <span>MAM (11.5–12.4 cm)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-green-500/30 border border-green-500" />
+              <span>Normal (≥ 12.5 cm)</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-red-500/30 border border-red-500" />
+              <span>Severe (&lt; -3 Z)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-orange-500/30 border border-orange-500" />
+              <span>Moderate (-3 to -2 Z)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-yellow-500/30 border border-yellow-500" />
+              <span>Mild (-2 to -1 Z)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-green-500/30 border border-green-500" />
+              <span>Normal (-1 to +1 Z)</span>
+            </div>
+          </>
+        )}
         <div className="flex items-center gap-1">
           <div className="w-4 h-0.5 bg-blue-600" />
           <span>Patient</span>
@@ -218,14 +301,17 @@ export function GrowthChart({
         {hasData ? (
           <div className="h-[400px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
+              <LineChart data={effectiveChartData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis
                   dataKey="x"
+                  type="number"
+                  domain={isMuac ? [0, 60] : ['dataMin', 'dataMax']}
                   label={{ value: meta.xAxisLabel, position: 'insideBottom', offset: -5 }}
                   tickFormatter={(v) => `${Math.round(v)}`}
                 />
                 <YAxis
+                  domain={isMuac ? [8, 18] : ['auto', 'auto']}
                   label={{ value: meta.yAxisLabel, angle: -90, position: 'insideLeft' }}
                 />
                 <Tooltip
@@ -239,21 +325,49 @@ export function GrowthChart({
                       z_pos2: '+2 Z',
                       z_pos3: '+3 Z',
                       patient: 'Patient',
+                      sam: 'SAM cutoff',
+                      mam: 'MAM cutoff',
                     };
                     return [value?.toFixed(1), labels[name] || name];
                   }}
-                  labelFormatter={(label) => `Age: ${label} months`}
+                  labelFormatter={(label) =>
+                    isHeightAxis ? `Height: ${label} cm` : `Age: ${label} months`
+                  }
                 />
 
-                {/* Severe zone: below z_neg3 */}
-                <ReferenceArea
-                  y1={0}
-                  y2={undefined}
-                  fill="#ef4444"
-                  fillOpacity={0.05}
-                />
+                {isMuac ? (
+                  <>
+                    {/* MUAC threshold zones */}
+                    <ReferenceArea y1={0} y2={MUAC_SAM_CUTOFF} fill="#ef4444" fillOpacity={0.08} />
+                    <ReferenceArea
+                      y1={MUAC_SAM_CUTOFF}
+                      y2={MUAC_MAM_CUTOFF}
+                      fill="#eab308"
+                      fillOpacity={0.08}
+                    />
+                    <ReferenceArea y1={MUAC_MAM_CUTOFF} y2={18} fill="#22c55e" fillOpacity={0.06} />
+                    <ReferenceLine
+                      y={MUAC_SAM_CUTOFF}
+                      stroke="#ef4444"
+                      strokeWidth={1.5}
+                      strokeDasharray="4 4"
+                      label={{ value: 'SAM 11.5', position: 'right', fill: '#ef4444', fontSize: 10 }}
+                    />
+                    <ReferenceLine
+                      y={MUAC_MAM_CUTOFF}
+                      stroke="#eab308"
+                      strokeWidth={1.5}
+                      strokeDasharray="4 4"
+                      label={{ value: 'MAM 12.5', position: 'right', fill: '#a16207', fontSize: 10 }}
+                    />
+                  </>
+                ) : (
+                  <ReferenceArea y1={0} y2={undefined} fill="#ef4444" fillOpacity={0.05} />
+                )}
 
-                {/* Z-score reference lines */}
+                {/* Z-score reference lines (skipped for MUAC) */}
+                {!isMuac && (
+                  <>
                 <Line
                   dataKey="z_neg3"
                   stroke="#ef4444"
@@ -316,6 +430,8 @@ export function GrowthChart({
                   name="z_pos3"
                   connectNulls
                 />
+                  </>
+                )}
 
                 {/* Patient measurements — primary line */}
                 <Line
