@@ -291,6 +291,18 @@ export function getBaseCSS(): string {
       padding: 0;
     }
 
+    /* Force background colours/images to print by default for every
+       document built via buildPrintDocument(). Browsers normally drop
+       backgrounds unless the user enables "Background graphics" in the
+       print dialog — these properties opt every printed document in. */
+    html,
+    body,
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+
     body {
       font-family: Arial, Helvetica, sans-serif;
       color: #000;
