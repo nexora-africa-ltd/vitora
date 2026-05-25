@@ -2460,6 +2460,16 @@ class SubscriptionPlan(TimeStampedModel):
         ("inventory", "Inventory / Supply Chain"),
         ("billing", "Billing & Invoicing"),
         ("scheduling", "Staff Rostering & Scheduling"),
+        ("triage", "Triage / Acuity Scoring"),
+        ("surveillance", "Disease Surveillance / IDSR"),
+        ("immunizations", "Immunizations / Vaccination"),
+        ("allied_health", "Allied Health (Physio, Nutrition, etc.)"),
+        ("quality", "Quality Improvement & Clinical Audit"),
+        ("private_insurance", "Private Insurance Claims"),
+        # Standalone module variants (sold as dedicated SaaS plans)
+        ("lis_standalone", "Standalone Laboratory (LIS)"),
+        ("pharmacy_standalone", "Standalone Pharmacy / Retail"),
+        ("imaging_standalone", "Standalone Imaging / RIS"),
         # Platform features
         ("ai_assistant", "AI Assistant (TibaBot)"),
         ("sha_claims", "SHA Claims Integration"),
@@ -3542,6 +3552,54 @@ class Facility(TimeStampedModel):
             "has_imaging_standalone",
             "has_billing",
             "has_inventory",
+        ),
+    }
+
+    # ------------------------------------------------------------------
+    # Subscription tier gating
+    # ------------------------------------------------------------------
+
+    # Maps each Facility ``has_*`` boolean to the matching subscription
+    # feature key on ``SubscriptionPlan.features``. Used by the facility
+    # serializer to reject module flips that the org's plan does not cover.
+    MODULE_FLAG_TO_FEATURE: dict[str, str] = {
+        "has_outpatient": "outpatient",
+        "has_inpatient": "inpatient",
+        "has_emergency": "emergency",
+        "has_pharmacy": "pharmacy",
+        "has_laboratory": "laboratory",
+        "has_imaging": "imaging",
+        "has_theatre": "theatre",
+        "has_dialysis": "dialysis",
+        "has_icu": "icu",
+        "has_maternity": "maternity",
+        "has_mortuary": "mortuary",
+        "has_blood_bank": "blood_bank",
+        "has_inventory": "inventory",
+        "has_lis_standalone": "lis_standalone",
+        "has_pharmacy_standalone": "pharmacy_standalone",
+        "has_imaging_standalone": "imaging_standalone",
+        "has_triage": "triage",
+        "has_scheduling": "scheduling",
+        "has_surveillance": "surveillance",
+        "has_immunizations": "immunizations",
+        "has_allied_health": "allied_health",
+        "has_quality": "quality",
+        "has_billing": "billing",
+        "has_private_insurance": "private_insurance",
+    }
+
+    # Subscription features required to switch into a given operating mode.
+    # Used by the facility serializer to reject unsupported mode changes.
+    OPERATING_MODE_REQUIRED_FEATURES: dict[str, tuple[str, ...]] = {
+        "STANDALONE_LAB": ("laboratory", "lis_standalone"),
+        "STANDALONE_PHARMACY": ("pharmacy", "pharmacy_standalone"),
+        "STANDALONE_IMAGING": ("imaging", "imaging_standalone"),
+        "STANDALONE_DIAGNOSTIC": (
+            "laboratory",
+            "imaging",
+            "lis_standalone",
+            "imaging_standalone",
         ),
     }
 
