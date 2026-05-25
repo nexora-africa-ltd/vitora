@@ -964,6 +964,67 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
 # ============================================================================
 
 
+def _validate_facility_tier(serializer, attrs: dict, instance=None) -> None:
+    """Reject ``has_*`` flag flips and ``operating_mode`` changes that the
+    org's subscription plan does not cover.
+
+    Bypassed for superusers and when ``SUBSCRIPTION_FEATURE_ENFORCEMENT``
+    is off (matches the URL-prefix middleware policy in dev/test).
+    """
+    from django.conf import settings as dj_settings
+
+    if not getattr(dj_settings, "SUBSCRIPTION_FEATURE_ENFORCEMENT", False):
+        return
+
+    request = serializer.context.get("request")
+    if request is None:
+        return
+    user = getattr(request, "user", None)
+    if user is None or not getattr(user, "is_authenticated", False):
+        return
+    if getattr(user, "is_superuser", False):
+        return
+
+    profile = getattr(user, "staff_profile", None)
+    org = getattr(profile, "organization", None) if profile else None
+    if org is None:
+        # Caller resolves org via validated_data["organization"] (admin create).
+        org = attrs.get("organization") if isinstance(attrs, dict) else None
+    if org is None:
+        return
+
+    errors: dict[str, list[str]] = {}
+
+    # 1) Validate has_* flag transitions to True.
+    for flag, feature_key in Facility.MODULE_FLAG_TO_FEATURE.items():
+        if flag not in attrs:
+            continue
+        new_value = bool(attrs[flag])
+        current_value = bool(getattr(instance, flag, False)) if instance else False
+        if new_value and not current_value and not org.has_feature(feature_key):
+            errors[flag] = [
+                f"The '{feature_key}' module is not included in your "
+                f"current subscription plan. Please upgrade to enable it."
+            ]
+
+    # 2) Validate operating_mode transitions.
+    new_mode = attrs.get("operating_mode")
+    if new_mode:
+        current_mode = getattr(instance, "operating_mode", None) if instance else None
+        if str(new_mode) != str(current_mode or ""):
+            required = Facility.OPERATING_MODE_REQUIRED_FEATURES.get(str(new_mode), ())
+            missing = [k for k in required if not org.has_feature(k)]
+            if missing:
+                errors["operating_mode"] = [
+                    f"Switching to '{new_mode}' requires features not "
+                    f"enabled on your plan: {', '.join(missing)}. "
+                    f"Please upgrade."
+                ]
+
+    if errors:
+        raise serializers.ValidationError(errors)
+
+
 class FacilityListSerializer(serializers.ModelSerializer):
     """
     Lightweight serializer for facility list views.
@@ -1173,6 +1234,11 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             return effective.url
         return None
 
+    def validate(self, attrs: dict) -> dict:
+        """Subscription tier gating for module flags and operating_mode."""
+        _validate_facility_tier(self, attrs, instance=self.instance)
+        return attrs
+
 
 class FacilityCreateSerializer(serializers.ModelSerializer):
     """
@@ -1259,6 +1325,10 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"ward": "Ward must belong to the selected sub-county."}
             )
+
+        # Subscription tier gating: reject modules / operating modes that
+        # are not included in the org's plan.
+        _validate_facility_tier(self, attrs, instance=None)
 
         return attrs
 

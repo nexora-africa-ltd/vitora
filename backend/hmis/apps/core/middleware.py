@@ -520,6 +520,13 @@ class SubscriptionFeatureGateMiddleware:
         "/api/procedures/": "theatre",
         "/api/moh-reports/": "dhis2_reporting",
         "/api/dhis2-configs/": "dhis2_reporting",
+        # Newer modules — backfilled to close tier-gating gaps.
+        "/api/triage/": "triage",
+        "/api/surveillance/": "surveillance",
+        "/api/immunizations/": "immunizations",
+        "/api/allied-health/": "allied_health",
+        "/api/quality/": "quality",
+        "/api/insurance/": "private_insurance",
     }
 
     def __init__(self, get_response):
