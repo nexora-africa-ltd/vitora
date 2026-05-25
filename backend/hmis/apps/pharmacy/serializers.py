@@ -393,6 +393,10 @@ class PrescriptionSerializer(serializers.ModelSerializer):
             "dispensing_type",
             "is_discharge_medication",
             "clinical_notes",
+            "is_walkin",
+            "walkin_customer_name",
+            "bill_patient",
+            "external_prescription_number",
             "is_valid",
             "is_valid_prescription",
             "is_fully_dispensed",
@@ -425,8 +429,10 @@ class PrescriptionSerializer(serializers.ModelSerializer):
         ]
 
     def get_patient_name(self, obj) -> str:
-        """Get patient full name."""
-        return f"{obj.patient.first_name} {obj.patient.last_name}"
+        """Get patient full name (falls back to walk-in customer name for standalone)."""
+        if obj.patient_id:
+            return f"{obj.patient.first_name} {obj.patient.last_name}"
+        return obj.walkin_customer_name or ""
 
     def get_prescriber_name(self, obj) -> str:
         """Get prescriber full name."""

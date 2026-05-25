@@ -86,6 +86,8 @@ const FacilityModulesSchema = z.object({
   blood_bank: z.boolean(),
   inventory: z.boolean().default(false),
   lis_standalone: z.boolean().default(false),
+  pharmacy_standalone: z.boolean().default(false),
+  imaging_standalone: z.boolean().default(false),
   triage: z.boolean().default(true),
   scheduling: z.boolean().default(true),
   surveillance: z.boolean().default(false),

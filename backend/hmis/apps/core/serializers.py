@@ -1112,6 +1112,8 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "has_blood_bank",
             "has_inventory",
             "has_lis_standalone",
+            "has_pharmacy_standalone",
+            "has_imaging_standalone",
             "has_triage",
             "has_scheduling",
             "has_surveillance",
@@ -1218,6 +1220,8 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
             "has_blood_bank",
             "has_inventory",
             "has_lis_standalone",
+            "has_pharmacy_standalone",
+            "has_imaging_standalone",
             "has_triage",
             "has_scheduling",
             "has_surveillance",
@@ -1274,6 +1278,8 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
             "has_blood_bank",
             "has_inventory",
             "has_lis_standalone",
+            "has_pharmacy_standalone",
+            "has_imaging_standalone",
         ]
         any_module_set = any(f in self.initial_data for f in module_fields)
 

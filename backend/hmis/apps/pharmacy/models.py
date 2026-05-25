@@ -642,7 +642,45 @@ class Prescription(HistoryMixin, FacilityScopedModel):
         help_text="IPD admission if prescribed during inpatient stay",
     )
     patient = models.ForeignKey(
-        "patients.Patient", on_delete=models.PROTECT, related_name="prescriptions"
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="prescriptions",
+        null=True,
+        blank=True,
+        help_text="Optional - null for standalone walk-in pharmacy prescriptions",
+    )
+
+    # Walk-in customer details (used when patient FK is null)
+    walkin_customer_name = models.CharField(
+        max_length=200, blank=True, help_text="Walk-in customer full name"
+    )
+    walkin_customer_id = models.CharField(
+        max_length=50, blank=True, help_text="Walk-in customer national ID or other identifier"
+    )
+    walkin_customer_phone = models.CharField(
+        max_length=20, blank=True, help_text="Walk-in customer phone number"
+    )
+    walkin_customer_dob = models.DateField(
+        null=True, blank=True, help_text="Walk-in customer date of birth"
+    )
+    walkin_customer_gender = models.CharField(
+        max_length=1,
+        blank=True,
+        choices=[("M", "Male"), ("F", "Female"), ("O", "Other")],
+        help_text="Walk-in customer gender",
+    )
+    is_walkin = models.BooleanField(
+        default=False,
+        help_text="True if this is a standalone/walk-in prescription without HMIS patient",
+    )
+    external_prescription_number = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Original prescription number from external prescriber",
+    )
+    bill_patient = models.BooleanField(
+        default=True,
+        help_text="Whether to auto-bill the patient. Defaults to False for standalone orders.",
     )
 
     # Prescriber

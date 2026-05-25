@@ -46,6 +46,8 @@ export interface FacilityDetail extends FacilityListItem {
   has_blood_bank: boolean;
   has_inventory: boolean;
   has_lis_standalone: boolean;
+  has_pharmacy_standalone: boolean;
+  has_imaging_standalone: boolean;
   has_triage: boolean;
   has_scheduling: boolean;
   has_surveillance: boolean;
@@ -112,6 +114,8 @@ export interface FacilityUpdateData {
   has_blood_bank?: boolean;
   has_inventory?: boolean;
   has_lis_standalone?: boolean;
+  has_pharmacy_standalone?: boolean;
+  has_imaging_standalone?: boolean;
   has_triage?: boolean;
   has_scheduling?: boolean;
   has_surveillance?: boolean;
@@ -151,6 +155,8 @@ export interface FacilityCreateData {
   has_blood_bank?: boolean;
   has_inventory?: boolean;
   has_lis_standalone?: boolean;
+  has_pharmacy_standalone?: boolean;
+  has_imaging_standalone?: boolean;
   has_triage?: boolean;
   has_scheduling?: boolean;
   has_surveillance?: boolean;

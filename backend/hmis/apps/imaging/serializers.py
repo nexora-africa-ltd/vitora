@@ -131,6 +131,9 @@ class ImagingOrderSerializer(serializers.ModelSerializer):
             "clinical_indication",
             "relevant_clinical_history",
             "status",
+            "is_walkin",
+            "walkin_patient_name",
+            "bill_patient",
             "scheduled_datetime",
             "scheduled_room",
             "accession_number",
@@ -145,7 +148,9 @@ class ImagingOrderSerializer(serializers.ModelSerializer):
         read_only_fields = ["order_number", "ordered_at", "ordered_by"]
 
     def get_patient_name(self, obj) -> str:
-        return f"{obj.patient.first_name} {obj.patient.last_name}"
+        if obj.patient_id:
+            return f"{obj.patient.first_name} {obj.patient.last_name}"
+        return obj.walkin_patient_name or ""
 
     def get_ordered_by_name(self, obj) -> str:
         return obj.ordered_by.get_full_name() or obj.ordered_by.username
