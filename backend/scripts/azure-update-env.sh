@@ -66,6 +66,7 @@ declare -A SECRETS=(
   ["metabase-api-key"]="${METABASE_API_KEY:-}"
   ["superset-admin-password"]="${SUPERSET_ADMIN_PASSWORD:-}"
   ["resend-api-key"]="${RESEND_API_KEY:-}"
+  ["slack-signup-webhook-url"]="${SLACK_SIGNUP_WEBHOOK_URL:-}"
   ["vapid-private-key"]="${VAPID_PRIVATE_KEY:-}"
   ["dhis2-username"]="${DHIS2_USERNAME:-}"
   ["dhis2-password"]="${DHIS2_PASSWORD:-}"
@@ -203,6 +204,7 @@ az containerapp update \
     "SUPERSET_ADMIN_USERNAME=${SUPERSET_ADMIN_USERNAME:-admin}" \
     "SUPERSET_ADMIN_PASSWORD=secretref:superset-admin-password" \
     "RESEND_API_KEY=secretref:resend-api-key" \
+    "SLACK_SIGNUP_WEBHOOK_URL=secretref:slack-signup-webhook-url" \
     "POWERSYNC_URL=${POWERSYNC_URL:-https://69d7e1b30e377e689729cf08.powersync.journeyapps.com}" \
     "POWERSYNC_JWT_KID=${POWERSYNC_JWT_KID:-vitora-hmis-1}" \
     "POWERSYNC_JWT_AUDIENCE=${POWERSYNC_JWT_AUDIENCE:-https://69d7e1b30e377e689729cf08.powersync.journeyapps.com}" \

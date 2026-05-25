@@ -143,6 +143,12 @@ export interface OrgSignupData {
   facility_sub_county: number;
   facility_level?: string;
   facility_ownership?: string;
+  facility_operating_mode?:
+    | 'FULL_HMIS'
+    | 'STANDALONE_LAB'
+    | 'STANDALONE_PHARMACY'
+    | 'STANDALONE_IMAGING'
+    | 'STANDALONE_DIAGNOSTIC';
 }
 
 export interface OrgSignupResponse {

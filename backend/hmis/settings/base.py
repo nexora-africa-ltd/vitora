@@ -732,6 +732,9 @@ RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 # Frontend URL for notification links
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3009")
 
+# Slack incoming webhook for signup notifications. When empty the service no-ops.
+SLACK_SIGNUP_WEBHOOK_URL = os.getenv("SLACK_SIGNUP_WEBHOOK_URL", "")
+
 # Setup wizard — set to True to enable the /setup first-run wizard.
 # Only works when no organizations exist in the database.
 SETUP_WIZARD_ENABLED = os.getenv("SETUP_WIZARD_ENABLED", "false").lower() in ("true", "1", "yes")

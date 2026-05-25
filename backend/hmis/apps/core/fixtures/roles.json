@@ -1050,6 +1050,30 @@
           "read": true,
           "update": true,
           "delete": true
+        },
+        "WalkInCustomer": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "WalkInImagingPatient": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "ExternalPrescriptionRequest": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "ExternalImagingOrderRequest": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
         }
       },
       "hierarchy_level": 0,
@@ -3326,6 +3350,18 @@
           "update": false,
           "delete": false,
           "approve_swap": false
+        },
+        "WalkInCustomer": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "ExternalPrescriptionRequest": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
         }
       },
       "hierarchy_level": 4,
@@ -3410,6 +3446,30 @@
           "delete": false
         },
         "InsurancePlan": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "WalkInCustomer": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "WalkInImagingPatient": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "ExternalPrescriptionRequest": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "ExternalImagingOrderRequest": {
           "create": false,
           "read": true,
           "update": false,
@@ -3743,6 +3803,18 @@
           "update": false,
           "delete": false,
           "approve_swap": false
+        },
+        "WalkInImagingPatient": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "ExternalImagingOrderRequest": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
         }
       },
       "hierarchy_level": 4,
@@ -3797,6 +3869,18 @@
           "delete": false
         },
         "DICOMStudy": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "WalkInImagingPatient": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "ExternalImagingOrderRequest": {
           "create": true,
           "read": true,
           "update": true,
@@ -3871,6 +3955,18 @@
           "read": true,
           "update": false,
           "delete": false
+        },
+        "WalkInImagingPatient": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "ExternalImagingOrderRequest": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
         }
       },
       "hierarchy_level": 2,
@@ -3919,6 +4015,18 @@
           "delete": false
         },
         "ImagingProcedure": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "WalkInImagingPatient": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "ExternalImagingOrderRequest": {
           "create": false,
           "read": true,
           "update": false,
@@ -3981,6 +4089,18 @@
           "read": true,
           "update": true,
           "delete": false
+        },
+        "WalkInImagingPatient": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "ExternalImagingOrderRequest": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
         }
       },
       "hierarchy_level": 4,
@@ -4039,6 +4159,18 @@
           "read": true,
           "update": true,
           "delete": false
+        },
+        "WalkInImagingPatient": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "ExternalImagingOrderRequest": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
         }
       },
       "hierarchy_level": 4,
@@ -4093,6 +4225,18 @@
           "delete": false
         },
         "DICOMStudy": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "WalkInImagingPatient": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "ExternalImagingOrderRequest": {
           "create": true,
           "read": true,
           "update": true,
@@ -4655,6 +4799,18 @@
           "update": false,
           "delete": false,
           "approve_swap": false
+        },
+        "WalkInCustomer": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "ExternalPrescriptionRequest": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
         }
       },
       "hierarchy_level": 5,
@@ -6184,6 +6340,42 @@
           "read": true,
           "update": true,
           "delete": false
+        },
+        "WalkInPatient": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "WalkInCustomer": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "WalkInImagingPatient": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "ExternalOrderRequest": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "ExternalPrescriptionRequest": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "ExternalImagingOrderRequest": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
         }
       },
       "hierarchy_level": 0,

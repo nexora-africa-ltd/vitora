@@ -66,7 +66,7 @@ const FACILITY_OWNERSHIP: Array<{ value: FacilityOwnership; label: string }> = [
 
 const MODULE_FIELDS: Array<{
   key: keyof FacilityModules;
-  field: keyof FacilityUpdateData;
+  field: keyof FacilityFormState;
   title: string;
   description: string;
 }> = [
