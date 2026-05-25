@@ -29,7 +29,8 @@ export type GrowthIndicator =
   | 'height_for_age'
   | 'weight_for_height'
   | 'head_circumference_for_age'
-  | 'bmi_for_age';
+  | 'bmi_for_age'
+  | 'muac_for_age';
 
 export type Sex = 'M' | 'F';
 
@@ -70,6 +71,12 @@ export function getLMSData(
   sex: Sex,
   ageRange: AgeRange = '0_5',
 ): LMSDataPoint[] | LMSLengthDataPoint[] {
+  // MUAC has no WHO LMS table in our bundle — it uses absolute cutoffs
+  // (SAM < 11.5cm, MAM 11.5–12.4cm, Normal ≥ 12.5cm).
+  if (indicator === 'muac_for_age') {
+    return [];
+  }
+
   // Weight-for-height is not age-based, return as-is
   if (indicator === 'weight_for_height') {
     return sex === 'M'
@@ -214,7 +221,9 @@ export function generatePercentileLines(
   sex: Sex,
   ageRange: AgeRange = '0_5',
 ): Record<string, { x: number; y: number }[]> {
-  const data = getLMSData(indicator, sex, ageRange) as LMSDataPoint[];
+  const data = getLMSData(indicator, sex, ageRange) as Array<
+    LMSDataPoint | LMSLengthDataPoint
+  >;
   const lines: Record<string, { x: number; y: number }[]> = {};
 
   const zLabels: Record<number, string> = {
@@ -227,15 +236,28 @@ export function generatePercentileLines(
     3: 'z_pos3',
   };
 
+  // Extract the appropriate x value: age_days for age-based indicators,
+  // length_cm / height_cm for weight_for_height.
+  const getX = (point: LMSDataPoint | LMSLengthDataPoint): number | null => {
+    if ('age_days' in point) return point.age_days;
+    if ('length_cm' in point && point.length_cm != null) return point.length_cm;
+    if ('height_cm' in point && point.height_cm != null) return point.height_cm;
+    return null;
+  };
+
   for (const z of Z_SCORE_LINES) {
     const key = zLabels[z]!;
     lines[key] = [];
 
     for (const point of data) {
-      if (!('age_days' in point)) continue;
+      const x = getX(point);
+      if (x == null) continue;
       const y = measurementFromZ(z, point.L, point.M, point.S);
-      lines[key]!.push({ x: point.age_days, y: Math.round(y * 100) / 100 });
+      lines[key]!.push({ x, y: Math.round(y * 100) / 100 });
     }
+
+    // Sort ascending so Recharts draws a clean line
+    lines[key]!.sort((a, b) => a.x - b.x);
   }
 
   return lines;
@@ -260,6 +282,8 @@ export function getIndicatorMeta(indicator: GrowthIndicator): {
       return { label: 'Head Circumference-for-Age', yAxisLabel: 'HC (cm)', xAxisLabel: 'Age (months)' };
     case 'bmi_for_age':
       return { label: 'BMI-for-Age', yAxisLabel: 'BMI (kg/m²)', xAxisLabel: 'Age (months)' };
+    case 'muac_for_age':
+      return { label: 'MUAC-for-Age', yAxisLabel: 'MUAC (cm)', xAxisLabel: 'Age (months)' };
   }
 }
 
