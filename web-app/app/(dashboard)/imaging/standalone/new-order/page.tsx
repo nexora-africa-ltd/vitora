@@ -18,6 +18,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/shared/page-header';
+import { CatalogCombobox } from '@/components/shared/catalog-combobox';
+import {
+  StandalonePatientPicker,
+  type PickedPatient,
+} from '@/components/shared/standalone-patient-picker';
 import { standaloneImagingApi } from '@/lib/api/standalone-imaging';
 import { imagingApi } from '@/lib/api/imaging';
 import type {
@@ -28,6 +33,7 @@ import { toast } from 'sonner';
 
 export default function NewStandaloneImagingOrderPage() {
   const router = useRouter();
+  const [picker, setPicker] = useState<PickedPatient>({ mode: 'inline' });
   const [formData, setFormData] = useState({
     walkin_name: '',
     walkin_phone: '',
@@ -83,10 +89,6 @@ export default function NewStandaloneImagingOrderPage() {
     }
 
     const data: StandaloneImagingOrderCreateData = {
-      walkin_name: formData.walkin_name,
-      walkin_phone: formData.walkin_phone,
-      walkin_national_id: formData.walkin_national_id,
-      walkin_gender: formData.walkin_gender || undefined,
       priority: formData.priority,
       clinical_indication: formData.clinical_indication,
       relevant_clinical_history:
@@ -94,11 +96,26 @@ export default function NewStandaloneImagingOrderPage() {
       items: validItems,
     };
 
+    if (picker.mode === 'walkin') {
+      data.walkin_patient_id = picker.walkin.id;
+    } else if (picker.mode === 'patient') {
+      data.patient_id = picker.patient.id;
+    } else {
+      if (!formData.walkin_name.trim()) {
+        toast.error('Patient name is required');
+        return;
+      }
+      data.walkin_name = formData.walkin_name;
+      data.walkin_phone = formData.walkin_phone;
+      data.walkin_national_id = formData.walkin_national_id;
+      data.walkin_gender = formData.walkin_gender || undefined;
+    }
+
     createMutation.mutate(data);
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-2xl">
+    <div className="space-y-4 sm:space-y-6 max-w-2xl mx-auto">
       <PageHeader
         title="New Standalone Imaging Order"
         helpContent="Create an imaging order without requiring a clinical encounter — for walk-in patients or external referrals."
@@ -111,65 +128,75 @@ export default function NewStandaloneImagingOrderPage() {
             <CardTitle className="text-base">Patient Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="walkin_name">Full Name *</Label>
-                <Input
-                  id="walkin_name"
-                  required
-                  value={formData.walkin_name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, walkin_name: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="walkin_phone">Phone</Label>
-                <Input
-                  id="walkin_phone"
-                  value={formData.walkin_phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, walkin_phone: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="walkin_national_id">National ID</Label>
-                <Input
-                  id="walkin_national_id"
-                  value={formData.walkin_national_id}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      walkin_national_id: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="walkin_gender">Gender</Label>
-                <Select
-                  value={formData.walkin_gender}
-                  onValueChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      walkin_gender: v as 'M' | 'F' | 'O',
-                    })
-                  }
-                >
-                  <SelectTrigger id="walkin_gender">
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="M">Male</SelectItem>
-                    <SelectItem value="F">Female</SelectItem>
-                    <SelectItem value="O">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            <StandalonePatientPicker
+              value={picker}
+              onChange={setPicker}
+              searchWalkIn={(q) => standaloneImagingApi.listWalkInPatients({ search: q })}
+              walkInNoun="patient"
+            />
+            {picker.mode === 'inline' && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="walkin_name">Full Name *</Label>
+                    <Input
+                      id="walkin_name"
+                      required
+                      value={formData.walkin_name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, walkin_name: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="walkin_phone">Phone</Label>
+                    <Input
+                      id="walkin_phone"
+                      value={formData.walkin_phone}
+                      onChange={(e) =>
+                        setFormData({ ...formData, walkin_phone: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="walkin_national_id">National ID</Label>
+                    <Input
+                      id="walkin_national_id"
+                      value={formData.walkin_national_id}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          walkin_national_id: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="walkin_gender">Gender</Label>
+                    <Select
+                      value={formData.walkin_gender}
+                      onValueChange={(v) =>
+                        setFormData({
+                          ...formData,
+                          walkin_gender: v as 'M' | 'F' | 'O',
+                        })
+                      }
+                    >
+                      <SelectTrigger id="walkin_gender">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="M">Male</SelectItem>
+                        <SelectItem value="F">Female</SelectItem>
+                        <SelectItem value="O">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -255,23 +282,19 @@ export default function NewStandaloneImagingOrderPage() {
                 className="space-y-2 p-3 rounded-lg border bg-muted/30"
               >
                 <div className="flex items-center gap-2">
-                  <Select
-                    value={item.procedure_code}
-                    onValueChange={(v) =>
-                      updateItem(index, 'procedure_code', v)
-                    }
-                  >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select procedure..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {procedureCatalog?.results?.map((proc) => (
-                        <SelectItem key={proc.code} value={proc.code}>
-                          {proc.name} ({proc.modality} · {proc.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex-1">
+                    <CatalogCombobox
+                      type="procedure"
+                      value={item.procedure_code}
+                      onValueChange={(v) => updateItem(index, 'procedure_code', v)}
+                      options={(procedureCatalog?.results ?? []).map((proc) => ({
+                        code: proc.code,
+                        label: proc.name,
+                        description: `(${proc.modality} · ${proc.code})`,
+                      }))}
+                      placeholder="Select procedure..."
+                    />
+                  </div>
                   {items.length > 1 && (
                     <Button
                       type="button"

@@ -18,6 +18,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/shared/page-header';
+import { CatalogCombobox } from '@/components/shared/catalog-combobox';
+import {
+  StandalonePatientPicker,
+  type PickedPatient,
+} from '@/components/shared/standalone-patient-picker';
 import { standalonePharmacyApi } from '@/lib/api/standalone-pharmacy';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 import type {
@@ -28,6 +33,7 @@ import { toast } from 'sonner';
 
 export default function NewStandalonePrescriptionPage() {
   const router = useRouter();
+  const [picker, setPicker] = useState<PickedPatient>({ mode: 'inline' });
   const [formData, setFormData] = useState({
     walkin_name: '',
     walkin_phone: '',
@@ -85,10 +91,6 @@ export default function NewStandalonePrescriptionPage() {
     }
 
     const data: StandalonePrescriptionCreateData = {
-      walkin_name: formData.walkin_name,
-      walkin_phone: formData.walkin_phone,
-      walkin_national_id: formData.walkin_national_id,
-      walkin_gender: formData.walkin_gender || undefined,
       prescriber_name: formData.prescriber_name || undefined,
       prescriber_license: formData.prescriber_license || undefined,
       external_prescription_number:
@@ -97,11 +99,26 @@ export default function NewStandalonePrescriptionPage() {
       items: validItems,
     };
 
+    if (picker.mode === 'walkin') {
+      data.walkin_customer_id = picker.walkin.id;
+    } else if (picker.mode === 'patient') {
+      data.patient_id = picker.patient.id;
+    } else {
+      if (!formData.walkin_name.trim()) {
+        toast.error('Patient name is required');
+        return;
+      }
+      data.walkin_name = formData.walkin_name;
+      data.walkin_phone = formData.walkin_phone;
+      data.walkin_national_id = formData.walkin_national_id;
+      data.walkin_gender = formData.walkin_gender || undefined;
+    }
+
     createMutation.mutate(data);
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-2xl">
+    <div className="space-y-4 sm:space-y-6 max-w-2xl mx-auto">
       <PageHeader
         title="New Standalone Prescription"
         helpContent="Create a prescription without a clinical encounter — for walk-in customers or external referrals."
@@ -114,65 +131,75 @@ export default function NewStandalonePrescriptionPage() {
             <CardTitle className="text-base">Patient Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="walkin_name">Full Name *</Label>
-                <Input
-                  id="walkin_name"
-                  required
-                  value={formData.walkin_name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, walkin_name: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="walkin_phone">Phone</Label>
-                <Input
-                  id="walkin_phone"
-                  value={formData.walkin_phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, walkin_phone: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="walkin_national_id">National ID</Label>
-                <Input
-                  id="walkin_national_id"
-                  value={formData.walkin_national_id}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      walkin_national_id: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="walkin_gender">Gender</Label>
-                <Select
-                  value={formData.walkin_gender}
-                  onValueChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      walkin_gender: v as 'M' | 'F' | 'O',
-                    })
-                  }
-                >
-                  <SelectTrigger id="walkin_gender">
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="M">Male</SelectItem>
-                    <SelectItem value="F">Female</SelectItem>
-                    <SelectItem value="O">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            <StandalonePatientPicker
+              value={picker}
+              onChange={setPicker}
+              searchWalkIn={(q) => standalonePharmacyApi.listWalkInCustomers({ search: q })}
+              walkInNoun="customer"
+            />
+            {picker.mode === 'inline' && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="walkin_name">Full Name *</Label>
+                    <Input
+                      id="walkin_name"
+                      required
+                      value={formData.walkin_name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, walkin_name: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="walkin_phone">Phone</Label>
+                    <Input
+                      id="walkin_phone"
+                      value={formData.walkin_phone}
+                      onChange={(e) =>
+                        setFormData({ ...formData, walkin_phone: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="walkin_national_id">National ID</Label>
+                    <Input
+                      id="walkin_national_id"
+                      value={formData.walkin_national_id}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          walkin_national_id: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="walkin_gender">Gender</Label>
+                    <Select
+                      value={formData.walkin_gender}
+                      onValueChange={(v) =>
+                        setFormData({
+                          ...formData,
+                          walkin_gender: v as 'M' | 'F' | 'O',
+                        })
+                      }
+                    >
+                      <SelectTrigger id="walkin_gender">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="M">Male</SelectItem>
+                        <SelectItem value="F">Female</SelectItem>
+                        <SelectItem value="O">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -256,21 +283,19 @@ export default function NewStandalonePrescriptionPage() {
                 className="space-y-2 p-3 rounded-lg border bg-muted/30"
               >
                 <div className="flex items-center gap-2">
-                  <Select
-                    value={item.drug_code || ''}
-                    onValueChange={(v) => updateItem(index, 'drug_code', v)}
-                  >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select drug..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {drugCatalog?.results?.map((drug) => (
-                        <SelectItem key={drug.code} value={drug.code}>
-                          {drug.generic_name} ({drug.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex-1">
+                    <CatalogCombobox
+                      type="drug"
+                      value={item.drug_code || ''}
+                      onValueChange={(v) => updateItem(index, 'drug_code', v)}
+                      options={(drugCatalog?.results ?? []).map((drug) => ({
+                        code: drug.code,
+                        label: drug.generic_name,
+                        description: `(${drug.code})`,
+                      }))}
+                      placeholder="Select drug..."
+                    />
+                  </div>
                   {items.length > 1 && (
                     <Button
                       type="button"
