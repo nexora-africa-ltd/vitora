@@ -2174,10 +2174,13 @@ class FacilityViewSet(viewsets.ModelViewSet):
         Set permissions based on action.
 
         List and retrieve are available to any authenticated user.
-        Write operations require admin privileges.
+        Write operations require facility-admin privileges (Nexora staff
+        or tenant ADMIN/ORG-ADMIN/OWNER roles).
         """
+        from hmis.apps.core.permissions import FacilityAdminPermission
+
         if self.action in ["create", "update", "partial_update", "destroy"]:
-            permission_classes = [IsAdminUser]
+            permission_classes = [IsAuthenticated, FacilityAdminPermission]
         else:
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]

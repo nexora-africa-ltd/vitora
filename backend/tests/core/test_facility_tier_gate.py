@@ -325,3 +325,183 @@ class TestTierGatingDisabled:
             format="json",
         )
         assert response.status_code == status.HTTP_200_OK
+
+
+# ============================================================================
+# Output filtering: hide non-plan modules from GET responses
+# ============================================================================
+
+
+@pytest.mark.usefixtures("_enforce_tier")
+class TestFacilityOutputModuleHiding:
+    """GET /api/facilities/{id}/ must hide modules not on the org's plan."""
+
+    def test_free_plan_get_hides_unavailable_has_flags(self, free_admin_client, free_facility):
+        response = free_admin_client.get(f"/api/facilities/{free_facility.id}/")
+        assert response.status_code == status.HTTP_200_OK
+        data = response.data
+        # FREE plan covers outpatient, pharmacy, billing, triage, scheduling.
+        assert "has_outpatient" in data
+        assert "has_triage" in data
+        assert "has_billing" in data
+        # FREE plan does NOT cover these — must be stripped from output.
+        for flag in [
+            "has_laboratory",
+            "has_imaging",
+            "has_inpatient",
+            "has_lis_standalone",
+            "has_pharmacy_standalone",
+            "has_imaging_standalone",
+            "has_private_insurance",
+            "has_allied_health",
+            "has_quality",
+            "has_immunizations",
+            "has_surveillance",
+        ]:
+            assert flag not in data, f"{flag} leaked into response on FREE plan"
+
+    def test_free_plan_get_filters_modules_dict(self, free_admin_client, free_facility):
+        response = free_admin_client.get(f"/api/facilities/{free_facility.id}/")
+        modules = response.data["modules"]
+        assert "outpatient" in modules
+        assert "triage" in modules
+        assert "laboratory" not in modules
+        assert "imaging" not in modules
+        assert "private_insurance" not in modules
+
+    def test_free_plan_get_filters_enabled_module_names(self, free_admin_client, free_facility):
+        # Enable a baseline module and verify it shows up; lab would be denied.
+        free_facility.has_outpatient = True
+        free_facility.save(update_fields=["has_outpatient"])
+        response = free_admin_client.get(f"/api/facilities/{free_facility.id}/")
+        names = response.data["enabled_module_names"]
+        assert "outpatient" in names
+        assert "laboratory" not in names
+
+    def test_enterprise_plan_get_shows_everything(
+        self, enterprise_admin_client, enterprise_facility
+    ):
+        response = enterprise_admin_client.get(f"/api/facilities/{enterprise_facility.id}/")
+        data = response.data
+        for flag in Facility.MODULE_FLAG_TO_FEATURE:
+            assert flag in data, f"{flag} missing on enterprise plan"
+
+
+# ============================================================================
+# FacilityAdminPermission: open writes to tenant ADMIN/ORG-ADMIN/OWNER
+# ============================================================================
+
+
+@pytest.fixture
+def org_admin_role(db):
+    from hmis.apps.core.models import Role
+
+    role, _ = Role.objects.get_or_create(
+        code="ORG-ADMIN",
+        defaults={"name": "Org Admin", "hierarchy_level": 9, "is_active": True},
+    )
+    return role
+
+
+@pytest.fixture
+def doctor_role(db):
+    from hmis.apps.core.models import Role
+
+    role, _ = Role.objects.get_or_create(
+        code="DOCTOR",
+        defaults={"name": "Doctor", "hierarchy_level": 5, "is_active": True},
+    )
+    return role
+
+
+def _make_tenant_client(api_client, org, facility, role, username):
+    from django.contrib.auth import get_user_model
+
+    from tests.conftest import ensure_staff_profile
+
+    User = get_user_model()
+    user = User.objects.create_user(
+        username=username,
+        email=f"{username}@test.com",
+        password="testpass123",
+        is_staff=False,
+    )
+    profile = ensure_staff_profile(user, org, facility)
+    profile.primary_role = role
+    profile.save(update_fields=["primary_role"])
+    api_client.force_authenticate(user=user)
+    return api_client
+
+
+class TestFacilityAdminPermission:
+    """Writes must accept tenant ADMIN/ORG-ADMIN/OWNER but reject clinical roles."""
+
+    def test_tenant_org_admin_can_patch_facility(
+        self, api_client, org_on_enterprise, enterprise_facility, org_admin_role
+    ):
+        client = _make_tenant_client(
+            api_client, org_on_enterprise, enterprise_facility, org_admin_role, "tenant_oa"
+        )
+        response = client.patch(
+            f"/api/facilities/{enterprise_facility.id}/",
+            {"name": "Renamed by Org Admin"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        enterprise_facility.refresh_from_db()
+        assert enterprise_facility.name == "Renamed by Org Admin"
+
+    def test_tenant_doctor_cannot_patch_facility(
+        self, api_client, org_on_enterprise, enterprise_facility, doctor_role
+    ):
+        client = _make_tenant_client(
+            api_client, org_on_enterprise, enterprise_facility, doctor_role, "tenant_doc"
+        )
+        response = client.patch(
+            f"/api/facilities/{enterprise_facility.id}/",
+            {"name": "Should Fail"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_tenant_org_admin_cannot_patch_other_org_facility(
+        self,
+        api_client,
+        org_on_enterprise,
+        enterprise_facility,
+        org_admin_role,
+        db,
+        sample_county,
+        sample_sub_county,
+    ):
+        """Cross-tenant write must be blocked by has_object_permission."""
+        from hmis.apps.core.models import Facility, Organization
+
+        other_org = Organization.objects.create(
+            name="Other Org",
+            slug="other-org",
+            contact_email="other@x.com",
+            is_active=True,
+            is_verified=True,
+        )
+        other_fac = Facility.objects.create(
+            organization=other_org,
+            name="Other Org Facility",
+            mfl_code="40003",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+        )
+        client = _make_tenant_client(
+            api_client, org_on_enterprise, enterprise_facility, org_admin_role, "tenant_oa2"
+        )
+        response = client.patch(
+            f"/api/facilities/{other_fac.id}/",
+            {"name": "Should Fail Cross-Tenant"},
+            format="json",
+        )
+        # Tenant queryset scoping returns 404 (not in qs); either is acceptable.
+        assert response.status_code in (
+            status.HTTP_403_FORBIDDEN,
+            status.HTTP_404_NOT_FOUND,
+        )

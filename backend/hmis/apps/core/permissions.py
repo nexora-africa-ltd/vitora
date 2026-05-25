@@ -138,6 +138,50 @@ class IsAdminUser(permissions.BasePermission):
         return request.user and request.user.is_authenticated and request.user.is_staff
 
 
+class FacilityAdminPermission(permissions.BasePermission):
+    """
+    Permission for facility CRUD operations.
+
+    Read access is granted to any authenticated user (frontend needs to
+    list facilities for tenant selectors).  Write access is allowed for:
+
+    * Nexora platform staff (``is_superuser`` / ``is_staff``); and
+    * Tenant admin roles whose ``primary_role.code`` is one of
+      ``ADMIN``, ``ORG-ADMIN``, ``OWNER``.
+
+    Object-level checks additionally constrain non-superuser writes to
+    facilities within the user's own organization, defence-in-depth on
+    top of the tenant queryset scoping in ``FacilityViewSet.get_queryset``.
+    """
+
+    ADMIN_ROLE_CODES = {"ADMIN", "ORG-ADMIN", "OWNER"}
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if user.is_superuser or user.is_staff:
+            return True
+        profile = getattr(user, "staff_profile", None)
+        role = getattr(profile, "primary_role", None) if profile else None
+        if role and getattr(role, "code", "") in self.ADMIN_ROLE_CODES:
+            return True
+        return False
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        user = request.user
+        if user.is_superuser or user.is_staff:
+            return True
+        profile = getattr(user, "staff_profile", None)
+        if profile and getattr(obj, "organization_id", None) == profile.organization_id:
+            return True
+        return False
+
+
 class AuditLogPermission(permissions.BasePermission):
     """
     Permission class for audit log access.
