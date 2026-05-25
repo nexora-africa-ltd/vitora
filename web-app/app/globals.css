@@ -641,6 +641,38 @@
   .print-aefi-form .text-muted-foreground {
     color: #555 !important;
   }
+
+  /* ---- MCH Booklet print layout (A5 portrait) ---- */
+
+  /* When printing a booklet chart, hide everything else on the page
+     and force the chart to fill the A5 sheet. */
+  body:has(.mch-booklet-print) > *:not(:has(.mch-booklet-print)) {
+    display: none !important;
+  }
+
+  .mch-booklet-print {
+    page: mch-booklet;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  .mch-booklet-print * {
+    color: black !important;
+  }
+
+  .mch-booklet-print .recharts-tooltip-wrapper {
+    display: none !important;
+  }
+}
+
+/* Named landscape page for the MCH booklet — must live outside @media print
+   so the @page rule is registered globally. */
+@page mch-booklet {
+  size: A4 landscape;
+  margin: 10mm;
 }
 
 /* Critical alert animation */
