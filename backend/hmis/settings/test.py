@@ -70,6 +70,9 @@ EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 # regardless of what's in the environment.
 RESEND_API_KEY = ""
 
+# CRITICAL: Disable Slack so tests never hit the real webhook.
+SLACK_SIGNUP_WEBHOOK_URL = ""
+
 # CRITICAL: Disable Africa's Talking SMS so tests never send real messages.
 SMS_ENABLED = False
 AT_USERNAME = ""

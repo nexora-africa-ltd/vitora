@@ -50,6 +50,34 @@ const OWNERSHIP_TYPES = [
   { value: 'PRIVATE', label: 'Private Practice' },
 ];
 
+const OPERATING_MODES: { value: string; label: string; description: string }[] = [
+  {
+    value: 'FULL_HMIS',
+    label: 'Full HMIS (hospital / clinic)',
+    description: 'Complete clinical workflow: OPD, inpatient, pharmacy, lab, imaging, billing.',
+  },
+  {
+    value: 'STANDALONE_LAB',
+    label: 'Standalone Lab',
+    description: 'Laboratory only — walk-ins, external orders, results. No clinical workflow.',
+  },
+  {
+    value: 'STANDALONE_PHARMACY',
+    label: 'Standalone Pharmacy',
+    description: 'Retail / walk-in pharmacy. External prescription intake, OTC sales, billing.',
+  },
+  {
+    value: 'STANDALONE_IMAGING',
+    label: 'Standalone Imaging / Radiology Centre',
+    description: 'Diagnostic imaging only — walk-ins, external referrals, reporting.',
+  },
+  {
+    value: 'STANDALONE_DIAGNOSTIC',
+    label: 'Standalone Diagnostic Centre (Lab + Imaging)',
+    description: 'Combined lab and imaging diagnostics, no clinical inpatient workflow.',
+  },
+];
+
 interface LocationOption {
   id: number;
   name: string;
@@ -87,6 +115,7 @@ export default function SignupPage() {
     facility_sub_county: '',
     facility_level: '3',
     facility_ownership: 'PRIVATE',
+    facility_operating_mode: 'FULL_HMIS',
   });
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
@@ -184,6 +213,13 @@ export default function SignupPage() {
         ...formData,
         facility_county: Number(formData.facility_county),
         facility_sub_county: Number(formData.facility_sub_county),
+        facility_operating_mode:
+          formData.facility_operating_mode as
+            | 'FULL_HMIS'
+            | 'STANDALONE_LAB'
+            | 'STANDALONE_PHARMACY'
+            | 'STANDALONE_IMAGING'
+            | 'STANDALONE_DIAGNOSTIC',
       });
       setSubmittedEmail(formData.admin_email);
       setSubmittedUsername(result.username);
@@ -439,6 +475,33 @@ export default function SignupPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+
+                  {/* Operating mode */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="facility_operating_mode" className="flex items-center gap-1 text-sm font-medium">
+                      What does this facility do?
+                      <HelpPopover content="Standalone modes disable clinical workflow (inpatient, ER, triage) and enable only the chosen module + billing + inventory. You can change this later from facility settings." />
+                    </label>
+                    <Select
+                      value={formData.facility_operating_mode}
+                      onValueChange={(v) => handleChange('facility_operating_mode', v)}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger id="facility_operating_mode" className="h-10">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {OPERATING_MODES.map((m) => (
+                          <SelectItem key={m.value} value={m.value}>
+                            {m.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {OPERATING_MODES.find((m) => m.value === formData.facility_operating_mode)?.description}
+                    </p>
                   </div>
                 </fieldset>
 

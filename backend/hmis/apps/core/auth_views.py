@@ -878,6 +878,7 @@ def org_signup(request):
             mfl_code=data["facility_mfl_code"],
             level=data.get("facility_level", Facility.FacilityLevel.LEVEL_3),
             ownership=data.get("facility_ownership", Facility.OwnershipType.PRIVATE),
+            operating_mode=data.get("facility_operating_mode", Facility.OperatingMode.FULL_HMIS),
             county=data["facility_county"],
             sub_county=data["facility_sub_county"],
             is_active=False,  # activated when org is activated
@@ -921,6 +922,18 @@ def org_signup(request):
         token=str(token.token),
         org_name=data["org_name"],
         admin_name=admin_name,
+    )
+
+    # 6a. Fire Slack notification so the Vitora team knows a signup landed.
+    from hmis.apps.core.services.slack_service import send_signup_received
+
+    send_signup_received(
+        org_name=data["org_name"],
+        admin_name=admin_name,
+        admin_email=data["admin_email"],
+        facility_name=data["facility_name"],
+        facility_mfl_code=data["facility_mfl_code"],
+        operating_mode=str(facility.operating_mode),
     )
 
     AuditLog.log(
@@ -1038,6 +1051,18 @@ def verify_email(request):
         admin_name=token.user.get_full_name() or token.user.username,
         facility_name=initial_facility.name if initial_facility else "",
         facility_mfl_code=initial_facility.mfl_code if initial_facility else "",
+    )
+
+    # Slack: notify the team that the signup is verified and ready for activation.
+    from hmis.apps.core.services.slack_service import send_signup_verified
+
+    send_signup_verified(
+        org_name=token.organization.name,
+        admin_name=token.user.get_full_name() or token.user.username,
+        admin_email=token.user.email,
+        facility_name=initial_facility.name if initial_facility else "",
+        facility_mfl_code=initial_facility.mfl_code if initial_facility else "",
+        operating_mode=str(initial_facility.operating_mode) if initial_facility else "",
     )
 
     # Let the user know their org is under review.

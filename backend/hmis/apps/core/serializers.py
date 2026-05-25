@@ -1920,6 +1920,11 @@ class OrgSignupSerializer(serializers.Serializer):
         required=False,
         default=Facility.OwnershipType.PRIVATE,
     )
+    facility_operating_mode = serializers.ChoiceField(
+        choices=Facility.OperatingMode.choices,
+        required=False,
+        default=Facility.OperatingMode.FULL_HMIS,
+    )
 
     def validate_org_name(self, value):
         """Ensure org name is unique."""
