@@ -102,6 +102,75 @@ class WalkInPatient(FacilityScopedModel, TimeStampedModel):
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
 
+    def promote_to_patient(self, user, county_id=None, sub_county_id=None, ward_id=None, **extra):
+        """
+        Promote this walk-in record to a full HMIS ``Patient``.
+
+        Idempotent: if ``linked_patient`` is already set, returns the
+        existing patient without creating a duplicate.
+
+        Args:
+            user: The acting user (set as ``registered_by`` on the new
+                Patient and used for audit purposes).
+            county_id, sub_county_id, ward_id: Kenya location FKs (county
+            and sub_county are optional on Patient but recommended).
+            **extra: Additional Patient field overrides (e.g. ``date_of_birth``,
+            ``identification_type``, ``email``, ``phone_number``).
+
+        Returns:
+            The linked ``Patient`` instance.
+        """
+        if self.linked_patient_id:
+            return self.linked_patient
+
+        from hmis.apps.patients.models import Patient
+
+        # Map id_type → Patient.identification_type choices (lowercase enum).
+        id_type_map = {
+            "NATIONAL_ID": "national_id",
+            "PASSPORT": "passport",
+            "BIRTH_CERT": "birth_certificate",
+            "MILITARY_ID": "military_id",
+            "OTHER": "other",
+        }
+        identification_type = extra.pop(
+            "identification_type",
+            id_type_map.get(self.id_type, "national_id"),
+        )
+
+        patient_kwargs = {
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "date_of_birth": self.date_of_birth,
+            "gender": self.gender or "O",
+            "identification_type": identification_type,
+            "registered_by": user,
+            "organization": self.organization,
+            "facility": self.facility,
+        }
+        if county_id:
+            patient_kwargs["county_id"] = county_id
+        if sub_county_id:
+            patient_kwargs["sub_county_id"] = sub_county_id
+        if ward_id:
+            patient_kwargs["ward_id"] = ward_id
+        patient_kwargs.update(extra)
+
+        patient = Patient.objects.create(**patient_kwargs)
+
+        # Copy encrypted PII via descriptor (transparent encrypt-on-write).
+        if self.national_id:
+            patient.identification_number = self.national_id
+        if self.phone_number:
+            patient.phone_number = self.phone_number
+        if self.email:
+            patient.email = self.email
+        patient.save()
+
+        self.linked_patient = patient
+        self.save(update_fields=["linked_patient", "updated_at"])
+        return patient
+
     def save(self, *args, **kwargs):
         if not self.registration_number:
             self.registration_number = self._generate_registration_number()

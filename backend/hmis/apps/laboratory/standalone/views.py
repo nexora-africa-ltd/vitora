@@ -83,6 +83,51 @@ class WalkInPatientViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mo
         serializer = WalkInPatientSerializer(walkin)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["post"], url_path="promote")
+    def promote(self, request, pk=None):
+        """
+        Promote a walk-in patient into a full HMIS ``Patient`` record.
+
+        Optional request payload:
+            county: int, sub_county: int, ward: int, date_of_birth: ISO date,
+            identification_type: str, plus any other ``Patient`` field overrides.
+
+        Idempotent — returns the existing linked patient if already promoted.
+        """
+        walkin = self.get_object()
+        data = request.data or {}
+
+        try:
+            patient = walkin.promote_to_patient(
+                user=request.user,
+                county_id=data.get("county"),
+                sub_county_id=data.get("sub_county"),
+                ward_id=data.get("ward"),
+                **{
+                    k: v
+                    for k, v in data.items()
+                    if k
+                    in {
+                        "date_of_birth",
+                        "identification_type",
+                        "title",
+                        "middle_name",
+                        "phone_number",
+                        "email",
+                        "village",
+                    }
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Walk-in promotion failed for id=%s", walkin.pk)
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = WalkInPatientSerializer(walkin)
+        return Response(
+            {"walkin": serializer.data, "patient_id": patient.pk, "mrn": patient.mrn},
+            status=status.HTTP_200_OK,
+        )
+
 
 class StandaloneOrderViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
     """

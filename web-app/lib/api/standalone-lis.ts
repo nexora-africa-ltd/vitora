@@ -59,6 +59,28 @@ export const standaloneLisApi = {
     });
   },
 
+  async promoteWalkInToPatient(
+    walkInId: number,
+    data?: {
+      county?: number;
+      sub_county?: number;
+      ward?: number;
+      date_of_birth?: string;
+      identification_type?: string;
+      title?: string;
+      middle_name?: string;
+      phone_number?: string;
+      email?: string;
+      village?: string;
+    }
+  ): Promise<{ walkin: WalkInPatient; patient_id: number; mrn: string }> {
+    const response = await apiClient.post(
+      `${BASE}/walkin-patients/${walkInId}/promote/`,
+      data ?? {}
+    );
+    return response.data;
+  },
+
   // Standalone Orders
   async createStandaloneOrder(data: StandaloneOrderCreateData): Promise<LabOrder> {
     const response = await apiClient.post(`${BASE}/orders/create/`, data);

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, User, Phone, CreditCard, LinkIcon } from 'lucide-react';
+import { Plus, Search, User, Phone, CreditCard, LinkIcon, UserPlus } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,6 +50,15 @@ export default function WalkInPatientsPage() {
       toast.success('Walk-in patient registered');
     },
     onError: () => toast.error('Failed to register patient'),
+  });
+
+  const promoteMutation = useMutation({
+    mutationFn: (id: number) => standaloneLisApi.promoteWalkInToPatient(id),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['walkin-patients'] });
+      toast.success(`Promoted to registered patient ${res.mrn}`);
+    },
+    onError: () => toast.error('Failed to promote walk-in patient'),
   });
 
   const columns = [
@@ -106,6 +115,21 @@ export default function WalkInPatientsPage() {
       sortType: 'date' as const,
       cell: (item: WalkInPatient) => new Date(item.created_at).toLocaleDateString(),
       hideOnMobile: true,
+    },
+    {
+      key: 'actions',
+      header: '',
+      cell: (item: WalkInPatient) =>
+        item.linked_patient ? null : (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={promoteMutation.isPending}
+            onClick={() => promoteMutation.mutate(item.id)}
+          >
+            <UserPlus className="h-3.5 w-3.5 mr-1" /> Promote
+          </Button>
+        ),
     },
   ];
 
