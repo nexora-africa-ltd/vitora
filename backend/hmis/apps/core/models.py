@@ -3338,6 +3338,14 @@ class Facility(TimeStampedModel):
         default=False,
         help_text="LIS standalone mode: lab operates independently without full HMIS.",
     )
+    has_pharmacy_standalone = models.BooleanField(
+        default=False,
+        help_text="Pharmacy standalone mode: pharmacy operates as a retail/walk-in dispensary without full HMIS.",
+    )
+    has_imaging_standalone = models.BooleanField(
+        default=False,
+        help_text="Imaging standalone mode: imaging operates independently (e.g., diagnostic centre) without full HMIS.",
+    )
     has_triage = models.BooleanField(
         default=True,
         help_text="Triage / patient acuity assessment.",
@@ -3471,6 +3479,8 @@ class Facility(TimeStampedModel):
             "blood_bank": self.has_blood_bank,
             "inventory": self.has_inventory,
             "lis_standalone": self.has_lis_standalone,
+            "pharmacy_standalone": self.has_pharmacy_standalone,
+            "imaging_standalone": self.has_imaging_standalone,
             "triage": self.has_triage,
             "scheduling": self.has_scheduling,
             "surveillance": self.has_surveillance,

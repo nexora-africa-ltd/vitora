@@ -921,6 +921,18 @@ FACILITY_HAS_PHARMACY = (
 # When False (default), lab operates as an integrated HMIS module.
 LIS_STANDALONE_MODE = os.getenv("LIS_STANDALONE_MODE", "false").lower() == "true"
 
+# Pharmacy standalone (retail / walk-in dispensary).
+# When True, the pharmacy module operates independently without requiring
+# the full HMIS (no encounters/clinician dependency). Enables walk-in
+# customers, external prescription intake, and OTC dispensing flows.
+PHARMACY_STANDALONE_MODE = os.getenv("PHARMACY_STANDALONE_MODE", "false").lower() == "true"
+
+# Imaging standalone (diagnostic centre / radiology-only).
+# When True, the imaging module operates independently without requiring
+# the full HMIS (no encounters dependency). Enables walk-in patients and
+# external order intake from referring facilities.
+IMAGING_STANDALONE_MODE = os.getenv("IMAGING_STANDALONE_MODE", "false").lower() == "true"
+
 # =============================================================================
 # PRIVATE INSURANCE INTEGRATION
 # =============================================================================

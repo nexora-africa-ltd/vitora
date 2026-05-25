@@ -65,5 +65,6 @@ urlpatterns = [
         name="dicom-share-frame",
     ),
     path("calendar/", ImagingCalendarView.as_view(), name="imaging-calendar"),
+    path("standalone/", include("hmis.apps.imaging.standalone.urls")),
     path("", include(router.urls)),
 ]

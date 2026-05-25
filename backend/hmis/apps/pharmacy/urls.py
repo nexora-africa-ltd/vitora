@@ -33,6 +33,7 @@ app_name = "pharmacy"
 
 urlpatterns = [
     path("", include(router.urls)),
+    path("standalone/", include("hmis.apps.pharmacy.standalone.urls")),
     # Settings endpoint
     path("alert-settings/", AlertSettingsView.as_view(), name="alert-settings"),
     # Report endpoints

@@ -236,7 +236,7 @@ Convention: `<domain>.<aggregate>.<action>`
 | `DHA_PRESCRIPTION_DOCTOR_REMOVED` | `billing.dha_prescription.doctor_removed` | `billing/services/ilm_prescription_service.py` |
 | `DHA_PRESCRIPTION_CALL_FAILED` | `billing.dha_prescription.call_failed` | `billing/sha_ilm_prescription_views.py` (error path) |
 
-### PharmacyEvents (7 constants)
+### PharmacyEvents (10 constants)
 
 | Constant | Value | Published From |
 |----------|-------|---------------|
@@ -247,8 +247,11 @@ Convention: `<domain>.<aggregate>.<action>`
 | `STOCK_CRITICAL` | `pharmacy.stock.critical` | `pharmacy/signals.py` |
 | `STOCK_LOW_WARNING` | `pharmacy.stock.low_warning` | `pharmacy/signals.py` |
 | `PRESCRIPTION_EXPIRED` | `pharmacy.prescription.expired` | — (defined, not yet wired) |
+| `WALKIN_CUSTOMER_REGISTERED` | `pharmacy.standalone.walkin_registered` | `pharmacy/standalone/signals.py` |
+| `EXTERNAL_PRESCRIPTION_RECEIVED` | `pharmacy.standalone.external_prescription_received` | `pharmacy/standalone/signals.py` |
+| `EXTERNAL_PRESCRIPTION_ACCEPTED` | `pharmacy.standalone.external_prescription_accepted` | `pharmacy/standalone/signals.py` |
 
-### LaboratoryEvents (10 constants)
+### LaboratoryEvents (13 constants)
 
 | Constant | Value | Published From |
 |----------|-------|---------------|
@@ -262,6 +265,9 @@ Convention: `<domain>.<aggregate>.<action>`
 | `RESULT_VERIFIED` | `laboratory.result.verified` | `laboratory/signals.py` |
 | `CRITICAL_RESULT` | `laboratory.result.critical` | — (defined, not yet wired) |
 | `ORDER_BILLING` | `laboratory.order.billed` | `laboratory/signals.py` |
+| `WALKIN_PATIENT_REGISTERED` | `laboratory.standalone.walkin_registered` | `laboratory/standalone/signals.py` |
+| `EXTERNAL_ORDER_RECEIVED` | `laboratory.standalone.external_order_received` | `laboratory/standalone/signals.py` |
+| `EXTERNAL_ORDER_ACCEPTED` | `laboratory.standalone.external_order_accepted` | `laboratory/standalone/signals.py` |
 
 ### ClinicalEvents (5 constants)
 
@@ -343,7 +349,7 @@ Convention: `<domain>.<aggregate>.<action>`
 | `SHIFT_COMPLETED` | `scheduling.shift.completed` | `scheduling/signals.py` |
 | `SHIFT_CANCELLED` | `scheduling.shift.cancelled` | `scheduling/signals.py` |
 
-### ImagingEvents (8 constants)
+### ImagingEvents (11 constants)
 
 | Constant | Value | Published From |
 |----------|-------|---------------|
@@ -355,6 +361,9 @@ Convention: `<domain>.<aggregate>.<action>`
 | `EQUIPMENT_REGISTERED` | `imaging.equipment.registered` | `imaging/signals.py` (post_save ImagingEquipment, created only) |
 | `STUDY_SHARED` | `imaging.study.shared` | `imaging/signals.py` (post_save StudyShareLink, created only) |
 | `STUDY_SHARE_ACCESSED` | `imaging.study.share_accessed` | `imaging/views.py` (StudyShareAccessView on valid access) |
+| `WALKIN_PATIENT_REGISTERED` | `imaging.standalone.walkin_registered` | `imaging/standalone/signals.py` |
+| `EXTERNAL_ORDER_RECEIVED` | `imaging.standalone.external_order_received` | `imaging/standalone/signals.py` |
+| `EXTERNAL_ORDER_ACCEPTED` | `imaging.standalone.external_order_accepted` | `imaging/standalone/signals.py` |
 
 ### TheatreEvents (13 constants)
 
@@ -424,8 +433,8 @@ Convention: `<domain>.<aggregate>.<action>`
 | Class | Defined | Wired | Coverage |
 |-------|---------|-------|----------|
 | BillingEvents | 11 | 6 | 55% |
-| PharmacyEvents | 7 | 5 | 71% |
-| LaboratoryEvents | 10 | 5 | 50% |
+| PharmacyEvents | 10 | 8 | 80% |
+| LaboratoryEvents | 13 | 8 | 62% |
 | ClinicalEvents | 5 | 5 | 100% |
 | InpatientEvents | 5 | 3 | 60% |
 | MCHEvents | 4 | 4 | 100% |
@@ -433,11 +442,11 @@ Convention: `<domain>.<aggregate>.<action>`
 | SurveillanceEvents | 2 | 1 | 50% |
 | CoreEvents | 5 | 3 | 60% |
 | SchedulingEvents | 19 | 19 | 100% |
-| ImagingEvents | 3 | 1 | 33% |
+| ImagingEvents | 11 | 9 | 82% |
 | TheatreEvents | 13 | 13 | 100% |
 | ReferralEvents | 7 | 7 | 100% |
 | InsuranceEvents | 28 | 26 | 93% |
-| **Total** | **122** | **99** | **81%** |
+| **Total** | **136** | **113** | **83%** |
 
 ---
 
@@ -463,6 +472,13 @@ Convention: `<domain>.<aggregate>.<action>`
 | `broadcast_dispensing_on_create` | `post_save` | `Dispensing` | `DISPENSING_COMPLETED` | `drug_id`, `drug_name`, `quantity_dispensed`, `patient_id` |
 | `broadcast_stock_level_change` | `post_save` | `StockBatch` | `STOCK_CRITICAL` / `STOCK_LOW_WARNING` | `drug_name`, `remaining_quantity`, `reorder_level` |
 
+### Pharmacy Standalone (`hmis/apps/pharmacy/standalone/signals.py`)
+
+| Handler | Signal | Model | Event(s) Published | Payload |
+|---------|--------|-------|--------------------|---------|
+| `publish_walkin_customer_event` | `post_save` | `WalkInCustomer` | `WALKIN_CUSTOMER_REGISTERED` | `walkin_id`, `walkin_number`, `full_name`, `phone_number` |
+| `publish_external_prescription_event` | `post_save` | `ExternalPrescriptionRequest` | `EXTERNAL_PRESCRIPTION_RECEIVED` (on create) / `EXTERNAL_PRESCRIPTION_ACCEPTED` (on accept) | `request_id`, `external_reference`, `source_facility`, `patient_name`, `prescription_id` |
+
 ### Laboratory (`hmis/apps/laboratory/signals.py`)
 
 | Handler | Signal | Model | Event(s) Published | Payload |
@@ -471,6 +487,13 @@ Convention: `<domain>.<aggregate>.<action>`
 | `update_order_status_on_result` | `post_save` | `LabResult` | `RESULT_ENTERED` | `order_number`, `items_with_results`, `total_items` |
 | `notify_on_verification` | `post_save` | `LabResult` | `RESULT_VERIFIED`, `ORDER_COMPLETED` | `order_number`, `is_critical`, `total_items` |
 | `handle_lab_billing` | `post_save` | `LabOrder` | `ORDER_BILLING` | `order_number` |
+
+### Laboratory Standalone (`hmis/apps/laboratory/standalone/signals.py`)
+
+| Handler | Signal | Model | Event(s) Published | Payload |
+|---------|--------|-------|--------------------|---------|
+| `publish_walkin_patient_event` | `post_save` | `WalkInLabPatient` | `WALKIN_PATIENT_REGISTERED` | `walkin_id`, `walkin_number`, `full_name`, `phone_number` |
+| `publish_external_order_event` | `post_save` | `ExternalLabOrderRequest` | `EXTERNAL_ORDER_RECEIVED` (on create) / `EXTERNAL_ORDER_ACCEPTED` (on accept) | `request_id`, `external_reference`, `source_facility`, `patient_name`, `lab_order_id` |
 
 ### Clinics (`hmis/apps/clinics/signals.py`)
 
@@ -553,6 +576,13 @@ Appointment status → Event mapping:
 | Handler | Signal | Model | Event(s) Published | Payload |
 |---------|--------|-------|--------------------|---------|
 | `create_invoice_item_for_imaging` | `post_save` | `ImagingOrderItem` | `ORDER_ITEM_CREATED` | `order_number`, `procedure_name`, `unit_price` |
+
+### Imaging Standalone (`hmis/apps/imaging/standalone/signals.py`)
+
+| Handler | Signal | Model | Event(s) Published | Payload |
+|---------|--------|-------|--------------------|---------|
+| `publish_walkin_imaging_patient_event` | `post_save` | `WalkInImagingPatient` | `WALKIN_PATIENT_REGISTERED` | `walkin_id`, `walkin_number`, `full_name`, `phone_number` |
+| `publish_external_imaging_order_event` | `post_save` | `ExternalImagingOrderRequest` | `EXTERNAL_ORDER_RECEIVED` (on create) / `EXTERNAL_ORDER_ACCEPTED` (on accept) | `request_id`, `external_reference`, `source_facility`, `patient_name`, `imaging_order_id` |
 
 ### Theatre (`hmis/apps/theatre/signals.py`)
 

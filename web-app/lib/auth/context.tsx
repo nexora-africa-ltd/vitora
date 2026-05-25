@@ -20,6 +20,8 @@ export interface FacilityModules {
   blood_bank: boolean;
   inventory: boolean;
   lis_standalone: boolean;
+  pharmacy_standalone: boolean;
+  imaging_standalone: boolean;
   triage: boolean;
   scheduling: boolean;
   surveillance: boolean;

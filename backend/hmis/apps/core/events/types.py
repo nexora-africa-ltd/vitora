@@ -105,6 +105,11 @@ class PharmacyEvents:
     STOCK_LOW_WARNING = "pharmacy.stock.low_warning"
     PRESCRIPTION_EXPIRED = "pharmacy.prescription.expired"
 
+    # Standalone Pharmacy Events (retail / walk-in)
+    WALKIN_CUSTOMER_REGISTERED = "pharmacy.standalone.walkin_registered"
+    EXTERNAL_PRESCRIPTION_RECEIVED = "pharmacy.standalone.external_prescription_received"
+    EXTERNAL_PRESCRIPTION_ACCEPTED = "pharmacy.standalone.external_prescription_accepted"
+
 
 class LaboratoryEvents:
     """Laboratory domain event types."""
@@ -332,6 +337,11 @@ class ImagingEvents:
     # Sharing
     STUDY_SHARED = "imaging.study.shared"
     STUDY_SHARE_ACCESSED = "imaging.study.share_accessed"
+
+    # Standalone Imaging Events (diagnostic centre / walk-in)
+    WALKIN_PATIENT_REGISTERED = "imaging.standalone.walkin_registered"
+    EXTERNAL_ORDER_RECEIVED = "imaging.standalone.external_order_received"
+    EXTERNAL_ORDER_ACCEPTED = "imaging.standalone.external_order_accepted"
 
 
 class CommentEvents:

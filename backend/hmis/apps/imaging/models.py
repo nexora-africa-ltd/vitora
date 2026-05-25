@@ -187,11 +187,17 @@ class ImagingOrder(models.Model):
         "patients.Patient",
         on_delete=models.PROTECT,
         related_name="imaging_orders",
+        null=True,
+        blank=True,
+        help_text="Optional - null for standalone walk-in imaging orders",
     )
     encounter = models.ForeignKey(
         "encounters.Encounter",
         on_delete=models.PROTECT,
         related_name="imaging_orders",
+        null=True,
+        blank=True,
+        help_text="Optional - null for standalone walk-in imaging orders",
     )
     admission = models.ForeignKey(
         "inpatient.Admission",
@@ -205,6 +211,44 @@ class ImagingOrder(models.Model):
         User,
         on_delete=models.PROTECT,
         related_name="imaging_orders",
+    )
+
+    # Walk-in patient details (used when patient FK is null)
+    walkin_patient_name = models.CharField(
+        max_length=200, blank=True, help_text="Walk-in patient full name"
+    )
+    walkin_patient_id = models.CharField(
+        max_length=50, blank=True, help_text="Walk-in patient national ID or other identifier"
+    )
+    walkin_patient_phone = models.CharField(
+        max_length=20, blank=True, help_text="Walk-in patient phone number"
+    )
+    walkin_patient_dob = models.DateField(
+        null=True, blank=True, help_text="Walk-in patient date of birth"
+    )
+    walkin_patient_gender = models.CharField(
+        max_length=1,
+        blank=True,
+        choices=[("M", "Male"), ("F", "Female"), ("O", "Other")],
+        help_text="Walk-in patient gender",
+    )
+    is_walkin = models.BooleanField(
+        default=False,
+        help_text="True if this is a standalone/walk-in order without HMIS patient",
+    )
+    external_referring_facility = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="External referring facility name for walk-in/referral orders",
+    )
+    external_referring_clinician = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="External referring clinician name for walk-in/referral orders",
+    )
+    bill_patient = models.BooleanField(
+        default=True,
+        help_text="Whether to auto-bill the patient. Defaults to False for standalone orders.",
     )
 
     # Order details
