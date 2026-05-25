@@ -176,7 +176,7 @@ class TestImagingOrderAPI:
     """Tests for ImagingOrder API endpoints."""
 
     @pytest.fixture
-    def procedure(self, db):
+    def procedure(self, db, sample_facility):
         """Create a sample procedure."""
         return ImagingProcedure.objects.create(
             code="XR-CHEST-API",
@@ -184,6 +184,8 @@ class TestImagingOrderAPI:
             modality="XR",
             body_region="CHEST",
             cost=Decimal("1500.00"),
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
 
     @pytest.fixture
@@ -292,7 +294,7 @@ class TestImagingOrderAPI:
         assert Decimal(response.data["total_cost"]) == Decimal("1500.00")
 
     def test_create_order_with_multiple_items(
-        self, authenticated_client, sample_patient, sample_encounter, db
+        self, authenticated_client, sample_patient, sample_encounter, sample_facility, db
     ):
         """Should create order with multiple items."""
         proc1 = ImagingProcedure.objects.create(
@@ -301,6 +303,8 @@ class TestImagingOrderAPI:
             modality="XR",
             body_region="CHEST",
             cost=Decimal("1000.00"),
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
         proc2 = ImagingProcedure.objects.create(
             code="MULTI-2",
@@ -308,6 +312,8 @@ class TestImagingOrderAPI:
             modality="CT",
             body_region="HEAD",
             cost=Decimal("5000.00"),
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
         data = {
             "patient": sample_patient.id,
@@ -324,11 +330,16 @@ class TestImagingOrderAPI:
         assert Decimal(response.data["total_cost"]) == Decimal("6000.00")
 
     def test_create_order_with_laterality(
-        self, authenticated_client, sample_patient, sample_encounter, db
+        self, authenticated_client, sample_patient, sample_encounter, sample_facility, db
     ):
         """Should create order with laterality specified."""
         proc = ImagingProcedure.objects.create(
-            code="XR-KNEE", name="Knee X-Ray", modality="XR", body_region="LOWER_EXTREMITY"
+            code="XR-KNEE",
+            name="Knee X-Ray",
+            modality="XR",
+            body_region="LOWER_EXTREMITY",
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
         data = {
             "patient": sample_patient.id,
@@ -621,7 +632,7 @@ class TestImagingAuditLogging:
     """Tests for audit logging on imaging operations."""
 
     @pytest.fixture
-    def procedure(self, db):
+    def procedure(self, db, sample_facility):
         """Create a sample procedure."""
         return ImagingProcedure.objects.create(
             code="XR-AUDIT-TEST",
@@ -629,6 +640,8 @@ class TestImagingAuditLogging:
             modality="XR",
             body_region="CHEST",
             cost=Decimal("1500.00"),
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
 
     @pytest.fixture
