@@ -338,16 +338,29 @@ export const ICD11CodeSchema = z.object({
 export type ICD11CodeSchemaType = z.infer<typeof ICD11CodeSchema>;
 
 export const SHAInterventionSchema = z.object({
-  id: z.number(),
+  // `id` is the DB primary key for stored intervention records, but the
+  // `/api/billing/terminology/interventions/` endpoint returns lightweight
+  // dicts from the local JSONL fallback without an `id` — make it optional.
+  id: z.number().optional(),
   code: z.string(),
   name: z.string(),
-  description: z.string().optional(),
-  category: z.string(),
-  price: z.number(),
-  currency: z.string(),
-  facility_level: z.number(),
-  requires_preauthorization: z.boolean(),
-  is_active: z.boolean(),
+  description: z.string().nullable().optional(),
+  category: z.string().nullable().optional().default(''),
+  // Backend may return Decimal-as-string, number, or null. Coerce to number,
+  // treating null/missing as 0.
+  price: z
+    .union([z.number(), z.string(), z.null()])
+    .optional()
+    .transform((v) => {
+      if (v === null || v === undefined || v === '') return 0;
+      const n = typeof v === 'string' ? parseFloat(v) : v;
+      return Number.isNaN(n) ? 0 : n;
+    }),
+  currency: z.string().optional().default('KES'),
+  // Some records have no minimum facility level — accept null.
+  facility_level: z.number().nullable().optional(),
+  requires_preauthorization: z.boolean().optional().default(false),
+  is_active: z.boolean().optional().default(true),
   // DHA routing flags
   payment_mechanism: z.enum(['PER_DIEM', 'FEE_FOR_SERVICE', 'CAPITATION']).optional(),
   access_point: z.enum(['IP', 'OP', 'BOTH']).optional(),
@@ -364,6 +377,10 @@ export const SHAInterventionSchema = z.object({
   level4_tariff: z.union([z.number(), z.string(), z.null()]).optional(),
   level5_tariff: z.union([z.number(), z.string(), z.null()]).optional(),
   level6_tariff: z.union([z.number(), z.string(), z.null()]).optional(),
+  // Local-fallback extras passed through from the JSONL `extras` blob.
+  raw_data: z.record(z.unknown()).optional(),
+  max_amount_per_test: z.union([z.string(), z.number(), z.null()]).optional(),
+  quantity_per_year: z.union([z.string(), z.number(), z.null()]).optional(),
 });
 
 export type SHAInterventionSchemaType = z.infer<typeof SHAInterventionSchema>;
@@ -785,10 +802,13 @@ export const PaginatedICD11CodesSchema = z.object({
   results: z.array(ICD11CodeSchema),
 });
 
+// Backend `/api/billing/terminology/interventions/` returns `{ results, count }`
+// without DRF-style `next`/`previous` cursors (it uses limit/offset). Make those
+// optional with sensible defaults so the schema works for both shapes.
 export const PaginatedSHAInterventionsSchema = z.object({
-  count: z.number(),
-  next: z.string().nullable(),
-  previous: z.string().nullable(),
+  count: z.number().optional().default(0),
+  next: z.string().nullable().optional().default(null),
+  previous: z.string().nullable().optional().default(null),
   results: z.array(SHAInterventionSchema),
 });
 
