@@ -84,6 +84,8 @@ const MODULE_FIELDS: Array<{
   { key: 'blood_bank', field: 'has_blood_bank', title: 'Blood Bank', description: 'Blood storage and transfusion services.' },
   { key: 'inventory', field: 'has_inventory', title: 'Inventory', description: 'Supply chain, stock management, and procurement.' },
   { key: 'lis_standalone', field: 'has_lis_standalone', title: 'LIS Standalone', description: 'Lab operates independently — walk-in patients, external orders, no encounter required.' },
+  { key: 'pharmacy_standalone', field: 'has_pharmacy_standalone', title: 'Pharmacy Standalone', description: 'Pharmacy operates independently — walk-in customers, external prescriptions, no encounter required.' },
+  { key: 'imaging_standalone', field: 'has_imaging_standalone', title: 'Imaging Standalone', description: 'Imaging operates independently — walk-in patients, external referrals, no encounter required.' },
   { key: 'triage', field: 'has_triage', title: 'Triage', description: 'Patient acuity assessment and queue prioritisation.' },
   { key: 'scheduling', field: 'has_scheduling', title: 'Scheduling', description: 'Appointment booking and roster management.' },
   { key: 'surveillance', field: 'has_surveillance', title: 'Surveillance', description: 'Disease surveillance and outbreak reporting.' },
@@ -120,6 +122,8 @@ interface FacilityFormState {
   has_blood_bank: boolean;
   has_inventory: boolean;
   has_lis_standalone: boolean;
+  has_pharmacy_standalone: boolean;
+  has_imaging_standalone: boolean;
   has_triage: boolean;
   has_scheduling: boolean;
   has_surveillance: boolean;
@@ -157,6 +161,8 @@ function createFormState(facility: FacilityDetail): FacilityFormState {
     has_blood_bank: facility.has_blood_bank,
     has_inventory: facility.has_inventory,
     has_lis_standalone: facility.has_lis_standalone,
+    has_pharmacy_standalone: facility.has_pharmacy_standalone,
+    has_imaging_standalone: facility.has_imaging_standalone,
     has_triage: facility.has_triage,
     has_scheduling: facility.has_scheduling,
     has_surveillance: facility.has_surveillance,
@@ -216,6 +222,8 @@ function NoFacilityState() {
         blood_bank: false,
         inventory: false,
         lis_standalone: false,
+        pharmacy_standalone: false,
+        imaging_standalone: false,
         triage: true,
         scheduling: true,
         surveillance: false,
