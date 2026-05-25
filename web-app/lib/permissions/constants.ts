@@ -52,7 +52,9 @@ export const MODULE_PERMISSIONS = {
   pharmacy: 'pharmacy.view_prescription',
   laboratory: 'laboratory.view_laborder',
   lis_standalone: 'laboratory.view_laborder',
+  pharmacy_standalone: 'pharmacy.view_prescription',
   imaging: 'imaging.view_imagingorder',
+  imaging_standalone: 'imaging.view_imagingorder',
   allied_health: [
     'physiotherapy.view_physiotherapyorder',
     'physiotherapy.approve_physiotherapy_order',
