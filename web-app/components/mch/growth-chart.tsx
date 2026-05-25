@@ -277,7 +277,7 @@ export function GrowthChart({
       min = xDomain[0] as number;
       max = xDomain[1] as number;
     } else if (chartRenderData.length > 0) {
-      const xs = chartRenderData.map((r) => r.x as number);
+      const xs = chartRenderData.map((r) => (r as { x: number }).x);
       min = Math.floor(Math.min(...xs));
       max = Math.ceil(Math.max(...xs));
     } else {

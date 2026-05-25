@@ -39,16 +39,39 @@ export interface ICD11SelectValue {
 // ============================================================================
 
 export interface SHAIntervention {
-  id: number;
+  // `id` is the DB primary key for stored intervention records, but the
+  // `/api/billing/terminology/interventions/` endpoint returns lightweight
+  // dicts from the local JSONL fallback without an `id` — make it optional.
+  id?: number;
   code: string;
   name: string;
-  description?: string;
-  category: string;
+  description?: string | null;
+  category: string | null;
   price: number;
   currency: string;
-  facility_level: number;
+  facility_level?: number | null;
   requires_preauthorization: boolean;
   is_active: boolean;
+  // DHA routing flags
+  payment_mechanism?: 'PER_DIEM' | 'FEE_FOR_SERVICE' | 'CAPITATION';
+  access_point?: 'IP' | 'OP' | 'BOTH';
+  needs_preauth?: boolean;
+  needs_manual_preauth_approval?: boolean;
+  is_surgical_preauth?: boolean;
+  is_renal_preauth?: boolean;
+  is_oncology_preauth?: boolean;
+  is_imaging_preauth?: boolean;
+  is_optical_preauth?: boolean;
+  // Hospital Level Tariffs
+  level2_tariff?: number | string | null;
+  level3_tariff?: number | string | null;
+  level4_tariff?: number | string | null;
+  level5_tariff?: number | string | null;
+  level6_tariff?: number | string | null;
+  // Local-fallback extras passed through from the JSONL `extras` blob.
+  raw_data?: Record<string, unknown>;
+  max_amount_per_test?: string | number | null;
+  quantity_per_year?: string | number | null;
 }
 
 // ============================================================================

@@ -395,14 +395,14 @@ export type PaymentMechanism = 'PER_DIEM' | 'FEE_FOR_SERVICE' | 'CAPITATION';
 export type InterventionAccessPoint = 'IP' | 'OP' | 'BOTH';
 
 export interface SHAIntervention {
-  id: number;
+  id?: number;
   code: string;
   name: string;
-  description?: string;
-  category: string;
+  description?: string | null;
+  category: string | null;
   price: number;
   currency: string;
-  facility_level: number;
+  facility_level?: number | null;
   requires_preauthorization: boolean;
   is_active: boolean;
   // DHA routing flags (from GET /api/v1/patients/benefits/interventions)
@@ -421,6 +421,10 @@ export interface SHAIntervention {
   level4_tariff?: number | string | null;
   level5_tariff?: number | string | null;
   level6_tariff?: number | string | null;
+  // Local-fallback extras passed through from the JSONL `extras` blob.
+  raw_data?: Record<string, unknown>;
+  max_amount_per_test?: number | string | null;
+  quantity_per_year?: number | string | null;
 }
 
 export interface ICHICode {

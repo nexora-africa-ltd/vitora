@@ -76,7 +76,7 @@ export default function NewStandalonePrescriptionPage() {
     value: string | number,
   ) => {
     const updated = [...items];
-    updated[index] = { ...updated[index], [field]: value };
+    updated[index] = { ...updated[index], [field]: value } as StandalonePrescriptionItem;
     setItems(updated);
   };
 
