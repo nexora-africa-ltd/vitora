@@ -18,6 +18,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/shared/page-header';
+import { CatalogCombobox } from '@/components/shared/catalog-combobox';
+import {
+  StandalonePatientPicker,
+  type PickedPatient,
+} from '@/components/shared/standalone-patient-picker';
 import { standaloneLisApi } from '@/lib/api/standalone-lis';
 import { laboratoryApi } from '@/lib/api/laboratory';
 import type { StandaloneOrderCreateData, StandaloneOrderItem } from '@/lib/types/standalone-lis';
@@ -25,7 +30,7 @@ import { toast } from 'sonner';
 
 export default function NewStandaloneOrderPage() {
   const router = useRouter();
-  const [patientMode, setPatientMode] = useState<'inline' | 'existing'>('inline');
+  const [picker, setPicker] = useState<PickedPatient>({ mode: 'inline' });
   const [formData, setFormData] = useState({
     walkin_name: '',
     walkin_phone: '',
@@ -67,20 +72,31 @@ export default function NewStandaloneOrderPage() {
     }
 
     const data: StandaloneOrderCreateData = {
-      walkin_name: formData.walkin_name,
-      walkin_phone: formData.walkin_phone,
-      walkin_national_id: formData.walkin_national_id,
-      walkin_gender: formData.walkin_gender || undefined,
       priority: formData.priority,
       clinical_notes: formData.clinical_notes,
       items: validItems,
     };
 
+    if (picker.mode === 'walkin') {
+      data.walkin_patient_id = picker.walkin.id;
+    } else if (picker.mode === 'patient') {
+      data.patient_id = picker.patient.id;
+    } else {
+      if (!formData.walkin_name.trim()) {
+        toast.error('Patient name is required');
+        return;
+      }
+      data.walkin_name = formData.walkin_name;
+      data.walkin_phone = formData.walkin_phone;
+      data.walkin_national_id = formData.walkin_national_id;
+      data.walkin_gender = formData.walkin_gender || undefined;
+    }
+
     createMutation.mutate(data);
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-2xl">
+    <div className="space-y-4 sm:space-y-6 max-w-2xl mx-auto">
       <PageHeader
         title="New Standalone Order"
         helpContent="Create a lab order without requiring a clinical encounter. For walk-in patients, external referrals, or standalone lab operations."
@@ -93,53 +109,63 @@ export default function NewStandaloneOrderPage() {
             <CardTitle className="text-base">Patient Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="walkin_name">Full Name *</Label>
-                <Input
-                  id="walkin_name"
-                  required
-                  value={formData.walkin_name}
-                  onChange={(e) => setFormData({ ...formData, walkin_name: e.target.value })}
-                  placeholder="Patient name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="walkin_phone">Phone</Label>
-                <Input
-                  id="walkin_phone"
-                  value={formData.walkin_phone}
-                  onChange={(e) => setFormData({ ...formData, walkin_phone: e.target.value })}
-                  placeholder="07XX XXX XXX"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="walkin_national_id">National ID</Label>
-                <Input
-                  id="walkin_national_id"
-                  value={formData.walkin_national_id}
-                  onChange={(e) => setFormData({ ...formData, walkin_national_id: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="walkin_gender">Gender</Label>
-                <Select
-                  value={formData.walkin_gender}
-                  onValueChange={(v) => setFormData({ ...formData, walkin_gender: v as 'M' | 'F' | 'O' })}
-                >
-                  <SelectTrigger id="walkin_gender">
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="M">Male</SelectItem>
-                    <SelectItem value="F">Female</SelectItem>
-                    <SelectItem value="O">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            <StandalonePatientPicker
+              value={picker}
+              onChange={setPicker}
+              searchWalkIn={(q) => standaloneLisApi.listWalkInPatients({ search: q })}
+              walkInNoun="patient"
+            />
+            {picker.mode === 'inline' && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="walkin_name">Full Name *</Label>
+                    <Input
+                      id="walkin_name"
+                      required
+                      value={formData.walkin_name}
+                      onChange={(e) => setFormData({ ...formData, walkin_name: e.target.value })}
+                      placeholder="Patient name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="walkin_phone">Phone</Label>
+                    <Input
+                      id="walkin_phone"
+                      value={formData.walkin_phone}
+                      onChange={(e) => setFormData({ ...formData, walkin_phone: e.target.value })}
+                      placeholder="07XX XXX XXX"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="walkin_national_id">National ID</Label>
+                    <Input
+                      id="walkin_national_id"
+                      value={formData.walkin_national_id}
+                      onChange={(e) => setFormData({ ...formData, walkin_national_id: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="walkin_gender">Gender</Label>
+                    <Select
+                      value={formData.walkin_gender}
+                      onValueChange={(v) => setFormData({ ...formData, walkin_gender: v as 'M' | 'F' | 'O' })}
+                    >
+                      <SelectTrigger id="walkin_gender">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="M">Male</SelectItem>
+                        <SelectItem value="F">Female</SelectItem>
+                        <SelectItem value="O">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -194,21 +220,19 @@ export default function NewStandaloneOrderPage() {
           <CardContent className="space-y-3">
             {items.map((item, index) => (
               <div key={index} className="flex items-center gap-2">
-                <Select
-                  value={item.test_code}
-                  onValueChange={(v) => updateItem(index, v)}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select test..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {testCatalog?.results?.map((test) => (
-                      <SelectItem key={test.code} value={test.code}>
-                        {test.name} ({test.code})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex-1">
+                  <CatalogCombobox
+                    type="test"
+                    value={item.test_code}
+                    onValueChange={(v) => updateItem(index, v)}
+                    options={(testCatalog?.results ?? []).map((test) => ({
+                      code: test.code,
+                      label: test.name,
+                      description: `(${test.code})`,
+                    }))}
+                    placeholder="Select test..."
+                  />
+                </div>
                 {items.length > 1 && (
                   <Button
                     type="button"
