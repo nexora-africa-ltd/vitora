@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.permissions import WriteRequiresRolePermission
 
 from .models import HL7Endpoint, HL7EndpointType, HL7Message, HL7MessageStatus
 from .serializers import (
@@ -43,7 +44,7 @@ class HL7EndpointViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mode
     """
 
     queryset = HL7Endpoint.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filterset_class = HL7EndpointFilter
     search_fields = ["name", "mllp_host", "receiving_facility"]
     ordering_fields = ["name", "created_at", "is_active"]
@@ -133,7 +134,7 @@ class HL7MessageViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
     """
 
     queryset = HL7Message.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filterset_class = HL7MessageFilter
     search_fields = ["message_control_id", "resource_type", "message_type"]
     ordering_fields = ["created_at", "status", "message_type", "retry_count"]

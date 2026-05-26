@@ -8,6 +8,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.core.permissions import WriteRequiresRolePermission
+
 from .models import ClinicalTemplate
 from .serializers import ClinicalTemplateListSerializer, ClinicalTemplateSerializer
 
@@ -26,7 +28,7 @@ class ClinicalTemplateViewSet(viewsets.ModelViewSet):
 
     queryset = ClinicalTemplate.objects.all()
     serializer_class = ClinicalTemplateSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["template_type", "specialty", "is_active", "is_system"]
     search_fields = ["name", "description"]

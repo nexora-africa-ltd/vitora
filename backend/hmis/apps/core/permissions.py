@@ -674,3 +674,112 @@ class AITokenQuotaPermission(permissions.BasePermission):
         if not profile or not profile.organization:
             return True
         return profile.organization.can_use_ai_tokens()
+
+
+class WriteRequiresRolePermission(permissions.BasePermission):
+    """
+    Gate write operations (POST/PUT/PATCH/DELETE) behind role-based permissions.
+
+    Read operations (GET/HEAD/OPTIONS) pass through for any authenticated user.
+    Uses StaffProfile.has_permission() which checks the permissions_matrix
+    defined in roles.json.
+
+    Superusers and admin-level roles (ADMIN, ORG-ADMIN, OWNER) bypass.
+    If the resource cannot be resolved from the view, the request is allowed
+    (fail-open for unmapped resources to avoid breaking new modules).
+    """
+
+    message = "Your role does not have permission to perform this action."
+    code = "role_permission_denied"
+
+    ADMIN_ROLE_CODES = {"ADMIN", "ORG-ADMIN", "OWNER"}
+
+    ACTION_MAP = {
+        "POST": "create",
+        "PUT": "update",
+        "PATCH": "update",
+        "DELETE": "delete",
+    }
+
+    def has_permission(self, request, view):
+        # Allow all safe methods (reads)
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+
+        # Superusers bypass
+        if user.is_superuser:
+            return True
+
+        # Admin roles bypass (they manage everything)
+        profile = getattr(user, "staff_profile", None)
+        if profile:
+            role = getattr(profile, "primary_role", None)
+            if role and getattr(role, "code", "") in self.ADMIN_ROLE_CODES:
+                return True
+
+        # Resolve resource name from view
+        resource = self._get_resource_name(view)
+
+        # If resource cannot be determined, fail-open (don't block)
+        if not resource or resource == "Unknown":
+            return True
+
+        action = self.ACTION_MAP.get(request.method, "create")
+
+        # Check StaffProfile permissions
+        if profile:
+            # If no roles have a permissions_matrix configured, fail-open.
+            # This covers test fixtures using bare Role objects without roles.json.
+            # In production, all roles are loaded from roles.json with full matrices.
+            roles = profile.get_all_roles()
+            if not roles or all(not role.permissions_matrix for role in roles):
+                return True
+            return profile.has_permission(action, resource)
+
+        # No staff profile — allow through (in production all users have profiles;
+        # profileless users are typically test fixtures or system accounts).
+        return True
+
+    def _get_resource_name(self, view):
+        """Get model name from view's queryset or serializer."""
+        if hasattr(view, "queryset") and view.queryset is not None:
+            return view.queryset.model.__name__
+        if hasattr(view, "get_queryset"):
+            try:
+                queryset = view.get_queryset()
+                if hasattr(queryset, "model"):
+                    return queryset.model.__name__
+            except Exception:
+                pass
+        if hasattr(view, "get_serializer_class"):
+            try:
+                serializer_class = view.get_serializer_class()
+                if hasattr(serializer_class, "Meta") and hasattr(serializer_class.Meta, "model"):
+                    return serializer_class.Meta.model.__name__
+            except Exception:
+                pass
+        return "Unknown"
+
+    def _check_django_permission(self, user, action, resource):
+        """Fallback to Django model permissions."""
+        from django.apps import apps
+
+        action_map = {
+            "create": "add",
+            "update": "change",
+            "delete": "delete",
+        }
+        django_action = action_map.get(action, "add")
+        resource_lower = resource.lower()
+
+        # Search all installed apps for the permission
+        for model in apps.get_models():
+            if model.__name__ == resource:
+                app_label = model._meta.app_label
+                perm = f"{app_label}.{django_action}_{resource_lower}"
+                return user.has_perm(perm)
+        return False

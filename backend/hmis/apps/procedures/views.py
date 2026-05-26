@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import get_client_ip
+from hmis.apps.core.permissions import WriteRequiresRolePermission, get_client_ip
 
 from .filters import ProcedureCatalogFilter, ProcedureOrderFilter
 from .models import ProcedureCatalog, ProcedureConsent, ProcedureLog, ProcedureOrder
@@ -42,7 +42,7 @@ class ProcedureCatalogViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
 
     queryset = ProcedureCatalog.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     tenant_scope = "organization"
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = ProcedureCatalogFilter
@@ -146,7 +146,7 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for procedure orders with workflow @actions."""
 
     queryset = ProcedureOrder.objects.select_related("procedure", "patient").all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = ProcedureOrderFilter
     search_fields = [
@@ -562,7 +562,7 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 class ProcedureDashboardView(APIView):
     """Dashboard stats for procedures."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         responses={

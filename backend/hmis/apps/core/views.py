@@ -45,7 +45,7 @@ from .models import (
     UserCertificate,
     Ward,
 )
-from .permissions import AuditLogPermission
+from .permissions import AuditLogPermission, FacilityAdminPermission, WriteRequiresRolePermission
 from .role_permissions_sync import sync_role_group_permissions
 from .serializers import (
     AuditLogSerializer,
@@ -346,7 +346,7 @@ class FrontendEventViewSet(viewsets.GenericViewSet):
 
     queryset = FrontendEvent.objects.all()
     serializer_class = FrontendEventSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filterset_fields = ["event_type", "resource_type", "session_id", "was_offline"]
     search_fields = ["event_type", "resource_type", "session_id"]
     ordering_fields = ["server_timestamp", "client_timestamp"]
@@ -419,7 +419,7 @@ class PermissionViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericView
 
     queryset = Permission.objects.select_related("content_type").all()
     serializer_class = PermissionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["codename", "name", "content_type__app_label"]
     ordering_fields = ["codename", "name"]
@@ -441,7 +441,7 @@ class CodeSystemViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericView
 
     queryset = CodeSystem.objects.filter(is_active=True)
     serializer_class = CodeSystemSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["slug", "name", "publisher", "description"]
     ordering_fields = ["slug", "name", "created_at"]
@@ -489,7 +489,7 @@ class WardViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet):
 
     queryset = Ward.objects.select_related("sub_county").all()
     serializer_class = WardSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name"]
     ordering_fields = ["name"]
@@ -672,7 +672,7 @@ class DepartmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if self.action in ["create", "update", "partial_update", "destroy"]:
             permission_classes = [IsAdminUser]
         else:
-            permission_classes = [IsAuthenticated]
+            permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
         return [permission() for permission in permission_classes]
 
     def perform_create(self, serializer):
@@ -832,7 +832,7 @@ class RoleViewSet(viewsets.ModelViewSet):
         if self.action in ["create", "update", "partial_update", "destroy"]:
             permission_classes = [IsAdminUser]
         else:
-            permission_classes = [IsAuthenticated]
+            permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
         return [permission() for permission in permission_classes]
 
     def perform_create(self, serializer):
@@ -1027,9 +1027,9 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     def get_permissions(self):
         """Set permissions based on action."""
         if self.action in ["create", "destroy"]:
-            permission_classes = [IsAdminUser]
+            permission_classes = [FacilityAdminPermission]
         else:
-            permission_classes = [IsAuthenticated]
+            permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
         return [permission() for permission in permission_classes]
 
     def create(self, request, *args, **kwargs):
@@ -1437,7 +1437,7 @@ class OrgMembershipViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if self.action in ["create", "update", "partial_update", "destroy"]:
             permission_classes = [IsAdminUser]
         else:
-            permission_classes = [IsAuthenticated]
+            permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
         return [permission() for permission in permission_classes]
 
     def create(self, request, *args, **kwargs):
@@ -1568,7 +1568,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
 
     queryset = Notification.objects.all()
     serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["created_at", "priority"]
     ordering = ["-created_at"]
@@ -1665,7 +1665,7 @@ class PushSubscriptionViewSet(viewsets.ModelViewSet):
 
     queryset = PushSubscription.objects.none()
     serializer_class = PushSubscriptionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     http_method_names = ["get", "post", "delete", "head", "options"]
 
     def get_queryset(self):
@@ -2029,7 +2029,7 @@ class FeatureFlagViewSet(ListModelMixin, viewsets.GenericViewSet):
 
     queryset = FeatureFlag.objects.all()
     serializer_class = FeatureFlagSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     pagination_class = None  # Always return all flags
 
     @action(detail=False, methods=["get"])
@@ -2098,9 +2098,9 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     ordering = ["name"]
 
     def get_permissions(self):
-        """Restrict write operations to admin users."""
+        """Restrict write operations to tenant admin roles or Nexora staff."""
         if self.action in ("create", "update", "partial_update", "destroy"):
-            return [IsAdminUser()]
+            return [FacilityAdminPermission()]
         return [IsAuthenticated()]
 
     def get_queryset(self):
@@ -2271,12 +2271,10 @@ class FacilityViewSet(viewsets.ModelViewSet):
         Write operations require facility-admin privileges (Nexora staff
         or tenant ADMIN/ORG-ADMIN/OWNER roles).
         """
-        from hmis.apps.core.permissions import FacilityAdminPermission
-
         if self.action in ["create", "update", "partial_update", "destroy"]:
             permission_classes = [IsAuthenticated, FacilityAdminPermission]
         else:
-            permission_classes = [IsAuthenticated]
+            permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
         return [permission() for permission in permission_classes]
 
     def get_queryset(self):
@@ -2736,7 +2734,7 @@ class CertificateViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelM
 
     queryset = UserCertificate.objects.select_related("user", "certificate_authority").all()
     serializer_class = UserCertificateSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filterset_fields = ["user", "is_revoked"]
     ordering = ["-created_at"]
 
@@ -2887,7 +2885,7 @@ class DocumentSignatureViewSet(viewsets.GenericViewSet, ListModelMixin, Retrieve
 
     queryset = DocumentSignature.objects.select_related("signer", "certificate").all()
     serializer_class = DocumentSignatureSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filterset_fields = ["document_type", "signer"]
     ordering = ["-signed_at"]
 

@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 
 from hmis.apps.core.history import get_full_history, get_history_diff
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import WriteRequiresRolePermission
 
 
 class ModelHistoryMixin:
@@ -158,7 +159,7 @@ class PatientHistoryView(APIView):
     GET /api/patients/{id}/history/
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def get(self, request, patient_id):
         """Get history for a specific patient."""
@@ -209,7 +210,7 @@ class EncounterHistoryView(APIView):
     GET /api/encounters/{id}/history/
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def get(self, request, encounter_id):
         """Get history for a specific encounter."""

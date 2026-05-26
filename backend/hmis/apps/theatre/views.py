@@ -22,7 +22,7 @@ from rest_framework.response import Response
 from hmis.apps.billing.agent import BillingAgentService
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import get_client_ip
+from hmis.apps.core.permissions import WriteRequiresRolePermission, get_client_ip
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.pharmacy.services import InsufficientStockError
 
@@ -187,7 +187,7 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         "primary_procedure",
         "requesting_doctor",
     ).prefetch_related("team_members__staff_member")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = SurgeryCaseFilter
     search_fields = [
@@ -1187,7 +1187,7 @@ class TheatreEquipmentTypeViewSet(TenantScopedViewMixin, ReadOnCreateMixin, view
     """
 
     queryset = TheatreEquipmentType.objects.select_related("parent").all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "code", "parent__name"]
     ordering_fields = ["name", "code", "category"]
@@ -1289,7 +1289,7 @@ class CaseEquipmentRequirementViewSet(viewsets.ModelViewSet):
         GET    .../equipment/check-conflicts/     - Check all equipment for conflicts
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def get_surgery_case(self) -> SurgeryCase:
         case_pk = self.kwargs["case_pk"]

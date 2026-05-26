@@ -218,6 +218,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",  # Require authentication by default
+        "hmis.apps.core.permissions.WriteRequiresRolePermission",  # Gate writes by role
     ],
     "DEFAULT_PAGINATION_CLASS": "hmis.apps.core.pagination.StandardPagination",
     "PAGE_SIZE": 20,
