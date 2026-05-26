@@ -113,6 +113,8 @@ export const PermissionSchema = z.object({
   name: z.string(),
   app_label: z.string(),
   model: z.string(),
+  matrix_key: z.string().nullable().optional(),
+  matrix_action: z.string().nullable().optional(),
 });
 
 export type PermissionSchemaType = z.infer<typeof PermissionSchema>;

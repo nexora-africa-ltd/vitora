@@ -30,6 +30,9 @@ export interface FacilityModules {
   quality: boolean;
   billing: boolean;
   private_insurance: boolean;
+  moh_reporting: boolean;
+  ai_assistant: boolean;
+  cds: boolean;
 }
 
 // User's facility info included in auth response

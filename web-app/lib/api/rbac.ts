@@ -120,6 +120,17 @@ export const rolesApi = {
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/api/roles/${id}/`);
   },
+
+  /**
+   * Sync all roles from the default roles.json fixture.
+   * Superusers only.
+   */
+  syncDefaults: async (): Promise<{ message: string; roles_updated: number; permissions_synced: number }> => {
+    const response = await apiClient.post<{ message: string; roles_updated: number; permissions_synced: number }>(
+      '/api/roles/sync-defaults/'
+    );
+    return response.data;
+  },
 };
 
 // =============================================================================

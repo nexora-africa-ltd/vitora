@@ -63,6 +63,9 @@ export interface FacilityDetail extends FacilityListItem {
   has_quality: boolean;
   has_billing: boolean;
   has_private_insurance: boolean;
+  has_moh_reporting: boolean;
+  has_ai_assistant: boolean;
+  has_cds: boolean;
   /** Biometrics workstation ID for DHA HIE consent */
   workstation_id?: string;
   /** Agent national ID for biometric authorization */
@@ -131,6 +134,8 @@ export interface FacilityUpdateData {
   has_quality?: boolean;
   has_billing?: boolean;
   has_private_insurance?: boolean;
+  has_ai_assistant?: boolean;
+  has_cds?: boolean;
   operating_mode?: FacilityOperatingMode;
   is_active?: boolean;
 }
@@ -173,5 +178,7 @@ export interface FacilityCreateData {
   has_quality?: boolean;
   has_billing?: boolean;
   has_private_insurance?: boolean;
+  has_ai_assistant?: boolean;
+  has_cds?: boolean;
   is_active?: boolean;
 }

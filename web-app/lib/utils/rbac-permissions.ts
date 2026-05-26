@@ -39,6 +39,57 @@ const CUSTOM_PERMISSION_CODENAMES = new Set([
   'escalate_ihr_to_county',
   'escalate_ihr_to_national',
   'notify_ihr_to_who',
+  'approve_emergency_access',
+  'revoke_emergency_access',
+  'view_emergency_dashboard',
+  'manage_etims',
+  'manage_schedules',
+  'manage_theatre_settings',
+  'approve_purchase_order',
+  'approve_stock_count',
+  'approve_stock_transfer',
+  'approve_swap',
+  'submit_to_authorities',
+  'follow_up',
+  'issue',
+  'resolve',
+  'submit_to_dhis2',
+  'regenerate',
+  'export_sdmx',
+  'import_csv',
+  'export_csv',
+  'issue_sick_note',
+  'revoke_sick_note',
+  'verify_enrollment',
+  'submit_insurance_claim',
+  'approve_insurance_claim',
+  'adjudicate_insurance_claim',
+  'approve_insurance_preauth',
+  'reconcile_remittance',
+  'approve_supplierbill',
+  'manage_blood_bank',
+  'issue_blood_unit',
+  'perform_crossmatch',
+  'manage_dialysis',
+  'perform_dialysis',
+  'accept_order',
+  'reject_order',
+  'acknowledge',
+  'accept',
+  'decline',
+  'complete',
+  'cancel',
+  'record',
+  'add_observation',
+  'mark_reaction',
+  'complete_transfusion',
+  'submit_to_ppb',
+  'manage_theatre',
+  'document_surgery',
+  'assign_physiotherapy_therapist',
+  'assign_ot_therapist',
+  'assign_social_worker',
+  'supervise_sw_case',
 ]);
 
 /**
@@ -60,6 +111,18 @@ function toResourceName(value: string): string {
 function parsePermission(permission: Permission) {
   const { codename } = permission;
 
+  // Prefer the canonical matrix_key / matrix_action from the backend when present.
+  // These are derived from the same MODEL_MAPPING / CUSTOM_ACTIONS / ACTION_MAPPING
+  // sets used by sync_role_group_permissions, so they always agree with how the
+  // permissions_matrix is keyed.
+  const resourceFromBackend = permission.matrix_key ?? null;
+  const actionFromBackend = permission.matrix_action ?? null;
+  if (resourceFromBackend && actionFromBackend) {
+    return { action: actionFromBackend, resource: resourceFromBackend };
+  }
+
+  // ----- Fallback: derive from codename (legacy clients / unmapped permissions) -----
+
   // Check if this is a custom standalone permission (no CRUD prefix)
   if (CUSTOM_PERMISSION_CODENAMES.has(codename)) {
     // Custom permissions use the codename as-is for the action key.
@@ -67,7 +130,7 @@ function parsePermission(permission: Permission) {
     const modelName = permission.model || codename;
     return {
       action: codename,
-      resource: toResourceName(modelName),
+      resource: resourceFromBackend ?? toResourceName(modelName),
     };
   }
 
@@ -77,7 +140,7 @@ function parsePermission(permission: Permission) {
       const modelSuffix = codename.slice(prefix.length + 1);
       return {
         action: prefix,
-        resource: toResourceName(permission.model || modelSuffix),
+        resource: resourceFromBackend ?? toResourceName(permission.model || modelSuffix),
       };
     }
   }
@@ -93,7 +156,7 @@ function parsePermission(permission: Permission) {
 
   return {
     action,
-    resource: toResourceName(modelName),
+    resource: resourceFromBackend ?? toResourceName(modelName),
   };
 }
 

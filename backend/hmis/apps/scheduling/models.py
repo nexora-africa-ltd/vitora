@@ -2213,6 +2213,9 @@ class ShiftSwapRequest(FacilityScopedModel, TimeStampedModel):
             models.Index(fields=["status", "expires_at"]),
             models.Index(fields=["requesting_shift", "status"]),
         ]
+        permissions = [
+            ("approve_swap", "Can approve shift swap requests"),
+        ]
 
     def __str__(self) -> str:
         target = self.target_staff.name if self.target_staff else "open"

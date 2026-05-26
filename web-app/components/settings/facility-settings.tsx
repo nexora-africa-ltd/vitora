@@ -22,6 +22,7 @@ import { API_BASE_URL } from '@/lib/utils/constants';
 import type {
   FacilityDetail,
   FacilityLevel,
+  FacilityOperatingMode,
   FacilityOwnership,
   FacilityUpdateData,
 } from '@/lib/types/facility';
@@ -94,7 +95,25 @@ const MODULE_FIELDS: Array<{
   { key: 'quality', field: 'has_quality', title: 'Quality', description: 'Clinical audit and quality improvement measures.' },
   { key: 'billing', field: 'has_billing', title: 'Finance / Billing', description: 'Invoicing, payments, and financial management.' },
   { key: 'private_insurance', field: 'has_private_insurance', title: 'Private Insurance', description: 'Private insurance claims, pre-authorizations, and remittances.' },
+  { key: 'moh_reporting', field: 'has_moh_reporting', title: 'MOH Reports', description: 'MOH 705/711/717 aggregate reporting and DHIS2 submission.' },
+  { key: 'ai_assistant', field: 'has_ai_assistant', title: 'TibaBot AI Assistant', description: 'Enable TibaBot conversational AI for this facility (requires plan).' },
+  { key: 'cds', field: 'has_cds', title: 'Clinical Decision Support', description: 'Enable CDS rules, alerts, and clinical recommendations (requires plan).' },
 ];
+
+/**
+ * Modules relevant to each operating mode.
+ * FULL_HMIS shows all; standalone modes show only their relevant subset.
+ * Mirrors backend Facility._MODE_ENABLES. Quality, private insurance, AI
+ * and CDS are full-HMIS only — the backend cascade forces them off in
+ * standalone modes.
+ */
+const MODE_RELEVANT_MODULES: Record<FacilityOperatingMode, string[] | 'all'> = {
+  FULL_HMIS: 'all',
+  STANDALONE_LAB: ['has_laboratory', 'has_lis_standalone', 'has_billing', 'has_inventory'],
+  STANDALONE_PHARMACY: ['has_pharmacy', 'has_pharmacy_standalone', 'has_billing', 'has_inventory'],
+  STANDALONE_IMAGING: ['has_imaging', 'has_imaging_standalone', 'has_billing', 'has_inventory'],
+  STANDALONE_DIAGNOSTIC: ['has_laboratory', 'has_imaging', 'has_lis_standalone', 'has_imaging_standalone', 'has_billing', 'has_inventory'],
+};
 
 interface FacilityFormState {
   name: string;
@@ -132,6 +151,9 @@ interface FacilityFormState {
   has_quality: boolean;
   has_billing: boolean;
   has_private_insurance: boolean;
+  has_moh_reporting: boolean;
+  has_ai_assistant: boolean;
+  has_cds: boolean;
 }
 
 function createFormState(facility: FacilityDetail): FacilityFormState {
@@ -171,6 +193,9 @@ function createFormState(facility: FacilityDetail): FacilityFormState {
     has_quality: facility.has_quality,
     has_billing: facility.has_billing,
     has_private_insurance: facility.has_private_insurance,
+    has_moh_reporting: facility.has_moh_reporting,
+    has_ai_assistant: facility.has_ai_assistant,
+    has_cds: facility.has_cds,
   };
 }
 
@@ -232,6 +257,7 @@ function NoFacilityState() {
         quality: false,
         billing: true,
         private_insurance: false,
+        moh_reporting: true,
       },
     });
     // Page will re-render with the selected facility
@@ -724,7 +750,13 @@ export function FacilitySettingsTab() {
             </div>
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {MODULE_FIELDS.map((moduleField) => (
+              {MODULE_FIELDS
+                .filter(({ field }) => {
+                  const mode = facilityQuery.data?.operating_mode ?? 'FULL_HMIS';
+                  const relevant = MODE_RELEVANT_MODULES[mode];
+                  return relevant === 'all' || relevant.includes(field);
+                })
+                .map((moduleField) => (
                 <div key={moduleField.key} className="flex items-start justify-between gap-4 rounded-xl border border-primary/10 bg-background p-4">
                   <div className="space-y-1">
                     <p className="text-sm font-medium">{moduleField.title}</p>

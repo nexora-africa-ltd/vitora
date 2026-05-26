@@ -496,12 +496,14 @@ const _allNavItems: NavItemType[] = [
     href: '/reports/moh',
     icon: ClipboardList,
     moduleKey: 'moh_reporting',
+    facilityModule: 'moh_reporting',
     planFeature: 'dhis2_reporting',
   },
   {
     label: 'CDS',
     icon: BrainCircuit,
     moduleKey: 'cds',
+    facilityModule: 'cds',
     planFeature: 'ai_assistant',
     children: [
       { label: 'Dashboard', href: '/cds', icon: LayoutDashboard, actionKey: 'cds.view_dashboard' },
@@ -513,6 +515,7 @@ const _allNavItems: NavItemType[] = [
     label: 'TibaBot®',
     icon: BotIcon,
     moduleKey: 'ai',
+    facilityModule: 'ai_assistant',
     planFeature: 'ai_assistant',
     featureFlag: ENABLE_AI,
     children: [

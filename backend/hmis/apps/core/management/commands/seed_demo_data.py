@@ -1102,6 +1102,14 @@ class Command(BaseCommand):
                 self.stdout.write(f"  Created {patients_created} sample patients")
 
             # =============================================================
+            # Step 4b: Add Allergies and Emergency Contacts
+            # =============================================================
+            self.stdout.write(
+                self.style.MIGRATE_HEADING("\n4b. Adding Allergies & Emergency Contacts...")
+            )
+            self._seed_patient_allergies_and_contacts(options)
+
+            # =============================================================
             # Step 5: Create Billing Demo Data
             # =============================================================
             self.stdout.write(self.style.MIGRATE_HEADING("\n5. Creating Billing Demo Data..."))
@@ -4104,3 +4112,270 @@ class Command(BaseCommand):
         self.stdout.write("    2. Faith Nyambura – Complete: 4 ANC → SVD → 3 PNC + baby growth")
         self.stdout.write("    3. Brian Mwangi   – Child welfare: growth chart + immunizations")
         self.stdout.write("    4. Amina Hassan   – HIV+ ANC → SVD → HEI/PCR + PMTCT")
+
+    def _seed_patient_allergies_and_contacts(self, options):
+        """
+        Seed allergies and emergency contacts for demo patients.
+
+        Creates clinically realistic allergy data to demonstrate:
+        - Drug-allergy interaction warnings during prescribing
+        - Allergy badge display on patient charts
+        - Emergency contact information for critical alerts
+        """
+        from hmis.apps.core.models import Organization
+        from hmis.apps.patients.models import Allergy, EmergencyContact, Patient
+
+        # Get demo org and facility
+        demo_org = Organization.objects.filter(slug="demo-health-services").first()
+
+        if not demo_org:
+            self.stdout.write(self.style.WARNING("  Demo organization not found"))
+            return
+
+        # =============================================================
+        # Allergy data for specific demo patients
+        # =============================================================
+        # These are designed to trigger interaction warnings during demo
+        PATIENT_ALLERGIES = {
+            "DEMO-PT-0001": [  # John Kamau
+                {
+                    "substance": "Penicillin",
+                    "substance_type": "medication",
+                    "reaction_type": "rash",
+                    "severity": "moderate",
+                    "notes": "Developed rash after amoxicillin in 2019",
+                },
+                {
+                    "substance": "Sulfonamides",
+                    "substance_type": "medication",
+                    "reaction_type": "hives",
+                    "severity": "severe",
+                    "notes": "Co-trimoxazole caused severe urticaria",
+                },
+            ],
+            "DEMO-PT-0002": [  # Mary Otieno
+                {
+                    "substance": "Aspirin",
+                    "substance_type": "medication",
+                    "reaction_type": "bronchospasm",
+                    "severity": "severe",
+                    "notes": "Aspirin-exacerbated respiratory disease",
+                },
+                {
+                    "substance": "NSAIDs",
+                    "substance_type": "medication",
+                    "reaction_type": "angioedema",
+                    "severity": "life_threatening",
+                    "notes": "Cross-reactive with all NSAIDs",
+                },
+            ],
+            "DEMO-PT-0101": [  # Grace Wambui (ANC)
+                {
+                    "substance": "Metoclopramide",
+                    "substance_type": "medication",
+                    "reaction_type": "other",
+                    "severity": "moderate",
+                    "notes": "Extrapyramidal symptoms",
+                },
+            ],
+            "DEMO-PT-0201": [  # Peter Njeri (Dental)
+                {
+                    "substance": "Lidocaine",
+                    "substance_type": "medication",
+                    "reaction_type": "hypotension",
+                    "severity": "moderate",
+                    "notes": "Vasovagal response to local anesthetic",
+                },
+            ],
+            "DEMO-PT-0202": [  # Esther Akinyi (Eye clinic)
+                {
+                    "substance": "Atropine",
+                    "substance_type": "medication",
+                    "reaction_type": "other",
+                    "severity": "moderate",
+                    "notes": "Excessive mydriasis and photophobia",
+                },
+                {
+                    "substance": "Latex",
+                    "substance_type": "environmental",
+                    "reaction_type": "rash",
+                    "severity": "mild",
+                    "notes": "Contact dermatitis",
+                },
+            ],
+            "DEMO-PT-0301": [  # Agnes Chebet (Diabetic)
+                {
+                    "substance": "Metformin",
+                    "substance_type": "medication",
+                    "reaction_type": "diarrhea",
+                    "severity": "moderate",
+                    "notes": "GI intolerance - switched to extended release",
+                },
+            ],
+            "DEMO-PT-0302": [  # George Mutua (Hypertension)
+                {
+                    "substance": "ACE Inhibitors",
+                    "substance_type": "medication",
+                    "reaction_type": "angioedema",
+                    "severity": "life_threatening",
+                    "notes": "Angioedema with enalapril - contraindicated class",
+                },
+                {
+                    "substance": "Thiazide diuretics",
+                    "substance_type": "medication",
+                    "reaction_type": "rash",
+                    "severity": "mild",
+                    "notes": "Photosensitivity rash",
+                },
+            ],
+            "DEMO-PT-0104": [  # Brian Mwangi (Child - 2yo)
+                {
+                    "substance": "Eggs",
+                    "substance_type": "food",
+                    "reaction_type": "hives",
+                    "severity": "moderate",
+                    "notes": "Note for vaccine admin - check egg content",
+                },
+            ],
+            "DEMO-PT-0106": [  # Blessing Hassan (Newborn)
+                {
+                    "substance": "Peanuts",
+                    "substance_type": "food",
+                    "reaction_type": "anaphylaxis",
+                    "severity": "life_threatening",
+                    "notes": "Family history - monitor for early introduction",
+                },
+            ],
+        }
+
+        # =============================================================
+        # Emergency contacts for demo patients
+        # =============================================================
+        PATIENT_CONTACTS = {
+            "DEMO-PT-0001": {  # John Kamau
+                "full_name": "Jane Kamau",
+                "relationship": "spouse",
+                "phone_number": "0722111001",
+                "alternative_phone": "0733111001",
+            },
+            "DEMO-PT-0002": {  # Mary Otieno
+                "full_name": "Peter Otieno",
+                "relationship": "spouse",
+                "phone_number": "0722111002",
+            },
+            "DEMO-PT-0101": {  # Grace Wambui (ANC)
+                "full_name": "David Wambui",
+                "relationship": "spouse",
+                "phone_number": "0722111101",
+                "alternative_phone": "0733111101",
+            },
+            "DEMO-PT-0102": {  # Faith Nyambura (PNC)
+                "full_name": "Michael Nyambura",
+                "relationship": "spouse",
+                "phone_number": "0722111102",
+            },
+            "DEMO-PT-0103": {  # Jane Wanjiku (FP)
+                "full_name": "Stephen Wanjiku",
+                "relationship": "spouse",
+                "phone_number": "0722111103",
+            },
+            "DEMO-PT-0104": {  # Brian Mwangi (Child)
+                "full_name": "Caroline Mwangi",
+                "relationship": "parent",
+                "phone_number": "0722111104",
+                "alternative_phone": "0733111104",
+            },
+            "DEMO-PT-0105": {  # Amina Hassan (HIV+)
+                "full_name": "Ahmed Hassan",
+                "relationship": "spouse",
+                "phone_number": "0722111105",
+            },
+            "DEMO-PT-0106": {  # Blessing Hassan (Newborn)
+                "full_name": "Amina Hassan",
+                "relationship": "parent",
+                "phone_number": "0722111105",
+            },
+            "DEMO-PT-0201": {  # Peter Njeri (Dental)
+                "full_name": "Susan Njeri",
+                "relationship": "spouse",
+                "phone_number": "0722111201",
+            },
+            "DEMO-PT-0202": {  # Esther Akinyi (Eye)
+                "full_name": "Samuel Ochieng",
+                "relationship": "child",
+                "phone_number": "0722111202",
+            },
+            "DEMO-PT-0203": {  # Daniel Kipchoge (ENT)
+                "full_name": "Ruth Kipchoge",
+                "relationship": "spouse",
+                "phone_number": "0722111203",
+            },
+            "DEMO-PT-0301": {  # Agnes Chebet (Diabetic)
+                "full_name": "William Chebet",
+                "relationship": "spouse",
+                "phone_number": "0722111301",
+            },
+            "DEMO-PT-0302": {  # George Mutua (HTN)
+                "full_name": "Margaret Mutua",
+                "relationship": "spouse",
+                "phone_number": "0722111302",
+                "alternative_phone": "0733111302",
+            },
+        }
+
+        allergies_created = 0
+        contacts_created = 0
+
+        # Create allergies
+        for patient_id, allergy_list in PATIENT_ALLERGIES.items():
+            patient = Patient.objects.filter(
+                identification_type="temporary_id",
+                identification_number=patient_id,
+            ).first()
+
+            if not patient:
+                continue
+
+            for allergy_data in allergy_list:
+                allergy, created = Allergy.objects.get_or_create(
+                    organization=demo_org,
+                    patient=patient,
+                    substance=allergy_data["substance"],
+                    defaults={
+                        "substance_type": allergy_data.get("substance_type", "medication"),
+                        "reaction_type": allergy_data.get("reaction_type", "other"),
+                        "severity": allergy_data.get("severity", "moderate"),
+                        "status": "active",
+                        "verification_status": "confirmed",
+                        "notes": allergy_data.get("notes", ""),
+                    },
+                )
+                if created:
+                    allergies_created += 1
+
+        self.stdout.write(f"  Created {allergies_created} allergies")
+
+        # Create emergency contacts
+        for patient_id, contact_data in PATIENT_CONTACTS.items():
+            patient = Patient.objects.filter(
+                identification_type="temporary_id",
+                identification_number=patient_id,
+            ).first()
+
+            if not patient:
+                continue
+
+            contact, created = EmergencyContact.objects.get_or_create(
+                patient=patient,
+                full_name=contact_data["full_name"],
+                defaults={
+                    "relationship": contact_data.get("relationship", "other"),
+                    "phone_number": contact_data.get("phone_number", ""),
+                    "alternative_phone": contact_data.get("alternative_phone", ""),
+                },
+            )
+            if created:
+                contacts_created += 1
+
+        self.stdout.write(f"  Created {contacts_created} emergency contacts")
+        self.stdout.write(self.style.SUCCESS("  ✅ Allergies & contacts seeded successfully!"))

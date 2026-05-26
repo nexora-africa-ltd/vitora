@@ -70,6 +70,7 @@ class TestOrganizationOnboardingModel:
         sample_facility.has_allied_health = False
         sample_facility.has_quality = False
         sample_facility.has_billing = False
+        sample_facility.has_moh_reporting = False
         sample_facility.save()
 
         steps = sample_organization.get_onboarding_checklist()

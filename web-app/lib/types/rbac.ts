@@ -122,6 +122,10 @@ export interface Permission {
   name: string;
   app_label: string;
   model: string;
+  /** Canonical PascalCase resource key used in Role.permissions_matrix (from backend MODEL_MAPPING). */
+  matrix_key?: string | null;
+  /** Canonical action key used in Role.permissions_matrix (from backend role_permissions_sync). */
+  matrix_action?: string | null;
 }
 
 export interface PermissionGroup {

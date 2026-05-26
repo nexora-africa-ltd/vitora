@@ -284,36 +284,12 @@ class TestBuildUserInfo:
         assert set(info.keys()) == expected_keys
 
     def test_facility_has_all_module_keys(self, user_with_facility):
+        from hmis.apps.core.models import Facility
         from hmis.apps.core.views import _build_user_info
 
         info = _build_user_info(user_with_facility)
         modules = info["facility"]["modules"]
-        expected_modules = {
-            "outpatient",
-            "inpatient",
-            "emergency",
-            "pharmacy",
-            "laboratory",
-            "imaging",
-            "theatre",
-            "dialysis",
-            "icu",
-            "maternity",
-            "mortuary",
-            "blood_bank",
-            "inventory",
-            "lis_standalone",
-            "pharmacy_standalone",
-            "imaging_standalone",
-            "triage",
-            "scheduling",
-            "surveillance",
-            "immunizations",
-            "allied_health",
-            "quality",
-            "billing",
-            "private_insurance",
-        }
+        expected_modules = {f[len("has_") :] for f in Facility.MODULE_FLAG_TO_FEATURE}
         assert set(modules.keys()) == expected_modules
 
     def test_user_without_staff_profile(self, db):
