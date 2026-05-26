@@ -30,6 +30,8 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.permissions import WriteRequiresRolePermission
+
 logger = logging.getLogger(__name__)
 
 
@@ -2909,7 +2911,7 @@ class FHIRCarePlanView(APIView):
     Maps Django TreatmentPlan to FHIR CarePlan resource for IPS Plan of Care section.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     # Status mapping from Django to FHIR CarePlan status
     STATUS_MAP = {

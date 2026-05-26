@@ -59,7 +59,7 @@ from hmis.apps.billing.sha_serializers import (
 )
 from hmis.apps.core.kms import get_kms_provider
 from hmis.apps.core.mixins import TenantScopedViewMixin
-from hmis.apps.core.permissions import SHAPermission
+from hmis.apps.core.permissions import SHAPermission, WriteRequiresRolePermission
 
 logger = logging.getLogger(__name__)
 
@@ -1328,7 +1328,7 @@ class TerminologySearchView(APIView):
     For ICD-11, uses local WHO ICD-11 API container by default (ICD11_USE_LOCAL=true).
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         parameters=[
@@ -1610,7 +1610,7 @@ class ClientRegistryView(APIView):
     API view for Kenya Client Registry operations.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         parameters=[
@@ -1972,7 +1972,7 @@ class FacilitySearchView(APIView):
     API view for facility validation via MFL.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         parameters=[
@@ -2059,7 +2059,7 @@ class PractitionerSearchView(APIView):
     middleware which uses the newer authentication flow.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     # Map identification_type to the DHA regulator code.
     # When the caller doesn't specify a regulator we try all four.
@@ -2276,7 +2276,7 @@ class EligibilityCheckView(APIView):
     API view for SHA eligibility verification.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         request=inline_serializer(
@@ -2414,7 +2414,7 @@ class DirectEligibilityCheckView(APIView):
     registration or lookup to verify SHA coverage status.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         parameters=[
@@ -2948,7 +2948,7 @@ class ConsentSendOTPView(APIView):
     authentication transparently via OAuth2 client_credentials token.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     throttle_scope = "otp"
 
     # Fallback intervention code when none selected by user
@@ -3104,7 +3104,7 @@ class ConsentValidateOTPView(APIView):
     POST /api/sha/consent/validate-otp/
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     throttle_scope = "otp"
 
     def _get_facility(self, request):
@@ -3199,7 +3199,7 @@ class ConsentDetailView(APIView):
     GET /api/sha/consent/{id}/
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def _get_facility(self, request):
         """Resolve and return the request facility, or None."""
@@ -3265,7 +3265,7 @@ class StartVisitView(APIView):
     validates it, and starts the visit session in a single call.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def _get_facility(self, request):
         """Resolve and return the request facility, or None."""
@@ -3421,7 +3421,7 @@ class BiometricAuthorizeView(APIView):
     Returns auth_guid and iframe_url for rendering the biometric capture UI.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def _get_facility(self, request):
         """Resolve and return the request facility, or None."""
@@ -3524,7 +3524,7 @@ class BiometricAuthorizeStatusView(APIView):
     Returns current status of the biometric fingerprint verification.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         responses={
@@ -3563,7 +3563,7 @@ class BiometricCancelView(APIView):
     Used when the iframe expires (10-min window) or the user wants to abort.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         responses={
@@ -3602,7 +3602,7 @@ class BeneficiaryContactsView(APIView):
     The user selects which contact to send the OTP to.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         parameters=[
@@ -3656,7 +3656,7 @@ class PreauthSubmitView(APIView):
     POST /api/sha/preauth/submit/
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def _get_facility(self, request):
         """Resolve and return the request facility, or None."""
@@ -3771,7 +3771,7 @@ class PreauthStatusView(APIView):
     GET /api/sha/preauth/{id}/status/
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def _get_facility(self, request):
         """Resolve and return the request facility, or None."""
@@ -3831,7 +3831,7 @@ class PreauthPendingListView(APIView):
     GET /api/sha/preauth/pending/
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def _get_facility(self, request):
         """Resolve and return the request facility, or None."""
@@ -3898,7 +3898,7 @@ class SHARemittanceViewSet(viewsets.ReadOnlyModelViewSet):
     POST /api/sha/remittances/fetch/   → trigger DHA fetch
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def get_queryset(self):
         from hmis.apps.billing.models import SHARemittance

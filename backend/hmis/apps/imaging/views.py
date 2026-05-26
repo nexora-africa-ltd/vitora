@@ -28,6 +28,7 @@ from hmis.apps.core.mixins import (
     resolve_request_tenant,
 )
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import WriteRequiresRolePermission
 from hmis.apps.scheduling.models import Resource
 
 from .models import (
@@ -87,7 +88,7 @@ class ImagingResourceViewSet(viewsets.ReadOnlyModelViewSet):
     Uses the scheduling.Resource model filtered by department=radiology.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     serializer_class = ImagingResourceSerializer
 
     def get_queryset(self):
@@ -281,7 +282,7 @@ class ImagingCalendarView(APIView):
     Combined calendar view for all imaging resources.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         parameters=[
@@ -339,7 +340,7 @@ class ImagingProcedureViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
     """
 
     queryset = ImagingProcedure.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     lookup_field = "code"
     tenant_scope = "facility"
 
@@ -473,7 +474,7 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
 
     queryset = ImagingOrder.objects.all().select_related("patient", "encounter", "ordered_by")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [filters.DjangoFilterBackend, SearchFilter]
     filterset_fields = ["patient", "encounter", "status", "priority"]
     search_fields = [
@@ -822,7 +823,7 @@ class DICOMStudyViewSet(viewsets.ReadOnlyModelViewSet):
         .select_related("patient", "imaging_order", "uploaded_by")
         .prefetch_related("series_set", "series_set__instances")
     )
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     lookup_field = "study_instance_uid"
     lookup_value_regex = r"[\d.]+"  # DICOM UIDs contain digits and dots
 
@@ -1191,7 +1192,7 @@ class DICOMUploadView(APIView):
         patient: (optional) ID of the patient (required if no imaging_order)
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     parser_classes = [MultiPartParser, FormParser]
 
     @extend_schema(
@@ -1481,7 +1482,7 @@ class DICOMRetrieveView(APIView):
     Returns the raw DICOM file with appropriate content-type headers.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         responses={
@@ -1551,7 +1552,7 @@ class DICOMFrameRenderView(APIView):
     Returns PNG image with appropriate content-type headers.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         parameters=[
@@ -1817,7 +1818,7 @@ class RadiologyReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         )
         .prefetch_related("amendments", "imaging_order__items__procedure")
     )
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = RadiologyReportFilter
     lookup_field = "report_number"
@@ -2618,7 +2619,7 @@ class ImagingEquipmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     Manual creation is also supported for QA tracking before the first study arrives.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     tenant_scope = "facility"
     filter_backends = [SearchFilter]
     search_fields = ["name", "ae_title", "station_name", "serial_number", "model_name"]

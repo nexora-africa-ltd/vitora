@@ -37,6 +37,7 @@ from .models import (
     StaffProfile,
     SubscriptionPlan,
 )
+from .permissions import FacilityAdminPermission, WriteRequiresRolePermission
 from .serializers import (
     ChangePasswordSerializer,
     CrossOrgAcceptSerializer,
@@ -116,7 +117,7 @@ class StaffInvitationViewSet(viewsets.ModelViewSet):
         .all()
     )
     serializer_class = StaffInvitationSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [FacilityAdminPermission]
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -537,7 +538,7 @@ class OrgJoinRequestViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = OrgJoinRequestSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     http_method_names = ["get", "post", "head", "options"]
 
     def get_queryset(self):

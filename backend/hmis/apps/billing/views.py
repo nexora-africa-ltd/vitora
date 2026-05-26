@@ -53,7 +53,7 @@ from hmis.apps.billing.serializers import (
 )
 from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import RequiresActiveShiftPermission
+from hmis.apps.core.permissions import RequiresActiveShiftPermission, WriteRequiresRolePermission
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ class ServiceCategoryViewSet(viewsets.ModelViewSet):
 
     queryset = ServiceCategory.objects.all()
     serializer_class = ServiceCategorySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "code", "description"]
     ordering_fields = ["display_order", "name", "created_at"]
@@ -83,7 +83,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
     queryset = Service.objects.select_related("category", "created_by").all()
     serializer_class = ServiceSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["category", "is_active", "is_taxable", "sha_code"]
     search_fields = ["name", "code", "description", "sha_code"]
@@ -480,7 +480,7 @@ class PaymentPointViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = PaymentPoint.objects.select_related("created_by").all()
     serializer_class = PaymentPointSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["method", "is_active"]
     search_fields = ["name", "code", "till_number", "paybill_number", "bank_account_number"]
@@ -500,7 +500,7 @@ class CreditNoteViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "invoice", "patient", "requested_by", "approved_by"
     ).all()
     serializer_class = CreditNoteSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = CreditNoteFilter
     search_fields = ["credit_note_number", "reason_detail"]
@@ -570,7 +570,7 @@ class MpesaViewSet(viewsets.ViewSet):
     - Transaction status queries
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     serializer_class = None  # No model serializer - all actions use inline serializers
 
     @extend_schema(
@@ -1053,7 +1053,7 @@ class ReportViewSet(viewsets.ViewSet):
     Provides read-only endpoints for financial reports.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     serializer_class = None  # No model serializer - all actions return dict responses
 
     def _get_report_service(self, request):
@@ -1282,7 +1282,7 @@ class FacilityBillingConfigViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
 
     tenant_facility_chain = ""
     tenant_org_chain = "facility__organization"
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ["facility", "sha_accreditation_status", "default_payment_type"]
     search_fields = ["facility__name", "facility__mfl_code", "sha_contract_number"]

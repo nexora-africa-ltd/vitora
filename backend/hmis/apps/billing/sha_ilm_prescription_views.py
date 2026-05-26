@@ -39,6 +39,7 @@ from hmis.apps.billing.services.ilm_prescription_service import (
     RemovePrescriptionDoctorParams,
 )
 from hmis.apps.core.events import BillingEvents, publish_event
+from hmis.apps.core.permissions import WriteRequiresRolePermission
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.patients.models import Patient
 
@@ -135,7 +136,7 @@ def _result_to_response(result, *, http_status: int = status.HTTP_200_OK) -> Res
 
 
 class IlmPrescriptionPreviewView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def get(self, request):
         consent_token = request.query_params.get("consent_token")
@@ -162,7 +163,7 @@ class IlmPrescriptionPreviewView(APIView):
 
 
 class IlmPrescriptionCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     REQUIRED_FIELDS = ("consent_token", "intervention_code", "identification_number", "items")
 
@@ -231,7 +232,7 @@ class IlmPrescriptionCreateView(APIView):
 
 
 class IlmPrescriptionDispenseView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     REQUIRED_FIELDS = ("consent_token", "intervention_code", "actual_products")
 
@@ -300,7 +301,7 @@ class IlmPrescriptionDispenseView(APIView):
 
 
 class IlmPrescriptionRemoveDoctorView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     REQUIRED_FIELDS = (
         "consent_token",
@@ -358,7 +359,7 @@ def _serialize_prescription(obj: SHADhaPrescription) -> dict:
 
 
 class SHADhaPrescriptionListView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def get(self, request):
         qs = SHADhaPrescription.objects.all()

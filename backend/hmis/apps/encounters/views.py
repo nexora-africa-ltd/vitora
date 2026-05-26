@@ -16,7 +16,11 @@ from hmis.apps.checkin.serializers import ClinicalSnapshotSerializer
 from hmis.apps.core.history_views import ModelHistoryMixin
 from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import RequiresActiveShiftPermission, get_client_ip
+from hmis.apps.core.permissions import (
+    RequiresActiveShiftPermission,
+    WriteRequiresRolePermission,
+    get_client_ip,
+)
 
 from .filters import EncounterFilter
 from .models import (
@@ -67,7 +71,7 @@ class ICD10CodeViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = ICD10Code.objects.filter(is_active=True)
     serializer_class = ICD10CodeSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["chapter", "category"]
     search_fields = ["code", "description", "category"]
@@ -92,7 +96,7 @@ class TreatmentPlanTemplateViewSet(viewsets.ModelViewSet):
 
     queryset = TreatmentPlanTemplate.objects.filter(is_active=True)
     serializer_class = TreatmentPlanTemplateSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["department", "is_active"]
     search_fields = ["name", "description", "department"]
@@ -1656,7 +1660,7 @@ class TreatmentPlanView(APIView):
     - PUT/PATCH /api/encounters/{encounter_id}/treatment-plan/ - Update treatment plan
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def _get_encounter(self, encounter_pk):
         """Get encounter or return 404."""
@@ -1782,7 +1786,7 @@ class ApplyTemplateView(APIView):
     - POST /api/encounters/{encounter_id}/treatment-plan/apply-template/
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         request=inline_serializer(
@@ -1932,7 +1936,7 @@ class SNOMEDSearchView(APIView):
         limit: Max results (default 20, max 50)
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         parameters=[

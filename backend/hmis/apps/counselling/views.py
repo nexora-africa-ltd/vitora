@@ -17,6 +17,7 @@ from rest_framework.response import Response
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import WriteRequiresRolePermission
 from hmis.apps.counselling.models import CounsellingReferral, CounsellingSession, CounsellingType
 from hmis.apps.counselling.serializers import (
     CounsellingReferralAssignCounsellorSerializer,
@@ -55,7 +56,7 @@ class CounsellingTypeViewSet(viewsets.ModelViewSet):
     """
 
     queryset = CounsellingType.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -133,7 +134,7 @@ class CounsellingReferralViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         "referred_by",
         "assigned_counsellor",
     ).prefetch_related("sessions")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -562,7 +563,7 @@ class CounsellingSessionViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "referral__patient",
         "counsellor",
     )
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,

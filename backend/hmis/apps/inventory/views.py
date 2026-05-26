@@ -18,7 +18,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
-from hmis.apps.core.permissions import RequiresActiveShiftPermission
+from hmis.apps.core.permissions import RequiresActiveShiftPermission, WriteRequiresRolePermission
 from hmis.apps.inventory.filters import (
     ConsumptionRecordFilter,
     DemandForecastFilter,
@@ -98,7 +98,7 @@ class PaymentTermViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = PaymentTerm.objects.all()
     serializer_class = PaymentTermSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     tenant_scope = "organization"
     search_fields = ["code", "name"]
 
@@ -112,7 +112,7 @@ class SupplierViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelVi
     """CRUD for suppliers. Organization-scoped."""
 
     queryset = Supplier.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filterset_class = SupplierFilter
     search_fields = ["name", "code", "contact_person"]
     tenant_scope = "organization"
@@ -295,7 +295,7 @@ class StoreLocationViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mo
     """CRUD for store locations within a facility. Facility-scoped."""
 
     queryset = StoreLocation.objects.select_related("managed_by")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filterset_class = StoreLocationFilter
     search_fields = ["name", "code"]
     tenant_scope = "facility"
@@ -560,7 +560,7 @@ class WardStockTransactionViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelV
         "patient",
     )
     serializer_class = WardStockTransactionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filterset_class = WardStockTransactionFilter
     tenant_scope = "facility"
     tenant_facility_field = "ward_stock__facility"
@@ -733,7 +733,7 @@ class ETIMSConfigViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
     """
 
     queryset = ETIMSConfig.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     tenant_scope = "facility"
 
     def check_write_permission(self, request):
@@ -797,7 +797,7 @@ class ETIMSInvoiceViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mod
     queryset = ETIMSInvoice.objects.select_related(
         "invoice__patient", "dispensing"
     ).prefetch_related("items")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filterset_class = ETIMSInvoiceFilter
     tenant_scope = "facility"
 
@@ -920,7 +920,7 @@ class ETIMSDailyReportViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewS
     from hmis.apps.inventory.models import ETIMSDailyReport
 
     queryset = ETIMSDailyReport.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     tenant_scope = "facility"
 
     def get_serializer_class(self):
@@ -975,7 +975,7 @@ class ConsumptionRecordViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelView
     """Read-only access to aggregated consumption records."""
 
     queryset = ConsumptionRecord.objects.select_related("drug")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filterset_class = ConsumptionRecordFilter
     tenant_scope = "facility"
 
@@ -989,7 +989,7 @@ class DemandForecastViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet
     """Read-only access to demand forecasts + on-demand generation."""
 
     queryset = DemandForecast.objects.select_related("drug")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filterset_class = DemandForecastFilter
     tenant_scope = "facility"
 
@@ -1052,7 +1052,7 @@ class ReorderSuggestionViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelView
     """Read-only access to reorder suggestions + convert/dismiss actions."""
 
     queryset = ReorderSuggestion.objects.select_related("drug", "supplier")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filterset_class = ReorderSuggestionFilter
     tenant_scope = "facility"
 

@@ -38,6 +38,7 @@ from hmis.apps.billing.services.ilm_preauth_service import (
     IlmPreauthService,
 )
 from hmis.apps.core.events import BillingEvents, publish_event
+from hmis.apps.core.permissions import WriteRequiresRolePermission
 from hmis.apps.patients.models import Patient
 
 logger = logging.getLogger(__name__)
@@ -159,7 +160,7 @@ def _serialize_emergency(e: SHAEmergencyClaim) -> dict[str, Any]:
 class IlmPreauthFetchView(APIView):
     """GET /api/sha/ilm/preauth/?consent_token="""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def get(self, request):
         consent_token = request.query_params.get("consent_token")
@@ -196,7 +197,7 @@ class IlmPreauthCreateView(APIView):
         }
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def post(self, request):
         consent_token = request.data.get("consent_token")
@@ -233,7 +234,7 @@ class IlmPreauthCancelView(APIView):
     Body: { consent_token, intervention_code }
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def post(self, request):
         consent_token = request.data.get("consent_token")
@@ -267,7 +268,7 @@ class IlmPreauthRemoveDiagnosisView(APIView):
     Body: { consent_token, intervention_code }
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def delete(self, request, icd_code: str):
         consent_token = request.data.get("consent_token")
@@ -300,7 +301,7 @@ class IlmPreauthRemoveDoctorView(APIView):
     Body: { consent_token, intervention_code, practitioner_registration_number }
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def delete(self, request):
         consent_token = request.data.get("consent_token")
@@ -337,7 +338,7 @@ class IlmPreauthRemoveDoctorView(APIView):
 class IlmDoctorConsentView(APIView):
     """POST /api/sha/ilm/preauth/doctor-consent/"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def post(self, request):
         required = (
@@ -390,7 +391,7 @@ class IlmDoctorConsentPollView(APIView):
     is REQUESTED (awaiting doctor approval on Practice360).
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def get(self, request):
         preauth_id = request.query_params.get("preauth_id")
@@ -445,7 +446,7 @@ class IlmEmergencyOpenView(APIView):
     local linking fields.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def post(self, request):
         interventions = request.data.get("interventions") or []
@@ -480,7 +481,7 @@ class IlmEmergencyOpenView(APIView):
 class IlmEmergencyProtocolsListView(APIView):
     """GET /api/sha/ilm/emergency/protocols/?active=&intervention_code="""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def get(self, request):
         active = request.query_params.get("active")
@@ -512,7 +513,7 @@ class IlmEmergencyProtocolApplyView(APIView):
     Body: { consent_token, protocol_code, intervention_code, unit_price, quantity, diagnoses }
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def post(self, request):
         required = (
@@ -559,7 +560,7 @@ class IlmEmergencyProtocolApplyView(APIView):
 class IlmEmtCreateView(APIView):
     """POST /api/sha/ilm/emt/"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def post(self, request):
         required = (
@@ -639,7 +640,7 @@ class SHAPreauthListView(APIView):
     At least one filter (patient_pk, claim_pk, or status) is required.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def get(self, request):
         patient = _resolve(Patient, request, "patient_pk")
@@ -668,7 +669,7 @@ class SHAEmergencyClaimListView(APIView):
     Returns the cached SHAEmergencyClaim rows for browsing in the UI.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def get(self, request):
         qs = SHAEmergencyClaim.objects.all()

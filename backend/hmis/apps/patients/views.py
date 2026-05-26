@@ -21,7 +21,11 @@ from hmis.apps.core.mixins import (
     TenantScopedViewMixin,
 )
 from hmis.apps.core.models import AuditLog, IdempotencyKey
-from hmis.apps.core.permissions import SensitiveAccessPermission, get_client_ip
+from hmis.apps.core.permissions import (
+    SensitiveAccessPermission,
+    WriteRequiresRolePermission,
+    get_client_ip,
+)
 from hmis.apps.encounters.models import Encounter
 
 from .filters import PatientFilter
@@ -1017,7 +1021,7 @@ class EmergencyContactViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     serializer_class = EmergencyContactSerializer
     queryset = EmergencyContact.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     tenant_facility_chain = "patient__registered_at_facility"
     tenant_org_chain = "patient__organization"
 
@@ -1100,7 +1104,7 @@ class AllergyViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     tenant_scope = "organization"  # Allergies are org-scoped (shared medical history)
 
     serializer_class = AllergySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["patient", "substance_type", "severity", "status", "verification_status"]
     search_fields = ["substance", "substance_code", "notes"]
@@ -1545,7 +1549,7 @@ class DeathRecordViewSet(ReadOnCreateMixin, NestedTenantScopeMixin, viewsets.Mod
         "admission",
         "encounter",
     ).all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["status", "body_status", "manner_of_death", "place_of_death", "patient"]
     search_fields = [

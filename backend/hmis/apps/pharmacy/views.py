@@ -16,7 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
-from hmis.apps.core.permissions import RequiresActiveShiftPermission
+from hmis.apps.core.permissions import RequiresActiveShiftPermission, WriteRequiresRolePermission
 from hmis.apps.pharmacy.models import (
     Dispensing,
     Drug,
@@ -46,7 +46,7 @@ class DrugCategoryViewSet(viewsets.ModelViewSet):
 
     queryset = DrugCategory.objects.all()
     serializer_class = DrugCategorySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     http_method_names = ["get", "post", "head", "options"]
 
     def get_queryset(self):
@@ -70,7 +70,7 @@ class DrugViewSet(viewsets.ModelViewSet):
 
     queryset = Drug.objects.all()
     serializer_class = DrugSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["generic_name", "brand_names", "code"]
     filterset_fields = ["form", "schedule", "is_essential", "is_active", "item_type"]
@@ -192,7 +192,7 @@ class StockBatchViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         "drug", "received_by", "store_location", "supplier", "purchase_order"
     ).all()
     serializer_class = StockBatchSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["drug", "status", "drug__item_type", "store_location"]
     search_fields = ["batch_number", "drug__generic_name", "drug__brand_name", "supplier__name"]
@@ -231,7 +231,7 @@ class StockAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = StockAlert.objects.select_related("drug").all()
     serializer_class = StockAlertSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["alert_type", "severity", "is_acknowledged", "is_resolved"]
     ordering_fields = ["created_at", "severity"]
@@ -520,7 +520,7 @@ class StockAdjustmentViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "batch__drug", "adjusted_by", "approved_by"
     ).all()
     serializer_class = StockAdjustmentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["batch", "adjustment_type", "requires_approval"]
     ordering_fields = ["adjusted_at", "created_at"]
@@ -564,7 +564,7 @@ class StockSummaryReportView(APIView):
     GET /api/pharmacy/reports/stock-summary/
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT},
@@ -616,7 +616,7 @@ class ExpiryReportView(APIView):
     GET /api/pharmacy/reports/expiry-report/?days=90
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         parameters=[
@@ -664,7 +664,7 @@ class DispensingReportView(APIView):
     GET /api/pharmacy/reports/dispensing/?start_date=2025-01-01&end_date=2025-01-31
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         parameters=[
@@ -720,7 +720,7 @@ class StockMovementReportView(APIView):
     GET /api/pharmacy/reports/movement/?start_date=2025-01-01&end_date=2025-01-31
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         parameters=[
@@ -845,7 +845,7 @@ class AlertSettingsView(APIView):
     PUT/PATCH - Update alert settings
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT},

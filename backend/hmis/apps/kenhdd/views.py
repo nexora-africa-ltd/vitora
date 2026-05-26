@@ -17,6 +17,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from hmis.apps.core.permissions import WriteRequiresRolePermission
+
 from .models import KENHDDDataElement, KENHDDFailedRecord, KENHDDValidationRun
 from .serializers import (
     KENHDDComplianceReportInputSerializer,
@@ -41,7 +43,7 @@ class KENHDDDataElementViewSet(viewsets.ReadOnlyModelViewSet):
     """
 
     queryset = KENHDDDataElement.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ["resource_type", "requirement_level", "data_type", "is_active"]
     search_fields = ["element_id", "name", "description"]
@@ -62,7 +64,7 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
     - Export reports
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def get_serializer_class(self):  # type: ignore[override]
         if self.action == "validate_record":

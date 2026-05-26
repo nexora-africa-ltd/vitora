@@ -15,6 +15,7 @@ from rest_framework.response import Response
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import WriteRequiresRolePermission
 from hmis.apps.occupational_therapy.models import (
     OccupationalTherapyOrder,
     OTSession,
@@ -54,7 +55,7 @@ class OTTreatmentTypeViewSet(viewsets.ModelViewSet):
     """
 
     queryset = OTTreatmentType.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -129,7 +130,7 @@ class OccupationalTherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewS
         "ordered_by",
         "assigned_therapist",
     ).prefetch_related("sessions")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -558,7 +559,7 @@ class OTSessionViewSet(NestedTenantScopeMixin, ReadOnCreateMixin, viewsets.Model
         "order__treatment_type",
         "therapist",
     )
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,

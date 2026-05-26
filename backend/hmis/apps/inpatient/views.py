@@ -15,7 +15,7 @@ from rest_framework.response import Response
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import get_client_ip
+from hmis.apps.core.permissions import WriteRequiresRolePermission, get_client_ip
 from hmis.apps.patients.models import Patient
 
 from .models import (
@@ -115,7 +115,7 @@ class WardViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = Ward.objects.filter(is_active=True)
     serializer_class = InpatientWardSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["ward_type", "is_active"]
     search_fields = ["name", "code"]
@@ -692,7 +692,7 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
     - GET /api/inpatient/supervisor/alerts/metrics/ - Get constraint override metrics
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def _resolve_tenant_context(self):
         """Resolve facility/org from request (same logic as NestedTenantScopeMixin)."""
@@ -1107,7 +1107,7 @@ class BedViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     queryset = Bed.objects.all()
     serializer_class = BedSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["ward", "status"]
     search_fields = ["bed_number"]
@@ -1201,7 +1201,7 @@ class AdmissionRecommendationViewSet(NestedTenantScopeMixin, viewsets.ModelViewS
 
     queryset = AdmissionRecommendation.objects.all()
     serializer_class = AdmissionRecommendationSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["status", "urgency", "recommended_by", "preferred_ward_type"]
     search_fields = ["reason", "provisional_diagnosis_text"]
@@ -1337,7 +1337,7 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         "mch_registration",
     ).all()
     serializer_class = AdmissionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["patient", "ward", "admission_status", "payer_type"]
     search_fields = ["admission_number", "patient__first_name", "patient__last_name"]
@@ -2056,7 +2056,7 @@ class DischargeViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "pnc_appointment",
     ).prefetch_related("diagnoses")
     serializer_class = DischargeSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     tenant_facility_chain = "admission__ward__facility"
     tenant_org_chain = "admission__organization"
@@ -2114,7 +2114,7 @@ class TransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     tenant_org_chain = "admission__organization"
     queryset = Transfer.objects.select_related("admission", "admission__mch_registration")
     serializer_class = TransferSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["source_ward", "destination_ward", "reason", "transferred_by"]
     search_fields = [
@@ -2166,7 +2166,7 @@ class WardRoundViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     tenant_org_chain = "admission__organization"
     queryset = WardRound.objects.all()
     serializer_class = WardRoundSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = [
         "admission",
@@ -2223,7 +2223,7 @@ class ReviewRequestViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     tenant_facility_chain = "admission__facility"
     tenant_org_chain = "admission__organization"
     queryset = ReviewRequest.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = [
         "admission",
@@ -2409,7 +2409,7 @@ class NursingKardexViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     tenant_org_chain = "admission__organization"
     queryset = NursingKardex.objects.all()
     serializer_class = NursingKardexSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["admission", "fall_risk", "pressure_sore_risk"]
     search_fields = [
@@ -2741,7 +2741,7 @@ class ShiftHandoverViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     tenant_org_chain = "ward__organization"
     queryset = ShiftHandover.objects.all()
     serializer_class = ShiftHandoverSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["ward", "shift_date", "shift_ending", "outgoing_nurse", "incoming_nurse"]
     search_fields = ["ward__name", "general_notes"]
@@ -2831,7 +2831,7 @@ class TemperatureReadingViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     tenant_facility_chain = "admission__facility"
     tenant_org_chain = "admission__organization"
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["admission"]
     ordering_fields = ["recorded_at"]
@@ -2876,7 +2876,7 @@ class FluidBalanceSheetViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     tenant_facility_chain = "admission__facility"
     tenant_org_chain = "admission__organization"
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["admission", "chart_date"]
     ordering_fields = ["chart_date", "created_at"]
@@ -2920,7 +2920,7 @@ class FluidBalanceEntryViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     tenant_facility_chain = "fluid_balance_sheet__admission__facility"
     tenant_org_chain = "fluid_balance_sheet__admission__organization"
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["fluid_balance_sheet", "entry_type"]
     ordering_fields = ["recorded_at", "created_at"]
@@ -2973,7 +2973,7 @@ class BloodTransfusionViewSet(NestedTenantScopeMixin, ReadOnCreateMixin, viewset
 
     tenant_facility_chain = "admission__facility"
     tenant_org_chain = "admission__organization"
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["admission", "status"]
     ordering_fields = ["transfusion_date"]
@@ -3105,7 +3105,7 @@ class BPMonitoringViewSet(NestedTenantScopeMixin, ReadOnCreateMixin, viewsets.Mo
 
     tenant_facility_chain = "admission__facility"
     tenant_org_chain = "admission__organization"
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["admission"]
     ordering_fields = ["recorded_at"]
@@ -3147,7 +3147,7 @@ class MedicationAdministrationViewSet(NestedTenantScopeMixin, viewsets.ModelView
 
     tenant_facility_chain = "admission__facility"
     tenant_org_chain = "admission__organization"
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["admission", "status", "prescription_item"]
     ordering_fields = ["scheduled_time", "created_at"]
@@ -3246,7 +3246,7 @@ class AdverseTransfusionReactionViewSet(
     """
 
     tenant_scope = "facility"
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["status", "transfusion", "transfusion__admission"]
     ordering_fields = ["report_date", "created_at"]
@@ -3469,7 +3469,7 @@ class DischargeTemplateViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewset
     """
 
     queryset = DischargeTemplate.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     tenant_scope = "facility"
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["layout", "is_default", "is_active"]

@@ -20,7 +20,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
-from hmis.apps.core.permissions import RequiresActiveShiftPermission
+from hmis.apps.core.permissions import RequiresActiveShiftPermission, WriteRequiresRolePermission
 
 from .models import (
     AnalyzerRun,
@@ -1216,7 +1216,7 @@ class LabAttachmentViewSet(NestedTenantScopeMixin, viewsets.GenericViewSet):
 
     queryset = LabResultAttachment.objects.all().select_related("lab_order", "uploaded_by")
     serializer_class = LabResultAttachmentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     tenant_facility_chain = "lab_order__facility"
     tenant_org_chain = "lab_order__organization"
 
@@ -1244,7 +1244,7 @@ class PatientLabOrderViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewS
 
     queryset = LabOrder.objects.all()
     serializer_class = LabOrderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     tenant_facility_chain = "facility"
     tenant_org_chain = "organization"
 
@@ -1266,7 +1266,7 @@ class EncounterLabOrderViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelVie
 
     queryset = LabOrder.objects.all()
     serializer_class = LabOrderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     tenant_facility_chain = "facility"
     tenant_org_chain = "organization"
 
@@ -1288,7 +1288,7 @@ class PatientLabResultViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelView
 
     queryset = LabResult.objects.all()
     serializer_class = LabResultSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     tenant_facility_chain = "order_item__lab_order__facility"
     tenant_org_chain = "order_item__lab_order__organization"
 
@@ -1307,7 +1307,7 @@ class LOINCCodeViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = LOINCCode.objects.all()
     serializer_class = LOINCCodeSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
 
 # ============================================================================
@@ -1332,7 +1332,7 @@ class LabQueueViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     - technicians: List available technicians
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [filters.DjangoFilterBackend]
     filterset_fields = ["queue_status", "priority", "assigned_technician"]
     lookup_field = "queue_number"
@@ -1569,7 +1569,7 @@ class LabQueueViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 class LabTurnaroundTimeReportView(APIView):
     """Report turnaround time metrics for lab operations."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         responses={
@@ -1595,7 +1595,7 @@ class LabTurnaroundTimeReportView(APIView):
 class LabWorkloadReportView(APIView):
     """Report lab workload metrics."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         responses={
@@ -1620,7 +1620,7 @@ class LabWorkloadReportView(APIView):
 class LabCriticalValuesReportView(APIView):
     """Report critical values metrics."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         responses={
@@ -1644,7 +1644,7 @@ class LabCriticalValuesReportView(APIView):
 class LabSampleRejectionReportView(APIView):
     """Report sample rejection metrics."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         responses={
@@ -1698,7 +1698,7 @@ class InstrumentViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Model
     """
 
     queryset = Instrument.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filterset_class = InstrumentFilter
     tenant_scope = "facility"
 
@@ -1739,7 +1739,7 @@ class AnalyzerRunViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
 
     queryset = AnalyzerRun.objects.select_related("specimen", "instrument", "operator").all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filterset_class = AnalyzerRunFilter
     tenant_facility_chain = "specimen__lab_order__facility"
     tenant_org_chain = "specimen__lab_order__organization"
@@ -1813,7 +1813,7 @@ class DiagnosticReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "amended_by",
     ).all()
     lookup_field = "report_number"
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filterset_class = DiagnosticReportFilter
     tenant_facility_chain = "lab_order__facility"
     tenant_org_chain = "lab_order__organization"
@@ -2079,7 +2079,7 @@ class SpecimenViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
         .all()
     )
     serializer_class = SpecimenSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = SpecimenFilter
     lookup_field = "barcode"
@@ -2107,7 +2107,7 @@ class SpecimenRejectionReasonViewSet(TenantScopedViewMixin, viewsets.ModelViewSe
 
     queryset = SpecimenRejectionReason.objects.all()
     serializer_class = SpecimenRejectionReasonSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     tenant_scope = "facility"
 
     def get_queryset(self):
@@ -2129,7 +2129,7 @@ class ResultCommentTemplateViewSet(TenantScopedViewMixin, viewsets.ModelViewSet)
 
     queryset = ResultCommentTemplate.objects.prefetch_related("applicable_tests").all()
     serializer_class = ResultCommentTemplateSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     tenant_scope = "facility"
 
     def get_queryset(self):
@@ -2154,7 +2154,7 @@ class ReferralLabViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = ReferralLab.objects.all()
     serializer_class = ReferralLabSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     tenant_scope = "facility"
 
     def get_queryset(self):
@@ -2179,7 +2179,7 @@ class LabBarcodeConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = LabBarcodeConfig.objects.all()
     serializer_class = LabBarcodeConfigSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     tenant_scope = "facility"
 
     def list(self, request, *args, **kwargs):
@@ -2211,7 +2211,7 @@ class LabWorkflowSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = LabWorkflowSettings.objects.all()
     serializer_class = LabWorkflowSettingsSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     tenant_scope = "facility"
 
     def list(self, request, *args, **kwargs):

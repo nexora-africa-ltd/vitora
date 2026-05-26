@@ -21,7 +21,7 @@ from rest_framework.response import Response
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import get_client_ip
+from hmis.apps.core.permissions import WriteRequiresRolePermission, get_client_ip
 from hmis.apps.patients.models import Patient
 
 from .models import CheckIn
@@ -58,7 +58,7 @@ class PatientLookupView(views.APIView):
     suggested visit context.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         parameters=[
@@ -199,7 +199,7 @@ class PatientSearchView(views.APIView):
     Clinical snapshot is loaded separately after selection via /lookup/.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         parameters=[
@@ -322,7 +322,7 @@ class PatientCheckinView(views.APIView):
     Also creates encounter and queue entries.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     @extend_schema(
         request=CheckInRequestSerializer,
@@ -465,7 +465,7 @@ class TodayCheckinsViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet
     queryset = CheckIn.objects.select_related(
         "patient", "destination_clinic", "checked_in_by", "encounter"
     ).all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     serializer_class = TodayCheckinSerializer
     pagination_class = CheckinPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
