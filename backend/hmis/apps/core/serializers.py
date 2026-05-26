@@ -36,13 +36,27 @@ class PermissionSerializer(serializers.ModelSerializer):
 
     app_label = serializers.CharField(source="content_type.app_label", read_only=True)
     model = serializers.CharField(source="content_type.model", read_only=True)
+    matrix_key = serializers.SerializerMethodField()
+    matrix_action = serializers.SerializerMethodField()
 
     class Meta:
         """Meta options for PermissionSerializer."""
 
         model = Permission
-        fields = ["id", "codename", "name", "app_label", "model"]
+        fields = ["id", "codename", "name", "app_label", "model", "matrix_key", "matrix_action"]
         read_only_fields = fields
+
+    def get_matrix_key(self, obj) -> str | None:
+        """Return the canonical PascalCase resource key used in permissions_matrix."""
+        from hmis.apps.core.role_permissions_sync import get_matrix_key
+
+        return get_matrix_key(obj.content_type.app_label, obj.content_type.model)
+
+    def get_matrix_action(self, obj) -> str | None:
+        """Return the canonical action key used in permissions_matrix (e.g. 'create', 'read', 'approve_emergency_access')."""
+        from hmis.apps.core.role_permissions_sync import get_matrix_action
+
+        return get_matrix_action(obj.codename, obj.content_type.model)
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
@@ -1206,6 +1220,9 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "has_quality",
             "has_billing",
             "has_private_insurance",
+            "has_moh_reporting",
+            "has_ai_assistant",
+            "has_cds",
             # Operating mode
             "operating_mode",
             # Status & timestamps
@@ -1347,6 +1364,9 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
             "has_quality",
             "has_billing",
             "has_private_insurance",
+            "has_moh_reporting",
+            "has_ai_assistant",
+            "has_cds",
             # Operating mode
             "operating_mode",
             # Status

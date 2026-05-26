@@ -133,10 +133,12 @@ class TestFacilityModel:
         assert str(sample_facility) == "Sample District Hospital (99999)"
 
     def test_modules_property_returns_dict(self, sample_facility):
-        """The ``modules`` property should return all 24 module flags."""
+        """The ``modules`` property should expose every module flag on the model."""
+        from hmis.apps.core.models import Facility
+
         modules = sample_facility.modules
         assert isinstance(modules, dict)
-        assert len(modules) == 24
+        assert set(modules.keys()) == {f[len("has_") :] for f in Facility.MODULE_FLAG_TO_FEATURE}
         assert modules["outpatient"] is True
         assert modules["inpatient"] is True
         assert modules["mortuary"] is False
@@ -173,11 +175,15 @@ class TestFacilityModel:
         assert defaults["dialysis"] is False
 
     def test_default_modules_level_6(self):
-        """Level 6 defaults: all modules enabled."""
+        """Level 6 defaults: all clinical modules enabled (AI/CDS opt-in)."""
         from hmis.apps.core.models import Facility
 
         defaults = Facility.default_modules_for_level("6")
-        assert all(defaults.values())
+        opt_in = {"ai_assistant", "cds"}
+        assert all(v for k, v in defaults.items() if k not in opt_in)
+        # AI/CDS are explicit per-facility opt-ins regardless of level
+        assert defaults["ai_assistant"] is False
+        assert defaults["cds"] is False
 
     def test_default_modules_unknown_level(self):
         """Unknown levels fall back to outpatient only."""

@@ -96,6 +96,9 @@ const FacilityModulesSchema = z.object({
   quality: z.boolean().default(false),
   billing: z.boolean().default(true),
   private_insurance: z.boolean().default(false),
+  moh_reporting: z.boolean().default(true),
+  ai_assistant: z.boolean().default(false),
+  cds: z.boolean().default(false),
 });
 
 const UserFacilitySchema = z.object({

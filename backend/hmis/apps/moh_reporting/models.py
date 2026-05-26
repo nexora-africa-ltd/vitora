@@ -145,6 +145,9 @@ class MOH705Report(AbstractMOHReport):
         verbose_name_plural = "MOH 705 Reports"
         unique_together = [("facility", "period_start")]
         ordering = ["-period_start"]
+        permissions = [
+            ("submit_to_dhis2", "Can submit MOH 705 report to DHIS2"),
+        ]
 
     def __str__(self) -> str:
         return f"MOH 705 — {self.period_label} — {getattr(self.facility, 'name', '?')}"
@@ -215,6 +218,9 @@ class MOH711Report(AbstractMOHReport):
         verbose_name_plural = "MOH 711 Reports"
         unique_together = [("facility", "period_start")]
         ordering = ["-period_start"]
+        permissions = [
+            ("submit_to_dhis2", "Can submit MOH 711 report to DHIS2"),
+        ]
 
     def __str__(self) -> str:
         return f"MOH 711 — {self.period_label} — {getattr(self.facility, 'name', '?')}"
@@ -265,6 +271,9 @@ class MOH717Report(AbstractMOHReport):
         verbose_name_plural = "MOH 717 Reports"
         unique_together = [("facility", "period_start")]
         ordering = ["-period_start"]
+        permissions = [
+            ("submit_to_dhis2", "Can submit MOH 717 report to DHIS2"),
+        ]
 
     def __str__(self) -> str:
         return f"MOH 717 — {self.period_label} — {getattr(self.facility, 'name', '?')}"

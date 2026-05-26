@@ -6376,6 +6376,60 @@
           "read": true,
           "update": true,
           "delete": true
+        },
+        "Prescription": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "PrescriptionItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "Dispensing": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "Drug": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "DrugCategory": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "StockAdjustment": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "StockAlert": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "StockBatch": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "AlertSettings": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
         }
       },
       "hierarchy_level": 0,

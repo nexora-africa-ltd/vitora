@@ -82,10 +82,12 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "Dispensing": ("pharmacy", "dispensing"),
     "DrugDispensing": ("pharmacy", "dispensing"),
     "Drug": ("pharmacy", "drug"),
+    "DrugCategory": ("pharmacy", "drugcategory"),
     "PharmacyInventory": ("pharmacy", "drug"),
     "StockBatch": ("pharmacy", "stockbatch"),
     "StockAdjustment": ("pharmacy", "stockadjustment"),
     "StockAlert": ("pharmacy", "stockalert"),
+    "AlertSettings": ("pharmacy", "alertsettings"),
     # pharmacy — standalone
     "WalkInCustomer": ("pharmacy", "walkincustomer"),
     "ExternalPrescriptionRequest": ("pharmacy", "externalprescriptionrequest"),
@@ -359,12 +361,69 @@ CUSTOM_ACTIONS: set[str] = {
     "reconcile_remittance",
     # supplier bills
     "approve_supplierbill",
+    # scheduling
+    "approve_swap",
 }
 
 # Actions following {action}_{model} pattern (e.g. view_sensitive_patient)
 MODEL_SUFFIXED_ACTIONS: set[str] = {
     "view_sensitive",
 }
+
+
+def _build_reverse_model_mapping() -> dict[tuple[str, str], str]:
+    """Reverse of MODEL_MAPPING: (app_label, model) -> canonical matrix key.
+
+    Several matrix keys can map to the same (app_label, model) (e.g.
+    "Dispensing" and "DrugDispensing" both -> ("pharmacy", "dispensing")).
+    We prefer the matrix key whose lowercased form equals the model name,
+    falling back to the first key registered.
+    """
+    reverse: dict[tuple[str, str], str] = {}
+    for matrix_key, target in MODEL_MAPPING.items():
+        existing = reverse.get(target)
+        if existing is None:
+            reverse[target] = matrix_key
+            continue
+        # Prefer the key whose lowercased form matches the model name
+        if existing.lower() != target[1] and matrix_key.lower() == target[1]:
+            reverse[target] = matrix_key
+    return reverse
+
+
+REVERSE_MODEL_MAPPING: dict[tuple[str, str], str] = _build_reverse_model_mapping()
+
+
+def get_matrix_key(app_label: str, model: str) -> str | None:
+    """Return the canonical PascalCase matrix key for a Django (app_label, model) pair."""
+    return REVERSE_MODEL_MAPPING.get((app_label, model))
+
+
+# Reverse of ACTION_MAPPING: django CRUD verb -> matrix action key
+REVERSE_ACTION_MAPPING: dict[str, str] = {v: k for k, v in ACTION_MAPPING.items()}
+
+
+def get_matrix_action(codename: str, model: str) -> str | None:  # noqa: ARG001
+    """Return the canonical matrix action key for a Django Permission codename.
+
+    Inverse of the codename construction in sync_role_group_permissions:
+    - Custom action codenames (CUSTOM_ACTIONS) -> codename itself
+    - Model-suffixed actions (e.g. view_sensitive_patient) -> the prefix
+    - Standard CRUD (add/view/change/delete) -> create/read/update/delete
+    """
+    if codename in CUSTOM_ACTIONS:
+        return codename
+
+    for prefix in MODEL_SUFFIXED_ACTIONS:
+        if codename.startswith(prefix + "_"):
+            return prefix
+
+    separator_index = codename.find("_")
+    if separator_index <= 0:
+        return None
+
+    django_action = codename[:separator_index]
+    return REVERSE_ACTION_MAPPING.get(django_action)
 
 
 def sync_role_group_permissions(role: Role) -> int:
@@ -410,10 +469,21 @@ def sync_role_group_permissions(role: Role) -> int:
                 codename = f"{django_action}_{model}"
 
             try:
-                perm = Permission.objects.get(content_type__app_label=app_label, codename=codename)
+                perm = Permission.objects.get(
+                    content_type__app_label=app_label,
+                    content_type__model=model,
+                    codename=codename,
+                )
                 permissions_to_add.append(perm)
             except Permission.DoesNotExist:
                 logger.warning("sync_role_group_permissions: %s.%s not found", app_label, codename)
+            except Permission.MultipleObjectsReturned:
+                logger.warning(
+                    "sync_role_group_permissions: multiple matches for %s.%s (model=%s)",
+                    app_label,
+                    codename,
+                    model,
+                )
 
     group.permissions.set(permissions_to_add)
     return len(permissions_to_add)

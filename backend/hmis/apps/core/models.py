@@ -2466,6 +2466,7 @@ class SubscriptionPlan(TimeStampedModel):
         ("allied_health", "Allied Health (Physio, Nutrition, etc.)"),
         ("quality", "Quality Improvement & Clinical Audit"),
         ("private_insurance", "Private Insurance Claims"),
+        ("moh_reporting", "MOH 705/711/717 Aggregate Reporting"),
         # Standalone module variants (sold as dedicated SaaS plans)
         ("lis_standalone", "Standalone Laboratory (LIS)"),
         ("pharmacy_standalone", "Standalone Pharmacy / Retail"),
@@ -3405,6 +3406,18 @@ class Facility(TimeStampedModel):
         default=False,
         help_text="Private insurance claims, pre-authorizations, and remittances.",
     )
+    has_moh_reporting = models.BooleanField(
+        default=True,
+        help_text="MOH 705/711/717 aggregate reporting and DHIS2 submission.",
+    )
+    has_ai_assistant = models.BooleanField(
+        default=False,
+        help_text="TibaBot AI assistant available at this facility (requires plan ai_assistant feature).",
+    )
+    has_cds = models.BooleanField(
+        default=False,
+        help_text="Clinical Decision Support (CDS) available at this facility (requires plan ai_assistant feature).",
+    )
 
     # ------------------------------------------------------------------
     # Status
@@ -3508,6 +3521,8 @@ class Facility(TimeStampedModel):
     # ------------------------------------------------------------------
 
     # Clinical workflow modules disabled in any standalone mode.
+    # Lab/imaging standalone flags are included here and selectively
+    # re-enabled per mode via _MODE_ENABLES.
     _STANDALONE_DISABLES = (
         "has_inpatient",
         "has_emergency",
@@ -3523,6 +3538,17 @@ class Facility(TimeStampedModel):
         "has_surveillance",
         "has_immunizations",
         "has_outpatient",
+        "has_moh_reporting",
+        # Quality, private insurance and AI/CDS are full-HMIS only.
+        "has_quality",
+        "has_private_insurance",
+        "has_ai_assistant",
+        "has_cds",
+        # Lab/imaging flags — disabled by default, re-enabled per mode
+        "has_laboratory",
+        "has_imaging",
+        "has_lis_standalone",
+        "has_imaging_standalone",
     )
 
     # Per-mode flags to force-enable.
@@ -3587,6 +3613,9 @@ class Facility(TimeStampedModel):
         "has_quality": "quality",
         "has_billing": "billing",
         "has_private_insurance": "private_insurance",
+        "has_moh_reporting": "moh_reporting",
+        "has_ai_assistant": "ai_assistant",
+        "has_cds": "ai_assistant",
     }
 
     # Subscription features required to switch into a given operating mode.
@@ -3663,6 +3692,9 @@ class Facility(TimeStampedModel):
             "quality": self.has_quality,
             "billing": self.has_billing,
             "private_insurance": self.has_private_insurance,
+            "moh_reporting": self.has_moh_reporting,
+            "ai_assistant": self.has_ai_assistant,
+            "cds": self.has_cds,
         }
 
     @property
@@ -3798,6 +3830,8 @@ class Facility(TimeStampedModel):
             "quality": False,
             "billing": False,
             "private_insurance": False,
+            "ai_assistant": False,
+            "cds": False,
         }
 
         level_overrides: dict[str, dict[str, bool]] = {

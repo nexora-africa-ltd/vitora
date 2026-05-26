@@ -886,6 +886,100 @@ class RoleViewSet(viewsets.ModelViewSet):
         role = self.get_object()
         return Response(role.get_all_permissions())
 
+    @extend_schema(
+        description="Sync all roles from the default roles.json fixture. Superusers only.",
+        responses={
+            200: inline_serializer(
+                "SyncDefaultRolesResponse",
+                fields={
+                    "message": serializers.CharField(),
+                    "roles_updated": serializers.IntegerField(),
+                    "permissions_synced": serializers.IntegerField(),
+                },
+            )
+        },
+    )
+    @action(detail=False, methods=["post"], url_path="sync-defaults")
+    def sync_defaults(self, request):
+        """Sync all roles from roles.json and update Django group permissions."""
+        if not request.user.is_superuser:
+            return Response(
+                {"detail": "Only superusers can sync default roles."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        import json
+        from pathlib import Path
+
+        fixture_path = Path(__file__).resolve().parent / "fixtures" / "roles.json"
+        if not fixture_path.exists():
+            return Response(
+                {"detail": "roles.json fixture not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            with open(fixture_path) as f:
+                fixture_data = json.load(f)
+        except json.JSONDecodeError as e:
+            return Response(
+                {"detail": f"Invalid JSON in fixture: {e}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Extract roles from fixture
+        roles_data = [item for item in fixture_data if item.get("model") == "core.role"]
+
+        # FK fields in Role that need _id suffix when setting from raw PK values
+        FK_FIELDS = {"parent_role", "django_group"}
+        # Fields to skip (managed elsewhere)
+        SKIP_FIELDS = {"created_at", "updated_at"}
+
+        roles_updated = 0
+        for role_entry in roles_data:
+            fields = role_entry.get("fields", {})
+            code = fields.get("code")
+            if not code:
+                continue
+            try:
+                # Look up by code (unique), not PK — PKs may differ between fixture and DB
+                role = Role.objects.get(code=code)
+                for field, value in fields.items():
+                    if field in SKIP_FIELDS:
+                        continue
+                    if field in FK_FIELDS:
+                        setattr(role, f"{field}_id", value)
+                    else:
+                        setattr(role, field, value)
+                role.save()
+                roles_updated += 1
+            except Role.DoesNotExist:
+                pass  # Skip roles that don't exist in DB
+
+        # Sync permissions for all updated roles
+        permissions_synced = 0
+        for role in Role.objects.filter(django_group__isnull=False):
+            count = sync_role_group_permissions(role)
+            permissions_synced += count
+
+        AuditLog.log(
+            action="roles_synced_from_defaults",
+            user=request.user,
+            resource_type="Role",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={"roles_updated": roles_updated, "permissions_synced": permissions_synced},
+        )
+
+        return Response(
+            {
+                "message": f"Synced {roles_updated} roles and {permissions_synced} permissions from defaults.",
+                "roles_updated": roles_updated,
+                "permissions_synced": permissions_synced,
+            }
+        )
+
 
 class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """

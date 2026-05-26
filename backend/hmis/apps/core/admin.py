@@ -498,17 +498,6 @@ class StaffProfileAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "Contact Information",
-            {
-                "fields": (
-                    "phone_number",
-                    "emergency_contact_name",
-                    "emergency_contact_phone",
-                ),
-                "classes": ("collapse",),
-            },
-        ),
-        (
             "Employment",
             {
                 "fields": (

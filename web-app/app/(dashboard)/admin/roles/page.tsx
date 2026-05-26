@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Shield, Users, Settings, Search, KeyRound, BadgeCheck } from 'lucide-react';
+import { Plus, Shield, Users, Settings, Search, KeyRound, BadgeCheck, RefreshCcw, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,9 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { AdminStatCard } from '@/components/admin/admin-stat-card';
 import { useRoles } from '@/lib/hooks/use-rbac';
+import { rolesApi } from '@/lib/api/rbac';
+import { usePermissions } from '@/lib/hooks/use-permissions';
+import { toast } from '@/lib/hooks/use-toast';
 import type { Role, RoleCategory } from '@/lib/types/rbac';
 
 const ROLE_CATEGORIES = [
@@ -63,7 +66,9 @@ export default function RolesListPage() {
   const [search, setSearch] = useState('');
   const [roleType, setRoleType] = useState('all');
   const [page, setPage] = useState(1);
+  const [isSyncing, setIsSyncing] = useState(false);
   const { refresh, isRefreshing } = usePageRefresh();
+  const { isSuperuser } = usePermissions();
 
   const { data, isLoading, error, refetch } = useRoles({
     page,
@@ -83,6 +88,26 @@ export default function RolesListPage() {
   const handleRefresh = async () => {
     await refresh();
     await refetch();
+  };
+
+  const handleSyncDefaults = async () => {
+    setIsSyncing(true);
+    try {
+      const result = await rolesApi.syncDefaults();
+      toast({
+        title: 'Roles synced',
+        description: result.message,
+      });
+      await refetch();
+    } catch (err) {
+      toast({
+        title: 'Sync failed',
+        description: err instanceof Error ? err.message : 'Failed to sync default roles',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   if (error) {
@@ -119,12 +144,29 @@ export default function RolesListPage() {
           title="Roles"
           helpContent="Manage role definitions and permission bundles for clinical, administrative, and technical staff."
           actions={
-            <Button asChild>
-              <Link href="/admin/roles/new">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Role
-              </Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              {isSuperuser && (
+                <Button
+                  variant="outline"
+                  onClick={handleSyncDefaults}
+                  disabled={isSyncing}
+                >
+                  {isSyncing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCcw className="mr-2 h-4 w-4" />
+                  )}
+                  <span className="hidden sm:inline">Sync Default Roles</span>
+                  <span className="sm:hidden">Sync</span>
+                </Button>
+              )}
+              <Button asChild>
+                <Link href="/admin/roles/new">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Role
+                </Link>
+              </Button>
+            </div>
           }
         />
 

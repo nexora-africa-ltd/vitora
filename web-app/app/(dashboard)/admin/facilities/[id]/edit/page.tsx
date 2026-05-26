@@ -78,7 +78,21 @@ const MODULE_LABELS: { key: string; label: string }[] = [
   { key: 'has_quality', label: 'Quality' },
   { key: 'has_billing', label: 'Finance / Billing' },
   { key: 'has_private_insurance', label: 'Private Insurance' },
+  { key: 'has_moh_reporting', label: 'MOH Reports' },
 ];
+
+/**
+ * Modules relevant to each operating mode.
+ * FULL_HMIS shows all; standalone modes show only their relevant subset.
+ * Mirrors backend Facility._MODE_ENABLES + quality for QA purposes.
+ */
+const MODE_RELEVANT_MODULES: Record<FacilityOperatingMode, string[] | 'all'> = {
+  FULL_HMIS: 'all',
+  STANDALONE_LAB: ['has_laboratory', 'has_lis_standalone', 'has_billing', 'has_inventory', 'has_quality'],
+  STANDALONE_PHARMACY: ['has_pharmacy', 'has_pharmacy_standalone', 'has_billing', 'has_inventory', 'has_quality'],
+  STANDALONE_IMAGING: ['has_imaging', 'has_imaging_standalone', 'has_billing', 'has_inventory', 'has_quality'],
+  STANDALONE_DIAGNOSTIC: ['has_laboratory', 'has_imaging', 'has_lis_standalone', 'has_imaging_standalone', 'has_billing', 'has_inventory', 'has_quality'],
+};
 
 export default function EditFacilityPage() {
   const params = useParams();
@@ -130,6 +144,7 @@ export default function EditFacilityPage() {
     has_quality: false,
     has_billing: true,
     has_private_insurance: false,
+    has_moh_reporting: true,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -178,6 +193,7 @@ export default function EditFacilityPage() {
         has_quality: facility.has_quality,
         has_billing: facility.has_billing,
         has_private_insurance: facility.has_private_insurance,
+        has_moh_reporting: facility.has_moh_reporting,
       });
       setCountyId(facility.county);
       setSubCountyId(facility.sub_county);
@@ -449,7 +465,12 @@ export default function EditFacilityPage() {
         <Card>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {MODULE_LABELS.map(({ key, label }) => (
+              {MODULE_LABELS
+                .filter(({ key }) => {
+                  const relevant = MODE_RELEVANT_MODULES[formData.operating_mode];
+                  return relevant === 'all' || relevant.includes(key);
+                })
+                .map(({ key, label }) => (
                 <div key={key} className="flex items-center gap-2">
                   <Switch
                     checked={formData[key as keyof typeof formData] as boolean}

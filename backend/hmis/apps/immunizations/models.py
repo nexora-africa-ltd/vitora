@@ -727,6 +727,10 @@ class AEFI(HistoryMixin, FacilityScopedModel, TimeStampedModel):
         ordering = ["-event_date"]
         verbose_name = "AEFI Report"
         verbose_name_plural = "AEFI Reports"
+        permissions = [
+            ("submit_to_authorities", "Can submit AEFI report to authorities"),
+            ("follow_up", "Can follow up on AEFI report"),
+        ]
 
     def __str__(self):
         types_display = ", ".join(self.event_types) if self.event_types else "Unknown"
@@ -911,6 +915,9 @@ class VaccineStock(FacilityScopedModel, TimeStampedModel):
         verbose_name = "Vaccine Stock Batch"
         verbose_name_plural = "Vaccine Stock Batches"
         unique_together = ["vaccine", "batch_number"]
+        permissions = [
+            ("issue", "Can issue vaccine stock"),
+        ]
 
     def __str__(self):
         return f"{self.vaccine.code} batch {self.batch_number} ({self.quantity_on_hand} doses)"
@@ -1270,6 +1277,9 @@ class VaccineIncident(HistoryMixin, FacilityScopedModel, TimeStampedModel):
         ordering = ["-occurred_at"]
         verbose_name = "Vaccine Incident"
         verbose_name_plural = "Vaccine Incidents"
+        permissions = [
+            ("resolve", "Can resolve vaccine incident"),
+        ]
 
     def __str__(self):
         return f"{self.get_incident_type_display()}: {self.title}"

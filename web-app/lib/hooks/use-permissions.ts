@@ -94,8 +94,8 @@ export interface PermissionsResult {
 // Constants
 // =============================================================================
 
-/** Roles that bypass permission checks */
-const ADMIN_ROLES = ['ADMIN', 'SUPERUSER', 'SYSTEM_ADMIN'];
+/** Roles that bypass permission checks (mirrors backend RequiresActiveShiftPermission exempt roles) */
+const ADMIN_ROLES = ['ADMIN', 'ORG-ADMIN', 'OWNER', 'SUPERUSER', 'SYSTEM_ADMIN'];
 
 /** Clinical roles that should NOT edit patient identity */
 const CLINICAL_ROLES = ['NURSE', 'DOCTOR', 'CLINICAL_OFFICER', 'PHARMACIST', 'LAB_TECH'];
@@ -252,14 +252,14 @@ export function usePermissions(): PermissionsResult {
 
   const canPerformAction = useCallback((action: ActionKey): boolean => {
     if (!isAuthenticated || !user) return false;
-    if (isSuperuser) return true;
+    if (isSuperuser || isAdmin) return true;
 
     const allowedRoles = ACTION_PERMISSIONS[action];
     if (!allowedRoles) return false;
 
     const userRole = user.role || '';
     return (allowedRoles as readonly string[]).includes(userRole);
-  }, [user, isAuthenticated, isSuperuser]);
+  }, [user, isAuthenticated, isSuperuser, isAdmin]);
 
   return useMemo(() => {
     // Unauthenticated users have no permissions

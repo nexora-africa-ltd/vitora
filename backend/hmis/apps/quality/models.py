@@ -116,6 +116,10 @@ class QuarterlyReport(TimeStampedModel):
     class Meta:
         unique_together = ["clinic", "year", "quarter"]
         ordering = ["-year", "-quarter", "clinic__name"]
+        permissions = [
+            ("regenerate", "Can regenerate quarterly report"),
+            ("export_sdmx", "Can export quarterly report as SDMX"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.clinic.name} - {self.year} Q{self.quarter}"
@@ -208,6 +212,10 @@ class AnnualReport(TimeStampedModel):
     class Meta:
         unique_together = ["clinic", "year"]
         ordering = ["-year", "clinic__name"]
+        permissions = [
+            ("regenerate", "Can regenerate annual report"),
+            ("export_sdmx", "Can export annual report as SDMX"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.clinic.name} - {self.year}"
@@ -338,6 +346,10 @@ class QualityMeasure(TimeStampedModel):
 
     class Meta:
         ordering = ["code"]
+        permissions = [
+            ("import_csv", "Can import quality measures from CSV"),
+            ("export_csv", "Can export quality measures to CSV"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.code}: {self.name}"

@@ -57,6 +57,7 @@ const moduleLabels: Record<string, string> = {
   has_allied_health: 'Allied Health',
   has_quality: 'Quality',
   has_billing: 'Finance / Billing',
+  has_moh_reporting: 'MOH Reports',
 };
 
 /**
