@@ -68,6 +68,7 @@ import { PatientPastSurgeriesTab } from '@/components/patients/past-surgeries';
 import { PatientFamilyHistoryTab } from '@/components/patients/family-history';
 import { PatientAlliedHealthTab } from '@/components/patients/allied-health';
 import { PatientAuditTrail } from '@/components/patients/patient-audit-trail';
+import { EGFRTrendChart } from '@/components/patients/egfr-trend-chart';
 import { EligibilityBanner, DependentsView, BenefitsPanel } from '@/components/billing/sha';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -489,7 +490,7 @@ export default function PatientDetailPage() {
 
           {/* Clinical — Vitals | Allergies | Emergency Contacts */}
           <TabsContent value="clinical">
-            <Accordion type="multiple" defaultValue={['vitals', 'allergies', 'social-history', 'chronic-conditions', 'current-medications', 'past-surgeries', 'family-history', 'emergency-contacts']}>
+            <Accordion type="multiple" defaultValue={['vitals', 'egfr-trend', 'allergies', 'social-history', 'chronic-conditions', 'current-medications', 'past-surgeries', 'family-history', 'emergency-contacts']}>
               <AccordionItem value="vitals">
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
@@ -505,6 +506,18 @@ export default function PatientDetailPage() {
                     helpContent="All recorded vital signs across encounters, triage assessments, and inpatient observations. Select a time range to focus on a specific period."
                     defaultRange="all"
                   />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="egfr-trend">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-muted-foreground" />
+                    <span>Renal Function (eGFR)</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <EGFRTrendChart patientId={patientId} />
                 </AccordionContent>
               </AccordionItem>
 

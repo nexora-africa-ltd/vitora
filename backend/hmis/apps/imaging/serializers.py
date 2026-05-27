@@ -2,6 +2,8 @@
 Serializers for imaging models.
 """
 
+import logging
+
 from rest_framework import serializers
 
 from .models import (
@@ -115,6 +117,7 @@ class ImagingOrderSerializer(serializers.ModelSerializer):
     patient_name = serializers.SerializerMethodField()
     ordered_by_name = serializers.SerializerMethodField()
     report_summary = serializers.SerializerMethodField()
+    contrast_egfr_warnings = serializers.SerializerMethodField()
 
     class Meta:
         model = ImagingOrder
@@ -144,6 +147,7 @@ class ImagingOrderSerializer(serializers.ModelSerializer):
             "ordered_at",
             "completed_at",
             "report_summary",
+            "contrast_egfr_warnings",
         ]
         read_only_fields = ["order_number", "ordered_at", "ordered_by"]
 
@@ -167,6 +171,10 @@ class ImagingOrderSerializer(serializers.ModelSerializer):
             "findings": report.findings or "",
             "impression": report.impression or "",
         }
+
+    def get_contrast_egfr_warnings(self, obj) -> list[dict]:
+        """Return contrast/eGFR warnings attached during creation."""
+        return getattr(obj, "_contrast_egfr_warnings", [])
 
 
 class ImagingOrderItemCreateSerializer(serializers.Serializer):
@@ -200,6 +208,10 @@ class ImagingOrderCreateSerializer(serializers.ModelSerializer):
         order = ImagingOrder.objects.create(ordered_by=ordered_by, **validated_data)
 
         facility = order.encounter.facility
+
+        # Check eGFR for contrast procedures
+        contrast_warnings = self._check_contrast_egfr(order.patient, items_data)
+
         for item_data in items_data:
             procedure_code = item_data["procedure_code"]
             try:
@@ -232,7 +244,69 @@ class ImagingOrderCreateSerializer(serializers.ModelSerializer):
             )
 
         order.calculate_total_cost()
+
+        # Attach contrast warnings to the order instance for serialization
+        if contrast_warnings:
+            order._contrast_egfr_warnings = contrast_warnings
+
         return order
+
+    def _check_contrast_egfr(self, patient, items_data) -> list[dict]:
+        """Check if any contrast procedures pose renal risk given patient's eGFR."""
+        warnings = []
+        try:
+            from hmis.apps.ai.models import AIEGFRResult
+
+            latest_egfr = (
+                AIEGFRResult.objects.filter(patient=patient)
+                .order_by("-created_at")
+                .values("ckd_stage", "egfr_ckd_epi")
+                .first()
+            )
+            if not latest_egfr or not latest_egfr["egfr_ckd_epi"]:
+                return []
+
+            egfr = latest_egfr["egfr_ckd_epi"]
+            ckd_stage = latest_egfr["ckd_stage"]
+
+            # Check each procedure code (resolve later, just flag contrast)
+            facility = self.context["request"].user.staff_profile.primary_facility
+            for item_data in items_data:
+                procedure_code = item_data["procedure_code"]
+                try:
+                    procedure = ImagingProcedure.objects.get(code=procedure_code, facility=facility)
+                except ImagingProcedure.DoesNotExist:
+                    continue
+                if not getattr(procedure, "requires_contrast", False):
+                    continue
+
+                if egfr < 30:
+                    warnings.append(
+                        {
+                            "level": "critical",
+                            "procedure": procedure.name,
+                            "message": (
+                                f"HIGH RISK: eGFR {egfr:.0f} mL/min (CKD {ckd_stage}) — "
+                                f"contrast-induced nephropathy risk is very high. "
+                                f"Consider alternative non-contrast imaging."
+                            ),
+                        }
+                    )
+                elif egfr < 45:
+                    warnings.append(
+                        {
+                            "level": "warning",
+                            "procedure": procedure.name,
+                            "message": (
+                                f"CAUTION: eGFR {egfr:.0f} mL/min (CKD {ckd_stage}) — "
+                                f"moderate CIN risk. Pre/post hydration protocol recommended. "
+                                f"Hold metformin 48h post-contrast."
+                            ),
+                        }
+                    )
+        except Exception:
+            logging.getLogger(__name__).debug("eGFR check failed for contrast guard", exc_info=True)
+        return warnings
 
 
 class ScheduleOrderSerializer(serializers.Serializer):

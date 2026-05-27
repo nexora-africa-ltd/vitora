@@ -670,6 +670,18 @@ export default function EncounterDetailPage() {
               existingOrders={labOrders?.flatMap(order =>
                 (order.items || []).map(item => item.test_name)
               )}
+              existingResults={(() => {
+                const results: Record<string, unknown> = {};
+                labOrders?.flatMap(o => o.items || []).forEach(item => {
+                  if (item.result?.numeric_value != null) {
+                    results[item.test_name || item.test_code || ''] = {
+                      value: item.result.numeric_value,
+                      unit: item.result.result_unit,
+                    };
+                  }
+                });
+                return Object.keys(results).length > 0 ? results : undefined;
+              })()}
               patientAge={calculateAge(encounter.patient_date_of_birth)}
               patientSex={encounter.patient_gender === 'F' ? 'F' : encounter.patient_gender === 'M' ? 'M' : undefined}
               isPregnant={false}

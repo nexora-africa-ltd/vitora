@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Pill, Heart, FlaskConical, Stethoscope } from 'lucide-react';
+import { AlertTriangle, Pill, Heart, FlaskConical, Stethoscope, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -78,6 +78,39 @@ function StatChip({
       <Icon className="h-3.5 w-3.5" />
       <span className="hidden sm:inline">{label}:</span>
       <span className="font-semibold">{count}</span>
+    </div>
+  );
+}
+
+// =============================================================================
+// Renal Status Chip
+// =============================================================================
+
+function RenalStatusChip({
+  renalStatus,
+}: {
+  renalStatus: { ckd_stage?: string; egfr?: number; dose_band?: string };
+}) {
+  const stage = renalStatus.ckd_stage || '';
+  const egfr = renalStatus.egfr;
+
+  // Color based on severity: G1-G2 green, G3a-G3b amber, G4-G5 rose
+  let chipColor: ColorVariant = 'emerald';
+  if (stage.startsWith('G4') || stage.startsWith('G5')) chipColor = 'rose';
+  else if (stage.startsWith('G3')) chipColor = 'amber';
+
+  return (
+    <div
+      className={cn(
+        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
+        colorConfig[chipColor].chip
+      )}
+    >
+      <Activity className="h-3.5 w-3.5" />
+      <span className="hidden sm:inline">CKD {stage}</span>
+      {egfr != null && (
+        <span className="font-semibold">{Math.round(egfr)}</span>
+      )}
     </div>
   );
 }
@@ -245,6 +278,9 @@ export function ClinicalSnapshotBanner({ encounterId }: { encounterId: number })
                 count={snapshot.pending_results.length}
                 color="sky"
               />
+            )}
+            {snapshot.renal_status && (
+              <RenalStatusChip renalStatus={snapshot.renal_status} />
             )}
           </div>
 

@@ -12,6 +12,13 @@ export type { VisitReason } from './encounter';
 /**
  * Clinical snapshot containing summary of patient's clinical information
  */
+export interface RenalStatus {
+  ckd_stage: string;
+  egfr: number;
+  dose_band: string;
+  measured_at: string;
+}
+
 export interface ClinicalSnapshot {
   allergies: string[];
   active_conditions: string[];
@@ -20,6 +27,7 @@ export interface ClinicalSnapshot {
   last_visit_clinic: string | null;
   pending_results: PendingResult[];
   alerts: string[];
+  renal_status: RenalStatus | null;
 }
 
 /**
