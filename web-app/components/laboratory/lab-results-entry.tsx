@@ -36,6 +36,7 @@ import { usePermissions } from '@/lib/hooks/use-permissions';
 import { cn } from '@/lib/utils/cn';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { ResultValidationPanel } from './result-validation-panel';
+import { EGFRInlineIndicator } from './egfr-inline-indicator';
 
 const resultSchema = z.object({
   numeric_value: z.number().optional(),
@@ -63,6 +64,10 @@ interface LabResultsEntryProps {
   patientGender?: string;
   /** Patient age in years for child-specific reference ranges */
   patientAge?: number;
+  /** Patient ID for eGFR auto-trigger display */
+  patientId?: number;
+  /** Encounter ID for eGFR auto-trigger display */
+  encounterId?: number;
 }
 
 const RESULT_FLAGS: { value: ResultFlag; label: string; color: string }[] = [
@@ -79,7 +84,7 @@ const RESULT_FLAGS: { value: ResultFlag; label: string; color: string }[] = [
 // Common lab result units used in Kenya
 
 
-export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded, patientGender, patientAge }: LabResultsEntryProps) {
+export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded, patientGender, patientAge, patientId, encounterId }: LabResultsEntryProps) {
   const { toast } = useToast();
   const { canPerformAction } = usePermissions();
   const canInterpret = canPerformAction('laboratory.interpret_results');
@@ -719,6 +724,15 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
                   resultId={activeItem.result.id}
                   verificationStatus={activeItem.result.verification_status}
                   onValidationAdded={onResultAdded}
+                />
+              )}
+
+              {/* eGFR Inline Indicator — auto-shows when creatinine result is filed */}
+              {activeItem.result?.numeric_value != null &&
+                (activeItem.test_code === 'CREA' || activeItem.test_name?.toLowerCase().includes('creatinine')) && (
+                <EGFRInlineIndicator
+                  patientId={patientId}
+                  encounterId={encounterId}
                 />
               )}
 

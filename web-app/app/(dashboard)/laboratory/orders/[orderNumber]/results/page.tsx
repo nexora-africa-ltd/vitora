@@ -112,6 +112,8 @@ export default function ResultsEntryPage({ params }: ResultsEntryPageProps) {
             items={formItems.length > 0 ? formItems : order.items}
             onComplete={() => router.push(`/laboratory/orders/${orderNumber}`)}
             onResultAdded={handleResultAdded}
+            patientId={order.patient}
+            encounterId={order.encounter}
           />
         )}
       </div>

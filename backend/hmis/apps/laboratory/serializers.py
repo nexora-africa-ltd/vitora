@@ -568,6 +568,18 @@ class LabResultSerializer(serializers.ModelSerializer):
 class LabResultCreateSerializer(serializers.ModelSerializer):
     """Create/update result."""
 
+    # Override ChoiceField with CharField so normalization runs before choice validation
+    result_unit = serializers.CharField(max_length=20, required=False, allow_blank=True)
+
+    def validate_result_unit(self, value):
+        """Normalize Greek mu (μ U+03BC) to micro sign (µ U+00B5) and validate choice."""
+        if value:
+            value = value.replace("\u03bc", "\u00b5")
+            valid_keys = {k for k, _ in LabResult.RESULT_UNITS}
+            if value not in valid_keys:
+                raise serializers.ValidationError(f'"{value}" is not a valid choice.')
+        return value
+
     class Meta:
         model = LabResult
         fields = [

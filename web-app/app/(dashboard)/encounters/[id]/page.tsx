@@ -467,16 +467,30 @@ export default function EncounterDetailPage() {
         onAutoTriggerConsumed={() => setAutoTriggerCarePlan(false)}
       />
 
-      {/* eGFR Calculator Panel */}
-      {autoTriggerEGFR && (
-        <EGFRPanel
-          encounterId={encounterId}
-          patientId={encounter.patient}
-          patientAge={calculateAge(encounter.patient_date_of_birth)}
-          patientSex={encounter.patient_gender === 'F' ? 'female' : 'male'}
-          weightKg={encounter.weight != null ? Number(encounter.weight) : undefined}
-        />
-      )}
+      {/* eGFR Calculator Panel — always visible when creatinine result exists, or on AI trigger */}
+      {(() => {
+        const creatinineItem = labOrders?.flatMap(o => o.items || []).find(
+          item => item.result?.numeric_value != null &&
+            (item.test_code === 'CREA' || item.test_name?.toLowerCase().includes('creatinine'))
+        );
+        const showEGFR = autoTriggerEGFR || creatinineItem != null;
+        if (!showEGFR) return null;
+        return (
+          <EGFRPanel
+            encounterId={encounterId}
+            patientId={encounter.patient}
+            patientAge={calculateAge(encounter.patient_date_of_birth)}
+            patientSex={encounter.patient_gender === 'F' ? 'female' : 'male'}
+            weightKg={encounter.weight != null ? Number(encounter.weight) : undefined}
+            creatinine={creatinineItem?.result?.numeric_value ?? undefined}
+            creatinineUnit={
+              creatinineItem?.result?.result_unit?.toLowerCase().includes('mg')
+                ? 'mg/dL'
+                : 'umol/L'
+            }
+          />
+        );
+      })()}
 
       {/* Tabs — grouped: SOAP | Assessment & Dx | Orders | Referrals | History */}
       <Tabs defaultValue="soap" className="space-y-4">

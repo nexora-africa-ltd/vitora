@@ -3049,6 +3049,14 @@ class CurrentMedication(FacilityScopedModel, TimeStampedModel):
         blank=True,
         related_name="current_medications_structured",
     )
+    drug = models.ForeignKey(
+        "pharmacy.Drug",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="current_medication_statements",
+        help_text="Optional link to drug catalog entry (for structured medication recording)",
+    )
     medication_name = models.CharField(max_length=255)
     dosage = models.CharField(max_length=100, blank=True, default="")
     frequency = models.CharField(max_length=100, blank=True, default="")

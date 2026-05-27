@@ -332,6 +332,117 @@ class TestCurrentMedicationCreate:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
+class TestCurrentMedicationDrugCatalog:
+    """Tests for drug catalog integration in current medications."""
+
+    @pytest.fixture
+    def sample_drug(self):
+        from hmis.apps.pharmacy.models import Drug
+
+        return Drug.objects.create(
+            code="MET500",
+            generic_name="Metformin",
+            brand_names=["Glucophage", "Fortamet"],
+            form="TABLET",
+            strength="500mg",
+            unit="tablet",
+            item_type="MEDICATION",
+        )
+
+    def test_create_with_drug_auto_populates_name(
+        self, authenticated_client, sample_patient, sample_drug
+    ):
+        """When drug FK is provided without medication_name, name is auto-populated."""
+        response = authenticated_client.post(
+            f"/api/patients/{sample_patient.id}/current-medications/",
+            {
+                "drug": sample_drug.id,
+                "frequency": "BD",
+                "route": "Oral",
+                "status": "ACTIVE",
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED, response.data
+        assert response.data["medication_name"] == "Metformin 500mg"
+        assert response.data["drug"] == sample_drug.id
+        assert response.data["drug_display"] == "Metformin 500mg (Tablet)"
+
+    def test_create_with_drug_and_explicit_name(
+        self, authenticated_client, sample_patient, sample_drug
+    ):
+        """When both drug FK and medication_name are provided, explicit name is used."""
+        response = authenticated_client.post(
+            f"/api/patients/{sample_patient.id}/current-medications/",
+            {
+                "drug": sample_drug.id,
+                "medication_name": "Glucophage 500mg",
+                "status": "ACTIVE",
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["medication_name"] == "Glucophage 500mg"
+        assert response.data["drug"] == sample_drug.id
+
+    def test_create_freeform_without_drug(self, authenticated_client, sample_patient):
+        """Free-text medication without drug FK still works (fallback)."""
+        response = authenticated_client.post(
+            f"/api/patients/{sample_patient.id}/current-medications/",
+            {
+                "medication_name": "Some herbal supplement",
+                "status": "ACTIVE",
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["medication_name"] == "Some herbal supplement"
+        assert response.data["drug"] is None
+        assert response.data["drug_display"] is None
+
+    def test_create_without_drug_or_name_fails(self, authenticated_client, sample_patient):
+        """Must provide either drug or medication_name."""
+        response = authenticated_client.post(
+            f"/api/patients/{sample_patient.id}/current-medications/",
+            {"status": "ACTIVE", "frequency": "BD"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "medication_name" in str(response.data)
+
+    def test_drug_display_in_list(
+        self, authenticated_client, sample_patient, sample_drug, sample_facility
+    ):
+        """List endpoint includes drug_display for catalog-linked medications."""
+        CurrentMedication.objects.create(
+            patient=sample_patient,
+            drug=sample_drug,
+            medication_name="Metformin 500mg",
+            status="ACTIVE",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+        response = authenticated_client.get(
+            f"/api/patients/{sample_patient.id}/current-medications/"
+        )
+        results = response.data.get("results", response.data)
+        assert len(results) == 1
+        assert results[0]["drug_display"] == "Metformin 500mg (Tablet)"
+
+    def test_update_to_link_drug(
+        self, authenticated_client, sample_patient, sample_current_medication, sample_drug
+    ):
+        """Can link a drug to an existing free-text medication via PATCH."""
+        response = authenticated_client.patch(
+            f"/api/patients/{sample_patient.id}/current-medications/{sample_current_medication.id}/",
+            {"drug": sample_drug.id},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        sample_current_medication.refresh_from_db()
+        assert sample_current_medication.drug_id == sample_drug.id
+
+
 class TestCurrentMedicationUpdate:
     def test_update_dosage(self, authenticated_client, sample_patient, sample_current_medication):
         response = authenticated_client.patch(
