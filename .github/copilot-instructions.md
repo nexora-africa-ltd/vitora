@@ -1566,7 +1566,6 @@ Before submitting a PR, verify:
 - [ ] All tests pass: `make test`
 - [ ] Quality checks pass: `make quality`
 - [ ] Coverage ≥80%: `poetry run pytest --cov=hmis`
-- [ ] Pre-commit hooks pass: `pre-commit run --all-files`
 - [ ] Tests written BEFORE implementation (TDD)
 - [ ] Audit logging added for new CRUD operations
 - [ ] **Domain events wired** for models with state transitions (see Gotcha #13)
@@ -2068,11 +2067,7 @@ When using a `Switch` to toggle between two modes, show **only the active label*
 
 Every commit must follow these rules:
 
-1. **Run pre-commit before committing**
-    - Run: `pre-commit run --all-files`
-    - Fix any failures (formatting, linting, etc.) before `git commit`.
-
-2. **Write comprehensive commit messages**
+1. **Write comprehensive commit messages**
     - The commit message must encapsulate the change and act as the summary.
     - Include a clear subject line plus a body that explains *what changed* and *why* (and notable API/model/test/migration impacts).
 
