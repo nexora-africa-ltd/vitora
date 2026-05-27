@@ -53,6 +53,7 @@ import { EncounterProcedureOrders } from '@/components/encounters/encounter-proc
 import { EncounterChiefComplaintCard } from '@/components/encounters/encounter-chief-complaint-card';
 import { VitalsTrendChart } from '@/components/shared/vitals-trend-chart';
 import { InvestigationSuggestionsPanel } from '@/components/encounters/investigation-suggestions-panel';
+import { EGFRPanel } from '@/components/encounters/egfr-panel';
 import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useAuth } from '@/lib/auth/context';
@@ -124,6 +125,13 @@ const ENCOUNTER_QUICK_ACTIONS: AIQuickAction[] = [
     userMessage: '\uD83D\uDD2C Suggesting investigations...',
     panelAction: 'suggest-investigations',
   },
+  {
+    id: 'encounter-egfr',
+    label: 'Calculate eGFR',
+    query: '',
+    userMessage: '\uD83E\uDEC0 Calculating eGFR...',
+    panelAction: 'egfr-calculate',
+  },
 ];
 
 export default function EncounterDetailPage() {
@@ -190,6 +198,7 @@ export default function EncounterDetailPage() {
   const [autoTriggerCDS, setAutoTriggerCDS] = useState(false);
   const [autoTriggerCarePlan, setAutoTriggerCarePlan] = useState(false);
   const [autoTriggerInvestigations, setAutoTriggerInvestigations] = useState(false);
+  const [autoTriggerEGFR, setAutoTriggerEGFR] = useState(false);
 
   useEffect(() => {
     if (!activePanelAction || !clearPanelAction) return;
@@ -201,6 +210,9 @@ export default function EncounterDetailPage() {
       clearPanelAction();
     } else if (activePanelAction === 'suggest-investigations') {
       setAutoTriggerInvestigations(true);
+      clearPanelAction();
+    } else if (activePanelAction === 'egfr-calculate') {
+      setAutoTriggerEGFR(true);
       clearPanelAction();
     }
   }, [activePanelAction, clearPanelAction]);
@@ -454,6 +466,17 @@ export default function EncounterDetailPage() {
         autoTrigger={autoTriggerCarePlan}
         onAutoTriggerConsumed={() => setAutoTriggerCarePlan(false)}
       />
+
+      {/* eGFR Calculator Panel */}
+      {autoTriggerEGFR && (
+        <EGFRPanel
+          encounterId={encounterId}
+          patientId={encounter.patient}
+          patientAge={calculateAge(encounter.patient_date_of_birth)}
+          patientSex={encounter.patient_gender === 'F' ? 'female' : 'male'}
+          weightKg={encounter.weight != null ? Number(encounter.weight) : undefined}
+        />
+      )}
 
       {/* Tabs — grouped: SOAP | Assessment & Dx | Orders | Referrals | History */}
       <Tabs defaultValue="soap" className="space-y-4">

@@ -452,6 +452,35 @@ class AISurgicalChecklistSessionResult(AIResultBase):
         return f"SurgicalChecklist {self.id} — {self.current_phase or self.tibabot_session_id}"
 
 
+class AIEGFRResult(AIResultBase):
+    """Persisted eGFR calculation result with CKD staging."""
+
+    encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="ai_egfr_results",
+    )
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="ai_egfr_results",
+    )
+    ckd_stage = models.CharField(max_length=10, blank=True, default="")
+    egfr_ckd_epi = models.FloatField(null=True, blank=True)
+    dose_adjustment_band = models.CharField(max_length=20, blank=True, default="")
+
+    class Meta(AIResultBase.Meta):
+        verbose_name = "AI eGFR Result"
+        verbose_name_plural = "AI eGFR Results"
+
+    def __str__(self) -> str:
+        return f"eGFR {self.id} — {self.ckd_stage or 'unknown'} ({self.egfr_ckd_epi or '?'} mL/min)"
+
+
 class AISurgicalPostOpCarePlanResult(AIResultBase):
     """Persisted surgical post-operative care plan result."""
 

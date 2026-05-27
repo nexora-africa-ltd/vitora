@@ -2138,6 +2138,112 @@ class StoredICURiskResultSerializer(StoredAIResultSerializer):
 
 
 # =============================================================================
+# eGFR Calculator
+# =============================================================================
+
+
+class EGFRCalculateRequestSerializer(serializers.Serializer):
+    """Request body for POST /api/ai/egfr/calculate/."""
+
+    encounter_id = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Link result to this encounter for persistence.",
+    )
+    patient_id = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Link result to this patient for persistence.",
+    )
+    creatinine = serializers.FloatField(
+        min_value=0.01,
+        help_text="Serum creatinine value (>0).",
+    )
+    creatinine_unit = serializers.ChoiceField(
+        choices=["mg/dL", "umol/L"],
+        default="umol/L",
+        required=False,
+        help_text="Creatinine unit. Kenya labs typically report µmol/L.",
+    )
+    age = serializers.IntegerField(
+        min_value=18,
+        max_value=120,
+        help_text="Patient age in years (18-120).",
+    )
+    sex = serializers.ChoiceField(
+        choices=["male", "female"],
+        help_text="Patient sex.",
+    )
+    weight_kg = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=1,
+        max_value=500,
+        help_text="Body weight in kg (needed for Cockcroft-Gault).",
+    )
+    height_cm = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=30,
+        max_value=300,
+        help_text="Height in cm (future BSA adjustment).",
+    )
+
+
+class EGFRCalculateResponseSerializer(serializers.Serializer):
+    """Response from POST /api/ai/egfr/calculate/."""
+
+    egfr_ckd_epi = serializers.FloatField(
+        help_text="eGFR by CKD-EPI 2021 (mL/min/1.73m²).",
+    )
+    egfr_cockcroft_gault = serializers.FloatField(
+        allow_null=True,
+        help_text="CrCl by Cockcroft-Gault (mL/min). Null if weight not provided.",
+    )
+    ckd_stage = serializers.CharField(
+        help_text="KDIGO stage: G1, G2, G3a, G3b, G4, G5.",
+    )
+    category = serializers.CharField(
+        help_text="Human-readable kidney function category.",
+    )
+    dose_adjustment_band = serializers.CharField(
+        help_text="Renal dosing band: normal, mild, moderate, severe, dialysis.",
+    )
+    flags = serializers.ListField(
+        child=serializers.CharField(),
+        help_text="Clinical action flags.",
+    )
+    interpretation = serializers.CharField(
+        help_text="Provider-facing summary text.",
+    )
+    creatinine_used_mg_dl = serializers.FloatField(
+        help_text="Creatinine value used (converted to mg/dL).",
+    )
+    mode = serializers.CharField(
+        required=False,
+        default="tibabot",
+        help_text="'tibabot' or 'fallback'.",
+    )
+    stored_id = serializers.CharField(
+        required=False,
+        allow_null=True,
+        help_text="UUID of the persisted result.",
+    )
+
+
+class StoredEGFRResultSerializer(StoredAIResultSerializer):
+    """Persisted eGFR calculation result for GET endpoint."""
+
+    encounter_id = serializers.IntegerField(allow_null=True, read_only=True)
+    patient_id = serializers.IntegerField(allow_null=True, read_only=True)
+    ckd_stage = serializers.CharField(read_only=True)
+    egfr_ckd_epi = serializers.FloatField(allow_null=True, read_only=True)
+    dose_adjustment_band = serializers.CharField(read_only=True)
+
+
+# =============================================================================
 # Phase 8 — Surgical Assistant
 # =============================================================================
 

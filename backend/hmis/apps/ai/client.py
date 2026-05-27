@@ -610,6 +610,27 @@ class TibaBotClient:
     # Phase 5 — Lab Assist
     # -----------------------------------------------------------------
 
+    def calculate_egfr(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Calculate eGFR with CKD staging and dose adjustment guidance.
+
+        Sends patient demographics and creatinine to TibaBot's
+        ``POST /clinical/egfr/calculate`` endpoint.
+
+        Args:
+            payload: Dict containing creatinine, creatinine_unit, age, sex,
+                     optional weight_kg, height_cm.
+
+        Returns:
+            Dict with egfr_ckd_epi, egfr_cockcroft_gault, ckd_stage,
+            category, dose_adjustment_band, flags, interpretation.
+        """
+        return self._request(
+            method="POST",
+            endpoint="/clinical/egfr/calculate",
+            data=payload,
+        )
+
     def interpret_lab(self, payload: dict[str, Any]) -> dict[str, Any]:
         """
         Interpret lab results in clinical context.

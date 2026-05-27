@@ -354,3 +354,133 @@ def handle_lab_order_billing(sender, instance, **kwargs):
             instance.order_number,
             e,
         )
+
+
+# =============================================================================
+# Auto-trigger eGFR calculation when a creatinine result is filed
+# =============================================================================
+
+# LOINC codes for serum/plasma creatinine
+CREATININE_LOINC_CODES = {"2160-0", "38483-4", "14682-9", "21232-4"}
+
+# Fallback name matching (case-insensitive partial match)
+CREATININE_NAME_KEYWORDS = {"creatinine"}
+
+
+def _is_creatinine_result(lab_result: LabResult) -> bool:
+    """Check if a LabResult is a creatinine measurement by LOINC or name."""
+    test_catalog = lab_result.order_item.test
+    if test_catalog.loinc_code and test_catalog.loinc_code in CREATININE_LOINC_CODES:
+        return True
+    # Fallback: match by test name
+    test_name_lower = test_catalog.name.lower()
+    return any(kw in test_name_lower for kw in CREATININE_NAME_KEYWORDS)
+
+
+def _map_unit_to_fallback(result_unit: str) -> str:
+    """Map LabResult unit choices to the eGFR fallback expected unit string."""
+    if result_unit in ("µmol/L", "umol/L", "µmol/l"):
+        return "umol/L"
+    # mg/dL and variants
+    return "mg/dL"
+
+
+@receiver(post_save, sender=LabResult)
+def auto_trigger_egfr_on_creatinine(sender, instance, created, **kwargs):
+    """
+    Automatically compute and persist eGFR when a creatinine LabResult is created.
+
+    Requirements:
+    - The result must be a creatinine measurement (detected by LOINC or name)
+    - The result must have a numeric value
+    - The lab order must be linked to a patient with DOB and gender
+    """
+    if not created:
+        return
+
+    # Only process numeric creatinine results
+    if instance.numeric_value is None:
+        return
+
+    if not _is_creatinine_result(instance):
+        return
+
+    try:
+        lab_order = instance.order_item.lab_order
+        patient = lab_order.patient
+
+        if not patient or not patient.date_of_birth or not patient.gender:
+            logger.debug(
+                "eGFR auto-trigger skipped: missing patient demographics for result %s",
+                instance.id,
+            )
+            return
+
+        # Calculate age
+        from datetime import date
+
+        today = date.today()
+        dob = patient.date_of_birth
+        if isinstance(dob, str):
+            dob = date.fromisoformat(dob)
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+        if age < 18:
+            logger.debug("eGFR auto-trigger skipped: patient age %d < 18", age)
+            return
+
+        # Map gender to eGFR parameter
+        sex = "female" if patient.gender == "F" else "male"
+
+        # Get weight from the encounter (if available)
+        encounter = lab_order.encounter
+        weight_kg = None
+        if encounter and encounter.weight:
+            weight_kg = float(encounter.weight)
+
+        # Determine unit
+        unit = _map_unit_to_fallback(instance.result_unit)
+
+        # Calculate eGFR using local fallback (fast, no network dependency)
+        from hmis.apps.ai.services.egfr_fallback import calculate_egfr_fallback
+
+        result_data = calculate_egfr_fallback(
+            {
+                "creatinine": float(instance.numeric_value),
+                "creatinine_unit": unit,
+                "age": age,
+                "sex": sex,
+                "weight_kg": weight_kg,
+            }
+        )
+
+        # Persist the eGFR result
+        from hmis.apps.ai.models import AIEGFRResult
+
+        AIEGFRResult.objects.create(
+            encounter=encounter,
+            patient=patient,
+            facility=lab_order.facility,
+            ckd_stage=result_data["ckd_stage"],
+            egfr_ckd_epi=result_data["egfr_ckd_epi"],
+            dose_adjustment_band=result_data["dose_adjustment_band"],
+            request_data={
+                "creatinine": float(instance.numeric_value),
+                "creatinine_unit": unit,
+                "age": age,
+                "sex": sex,
+                "weight_kg": weight_kg,
+            },
+            result_data=result_data,
+            service_mode="auto",
+        )
+
+        logger.info(
+            "eGFR auto-calculated for patient %s: %s mL/min (CKD %s)",
+            patient.id,
+            result_data["egfr_ckd_epi"],
+            result_data["ckd_stage"],
+        )
+
+    except Exception as e:
+        logger.error("eGFR auto-trigger failed for result %s: %s", instance.id, e)

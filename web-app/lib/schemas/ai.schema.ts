@@ -472,6 +472,36 @@ export const AICDSEvaluateResponseSchema = z.object({
 }).passthrough();
 
 // =============================================================================
+// eGFR Calculator
+// =============================================================================
+
+export const AIEGFRCalculateResponseSchema = z.object({
+  egfr_ckd_epi: z.number(),
+  egfr_cockcroft_gault: z.number().nullable(),
+  ckd_stage: z.string(),
+  category: z.string(),
+  dose_adjustment_band: z.string(),
+  flags: z.array(z.string()),
+  interpretation: z.string(),
+  creatinine_used_mg_dl: z.number(),
+  mode: z.string().optional(),
+  stored_id: z.string().nullable().optional(),
+}).passthrough();
+
+export const StoredEGFRResultSchema = z.object({
+  id: z.string(),
+  result_data: z.record(z.unknown()),
+  service_mode: z.string(),
+  created_at: z.string(),
+  created_by: z.string(),
+  encounter_id: z.number().nullable(),
+  patient_id: z.number().nullable(),
+  ckd_stage: z.string(),
+  egfr_ckd_epi: z.number().nullable(),
+  dose_adjustment_band: z.string(),
+});
+
+// =============================================================================
 // Stored AI result schemas
 // =============================================================================
 

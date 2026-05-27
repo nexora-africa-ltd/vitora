@@ -28,6 +28,7 @@ from .views import (
     ConditionPredictView,
     DischargeAssessView,
     DischargeConditionsListView,
+    EGFRCalculateView,
     ICD10SuggestView,
     ICULabEnrichmentView,
     ICUPredictView,
@@ -37,6 +38,7 @@ from .views import (
     StoredCarePlanListView,
     StoredCDSResultListView,
     StoredDischargeResultListView,
+    StoredEGFRResultListView,
     StoredICURiskResultListView,
     StoredInvestigationSuggestListView,
     StoredLabInterpretListView,
@@ -58,6 +60,8 @@ app_name = "ai"
 urlpatterns = [
     path("icd10-suggest/", ICD10SuggestView.as_view(), name="icd10-suggest"),
     path("status/", AIStatusView.as_view(), name="status"),
+    # eGFR Calculator
+    path("egfr/calculate/", EGFRCalculateView.as_view(), name="egfr-calculate"),
     # Phase 2 — Clinical Chat & Assist
     path("clinical/chat/", ClinicalChatView.as_view(), name="clinical-chat"),
     path("clinical/assist/", ClinicalAssistView.as_view(), name="clinical-assist"),
@@ -197,6 +201,7 @@ urlpatterns = [
     ),
     path("results/discharge/", StoredDischargeResultListView.as_view(), name="results-discharge"),
     path("results/icu-risk/", StoredICURiskResultListView.as_view(), name="results-icu-risk"),
+    path("results/egfr/", StoredEGFRResultListView.as_view(), name="results-egfr"),
     path(
         "results/investigation-suggestions/",
         StoredInvestigationSuggestListView.as_view(),

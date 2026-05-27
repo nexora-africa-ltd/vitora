@@ -541,6 +541,56 @@ export interface AIAutopopulateResponse {
 }
 
 // =============================================================================
+// eGFR Calculator
+// =============================================================================
+
+/** Request body for POST /api/ai/egfr/calculate/ */
+export interface AIEGFRCalculateRequest {
+  encounter_id?: number | null;
+  patient_id?: number | null;
+  creatinine: number;
+  /** Creatinine unit. Kenya labs typically report µmol/L. */
+  creatinine_unit?: 'mg/dL' | 'umol/L';
+  age: number;
+  sex: 'male' | 'female';
+  weight_kg?: number | null;
+  height_cm?: number | null;
+}
+
+/** Response from POST /api/ai/egfr/calculate/ */
+export interface AIEGFRCalculateResponse {
+  /** eGFR by CKD-EPI 2021 (mL/min/1.73m²) */
+  egfr_ckd_epi: number;
+  /** CrCl by Cockcroft-Gault (mL/min). Null if weight not provided. */
+  egfr_cockcroft_gault: number | null;
+  /** KDIGO stage: G1, G2, G3a, G3b, G4, G5 */
+  ckd_stage: string;
+  /** Human-readable kidney function category */
+  category: string;
+  /** Renal dosing band: normal, mild, moderate, severe, dialysis */
+  dose_adjustment_band: string;
+  /** Clinical action flags */
+  flags: string[];
+  /** Provider-facing summary text */
+  interpretation: string;
+  /** Creatinine value used (converted to mg/dL) */
+  creatinine_used_mg_dl: number;
+  /** 'tibabot' or 'fallback' */
+  mode?: string;
+  /** UUID of the persisted result */
+  stored_id?: string | null;
+}
+
+/** Stored eGFR result */
+export interface StoredEGFRResult extends StoredAIResultBase {
+  encounter_id: number | null;
+  patient_id: number | null;
+  ckd_stage: string;
+  egfr_ckd_epi: number | null;
+  dose_adjustment_band: string;
+}
+
+// =============================================================================
 // Phase 5 — Lab Assist
 // =============================================================================
 

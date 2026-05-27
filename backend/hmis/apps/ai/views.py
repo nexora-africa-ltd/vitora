@@ -35,6 +35,7 @@ from .models import (
     AICarePlanResult,
     AICDSResult,
     AIDischargeResult,
+    AIEGFRResult,
     AIICURiskResult,
     AIInvestigationSuggestResult,
     AILabInterpretResult,
@@ -1706,6 +1707,111 @@ class AutopopulateView(AIFeatureGatedMixin, APIView):
             ).data,
             status=status.HTTP_200_OK,
         )
+
+
+# =============================================================================
+# eGFR Calculator
+# =============================================================================
+
+
+class EGFRCalculateView(AIFeatureGatedMixin, APIView):
+    """
+    AI-powered eGFR calculation with CKD staging.
+
+    POST /api/ai/egfr/calculate/
+
+    Returns CKD-EPI 2021 eGFR, Cockcroft-Gault CrCl, CKD stage,
+    dose adjustment band, and clinical action flags.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_EGFR"
+
+    def post(self, request: Request) -> Response:
+        from .serializers import EGFRCalculateRequestSerializer, EGFRCalculateResponseSerializer
+
+        serializer = EGFRCalculateRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        AuditLog.log(
+            action="ai_egfr_calculate",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            details={
+                "age": data.get("age"),
+                "sex": data.get("sex"),
+                "creatinine_unit": data.get("creatinine_unit"),
+            },
+        )
+
+        # Build TibaBot payload (exclude internal link fields)
+        tibabot_payload = {k: v for k, v in data.items() if k not in ("encounter_id", "patient_id")}
+
+        try:
+            client = get_tibabot_client()
+            result = client.calculate_egfr(tibabot_payload)
+            result["mode"] = "tibabot"
+        except (TibaBotUnavailableError, TibaBotError) as e:
+            logger.warning("TibaBot unavailable for eGFR — using fallback: %s", e)
+            from .services.egfr_fallback import calculate_egfr_fallback
+
+            result = calculate_egfr_fallback(data)
+
+        # Persist result
+        try:
+            stored = AIEGFRResult.objects.create(
+                created_by=request.user,
+                encounter_id=data.get("encounter_id"),
+                patient_id=data.get("patient_id"),
+                ckd_stage=result.get("ckd_stage", ""),
+                egfr_ckd_epi=result.get("egfr_ckd_epi"),
+                dose_adjustment_band=result.get("dose_adjustment_band", ""),
+                request_data={
+                    k: v for k, v in data.items() if k not in ("encounter_id", "patient_id")
+                },
+                result_data=result,
+                service_mode=result.get("mode", "tibabot"),
+                **_get_tenant_kwargs(request),
+            )
+            result["stored_id"] = str(stored.id)
+        except Exception:
+            logger.exception("Failed to persist eGFR result")
+
+        response_serializer = EGFRCalculateResponseSerializer(data=result)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+        return Response(result)
+
+
+class StoredEGFRResultListView(AIFeatureGatedMixin, APIView):
+    """
+    GET /api/ai/results/egfr/?encounter_id=X or ?patient_id=X
+
+    Returns saved eGFR calculation results.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        from .serializers import StoredEGFRResultSerializer
+
+        qs = AIEGFRResult.objects.select_related("created_by")
+        encounter_id = request.query_params.get("encounter_id")
+        patient_id = request.query_params.get("patient_id")
+        if encounter_id:
+            qs = qs.filter(encounter_id=encounter_id)
+        elif patient_id:
+            qs = qs.filter(patient_id=patient_id)
+        else:
+            return Response([])
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if facility:
+            qs = qs.filter(facility=facility)
+        return Response(StoredEGFRResultSerializer(qs[:10], many=True).data)
 
 
 # =============================================================================

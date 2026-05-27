@@ -47,6 +47,8 @@ import {
   AIAdvisoryBulkSeedResponseSchema,
   AIAdvisoryHasOrdersResponseSchema,
   AIInsightsResponseSchema,
+  AIEGFRCalculateResponseSchema,
+  StoredEGFRResultSchema,
 } from '@/lib/schemas/ai.schema';
 import { parseResponse } from '@/lib/schemas/validation';
 import type {
@@ -111,6 +113,9 @@ import type {
   AIAdvisoryOrderLinkActionRequest,
   AIAdvisoryHasOrdersResponse,
   AIInsightsResponse,
+  AIEGFRCalculateRequest,
+  AIEGFRCalculateResponse,
+  StoredEGFRResult,
 } from '@/lib/types/ai';
 
 export const aiApi = {
@@ -359,6 +364,36 @@ export const aiApi = {
     const response = await apiClient.post('/api/ai/lab/interpret/', data);
     return parseResponse(AILabInterpretResponseSchema, response.data, {
       context: 'aiApi.interpretLab',
+    });
+  },
+
+  // ===========================================================================
+  // eGFR Calculator
+  // ===========================================================================
+
+  /**
+   * Calculate eGFR with CKD staging and dose adjustment guidance.
+   *
+   * Uses CKD-EPI 2021 (race-free) and Cockcroft-Gault equations.
+   * Returns CKD stage, dose adjustment band, and clinical flags.
+   *
+   * @param data - Creatinine, demographics, optional weight
+   * @returns CKD staging, dose band, flags, and interpretation
+   */
+  calculateEGFR: async (data: AIEGFRCalculateRequest): Promise<AIEGFRCalculateResponse> => {
+    const response = await apiClient.post('/api/ai/egfr/calculate/', data);
+    return parseResponse(AIEGFRCalculateResponseSchema, response.data, {
+      context: 'aiApi.calculateEGFR',
+    });
+  },
+
+  /**
+   * Get stored eGFR results for a patient or encounter.
+   */
+  getStoredEGFRResults: async (params: { patient_id?: number; encounter_id?: number }): Promise<StoredEGFRResult[]> => {
+    const response = await apiClient.get('/api/ai/results/egfr/', { params });
+    return parseResponse(StoredEGFRResultSchema.array(), response.data, {
+      context: 'aiApi.getStoredEGFRResults',
     });
   },
 

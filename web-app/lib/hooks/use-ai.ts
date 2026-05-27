@@ -52,6 +52,9 @@ import type {
   AIInvestigationSuggestResponse,
   StoredInvestigationSuggestResult,
   AIInsightsResponse,
+  AIEGFRCalculateRequest,
+  AIEGFRCalculateResponse,
+  StoredEGFRResult,
 } from '@/lib/types/ai';
 
 // =============================================================================
@@ -80,6 +83,8 @@ export const aiKeys = {
     [...aiKeys.all, 'icu-labs', admissionId] as const,
   storedInvestigationSuggestions: (encounterId: number) =>
     [...aiKeys.all, 'stored-investigation-suggestions', encounterId] as const,
+  storedEGFR: (params: { patient_id?: number; encounter_id?: number }) =>
+    [...aiKeys.all, 'stored-egfr', params] as const,
   insights: () => [...aiKeys.all, 'insights'] as const,
 };
 
@@ -373,6 +378,50 @@ export function useAILabInterpret() {
   return useMutation<AILabInterpretResponse, Error, AILabInterpretRequest>({
     mutationFn: (data) => aiApi.interpretLab(data),
     retry: false,
+  });
+}
+
+// =============================================================================
+// eGFR Calculator
+// =============================================================================
+
+/**
+ * Hook for eGFR calculation with CKD staging.
+ *
+ * Uses CKD-EPI 2021 (race-free) and Cockcroft-Gault equations.
+ * Returns CKD stage, dose adjustment band, and clinical action flags.
+ */
+export function useAIEGFRCalculate() {
+  const queryClient = useQueryClient();
+  return useMutation<AIEGFRCalculateResponse, Error, AIEGFRCalculateRequest>({
+    mutationFn: (data) => aiApi.calculateEGFR(data),
+    retry: false,
+    onSuccess: (_data, variables) => {
+      // Invalidate stored results for this patient/encounter
+      if (variables.patient_id) {
+        queryClient.invalidateQueries({
+          queryKey: aiKeys.storedEGFR({ patient_id: variables.patient_id }),
+        });
+      }
+      if (variables.encounter_id) {
+        queryClient.invalidateQueries({
+          queryKey: aiKeys.storedEGFR({ encounter_id: variables.encounter_id }),
+        });
+      }
+    },
+  });
+}
+
+/**
+ * Hook for retrieving stored eGFR results.
+ */
+export function useStoredEGFRResults(params: { patient_id?: number; encounter_id?: number }) {
+  const hasId = Boolean(params.patient_id || params.encounter_id);
+  return useQuery<StoredEGFRResult[]>({
+    queryKey: aiKeys.storedEGFR(params),
+    queryFn: () => aiApi.getStoredEGFRResults(params),
+    enabled: ENABLE_AI && hasId,
+    staleTime: 30_000,
   });
 }
 
