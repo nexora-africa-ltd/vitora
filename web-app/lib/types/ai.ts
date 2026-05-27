@@ -420,6 +420,12 @@ export interface AIQuickAction {
    * 'cds-evaluate', 'structure-notes').
    */
   panelAction?: string;
+  /**
+   * Whether this action requires patient/encounter context to be useful.
+   * When false, the sufficiency check is skipped (educational/reference queries).
+   * Defaults to true if not specified.
+   */
+  contextRequired?: boolean;
 }
 
 // =============================================================================
