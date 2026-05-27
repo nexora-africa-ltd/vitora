@@ -49,6 +49,7 @@ class TestEncounterClinicalSnapshotAPI:
             "last_visit_clinic",
             "pending_results",
             "alerts",
+            "renal_status",
         }
 
         # Content (allergy parsing + severe allergy alert)
