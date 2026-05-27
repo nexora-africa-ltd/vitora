@@ -99,6 +99,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "dosage",
+                "drug",
                 "encounter",
                 "frequency",
                 "medication_name",
@@ -115,6 +116,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "created_at",
                 "dosage",
+                "drug",
+                "drug_display",
                 "encounter",
                 "frequency",
                 "id",

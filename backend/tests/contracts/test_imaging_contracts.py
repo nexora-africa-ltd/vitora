@@ -293,6 +293,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "bill_patient",
                 "clinical_indication",
                 "completed_at",
+                "contrast_egfr_warnings",
                 "encounter",
                 "id",
                 "is_paid",

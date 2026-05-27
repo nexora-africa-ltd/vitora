@@ -69,6 +69,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "last_visit_clinic",
                 "last_visit_date",
                 "pending_results",
+                "renal_status",
             }
         ),
     ),
