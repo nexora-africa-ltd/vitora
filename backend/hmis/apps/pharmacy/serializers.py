@@ -2,6 +2,7 @@
 Serializers for Pharmacy app.
 """
 
+import logging
 import re
 
 from django.apps import apps
@@ -22,6 +23,8 @@ from hmis.apps.pharmacy.models import (
 )
 
 User = get_user_model()
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_category_code(value: str) -> str:
@@ -503,6 +506,13 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
         write_only=True,
         help_text="Set to true to acknowledge allergy warnings and proceed with prescription",
     )
+    # Override flag to allow prescriptions despite renal dose warnings
+    acknowledge_renal_warnings = serializers.BooleanField(
+        required=False,
+        default=False,
+        write_only=True,
+        help_text="Set to true to acknowledge renal dose warnings and proceed with prescription",
+    )
 
     class Meta:
         model = Prescription
@@ -517,6 +527,7 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
             "clinical_notes",
             "items",
             "acknowledge_allergy_warnings",
+            "acknowledge_renal_warnings",
         ]
 
     def validate(self, data):
@@ -589,6 +600,46 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
         data["_allergy_warnings"] = allergy_warnings
         data["_warnings_acknowledged"] = acknowledge_warnings
 
+        # -----------------------------------------------------------------
+        # Renal dose adjustment warnings (based on latest eGFR)
+        # -----------------------------------------------------------------
+        acknowledge_renal = data.pop("acknowledge_renal_warnings", False)
+        renal_warnings: list[dict] = []
+
+        try:
+            from hmis.apps.ai.models import AIEGFRResult
+
+            latest_egfr = (
+                AIEGFRResult.objects.filter(patient=patient).order_by("-created_at").first()
+            )
+            if latest_egfr and latest_egfr.dose_adjustment_band not in ("normal", ""):
+                renal_warnings.append(
+                    {
+                        "egfr_value": latest_egfr.egfr_ckd_epi,
+                        "ckd_stage": latest_egfr.ckd_stage,
+                        "dose_adjustment_band": latest_egfr.dose_adjustment_band,
+                        "message": (
+                            f"Patient has CKD stage {latest_egfr.ckd_stage} "
+                            f"(eGFR {latest_egfr.egfr_ckd_epi} mL/min). "
+                            f"Dose adjustment band: {latest_egfr.dose_adjustment_band}. "
+                            "Review renal dosing for prescribed medications."
+                        ),
+                    }
+                )
+        except Exception:
+            logger.debug("eGFR lookup failed during prescription validation", exc_info=True)
+
+        if renal_warnings and not acknowledge_renal:
+            raise serializers.ValidationError(
+                {
+                    "renal_warnings": renal_warnings,
+                    "message": "Renal dose adjustment may be required. Set acknowledge_renal_warnings=true to proceed.",
+                }
+            )
+
+        data["_renal_warnings"] = renal_warnings
+        data["_renal_warnings_acknowledged"] = acknowledge_renal
+
         return data
 
     def create(self, validated_data):
@@ -596,6 +647,8 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
         items_data = validated_data.pop("items", [])
         allergy_warnings = validated_data.pop("_allergy_warnings", [])
         warnings_acknowledged = validated_data.pop("_warnings_acknowledged", False)
+        validated_data.pop("_renal_warnings", None)
+        validated_data.pop("_renal_warnings_acknowledged", None)
 
         prescription = Prescription.objects.create(**validated_data)
 

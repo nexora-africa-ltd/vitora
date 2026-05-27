@@ -258,6 +258,8 @@ function NoFacilityState() {
         billing: true,
         private_insurance: false,
         moh_reporting: true,
+        ai_assistant: false,
+        cds: false,
       },
     });
     // Page will re-render with the selected facility
