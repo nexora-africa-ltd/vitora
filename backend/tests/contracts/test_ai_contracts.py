@@ -68,6 +68,8 @@ from hmis.apps.ai.serializers import (
     DischargeAssessRequestSerializer,
     DischargeAssessResponseSerializer,
     DischargeCriterionSerializer,
+    EGFRCalculateRequestSerializer,
+    EGFRCalculateResponseSerializer,
     ICD10SuggestionSerializer,
     ICD10SuggestRequestSerializer,
     ICD10SuggestResponseSerializer,
@@ -87,6 +89,7 @@ from hmis.apps.ai.serializers import (
     StoredCarePlanSerializer,
     StoredCDSResultSerializer,
     StoredDischargeResultSerializer,
+    StoredEGFRResultSerializer,
     StoredICURiskResultSerializer,
     StoredInvestigationSuggestSerializer,
     StoredLabInterpretSerializer,
@@ -870,6 +873,38 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        EGFRCalculateRequestSerializer,
+        frozenset(
+            {
+                "age",
+                "creatinine",
+                "creatinine_unit",
+                "encounter_id",
+                "height_cm",
+                "patient_id",
+                "sex",
+                "weight_kg",
+            }
+        ),
+    ),
+    (
+        EGFRCalculateResponseSerializer,
+        frozenset(
+            {
+                "category",
+                "ckd_stage",
+                "creatinine_used_mg_dl",
+                "dose_adjustment_band",
+                "egfr_ckd_epi",
+                "egfr_cockcroft_gault",
+                "flags",
+                "interpretation",
+                "mode",
+                "stored_id",
+            }
+        ),
+    ),
+    (
         ICD10SuggestRequestSerializer,
         frozenset(
             {
@@ -1129,6 +1164,23 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "id",
                 "readiness_level",
                 "readiness_score",
+                "result_data",
+                "service_mode",
+            }
+        ),
+    ),
+    (
+        StoredEGFRResultSerializer,
+        frozenset(
+            {
+                "ckd_stage",
+                "created_at",
+                "created_by",
+                "dose_adjustment_band",
+                "egfr_ckd_epi",
+                "encounter_id",
+                "id",
+                "patient_id",
                 "result_data",
                 "service_mode",
             }
