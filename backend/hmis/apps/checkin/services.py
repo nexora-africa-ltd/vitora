@@ -9,6 +9,7 @@ Contains business logic for:
 Sprint: Returning Patient Workflow - Sprint 1
 """
 
+import logging
 from dataclasses import dataclass
 from datetime import date
 
@@ -28,6 +29,7 @@ class ClinicalSnapshot:
     last_visit_clinic: str | None
     pending_results: list[dict]
     alerts: list[str]
+    renal_status: dict | None = None
 
 
 @dataclass
@@ -180,6 +182,35 @@ def get_clinical_snapshot(patient) -> ClinicalSnapshot:
         if days_since > 90:
             alerts.append(f"Overdue for chronic care review ({days_since} days since last visit)")
 
+    # Get latest eGFR result for renal status
+    renal_status = None
+    try:
+        from hmis.apps.ai.models import AIEGFRResult
+
+        latest_egfr = (
+            AIEGFRResult.objects.filter(patient=patient)
+            .order_by("-created_at")
+            .values("ckd_stage", "egfr_ckd_epi", "dose_adjustment_band", "created_at")
+            .first()
+        )
+        if latest_egfr and latest_egfr["ckd_stage"]:
+            renal_status = {
+                "ckd_stage": latest_egfr["ckd_stage"],
+                "egfr": latest_egfr["egfr_ckd_epi"],
+                "dose_band": latest_egfr["dose_adjustment_band"],
+                "measured_at": latest_egfr["created_at"].isoformat()
+                if latest_egfr["created_at"]
+                else None,
+            }
+            # Add renal alert if impaired
+            if latest_egfr["ckd_stage"] not in ("G1", "G2"):
+                alerts.append(
+                    f"🟡 Renal impairment: CKD {latest_egfr['ckd_stage']} "
+                    f"(eGFR {latest_egfr['egfr_ckd_epi']:.0f} mL/min) — dose adjust"
+                )
+    except Exception:
+        logging.getLogger(__name__).debug("eGFR lookup failed for clinical snapshot", exc_info=True)
+
     return ClinicalSnapshot(
         allergies=allergies,
         active_conditions=active_conditions,
@@ -188,6 +219,7 @@ def get_clinical_snapshot(patient) -> ClinicalSnapshot:
         last_visit_clinic=last_visit_clinic,
         pending_results=pending_results,
         alerts=alerts,
+        renal_status=renal_status,
     )
 
 

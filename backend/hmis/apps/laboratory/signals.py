@@ -482,5 +482,165 @@ def auto_trigger_egfr_on_creatinine(sender, instance, created, **kwargs):
             result_data["ckd_stage"],
         )
 
+        # Generate CDS alerts for impaired eGFR (G3a and worse)
+        _generate_egfr_cds_alerts(
+            patient=patient,
+            encounter=encounter,
+            facility=lab_order.facility,
+            result_data=result_data,
+        )
+
     except Exception as e:
         logger.error("eGFR auto-trigger failed for result %s: %s", instance.id, e)
+
+
+def _generate_egfr_cds_alerts(*, patient, encounter, facility, result_data: dict):
+    """
+    Generate CDS alerts based on eGFR results.
+
+    Fires for CKD Stage G3a and worse with actionable clinical guidance.
+    Also generates a nephrology referral suggestion for G4/G5.
+    """
+    from hmis.apps.cds.models import CDSAlert, CDSAlertStatus, CDSRule
+
+    ckd_stage = result_data.get("ckd_stage", "")
+    egfr = result_data.get("egfr_ckd_epi")
+    flags = result_data.get("flags", [])
+    dose_band = result_data.get("dose_adjustment_band", "")
+
+    if not ckd_stage or ckd_stage in ("G1", "G2"):
+        return  # Normal or mildly decreased — no alert needed
+
+    # Priority mapping based on CKD stage
+    priority_map = {
+        "G3a": "MEDIUM",
+        "G3b": "HIGH",
+        "G4": "CRITICAL",
+        "G5": "CRITICAL",
+    }
+    priority = priority_map.get(ckd_stage, "MEDIUM")
+
+    # Build action items from flags
+    action_items = []
+    flag_messages = {
+        "avoid_nsaids": "Avoid NSAIDs",
+        "avoid_nephrotoxins": "Avoid nephrotoxic agents",
+        "caution_iv_contrast": "Caution with IV contrast — pre/post hydration required",
+        "avoid_gadolinium_contrast": "Avoid gadolinium contrast",
+        "check_potassium": "Check serum potassium",
+        "check_phosphate": "Check serum phosphate",
+        "check_urine_acr": "Order urine albumin:creatinine ratio (ACR)",
+        "monitor_egfr_quarterly": "Monitor eGFR quarterly",
+        "adjust_metformin_dose": "Review/reduce metformin dose",
+        "refer_nephrology": "Refer to nephrology",
+        "discuss_rrt_options": "Discuss renal replacement therapy options",
+    }
+    for flag in flags:
+        if flag in flag_messages:
+            action_items.append(flag_messages[flag])
+
+    # Get or create the eGFR CDS rule (singleton pattern)
+    rule, _ = CDSRule.objects.get_or_create(
+        code="RENAL-EGFR-001",
+        defaults={
+            "name": "Renal Impairment — eGFR Alert",
+            "description": "Auto-generated alert when eGFR indicates CKD Stage G3a or worse.",
+            "category": "CRITICAL_LAB",
+            "priority": "HIGH",
+            "evidence_level": "A",
+            "status": "ACTIVE",
+            "condition": {"type": "lab_range", "test": "eGFR", "operator": "lt", "value": 60},
+            "action_type": "WARN",
+            "action_message": "Renal impairment detected — adjust medications and avoid nephrotoxins.",
+            "suggestion": "Review all renally-cleared medications. Avoid NSAIDs and nephrotoxins.",
+        },
+    )
+
+    # Don't duplicate: check for existing pending alert for same patient + encounter
+    existing = CDSAlert.objects.filter(
+        rule=rule,
+        patient=patient,
+        encounter=encounter,
+        status=CDSAlertStatus.PENDING,
+    ).exists()
+    if existing:
+        return
+
+    message = (
+        f"CKD Stage {ckd_stage} — eGFR {egfr:.0f} mL/min/1.73m²\nDose adjustment: {dose_band}\n"
+    )
+    if action_items:
+        message += "Actions: " + "; ".join(action_items)
+
+    suggestion = "\n".join(f"• {item}" for item in action_items) if action_items else ""
+
+    CDSAlert.objects.create(
+        rule=rule,
+        patient=patient,
+        encounter=encounter,
+        facility=facility,
+        priority=priority,
+        message=message,
+        suggestion=suggestion,
+        details={
+            "ckd_stage": ckd_stage,
+            "egfr_ckd_epi": egfr,
+            "dose_adjustment_band": dose_band,
+            "flags": flags,
+            "source": "auto_egfr",
+        },
+    )
+
+    logger.info(
+        "CDS alert generated for patient %s: CKD %s (eGFR %.0f)",
+        patient.id,
+        ckd_stage,
+        egfr or 0,
+    )
+
+    # For G4/G5: also generate a nephrology referral suggestion
+    if ckd_stage in ("G4", "G5"):
+        referral_rule, _ = CDSRule.objects.get_or_create(
+            code="RENAL-REFER-001",
+            defaults={
+                "name": "Nephrology Referral — Severe CKD",
+                "description": "Suggests nephrology referral for CKD G4/G5.",
+                "category": "GUIDELINE",
+                "priority": "HIGH",
+                "evidence_level": "A",
+                "status": "ACTIVE",
+                "condition": {"type": "lab_range", "test": "eGFR", "operator": "lt", "value": 30},
+                "action_type": "SUGGEST",
+                "action_message": "Nephrology referral recommended for advanced CKD.",
+                "suggestion": "Create referral to nephrology/dialysis services.",
+            },
+        )
+        referral_exists = CDSAlert.objects.filter(
+            rule=referral_rule,
+            patient=patient,
+            encounter=encounter,
+            status=CDSAlertStatus.PENDING,
+        ).exists()
+        if not referral_exists:
+            CDSAlert.objects.create(
+                rule=referral_rule,
+                patient=patient,
+                encounter=encounter,
+                facility=facility,
+                priority="CRITICAL",
+                message=(
+                    f"Advanced CKD (Stage {ckd_stage}, eGFR {egfr:.0f} mL/min) — "
+                    "nephrology referral strongly recommended."
+                ),
+                suggestion=(
+                    "• Refer to nephrology for specialist management\n"
+                    "• Discuss renal replacement therapy planning\n"
+                    "• Ensure patient education on diet and fluid management"
+                ),
+                details={
+                    "ckd_stage": ckd_stage,
+                    "egfr_ckd_epi": egfr,
+                    "source": "auto_egfr_referral",
+                    "suggested_target_service": "DIALYSIS",
+                },
+            )

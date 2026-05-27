@@ -28,6 +28,7 @@ class ClinicalSnapshotSerializer(serializers.Serializer):
     last_visit_clinic = serializers.CharField(read_only=True, allow_null=True)
     pending_results = serializers.ListField(child=serializers.DictField(), read_only=True)
     alerts = serializers.ListField(child=serializers.CharField(), read_only=True)
+    renal_status = serializers.DictField(read_only=True, allow_null=True)
 
 
 class PatientSearchResultSerializer(serializers.ModelSerializer):

@@ -18,6 +18,13 @@ export const PendingResultSchema = z.object({
 /**
  * Schema for clinical snapshot
  */
+export const RenalStatusSchema = z.object({
+  ckd_stage: z.string(),
+  egfr: z.number(),
+  dose_band: z.string(),
+  measured_at: z.string(),
+});
+
 export const ClinicalSnapshotSchema = z.object({
   allergies: z.array(z.string()),
   active_conditions: z.array(z.string()),
@@ -26,6 +33,7 @@ export const ClinicalSnapshotSchema = z.object({
   last_visit_clinic: z.string().nullable(),
   pending_results: z.array(PendingResultSchema),
   alerts: z.array(z.string()),
+  renal_status: RenalStatusSchema.nullable().optional(),
 });
 
 /**
