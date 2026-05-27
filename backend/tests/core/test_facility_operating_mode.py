@@ -3,7 +3,7 @@ Tests for Facility.operating_mode cascade.
 
 Covers:
   * Enum exposes all five modes.
-  * FULL_HMIS leaves flags untouched.
+  * FULL_HMIS re-enables all clinical modules (reverses standalone disables).
   * Each standalone mode disables clinical workflow modules and enables
     the relevant standalone bundle + billing + inventory.
   * Switching operating_mode on an existing facility re-applies the cascade.
@@ -177,15 +177,15 @@ class TestModeSwitching:
         f.save()
         f.refresh_from_db()
 
-        # The cascade does not turn the previous-mode standalone flag off
-        # (lab/pharmacy standalones live on independent boolean columns),
-        # but it must turn the new-mode flags ON.
+        # Previous mode's flags are disabled, new mode's flags are enabled
         assert f.has_pharmacy is True
         assert f.has_pharmacy_standalone is True
+        assert f.has_lis_standalone is False
+        assert f.has_laboratory is False
 
     @pytest.mark.django_db
-    def test_switching_back_to_full_does_not_restore_flags(self, facility_kwargs):
-        """FULL_HMIS is documented as NOT restoring flags — admin re-enables."""
+    def test_switching_back_to_full_restores_clinical_flags(self, facility_kwargs):
+        """FULL_HMIS re-enables all clinical modules that standalone disabled."""
         f = Facility.objects.create(
             name="Round-tripper",
             mfl_code="OPM-RT-001",
@@ -198,9 +198,17 @@ class TestModeSwitching:
         f.save()
         f.refresh_from_db()
 
-        # FULL_HMIS leaves flags as-is — outpatient stays disabled until
-        # an admin flips it back manually.
-        assert f.has_outpatient is False
+        # FULL_HMIS re-enables all clinical modules
+        assert f.has_outpatient is True
+        assert f.has_inpatient is True
+        assert f.has_triage is True
+        assert f.has_scheduling is True
+        assert f.has_laboratory is True
+        assert f.has_imaging is True
+        # Standalone-specific flags are turned off
+        assert f.has_lis_standalone is False
+        assert f.has_imaging_standalone is False
+        assert f.has_pharmacy_standalone is False
 
 
 class TestOperatingModeSerializer:

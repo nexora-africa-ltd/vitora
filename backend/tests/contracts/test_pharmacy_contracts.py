@@ -130,6 +130,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "acknowledge_allergy_warnings",
+                "acknowledge_renal_warnings",
                 "admission",
                 "clinical_notes",
                 "dispensing_type",

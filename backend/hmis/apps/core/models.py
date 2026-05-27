@@ -3544,7 +3544,9 @@ class Facility(TimeStampedModel):
         "has_private_insurance",
         "has_ai_assistant",
         "has_cds",
-        # Lab/imaging flags — disabled by default, re-enabled per mode
+        # Service-specific flags — disabled by default, re-enabled per mode
+        "has_pharmacy",
+        "has_pharmacy_standalone",
         "has_laboratory",
         "has_imaging",
         "has_lis_standalone",
@@ -3636,12 +3638,23 @@ class Facility(TimeStampedModel):
         """
         Cascade ``has_*`` flags based on ``operating_mode``.
 
-        FULL_HMIS does not alter flags (admin manages individually).
+        FULL_HMIS re-enables all clinical workflow modules that standalone
+        modes disable.  Admin can then turn off individual modules.
         Any STANDALONE_* mode disables clinical workflow modules and
         force-enables the relevant standalone module plus billing/inventory.
         """
         mode = self.operating_mode
-        if not mode or mode == self.OperatingMode.FULL_HMIS:
+        if not mode:
+            return
+
+        if mode == self.OperatingMode.FULL_HMIS:
+            # Re-enable all modules that standalone modes disable
+            for flag in self._STANDALONE_DISABLES:
+                setattr(self, flag, True)
+            # Standalone-specific flags should be off in full HMIS
+            self.has_lis_standalone = False
+            self.has_imaging_standalone = False
+            self.has_pharmacy_standalone = False
             return
 
         enables = self._MODE_ENABLES.get(str(mode), ())
