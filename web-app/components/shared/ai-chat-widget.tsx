@@ -332,9 +332,11 @@ export function AIChatWidget() {
     }
 
     // Check context sufficiency using merged context (base + enrichment)
+    // Skip for educational/reference actions that don't need patient context
+    const contextRequired = action.contextRequired !== false;
     const sufficiency = assessContextSufficiency(mergedPatient, mergedEncounter);
 
-    if (!sufficiency.canProceed) {
+    if (contextRequired && !sufficiency.canProceed) {
       // Insufficient context — show guidance instead of a hollow API call
       addMessage({
         id: `user-${Date.now()}`,

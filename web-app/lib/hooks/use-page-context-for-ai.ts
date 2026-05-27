@@ -168,6 +168,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'Help me interpret the lab results I\'m looking at. What are the key findings and clinical significance?',
       userMessage: 'Requesting lab result interpretation...',
+      contextRequired: false,
     },
     {
       id: 'lab-reference-ranges',
@@ -175,6 +176,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'What are the normal reference ranges for common lab tests? Include CBC, BMP, LFTs, and urinalysis.',
       userMessage: 'Looking up reference ranges...',
+      contextRequired: false,
     },
     {
       id: 'lab-critical-values',
@@ -182,6 +184,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'What lab values are considered critical and require immediate notification? List by test type.',
       userMessage: 'Checking critical value thresholds...',
+      contextRequired: false,
     },
   ],
   inpatient: [
@@ -191,6 +194,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'What are the general discharge readiness criteria I should assess for this patient?',
       userMessage: 'Checking discharge readiness criteria...',
+      contextRequired: false,
     },
     {
       id: 'inpatient-ward-round-tips',
@@ -198,6 +202,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'What should I review during a ward round? Provide a structured checklist including vitals trends, medication review, investigations, and care plan updates.',
       userMessage: 'Generating ward round checklist...',
+      contextRequired: false,
     },
     {
       id: 'inpatient-fall-risk',
@@ -205,6 +210,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'What are the key fall risk factors I should assess for inpatients? Include the Morse Fall Scale criteria.',
       userMessage: 'Reviewing fall risk factors...',
+      contextRequired: false,
     },
   ],
   pharmacy: [
@@ -214,6 +220,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'Help me check for potential drug interactions. What are the most clinically significant interactions I should watch for?',
       userMessage: 'Checking drug interactions...',
+      contextRequired: false,
     },
     {
       id: 'pharmacy-dosing',
@@ -221,6 +228,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'What are the standard adult dosing guidelines for commonly prescribed medications?',
       userMessage: 'Looking up dosing guidance...',
+      contextRequired: false,
     },
     {
       id: 'pharmacy-renal-dosing',
@@ -228,6 +236,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'Which medications require renal dose adjustment? Provide guidelines for common drugs based on GFR ranges.',
       userMessage: 'Checking renal dose adjustments...',
+      contextRequired: false,
     },
   ],
   patients: [
@@ -237,6 +246,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'What are the key elements of a comprehensive patient history? Provide a structured approach.',
       userMessage: 'Loading history taking guide...',
+      contextRequired: false,
     },
     {
       id: 'patients-screening',
@@ -244,6 +254,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'What routine health screenings should be recommended based on age and gender? Include Kenya-specific guidelines.',
       userMessage: 'Checking screening recommendations...',
+      contextRequired: false,
     },
   ],
   encounters: [
@@ -253,6 +264,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'How should I structure a SOAP note? Provide guidance on what to include in each section (Subjective, Objective, Assessment, Plan).',
       userMessage: 'Loading SOAP note guide...',
+      contextRequired: false,
     },
     {
       id: 'encounters-ddx-approach',
@@ -260,6 +272,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'What is a systematic approach to generating a differential diagnosis? Include frameworks like VINDICATE or SOCRATES.',
       userMessage: 'Loading DDx approach...',
+      contextRequired: false,
     },
   ],
   imaging: [
@@ -269,6 +282,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'Help me choose the appropriate imaging study. What are the indications for X-ray vs CT vs MRI vs ultrasound?',
       userMessage: 'Loading imaging selection guide...',
+      contextRequired: false,
     },
     {
       id: 'imaging-contrast-safety',
@@ -276,6 +290,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'What are the contraindications for IV contrast media? Include guidelines for renal function, allergies, and metformin.',
       userMessage: 'Checking contrast safety...',
+      contextRequired: false,
     },
   ],
   emergency: [
@@ -285,6 +300,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'Summarize the key ACLS algorithms: cardiac arrest, bradycardia, tachycardia, and acute coronary syndromes.',
       userMessage: 'Loading ACLS protocols...',
+      contextRequired: false,
     },
     {
       id: 'emergency-triage-categories',
@@ -292,6 +308,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'Explain the Kenya Emergency Triage Assessment (KETA) categories: RED, ORANGE, YELLOW, GREEN, BLUE. Include criteria for each.',
       userMessage: 'Loading KETA triage categories...',
+      contextRequired: false,
     },
     {
       id: 'emergency-toxicology',
@@ -299,6 +316,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'What is the general approach to managing an unknown poisoning? Include decontamination, antidotes, and supportive care.',
       userMessage: 'Loading poisoning management guide...',
+      contextRequired: false,
     },
   ],
   surveillance: [
@@ -308,6 +326,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'What diseases are immediately notifiable in Kenya? Include the reporting timeline and authority to notify.',
       userMessage: 'Loading notifiable disease list...',
+      contextRequired: false,
     },
     {
       id: 'surveillance-outbreak',
@@ -315,6 +334,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'What are the steps in an outbreak investigation? Provide a structured approach using the CDC framework.',
       userMessage: 'Loading outbreak investigation guide...',
+      contextRequired: false,
     },
   ],
   finance: [
@@ -324,6 +344,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'What are the common reasons SHA claims get rejected? Provide tips for successful claim submission.',
       userMessage: 'Loading SHA claims guide...',
+      contextRequired: false,
     },
   ],
   mch: [
@@ -333,6 +354,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'What is the recommended ANC visit schedule per WHO and Kenya MOH guidelines? Include key assessments at each visit.',
       userMessage: 'Loading ANC schedule...',
+      contextRequired: false,
     },
     {
       id: 'mch-danger-signs',
@@ -340,6 +362,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       query:
         'What are the danger signs in pregnancy that require immediate referral? Include both maternal and fetal indicators.',
       userMessage: 'Checking pregnancy danger signs...',
+      contextRequired: false,
     },
   ],
 };
