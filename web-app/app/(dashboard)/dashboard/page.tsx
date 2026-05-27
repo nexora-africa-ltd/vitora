@@ -507,7 +507,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Today's Assignment / Clock-In Card */}
-        <TodayAssignmentCard />
+        {hasModule('scheduling') && <TodayAssignmentCard />}
 
         {isError && (
           <Card className="border-warning/40 bg-warning/5">
@@ -620,7 +620,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-6 xl:col-span-4">
-            {canManageSchedules && (
+            {canManageSchedules && hasModule('scheduling') && (
               <Card className="overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-2">
