@@ -151,25 +151,27 @@ export function DiagnosisCodeInput({
   const codeVersion = value.icd11Code ? 'ICD-11' : value.icd10Code ? 'ICD-10' : value.snomedCode ? 'SNOMED' : null;
 
   return (
-    <div className={cn('space-y-2', className)}>
+    <div className={cn('space-y-2 min-w-0', className)}>
       {label && <Label>{label}</Label>}
 
       {hasSelectedCode ? (
-        <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50">
-          <Badge variant="outline" className="font-mono shrink-0">
-            {displayCode}
-          </Badge>
-          {codeVersion && (
-            <Badge variant="secondary" className="text-xs shrink-0">
-              {codeVersion}
+        <div className="flex flex-wrap items-center gap-2 p-3 rounded-md border bg-muted/50 min-w-0">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Badge variant="outline" className="font-mono">
+              {displayCode}
             </Badge>
-          )}
-          {value.snomedCode && codeVersion !== 'SNOMED' && (
-            <Badge variant="secondary" className="text-xs shrink-0 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-              SNOMED: {value.snomedCode}
-            </Badge>
-          )}
-          <span className="flex-1 text-sm truncate">
+            {codeVersion && (
+              <Badge variant="secondary" className="text-xs">
+                {codeVersion}
+              </Badge>
+            )}
+            {value.snomedCode && codeVersion !== 'SNOMED' && (
+              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+                SNOMED: {value.snomedCode}
+              </Badge>
+            )}
+          </div>
+          <span className="flex-1 text-sm truncate min-w-0">
             {displayText}
           </span>
           <Button
@@ -178,7 +180,7 @@ export function DiagnosisCodeInput({
             size="icon"
             onClick={handleClear}
             disabled={disabled}
-            className="shrink-0"
+            className="shrink-0 h-7 w-7"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -187,7 +189,7 @@ export function DiagnosisCodeInput({
         <div className="space-y-3">
           {/* Coding System Selector */}
           {showVersionToggle && (
-            <div className="flex gap-1 rounded-md border p-1 w-fit">
+            <div className="flex flex-wrap gap-1 rounded-md border p-1 w-fit">
               <button
                 type="button"
                 onClick={() => setCodingSystem('icd10')}

@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { HelpPopover } from '@/components/shared/help-popover';
 import {
   useCreatePastSurgery,
   useUpdatePastSurgery,
@@ -112,9 +113,12 @@ export function PastSurgeryFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit' : 'Add'} Past Surgery</DialogTitle>
+          <div className="flex items-center gap-2">
+            <DialogTitle>{isEditing ? 'Edit' : 'Add'} Past Surgery</DialogTitle>
+            <HelpPopover content="Record a past surgical procedure including the date and outcome. This helps clinicians assess surgical risk and plan future interventions." />
+          </div>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
@@ -124,7 +128,7 @@ export function PastSurgeryFormDialog({
               <p className="text-xs text-destructive">{errors.procedure_name.message}</p>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Date</Label>
               <Input type="date" {...register('procedure_date')} />
@@ -152,11 +156,11 @@ export function PastSurgeryFormDialog({
             <Label>Notes</Label>
             <Textarea {...register('notes')} placeholder="Additional details..." rows={2} className="resize-none" />
           </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
               {isSubmitting ? 'Saving...' : isEditing ? 'Update' : 'Add'}
             </Button>
           </div>

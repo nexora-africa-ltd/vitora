@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -21,6 +21,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { DiagnosisCodeInput, emptyDiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
+import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
+import { HelpPopover } from '@/components/shared/help-popover';
 import {
   useCreateChronicCondition,
   useUpdateChronicCondition,
@@ -55,6 +58,8 @@ export function ChronicConditionFormDialog({
   const createMutation = useCreateChronicCondition(patientId);
   const updateMutation = useUpdateChronicCondition(patientId);
 
+  const [diagnosisCode, setDiagnosisCode] = useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue());
+
   const {
     register,
     handleSubmit,
@@ -82,6 +87,19 @@ export function ChronicConditionFormDialog({
         onset_date: editData.onset_date || '',
         notes: editData.notes,
       });
+      // Restore diagnosis code state for editing
+      if (editData.icd10_code) {
+        setDiagnosisCode({
+          icd10Code: null,
+          icd10Display: `${editData.icd10_code} - ${editData.condition_name}`,
+          icd11Code: '',
+          icd11Display: '',
+          snomedCode: '',
+          snomedDisplay: '',
+        });
+      } else {
+        setDiagnosisCode(emptyDiagnosisCodeValue());
+      }
     } else if (open && !editData) {
       reset({
         condition_name: '',
@@ -90,8 +108,30 @@ export function ChronicConditionFormDialog({
         onset_date: '',
         notes: '',
       });
+      setDiagnosisCode(emptyDiagnosisCodeValue());
     }
   }, [open, editData, reset]);
+
+  // Sync diagnosis code selection to form fields
+  const handleDiagnosisCodeChange = (val: DiagnosisCodeValue) => {
+    setDiagnosisCode(val);
+    // Extract the code string and description
+    if (val.icd11Code) {
+      setValue('icd10_code', val.icd11Code);
+      const desc = val.icd11Display?.split(' - ').slice(1).join(' - ') || '';
+      if (desc) setValue('condition_name', desc);
+    } else if (val.icd10Display) {
+      const code = val.icd10Display.split(' - ')[0] || '';
+      const desc = val.icd10Display.split(' - ').slice(1).join(' - ') || '';
+      setValue('icd10_code', code);
+      if (desc) setValue('condition_name', desc);
+    } else if (val.snomedCode) {
+      setValue('icd10_code', val.snomedCode);
+      if (val.snomedDisplay) setValue('condition_name', val.snomedDisplay);
+    } else {
+      setValue('icd10_code', '');
+    }
+  };
 
   const statusValue = watch('status');
 
@@ -110,11 +150,20 @@ export function ChronicConditionFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit' : 'Add'} Chronic Condition</DialogTitle>
+          <div className="flex items-center gap-2">
+            <DialogTitle>{isEditing ? 'Edit' : 'Add'} Chronic Condition</DialogTitle>
+            <HelpPopover content="Record a chronic or ongoing condition with ICD-10/ICD-11 coding. Use the diagnosis search to find the correct code, or type the condition name manually." />
+          </div>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <DiagnosisCodeInput
+            value={diagnosisCode}
+            onChange={handleDiagnosisCodeChange}
+            label="Diagnosis Code"
+            showSNOMED={false}
+          />
           <div className="space-y-2">
             <Label>Condition Name *</Label>
             <Input {...register('condition_name')} placeholder="e.g., Type 2 Diabetes Mellitus" />
@@ -122,11 +171,7 @@ export function ChronicConditionFormDialog({
               <p className="text-xs text-destructive">{errors.condition_name.message}</p>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>ICD-10 Code</Label>
-              <Input {...register('icd10_code')} placeholder="e.g., E11" />
-            </div>
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Status</Label>
               <Select
@@ -145,21 +190,21 @@ export function ChronicConditionFormDialog({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Onset Date</Label>
-            <Input type="date" {...register('onset_date')} />
+            <div className="space-y-2">
+              <Label>Onset Date</Label>
+              <Input type="date" {...register('onset_date')} />
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Notes</Label>
             <Textarea {...register('notes')} placeholder="Additional details..." rows={2} className="resize-none" />
           </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : isEditing ? 'Update' : 'Add'}
+            <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
+              {isSubmitting ? 'Saving...' : isEditing ? 'Update Condition' : 'Add Condition'}
             </Button>
           </div>
         </form>

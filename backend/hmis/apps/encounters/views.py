@@ -2156,7 +2156,9 @@ class ChronicConditionViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
 class CurrentMedicationViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """CRUD for structured current medication statements scoped by patient."""
 
-    queryset = CurrentMedication.objects.select_related("patient", "encounter", "recorded_by")
+    queryset = CurrentMedication.objects.select_related(
+        "patient", "encounter", "recorded_by", "drug"
+    )
     permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["status"]

@@ -982,6 +982,7 @@ class CurrentMedicationSerializer(serializers.ModelSerializer):
     recorded_by_username = serializers.CharField(
         source="recorded_by.username", read_only=True, allow_null=True
     )
+    drug_display = serializers.SerializerMethodField()
 
     class Meta:
         model = CurrentMedication
@@ -989,6 +990,8 @@ class CurrentMedicationSerializer(serializers.ModelSerializer):
             "id",
             "patient",
             "encounter",
+            "drug",
+            "drug_display",
             "medication_name",
             "dosage",
             "frequency",
@@ -1008,13 +1011,22 @@ class CurrentMedicationSerializer(serializers.ModelSerializer):
     def get_patient_name(self, obj: CurrentMedication) -> str:
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
+    def get_drug_display(self, obj: CurrentMedication) -> str | None:
+        if not obj.drug_id:
+            return None
+        drug = obj.drug
+        return f"{drug.generic_name} {drug.strength} ({drug.get_form_display()})"
+
 
 class CurrentMedicationCreateSerializer(serializers.ModelSerializer):
     """Write serializer for CurrentMedication."""
 
+    medication_name = serializers.CharField(max_length=255, required=False, default="")
+
     class Meta:
         model = CurrentMedication
         fields = [
+            "drug",
             "medication_name",
             "dosage",
             "frequency",
@@ -1032,6 +1044,31 @@ class CurrentMedicationCreateSerializer(serializers.ModelSerializer):
                 f"Invalid status. Must be one of: {', '.join(sorted(valid))}"
             )
         return value
+
+    def validate(self, attrs: dict) -> dict:
+        """Auto-populate medication_name from drug catalog if not provided."""
+        drug = attrs.get("drug")
+        medication_name = attrs.get("medication_name", "").strip()
+
+        # On partial update, the instance already has values — only validate on create
+        # or when both are explicitly being cleared
+        if self.instance:
+            # Partial update: if neither drug nor name is in payload, nothing to validate
+            if "drug" not in attrs and "medication_name" not in attrs:
+                return attrs
+            # Resolve final values considering instance state
+            if "drug" not in attrs:
+                drug = self.instance.drug
+            if "medication_name" not in attrs:
+                medication_name = self.instance.medication_name
+
+        if drug and not medication_name:
+            attrs["medication_name"] = f"{drug.generic_name} {drug.strength}"
+        if not drug and not medication_name:
+            raise serializers.ValidationError(
+                {"medication_name": "Medication name is required when no drug is selected."}
+            )
+        return attrs
 
 
 # =============================================================================

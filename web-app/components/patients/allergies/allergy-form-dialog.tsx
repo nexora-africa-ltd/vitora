@@ -234,7 +234,7 @@ export function AllergyFormDialog({
   if (isEditMode && isLoadingAllergy) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg">
+        <DialogContent>
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
@@ -245,7 +245,7 @@ export function AllergyFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>{isEditMode ? 'Edit Allergy' : 'Add Allergy'}</DialogTitle>
@@ -321,7 +321,7 @@ export function AllergyFormDialog({
                         </div>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0" align="start">
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                       <Command>
                         <CommandInput
                           placeholder="Search substances..."
