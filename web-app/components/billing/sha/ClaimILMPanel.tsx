@@ -8,7 +8,7 @@
  */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { shaApi } from '@/lib/api/sha';
+import type { CapitationValidationResult } from '@/lib/api/sha';
 import type { IlmCallResult } from '@/lib/schemas/sha.schema';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
 import { validateInterventionCombination, getBenefitCode, INTERVENTION_COMBINATION_RULES } from '@/lib/sha/combination-rules';
@@ -36,16 +37,41 @@ interface ClaimILMPanelProps {
    * (all sections visible, standard add-intervention endpoint).
    */
   flow?: ClaimFlowInfo;
+  /** SHA member ID for capitation provider validation (PHC flow). */
+  shaMemberId?: number | null;
   /** Active intervention codes already on this claim (for combination validation). */
   existingInterventions?: string[];
   /** Called after any action finishes so the parent can refetch the claim. */
   onChange?: () => void;
 }
 
-export function ClaimILMPanel({ claimId, flow, existingInterventions = [], onChange }: ClaimILMPanelProps) {
+export function ClaimILMPanel({ claimId, flow, shaMemberId, existingInterventions = [], onChange }: ClaimILMPanelProps) {
   const [busy, setBusy] = useState<ActionKey | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<IlmCallResult | null>(null);
+
+  // Flow-driven UI rules (default to SHIF when caller omits the prop).
+  const useVirtualLine = flow?.addLineEndpoint === 'add_virtual_claim_line';
+  const showStartVisit = flow ? flow.requiresConsent : true;
+  const startVisitTitle = flow?.flow === 'eccif' ? 'Open Emergency Claim' : 'Start Visit';
+  const addInterventionTitle = useVirtualLine
+    ? 'Add Virtual Claim Line (PHC)'
+    : 'Add Intervention';
+  const panelTitle = flow
+    ? `DHA HIE Workflow \u2014 ${flow.badgeLabel}`
+    : 'DHA HIE Middleware (ILM) Workflow';
+
+  // Capitation provider validation (PHC flow only)
+  const [capitationWarning, setCapitationWarning] = useState<CapitationValidationResult | null>(null);
+
+  useEffect(() => {
+    if (!useVirtualLine || !shaMemberId) return;
+    let cancelled = false;
+    shaApi.validateCapitationProvider(shaMemberId, claimId).then((res) => {
+      if (!cancelled) setCapitationWarning(res);
+    }).catch(() => { /* non-blocking */ });
+    return () => { cancelled = true; };
+  }, [shaMemberId, claimId, useVirtualLine]);
 
   // form state
   const [otp, setOtp] = useState('');
@@ -70,17 +96,6 @@ export function ClaimILMPanel({ claimId, flow, existingInterventions = [], onCha
       setBusy(null);
     }
   }
-
-  // Flow-driven UI rules (default to SHIF when caller omits the prop).
-  const useVirtualLine = flow?.addLineEndpoint === 'add_virtual_claim_line';
-  const showStartVisit = flow ? flow.requiresConsent : true;
-  const startVisitTitle = flow?.flow === 'eccif' ? 'Open Emergency Claim' : 'Start Visit';
-  const addInterventionTitle = useVirtualLine
-    ? 'Add Virtual Claim Line (PHC)'
-    : 'Add Intervention';
-  const panelTitle = flow
-    ? `DHA HIE Workflow \u2014 ${flow.badgeLabel}`
-    : 'DHA HIE Middleware (ILM) Workflow';
 
   return (
     <Card>
@@ -110,6 +125,15 @@ export function ClaimILMPanel({ claimId, flow, existingInterventions = [], onCha
               computed from accrued admission days at discharge. Manual line items are not
               required. Use &ldquo;Transfer Ward&rdquo; on the Interventions panel to switch
               between wards (e.g., General Ward → ICU).
+            </AlertDescription>
+          </Alert>
+        )}
+        {capitationWarning && !capitationWarning.is_valid && (
+          <Alert variant="destructive" className="border-amber-500 bg-amber-50 dark:bg-amber-900/20">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertTitle className="text-amber-800 dark:text-amber-200">Provider Mismatch Warning</AlertTitle>
+            <AlertDescription className="text-amber-700 dark:text-amber-300">
+              {capitationWarning.warning}
             </AlertDescription>
           </Alert>
         )}

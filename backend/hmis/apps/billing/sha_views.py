@@ -3973,3 +3973,198 @@ class SHARemittanceViewSet(viewsets.ReadOnlyModelViewSet):
                 {"error": e.message, "code": e.code},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+class CapitationValidationView(APIView):
+    """
+    Pre-flight validation for PHC/capitation claims.
+
+    Checks whether the current facility is the patient's selected outpatient
+    provider before submitting a capitation claim to DHA. This prevents
+    wasted API calls and gives clinicians early feedback.
+
+    POST /api/billing/capitation/validate/
+    {
+        "sha_member_id": 123,
+        "claim_id": 456  (optional — uses claim's facility if provided)
+    }
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="CapitationValidationRequest",
+            fields={
+                "sha_member_id": serializers.IntegerField(required=True),
+                "claim_id": serializers.IntegerField(required=False),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="CapitationValidationResponse",
+                fields={
+                    "is_valid": serializers.BooleanField(),
+                    "warning": serializers.CharField(allow_blank=True),
+                    "blocking": serializers.BooleanField(),
+                    "details": serializers.DictField(required=False),
+                },
+            )
+        },
+    )
+    def post(self, request):
+        """Validate capitation provider selection."""
+        from hmis.apps.billing.services.capitation_validation import validate_capitation_provider
+
+        sha_member_id = request.data.get("sha_member_id")
+        claim_id = request.data.get("claim_id")
+
+        if not sha_member_id:
+            return Response(
+                {"error": "sha_member_id is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            sha_member = SHAMember.objects.select_related("patient").get(pk=sha_member_id)
+        except SHAMember.DoesNotExist:
+            return Response(
+                {"error": "SHA member not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Determine facility: from claim or from user's active facility
+        facility = None
+        if claim_id:
+            try:
+                claim = SHAClaim.objects.select_related("facility").get(pk=claim_id)
+                facility = claim.facility
+            except SHAClaim.DoesNotExist:
+                pass
+
+        if not facility:
+            # Fall back to user's current facility
+            staff_profile = getattr(request.user, "staff_profile", None)
+            if staff_profile:
+                facility = getattr(staff_profile, "primary_facility", None)
+
+        if not facility:
+            return Response(
+                {
+                    "error": "Could not determine facility. Provide claim_id or ensure user has a primary facility."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        result = validate_capitation_provider(sha_member, facility)
+
+        return Response(
+            {
+                "is_valid": result.is_valid,
+                "warning": result.warning,
+                "blocking": result.blocking,
+                "details": result.details,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class CapitationValidateDirectView(APIView):
+    """
+    Pre-flight capitation provider validation using raw eligibility response.
+
+    Unlike CapitationValidationView (which requires a local SHAMember record),
+    this endpoint accepts the raw eligibility response from a direct check.
+    Useful on the patient lookup page BEFORE registration to warn staff that
+    the patient's capitation provider doesn't match this facility.
+
+    POST /api/billing/capitation/validate-direct/
+    {
+        "eligibility_response": { ... raw DirectEligibilityCheckResponse ... }
+    }
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="CapitationValidateDirectRequest",
+            fields={
+                "eligibility_response": serializers.DictField(required=True),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="CapitationValidateDirectResponse",
+                fields={
+                    "is_valid": serializers.BooleanField(),
+                    "warning": serializers.CharField(allow_blank=True),
+                    "blocking": serializers.BooleanField(),
+                    "details": serializers.DictField(required=False),
+                },
+            )
+        },
+    )
+    def post(self, request):
+        """Validate capitation provider using raw eligibility data."""
+        from hmis.apps.billing.services.capitation_validation import (
+            CapitationValidationResult,
+            _extract_provider_code,
+            _get_facility_codes,
+        )
+
+        eligibility_response = request.data.get("eligibility_response")
+        if not eligibility_response or not isinstance(eligibility_response, dict):
+            return Response(
+                {"error": "eligibility_response dict is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Resolve user's facility
+        staff_profile = getattr(request.user, "staff_profile", None)
+        facility = getattr(staff_profile, "primary_facility", None) if staff_profile else None
+
+        if not facility:
+            return Response(
+                {"error": "Could not determine your facility."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Extract provider code from the raw eligibility response
+        provider_code = _extract_provider_code(eligibility_response)
+
+        if not provider_code:
+            # No provider selection data — can't validate, pass through
+            result = CapitationValidationResult(is_valid=True)
+        else:
+            facility_codes = _get_facility_codes(facility)
+            if provider_code.upper() in {c.upper() for c in facility_codes if c}:
+                result = CapitationValidationResult(
+                    is_valid=True,
+                    details={"matched_code": provider_code},
+                )
+            else:
+                result = CapitationValidationResult(
+                    is_valid=False,
+                    warning=(
+                        f"Patient's selected outpatient provider ({provider_code}) "
+                        f"does not match this facility. If you register and treat "
+                        f"this patient under capitation (PHC), the claim may be "
+                        f"rejected by SHA."
+                    ),
+                    blocking=False,
+                    details={
+                        "patient_provider_code": provider_code,
+                        "facility_codes": facility_codes,
+                    },
+                )
+
+        return Response(
+            {
+                "is_valid": result.is_valid,
+                "warning": result.warning,
+                "blocking": result.blocking,
+                "details": result.details,
+            },
+            status=status.HTTP_200_OK,
+        )

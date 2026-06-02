@@ -99,6 +99,114 @@ def create_invoice_for_encounter(sender, instance, created, **kwargs):
         organization_id=getattr(instance, "organization_id", None),
     )
 
+    # Auto-create PHC draft claim for outpatient encounters at Level 2-3 facilities
+    _maybe_create_phc_claim(instance)
+
+
+def _maybe_create_phc_claim(encounter):
+    """
+    Auto-create a draft SHA claim with claim_flow='phc' for outpatient encounters
+    at Level 2-3 (PHC-eligible) facilities when the patient has active SHA membership.
+
+    This closes the gap where outpatient visits don't go through a discharge event,
+    so the existing discharge-triggered claim creation never fires for them.
+    """
+    from hmis.apps.billing.models import SHAClaim, SHAMember
+
+    # Only for outpatient encounters
+    if getattr(encounter, "encounter_type", None) not in ("OPD", "EMERGENCY"):
+        return
+
+    # Check facility level is PHC-eligible (Level 2 or 3)
+    facility_level = getattr(settings, "FACILITY_LEVEL", "L3")
+    # Normalize: "L3" → "3", "3" → "3" for comparison
+    level_num = facility_level.replace("L", "").replace("l", "").strip()
+    if level_num not in ("2", "3"):
+        return
+
+    # Normalize to "L{n}" format for the claim model (TariffLevel choices)
+    normalized_level = (
+        f"L{level_num}" if not facility_level.upper().startswith("L") else facility_level.upper()
+    )
+
+    # Check if patient has active SHA membership
+    try:
+        sha_member = SHAMember.objects.filter(
+            patient=encounter.patient,
+            status=SHAMember.MembershipStatus.ACTIVE,
+        ).first()
+    except Exception:
+        return
+
+    if not sha_member:
+        return
+
+    # Avoid duplicate: check if a PHC claim already exists for this encounter
+    existing = SHAClaim.objects.filter(
+        encounter=encounter,
+        claim_flow=SHAClaim.ClaimFlow.PHC,
+    ).exists()
+    if existing:
+        return
+
+    # Get or create invoice for this encounter
+    invoice = Invoice.objects.filter(encounter=encounter).first()
+
+    try:
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        system_user = User.objects.filter(username="system").first()
+        if not system_user:
+            system_user = User.objects.get_or_create(
+                username="system",
+                defaults={"email": "system@vitora.local", "is_active": True},
+            )[0]
+
+        claim = SHAClaim.objects.create(
+            patient=encounter.patient,
+            sha_member=sha_member,
+            encounter=encounter,
+            invoice=invoice,
+            claim_type=SHAClaim.ClaimType.OUTPATIENT,
+            claim_flow=SHAClaim.ClaimFlow.PHC,
+            status=SHAClaim.ClaimStatus.DRAFT,
+            service_date=encounter.encounter_date,
+            facility_code=getattr(settings, "FACILITY_MFL_CODE", ""),
+            facility_level=normalized_level,
+            primary_diagnosis_code="PENDING",
+            primary_diagnosis_description="Awaiting diagnosis",
+            created_by=system_user,
+            facility=getattr(encounter, "facility", None),
+            organization=getattr(encounter, "organization", None),
+        )
+
+        logger.info(
+            "Auto-created PHC draft claim %s for OPD encounter %s",
+            claim.claim_number,
+            encounter.id,
+        )
+
+        publish_event(
+            event_type=BillingEvents.SHA_CLAIM_CREATED,
+            aggregate_type="SHAClaim",
+            aggregate_id=claim.id,
+            payload={
+                "claim_number": claim.claim_number,
+                "encounter_id": encounter.id,
+                "patient_id": encounter.patient_id,
+                "claim_flow": "phc",
+                "trigger": "outpatient_encounter_created",
+            },
+            facility_id=getattr(encounter, "facility_id", None),
+            organization_id=getattr(encounter, "organization_id", None),
+        )
+    except Exception:
+        logger.exception(
+            "Auto PHC claim creation failed for encounter %s",
+            encounter.id,
+        )
+
 
 def handle_discharge_billing(sender, instance, created, **kwargs):
     """Auto-finalize invoice and create SHA claim on patient discharge."""

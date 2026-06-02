@@ -6,6 +6,8 @@ from django.urls import include, path
 from rest_framework import routers
 
 from hmis.apps.billing.sha_views import (
+    CapitationValidateDirectView,
+    CapitationValidationView,
     ClientRegistryView,
     DirectEligibilityCheckView,
     EligibilityCheckView,
@@ -80,4 +82,11 @@ urlpatterns = [
     # SHA Eligibility check
     path("eligibility/check/", EligibilityCheckView.as_view(), name="eligibility-check"),
     path("eligibility/direct/", DirectEligibilityCheckView.as_view(), name="eligibility-direct"),
+    # Capitation provider validation (pre-flight)
+    path("capitation/validate/", CapitationValidationView.as_view(), name="capitation-validate"),
+    path(
+        "capitation/validate-direct/",
+        CapitationValidateDirectView.as_view(),
+        name="capitation-validate-direct",
+    ),
 ]

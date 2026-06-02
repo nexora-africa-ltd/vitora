@@ -530,6 +530,7 @@ export default function ClaimDetailPage() {
       <ClaimILMPanel
         claimId={claim.id}
         flow={flowInfo}
+        shaMemberId={claim.sha_member ?? null}
         existingInterventions={
           claim.claim_interventions
             ?.filter((i) => i.status === 'active')

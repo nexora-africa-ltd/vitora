@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search, User, ExternalLink, Globe, Database, Loader2,
   Shield, ShieldCheck, ShieldX, Users, UserPlus, ChevronDown, ChevronUp,
-  Fingerprint, Accessibility,
+  Fingerprint, Accessibility, AlertTriangle, CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { BenefitsPanel } from '@/components/billing/sha';
 import { usePatients } from '@/lib/hooks/use-patients';
 import { useFetchFromCR } from '@/lib/hooks/use-sha';
-import { shaApi } from '@/lib/api/sha';
+import { shaApi, type CapitationValidationResult } from '@/lib/api/sha';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import type { Patient } from '@/lib/types/patient';
 import type {
@@ -337,6 +337,25 @@ function CRResultCard({
 }) {
   const router = useRouter();
   const [showDependants, setShowDependants] = useState(false);
+  const [capitationWarning, setCapitationWarning] = useState<CapitationValidationResult | null>(null);
+
+  // Validate capitation provider match when eligibility data arrives
+  useEffect(() => {
+    if (!eligibility || !eligibility.is_eligible) {
+      setCapitationWarning(null);
+      return;
+    }
+    // Build the eligibility response object for the validation endpoint
+    const eligibilityResponse: Record<string, unknown> = {
+      ...eligibility,
+    };
+    if (eligibility.raw_response) {
+      eligibilityResponse.raw_response = eligibility.raw_response;
+    }
+    shaApi.validateCapitationDirect(eligibilityResponse)
+      .then(setCapitationWarning)
+      .catch(() => setCapitationWarning(null));
+  }, [eligibility]);
 
   // Flatten CR dependants from groups
   const crDependants: Array<CRDependantPerson & { relationship?: string }> = [];
@@ -572,6 +591,42 @@ function CRResultCard({
           <p className="text-xs text-muted-foreground">No eligibility data available.</p>
         )}
       </CardContent>
+
+      {/* Capitation Provider Validation */}
+      {capitationWarning && (capitationWarning.details || !capitationWarning.is_valid) && (
+        <CardContent className="py-3 border-t">
+          {capitationWarning.is_valid ? (
+            <div className="flex gap-2 rounded-md border border-green-300 bg-green-50 p-3 dark:border-green-700 dark:bg-green-950/40">
+              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-green-800 dark:text-green-300">
+                  Capitation Provider Matched
+                </p>
+                <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
+                  This facility is the patient&apos;s selected outpatient provider. PHC/capitation claims can be submitted.
+                  {capitationWarning.warning && (
+                    <span className="block mt-1 text-amber-600 dark:text-amber-400">
+                      Note: {capitationWarning.warning}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950/40">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                  Provider Mismatch
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                  {capitationWarning.warning}
+                </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      )}
 
       {/* SHA Benefits & Interventions */}
       {eligibility?.is_eligible && eligibility?.sha_number && (

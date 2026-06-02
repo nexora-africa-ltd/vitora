@@ -18,6 +18,7 @@ class BillingEvents:
     PAYMENT_RECEIVED = "billing.payment.received"
     PAYMENT_REVERSED = "billing.payment.reversed"
     SHA_CLAIM_SUBMITTED = "billing.sha_claim.submitted"
+    SHA_CLAIM_CREATED = "billing.sha_claim.created"
     SHA_CLAIM_STATUS_CHANGED = "billing.sha_claim.status_changed"
     DISCHARGE_BILLING = "billing.discharge.processed"
     ADMISSION_BILLING = "billing.admission.processed"
