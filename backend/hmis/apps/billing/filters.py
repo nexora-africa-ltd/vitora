@@ -74,7 +74,7 @@ class PaymentFilter(django_filters.FilterSet):
 
     class Meta:
         model = Payment
-        fields = ["method", "status", "invoice"]
+        fields = ["method", "status", "invoice", "payment_point"]
 
 
 class CreditNoteFilter(django_filters.FilterSet):

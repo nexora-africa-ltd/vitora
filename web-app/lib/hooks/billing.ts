@@ -83,6 +83,7 @@ export const billingKeys = {
   paymentPoints: () => [...billingKeys.all, 'payment-points'] as const,
   paymentPointsList: (params?: PaymentPointListParams) =>
     [...billingKeys.paymentPoints(), 'list', params] as const,
+  paymentPointDetail: (id: number) => [...billingKeys.paymentPoints(), 'detail', id] as const,
 
   // Services
   services: () => [...billingKeys.all, 'services'] as const,
@@ -446,6 +447,17 @@ export function usePaymentPoints(params?: PaymentPointListParams) {
   return useQuery<PaginatedPaymentPoints>({
     queryKey: billingKeys.paymentPointsList(params),
     queryFn: () => billingApi.getPaymentPoints(params),
+  });
+}
+
+/**
+ * Fetch a single payment point by ID
+ */
+export function usePaymentPoint(id: number | null) {
+  return useQuery({
+    queryKey: billingKeys.paymentPointDetail(id!),
+    queryFn: () => billingApi.getPaymentPoint(id!),
+    enabled: !!id,
   });
 }
 

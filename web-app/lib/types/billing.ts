@@ -255,6 +255,7 @@ export interface PaymentListParams {
   method?: 'CASH' | 'MPESA' | 'CARD' | 'INSURANCE' | 'BANK_TRANSFER' | 'CORPORATE' | 'CHEQUE';
   status?: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED' | 'REVERSED';
   invoice?: number;
+  payment_point?: number;
   start_date?: string;
   end_date?: string;
   ordering?: string;
