@@ -49,6 +49,7 @@ import {
   AIInsightsResponseSchema,
   AIEGFRCalculateResponseSchema,
   StoredEGFRResultSchema,
+  ProactiveInsightsResponseSchema,
 } from '@/lib/schemas/ai.schema';
 import { parseResponse } from '@/lib/schemas/validation';
 import type {
@@ -116,6 +117,8 @@ import type {
   AIEGFRCalculateRequest,
   AIEGFRCalculateResponse,
   StoredEGFRResult,
+  ProactiveInsightsRequest,
+  ProactiveInsightsResponse,
 } from '@/lib/types/ai';
 
 export const aiApi = {
@@ -765,6 +768,28 @@ export const aiApi = {
     const response = await apiClient.get('/api/ai/insights/');
     return parseResponse(AIInsightsResponseSchema, response.data, {
       context: 'aiApi.getInsights',
+    });
+  },
+
+  // ===========================================================================
+  // Proactive Insights
+  // ===========================================================================
+
+  /**
+   * Generate proactive clinical insights based on encounter context.
+   *
+   * Three-tier system:
+   * - Tier 1: Rule-based vital alerts (instant, deterministic)
+   * - Tier 2: Pattern-based clinical nudges (instant, rules engine)
+   * - Tier 3: LLM-powered insights (conditional, async)
+   *
+   * @param data - Patient and encounter context
+   * @returns Proactive insights with deduplication hash
+   */
+  getProactiveInsights: async (data: ProactiveInsightsRequest): Promise<ProactiveInsightsResponse> => {
+    const response = await apiClient.post('/api/ai/clinical/proactive-insights/', data);
+    return parseResponse(ProactiveInsightsResponseSchema, response.data, {
+      context: 'aiApi.getProactiveInsights',
     });
   },
 };

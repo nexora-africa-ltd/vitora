@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PageHeader } from '@/components/shared/page-header';
+import { EncounterEditInsights } from '@/components/encounters/encounter-edit-insights';
 import { EncounterReferralsContent } from '@/components/encounters/encounter-referrals-content';
 import { EncounterAlliedHealthContent } from '@/components/encounters/encounter-allied-health-content';
 import { AlliedHealthReferralActions } from '@/components/encounters/allied-health-referral-actions';
@@ -81,6 +82,9 @@ export default function EncounterEditReferralsPage() {
         title="Referrals"
         helpContent="Create referrals to allied health services, specialty clinics, inpatient admissions, or external facilities."
       />
+
+      {/* Proactive AI Insights */}
+      <EncounterEditInsights />
 
       {/* Non-editable warning */}
       {!isEditable && (

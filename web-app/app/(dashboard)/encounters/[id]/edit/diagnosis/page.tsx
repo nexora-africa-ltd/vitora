@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PageHeader } from '@/components/shared/page-header';
+import { EncounterEditInsights } from '@/components/encounters/encounter-edit-insights';
 import { DiagnosisFormContent } from '@/components/encounters/diagnosis-form';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useEncounterEditStore } from '@/lib/stores/encounter-edit-store';
@@ -228,6 +229,9 @@ export default function EncounterEditDiagnosisPage() {
         title="Diagnosis"
         helpContent="Add ICD-10 coded diagnoses for this encounter. Search for diagnoses using keywords or ICD-10 codes. Multiple diagnoses can be added."
       />
+
+      {/* Proactive AI Insights */}
+      <EncounterEditInsights />
 
       {/* Non-editable warning */}
       {!isEditable && (

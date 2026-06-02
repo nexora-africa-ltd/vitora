@@ -3420,3 +3420,97 @@ class AIAdvisoryHasOrdersView(APIView):
                 return Response({"has_orders": True})
 
         return Response({"has_orders": False})
+
+
+# =============================================================================
+# Proactive Insights
+# =============================================================================
+
+
+class ProactiveInsightsView(AIFeatureGatedMixin, APIView):
+    """
+    Generate proactive clinical insights based on encounter context.
+
+    POST /api/ai/clinical/proactive-insights/
+
+    Three-tier insight generation:
+    - Tier 1: Rule-based vital alerts (deterministic, instant)
+    - Tier 2: Pattern-based clinical nudges (rules engine, instant)
+    - Tier 3: LLM-powered insights (TibaBot, async, conditional)
+
+    Rate-limited: max 2 requests per 30 seconds per user.
+    Context deduplication: returns empty if context_hash matches previous call.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_PROACTIVE_INSIGHTS"
+    throttle_scope = "ai_proactive"
+
+    def post(self, request: Request) -> Response:
+        from .proactive import compute_context_hash, generate_proactive_insights
+        from .serializers import (
+            ProactiveInsightsRequestSerializer,
+            ProactiveInsightsResponseSerializer,
+        )
+
+        serializer = ProactiveInsightsRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        patient_context = data["patient_context"]
+        encounter_context = data["encounter_context"]
+        include_llm = data.get("include_llm", True)
+        previous_hash = data.get("context_hash", "")
+
+        # Context deduplication — skip if context hasn't changed
+        current_hash = compute_context_hash(encounter_context)
+        if previous_hash and previous_hash == current_hash:
+            return Response(
+                {
+                    "insights": [],
+                    "context_hash": current_hash,
+                    "tier_counts": {"tier1": 0, "tier2": 0, "tier3": 0},
+                    "total": 0,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # Enrich with server-side context
+        user_context = build_user_context(request)
+        facility_context = build_facility_context(request)
+
+        # Generate insights
+        result = generate_proactive_insights(
+            patient_context=patient_context,
+            encounter_context=encounter_context,
+            user_context=user_context,
+            facility_context=facility_context,
+            include_llm=include_llm,
+        )
+
+        # Override context_hash from engine
+        result["context_hash"] = current_hash
+
+        # Audit log
+        AuditLog.log(
+            action="ai_proactive_insight",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "total_insights": result["total"],
+                "tier_counts": result["tier_counts"],
+                "include_llm": include_llm,
+                "context_hash": current_hash,
+            },
+        )
+
+        # Record token usage if LLM was called
+        _record_response_tokens(request, result)
+
+        response_serializer = ProactiveInsightsResponseSerializer(data=result)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+        return Response(result)

@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PageHeader } from '@/components/shared/page-header';
+import { EncounterEditInsights } from '@/components/encounters/encounter-edit-insights';
 import { VitalsForm } from '@/components/encounters/vitals-form';
 import { AutoSaveStatusIndicator } from '@/components/ui/auto-save-status';
 import { useEncounterContext } from '@/lib/context/encounter-context';
@@ -169,6 +170,9 @@ export default function EncounterEditVitalsPage() {
           />
         }
       />
+
+      {/* Proactive AI Insights */}
+      <EncounterEditInsights />
 
       {/* Non-editable warning */}
       {!isEditable && (

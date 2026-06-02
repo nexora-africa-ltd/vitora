@@ -80,7 +80,13 @@ export interface AIEncounterContext {
     rr?: number;
     /** Mean Arterial Pressure (MAP) in mmHg - calculated from BP */
     map?: number;
+    /** Systolic blood pressure in mmHg */
+    systolic_bp?: number;
+    /** Diastolic blood pressure in mmHg */
+    diastolic_bp?: number;
   };
+  /** Active diagnoses for this encounter (ICD-10 descriptions or free text) */
+  diagnoses?: string[];
 
   // --- Inpatient fields (optional — only set on admission/ward round pages) ---
 
@@ -1455,4 +1461,68 @@ export interface AIInsightsResponse {
     start: string;
     end: string;
   };
+}
+
+// =============================================================================
+// Proactive Insights
+// =============================================================================
+
+/** Severity levels for proactive insights */
+export type ProactiveInsightSeverity = 'critical' | 'warning' | 'info';
+
+/** Source of a proactive insight */
+export type ProactiveInsightSource = 'rules_engine' | 'pattern_engine' | 'tibabot_llm';
+
+/** A single proactive insight */
+export interface ProactiveInsight {
+  id: string;
+  tier: 1 | 2 | 3;
+  severity: ProactiveInsightSeverity;
+  title: string;
+  message: string;
+  category: string;
+  confidence: number;
+  source: ProactiveInsightSource;
+  references?: string[];
+}
+
+/** Tier breakdown counts */
+export interface ProactiveInsightTierCounts {
+  tier1: number;
+  tier2: number;
+  tier3: number;
+}
+
+/** Request payload for POST /api/ai/clinical/proactive-insights/ */
+export interface ProactiveInsightsRequest {
+  patient_context: {
+    patient_age?: number;
+    patient_sex?: string;
+    allergies?: string[];
+    comorbidities?: string[];
+    current_medications?: string[];
+  };
+  encounter_context: {
+    chief_complaint?: string;
+    vitals?: {
+      spo2?: number;
+      pulse?: number;
+      temperature?: number;
+      respiratory_rate?: number;
+      systolic_bp?: number;
+      diastolic_bp?: number;
+    };
+    diagnoses?: string[];
+    clinical_notes?: string;
+  };
+  context_hash?: string;
+  include_llm?: boolean;
+}
+
+/** Response from POST /api/ai/clinical/proactive-insights/ */
+export interface ProactiveInsightsResponse {
+  insights: ProactiveInsight[];
+  context_hash: string;
+  tier_counts: ProactiveInsightTierCounts;
+  total: number;
 }
