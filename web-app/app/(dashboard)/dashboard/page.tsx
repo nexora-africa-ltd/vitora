@@ -83,6 +83,13 @@ const IDSRDashboardWidget = dynamic(
   }
 );
 
+const ActivityFeedWidget = dynamic(
+  () => import('@/components/dashboard/activity-feed-widget').then((mod) => mod.ActivityFeedWidget),
+  {
+    loading: () => <WidgetTableSkeleton rows={4} />,
+  }
+);
+
 function WidgetTableSkeleton({ rows = 4 }: { rows?: number }) {
   return (
     <div className="space-y-3" aria-hidden="true">
@@ -544,7 +551,7 @@ export default function DashboardPage() {
 
         <div className="grid gap-6 xl:grid-cols-12">
           <div className="space-y-6 xl:col-span-8">
-            {canViewConsultations && (
+            {canViewConsultations && hasModule('outpatient') && (
               <Card className="overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
                   <div className="flex min-w-0 items-center gap-2">
@@ -569,7 +576,7 @@ export default function DashboardPage() {
               </Card>
             )}
 
-            {isSupervisor && (
+            {isSupervisor && hasModule('outpatient') && (
               <Card className="overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
                   <div className="flex min-w-0 items-center gap-2">
@@ -655,6 +662,24 @@ export default function DashboardPage() {
             )}
 
             {canViewSurveillance && <IDSRDashboardWidget />}
+
+            {canViewAdmin && (
+              <Card className="overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <CardTitle className="text-base sm:text-lg">
+                      <Link href="/admin/audit-logs" className="underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-primary sm:no-underline">
+                        Recent Activity
+                      </Link>
+                    </CardTitle>
+                    <HelpPopover content="Real-time feed of staff actions: who did what, when. Visible to admin roles only." />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ActivityFeedWidget enabled={canViewAdmin} />
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

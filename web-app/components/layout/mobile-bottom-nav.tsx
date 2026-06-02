@@ -158,7 +158,7 @@ export function MobileBottomNav({ hidden = false }: { hidden?: boolean }) {
                 <Badge
                   variant={tab.badgeKey === 'triage' ? 'destructive' : 'default'}
                   size="sm"
-                  className="absolute right-2 top-1 min-w-5 justify-center px-1.5"
+                  className="absolute -top-0.5 left-1/2 ml-2 min-w-[18px] justify-center px-1 text-[9px] leading-none h-[18px]"
                 >
                   {badgeCount > 99 ? '99+' : badgeCount}
                 </Badge>

@@ -545,7 +545,7 @@ export function NotificationPanel() {
       <ExpandableScreenContent
         showCloseButton={false}
         closeOnBackdropClick
-        overlayClassName="items-start justify-end p-3 sm:p-4 pt-16"
+        overlayClassName="items-start justify-end p-3 sm:p-4 pt-16 z-[60]"
         className="h-[calc(100vh-5rem)] w-full sm:w-[480px]"
       >
         <ExpandedCenter />
