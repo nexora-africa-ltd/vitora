@@ -8,6 +8,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Banknote,
   CheckCircle2,
@@ -23,6 +24,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { AdminStatCard } from '@/components/admin/admin-stat-card';
@@ -61,6 +63,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import {
   usePaymentPoints,
   useCreatePaymentPoint,
@@ -164,8 +167,8 @@ function PaymentPointFormDialog({
         toast.success('Payment point created');
       }
       onOpenChange(false);
-    } catch {
-      toast.error(isEdit ? 'Failed to update payment point' : 'Failed to create payment point');
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
     }
   }, [form, isEdit, paymentPoint, createPP, updatePP, onOpenChange]);
 
@@ -298,7 +301,10 @@ function PaymentPointFormDialog({
 // ---------------------------------------------------------------------------
 
 export default function PaymentPointsPage() {
+  const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { canPerformAction } = usePermissions();
+  const canManage = canPerformAction('billing.manage_config');
   const [methodFilter, setMethodFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
   const pageSize = 20;
@@ -341,8 +347,8 @@ export default function PaymentPointsPage() {
     try {
       await deletePP.mutateAsync(deleteTarget.id);
       toast.success(`Payment point "${deleteTarget.name}" deleted`);
-    } catch {
-      toast.error('Failed to delete payment point');
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
     }
     setDeleteTarget(null);
   };
@@ -410,11 +416,13 @@ export default function PaymentPointsPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button onClick={openNew}>
-                <Plus className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">New Payment Point</span>
-                <span className="sm:hidden">New</span>
-              </Button>
+              {canManage && (
+                <Button onClick={openNew}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">New Payment Point</span>
+                  <span className="sm:hidden">New</span>
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -440,6 +448,7 @@ export default function PaymentPointsPage() {
                 data={paymentPoints}
                 emptyMessage="No payment points configured. Create one to start accepting payments."
                 keyExtractor={(pp) => pp.id}
+                onRowClick={(pp) => router.push(`/finance/payment-points/${pp.id}`)}
                 defaultSortColumn="name"
                 defaultSortDirection="asc"
                 mobileCard={(pp) => (
@@ -458,14 +467,16 @@ export default function PaymentPointsPage() {
                       {pp.till_number && <span className="text-sm text-muted-foreground">Till: {pp.till_number}</span>}
                       {pp.bank_name && <span className="text-sm text-muted-foreground">{pp.bank_name}</span>}
                     </div>
-                    <div className="mt-3 flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => openEdit(pp)}>
-                        <Edit className="mr-1 h-3 w-3" /> Edit
-                      </Button>
-                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget({ id: pp.id, name: pp.name })}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    {canManage && (
+                      <div className="mt-3 flex gap-2">
+                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); openEdit(pp); }}>
+                          <Edit className="mr-1 h-3 w-3" /> Edit
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: pp.id, name: pp.name }); }}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
                   </Card>
                 )}
                 columns={[
@@ -525,21 +536,21 @@ export default function PaymentPointsPage() {
                       </Badge>
                     ),
                   },
-                  {
-                    key: 'actions',
+                  ...(canManage ? [{
+                    key: 'actions' as const,
                     header: '',
                     className: 'w-[100px] text-right',
-                    cell: (pp) => (
+                    cell: (pp: PaymentPoint) => (
                       <div className="flex items-center justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => openEdit(pp)}>
+                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(pp); }}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget({ id: pp.id, name: pp.name })}>
+                        <Button size="sm" variant="ghost" className="text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: pp.id, name: pp.name }); }}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     ),
-                  },
+                  }] : []),
                 ]}
               />
             )}

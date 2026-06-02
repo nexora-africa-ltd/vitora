@@ -454,6 +454,12 @@ async function deletePaymentPoint(id: number): Promise<void> {
   await apiClient.delete(`/api/billing/payment-points/${id}/`);
 }
 
+async function getPaymentPoint(id: number): Promise<PaymentPoint> {
+  const response = await apiClient.get(`/api/billing/payment-points/${id}/`);
+  const validated = parseResponse(PaymentPointSchema, response.data, { context: 'billingApi.getPaymentPoint' });
+  return { ...validated, method: paymentMethodFromBackend(validated.method) as PaymentPoint['method'] };
+}
+
 // ============================================================================
 // M-Pesa API
 // ============================================================================
@@ -722,6 +728,7 @@ export const billingApi = {
 
   // Payment points
   getPaymentPoints,
+  getPaymentPoint,
   createPaymentPoint,
   updatePaymentPoint,
   deletePaymentPoint,
