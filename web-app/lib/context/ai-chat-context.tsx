@@ -141,13 +141,55 @@ export interface AIChatProviderProps {
   children: ReactNode;
 }
 
+// =============================================================================
+// Session Storage helpers — persist chat across minimize/maximize cycles
+// =============================================================================
+
+const MESSAGES_STORAGE_KEY = 'tibabot-chat-messages';
+const SESSION_ID_STORAGE_KEY = 'tibabot-chat-session-id';
+
+function readStoredMessages(): AIChatMessage[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = sessionStorage.getItem(MESSAGES_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch { /* ignore corrupt data */ }
+  return [];
+}
+
+function writeStoredMessages(messages: AIChatMessage[]): void {
+  try {
+    sessionStorage.setItem(MESSAGES_STORAGE_KEY, JSON.stringify(messages));
+  } catch { /* quota exceeded */ }
+}
+
+function readStoredSessionId(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return sessionStorage.getItem(SESSION_ID_STORAGE_KEY) || null;
+  } catch { return null; }
+}
+
+function writeStoredSessionId(id: string | null): void {
+  try {
+    if (id) {
+      sessionStorage.setItem(SESSION_ID_STORAGE_KEY, id);
+    } else {
+      sessionStorage.removeItem(SESSION_ID_STORAGE_KEY);
+    }
+  } catch { /* ignore */ }
+}
+
 export function AIChatProvider({ children }: AIChatProviderProps) {
   // Widget state
   const [widgetState, setWidgetState] = useState<AIWidgetState>('minimized');
 
-  // Session state
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<AIChatMessage[]>([]);
+  // Session state — hydrate from sessionStorage so history persists across minimize/maximize
+  const [activeSessionId, setActiveSessionIdState] = useState<string | null>(readStoredSessionId);
+  const [messages, setMessages] = useState<AIChatMessage[]>(readStoredMessages);
 
   // Unread tracking
   const [unreadCount, setUnreadCount] = useState(0);
@@ -229,6 +271,12 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     });
   }, []);
 
+  // Wrap setActiveSessionId to also persist to sessionStorage
+  const setActiveSessionId = useCallback((id: string | null) => {
+    setActiveSessionIdState(id);
+    writeStoredSessionId(id);
+  }, []);
+
   // Message actions
   const addMessage = useCallback((message: AIChatMessage) => {
     setMessages((prev) => {
@@ -237,25 +285,32 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       if (idx !== -1) {
         const updated = [...prev];
         updated[idx] = message;
+        writeStoredMessages(updated);
         return updated;
       }
-      return [...prev, message];
+      const next = [...prev, message];
+      writeStoredMessages(next);
+      return next;
     });
   }, []);
 
   const updateStreamingMessage = useCallback(
     (id: string, content: string, done?: boolean, model?: string) => {
-      setMessages((prev) =>
-        prev.map((msg) =>
+      setMessages((prev) => {
+        const next = prev.map((msg) =>
           msg.id === id ? { ...msg, content, isStreaming: done ? false : msg.isStreaming, ...(model ? { model } : {}) } : msg
-        )
-      );
+        );
+        writeStoredMessages(next);
+        return next;
+      });
     },
     []
   );
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+    writeStoredMessages([]);
+    writeStoredSessionId(null);
   }, []);
 
   // Unread actions

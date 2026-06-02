@@ -519,8 +519,8 @@ export function AIChatPanel({
         </>
       )}
 
-      {/* Quick Actions (context-sensitive) */}
-      {quickActions.length > 0 && isAvailable && (
+      {/* Quick Actions (context-sensitive) — hidden once a conversation starts */}
+      {quickActions.length > 0 && isAvailable && messages.length === 0 && (
         <>
           <div className="flex flex-wrap gap-1.5 px-3 py-2">
             {quickActions.map((action) => (
