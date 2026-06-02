@@ -430,3 +430,13 @@ class InsuranceEvents:
     # Remittances
     REMITTANCE_RECEIVED = "insurance.remittance.received"
     REMITTANCE_RECONCILED = "insurance.remittance.reconciled"
+
+
+class QualityEvents:
+    """Quality Measures domain event types."""
+
+    RESULT_CALCULATED = "quality.result.calculated"
+    RESULT_UPDATED = "quality.result.updated"
+    TARGET_MET = "quality.result.target_met"
+    BELOW_THRESHOLD = "quality.result.below_threshold"
+    EVALUATION_COMPLETED = "quality.evaluation.completed"

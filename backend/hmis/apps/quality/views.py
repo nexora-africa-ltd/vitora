@@ -303,6 +303,40 @@ class QualityMeasureViewSet(viewsets.ModelViewSet):
             data = export_measures_to_json(measures)
             return Response(data)
 
+    @extend_schema(summary="Seed default Kenya CQM measures (skips existing codes)")
+    @action(detail=False, methods=["post"], url_path="seed-defaults")
+    def seed_defaults(self, request: Request) -> Response:
+        """Seed Kenya default quality measures.
+
+        Only creates measures whose code doesn't already exist.
+        Safe to call multiple times — idempotent.
+        """
+        from .management.commands.seed_quality_measures import KENYA_QUALITY_MEASURES
+
+        created = 0
+        skipped = 0
+        existing_codes = set(QualityMeasure.objects.values_list("code", flat=True))
+
+        for measure_data in KENYA_QUALITY_MEASURES:
+            code = measure_data["code"]
+            if code in existing_codes:
+                skipped += 1
+                continue
+
+            defaults = {k: v for k, v in measure_data.items() if k != "code"}
+            defaults["status"] = "ACTIVE"
+            QualityMeasure.objects.create(code=code, **defaults)
+            created += 1
+
+        return Response(
+            {
+                "created": created,
+                "skipped": skipped,
+                "total": QualityMeasure.objects.count(),
+            },
+            status=status.HTTP_201_CREATED if created > 0 else status.HTTP_200_OK,
+        )
+
 
 # =============================================================================
 # QualityMeasureResult ViewSet
@@ -323,7 +357,14 @@ class QualityMeasureResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet)
     serializer_class = QualityMeasureResultSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ["measure", "clinic", "year", "period_type", "meets_target"]
+    filterset_fields = [
+        "measure",
+        "measure__domain",
+        "clinic",
+        "year",
+        "period_type",
+        "meets_target",
+    ]
     ordering_fields = ["year", "period", "percentage", "created_at"]
     ordering = ["-year", "-period"]
     tenant_facility_chain = "clinic__facility"
@@ -359,6 +400,73 @@ class QualityMeasureResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet)
         qs = qs.order_by("year", "period")
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
+
+    @extend_schema(
+        summary="Evaluate quality measures for a clinic",
+        request=None,
+        responses={200: dict},
+        parameters=[
+            OpenApiParameter(name="clinic_id", type=int, required=False),
+            OpenApiParameter(name="year", type=int, required=False),
+            OpenApiParameter(name="period", type=int, required=False),
+            OpenApiParameter(name="period_type", type=str, required=False),
+        ],
+    )
+    @action(detail=False, methods=["post"], url_path="evaluate")
+    def evaluate(self, request: Request) -> Response:
+        """Trigger CQM evaluation for a single clinic or all active clinics."""
+        from django.utils import timezone as tz
+
+        from .services.evaluation import evaluate_all_measures_for_clinic
+
+        clinic_id = request.query_params.get("clinic_id") or request.data.get("clinic_id")
+
+        today = tz.localdate()
+        year = int(request.data.get("year", today.year))
+        period = int(request.data.get("period", today.month))
+        period_type = request.data.get("period_type", "MONTHLY")
+
+        if clinic_id:
+            # Single clinic evaluation
+            results = evaluate_all_measures_for_clinic(int(clinic_id), year, period, period_type)
+            return Response(
+                {
+                    "clinic_id": int(clinic_id),
+                    "year": year,
+                    "period": period,
+                    "period_type": period_type,
+                    "results": results,
+                    "total_evaluated": len(results),
+                }
+            )
+        else:
+            # Evaluate all active clinics
+            from hmis.apps.clinics.models import Clinic
+
+            clinics = Clinic.objects.filter(status="ACTIVE")
+            all_results = []
+            for clinic in clinics:
+                clinic_results = evaluate_all_measures_for_clinic(
+                    clinic.id, year, period, period_type
+                )
+                all_results.append(
+                    {
+                        "clinic_id": clinic.id,
+                        "clinic_name": clinic.name,
+                        "results": clinic_results,
+                        "total_evaluated": len(clinic_results),
+                    }
+                )
+
+            return Response(
+                {
+                    "year": year,
+                    "period": period,
+                    "period_type": period_type,
+                    "clinics_evaluated": len(all_results),
+                    "clinic_results": all_results,
+                }
+            )
 
 
 # =============================================================================

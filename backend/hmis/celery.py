@@ -51,6 +51,8 @@ app.conf.task_routes = {
     # Quality reporting tasks
     "hmis.apps.quality.tasks.generate_quarterly_reports": {"queue": "reporting"},
     "hmis.apps.quality.tasks.generate_annual_reports": {"queue": "reporting"},
+    "hmis.apps.quality.tasks.evaluate_quality_measures": {"queue": "reporting"},
+    "hmis.apps.quality.tasks.evaluate_clinic_measures": {"queue": "reporting"},
     # Triage escalation tasks
     "hmis.apps.triage.tasks.check_wait_time_breaches": {"queue": "monitoring"},
     "hmis.apps.triage.tasks.auto_resolve_breaches": {"queue": "monitoring"},
@@ -121,6 +123,11 @@ app.conf.beat_schedule = {
     "generate-annual-reports": {
         "task": "hmis.apps.quality.tasks.generate_annual_reports",
         "schedule": crontab(minute=0, hour=3, day_of_month=2, month_of_year=1),
+    },
+    # CQM automated evaluation - nightly at 1 AM
+    "evaluate-quality-measures-nightly": {
+        "task": "hmis.apps.quality.tasks.evaluate_quality_measures",
+        "schedule": crontab(minute=0, hour=1),
     },
     # Triage: Check for KETA wait time breaches every minute
     "check-wait-time-breaches-every-minute": {

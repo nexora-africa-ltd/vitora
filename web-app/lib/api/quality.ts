@@ -341,6 +341,74 @@ export const qualityApi = {
     );
     return response.data as Blob;
   },
+
+  // -------------------------------------------------------------------------
+  // Seed Defaults
+  // -------------------------------------------------------------------------
+
+  /**
+   * Seed default Kenya CQM measures. Only creates measures whose code
+   * doesn't already exist. Safe to call multiple times.
+   */
+  seedDefaults: async (): Promise<{ created: number; skipped: number; total: number }> => {
+    const response = await apiClient.post(`${BASE}/measures/seed-defaults/`);
+    return response.data as { created: number; skipped: number; total: number };
+  },
+
+  // -------------------------------------------------------------------------
+  // Evaluate
+  // -------------------------------------------------------------------------
+
+  /**
+   * Trigger CQM evaluation for a clinic or all active clinics.
+   * If clinic_id is omitted, evaluates all active clinics.
+   */
+  evaluateMeasures: async (params: {
+    clinic_id?: number;
+    year?: number;
+    period?: number;
+    period_type?: string;
+  }): Promise<{
+    clinic_id?: number;
+    year: number;
+    period: number;
+    period_type: string;
+    results?: Array<{
+      measure_code: string;
+      measure_name: string;
+      numerator: number;
+      denominator: number;
+      percentage: string;
+      meets_target: boolean;
+      notes: string;
+    }>;
+    total_evaluated?: number;
+    clinics_evaluated?: number;
+    clinic_results?: Array<{
+      clinic_id: number;
+      clinic_name: string;
+      results: Array<{
+        measure_code: string;
+        measure_name: string;
+        numerator: number;
+        denominator: number;
+        percentage: string;
+        meets_target: boolean;
+        notes: string;
+      }>;
+      total_evaluated: number;
+    }>;
+  }> => {
+    const url = params.clinic_id
+      ? `${BASE}/results/evaluate/?clinic_id=${params.clinic_id}`
+      : `${BASE}/results/evaluate/`;
+    const response = await apiClient.post(url, {
+      year: params.year,
+      period: params.period,
+      period_type: params.period_type,
+    });
+    return response.data;
+  },
 };
 
 export default qualityApi;

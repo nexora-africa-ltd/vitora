@@ -214,6 +214,7 @@ export interface QualityMeasureListParams {
   search?: string;
   ordering?: string;
   page?: number;
+  page_size?: number;
 }
 
 // =============================================================================
@@ -255,12 +256,14 @@ export interface QualityMeasureResultCreateData {
 
 export interface QualityMeasureResultListParams {
   measure?: number;
+  measure__domain?: QualityMeasureDomain;
   clinic?: number;
   year?: number;
   period_type?: ReportingPeriod;
   meets_target?: boolean;
   ordering?: string;
   page?: number;
+  page_size?: number;
 }
 
 export interface QualityMeasureResultTrendParams {

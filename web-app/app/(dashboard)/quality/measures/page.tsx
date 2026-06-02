@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
@@ -61,10 +61,11 @@ const DOMAIN_COLORS: Record<QualityMeasureDomain, string> = {
 
 export default function QualityMeasuresListPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { refresh, isRefreshing } = usePageRefresh();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [domain, setDomain] = useState<string>('all');
+  const [domain, setDomain] = useState<string>(searchParams.get('domain') || 'all');
   const [status, setStatus] = useState<string>('all');
 
   const queryParams = useMemo<QualityMeasureListParams>(() => {
