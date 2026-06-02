@@ -124,6 +124,16 @@ CSRF_TRUSTED_ORIGINS = [
 MFA_ENFORCEMENT = os.getenv("MFA_ENFORCEMENT", "false").lower() == "true"
 
 # =============================================================================
+# Onboarding — Disabled for staging by default so audit logging isn't blocked
+# =============================================================================
+ONBOARDING_ENFORCEMENT = os.getenv("ONBOARDING_ENFORCEMENT", "false").lower() == "true"
+
+# =============================================================================
+# Active Shift — Disabled for staging demos
+# =============================================================================
+ACTIVE_SHIFT_ENFORCEMENT = os.getenv("ACTIVE_SHIFT_ENFORCEMENT", "false").lower() == "true"
+
+# =============================================================================
 # Demo Mode Flag
 # =============================================================================
 # This flag can be checked in views/serializers to show demo-specific behavior

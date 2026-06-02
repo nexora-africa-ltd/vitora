@@ -222,6 +222,20 @@ class AuditLog(models.Model):
                 facility = getattr(request, "facility", None)
             if organization is None:
                 organization = getattr(request, "organization", None)
+
+        # Fallback: resolve organization from user's staff profile
+        if organization is None and user is not None:
+            profile = getattr(user, "staff_profile", None)
+            if profile is not None:
+                org = getattr(profile, "organization", None)
+                if org is not None:
+                    organization = org
+                    # Also resolve facility if still missing
+                    if facility is None:
+                        fac = getattr(profile, "primary_facility", None)
+                        if fac is not None:
+                            facility = fac
+
         resolved_details = details or {}
 
         # Redact PII values before persisting to audit log
