@@ -21,6 +21,10 @@ KENYA_QUALITY_MEASURES = [
         "low_threshold": 50,
         "reporting_period": "QUARTERLY",
         "applicable_clinic_types": ["ANC"],
+        "evaluation_rule": {
+            "type": "visit_count",
+            "params": {"min_visits": 4, "enrollment_status": "ACTIVE"},
+        },
     },
     {
         "code": "KE-CQM-002",
@@ -36,6 +40,7 @@ KENYA_QUALITY_MEASURES = [
         "low_threshold": 60,
         "reporting_period": "QUARTERLY",
         "applicable_clinic_types": ["ANC", "PNC"],
+        "evaluation_rule": None,
     },
     {
         "code": "KE-CQM-003",
@@ -54,6 +59,14 @@ KENYA_QUALITY_MEASURES = [
         "reporting_period": "QUARTERLY",
         "applicable_clinic_types": ["CCC"],
         "dhis2_indicator_id": "TX_PVLS",
+        "evaluation_rule": {
+            "type": "lab_threshold",
+            "params": {
+                "test_name": "Viral Load",
+                "threshold": 1000,
+                "comparison": "lt",
+            },
+        },
     },
     {
         "code": "KE-CQM-004",
@@ -71,6 +84,7 @@ KENYA_QUALITY_MEASURES = [
         "low_threshold": 75,
         "reporting_period": "QUARTERLY",
         "applicable_clinic_types": ["TB"],
+        "evaluation_rule": None,
     },
     {
         "code": "KE-CQM-005",
@@ -86,6 +100,14 @@ KENYA_QUALITY_MEASURES = [
         "low_threshold": 30,
         "reporting_period": "QUARTERLY",
         "applicable_clinic_types": ["DIABETIC"],
+        "evaluation_rule": {
+            "type": "lab_threshold",
+            "params": {
+                "test_name": "HbA1c",
+                "threshold": 7.0,
+                "comparison": "lt",
+            },
+        },
     },
     {
         "code": "KE-CQM-006",
@@ -101,6 +123,10 @@ KENYA_QUALITY_MEASURES = [
         "low_threshold": 25,
         "reporting_period": "QUARTERLY",
         "applicable_clinic_types": ["HYPERTENSION"],
+        "evaluation_rule": {
+            "type": "bp_control",
+            "params": {"systolic_max": 140, "diastolic_max": 90},
+        },
     },
     {
         "code": "KE-CQM-007",
@@ -116,6 +142,7 @@ KENYA_QUALITY_MEASURES = [
         "low_threshold": 70,
         "reporting_period": "QUARTERLY",
         "applicable_clinic_types": ["CWC", "IMMUNIZATION"],
+        "evaluation_rule": None,
     },
     {
         "code": "KE-CQM-008",
@@ -130,6 +157,10 @@ KENYA_QUALITY_MEASURES = [
         "low_threshold": 50,
         "reporting_period": "MONTHLY",
         "applicable_clinic_types": ["GENERAL_OPD", "FILTER_CLINIC"],
+        "evaluation_rule": {
+            "type": "wait_time",
+            "params": {"max_minutes": 30},
+        },
     },
     {
         "code": "KE-CQM-009",
@@ -142,6 +173,7 @@ KENYA_QUALITY_MEASURES = [
         "low_threshold": None,
         "reporting_period": "ANNUAL",
         "applicable_clinic_types": ["ANC", "PNC"],
+        "evaluation_rule": None,
     },
     {
         "code": "KE-CQM-010",
@@ -160,6 +192,7 @@ KENYA_QUALITY_MEASURES = [
         "reporting_period": "QUARTERLY",
         "applicable_clinic_types": [],
         "dhis2_indicator_id": "IDSR_TIMELINESS",
+        "evaluation_rule": None,
     },
     {
         "code": "KE-CQM-011",
@@ -175,6 +208,10 @@ KENYA_QUALITY_MEASURES = [
         "low_threshold": 20,
         "reporting_period": "MONTHLY",
         "applicable_clinic_types": [],
+        "evaluation_rule": {
+            "type": "stock_availability",
+            "params": {"tracer_only": True},
+        },
     },
     {
         "code": "KE-CQM-012",
@@ -190,6 +227,10 @@ KENYA_QUALITY_MEASURES = [
         "low_threshold": 50,
         "reporting_period": "QUARTERLY",
         "applicable_clinic_types": ["CCC", "TB", "DIABETIC", "HYPERTENSION"],
+        "evaluation_rule": {
+            "type": "enrollment_active",
+            "params": {},
+        },
     },
 ]
 

@@ -1193,7 +1193,6 @@ class Command(BaseCommand):
             Service,
             ServiceCategory,
         )
-        from hmis.apps.core.models import Facility
         from hmis.apps.patients.models import Patient
 
         User = get_user_model()
@@ -1208,12 +1207,6 @@ class Command(BaseCommand):
                     self.style.WARNING("  No billing user found. Skipping billing data.")
                 )
                 return
-
-        # Get the HQ facility for scoping billing data
-        hq_facility = Facility.objects.filter(code="DEMO-HQ-001").first()
-        if not hq_facility:
-            self.stdout.write(self.style.WARNING("  No HQ facility found. Skipping billing data."))
-            return
 
         # =================================================================
         # Service Categories
@@ -1627,7 +1620,6 @@ class Command(BaseCommand):
         for pp_data in PAYMENT_POINTS:
             pp, created = PaymentPoint.objects.update_or_create(
                 code=pp_data["code"],
-                facility=hq_facility,
                 defaults={
                     "name": pp_data["name"],
                     "method": pp_data["method"],
@@ -1701,7 +1693,6 @@ class Command(BaseCommand):
                 # Create invoice
                 invoice = Invoice(
                     patient=patient,
-                    facility=hq_facility,
                     invoice_date=invoice_date,
                     due_date=invoice_date + timedelta(days=30),
                     status=(

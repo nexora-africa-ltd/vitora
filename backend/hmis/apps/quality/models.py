@@ -344,6 +344,18 @@ class QualityMeasure(TimeStampedModel):
         ),
     )
 
+    # Automated evaluation rule (structured JSON for the evaluation engine)
+    evaluation_rule = models.JSONField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Structured rule for automated evaluation. Format: "
+            '{"type": "rule_type", "params": {...}}. '
+            "Supported types: bp_control, lab_threshold, wait_time, "
+            "visit_count, enrollment_active, stock_availability."
+        ),
+    )
+
     class Meta:
         ordering = ["code"]
         permissions = [

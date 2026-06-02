@@ -12,4 +12,4 @@ class QualityConfig(AppConfig):
 
     def ready(self) -> None:
         """Import signals on app ready."""
-        pass
+        import hmis.apps.quality.signals  # noqa: F401
