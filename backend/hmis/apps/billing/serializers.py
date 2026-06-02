@@ -381,6 +381,17 @@ class PaymentPointSerializer(serializers.ModelSerializer):
         validated_data["created_by"] = self.context["request"].user
         return super().create(validated_data)
 
+    def validate_code(self, value):
+        """Ensure code is unique within the facility."""
+        request = self.context.get("request")
+        facility = getattr(request, "facility", None) if request else None
+        qs = PaymentPoint.objects.filter(code=value, facility=facility)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("payment point with this code already exists.")
+        return value
+
 
 class PaymentReverseSerializer(serializers.Serializer):
     """Serializer for the payment reverse action."""

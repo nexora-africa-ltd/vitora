@@ -1309,7 +1309,6 @@ class PaymentPoint(FacilityScopedModel):
     name = models.CharField(max_length=120)
     code = models.CharField(
         max_length=50,
-        unique=True,
         help_text="Short unique code (e.g. CASH-01, MPESA-02)",
     )
 
@@ -1354,6 +1353,12 @@ class PaymentPoint(FacilityScopedModel):
         ordering = ["method", "name"]
         indexes = [
             models.Index(fields=["method", "is_active"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "code"],
+                name="unique_payment_point_code_per_facility",
+            ),
         ]
 
     def __str__(self) -> str:
