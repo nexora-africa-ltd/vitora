@@ -794,3 +794,35 @@ export const AIInsightsResponseSchema = z.object({
     end: z.string(),
   }),
 });
+
+// =============================================================================
+// Proactive Insights
+// =============================================================================
+
+/** Schema for a single proactive insight */
+export const ProactiveInsightSchema = z.object({
+  id: z.string(),
+  tier: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  severity: z.enum(['critical', 'warning', 'info']),
+  title: z.string(),
+  message: z.string(),
+  category: z.string(),
+  confidence: z.number().min(0).max(1),
+  source: z.enum(['rules_engine', 'pattern_engine', 'tibabot_llm']),
+  references: z.array(z.string()).optional().default([]),
+});
+
+/** Schema for tier breakdown counts */
+export const ProactiveInsightTierCountsSchema = z.object({
+  tier1: z.number(),
+  tier2: z.number(),
+  tier3: z.number(),
+});
+
+/** Schema for POST /api/ai/clinical/proactive-insights/ response */
+export const ProactiveInsightsResponseSchema = z.object({
+  insights: z.array(ProactiveInsightSchema),
+  context_hash: z.string(),
+  tier_counts: ProactiveInsightTierCountsSchema,
+  total: z.number(),
+});

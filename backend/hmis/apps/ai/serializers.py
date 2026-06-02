@@ -2589,3 +2589,95 @@ class AIAdvisoryBulkSeedSerializer(serializers.Serializer):
         ],
         help_text="Which AI result model to reference.",
     )
+
+
+# =============================================================================
+# Proactive Insights
+# =============================================================================
+
+
+class ProactiveInsightVitalsSerializer(serializers.Serializer):
+    """Vitals for proactive insight evaluation."""
+
+    spo2 = serializers.FloatField(required=False, allow_null=True)
+    pulse = serializers.IntegerField(required=False, allow_null=True)
+    temperature = serializers.FloatField(required=False, allow_null=True)
+    respiratory_rate = serializers.IntegerField(required=False, allow_null=True)
+    systolic_bp = serializers.IntegerField(required=False, allow_null=True)
+    diastolic_bp = serializers.IntegerField(required=False, allow_null=True)
+
+
+class ProactiveInsightPatientContextSerializer(serializers.Serializer):
+    """Patient context for proactive insights."""
+
+    patient_age = serializers.IntegerField(required=False, allow_null=True)
+    patient_sex = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    allergies = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    comorbidities = serializers.ListField(
+        child=serializers.CharField(), required=False, default=list
+    )
+    current_medications = serializers.ListField(
+        child=serializers.CharField(), required=False, default=list
+    )
+
+
+class ProactiveInsightEncounterContextSerializer(serializers.Serializer):
+    """Encounter context for proactive insights."""
+
+    chief_complaint = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True, max_length=2000
+    )
+    vitals = ProactiveInsightVitalsSerializer(required=False, default=dict)
+    diagnoses = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    clinical_notes = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True, max_length=5000
+    )
+
+
+class ProactiveInsightsRequestSerializer(serializers.Serializer):
+    """Request for POST /api/ai/clinical/proactive-insights/"""
+
+    patient_context = ProactiveInsightPatientContextSerializer(required=True)
+    encounter_context = ProactiveInsightEncounterContextSerializer(required=True)
+    context_hash = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=32,
+        help_text="Hash of previous context. If unchanged, server returns cached results.",
+    )
+    include_llm = serializers.BooleanField(
+        required=False,
+        default=True,
+        help_text="Whether to include Tier 3 LLM insights. Set false for faster responses.",
+    )
+
+
+class ProactiveInsightItemSerializer(serializers.Serializer):
+    """A single proactive insight."""
+
+    id = serializers.CharField()
+    tier = serializers.IntegerField(min_value=1, max_value=3)
+    severity = serializers.ChoiceField(choices=["critical", "warning", "info"])
+    title = serializers.CharField()
+    message = serializers.CharField()
+    category = serializers.CharField()
+    confidence = serializers.FloatField(min_value=0.0, max_value=1.0)
+    source = serializers.CharField()
+    references = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+
+
+class ProactiveInsightTierCountsSerializer(serializers.Serializer):
+    """Tier breakdown counts."""
+
+    tier1 = serializers.IntegerField()
+    tier2 = serializers.IntegerField()
+    tier3 = serializers.IntegerField()
+
+
+class ProactiveInsightsResponseSerializer(serializers.Serializer):
+    """Response for POST /api/ai/clinical/proactive-insights/"""
+
+    insights = ProactiveInsightItemSerializer(many=True)
+    context_hash = serializers.CharField()
+    tier_counts = ProactiveInsightTierCountsSerializer()
+    total = serializers.IntegerField()

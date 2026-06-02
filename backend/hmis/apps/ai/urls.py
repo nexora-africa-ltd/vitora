@@ -34,6 +34,7 @@ from .views import (
     ICUPredictView,
     InvestigationSuggestView,
     LabInterpretView,
+    ProactiveInsightsView,
     StoredCarePlanDeleteView,
     StoredCarePlanListView,
     StoredCDSResultListView,
@@ -237,6 +238,12 @@ urlpatterns = [
         "advisory-links/<int:pk>/action/",
         AIAdvisoryOrderLinkActionView.as_view(),
         name="advisory-links-action",
+    ),
+    # ── Proactive Insights ─────────────────────────────────────────────
+    path(
+        "clinical/proactive-insights/",
+        ProactiveInsightsView.as_view(),
+        name="proactive-insights",
     ),
     # ── Drug Formulary ────────────────────────────────────────────────
     path(

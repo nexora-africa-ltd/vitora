@@ -15,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PageHeader } from '@/components/shared/page-header';
+import { EncounterEditInsights } from '@/components/encounters/encounter-edit-insights';
 import { MedicalHistoryFormContent } from '@/components/encounters/medical-history-form';
 import { AutoSaveStatusIndicator } from '@/components/ui/auto-save-status';
 import { useEncounterContext } from '@/lib/context/encounter-context';
@@ -165,6 +166,9 @@ export default function EncounterEditHistoryPage() {
           />
         }
       />
+
+      {/* Proactive AI Insights */}
+      <EncounterEditInsights />
 
       {/* Non-editable warning */}
       {!isEditable && (

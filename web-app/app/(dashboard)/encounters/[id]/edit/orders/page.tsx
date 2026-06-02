@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/shared/page-header';
+import { EncounterEditInsights } from '@/components/encounters/encounter-edit-insights';
 import { EncounterLabOrders } from '@/components/encounters/encounter-lab-orders';
 import { EncounterImagingOrders } from '@/components/encounters/encounter-imaging-orders';
 import { EncounterPrescriptions } from '@/components/encounters/encounter-prescriptions';
@@ -81,6 +82,9 @@ export default function EncounterEditOrdersPage() {
         title="Orders"
         helpContent="Create lab orders, imaging orders, and prescriptions for this encounter. Each order type has its own tab."
       />
+
+      {/* Proactive AI Insights */}
+      <EncounterEditInsights />
 
       {/* Non-editable warning */}
       {!isEditable && (

@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PageHeader } from '@/components/shared/page-header';
+import { EncounterEditInsights } from '@/components/encounters/encounter-edit-insights';
 import { ClinicalNotesFormContent } from '@/components/encounters/clinical-notes-form';
 import { ClinicalTemplateFormContent } from '@/components/encounters/clinical-template-section';
 import { StructureNoteButton } from '@/components/encounters/structure-note-button';
@@ -245,6 +246,9 @@ export default function EncounterEditNotesPage() {
           />
         }
       />
+
+      {/* Proactive AI Insights */}
+      <EncounterEditInsights />
 
       {/* Non-editable warning */}
       {!isEditable && (

@@ -36,6 +36,8 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils/cn';
 import { useAIChatContext } from '@/lib/context/ai-chat-context';
 import { useAIFeedback } from '@/lib/hooks/use-ai';
+import { useProactiveInsights } from '@/lib/hooks/use-proactive-insights';
+import { ProactiveInsightsPanel } from './proactive-insight-card';
 import { TibaBotStatusIndicator } from './tibabot-status-indicator';
 import { assessContextSufficiency, mergeContextWithEnrichment } from '@/lib/utils/ai-context-sufficiency';
 import { AIContextEnrichmentForm } from './ai-context-enrichment';
@@ -262,6 +264,19 @@ export function AIChatPanel({
     [mergedPatient, mergedEncounter]
   );
 
+  // Proactive insights — auto-triggered when encounter context is present
+  const {
+    insights: proactiveInsights,
+    isLoading: proactiveLoading,
+    dismissInsight: dismissProactiveInsight,
+    dismissAll: dismissAllProactiveInsights,
+    refresh: refreshProactiveInsights,
+    error: proactiveError,
+    noInsightsFound: proactiveNoInsights,
+  } = useProactiveInsights(patientContext, encounterContext, {
+    enabled: isEncounterAware,
+  });
+
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -483,6 +498,24 @@ export function AIChatPanel({
           />
 
           <Separator />
+        </>
+      )}
+
+      {/* Proactive Insights (when encounter-aware) */}
+      {isEncounterAware && (
+        <>
+          <div className="px-3 py-2">
+            <ProactiveInsightsPanel
+              insights={proactiveInsights}
+              onDismiss={dismissProactiveInsight}
+              onDismissAll={dismissAllProactiveInsights}
+              onGenerate={refreshProactiveInsights}
+              isLoading={proactiveLoading}
+              error={proactiveError}
+              noInsightsFound={proactiveNoInsights}
+            />
+          </div>
+          {(proactiveInsights.length > 0 || proactiveLoading) && <Separator />}
         </>
       )}
 

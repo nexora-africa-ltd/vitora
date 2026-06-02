@@ -243,6 +243,7 @@ REST_FRAMEWORK = {
         "mfa_verify": "5/minute",  # MFA verification - 5 attempts per minute
         "otp": "5/minute",  # OTP send/validate - 5 attempts per minute
         "password_reset": "5/hour",  # Password reset requests
+        "ai_proactive": "2/minute",  # Proactive insights - max 2 per minute per user
     },
 }
 
@@ -984,6 +985,9 @@ TIBABOT_ENABLE_CLERKING_ASSIST = (
 )
 TIBABOT_ENABLE_SURGICAL_ASSISTANT = (
     os.getenv("TIBABOT_ENABLE_SURGICAL_ASSISTANT", "true").lower() == "true"
+)
+TIBABOT_ENABLE_PROACTIVE_INSIGHTS = (
+    os.getenv("TIBABOT_ENABLE_PROACTIVE_INSIGHTS", "true").lower() == "true"
 )
 
 # ============================================================================

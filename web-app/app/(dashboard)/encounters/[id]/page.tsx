@@ -52,6 +52,8 @@ import { EncounterReferralsContent } from '@/components/encounters/encounter-ref
 import { EncounterProcedureOrders } from '@/components/encounters/encounter-procedure-orders';
 import { EncounterChiefComplaintCard } from '@/components/encounters/encounter-chief-complaint-card';
 import { VitalsTrendChart } from '@/components/shared/vitals-trend-chart';
+import { ProactiveInsightsPanel } from '@/components/shared/proactive-insight-card';
+import { useProactiveInsights } from '@/lib/hooks/use-proactive-insights';
 import { InvestigationSuggestionsPanel } from '@/components/encounters/investigation-suggestions-panel';
 import { EGFRPanel } from '@/components/encounters/egfr-panel';
 import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
@@ -183,6 +185,56 @@ export default function EncounterDetailPage() {
   const { isAdmin } = usePermissions();
   const { hasModule } = useFacility();
   const commentCount = useCommentCount('encounter', encounterId);
+
+  // =========================================================================
+  // Proactive Insights — auto-triggered by vitals/context changes
+  // =========================================================================
+
+  const proactivePatientCtx = useMemo(() => {
+    if (!encounter) return null;
+    return {
+      patient_age: calculateAge(encounter.patient_date_of_birth),
+      patient_sex: encounter.patient_gender ?? 'O',
+      allergies: encounter.allergies?.split(',').map((s: string) => s.trim()).filter(Boolean) ?? [],
+      comorbidities: encounter.chronic_conditions?.split(',').map((s: string) => s.trim()).filter(Boolean) ?? [],
+      current_medications: encounter.current_medications?.split(',').map((s: string) => s.trim()).filter(Boolean) ?? [],
+    };
+  }, [encounter]);
+
+  const proactiveEncounterCtx = useMemo(() => {
+    if (!encounter) return null;
+    const bp = parseBP(encounter.blood_pressure);
+    const diagnosisNames = diagnoses
+      ? (Array.isArray(diagnoses) ? diagnoses : (diagnoses as { results?: typeof diagnoses })?.results || [])
+          .map((d: any) => d.icd10_description || d.free_text_diagnosis || '')
+          .filter(Boolean)
+      : [];
+    return {
+      chief_complaint: encounter.chief_complaint ?? undefined,
+      vitals: {
+        spo2: encounter.spo2 != null ? Number(encounter.spo2) : undefined,
+        pulse: encounter.pulse ?? undefined,
+        temperature: encounter.temperature != null ? Number(encounter.temperature) : undefined,
+        rr: encounter.respiratory_rate ?? undefined,
+        map: parseBPToMAP(encounter.blood_pressure),
+        systolic_bp: bp.systolic ?? undefined,
+        diastolic_bp: bp.diastolic ?? undefined,
+      },
+      diagnoses: diagnosisNames,
+    };
+  }, [encounter, diagnoses]);
+
+  const {
+    insights: proactiveInsights,
+    isLoading: proactiveLoading,
+    dismissInsight: dismissProactiveInsight,
+    dismissAll: dismissAllProactiveInsights,
+    refresh: refreshProactiveInsights,
+    error: proactiveError,
+    noInsightsFound: proactiveNoInsights,
+  } = useProactiveInsights(proactivePatientCtx, proactiveEncounterCtx, {
+    cacheKey: encounterId,
+  });
 
   // =========================================================================
   // AI Chat Widget — encounter-aware context wiring
@@ -394,6 +446,17 @@ export default function EncounterDetailPage() {
       </div>
 
       <ClinicalSnapshotBanner encounterId={encounterId} />
+
+      {/* Proactive AI Insights */}
+      <ProactiveInsightsPanel
+        insights={proactiveInsights}
+        onDismiss={dismissProactiveInsight}
+        onDismissAll={dismissAllProactiveInsights}
+        onGenerate={refreshProactiveInsights}
+        isLoading={proactiveLoading}
+        error={proactiveError}
+        noInsightsFound={proactiveNoInsights}
+      />
 
       <EncounterChiefComplaintCard encounter={encounter} />
 

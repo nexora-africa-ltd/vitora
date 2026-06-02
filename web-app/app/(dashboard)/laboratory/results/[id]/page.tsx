@@ -28,6 +28,8 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { LabInterpretPanel } from '@/components/encounters/lab-interpret-panel';
+import { ProactiveInsightsPanel } from '@/components/shared/proactive-insight-card';
+import { useProactiveInsights } from '@/lib/hooks/use-proactive-insights';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { calculateAge } from '@/lib/utils/format';
 import type { AIQuickAction, AILabResultItem } from '@/lib/types/ai';
@@ -179,6 +181,28 @@ export default function LabResultDetailPage() {
     return () => { setQuickActions([]); };
   }, [setQuickActions]);
 
+  // Proactive insights for lab context
+  const proactivePatientCtx = useMemo(() => {
+    if (!result?.patient_date_of_birth) return null;
+    return {
+      patient_age: calculateAge(result.patient_date_of_birth),
+      patient_sex: result?.patient_gender ?? 'O',
+      allergies: [] as string[],
+      comorbidities: [] as string[],
+      current_medications: [] as string[],
+    };
+  }, [result?.patient_date_of_birth, result?.patient_gender]);
+
+  const {
+    insights: proactiveInsights,
+    isLoading: proactiveLoading,
+    dismissInsight: dismissProactiveInsight,
+    dismissAll: dismissAllProactiveInsights,
+    refresh: refreshProactiveInsights,
+    error: proactiveError,
+    noInsightsFound: proactiveNoInsights,
+  } = useProactiveInsights(proactivePatientCtx, null, { includeLLM: false, cacheKey: `lab_${resultId}` });
+
   return (
     <PullToRefresh
       onRefresh={refresh}
@@ -315,6 +339,17 @@ export default function LabResultDetailPage() {
               onAutoTriggerConsumed={() => setAutoTriggerInterpret(false)}
             />
           )}
+
+          {/* Proactive AI Insights */}
+          <ProactiveInsightsPanel
+            insights={proactiveInsights}
+            onDismiss={dismissProactiveInsight}
+            onDismissAll={dismissAllProactiveInsights}
+            onGenerate={refreshProactiveInsights}
+            isLoading={proactiveLoading}
+            error={proactiveError}
+            noInsightsFound={proactiveNoInsights}
+          />
 
           <Card>
             <CardHeader>

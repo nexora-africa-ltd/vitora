@@ -9,7 +9,7 @@
  */
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -40,6 +40,8 @@ import {
   VitalAlertsPanel,
   evaluateVitalSeverity,
 } from '@/components/triage';
+import { ProactiveInsightsPanel } from '@/components/shared/proactive-insight-card';
+import { useProactiveInsights } from '@/lib/hooks/use-proactive-insights';
 import type { TriageAlert, VitalType, AlertSeverity } from '@/lib/types/triage';
 
 // Import shared vitals module
@@ -254,6 +256,44 @@ export default function TriageVitalsPage() {
     ? ((Date.now() - new Date(patient.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) < 2
     : false;
 
+  // Proactive insights — derived from live vitals as user types
+  const proactivePatientCtx = useMemo(() => {
+    if (!patient) return null;
+    const age = Math.floor((Date.now() - new Date(patient.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    return {
+      patient_age: age,
+      patient_sex: patient.gender ?? 'O',
+      allergies: [] as string[],
+      comorbidities: [] as string[],
+      current_medications: [] as string[],
+    };
+  }, [patient]);
+
+  const proactiveEncounterCtx = useMemo(() => {
+    return {
+      chief_complaint: encounter?.chief_complaint ?? undefined,
+      vitals: {
+        spo2: watchedVitals.spo2 ?? undefined,
+        pulse: watchedVitals.heart_rate ?? undefined,
+        temperature: watchedVitals.temperature ?? undefined,
+        rr: watchedVitals.respiratory_rate ?? undefined,
+        map: watchedVitals.systolic_bp && watchedVitals.diastolic_bp
+          ? Math.round(watchedVitals.diastolic_bp + (watchedVitals.systolic_bp - watchedVitals.diastolic_bp) / 3)
+          : undefined,
+      },
+    };
+  }, [encounter?.chief_complaint, watchedVitals.spo2, watchedVitals.heart_rate, watchedVitals.temperature, watchedVitals.respiratory_rate, watchedVitals.systolic_bp, watchedVitals.diastolic_bp]);
+
+  const {
+    insights: proactiveInsights,
+    isLoading: proactiveLoading,
+    dismissInsight: dismissProactiveInsight,
+    dismissAll: dismissAllProactiveInsights,
+    refresh: refreshProactiveInsights,
+    error: proactiveError,
+    noInsightsFound: proactiveNoInsights,
+  } = useProactiveInsights(proactivePatientCtx, proactiveEncounterCtx, { includeLLM: false, cacheKey: `triage_${encounterId}` });
+
   // Real-time vital evaluation for inline field color-coding (age-adjusted)
   const temperatureSeverity = evaluateVitalSeverity(watchedVitals.temperature, ageThresholds.temperature!, 'temperature');
   const heartRateSeverity = evaluateVitalSeverity(watchedVitals.heart_rate, ageThresholds.heart_rate!);
@@ -333,6 +373,17 @@ export default function TriageVitalsPage() {
     <div className="space-y-6">
       {/* Vital Alerts Panel */}
       {alerts.length > 0 && <VitalAlertsPanel alerts={alerts} />}
+
+      {/* Proactive AI Insights */}
+      <ProactiveInsightsPanel
+        insights={proactiveInsights}
+        onDismiss={dismissProactiveInsight}
+        onDismissAll={dismissAllProactiveInsights}
+        onGenerate={refreshProactiveInsights}
+        isLoading={proactiveLoading}
+        error={proactiveError}
+        noInsightsFound={proactiveNoInsights}
+      />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Vital Signs Card */}

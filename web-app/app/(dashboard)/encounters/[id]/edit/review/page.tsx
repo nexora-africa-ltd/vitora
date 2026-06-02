@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/shared/page-header';
+import { EncounterEditInsights } from '@/components/encounters/encounter-edit-insights';
 import { SOAPNoteSummary } from '@/components/encounters/soap-note-summary';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useEncounterEditStore } from '@/lib/stores/encounter-edit-store';
@@ -238,6 +239,9 @@ export default function EncounterEditReviewPage() {
         title="Review & Finalize"
         helpContent="Review the SOAP note summary and finalize the encounter when complete. Finalized encounters cannot be edited."
       />
+
+      {/* Proactive AI Insights */}
+      <EncounterEditInsights />
 
       {/* Non-editable warning */}
       {!isEditable && (
