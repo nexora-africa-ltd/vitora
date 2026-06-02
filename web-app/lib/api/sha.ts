@@ -842,6 +842,45 @@ async function getBeneficiaryContacts(beneficiaryCrId: string): Promise<{
 }
 
 // ============================================================================
+// Capitation Provider Validation
+// ============================================================================
+
+export interface CapitationValidationResult {
+  is_valid: boolean;
+  warning: string;
+  blocking: boolean;
+  details?: Record<string, unknown>;
+}
+
+/**
+ * Validate whether the current facility is the patient's selected outpatient
+ * provider before submitting a PHC capitation claim.
+ */
+async function validateCapitationProvider(
+  shaMemberId: number,
+  claimId?: number,
+): Promise<CapitationValidationResult> {
+  const body: Record<string, number> = { sha_member_id: shaMemberId };
+  if (claimId) body.claim_id = claimId;
+  const response = await apiClient.post('/api/billing/capitation/validate/', body);
+  return response.data;
+}
+
+/**
+ * Validate capitation provider match using raw eligibility response data.
+ * Useful on the patient lookup page before registration to check if the
+ * patient's selected outpatient provider matches the current facility.
+ */
+async function validateCapitationDirect(
+  eligibilityResponse: Record<string, unknown>,
+): Promise<CapitationValidationResult> {
+  const response = await apiClient.post('/api/billing/capitation/validate-direct/', {
+    eligibility_response: eligibilityResponse,
+  });
+  return response.data;
+}
+
+// ============================================================================
 // SHA Remittance API
 // ============================================================================
 
@@ -1649,4 +1688,8 @@ export const shaApi = {
   getRemittance,
   getRemittanceClaims,
   fetchRemittancesFromDHA,
+
+  // Capitation validation
+  validateCapitationProvider,
+  validateCapitationDirect,
 };

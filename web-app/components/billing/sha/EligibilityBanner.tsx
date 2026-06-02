@@ -24,6 +24,7 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
+import type { CapitationValidationResult } from '@/lib/api/sha';
 import type {
   EligibilityState,
   EligibilityStatus,
@@ -215,10 +216,12 @@ function FullEligibilityBanner({
   eligibility,
   onRefresh,
   isRefreshing,
+  capitationWarning,
 }: {
   eligibility: EligibilityState;
   onRefresh: () => void;
   isRefreshing: boolean;
+  capitationWarning?: CapitationValidationResult | null;
 }) {
   const { status, copayPercentage, coverageEndDate, schemeCategory, memberName, checkedAt, errorMessage, member, coverageCaveat, eligibleSchemes, billableSchemes } = eligibility;
 
@@ -386,6 +389,17 @@ function FullEligibilityBanner({
             </div>
           )}
 
+          {/* Capitation Provider Warning */}
+          {capitationWarning && !capitationWarning.is_valid && (
+            <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-2">
+              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+              <div className="text-xs text-amber-700 dark:text-amber-300">
+                <span className="font-medium">Provider Mismatch:</span>{' '}
+                {capitationWarning.warning}
+              </div>
+            </div>
+          )}
+
           {/* Last Checked */}
           {checkedAt && (
             <p className="text-xs text-muted-foreground mt-2">
@@ -440,6 +454,18 @@ export function EligibilityBanner({
     status: 'checking',
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [capitationWarning, setCapitationWarning] = useState<CapitationValidationResult | null>(null);
+
+  // Run capitation provider validation once we have a member ID
+  useEffect(() => {
+    const memberId = eligibility.member?.id;
+    if (!memberId) return;
+    let cancelled = false;
+    shaApi.validateCapitationProvider(memberId).then((res) => {
+      if (!cancelled) setCapitationWarning(res);
+    }).catch(() => { /* non-blocking */ });
+    return () => { cancelled = true; };
+  }, [eligibility.member?.id]);
 
   const checkEligibility = useCallback(async () => {
     setIsRefreshing(true);
@@ -514,6 +540,7 @@ export function EligibilityBanner({
           eligibility={eligibility}
           onRefresh={checkEligibility}
           isRefreshing={isRefreshing}
+          capitationWarning={capitationWarning}
         />
       )}
     </div>
