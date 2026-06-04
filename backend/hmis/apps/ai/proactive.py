@@ -209,11 +209,179 @@ PATTERN_RULES: list[dict[str, Any]] = [
 ]
 
 
+# Allergy-drug cross-reactivity map.
+# Key: allergy substance (lowercase). Value: list of drug names that are
+# contraindicated or require caution due to cross-reactivity.
+ALLERGY_DRUG_CROSSREACTIVITY: dict[str, list[dict[str, Any]]] = {
+    "penicillin": [
+        {
+            "drugs": [
+                "amoxicillin",
+                "ampicillin",
+                "flucloxacillin",
+                "piperacillin",
+                "amoxiclav",
+                "augmentin",
+                "co-amoxiclav",
+                "tazocin",
+            ],
+            "severity": "critical",
+            "title": "Penicillin Allergy — Beta-Lactam Prescribed",
+            "message": (
+                "Patient has documented penicillin allergy and is prescribed a penicillin-class "
+                "antibiotic. High risk of anaphylaxis. Consider macrolide (azithromycin) or "
+                "fluoroquinolone alternative."
+            ),
+            "cross_reactivity": "same_class",
+        },
+        {
+            "drugs": [
+                "cephalexin",
+                "cefuroxime",
+                "ceftriaxone",
+                "cefixime",
+                "cefazolin",
+                "ceftazidime",
+                "cefotaxime",
+                "cefepime",
+                "cefaclor",
+            ],
+            "severity": "warning",
+            "title": "Penicillin Allergy — Cephalosporin Caution",
+            "message": (
+                "Patient has penicillin allergy. Cephalosporin cross-reactivity risk is 1-2% "
+                "(higher with 1st-gen). Assess allergy severity — if anaphylaxis history, avoid "
+                "cephalosporins or use with desensitization protocol."
+            ),
+            "cross_reactivity": "related_class",
+        },
+    ],
+    "sulfa": [
+        {
+            "drugs": [
+                "sulfamethoxazole",
+                "trimethoprim",
+                "cotrimoxazole",
+                "septrin",
+                "bactrim",
+                "co-trimoxazole",
+                "sulfasalazine",
+                "dapsone",
+            ],
+            "severity": "critical",
+            "title": "Sulfa Allergy — Sulfonamide Prescribed",
+            "message": (
+                "Patient has documented sulfa/sulfonamide allergy. Risk of severe reaction "
+                "(SJS/TEN). Use alternative antibiotic."
+            ),
+            "cross_reactivity": "same_class",
+        },
+    ],
+    "sulfonamide": [
+        {
+            "drugs": [
+                "sulfamethoxazole",
+                "trimethoprim",
+                "cotrimoxazole",
+                "septrin",
+                "bactrim",
+                "co-trimoxazole",
+                "sulfasalazine",
+                "dapsone",
+            ],
+            "severity": "critical",
+            "title": "Sulfa Allergy — Sulfonamide Prescribed",
+            "message": (
+                "Patient has documented sulfa/sulfonamide allergy. Risk of severe reaction "
+                "(SJS/TEN). Use alternative antibiotic."
+            ),
+            "cross_reactivity": "same_class",
+        },
+    ],
+    "nsaid": [
+        {
+            "drugs": [
+                "ibuprofen",
+                "diclofenac",
+                "naproxen",
+                "piroxicam",
+                "indomethacin",
+                "meloxicam",
+                "ketorolac",
+                "aspirin",
+                "celecoxib",
+            ],
+            "severity": "warning",
+            "title": "NSAID Allergy/Sensitivity — NSAID Prescribed",
+            "message": (
+                "Patient has documented NSAID sensitivity. Risk of bronchospasm, angioedema, or "
+                "GI bleeding. Consider paracetamol or COX-2 selective inhibitor if tolerated."
+            ),
+            "cross_reactivity": "same_class",
+        },
+    ],
+    "aspirin": [
+        {
+            "drugs": [
+                "aspirin",
+                "ibuprofen",
+                "diclofenac",
+                "naproxen",
+                "piroxicam",
+                "indomethacin",
+                "ketorolac",
+            ],
+            "severity": "warning",
+            "title": "Aspirin Allergy — NSAID Cross-Reactivity",
+            "message": (
+                "Patient has aspirin allergy. Cross-reactivity with other NSAIDs occurs in "
+                "~10-25% of cases (aspirin-exacerbated respiratory disease). Avoid NSAIDs or "
+                "use COX-2 selective inhibitor with monitoring."
+            ),
+            "cross_reactivity": "related_class",
+        },
+    ],
+    "egg": [
+        {
+            "drugs": ["propofol"],
+            "severity": "warning",
+            "title": "Egg Allergy — Propofol Caution",
+            "message": (
+                "Patient has egg allergy. Propofol contains egg lecithin. Assess severity of "
+                "egg allergy — severe allergy may contraindicate propofol use."
+            ),
+            "cross_reactivity": "excipient",
+        },
+    ],
+    "morphine": [
+        {
+            "drugs": [
+                "codeine",
+                "tramadol",
+                "oxycodone",
+                "hydrocodone",
+                "fentanyl",
+                "pethidine",
+                "dihydrocodeine",
+            ],
+            "severity": "warning",
+            "title": "Opioid Allergy — Related Opioid Prescribed",
+            "message": (
+                "Patient has documented morphine/opioid allergy. Cross-reactivity between "
+                "opioids varies. Fentanyl has lowest cross-reactivity. Use with caution "
+                "and monitor for 30 minutes after first dose."
+            ),
+            "cross_reactivity": "related_class",
+        },
+    ],
+}
+
+
 def evaluate_pattern_rules(
     vitals: dict[str, Any],
     chief_complaint: str | None,
     diagnoses: list[str] | None,
-    allergies: list[str] | None,  # noqa: ARG001 — reserved for allergy-drug cross-check rules
+    allergies: list[str] | None,
     medications: list[str] | None,
 ) -> list[dict[str, Any]]:
     """
@@ -306,6 +474,35 @@ def evaluate_pattern_rules(
                     "source": "pattern_engine",
                 }
             )
+
+    # Allergy-drug cross-reactivity checks
+    allergies_lower = [a.lower() for a in (allergies or [])]
+    if allergies_lower and meds_lower:
+        for allergy in allergies_lower:
+            for allergy_key, rules in ALLERGY_DRUG_CROSSREACTIVITY.items():
+                if allergy_key not in allergy:
+                    continue
+                for rule in rules:
+                    # Check if any prescribed medication matches the contraindicated drugs
+                    for drug in rule["drugs"]:
+                        if any(drug in med for med in meds_lower):
+                            alerts.append(
+                                {
+                                    "id": f"allergy_{allergy_key}_{drug.replace(' ', '_')}",
+                                    "tier": 2,
+                                    "severity": rule["severity"],
+                                    "title": rule["title"],
+                                    "message": rule["message"],
+                                    "category": "allergy_drug_interaction",
+                                    "confidence": 0.95
+                                    if rule["cross_reactivity"] == "same_class"
+                                    else 0.8,
+                                    "source": "pattern_engine",
+                                    "allergy": allergy,
+                                    "drug": drug,
+                                }
+                            )
+                            break  # One alert per rule is enough
 
     return alerts
 

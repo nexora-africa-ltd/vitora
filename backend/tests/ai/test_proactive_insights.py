@@ -345,8 +345,228 @@ class TestTier2PatternRules:
 
 
 # =============================================================================
-# Context Hash Deduplication
+# Tier 2: Allergy-Drug Cross-Reactivity
 # =============================================================================
+
+
+class TestAllergyDrugCrossReactivity:
+    """Tests for allergy-drug interaction pattern rules."""
+
+    def test_penicillin_allergy_amoxicillin_critical(self):
+        """Penicillin allergy + amoxicillin → critical same-class alert."""
+        alerts = evaluate_pattern_rules(
+            vitals={},
+            chief_complaint="sore throat",
+            diagnoses=[],
+            allergies=["Penicillin"],
+            medications=["Amoxicillin 500mg TDS"],
+        )
+        allergy_alerts = [a for a in alerts if a["category"] == "allergy_drug_interaction"]
+        assert len(allergy_alerts) >= 1
+        alert = allergy_alerts[0]
+        assert alert["severity"] == "critical"
+        assert alert["confidence"] == 0.95
+        assert "penicillin" in alert["id"]
+        assert alert["drug"] == "amoxicillin"
+
+    def test_penicillin_allergy_augmentin_critical(self):
+        """Penicillin allergy + Augmentin (co-amoxiclav) → critical alert."""
+        alerts = evaluate_pattern_rules(
+            vitals={},
+            chief_complaint="",
+            diagnoses=[],
+            allergies=["penicillin allergy"],
+            medications=["Augmentin 625mg"],
+        )
+        allergy_alerts = [a for a in alerts if a["category"] == "allergy_drug_interaction"]
+        assert len(allergy_alerts) >= 1
+        assert allergy_alerts[0]["severity"] == "critical"
+
+    def test_penicillin_allergy_cephalosporin_warning(self):
+        """Penicillin allergy + cephalosporin → warning (cross-reactivity 1-2%)."""
+        alerts = evaluate_pattern_rules(
+            vitals={},
+            chief_complaint="",
+            diagnoses=[],
+            allergies=["Penicillin"],
+            medications=["Ceftriaxone 1g IV"],
+        )
+        allergy_alerts = [a for a in alerts if a["category"] == "allergy_drug_interaction"]
+        assert len(allergy_alerts) >= 1
+        alert = allergy_alerts[0]
+        assert alert["severity"] == "warning"
+        assert alert["confidence"] == 0.8  # related_class = lower confidence
+
+    def test_sulfa_allergy_cotrimoxazole_critical(self):
+        """Sulfa allergy + cotrimoxazole → critical (SJS/TEN risk)."""
+        alerts = evaluate_pattern_rules(
+            vitals={},
+            chief_complaint="UTI",
+            diagnoses=[],
+            allergies=["Sulfa drugs"],
+            medications=["Cotrimoxazole 960mg BD"],
+        )
+        allergy_alerts = [a for a in alerts if a["category"] == "allergy_drug_interaction"]
+        assert len(allergy_alerts) >= 1
+        assert allergy_alerts[0]["severity"] == "critical"
+
+    def test_sulfa_allergy_septrin_critical(self):
+        """Sulfa allergy + Septrin (brand name) → critical."""
+        alerts = evaluate_pattern_rules(
+            vitals={},
+            chief_complaint="",
+            diagnoses=[],
+            allergies=["sulfonamide allergy"],
+            medications=["Septrin DS"],
+        )
+        allergy_alerts = [a for a in alerts if a["category"] == "allergy_drug_interaction"]
+        assert len(allergy_alerts) >= 1
+        assert allergy_alerts[0]["severity"] == "critical"
+
+    def test_nsaid_allergy_ibuprofen_warning(self):
+        """NSAID sensitivity + ibuprofen → warning."""
+        alerts = evaluate_pattern_rules(
+            vitals={},
+            chief_complaint="knee pain",
+            diagnoses=[],
+            allergies=["NSAID sensitivity"],
+            medications=["Ibuprofen 400mg TDS"],
+        )
+        allergy_alerts = [a for a in alerts if a["category"] == "allergy_drug_interaction"]
+        assert len(allergy_alerts) >= 1
+        assert allergy_alerts[0]["severity"] == "warning"
+
+    def test_aspirin_allergy_diclofenac_cross_reactivity(self):
+        """Aspirin allergy + diclofenac → warning (10-25% cross-reactivity)."""
+        alerts = evaluate_pattern_rules(
+            vitals={},
+            chief_complaint="back pain",
+            diagnoses=[],
+            allergies=["Aspirin"],
+            medications=["Diclofenac 50mg BD"],
+        )
+        allergy_alerts = [a for a in alerts if a["category"] == "allergy_drug_interaction"]
+        assert len(allergy_alerts) >= 1
+        assert allergy_alerts[0]["severity"] == "warning"
+
+    def test_morphine_allergy_codeine_warning(self):
+        """Morphine allergy + codeine → warning (opioid cross-reactivity)."""
+        alerts = evaluate_pattern_rules(
+            vitals={},
+            chief_complaint="pain",
+            diagnoses=[],
+            allergies=["Morphine"],
+            medications=["Codeine phosphate 30mg"],
+        )
+        allergy_alerts = [a for a in alerts if a["category"] == "allergy_drug_interaction"]
+        assert len(allergy_alerts) >= 1
+        assert allergy_alerts[0]["severity"] == "warning"
+
+    def test_egg_allergy_propofol_warning(self):
+        """Egg allergy + propofol → warning (lecithin excipient)."""
+        alerts = evaluate_pattern_rules(
+            vitals={},
+            chief_complaint="",
+            diagnoses=[],
+            allergies=["Egg allergy"],
+            medications=["Propofol 200mg"],
+        )
+        allergy_alerts = [a for a in alerts if a["category"] == "allergy_drug_interaction"]
+        assert len(allergy_alerts) >= 1
+        assert allergy_alerts[0]["severity"] == "warning"
+
+    def test_no_alert_when_no_matching_allergy(self):
+        """Non-matching allergy + medication → no allergy alert."""
+        alerts = evaluate_pattern_rules(
+            vitals={},
+            chief_complaint="headache",
+            diagnoses=[],
+            allergies=["Latex"],
+            medications=["Amoxicillin 500mg"],
+        )
+        allergy_alerts = [a for a in alerts if a["category"] == "allergy_drug_interaction"]
+        assert len(allergy_alerts) == 0
+
+    def test_no_alert_when_no_allergies(self):
+        """Empty allergies list → no allergy alerts."""
+        alerts = evaluate_pattern_rules(
+            vitals={},
+            chief_complaint="",
+            diagnoses=[],
+            allergies=[],
+            medications=["Amoxicillin 500mg", "Ibuprofen 400mg"],
+        )
+        allergy_alerts = [a for a in alerts if a["category"] == "allergy_drug_interaction"]
+        assert len(allergy_alerts) == 0
+
+    def test_no_alert_when_no_medications(self):
+        """Empty medications list → no allergy alerts."""
+        alerts = evaluate_pattern_rules(
+            vitals={},
+            chief_complaint="",
+            diagnoses=[],
+            allergies=["Penicillin", "Sulfa"],
+            medications=[],
+        )
+        allergy_alerts = [a for a in alerts if a["category"] == "allergy_drug_interaction"]
+        assert len(allergy_alerts) == 0
+
+    def test_safe_medication_with_allergy_no_alert(self):
+        """Penicillin allergy + non-penicillin antibiotic → no alert."""
+        alerts = evaluate_pattern_rules(
+            vitals={},
+            chief_complaint="",
+            diagnoses=[],
+            allergies=["Penicillin"],
+            medications=["Azithromycin 500mg OD"],
+        )
+        allergy_alerts = [a for a in alerts if a["category"] == "allergy_drug_interaction"]
+        assert len(allergy_alerts) == 0
+
+    def test_multiple_allergies_multiple_medications(self):
+        """Multiple allergies with multiple medications → alerts for each match."""
+        alerts = evaluate_pattern_rules(
+            vitals={},
+            chief_complaint="",
+            diagnoses=[],
+            allergies=["Penicillin", "NSAID sensitivity"],
+            medications=["Amoxicillin 500mg", "Ibuprofen 400mg"],
+        )
+        allergy_alerts = [a for a in alerts if a["category"] == "allergy_drug_interaction"]
+        # Should have at least one for penicillin+amoxicillin and one for NSAID+ibuprofen
+        assert len(allergy_alerts) >= 2
+        severities = {a["severity"] for a in allergy_alerts}
+        assert "critical" in severities  # penicillin+amoxicillin
+        assert "warning" in severities  # NSAID+ibuprofen
+
+    def test_case_insensitive_matching(self):
+        """Allergy and medication matching is case-insensitive."""
+        alerts = evaluate_pattern_rules(
+            vitals={},
+            chief_complaint="",
+            diagnoses=[],
+            allergies=["PENICILLIN ALLERGY"],
+            medications=["AMOXICILLIN 500MG"],
+        )
+        allergy_alerts = [a for a in alerts if a["category"] == "allergy_drug_interaction"]
+        assert len(allergy_alerts) >= 1
+
+    def test_allergy_alert_includes_context_fields(self):
+        """Allergy alerts include allergy and drug context fields."""
+        alerts = evaluate_pattern_rules(
+            vitals={},
+            chief_complaint="",
+            diagnoses=[],
+            allergies=["Penicillin"],
+            medications=["Amoxicillin 500mg"],
+        )
+        allergy_alerts = [a for a in alerts if a["category"] == "allergy_drug_interaction"]
+        assert len(allergy_alerts) >= 1
+        alert = allergy_alerts[0]
+        assert "allergy" in alert
+        assert "drug" in alert
+        assert "penicillin" in alert["allergy"]
+        assert alert["drug"] == "amoxicillin"
 
 
 class TestContextHash:
