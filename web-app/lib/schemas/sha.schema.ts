@@ -987,6 +987,10 @@ export const IlmStartVisitRequestSchema = z.object({
   service_type: z.enum(['OUTPATIENT', 'INPATIENT']).default('OUTPATIENT'),
   admission_date: z.string().optional(),
   estimated_days_of_admission: z.number().int().nonnegative().optional(),
+  // Practitioner (doctor) details — DHA 2026-06 requirement
+  practitioner_identification_number: z.string().optional(),
+  practitioner_identification_type: z.string().optional(),
+  practitioner_regulation_body: z.string().optional(),
 }).refine(
   (data) => (!!data.otp) !== (!!data.auth_guid),
   { message: 'Exactly one of otp or auth_guid must be provided', path: ['otp'] },
@@ -1027,6 +1031,10 @@ export type IlmSwitchInterventionRequest = z.infer<typeof IlmSwitchInterventionR
 export const IlmAddDiagnosisRequestSchema = z.object({
   icd_code: z.string().min(1),
   intervention_code: z.string().min(1),
+  // Practitioner (doctor) details — DHA 2026-06 fallback injection point
+  practitioner_identification_number: z.string().optional(),
+  practitioner_identification_type: z.string().optional(),
+  practitioner_regulation_body: z.string().optional(),
 });
 export type IlmAddDiagnosisRequest = z.infer<typeof IlmAddDiagnosisRequestSchema>;
 
@@ -1042,6 +1050,10 @@ export const IlmAddLineRequestSchema = z.object({
   unit_price: z.string().min(1),
   quantity: z.string().min(1),
   scheme_code: z.string().min(1),
+  // Practitioner (doctor) details — DHA 2026-06 fallback injection point
+  practitioner_identification_number: z.string().optional(),
+  practitioner_identification_type: z.string().optional(),
+  practitioner_regulation_body: z.string().optional(),
 });
 export type IlmAddLineRequest = z.infer<typeof IlmAddLineRequestSchema>;
 
@@ -1065,6 +1077,17 @@ export type IlmRemoveAttachmentRequest = z.infer<typeof IlmRemoveAttachmentReque
 
 export const IlmSubmitRequestSchema = z.object({
   invoice_number: z.string().min(1),
+  // Outpatient discharge consent — DHA 2026-06 requirement
+  otp: z.string().optional(),
+  discharge_auth_guid: z.string().optional(),
+  discharge_reason: z.enum([
+    'RECOVERED', 'REFERRED', 'ABSCONDED', 'OTHER',
+  ]).optional(),
+  notes: z.string().optional(),
+  // Practitioner (doctor) details — fallback if not provided at start_visit
+  practitioner_identification_number: z.string().optional(),
+  practitioner_identification_type: z.string().optional(),
+  practitioner_regulation_body: z.string().optional(),
 });
 export type IlmSubmitRequest = z.infer<typeof IlmSubmitRequestSchema>;
 

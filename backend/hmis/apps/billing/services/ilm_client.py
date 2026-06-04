@@ -197,6 +197,15 @@ class IlmClient:
         if files is not None:
             # Let requests auto-set Content-Type with multipart boundary
             merged_headers.pop("Content-Type", None)
+
+        # DHA requires facility identification headers on all requests.
+        if facility and hasattr(facility, "dha_fr_code") and facility.dha_fr_code:
+            merged_headers["X-Facility-Id"] = facility.dha_fr_code
+            merged_headers["X-Facility-Id-Type"] = "fr-code"
+        elif getattr(settings, "SHA_FACILITY_FR_CODE", ""):
+            merged_headers["X-Facility-Id"] = settings.SHA_FACILITY_FR_CODE
+            merged_headers["X-Facility-Id-Type"] = "fr-code"
+
         if headers:
             merged_headers.update(headers)
         if idempotency_key:

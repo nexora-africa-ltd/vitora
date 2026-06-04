@@ -182,6 +182,20 @@ def _build_user_info(user) -> dict:
             "ai_tokens_available": False,
         }
 
+    # Practitioner data for DHA claims (license, regulation body, national ID)
+    # Reuse the profile resolved at the top of this function.
+    license_number = None
+    licensing_body = None
+    national_id = None
+    if hasattr(user, "staff_profile"):
+        try:
+            _prof = user.staff_profile
+            license_number = _prof.license_number or None
+            licensing_body = _prof.licensing_body or None
+            national_id = _prof.hwr_national_id or None
+        except StaffProfile.DoesNotExist:
+            pass
+
     return {
         "id": user.id,
         "username": user.username,
@@ -194,6 +208,9 @@ def _build_user_info(user) -> dict:
         "role_display": role_display,
         "role_category": role_category,
         "phone_number": phone_number,
+        "license_number": license_number,
+        "licensing_body": licensing_body,
+        "national_id": national_id,
         "permissions": list(user.get_all_permissions()),
         "facility": facility_data,
         "onboarding_complete": onboarding_complete,
