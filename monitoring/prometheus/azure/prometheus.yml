@@ -1,5 +1,12 @@
 # Prometheus scrape config for Azure Container Apps
 # Targets use internal ACA FQDN (resolved within the same environment)
+#
+# SECURITY NOTE: insecure_skip_verify is used because Azure Container Apps
+# uses platform-managed certificates that are not in Prometheus' trust store.
+# This is acceptable because:
+# 1. Both Prometheus and the target run in the same Azure environment
+# 2. The /metrics endpoint exposes only operational counters, no PII
+# 3. Network traffic stays within the Azure virtual network
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -9,7 +16,7 @@ scrape_configs:
     metrics_path: /metrics
     scheme: https
     tls_config:
-      insecure_skip_verify: true
+      insecure_skip_verify: true  # See SECURITY NOTE above
     static_configs:
       - targets: ["vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io"]
         labels:

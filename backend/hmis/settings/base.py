@@ -541,6 +541,9 @@ GCP_KMS_KEYRING = os.getenv("GCP_KMS_KEYRING", "vitora-hmis")
 GCP_KMS_KEY = os.getenv("GCP_KMS_KEY", "vitora-key")
 
 # Celery Configuration
+# NOTE: In production, CELERY_BROKER_URL and CELERY_RESULT_BACKEND must use
+# rediss:// (TLS) when connecting to a remote Redis instance.
+# The redis://localhost default is only safe for local development.
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
 CELERY_ACCEPT_CONTENT = ["json"]

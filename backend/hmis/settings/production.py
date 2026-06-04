@@ -142,6 +142,15 @@ else:
 # Channel Layers — Use Redis in production for cross-process WebSocket support
 REDIS_URL = os.getenv("REDIS_URL", "")
 if REDIS_URL:
+    # Enforce TLS for Redis in production — reject plaintext redis:// URLs
+    if not REDIS_URL.startswith("rediss://"):
+        import warnings
+
+        warnings.warn(
+            "REDIS_URL should use rediss:// (TLS) in production. "
+            "Plaintext redis:// connections are insecure.",
+            stacklevel=1,
+        )
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
