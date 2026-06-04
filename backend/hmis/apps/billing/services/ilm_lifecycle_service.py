@@ -62,7 +62,8 @@ def _publish_safe(event_type: str, payload: dict) -> None:
     try:
         from hmis.apps.core.events import publish_event
 
-        publish_event(event_type, payload)
+        aggregate_id = payload.get("claim_id") or payload.get("patient_id") or ""
+        publish_event(event_type, "SHAClaim", aggregate_id, payload)
     except Exception:  # pragma: no cover
         logger.exception("Failed to publish DHA HIE lifecycle event %s", event_type)
 

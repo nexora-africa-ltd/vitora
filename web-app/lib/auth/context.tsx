@@ -59,6 +59,10 @@ export interface User {
   role_display?: string;  // Human-readable role name (e.g. "Nurse", "Clinical Officer")
   role_category?: string;  // Role category (CLINICAL, ADMINISTRATIVE, etc.)
   phone_number?: string | null;  // From staff profile
+  // Practitioner/DHA fields from staff profile
+  license_number?: string | null;
+  licensing_body?: string | null;  // e.g. "KMPDC", "NCK", "KPHC"
+  national_id?: string | null;
   facility?: UserFacility | null;  // Primary facility with module capabilities
   onboarding_complete?: boolean;  // Whether org has completed onboarding
   memberships?: OrgMembership[];  // All active org memberships for multi-org users

@@ -40,7 +40,8 @@ def _publish_safe(event_type: str, payload: dict) -> None:
     try:
         from hmis.apps.core.events import publish_event
 
-        publish_event(event_type, payload)
+        aggregate_id = payload.get("claim_id") or payload.get("patient_id") or ""
+        publish_event(event_type, "SHAClaim", aggregate_id, payload)
     except Exception:  # pragma: no cover
         logger.exception("Failed to publish DHA HIE event %s", event_type)
 
@@ -96,6 +97,11 @@ class StartVisitParams:
     service_type: str = "OUTPATIENT"  # OUTPATIENT | INPATIENT
     admission_date: str | None = None  # ISO date, required for INPATIENT
     estimated_days_of_admission: int | None = None
+    # Practitioner (doctor) details — required per DHA 2026-06 spec.
+    # Can be provided here or on add_line/add_diagnosis as a fallback.
+    practitioner_identification_number: str = ""
+    practitioner_identification_type: str = ""  # e.g. "National ID"
+    practitioner_regulation_body: str = "KMPDC"
 
 
 @dataclass
@@ -185,6 +191,14 @@ class IlmClaimService:
             body["admission_date"] = params.admission_date
             if params.estimated_days_of_admission is not None:
                 body["estimated_days_of_admission"] = params.estimated_days_of_admission
+
+        # Practitioner details (DHA 2026-06 requirement: every claim needs a doctor)
+        if params.practitioner_identification_number:
+            body["practitioner_identification_number"] = params.practitioner_identification_number
+            body["practitioner_identification_type"] = (
+                params.practitioner_identification_type or "National ID"
+            )
+            body["practitioner_regulation_body"] = params.practitioner_regulation_body or "KMPDC"
 
         response = self.client.post(
             VISIT_PATH,
@@ -345,12 +359,22 @@ class IlmClaimService:
         *,
         icd_code: str,
         intervention_code: str,
+        practitioner_identification_number: str = "",
+        practitioner_identification_type: str = "",
+        practitioner_regulation_body: str = "KMPDC",
         user: Any = None,
     ) -> IlmClaimResult:
+        body: dict[str, Any] = {"icd_code": icd_code, "intervention_code": intervention_code}
+        if practitioner_identification_number:
+            body["practitioner_identification_number"] = practitioner_identification_number
+            body["practitioner_identification_type"] = (
+                practitioner_identification_type or "National ID"
+            )
+            body["practitioner_regulation_body"] = practitioner_regulation_body or "KMPDC"
         result = self._post_with_consent(
             claim,
             DIAGNOSES_PATH,
-            {"icd_code": icd_code, "intervention_code": intervention_code},
+            body,
             user=user,
         )
         self._emit_diagnosis_event(
@@ -379,8 +403,17 @@ class IlmClaimService:
     # Lines
     # -----------------------------------------------------------------
 
-    def add_line(self, claim: Any, line: ClaimLine, *, user: Any = None) -> IlmClaimResult:
-        body = {
+    def add_line(
+        self,
+        claim: Any,
+        line: ClaimLine,
+        *,
+        practitioner_identification_number: str = "",
+        practitioner_identification_type: str = "",
+        practitioner_regulation_body: str = "KMPDC",
+        user: Any = None,
+    ) -> IlmClaimResult:
+        body: dict[str, Any] = {
             "intervention_code": line.intervention_code,
             "service_name": line.service_name,
             "service_identifier": line.service_identifier,
@@ -388,6 +421,12 @@ class IlmClaimService:
             "quantity": line.quantity,
             "scheme_code": line.scheme_code,
         }
+        if practitioner_identification_number:
+            body["practitioner_identification_number"] = practitioner_identification_number
+            body["practitioner_identification_type"] = (
+                practitioner_identification_type or "National ID"
+            )
+            body["practitioner_regulation_body"] = practitioner_regulation_body or "KMPDC"
         result = self._post_with_consent(claim, LINES_PATH, body, user=user)
         self._emit_line_event(
             claim, result, action="added", intervention_code=line.intervention_code
@@ -516,11 +555,33 @@ class IlmClaimService:
         claim: Any,
         *,
         invoice_number: str,
+        otp: str = "",
+        discharge_auth_guid: str = "",
+        discharge_reason: str = "",
+        notes: str = "",
+        practitioner_identification_number: str = "",
+        practitioner_identification_type: str = "",
+        practitioner_regulation_body: str = "KMPDC",
         user: Any = None,
     ) -> IlmClaimResult:
-        result = self._post_with_consent(
-            claim, SUBMIT_PATH, {"invoice_number": invoice_number}, user=user
-        )
+        body: dict[str, Any] = {"invoice_number": invoice_number}
+        # Outpatient discharge consent (DHA 2026-06: OTP or biometrics required)
+        if otp:
+            body["otp"] = otp
+        elif discharge_auth_guid:
+            body["discharge_auth_guid"] = discharge_auth_guid
+        if discharge_reason:
+            body["discharge_reason"] = discharge_reason
+        if notes:
+            body["notes"] = notes
+        # Practitioner details (fallback if not provided at start_visit)
+        if practitioner_identification_number:
+            body["practitioner_identification_number"] = practitioner_identification_number
+            body["practitioner_identification_type"] = (
+                practitioner_identification_type or "National ID"
+            )
+            body["practitioner_regulation_body"] = practitioner_regulation_body or "KMPDC"
+        result = self._post_with_consent(claim, SUBMIT_PATH, body, user=user)
         self._apply_submit_response(claim, result, user=user)
         from hmis.apps.core.events import BillingEvents
 

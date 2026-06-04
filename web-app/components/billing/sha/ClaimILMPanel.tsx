@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { shaApi } from '@/lib/api/sha';
+import { useAuth } from '@/lib/auth/context';
 import type { CapitationValidationResult } from '@/lib/api/sha';
 import type { IlmCallResult } from '@/lib/schemas/sha.schema';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
@@ -41,11 +42,23 @@ interface ClaimILMPanelProps {
   shaMemberId?: number | null;
   /** Active intervention codes already on this claim (for combination validation). */
   existingInterventions?: string[];
+  /** Active consent token for this claim (needed for outpatient discharge OTP). */
+  consentToken?: string;
+  /** DHA patient external ID (CR number) for discharge OTP. */
+  patientCrId?: string;
   /** Called after any action finishes so the parent can refetch the claim. */
   onChange?: () => void;
 }
 
-export function ClaimILMPanel({ claimId, flow, shaMemberId, existingInterventions = [], onChange }: ClaimILMPanelProps) {
+const OUTPATIENT_DISCHARGE_REASONS = [
+  { value: 'RECOVERED', label: 'Recovered' },
+  { value: 'REFERRED', label: 'Referred' },
+  { value: 'ABSCONDED', label: 'Absconded' },
+  { value: 'OTHER', label: 'Other' },
+] as const;
+
+export function ClaimILMPanel({ claimId, flow, shaMemberId, existingInterventions = [], consentToken = '', patientCrId = '', onChange }: ClaimILMPanelProps) {
+  const { user } = useAuth();
   const [busy, setBusy] = useState<ActionKey | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<IlmCallResult | null>(null);
@@ -82,6 +95,29 @@ export function ClaimILMPanel({ claimId, flow, shaMemberId, existingIntervention
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [cancelReason, setCancelReason] = useState('OTHER_REASONS');
   const [cancelText, setCancelText] = useState('');
+
+  // Outpatient discharge consent state (DHA 2026-06)
+  const [dischargeOtp, setDischargeOtp] = useState('');
+  const [dischargeAuthGuid, setDischargeAuthGuid] = useState('');
+  const [dischargeReason, setDischargeReason] = useState('RECOVERED');
+  const [dischargeNotes, setDischargeNotes] = useState('');
+  const [dischargeOtpSent, setDischargeOtpSent] = useState(false);
+  const [dischargeBusy, setDischargeBusy] = useState(false);
+
+  // Auto-resolve practitioner details from logged-in user's staff profile
+  const practitionerFields = user?.license_number
+    ? {
+        practitioner_identification_number: user.license_number,
+        practitioner_identification_type: 'License Number',
+        practitioner_regulation_body: user.licensing_body || 'KMPDC',
+      }
+    : user?.national_id
+      ? {
+          practitioner_identification_number: user.national_id,
+          practitioner_identification_type: 'National ID',
+          practitioner_regulation_body: user.licensing_body || 'KMPDC',
+        }
+      : {};
 
   async function run<T extends ActionKey>(action: T, fn: () => Promise<IlmCallResult>) {
     setBusy(action);
@@ -194,6 +230,7 @@ export function ClaimILMPanel({ claimId, flow, shaMemberId, existingIntervention
                       .map((s) => s.trim())
                       .filter(Boolean),
                     service_type: 'OUTPATIENT',
+                    ...practitionerFields,
                   }),
                 )
               }
@@ -334,24 +371,103 @@ export function ClaimILMPanel({ claimId, flow, shaMemberId, existingIntervention
                 onChange={(e) => setInvoiceNumber(e.target.value)}
               />
             </div>
-            {flow?.supportsInpatientDischarge ? (
+            {flow?.supportsInpatientDischarge && (
               <p className="text-xs text-muted-foreground max-w-xs">
                 Inpatient claims are submitted via the Discharge panel below.
               </p>
-            ) : (
-              <Button
-                disabled={busy !== null || !invoiceNumber}
-                onClick={() =>
-                  run('submit', () =>
-                    shaApi.ilmSubmit(claimId, { invoice_number: invoiceNumber }),
-                  )
-                }
-              >
-                {busy === 'submit' && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                Submit
-              </Button>
             )}
           </div>
+
+          {/* Outpatient discharge consent + submit (DHA 2026-06) */}
+          {!flow?.supportsInpatientDischarge && (
+            <div className="space-y-3 rounded-md border p-3">
+              <h4 className="text-sm font-medium">Discharge &amp; Submit</h4>
+              <p className="text-xs text-muted-foreground">
+                Outpatient claims require discharge consent (OTP or biometrics) before submission.
+              </p>
+
+              {!dischargeOtpSent ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={dischargeBusy || busy !== null || !consentToken}
+                  onClick={async () => {
+                    setDischargeBusy(true);
+                    setError(null);
+                    try {
+                      await shaApi.ilmSendDischargeOtp({
+                        consent_token: consentToken,
+                        patient_id: patientCrId || patientExternalId,
+                      });
+                      setDischargeOtpSent(true);
+                    } catch (e: any) {
+                      setError(e?.response?.data?.error ?? e?.message ?? 'Failed to send discharge OTP');
+                    } finally {
+                      setDischargeBusy(false);
+                    }
+                  }}
+                >
+                  {dischargeBusy && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                  Send Discharge OTP
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div>
+                      <Label htmlFor="ilm-discharge-otp">Discharge OTP</Label>
+                      <Input
+                        id="ilm-discharge-otp"
+                        value={dischargeOtp}
+                        onChange={(e) => setDischargeOtp(e.target.value)}
+                        placeholder="Enter OTP from patient"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="ilm-discharge-reason">Discharge reason</Label>
+                      <select
+                        id="ilm-discharge-reason"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        value={dischargeReason}
+                        onChange={(e) => setDischargeReason(e.target.value)}
+                      >
+                        {OUTPATIENT_DISCHARGE_REASONS.map((r) => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  {dischargeReason === 'OTHER' && (
+                    <div>
+                      <Label htmlFor="ilm-discharge-notes">Notes</Label>
+                      <Input
+                        id="ilm-discharge-notes"
+                        value={dischargeNotes}
+                        onChange={(e) => setDischargeNotes(e.target.value)}
+                        placeholder="Reason for discharge"
+                      />
+                    </div>
+                  )}
+                  <Button
+                    disabled={busy !== null || !invoiceNumber || (!dischargeOtp && !dischargeAuthGuid)}
+                    onClick={() =>
+                      run('submit', () =>
+                        shaApi.ilmSubmit(claimId, {
+                          invoice_number: invoiceNumber,
+                          ...(dischargeOtp ? { otp: dischargeOtp } : { discharge_auth_guid: dischargeAuthGuid }),
+                          discharge_reason: dischargeReason as any,
+                          ...(dischargeNotes ? { notes: dischargeNotes } : {}),
+                          ...practitionerFields,
+                        }),
+                      )
+                    }
+                  >
+                    {busy === 'submit' && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                    Submit Claim
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div className="flex-1">

@@ -795,11 +795,17 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         try:
             params = StartVisitParams(
                 otp=str(d.get("otp", "")),
+                auth_guid=str(d.get("auth_guid", "")),
                 patient_id=str(d.get("patient_id", "")),
                 intervention_codes=list(d.get("intervention_codes") or []),
                 service_type=str(d.get("service_type", "OUTPATIENT")),
                 admission_date=d.get("admission_date"),
                 estimated_days_of_admission=d.get("estimated_days_of_admission"),
+                practitioner_identification_number=str(
+                    d.get("practitioner_identification_number", "")
+                ),
+                practitioner_identification_type=str(d.get("practitioner_identification_type", "")),
+                practitioner_regulation_body=str(d.get("practitioner_regulation_body", "KMPDC")),
             )
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -914,6 +920,11 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 claim,
                 icd_code=d["icd_code"],
                 intervention_code=d["intervention_code"],
+                practitioner_identification_number=str(
+                    d.get("practitioner_identification_number", "")
+                ),
+                practitioner_identification_type=str(d.get("practitioner_identification_type", "")),
+                practitioner_regulation_body=str(d.get("practitioner_regulation_body", "KMPDC")),
                 user=request.user,
             )
         except Exception as exc:
@@ -950,7 +961,16 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         except KeyError as e:
             return Response({"error": f"missing field: {e}"}, status=400)
         try:
-            result = self._ilm_service().add_line(claim, line, user=request.user)
+            result = self._ilm_service().add_line(
+                claim,
+                line,
+                practitioner_identification_number=str(
+                    d.get("practitioner_identification_number", "")
+                ),
+                practitioner_identification_type=str(d.get("practitioner_identification_type", "")),
+                practitioner_regulation_body=str(d.get("practitioner_regulation_body", "KMPDC")),
+                user=request.user,
+            )
         except Exception as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
@@ -1060,12 +1080,24 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="ilm/submit")
     def ilm_submit(self, request, pk=None):
         claim = self.get_object()
-        invoice_number = request.data.get("invoice_number")
+        d = request.data
+        invoice_number = d.get("invoice_number")
         if not invoice_number:
             return Response({"error": "invoice_number required"}, status=400)
         try:
             result = self._ilm_service().submit(
-                claim, invoice_number=str(invoice_number), user=request.user
+                claim,
+                invoice_number=str(invoice_number),
+                otp=str(d.get("otp", "")),
+                discharge_auth_guid=str(d.get("discharge_auth_guid", "")),
+                discharge_reason=str(d.get("discharge_reason", "")),
+                notes=str(d.get("notes", "")),
+                practitioner_identification_number=str(
+                    d.get("practitioner_identification_number", "")
+                ),
+                practitioner_identification_type=str(d.get("practitioner_identification_type", "")),
+                practitioner_regulation_body=str(d.get("practitioner_regulation_body", "KMPDC")),
+                user=request.user,
             )
         except Exception as exc:
             return self._ilm_handle_error(exc)
