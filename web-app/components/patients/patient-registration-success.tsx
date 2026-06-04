@@ -59,13 +59,21 @@ export function PatientRegistrationSuccess({
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [showRouteDialog, setShowRouteDialog] = useState(false);
   const [showShaConsent, setShowShaConsent] = useState(false);
+  const [pendingCheckin, setPendingCheckin] = useState(false);
   const [checkinEncounterId, setCheckinEncounterId] = useState<number | null>(null);
 
   // Success modal state
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState<CheckinSuccessData | null>(null);
 
-  const handleCheckInToQueue = async () => {
+  const handleCheckInToQueue = () => {
+    // Show SHA consent step first — patient is only checked into triage
+    // after consent is obtained or explicitly skipped.
+    setPendingCheckin(true);
+    setShowShaConsent(true);
+  };
+
+  const performCheckin = async () => {
     setIsCheckingIn(true);
     try {
       const result = await checkInPatient.mutateAsync({
@@ -76,7 +84,6 @@ export function PatientRegistrationSuccess({
 
       const encId = (result as { encounter?: number | null }).encounter ?? null;
       setCheckinEncounterId(encId);
-      setShowShaConsent(true);
 
       // Show success modal with navigation option
       setSuccessData({
@@ -98,6 +105,15 @@ export function PatientRegistrationSuccess({
       });
     } finally {
       setIsCheckingIn(false);
+      setPendingCheckin(false);
+    }
+  };
+
+  const handleConsentComplete = (result: { consented: boolean; consentId?: number }) => {
+    setShowShaConsent(false);
+    // Whether consent was obtained or skipped, proceed with the check-in
+    if (pendingCheckin) {
+      performCheckin();
     }
   };
 
@@ -209,7 +225,7 @@ export function PatientRegistrationSuccess({
                     className="w-full sm:w-auto xl:flex-1"
                     size="lg"
                     onClick={handleCheckInToQueue}
-                    disabled={isCheckingIn || showRouteDialog}
+                    disabled={isCheckingIn || showRouteDialog || pendingCheckin}
                     title="Adds the patient to the triage waiting queue so vitals/triage can begin."
                   >
                     <UserPlus className="h-5 w-5 sm:mr-2" />
@@ -300,12 +316,12 @@ export function PatientRegistrationSuccess({
         </CardContent>
       </Card>
 
-      {/* SHA Consent — shown after check-in or on demand */}
+      {/* SHA Consent — shown before check-in to ensure consent is obtained first */}
       {showShaConsent ? (
         <SHAConsentStep
           patientId={patient.id}
           encounterId={checkinEncounterId}
-          onComplete={() => setShowShaConsent(false)}
+          onComplete={handleConsentComplete}
         />
       ) : (
         <Card className="border-dashed">
