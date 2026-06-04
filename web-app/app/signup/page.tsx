@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/select';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { PasswordStrengthIndicator } from '@/components/shared/password-strength-indicator';
 import { APP_NAME, API_BASE_URL } from '@/lib/utils/constants';
 import { orgSignupApi } from '@/lib/api/onboarding';
 
@@ -194,8 +195,17 @@ export default function SignupPage() {
     if (!formData.admin_last_name.trim()) errors.admin_last_name = 'Last name is required';
     if (!formData.admin_email.trim()) errors.admin_email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.admin_email)) errors.admin_email = 'Invalid email';
-    if (!formData.admin_password) errors.admin_password = 'Password is required';
-    else if (formData.admin_password.length < 8) errors.admin_password = 'At least 8 characters';
+    if (!formData.admin_password) {
+      errors.admin_password = 'Password is required';
+    } else {
+      const pwd = formData.admin_password;
+      if (pwd.length < 8) errors.admin_password = 'At least 8 characters';
+      else if (!/[A-Z]/.test(pwd)) errors.admin_password = 'Must include an uppercase letter';
+      else if (!/[a-z]/.test(pwd)) errors.admin_password = 'Must include a lowercase letter';
+      else if (!/\d/.test(pwd)) errors.admin_password = 'Must include a number';
+      else if (!/[^A-Za-z0-9]/.test(pwd)) errors.admin_password = 'Must include a special character';
+      else if (/^\d+$/.test(pwd)) errors.admin_password = 'Password cannot be entirely numeric';
+    }
     if (formData.admin_password !== formData.confirm_password) errors.confirm_password = 'Passwords do not match';
     if (!agreedToTerms) errors.agree_to_terms = 'You must agree to the Terms of Service and Privacy Policy';
     setValidationErrors(errors);
@@ -583,7 +593,7 @@ export default function SignupPage() {
                         type={showPassword ? 'text' : 'password'}
                         value={formData.admin_password}
                         onChange={(e) => handleChange('admin_password', e.target.value)}
-                        placeholder="At least 8 characters"
+                        placeholder="Min 8 chars, upper + lower + number + special"
                         disabled={isSubmitting}
                         className={`h-10 pr-10 ${validationErrors.admin_password ? 'border-destructive' : ''}`}
                         autoComplete="new-password"
@@ -602,9 +612,10 @@ export default function SignupPage() {
                     {validationErrors.admin_password && (
                       <p className="text-xs text-destructive">{validationErrors.admin_password}</p>
                     )}
+                    {formData.admin_password && (
+                      <PasswordStrengthIndicator password={formData.admin_password} />
+                    )}
                   </div>
-
-                  {/* Confirm password */}
                   <div className="space-y-1.5">
                     <label htmlFor="confirm_password" className="text-sm font-medium">
                       Confirm Password <span className="text-destructive">*</span>

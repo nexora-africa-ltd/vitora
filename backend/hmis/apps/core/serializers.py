@@ -3,6 +3,7 @@ Serializers for core app.
 """
 
 from django.contrib.auth.models import Permission
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from .models import (
@@ -1798,6 +1799,16 @@ class InvitationAcceptSerializer(serializers.Serializer):
             raise serializers.ValidationError("This username is already taken.")
         return value.lower()
 
+    def validate_password(self, value):
+        """Enforce Django AUTH_PASSWORD_VALIDATORS."""
+        from django.contrib.auth.password_validation import validate_password
+
+        try:
+            validate_password(value)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(e.messages) from None
+        return value
+
     def validate(self, data):
         if data["password"] != data["confirm_password"]:
             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
@@ -1822,6 +1833,16 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     new_password = serializers.CharField(min_length=8, max_length=128, write_only=True)
     confirm_password = serializers.CharField(max_length=128, write_only=True)
 
+    def validate_new_password(self, value):
+        """Enforce Django AUTH_PASSWORD_VALIDATORS."""
+        from django.contrib.auth.password_validation import validate_password
+
+        try:
+            validate_password(value)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(e.messages) from None
+        return value
+
     def validate(self, data):
         if data["new_password"] != data["confirm_password"]:
             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
@@ -1839,6 +1860,16 @@ class ChangePasswordSerializer(serializers.Serializer):
     )
     new_password = serializers.CharField(min_length=8, max_length=128, write_only=True)
     confirm_password = serializers.CharField(max_length=128, write_only=True)
+
+    def validate_new_password(self, value):
+        """Enforce Django AUTH_PASSWORD_VALIDATORS."""
+        from django.contrib.auth.password_validation import validate_password
+
+        try:
+            validate_password(value)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(e.messages) from None
+        return value
 
     def validate(self, data):
         if data["new_password"] != data["confirm_password"]:
@@ -2038,6 +2069,16 @@ class OrgSignupSerializer(serializers.Serializer):
     admin_last_name = serializers.CharField(max_length=150)
     admin_password = serializers.CharField(min_length=8, max_length=128, write_only=True)
     confirm_password = serializers.CharField(max_length=128, write_only=True)
+
+    def validate_admin_password(self, value):
+        """Enforce Django AUTH_PASSWORD_VALIDATORS."""
+        from django.contrib.auth.password_validation import validate_password
+
+        try:
+            validate_password(value)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(e.messages) from None
+        return value
 
     # Initial facility (required — used for MFL verification)
     facility_name = serializers.CharField(max_length=200)
