@@ -122,7 +122,13 @@ class SHAClaimFilter(django_filters.FilterSet):
 
     status = CaseInsensitiveCharFilter(field_name="status")
     claim_type = CaseInsensitiveCharFilter(field_name="claim_type")
+    claim_flow = CaseInsensitiveCharFilter(field_name="claim_flow")
+    payment_mechanism = django_filters.CharFilter(method="filter_payment_mechanism")
 
     class Meta:
         model = SHAClaim
-        fields = ["status", "claim_type", "patient", "invoice", "encounter"]
+        fields = ["status", "claim_type", "claim_flow", "patient", "invoice", "encounter"]
+
+    def filter_payment_mechanism(self, queryset, name, value):  # noqa: ARG002
+        """Filter claims by intervention payment_mechanism (e.g., CAPITATION)."""
+        return queryset.filter(claim_interventions__payment_mechanism__iexact=value).distinct()

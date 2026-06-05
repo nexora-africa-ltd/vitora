@@ -22,6 +22,21 @@ import type { IlmCallResult } from '@/lib/schemas/sha.schema';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
 import { validateInterventionCombination, getBenefitCode, INTERVENTION_COMBINATION_RULES } from '@/lib/sha/combination-rules';
 
+/** Prefixes that are exclusively inpatient (access_point: IP) */
+const INPATIENT_PREFIXES = ['SHA-07', 'SHA-19', 'SHA-03', 'SHA-13', 'SHA-20', 'SHA-O7'];
+
+/**
+ * Derive DHA service_type from a list of intervention codes.
+ * If ANY code has an inpatient-only prefix → INPATIENT, else OUTPATIENT.
+ */
+function deriveServiceTypeFromCodes(codes: string[]): 'INPATIENT' | 'OUTPATIENT' {
+  for (const code of codes) {
+    const prefix = code.split('-').slice(0, 2).join('-');
+    if (INPATIENT_PREFIXES.includes(prefix)) return 'INPATIENT';
+  }
+  return 'OUTPATIENT';
+}
+
 type ActionKey =
   | 'startVisit'
   | 'addIntervention'
@@ -229,7 +244,9 @@ export function ClaimILMPanel({ claimId, flow, shaMemberId, existingIntervention
                       .split(',')
                       .map((s) => s.trim())
                       .filter(Boolean),
-                    service_type: 'OUTPATIENT',
+                    service_type: deriveServiceTypeFromCodes(
+                      interventionCodes.split(',').map((s) => s.trim()).filter(Boolean)
+                    ),
                     ...practitionerFields,
                   }),
                 )

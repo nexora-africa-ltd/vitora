@@ -875,6 +875,7 @@ export const SendOTPResponseSchema = z.object({
   otp_reference: z.string(),
   status: z.string(),
   message: z.string(),
+  sandbox_otp: z.string().optional(),
 });
 
 export type SendOTPResponseSchemaType = z.infer<typeof SendOTPResponseSchema>;

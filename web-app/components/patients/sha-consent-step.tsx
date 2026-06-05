@@ -89,21 +89,40 @@ interface InterventionOption {
   name: string;
   category?: string;
   price?: number;
+  access_point?: string;
 }
 
 /** Known SHA benefit packages — shown as defaults when terminology API is unreachable. */
 const SHA_BENEFIT_PACKAGES: InterventionOption[] = [
-  { code: 'SHA-12-001', name: 'Outpatient Consultation', category: 'Outpatient' },
-  { code: 'SHA-12-002', name: 'Outpatient Specialized Consultation', category: 'Outpatient' },
-  { code: 'SHA-07-001', name: 'Inpatient Admission (General Ward)', category: 'Inpatient' },
-  { code: 'SHA-01-001', name: 'Ambulance Services (Intra-metro)', category: 'Emergency' },
-  { code: 'SHA-08-001', name: 'Antenatal Care Visit', category: 'Maternity' },
-  { code: 'SHA-19-001', name: 'Minor Surgical Procedure', category: 'Surgical' },
-  { code: 'SHA-09-001', name: 'Medical Imaging (X-Ray)', category: 'Diagnostics' },
-  { code: 'SHA-05-001', name: 'Optical Consultation', category: 'Outpatient' },
-  { code: 'SHA-10-001', name: 'Mental Health Consultation', category: 'Outpatient' },
-  { code: 'SHA-16-001', name: 'Renal Dialysis Session', category: 'Specialized' },
+  { code: 'SHA-12-001', name: 'Outpatient Consultation', category: 'Outpatient', access_point: 'OP' },
+  { code: 'SHA-12-002', name: 'Outpatient Specialized Consultation', category: 'Outpatient', access_point: 'OP' },
+  { code: 'SHA-07-001', name: 'Inpatient Admission (General Ward)', category: 'Inpatient', access_point: 'IP' },
+  { code: 'SHA-01-001', name: 'Ambulance Services (Intra-metro)', category: 'Emergency', access_point: 'OP and IP' },
+  { code: 'SHA-08-001', name: 'Antenatal Care Visit', category: 'Maternity', access_point: 'IP' },
+  { code: 'SHA-19-001', name: 'Minor Surgical Procedure', category: 'Surgical', access_point: 'IP' },
+  { code: 'SHA-09-001', name: 'Medical Imaging (X-Ray)', category: 'Diagnostics', access_point: 'OP and IP' },
+  { code: 'SHA-05-001', name: 'Optical Consultation', category: 'Outpatient', access_point: 'OP' },
+  { code: 'SHA-10-001', name: 'Mental Health Consultation', category: 'Outpatient', access_point: 'IP' },
+  { code: 'SHA-16-001', name: 'Renal Dialysis Session', category: 'Specialized', access_point: 'OP and IP' },
 ];
+
+/**
+ * Derive the DHA service_type from the selected intervention's access_point.
+ * - "IP" → INPATIENT
+ * - "OP" → OUTPATIENT
+ * - "OP and IP" or missing → use code prefix heuristic
+ */
+function deriveServiceType(intervention: InterventionOption | null): 'INPATIENT' | 'OUTPATIENT' {
+  if (!intervention) return 'OUTPATIENT';
+  const ap = intervention.access_point;
+  if (ap === 'IP') return 'INPATIENT';
+  if (ap === 'OP') return 'OUTPATIENT';
+  // Fallback: infer from code prefix for "OP and IP" or unknown
+  const prefix = intervention.code.split('-').slice(0, 2).join('-');
+  const inpatientPrefixes = ['SHA-07', 'SHA-19', 'SHA-03', 'SHA-13', 'SHA-20'];
+  if (inpatientPrefixes.includes(prefix)) return 'INPATIENT';
+  return 'OUTPATIENT';
+}
 
 /**
  * SHA facility level restrictions:
@@ -386,6 +405,10 @@ export function SHAConsentStep({
       {
         onSuccess: (response) => {
           setConsentId(response.consent_id);
+          // In sandbox/UAT, DHA returns the OTP in the response — auto-fill for convenience
+          if (response.sandbox_otp) {
+            setOtpCode(response.sandbox_otp);
+          }
           setStep('otp_sent');
           // Start 60s resend countdown
           setResendCountdown(60);
@@ -416,6 +439,7 @@ export function SHAConsentStep({
       {
         consent_id: consentId,
         otp_code: otpCode.trim(),
+        service_type: deriveServiceType(selectedIntervention),
         ...(selectedIntervention ? { intervention_codes: [selectedIntervention.code] } : {}),
         ...(encounterId ? { encounter_id: encounterId } : {}),
       },
@@ -452,6 +476,7 @@ export function SHAConsentStep({
       {
         consent_id: result.consentId,
         auth_guid: result.authGuid,
+        service_type: deriveServiceType(selectedIntervention),
         ...(selectedIntervention ? { intervention_codes: [selectedIntervention.code] } : {}),
         ...(encounterId ? { encounter_id: encounterId } : {}),
       },

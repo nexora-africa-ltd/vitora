@@ -56,6 +56,7 @@ jobs:
           targetPort: 8000
           ingress: external
           environmentVariables: >-
+            DJANGO_ENV=staging
             DJANGO_SETTINGS_MODULE=hmis.settings.staging
             DATABASE_URL=secretref:database-url
             ENCRYPTION_KEY=secretref:encryption-key
@@ -86,7 +87,7 @@ jobs:
             SHA_AGENT=DHABP05113
             SHA_FHIR_BASE_URL=https://qa-mis.apeiro-digital.com
             SHA_API_TIMEOUT=30
-            SHA_FACILITY_FR_CODE=${{ vars.SHA_FACILITY_FR_CODE || 'DEFAULT_FR_CODE' }}
+            SHA_FACILITY_FR_CODE=${{ vars.SHA_FACILITY_FR_CODE }}
             SHA_TIBERBU_BASE_URL=${{ vars.SHA_TIBERBU_BASE_URL }}
             ILM_BASE_URL=${{ vars.ILM_BASE_URL }}
             ILM_REQUEST_TIMEOUT=30

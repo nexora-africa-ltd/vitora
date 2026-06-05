@@ -94,6 +94,7 @@ export function OtpWhitelistRequestSheet({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [alreadyPending, setAlreadyPending] = useState(false);
   const [whitelistStatus, setWhitelistStatus] = useState<string | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
 
@@ -124,6 +125,14 @@ export function OtpWhitelistRequestSheet({
       setFrCode(facilityFrCode);
     }
   }, [open, shaNumber, facilityFrCode]);
+
+  // Auto-check whitelist status when sheet opens with valid CR ID
+  useEffect(() => {
+    if (open && crId.trim()) {
+      checkWhitelistStatus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, crId]);
 
   const checkWhitelistStatus = useCallback(async () => {
     if (!crId.trim()) return;
@@ -184,7 +193,14 @@ export function OtpWhitelistRequestSheet({
       await shaApi.ilmRequestOtpWhitelist(formData);
       setSuccess(true);
     } catch (err) {
-      setError(getApiErrorMessage(err));
+      const msg = getApiErrorMessage(err);
+      // DHA returns this when a whitelist request is already pending
+      if (msg.toLowerCase().includes('already existing pending request') || msg.toLowerCase().includes('kindly wait for an approval')) {
+        setAlreadyPending(true);
+        setWhitelistStatus('PENDING');
+      } else {
+        setError(msg);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -195,6 +211,7 @@ export function OtpWhitelistRequestSheet({
     // Reset state after close animation
     setTimeout(() => {
       setSuccess(false);
+      setAlreadyPending(false);
       setError(null);
       setReason('');
       setBiometricAttempts('3');
@@ -264,8 +281,68 @@ export function OtpWhitelistRequestSheet({
               </Button>
             </div>
           </div>
+        ) : alreadyPending ? (
+          <div className="mt-4 space-y-4 flex-1 flex flex-col">
+            <div className="rounded-md bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 p-3">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-amber-600" />
+                <div>
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                    Request already pending
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                    A whitelist request for this beneficiary is already pending review at DHA.
+                    You cannot submit another until the existing one is approved or rejected.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Status check */}
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Review Status</span>
+                <WhitelistStatusBadge status={whitelistStatus} />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Check back periodically — DHA reviews typically take a few minutes to hours.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={checkWhitelistStatus}
+                disabled={isCheckingStatus}
+                className="w-full text-xs"
+              >
+                {isCheckingStatus ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                Check Status
+              </Button>
+            </div>
+
+            <div className="mt-auto pt-2">
+              <Button onClick={handleClose} className="w-full" size="sm">
+                Close
+              </Button>
+            </div>
+          </div>
         ) : (
           <div className="mt-4 flex flex-col flex-1 gap-4">
+            {/* Warning: existing pending request detected */}
+            {whitelistStatus === 'PENDING' && (
+              <div className="rounded-md bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 p-2.5">
+                <div className="flex items-start gap-2">
+                  <Clock className="h-3.5 w-3.5 text-amber-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    A whitelist request is already pending for this beneficiary. Submitting again will be rejected by DHA.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Beneficiary name */}
             {beneficiaryName && (
               <p className="text-sm font-medium text-muted-foreground">{beneficiaryName}</p>
