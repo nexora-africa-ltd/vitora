@@ -12,6 +12,7 @@ import contextlib
 import logging
 from typing import Any
 
+from django.conf import settings
 from rest_framework import status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -141,11 +142,26 @@ class IlmVisitOtpView(APIView):
             patient_id=str(patient_id),
             beneficiary_contact_id=str(request.data.get("beneficiary_contact_id") or ""),
         )
+        facility = _facility(request)
+        fr_code = getattr(facility, "dha_fr_code", "") or getattr(
+            settings, "SHA_FACILITY_FR_CODE", ""
+        )
+        if not fr_code:
+            return Response(
+                {
+                    "error": (
+                        "Facility does not have a DHA Facility Registry (FR) code configured. "
+                        "Set it via Admin > Facilities or the SHA_FACILITY_FR_CODE environment variable."
+                    ),
+                    "code": "missing_fr_code",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         try:
             result = IlmLifecycleService().send_visit_otp(
                 params=params,
                 patient=_resolve_patient(request),
-                facility=_facility(request),
+                facility=facility,
                 user=request.user,
             )
         except DHAError as exc:

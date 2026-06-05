@@ -221,6 +221,7 @@ def _record_to_intervention_kwargs(record: dict, facility_level: int | None = No
         "is_active": extras.get("active", "True") == "True" and not record.get("retired", False),
         "effective_date": None,
         "raw_data": extras,
+        "access_point": extras.get("access_point", ""),
         # Additional fields for Procedure-type sub-interventions
         "max_amount_per_test": extras.get("Total Maximum Amount per test"),
         "quantity_per_year": extras.get(

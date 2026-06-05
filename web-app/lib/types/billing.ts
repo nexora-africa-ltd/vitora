@@ -438,3 +438,20 @@ export interface SupplierBillListParams {
   ordering?: string;
   search?: string;
 }
+
+// SHA Tariff (from /api/billing/sha-tariffs/)
+export interface SHATariffItem {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+  category: string;
+  sha_amount: string;
+  facility_level: string;
+  effective_date: string;
+  expiry_date: string | null;
+  is_active: boolean;
+  is_valid: boolean;
+  max_quantity_per_claim: number;
+  requires_preauthorization: boolean;
+}

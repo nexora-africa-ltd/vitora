@@ -7,6 +7,7 @@ Provides ViewSets for SHA Members, Tariffs, Claims, and related operations.
 import csv
 import hashlib
 import logging
+import os
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
@@ -1177,6 +1178,140 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         )
 
         return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="capitation-summary")
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("from_date", OpenApiTypes.DATE, description="Start date (inclusive)"),
+            OpenApiParameter("to_date", OpenApiTypes.DATE, description="End date (inclusive)"),
+        ],
+        responses={
+            200: inline_serializer(
+                name="CapitationSummaryResponse",
+                fields={
+                    "period": serializers.DictField(),
+                    "total_claims": serializers.IntegerField(),
+                    "total_claimed_amount": serializers.DecimalField(
+                        max_digits=12, decimal_places=2
+                    ),
+                    "total_approved_amount": serializers.DecimalField(
+                        max_digits=12, decimal_places=2
+                    ),
+                    "total_paid_amount": serializers.DecimalField(max_digits=12, decimal_places=2),
+                    "claims_by_status": serializers.DictField(),
+                    "top_interventions": serializers.ListField(child=serializers.DictField()),
+                    "monthly_breakdown": serializers.ListField(child=serializers.DictField()),
+                },
+            )
+        },
+    )
+    def capitation_summary(self, request):
+        """
+        Capitation claims summary report.
+
+        GET /api/billing/claims/capitation-summary/?from_date=2026-01-01&to_date=2026-06-30
+
+        Returns aggregated statistics for all claims that have at least one
+        intervention with payment_mechanism=CAPITATION. Includes totals,
+        status breakdown, top interventions, and monthly breakdown.
+        """
+        from hmis.apps.billing.models import SHAClaimIntervention
+
+        queryset = self.get_queryset()
+
+        # Date filtering
+        from_date = request.query_params.get("from_date")
+        to_date = request.query_params.get("to_date")
+
+        if from_date:
+            queryset = queryset.filter(service_date__gte=from_date)
+        if to_date:
+            queryset = queryset.filter(service_date__lte=to_date)
+
+        # Filter to capitation claims only
+        queryset = queryset.filter(
+            claim_interventions__payment_mechanism=SHAClaimIntervention.PaymentMechanism.CAPITATION
+        ).distinct()
+
+        # Totals
+        total_claims = queryset.count()
+        aggregates = queryset.aggregate(
+            total_claimed=Sum("claimed_amount"),
+            total_approved=Sum("approved_amount"),
+            total_paid=Sum("paid_amount"),
+        )
+
+        # By status
+        status_counts = queryset.values("status").annotate(count=Count("id"))
+        claims_by_status = {item["status"]: item["count"] for item in status_counts}
+
+        # Top interventions (by frequency)
+        top_interventions = (
+            SHAClaimIntervention.objects.filter(
+                claim__in=queryset,
+                payment_mechanism=SHAClaimIntervention.PaymentMechanism.CAPITATION,
+            )
+            .values("intervention_code", "intervention_name")
+            .annotate(
+                count=Count("id"),
+                total_tariff=Sum("tariff_amount"),
+            )
+            .order_by("-count")[:10]
+        )
+
+        # Monthly breakdown
+        monthly_breakdown = (
+            queryset.extra(select={"month": "TO_CHAR(service_date, 'YYYY-MM')"})
+            .values("month")
+            .annotate(
+                claims=Count("id"),
+                claimed=Sum("claimed_amount"),
+                approved=Sum("approved_amount"),
+                paid=Sum("paid_amount"),
+            )
+            .order_by("month")
+        )
+
+        # Fallback for SQLite (dev) which doesn't have TO_CHAR
+        try:
+            monthly_list = list(monthly_breakdown)
+        except Exception:
+            from django.db.models.functions import TruncMonth
+
+            monthly_breakdown = (
+                queryset.annotate(month=TruncMonth("service_date"))
+                .values("month")
+                .annotate(
+                    claims=Count("id"),
+                    claimed=Sum("claimed_amount"),
+                    approved=Sum("approved_amount"),
+                    paid=Sum("paid_amount"),
+                )
+                .order_by("month")
+            )
+            monthly_list = [
+                {
+                    "month": item["month"].strftime("%Y-%m") if item["month"] else None,
+                    "claims": item["claims"],
+                    "claimed": item["claimed"],
+                    "approved": item["approved"],
+                    "paid": item["paid"],
+                }
+                for item in monthly_breakdown
+            ]
+
+        return Response(
+            {
+                "period": {"from_date": from_date, "to_date": to_date},
+                "total_claims": total_claims,
+                "total_claimed_amount": aggregates["total_claimed"] or Decimal("0.00"),
+                "total_approved_amount": aggregates["total_approved"] or Decimal("0.00"),
+                "total_paid_amount": aggregates["total_paid"] or Decimal("0.00"),
+                "claims_by_status": claims_by_status,
+                "top_interventions": list(top_interventions),
+                "monthly_breakdown": monthly_list,
+            }
+        )
 
     @action(detail=False, methods=["get"], url_path="export")
     def export(self, request):
@@ -3073,6 +3208,24 @@ class ConsentSendOTPView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Validate facility has a DHA FR code configured
+        from django.conf import settings
+
+        facility_fr_code = getattr(facility, "dha_fr_code", "") or getattr(
+            settings, "SHA_FACILITY_FR_CODE", ""
+        )
+        if not facility_fr_code:
+            return Response(
+                {
+                    "error": (
+                        "Facility does not have a DHA Facility Registry (FR) code configured. "
+                        "Set it via Admin > Facilities or the SHA_FACILITY_FR_CODE environment variable."
+                    ),
+                    "code": "missing_fr_code",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Use the ILM lifecycle service to send OTP via /api/v1/claims/otp
         beneficiary_contact_id = serializer.validated_data.get("beneficiary_contact_id") or ""
         params = VisitOtpParams(
@@ -3095,6 +3248,17 @@ class ConsentSendOTPView(APIView):
             payload = result.payload if isinstance(result.payload, dict) else {}
             otp_reference = payload.get("otp_reference") or payload.get("otpReference") or ""
 
+            # In sandbox/UAT, DHA returns the OTP in the response message
+            # e.g. {'message': 'Your OTP is 075790'}
+            sandbox_otp = ""
+            if os.getenv("DJANGO_ENV", "development") != "production":
+                import re
+
+                msg = payload.get("message", "")
+                match = re.search(r"\b(\d{4,6})\b", msg)
+                if match:
+                    sandbox_otp = match.group(1)
+
             # Create a local ConsentToken for tracking
             from hmis.apps.billing.models import ConsentToken
 
@@ -3105,22 +3269,23 @@ class ConsentSendOTPView(APIView):
                 organization=facility.organization,
                 consent_method=ConsentToken.ConsentMethod.OTP,
                 otp_reference=otp_reference,
-                identification_type="National ID",
-                identification_number=sha_member.national_id or "",
+                identification_type="CR Number",
+                identification_number=patient_cr_id,
                 intervention_codes=intervention_codes,
                 status=ConsentToken.ConsentStatus.PENDING,
                 created_by=request.user,
             )
 
-            return Response(
-                {
-                    "consent_id": consent.id,
-                    "otp_reference": otp_reference,
-                    "status": "PENDING",
-                    "message": "OTP sent successfully",
-                },
-                status=status.HTTP_201_CREATED,
-            )
+            response_data = {
+                "consent_id": consent.id,
+                "otp_reference": otp_reference,
+                "status": "PENDING",
+                "message": "OTP sent successfully",
+            }
+            if sandbox_otp:
+                response_data["sandbox_otp"] = sandbox_otp
+
+            return Response(response_data, status=status.HTTP_201_CREATED)
         except Exception as e:
             logger.warning("Failed to send OTP: %s", str(e))
             return Response(

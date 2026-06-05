@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/select';
 import { useClinic, useUpdateClinic } from '@/lib/hooks/use-clinics';
 import { toast } from '@/lib/hooks/use-toast';
+import { SHATariffCombobox } from '@/components/shared/sha-tariff-combobox';
 import type { ClinicType, ClinicStatus } from '@/lib/types/clinic';
 
 const CLINIC_TYPES: { value: ClinicType; label: string }[] = [
@@ -507,7 +508,10 @@ export default function EditClinicPage() {
                   <FormItem>
                     <FormLabel>SHA Service Code</FormLabel>
                     <FormControl>
-                      <Input placeholder="SHA tariff code" {...field} />
+                      <SHATariffCombobox
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      />
                     </FormControl>
                     <FormDescription>For SHA claims integration</FormDescription>
                     <FormMessage />

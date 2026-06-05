@@ -113,6 +113,8 @@ import type {
   SupplierPaymentCreateData,
   PaginatedSupplierBills,
   SupplierBillAgingSummary,
+  // SHA Tariffs
+  SHATariffItem,
 } from '@/lib/types/billing';
 
 // ============================================================================
@@ -798,6 +800,20 @@ export const billingApi = {
       // After payment, fetch the updated bill
       const billResponse = await apiClient.get(`/api/billing/supplier-bills/${data.bill}/`);
       return parseResponse(SupplierBillSchema, billResponse.data, { context: 'billingApi.supplierBills.recordPayment' });
+    },
+  },
+
+  // SHA Tariffs
+  shaTariffs: {
+    search: async (params?: { search?: string; category?: string; is_active?: boolean; page_size?: number }): Promise<{ results: SHATariffItem[]; count: number }> => {
+      const searchParams = new URLSearchParams();
+      if (params?.search) searchParams.set('search', params.search);
+      if (params?.category) searchParams.set('category', params.category);
+      if (params?.is_active !== undefined) searchParams.set('is_active', String(params.is_active));
+      searchParams.set('page_size', String(params?.page_size ?? 30));
+      const qs = searchParams.toString();
+      const response = await apiClient.get(`/api/billing/sha-tariffs/?${qs}`);
+      return response.data;
     },
   },
 };

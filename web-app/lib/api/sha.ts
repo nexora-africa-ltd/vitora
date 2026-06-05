@@ -547,7 +547,7 @@ async function searchInterventionCodes(
   search: string,
   limit: number = 20,
   facilityLevel?: number
-): Promise<{ code: string; name: string; category?: string; price?: number }[]> {
+): Promise<{ code: string; name: string; category?: string; price?: number; access_point?: string }[]> {
   if (search.length < 2) return [];
   const params = new URLSearchParams({ search, limit: String(limit) });
   if (facilityLevel) params.set('facility_level', String(facilityLevel));
@@ -560,6 +560,7 @@ async function searchInterventionCodes(
     name: String(r.name || ''),
     category: r.category ? String(r.category) : undefined,
     price: typeof r.price === 'number' ? r.price : undefined,
+    access_point: r.access_point ? String(r.access_point) : undefined,
   }));
 }
 
@@ -852,6 +853,28 @@ export interface CapitationValidationResult {
   details?: Record<string, unknown>;
 }
 
+export interface CapitationSummary {
+  period: { from_date: string | null; to_date: string | null };
+  total_claims: number;
+  total_claimed_amount: string;
+  total_approved_amount: string;
+  total_paid_amount: string;
+  claims_by_status: Record<string, number>;
+  top_interventions: Array<{
+    intervention_code: string;
+    intervention_name: string;
+    count: number;
+    total_tariff: string | null;
+  }>;
+  monthly_breakdown: Array<{
+    month: string;
+    claims: number;
+    claimed: string;
+    approved: string;
+    paid: string;
+  }>;
+}
+
 /**
  * Validate whether the current facility is the patient's selected outpatient
  * provider before submitting a PHC capitation claim.
@@ -877,6 +900,23 @@ async function validateCapitationDirect(
   const response = await apiClient.post('/api/billing/capitation/validate-direct/', {
     eligibility_response: eligibilityResponse,
   });
+  return response.data;
+}
+
+/**
+ * Get capitation claims summary report for a date range.
+ */
+async function getCapitationSummary(params?: {
+  from_date?: string;
+  to_date?: string;
+}): Promise<CapitationSummary> {
+  const searchParams = new URLSearchParams();
+  if (params?.from_date) searchParams.set('from_date', params.from_date);
+  if (params?.to_date) searchParams.set('to_date', params.to_date);
+  const qs = searchParams.toString();
+  const response = await apiClient.get(
+    `/api/billing/claims/capitation-summary/${qs ? `?${qs}` : ''}`
+  );
   return response.data;
 }
 
@@ -1692,4 +1732,5 @@ export const shaApi = {
   // Capitation validation
   validateCapitationProvider,
   validateCapitationDirect,
+  getCapitationSummary,
 };

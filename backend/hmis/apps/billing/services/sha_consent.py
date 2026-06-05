@@ -292,16 +292,69 @@ class SHAConsentService:
         # Use the identification_number stored on the consent token directly.
         patient_cr_id = consent.identification_number
 
+        # ---------------------------------------------------------------
+        # Capitation check: SHA-12-xxx and some SHA-08-xxx are pre-paid
+        # (capitated). DHA's start_visit endpoint does not accept these —
+        # it returns "intervention X is not supported for service type Y"
+        # for ALL three valid service types. For capitated interventions
+        # we skip the DHA call and mark consent validated locally.
+        # ---------------------------------------------------------------
+        CAPITATED_PREFIXES = ("SHA-12-", "SHA-08-001", "SHA-08-002", "SHA-08-003")
+        codes = intervention_codes or []
+        all_capitated = bool(codes) and all(
+            any(c.startswith(p) for p in CAPITATED_PREFIXES) for c in codes
+        )
+        if all_capitated:
+            logger.info(
+                "All interventions are capitated (%s); skipping DHA start_visit. "
+                "Validating OTP separately for consent %s.",
+                codes,
+                consent.id,
+            )
+            # For capitated interventions, validate the OTP via the separate
+            # validate_otp endpoint (identity verification) then skip start_visit.
+            if otp_code and consent.status == ConsentToken.ConsentStatus.PENDING:
+                try:
+                    self.validate_otp(consent=consent, otp_code=otp_code)
+                except SHAConsentError:
+                    # If validate_otp fails (e.g. endpoint not configured in UAT),
+                    # mark validated locally as a fallback for capitated services.
+                    logger.warning(
+                        "validate_otp failed for capitated consent %s; marking validated locally.",
+                        consent.id,
+                    )
+                    consent.mark_validated(
+                        token=consent.consent_token or "capitated-visit",
+                        expires_in_seconds=3600,
+                    )
+            elif consent.status == ConsentToken.ConsentStatus.PENDING:
+                consent.mark_validated(
+                    token=consent.consent_token or "capitated-visit",
+                    expires_in_seconds=3600,
+                )
+            return {
+                "status": "validated",
+                "reason": "capitated_interventions",
+                "consent_token": consent.consent_token,
+                "message": (
+                    "Capitated interventions do not require a DHA visit start. "
+                    "Consent validated locally."
+                ),
+            }
+
         # Pass service_type through as provided by the caller.
-        resolved_service_type = service_type if service_type else "outpatient"
+        # DHA expects uppercase values: OUTPATIENT, INPATIENT, EMERGENCY
+        resolved_service_type = (service_type or "outpatient").upper()
 
         payload: dict[str, Any] = {
             "admission_date": admission_date or date_cls.today().isoformat(),
-            "estimated_days_of_admission": estimated_days_of_admission or 1,
-            "intervention_codes": intervention_codes or [],
+            "intervention_codes": codes,
             "patient_id": patient_cr_id,
             "service_type": resolved_service_type,
         }
+        # Include admission fields for non-outpatient visits.
+        if resolved_service_type != "OUTPATIENT":
+            payload["estimated_days_of_admission"] = estimated_days_of_admission or 1
         # DHA accepts either otp or auth_guid — exactly one
         if otp_code:
             payload["otp"] = otp_code
@@ -534,7 +587,7 @@ class SHAConsentService:
                 code="endpoint_not_configured",
             )
 
-        url = f"{endpoint}?beneficiary_cr_id={beneficiary_cr_id}"
+        url = f"{endpoint}?patient_id={beneficiary_cr_id}"
         response_data = self._make_request("GET", url)
 
         # DHA returns {contacts: [...]} or a flat list

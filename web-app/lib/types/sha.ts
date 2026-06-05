@@ -545,6 +545,7 @@ export interface SendOTPResponse {
   otp_reference: string;
   status: string;
   message: string;
+  sandbox_otp?: string;
 }
 
 export interface ValidateOTPRequest {

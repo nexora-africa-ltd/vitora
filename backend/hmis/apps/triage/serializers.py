@@ -104,10 +104,15 @@ class WaitingQueueCreateSerializer(serializers.ModelSerializer):
         except Patient.DoesNotExist:
             raise serializers.ValidationError("Patient not found.")
 
-        # Check if patient is already in waiting queue
-        existing = WaitingQueue.objects.filter(
+        # Check if patient is already in waiting queue at this facility
+        request = self.context.get("request")
+        facility = getattr(request, "facility", None) if request else None
+        qs = WaitingQueue.objects.filter(
             patient=patient, status__in=["WAITING_TRIAGE", "IN_TRIAGE"]
-        ).first()
+        )
+        if facility:
+            qs = qs.filter(encounter__facility=facility)
+        existing = qs.first()
         if existing:
             raise serializers.ValidationError(
                 f"Patient is already in the waiting queue (checked in at {existing.check_in_time.strftime('%H:%M')})."
@@ -922,18 +927,31 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
                 defaults={"status": "OPEN"},
             )
 
-            # Create clinic visit
-            ClinicVisit.objects.create(
-                session=session,
-                patient=encounter.patient,
-                triage_assessment=assessment,
-                visit_type="NEW",
-                source="TRIAGE",
-                chief_complaint=assessment.chief_complaint,
-                priority=priority,
-                notes="",
-                registered_by=user,
-            )
+            # Create clinic visit (or update existing one for same patient+session)
+            existing_visit = ClinicVisit.objects.filter(
+                session=session, patient=encounter.patient
+            ).first()
+            if existing_visit:
+                # Update existing visit with new triage info
+                existing_visit.triage_assessment = assessment
+                existing_visit.priority = priority
+                if assessment.chief_complaint:
+                    existing_visit.chief_complaint = assessment.chief_complaint
+                existing_visit.save(
+                    update_fields=["triage_assessment", "priority", "chief_complaint", "updated_at"]
+                )
+            else:
+                ClinicVisit.objects.create(
+                    session=session,
+                    patient=encounter.patient,
+                    triage_assessment=assessment,
+                    visit_type="NEW",
+                    source="TRIAGE",
+                    chief_complaint=assessment.chief_complaint,
+                    priority=priority,
+                    notes="",
+                    registered_by=user,
+                )
         else:
             # Add to triage queue (for ER areas)
             from .models import TriageQueue
