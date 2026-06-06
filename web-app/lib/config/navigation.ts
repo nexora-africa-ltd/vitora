@@ -99,6 +99,11 @@ import type { ModuleKey } from '@/lib/permissions/constants';
 import type { ActionKey } from '@/lib/permissions/actions';
 import type { FacilityModules } from '@/lib/auth/context';
 
+export interface NavItemVisibilityContext {
+  facilityLevel?: string;
+  facilityOwnership?: string;
+}
+
 export interface NavItem {
   label: string;
   href: string;
@@ -111,6 +116,8 @@ export interface NavItem {
   facilityModule?: keyof FacilityModules;
   /** Subscription plan feature gate (e.g. 'ai_assistant') */
   planFeature?: string;
+  /** Custom visibility predicate based on facility attributes */
+  visibleWhen?: (ctx: NavItemVisibilityContext) => boolean;
   badge?: number;
 }
 
@@ -444,7 +451,13 @@ const _allNavItems: NavItemType[] = [
       { label: 'Credit Notes', href: '/transactions/credit-notes', icon: ScrollText, actionKey: 'billing.view_credit_notes' },
       { label: 'SHA Claims', href: '/transactions/sha-claims', icon: SHAIcon, actionKey: 'billing.submit_sha_claim' },
       { label: 'Pre-authorizations', href: '/transactions/preauths', icon: ClipboardList, actionKey: 'billing.submit_sha_claim' },
-      { label: 'Capitation', href: '/transactions/capitation', icon: Repeat2, actionKey: 'billing.view_reports' },
+      { label: 'Capitation', href: '/transactions/capitation', icon: Repeat2, actionKey: 'billing.view_reports', visibleWhen: ({ facilityLevel, facilityOwnership }) => {
+        if (!facilityLevel) return true; // Show if level unknown (avoid hiding prematurely)
+        const level = parseInt(facilityLevel.replace(/[^0-9]/g, ''), 10);
+        if (level === 2 || level === 3) return true;
+        if (level === 4 && facilityOwnership === 'GOK') return true;
+        return false;
+      } },
       { label: 'OTP Whitelist', href: '/transactions/sha-claims/whitelist', icon: ShieldAlert, actionKey: 'billing.submit_sha_claim' },
       { label: 'Insurance', href: '/insurance', icon: Shield, actionKey: 'billing.view_insurance', facilityModule: 'private_insurance' },
       { label: 'Supplier Bills', href: '/transactions/supplier-bills', icon: FileSpreadsheet, actionKey: 'billing.view_supplier_bills' },
