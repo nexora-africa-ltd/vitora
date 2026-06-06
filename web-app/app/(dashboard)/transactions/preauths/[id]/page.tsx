@@ -1,10 +1,10 @@
 /**
  * Pre-authorization Detail Page
- * Shows full preauth record with doctor consent tracking.
+ * Shows full preauth record with doctor consent tracking and cancel action.
  */
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
   FileCheck,
@@ -12,15 +12,33 @@ import {
   CheckCircle2,
   XCircle,
   Ban,
+  Loader2,
+  AlertTriangle,
+  User,
+  Link as LinkIcon,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/page-header';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { shaApi } from '@/lib/api/sha';
+import { useToast } from '@/lib/hooks/use-toast';
 import { DoctorConsentCard } from '@/components/billing/sha/DoctorConsentCard';
 import type { SHAPreauth } from '@/lib/schemas/sha.schema';
+import Link from 'next/link';
 
 // ============================================================================
 // Component
@@ -28,24 +46,66 @@ import type { SHAPreauth } from '@/lib/schemas/sha.schema';
 
 export default function PreauthDetailPage() {
   const params = useParams();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const preauthId = Number(params.id);
+  const [isCancelling, setIsCancelling] = useState(false);
 
-  const { data: preauths } = useQuery({
-    queryKey: ['preauths-list'],
-    queryFn: () => shaApi.listLocalPreauths({}),
+  const { data: preauth, isLoading, error } = useQuery({
+    queryKey: ['preauth-detail', preauthId],
+    queryFn: () => shaApi.getPreauthDetail(preauthId),
+    enabled: !isNaN(preauthId) && preauthId > 0,
   });
 
-  const preauth: SHAPreauth | undefined = preauths?.results.find(
-    (p) => p.id === preauthId
-  );
+  const canCancel = preauth && ['draft', 'submitted'].includes(preauth.status.toLowerCase());
 
-  if (!preauth) {
+  const handleCancel = async () => {
+    if (!preauth) return;
+    setIsCancelling(true);
+    try {
+      await shaApi.ilmPreauthCancel({
+        consent_token: preauth.consent_token,
+        intervention_code: preauth.intervention_code,
+      });
+      toast({
+        title: 'Pre-authorization Cancelled',
+        description: `Preauth for ${preauth.intervention_code} has been cancelled.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['preauth-detail', preauthId] });
+      queryClient.invalidateQueries({ queryKey: ['preauths-list'] });
+    } catch (err) {
+      toast({
+        title: 'Cancellation Failed',
+        description: err instanceof Error ? err.message : 'Failed to cancel pre-authorization',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  if (isLoading) {
     return (
       <div className="space-y-4">
         <PageHeader title="Pre-authorization" />
         <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
+          <CardContent className="py-8 flex items-center justify-center gap-2 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
             Loading pre-authorization details...
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error || !preauth) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="Pre-authorization" />
+        <Card>
+          <CardContent className="py-8 flex items-center justify-center gap-2 text-destructive">
+            <AlertTriangle className="h-4 w-4" />
+            {error instanceof Error ? error.message : 'Pre-authorization not found.'}
           </CardContent>
         </Card>
       </div>
@@ -57,6 +117,38 @@ export default function PreauthDetailPage() {
       <PageHeader
         title={`Preauth: ${preauth.intervention_code}`}
         helpContent="View pre-authorization request details and track approval status."
+        actions={
+          canCancel ? (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" disabled={isCancelling}>
+                  {isCancelling ? (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Ban className="mr-1 h-4 w-4" />
+                  )}
+                  Cancel Preauth
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancel Pre-authorization?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will cancel the pre-authorization request for intervention{' '}
+                    <span className="font-mono font-medium">{preauth.intervention_code}</span>.
+                    This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep Active</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleCancel} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Yes, Cancel
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : undefined
+        }
       />
 
       {/* Summary Bar */}
@@ -73,6 +165,28 @@ export default function PreauthDetailPage() {
           </p>
         </div>
         {getStatusBadge(preauth.status)}
+      </div>
+
+      {/* Navigation Links */}
+      <div className="flex flex-wrap gap-3 text-sm">
+        {preauth.patient && (
+          <Link
+            href={`/patients/${preauth.patient}`}
+            className="flex items-center gap-1.5 text-primary hover:underline"
+          >
+            <User className="h-3.5 w-3.5" />
+            View Patient
+          </Link>
+        )}
+        {Boolean((preauth as Record<string, unknown>).claim) && (
+          <Link
+            href={`/transactions/claims/${String((preauth as Record<string, unknown>).claim)}`}
+            className="flex items-center gap-1.5 text-primary hover:underline"
+          >
+            <LinkIcon className="h-3.5 w-3.5" />
+            View Claim
+          </Link>
+        )}
       </div>
 
       {/* Main Details */}
@@ -159,7 +273,7 @@ export default function PreauthDetailPage() {
 // ============================================================================
 
 function getStatusBadge(status: string) {
-  switch (status) {
+  switch (status.toLowerCase()) {
     case 'approved':
       return (
         <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 w-fit">

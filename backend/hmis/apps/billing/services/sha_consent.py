@@ -57,9 +57,14 @@ class SHAConsentService:
     # Tiberbu-hosted endpoints that must use SHA_TIBERBU_BASE_URL
     _TIBERBU_ENDPOINTS = {"send_otp", "validate_otp"}
 
-    def __init__(self):
-        """Initialize SHAConsentService with settings from Django config."""
-        self.auth_service = SHAAuthService()
+    def __init__(self, facility=None):
+        """Initialize SHAConsentService with settings from Django config.
+
+        Args:
+            facility: Optional Facility instance. If provided and the facility has
+                      SHA credentials configured, those take priority over global settings.
+        """
+        self.auth_service = SHAAuthService(facility=facility)
         auth_mode = self.auth_service.auth_mode
         if auth_mode == "ilm":
             self.api_base_url = self.auth_service.auth_base_url.rstrip("/")
@@ -345,6 +350,17 @@ class SHAConsentService:
         # Pass service_type through as provided by the caller.
         # DHA expects uppercase values: OUTPATIENT, INPATIENT, EMERGENCY
         resolved_service_type = (service_type or "outpatient").upper()
+
+        # Auto-derive service_type from intervention codes if caller sent the
+        # default "OUTPATIENT" but codes contain inpatient-only prefixes.
+        # SHA prefixes that are exclusively inpatient (access_point: IP):
+        inpatient_prefixes = ("SHA-07", "SHA-19", "SHA-03", "SHA-13", "SHA-20")
+        if resolved_service_type == "OUTPATIENT" and codes:
+            for code in codes:
+                prefix = "-".join(code.split("-")[:2])
+                if prefix in inpatient_prefixes:
+                    resolved_service_type = "INPATIENT"
+                    break
 
         payload: dict[str, Any] = {
             "admission_date": admission_date or date_cls.today().isoformat(),
@@ -673,8 +689,9 @@ class SHAConsentService:
                     with contextlib.suppress(ValueError, requests.exceptions.JSONDecodeError):
                         error_data = response.json()
                     raise SHAConsentError(
-                        f"DHA API error ({response.status_code}): "
-                        f"{error_data.get('message', response.text[:200])}",
+                        self._extract_dha_error_message(
+                            response.status_code, error_data, response.text
+                        ),
                         code=f"http_{response.status_code}",
                         details=error_data,
                     )
@@ -706,3 +723,41 @@ class SHAConsentService:
                 ) from e
 
         raise SHAConsentError("Max retries exceeded", code="max_retries")
+
+    @staticmethod
+    def _extract_dha_error_message(status_code: int, error_data: dict, raw_text: str) -> str:
+        """Extract a human-readable message from DHA's nested error responses.
+
+        DHA returns errors in several shapes:
+        - {"message": "..."}
+        - {"error": "..."}
+        - {"error": ["..."]}
+        - {"Edi Error": {"error": ["..."]}}
+        - {"detail": "..."}
+        - Raw text fallback
+        """
+        # 1. Top-level message or error string
+        if error_data.get("message"):
+            return str(error_data["message"])
+        if isinstance(error_data.get("error"), str):
+            return str(error_data["error"])
+
+        # 2. Top-level error list
+        if isinstance(error_data.get("error"), list):
+            return "; ".join(str(e) for e in error_data["error"])
+
+        # 3. Nested error objects (e.g. {"Edi Error": {"error": ["..."]}})
+        for _key, val in error_data.items():
+            if isinstance(val, dict):
+                nested_errors = val.get("error") or val.get("errors") or val.get("message")
+                if isinstance(nested_errors, list):
+                    return "; ".join(str(e) for e in nested_errors)
+                if isinstance(nested_errors, str):
+                    return nested_errors
+
+        # 4. detail field (DRF-style)
+        if error_data.get("detail"):
+            return str(error_data["detail"])
+
+        # 5. Fallback to raw text
+        return raw_text[:300] if raw_text else f"DHA API error ({status_code})"

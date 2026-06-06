@@ -443,6 +443,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Receipts', href: '/transactions/receipts', icon: Receipt, actionKey: 'billing.view_receipts' },
       { label: 'Credit Notes', href: '/transactions/credit-notes', icon: ScrollText, actionKey: 'billing.view_credit_notes' },
       { label: 'SHA Claims', href: '/transactions/sha-claims', icon: SHAIcon, actionKey: 'billing.submit_sha_claim' },
+      { label: 'Pre-authorizations', href: '/transactions/preauths', icon: ClipboardList, actionKey: 'billing.submit_sha_claim' },
       { label: 'Capitation', href: '/transactions/capitation', icon: Repeat2, actionKey: 'billing.view_reports' },
       { label: 'OTP Whitelist', href: '/transactions/sha-claims/whitelist', icon: ShieldAlert, actionKey: 'billing.submit_sha_claim' },
       { label: 'Insurance', href: '/insurance', icon: Shield, actionKey: 'billing.view_insurance', facilityModule: 'private_insurance' },

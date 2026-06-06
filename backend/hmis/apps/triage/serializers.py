@@ -104,15 +104,10 @@ class WaitingQueueCreateSerializer(serializers.ModelSerializer):
         except Patient.DoesNotExist:
             raise serializers.ValidationError("Patient not found.")
 
-        # Check if patient is already in waiting queue at this facility
-        request = self.context.get("request")
-        facility = getattr(request, "facility", None) if request else None
-        qs = WaitingQueue.objects.filter(
+        # Check if patient is already in waiting queue
+        existing = WaitingQueue.objects.filter(
             patient=patient, status__in=["WAITING_TRIAGE", "IN_TRIAGE"]
-        )
-        if facility:
-            qs = qs.filter(encounter__facility=facility)
-        existing = qs.first()
+        ).first()
         if existing:
             raise serializers.ValidationError(
                 f"Patient is already in the waiting queue (checked in at {existing.check_in_time.strftime('%H:%M')})."

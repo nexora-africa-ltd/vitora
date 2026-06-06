@@ -4460,6 +4460,35 @@ class SHAPreauth(FacilityScopedModel):
     def __str__(self) -> str:  # pragma: no cover - trivial
         return f"Preauth {self.intervention_code} ({self.status})"
 
+    # ------------------------------------------------------------------
+    # State transition guards
+    # ------------------------------------------------------------------
+
+    VALID_TRANSITIONS: dict[str, set[str]] = {
+        "draft": {"submitted", "cancelled"},
+        "submitted": {"approved", "denied", "cancelled"},
+        "approved": set(),  # Terminal
+        "denied": set(),  # Terminal
+        "cancelled": set(),  # Terminal
+    }
+
+    def can_transition_to(self, new_status: str) -> bool:
+        """Check if transitioning to new_status is valid."""
+        allowed = self.VALID_TRANSITIONS.get(self.status, set())
+        return new_status in allowed
+
+    def transition_to(self, new_status: str) -> None:
+        """Transition to a new status with guard check.
+
+        Raises ValueError if the transition is not allowed.
+        """
+        if not self.can_transition_to(new_status):
+            raise ValueError(
+                f"Cannot transition SHAPreauth from '{self.status}' to '{new_status}'. "
+                f"Allowed: {self.VALID_TRANSITIONS.get(self.status, set())}"
+            )
+        self.status = new_status
+
 
 class SHAEmergencyClaim(FacilityScopedModel):
     """Tracks DHA HIE emergency / EMT claims (``/api/v1/claims/emergency``, ``/claims/emt``).

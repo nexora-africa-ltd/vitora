@@ -187,9 +187,29 @@ export type ClientRegistryUpdateResponseSchemaType = z.infer<typeof ClientRegist
 // SHA MEMBER SCHEMAS
 // =============================================================================
 
+/**
+ * Patient field shape varies by endpoint:
+ *  - List endpoint (`SHAMemberSerializer`) returns the patient ID as a number.
+ *  - Detail endpoint (`SHAMemberDetailSerializer`) returns a nested object.
+ * Accept either to keep the same Zod schema usable for both.
+ */
+const SHAMemberPatientRefSchema = z.union([
+  z.number(),
+  z
+    .object({
+      id: z.number(),
+      mrn: z.string().optional(),
+      first_name: z.string().optional(),
+      last_name: z.string().optional(),
+      date_of_birth: z.string().optional().nullable(),
+      gender: z.string().optional().nullable(),
+    })
+    .passthrough(),
+]);
+
 export const SHAMemberSchema = z.object({
   id: z.number(),
-  patient: z.number(),
+  patient: SHAMemberPatientRefSchema,
   patient_name: z.string().optional(),
   patient_mrn: z.string().optional(),
   sha_member_number: z.string().optional(),
@@ -1201,6 +1221,7 @@ export type IlmPreauthResponse = z.infer<typeof IlmPreauthResponseSchema>;
 
 export const SHAPreauthSchema = z.object({
   id: z.number(),
+  claim: z.number().nullable().optional(),
   patient: z.number().nullable().optional(),
   facility: z.number().nullable().optional(),
   consent_token: z.string(),
