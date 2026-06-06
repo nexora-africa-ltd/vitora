@@ -66,6 +66,7 @@ class InterventionCode:
     max_amount_per_test: str | None = None
     quantity_per_year: str | None = None
     requires_preauthorization: bool = False
+    access_point: str | None = None
 
     @classmethod
     def from_api_response(cls, data: dict) -> "InterventionCode":

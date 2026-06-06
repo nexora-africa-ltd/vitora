@@ -28,6 +28,9 @@ ONBOARDING_ENFORCEMENT = os.getenv("ONBOARDING_ENFORCEMENT", "false").lower() ==
 # Active-shift enforcement — disabled in tests by default
 ACTIVE_SHIFT_ENFORCEMENT = os.getenv("ACTIVE_SHIFT_ENFORCEMENT", "false").lower() == "true"
 
+# SHA Facility FR code — set for tests so FR code validation passes
+SHA_FACILITY_FR_CODE = "FID-47-TEST-0"
+
 # Subscription expiry enforcement — disabled in tests by default
 SUBSCRIPTION_EXPIRY_ENFORCEMENT = (
     os.getenv("SUBSCRIPTION_EXPIRY_ENFORCEMENT", "false").lower() == "true"
