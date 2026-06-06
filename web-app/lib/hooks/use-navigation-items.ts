@@ -5,6 +5,7 @@ import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useFacility } from '@/lib/context/facility-context';
 import { useNavigationMode } from '@/lib/context/navigation-mode-context';
 import { useSubscription } from '@/lib/hooks/use-subscription';
+import { useClinics } from '@/lib/hooks/use-clinics';
 import {
   mainNavItems,
   hasChildren,
@@ -27,11 +28,19 @@ export function useNavigationItems(): NavigationResult {
   const { hasModule, facilityDetail } = useFacility();
   const { navigationMode, isClinicalNavigationEligible } = useNavigationMode();
   const { hasFeature } = useSubscription();
+  const { data: clinicsData } = useClinics({ page_size: 200, status: 'ACTIVE' });
+
+  // Derive the set of active clinic types from fetched clinics
+  const activeClinicTypes = useMemo(() => {
+    if (!clinicsData?.results) return undefined;
+    return new Set(clinicsData.results.map(c => c.clinic_type));
+  }, [clinicsData]);
 
   return useMemo(() => {
     const visibilityCtx: NavItemVisibilityContext = {
       facilityLevel: facilityDetail?.level,
       facilityOwnership: facilityDetail?.ownership,
+      activeClinicTypes,
     };
 
     const isAllowed = (item: { moduleKey?: string; facilityModule?: string; actionKey?: string; planFeature?: string; visibleWhen?: (ctx: NavItemVisibilityContext) => boolean }): boolean => {
@@ -78,6 +87,7 @@ export function useNavigationItems(): NavigationResult {
     hasModule,
     hasFeature,
     facilityDetail,
+    activeClinicTypes,
     navigationMode,
     isClinicalNavigationEligible,
   ]);
