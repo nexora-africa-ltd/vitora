@@ -92,6 +92,7 @@ export default function SignupPage() {
   const [mounted, setMounted] = useState(false);
   const [pageState, setPageState] = useState<PageState>('form');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submittedEmail, setSubmittedEmail] = useState('');
@@ -620,18 +621,33 @@ export default function SignupPage() {
                     <label htmlFor="confirm_password" className="text-sm font-medium">
                       Confirm Password <span className="text-destructive">*</span>
                     </label>
-                    <Input
-                      id="confirm_password"
-                      type="password"
-                      value={formData.confirm_password}
-                      onChange={(e) => handleChange('confirm_password', e.target.value)}
-                      placeholder="Re-enter your password"
-                      disabled={isSubmitting}
-                      className={`h-10 ${validationErrors.confirm_password ? 'border-destructive' : ''}`}
-                      autoComplete="new-password"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="confirm_password"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={formData.confirm_password}
+                        onChange={(e) => handleChange('confirm_password', e.target.value)}
+                        placeholder="Re-enter your password"
+                        disabled={isSubmitting}
+                        className={`h-10 pr-10 ${validationErrors.confirm_password || (formData.confirm_password && formData.admin_password !== formData.confirm_password) ? 'border-destructive' : ''}`}
+                        autoComplete="new-password"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-10 w-10 text-muted-foreground"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        tabIndex={-1}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
                     {validationErrors.confirm_password && (
                       <p className="text-xs text-destructive">{validationErrors.confirm_password}</p>
+                    )}
+                    {!validationErrors.confirm_password && formData.confirm_password && formData.admin_password !== formData.confirm_password && (
+                      <p className="text-xs text-destructive">Passwords do not match</p>
                     )}
                   </div>
                 </fieldset>
