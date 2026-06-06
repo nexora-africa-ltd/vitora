@@ -177,8 +177,8 @@ class IlmLifecycleResult:
 class IlmLifecycleService:
     """Per-action wrapper around DHA HIE lifecycle polish operations."""
 
-    def __init__(self, client: IlmClient | None = None) -> None:
-        self.client = client or IlmClient()
+    def __init__(self, client: IlmClient | None = None, facility: Any = None) -> None:
+        self.client = client or IlmClient(facility=facility)
 
     # =====================================================================
     # OTP send (visit + discharge)

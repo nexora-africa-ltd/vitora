@@ -179,7 +179,21 @@ export const COVERAGE_TYPE_LABELS: Record<CoverageType, string> = {
 
 export interface SHAMember {
   id: number;
-  patient: number;
+  /**
+   * Patient reference. List endpoint returns the patient ID; detail endpoint
+   * (`SHAMemberDetailSerializer`) returns a nested object with basic patient
+   * fields. Consumers that need the ID should normalise via
+   * `typeof patient === 'number' ? patient : patient.id`.
+   */
+  patient: number | {
+    id: number;
+    mrn?: string;
+    first_name?: string;
+    last_name?: string;
+    date_of_birth?: string | null;
+    gender?: string | null;
+    [key: string]: unknown;
+  };
   patient_name?: string;
   patient_mrn?: string;
   sha_member_number?: string;

@@ -36,6 +36,7 @@ from hmis.apps.billing.sha_ilm_preauth_views import (
     IlmPreauthRemoveDiagnosisView,
     IlmPreauthRemoveDoctorView,
     SHAEmergencyClaimListView,
+    SHAPreauthDetailView,
     SHAPreauthListView,
 )
 from hmis.apps.billing.sha_ilm_prescription_views import (
@@ -192,6 +193,7 @@ urlpatterns = [
         name="ilm-doctor-consent-poll",
     ),
     path("ilm/preauth/local/", SHAPreauthListView.as_view(), name="ilm-preauth-local"),
+    path("ilm/preauth/local/<int:pk>/", SHAPreauthDetailView.as_view(), name="ilm-preauth-detail"),
     path("ilm/emergency/", IlmEmergencyOpenView.as_view(), name="ilm-emergency-open"),
     path(
         "ilm/emergency/protocols/",

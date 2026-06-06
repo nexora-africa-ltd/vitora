@@ -252,6 +252,23 @@ export function SHAConsentStep({
     hasCheckedRef.current = true;
     setStep('checking');
     try {
+      // If we have an encounter, check if a DHA visit was already started (consent already obtained)
+      if (encounterId) {
+        try {
+          const claims = await shaApi.getClaims({ encounter: encounterId });
+          const visitAlreadyStarted = claims.results?.some(
+            (c) => !!c.dha_visit_started_at
+          );
+          if (visitAlreadyStarted) {
+            setStep('done');
+            onComplete?.({ consented: true });
+            return;
+          }
+        } catch {
+          // Best effort — if claim lookup fails, proceed with eligibility check
+        }
+      }
+
       const result = await shaApi.checkPatientEligibility(patientId);
       if (result.is_eligible && result.member) {
         setSHAMember(result.member);
@@ -277,7 +294,7 @@ export function SHAConsentStep({
       setStep('not_eligible');
       onComplete?.({ consented: false });
     }
-  }, [patientId, onComplete]);
+  }, [patientId, encounterId, onComplete]);
 
   useEffect(() => {
     if (autoCheck) {

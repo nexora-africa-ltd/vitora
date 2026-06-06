@@ -99,13 +99,14 @@ class IlmClient:
         self,
         *,
         auth_service: SHAAuthService | None = None,
+        facility: Any = None,
         base_url: str | None = None,
         timeout: int | None = None,
         max_retries: int | None = None,
         backoff_seconds: float | None = None,
         session: requests.Session | None = None,
     ) -> None:
-        self.auth_service = auth_service or SHAAuthService()
+        self.auth_service = auth_service or SHAAuthService(facility=facility)
         self.base_url = (
             base_url or getattr(settings, "ILM_BASE_URL", None) or self.auth_service.auth_base_url
         ).rstrip("/")

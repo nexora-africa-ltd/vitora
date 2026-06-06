@@ -46,6 +46,7 @@ import {
   PatientContactSchema,
   PatientContactListSchema,
   IlmPreauthResponseSchema,
+  SHAPreauthSchema,
   SHAPreauthListSchema,
   SHAEmergencyClaimListSchema,
   IlmLifecycleResponseSchema,
@@ -1374,6 +1375,13 @@ async function listLocalPreauths(params: { patient_pk?: number; consent_token?: 
   });
 }
 
+async function getPreauthDetail(id: number): Promise<SHAPreauthType> {
+  const response = await apiClient.get(`${ILM_BASE}/preauth/local/${id}/`);
+  return parseResponse(SHAPreauthSchema, response.data, {
+    context: 'shaApi.getPreauthDetail',
+  });
+}
+
 async function listLocalEmergencyClaims(params: { patient_pk?: number; kind?: 'emergency' | 'emt' } = {}) {
   const response = await apiClient.get(`${ILM_BASE}/emergency/local/`, { params });
   return parseResponse(SHAEmergencyClaimListSchema, response.data, {
@@ -1700,6 +1708,7 @@ export const shaApi = {
   ilmEmergencyProtocolApply,
   ilmEmtCreate,
   listLocalPreauths,
+  getPreauthDetail,
   listLocalEmergencyClaims,
   // Phase 4 — lifecycle
   ilmSendVisitOtp,

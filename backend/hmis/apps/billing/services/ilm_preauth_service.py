@@ -744,7 +744,12 @@ class IlmPreauthService:
         if preauth is None or result.status_code >= 400:
             return preauth
         try:
-            preauth.status = "cancelled"
+            if not preauth.can_transition_to("cancelled"):
+                logger.warning(
+                    "Cannot cancel preauth %s in status '%s'", preauth.pk, preauth.status
+                )
+                return preauth
+            preauth.transition_to("cancelled")
             preauth.cancelled_at = timezone.now()
             if user and getattr(user, "is_authenticated", False):
                 preauth.decided_by = user

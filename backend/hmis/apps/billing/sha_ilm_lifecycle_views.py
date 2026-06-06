@@ -158,7 +158,7 @@ class IlmVisitOtpView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            result = IlmLifecycleService().send_visit_otp(
+            result = IlmLifecycleService(facility=facility).send_visit_otp(
                 params=params,
                 patient=_resolve_patient(request),
                 facility=facility,
@@ -182,7 +182,7 @@ class IlmDischargeOtpView(APIView):
             )
         params = DischargeOtpParams(consent_token=str(consent_token), patient_id=str(patient_id))
         try:
-            result = IlmLifecycleService().send_discharge_otp(
+            result = IlmLifecycleService(facility=_facility(request)).send_discharge_otp(
                 params=params,
                 patient=_resolve_patient(request),
                 facility=_facility(request),
@@ -227,7 +227,7 @@ class IlmDischargeView(APIView):
             auth_guid=auth_guid,
         )
         try:
-            result = IlmLifecycleService().discharge_inpatient(
+            result = IlmLifecycleService(facility=_facility(request)).discharge_inpatient(
                 params=params,
                 facility=_facility(request),
                 user=request.user,
@@ -298,7 +298,7 @@ class IlmOtpWhitelistRequestView(APIView):
             attachments=attachments,
         )
         try:
-            result = IlmLifecycleService().request_otp_whitelist(
+            result = IlmLifecycleService(facility=_facility(request)).request_otp_whitelist(
                 params=params,
                 files=files or None,
                 patient=_resolve_patient(request),
@@ -321,7 +321,7 @@ class IlmOtpWhitelistCallbackView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            result = IlmLifecycleService().list_otp_whitelist_status(
+            result = IlmLifecycleService(facility=_facility(request)).list_otp_whitelist_status(
                 beneficiary_cr_id=str(beneficiary_cr_id),
                 facility_fr_code=str(request.query_params.get("facility_fr_code") or ""),
                 facility_id_type=str(request.query_params.get("facility_id_type") or "fr-code"),
@@ -365,7 +365,7 @@ class IlmNextOfKinView(APIView):
             ),
         )
         try:
-            result = IlmLifecycleService().add_next_of_kin_contact(
+            result = IlmLifecycleService(facility=_facility(request)).add_next_of_kin_contact(
                 params=params,
                 facility=_facility(request),
                 user=request.user,
@@ -392,7 +392,7 @@ class IlmEmergencyDoctorAddView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            result = IlmLifecycleService().add_emergency_claim_doctor(
+            result = IlmLifecycleService(facility=_facility(request)).add_emergency_claim_doctor(
                 params=EmergencyDoctorAddParams(
                     consent_token=str(consent_token),
                     identification_number=str(identification_number),
@@ -416,7 +416,7 @@ class IlmEmergencyDoctorRemoveView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            result = IlmLifecycleService().remove_emergency_claim_doctor(
+            result = IlmLifecycleService(facility=_facility(request)).remove_emergency_claim_doctor(
                 params=EmergencyDoctorRemoveParams(consent_token=str(consent_token)),
                 facility=_facility(request),
                 user=request.user,
@@ -443,7 +443,7 @@ class IlmPomsfBalancesView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            result = IlmLifecycleService().get_pomsf_balances(
+            result = IlmLifecycleService(facility=_facility(request)).get_pomsf_balances(
                 params=PomsfBalanceParams(
                     patient_id=str(patient_id),
                     policy_year=str(policy_year),
@@ -483,7 +483,7 @@ class IlmFileUploadView(APIView):
             content_type=getattr(uploaded, "content_type", None),
         )
         try:
-            result = IlmLifecycleService().upload_file(
+            result = IlmLifecycleService(facility=_facility(request)).upload_file(
                 upload=upload,
                 facility=_facility(request),
                 user=request.user,
@@ -503,7 +503,7 @@ class IlmFileUrlView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            result = IlmLifecycleService().get_upload_url(
+            result = IlmLifecycleService(facility=_facility(request)).get_upload_url(
                 file_id=str(file_id),
                 facility=_facility(request),
                 user=request.user,

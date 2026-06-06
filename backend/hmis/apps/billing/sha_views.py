@@ -3235,7 +3235,7 @@ class ConsentSendOTPView(APIView):
         )
 
         try:
-            service = IlmLifecycleService()
+            service = IlmLifecycleService(facility=facility)
             result = service.send_visit_otp(
                 params=params,
                 patient=sha_member.patient,
@@ -3364,7 +3364,7 @@ class ConsentValidateOTPView(APIView):
             )
 
         try:
-            service = SHAConsentService()
+            service = SHAConsentService(facility=facility)
             consent = service.validate_otp(
                 consent=consent,
                 otp_code=otp_code,
@@ -3577,7 +3577,7 @@ class StartVisitView(APIView):
                 encounter = Encounter.objects.get(id=encounter_id, facility=facility)
 
         try:
-            service = SHAConsentService()
+            service = SHAConsentService(facility=facility)
             visit_data = service.start_visit(
                 consent=consent,
                 otp_code=otp_code,
@@ -3695,7 +3695,7 @@ class BiometricAuthorizeView(APIView):
             )
 
         try:
-            service = SHAConsentService()
+            service = SHAConsentService(facility=facility)
             result = service.authorize_biometric(
                 sha_member=sha_member,
                 workstation_id=workstation_id,
@@ -3738,9 +3738,13 @@ class BiometricAuthorizeStatusView(APIView):
     def get(self, request, auth_guid):
         """Check biometric authorization status."""
         from hmis.apps.billing.services.sha_consent import SHAConsentError, SHAConsentService
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
 
         try:
-            service = SHAConsentService()
+            service = SHAConsentService(facility=facility)
             result = service.get_authorization_status(auth_guid)
             return Response(result, status=status.HTTP_200_OK)
         except SHAConsentError as e:
@@ -3776,9 +3780,13 @@ class BiometricCancelView(APIView):
     def post(self, request, auth_guid):
         """Cancel a pending biometric authorization."""
         from hmis.apps.billing.services.sha_consent import SHAConsentError, SHAConsentService
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
 
         try:
-            service = SHAConsentService()
+            service = SHAConsentService(facility=facility)
             result = service.cancel_authorization(auth_guid)
             return Response(result, status=status.HTTP_200_OK)
         except SHAConsentError as e:
@@ -3826,6 +3834,10 @@ class BeneficiaryContactsView(APIView):
     def get(self, request):
         """Retrieve beneficiary contacts for OTP target selection."""
         from hmis.apps.billing.services.sha_consent import SHAConsentError, SHAConsentService
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
 
         beneficiary_cr_id = request.query_params.get("beneficiary_cr_id", "")
         if not beneficiary_cr_id:
@@ -3835,7 +3847,7 @@ class BeneficiaryContactsView(APIView):
             )
 
         try:
-            service = SHAConsentService()
+            service = SHAConsentService(facility=facility)
             contacts = service.get_beneficiary_contacts(beneficiary_cr_id)
             return Response({"contacts": contacts}, status=status.HTTP_200_OK)
         except SHAConsentError as e:

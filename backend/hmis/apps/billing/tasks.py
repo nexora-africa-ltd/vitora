@@ -73,6 +73,72 @@ def poll_preauth_statuses():
     return result
 
 
+@shared_task(name="hmis.apps.billing.tasks.poll_ilm_preauth_statuses")
+def poll_ilm_preauth_statuses():
+    """Poll DHA ILM API for status updates on submitted SHAPreauth records.
+
+    Runs every 5 minutes to keep ILM preauth statuses fresh.
+    Checks both overall preauth status and doctor consent state.
+    """
+    from hmis.apps.billing.models import SHAPreauth
+    from hmis.apps.billing.services.dha_errors import DHAError
+    from hmis.apps.billing.services.ilm_preauth_service import IlmPreauthService
+
+    logger = logging.getLogger(__name__)
+    # Poll submitted preauths that haven't been decided yet
+    pending = SHAPreauth.objects.filter(
+        status=SHAPreauth.Status.SUBMITTED,
+    ).select_related("patient")
+
+    polled = 0
+    errors = 0
+    updated = 0
+    service = IlmPreauthService()
+
+    for preauth in pending[:100]:  # Cap at 100 per run to avoid timeouts
+        try:
+            result = service.fetch_preauth(
+                consent_token=preauth.consent_token,
+                facility=preauth.facility,
+                user=None,
+                preauth=preauth,
+            )
+            polled += 1
+
+            # Check if DHA returned updated status
+            dha_data = result.payload
+            if isinstance(dha_data, dict):
+                new_status = dha_data.get("status", "")
+                if (
+                    new_status
+                    and new_status in dict(SHAPreauth.Status.choices)
+                    and new_status != preauth.status
+                ):
+                    preauth.status = new_status
+                    if new_status in ("approved", "denied"):
+                        from django.utils import timezone
+
+                        preauth.decided_at = timezone.now()
+                    preauth.save(update_fields=["status", "decided_at", "updated_at"])
+                    updated += 1
+
+                # Also update doctor consent state
+                new_consent = dha_data.get("doctor_consent_state", "")
+                if new_consent and new_consent != preauth.doctor_consent_state:
+                    preauth.doctor_consent_state = new_consent
+                    preauth.save(update_fields=["doctor_consent_state", "updated_at"])
+        except DHAError:
+            errors += 1
+            logger.warning("DHA error polling ILM preauth %s", preauth.pk)
+        except Exception:
+            errors += 1
+            logger.exception("Failed to poll ILM preauth %s", preauth.pk)
+
+    result_msg = f"ILM preauths: polled {polled}, updated {updated}, errors {errors}"
+    logger.info(result_msg)
+    return result_msg
+
+
 @shared_task(name="hmis.apps.billing.tasks.refresh_sha_interventions")
 def refresh_sha_interventions():
     """Re-scrape SHA benefits/interventions from OCL API weekly."""
@@ -185,10 +251,9 @@ def refresh_otp_whitelist_statuses():
     updated = 0
     errors = 0
 
-    service = IlmLifecycleService()
-
     for request in pending:
         try:
+            service = IlmLifecycleService(facility=request.facility)
             result = service.list_otp_whitelist_status(
                 beneficiary_cr_id=request.beneficiary_cr_id,
                 guid=request.dha_guid,

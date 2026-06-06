@@ -91,7 +91,15 @@ def _resolve(model, request, key: str):
     if not raw:
         return None
     try:
-        return model.objects.get(pk=raw)
+        # Tenant-scope: restrict lookups to the user's facility/organization
+        facility = _facility(request)
+        org = getattr(request.user, "organization", None)
+        qs = model.objects.all()
+        if facility and hasattr(model, "facility_id"):
+            qs = qs.filter(facility=facility)
+        elif org and hasattr(model, "organization_id"):
+            qs = qs.filter(organization=org)
+        return qs.get(pk=raw)
     except (model.DoesNotExist, ValueError, TypeError):
         return None
 
@@ -634,49 +642,123 @@ class IlmEmtCreateView(APIView):
 
 
 class SHAPreauthListView(APIView):
-    """GET /api/sha/ilm/preauth/local/?patient_pk=&claim_pk=
+    """GET /api/sha/ilm/preauth/local/?patient_pk=&claim_pk=&status=
 
     Returns the cached SHAPreauth rows for browsing in the UI.
-    At least one filter (patient_pk, claim_pk, or status) is required.
+    Scoped to the user's facility.
     """
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def get(self, request):
+        from hmis.apps.core.models import AuditLog
+
         patient = _resolve(Patient, request, "patient_pk")
         claim = _resolve(SHAClaim, request, "claim_pk")
         status_filter = request.query_params.get("status")
 
-        if not patient and not claim and not status_filter:
-            return Response(
-                {"error": "At least one filter (patient_pk, claim_pk, or status) is required."},
-                status=400,
-            )
-
+        # Scope to user's facility
+        facility = _facility(request)
         qs = SHAPreauth.objects.all()
+        if facility:
+            qs = qs.filter(facility=facility)
+
         if patient:
             qs = qs.filter(patient=patient)
         if claim:
             qs = qs.filter(claim=claim)
         if status_filter and status_filter in dict(SHAPreauth.Status.choices):
             qs = qs.filter(status=status_filter)
-        return Response({"results": [_serialize_preauth(p) for p in qs[:200]]})
+
+        results = [_serialize_preauth(p) for p in qs[:200]]
+
+        # Audit log access
+        with contextlib.suppress(Exception):
+            AuditLog.log(
+                action="preauth_list_view",
+                user=request.user,
+                resource_type="SHAPreauth",
+                resource_id=0,
+                ip_address=request.META.get("REMOTE_ADDR", ""),
+                details={
+                    "count": len(results),
+                    "filters": {
+                        "patient_pk": getattr(patient, "pk", None),
+                        "status": status_filter,
+                    },
+                },
+            )
+
+        return Response({"results": results})
+
+
+class SHAPreauthDetailView(APIView):
+    """GET /api/sha/ilm/preauth/local/<int:pk>/
+
+    Returns a single SHAPreauth record by ID (scoped to user's facility).
+    """
+
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+
+    def get(self, request, pk: int):
+        from hmis.apps.core.models import AuditLog
+
+        facility = _facility(request)
+        qs = SHAPreauth.objects.all()
+        if facility:
+            qs = qs.filter(facility=facility)
+        try:
+            preauth = qs.get(pk=pk)
+        except (SHAPreauth.DoesNotExist, ValueError):
+            return Response({"error": "Preauth not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        with contextlib.suppress(Exception):
+            AuditLog.log(
+                action="preauth_detail_view",
+                user=request.user,
+                resource_type="SHAPreauth",
+                resource_id=pk,
+                ip_address=request.META.get("REMOTE_ADDR", ""),
+                details={"intervention_code": preauth.intervention_code},
+            )
+
+        return Response(_serialize_preauth(preauth))
 
 
 class SHAEmergencyClaimListView(APIView):
     """GET /api/sha/ilm/emergency/local/?patient_pk=&kind=
 
     Returns the cached SHAEmergencyClaim rows for browsing in the UI.
+    Scoped to the user's facility.
     """
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def get(self, request):
+        from hmis.apps.core.models import AuditLog
+
+        facility = _facility(request)
         qs = SHAEmergencyClaim.objects.all()
+        if facility:
+            qs = qs.filter(facility=facility)
+
         patient = _resolve(Patient, request, "patient_pk")
         if patient:
             qs = qs.filter(patient=patient)
         kind = request.query_params.get("kind")
         if kind:
             qs = qs.filter(kind=kind)
-        return Response({"results": [_serialize_emergency(e) for e in qs[:200]]})
+
+        results = [_serialize_emergency(e) for e in qs[:200]]
+
+        with contextlib.suppress(Exception):
+            AuditLog.log(
+                action="emergency_claim_list_view",
+                user=request.user,
+                resource_type="SHAEmergencyClaim",
+                resource_id=0,
+                ip_address=request.META.get("REMOTE_ADDR", ""),
+                details={"count": len(results)},
+            )
+
+        return Response({"results": results})

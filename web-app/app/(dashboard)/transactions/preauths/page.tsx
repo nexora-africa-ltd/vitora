@@ -33,7 +33,7 @@ import type { SHAPreauth } from '@/lib/schemas/sha.schema';
 // ============================================================================
 
 function getStatusBadge(status: string) {
-  switch (status) {
+  switch (status.toLowerCase()) {
     case 'approved':
       return (
         <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
@@ -108,7 +108,7 @@ export default function PreauthsListPage() {
   const filtered = useMemo(() => {
     let result = preauths;
     if (statusFilter !== 'all') {
-      result = result.filter((p) => p.status === statusFilter);
+      result = result.filter((p) => p.status.toLowerCase() === statusFilter);
     }
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -127,9 +127,9 @@ export default function PreauthsListPage() {
     const all = preauths;
     return {
       total: all.length,
-      pending: all.filter((p) => p.status === 'submitted').length,
-      approved: all.filter((p) => p.status === 'approved').length,
-      denied: all.filter((p) => p.status === 'denied').length,
+      pending: all.filter((p) => p.status.toLowerCase() === 'submitted').length,
+      approved: all.filter((p) => p.status.toLowerCase() === 'approved').length,
+      denied: all.filter((p) => p.status.toLowerCase() === 'denied').length,
     };
   }, [preauths]);
 
