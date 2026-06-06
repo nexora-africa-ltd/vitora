@@ -10,6 +10,7 @@ import {
   hasChildren,
   type NavItem,
   type NavItemType,
+  type NavItemVisibilityContext,
 } from '@/lib/config/navigation';
 import {
   resolveClinicalSidebarItems,
@@ -23,16 +24,22 @@ export interface NavigationResult {
 
 export function useNavigationItems(): NavigationResult {
   const { canAccessModule, canPerformAction } = usePermissions();
-  const { hasModule } = useFacility();
+  const { hasModule, facilityDetail } = useFacility();
   const { navigationMode, isClinicalNavigationEligible } = useNavigationMode();
   const { hasFeature } = useSubscription();
 
   return useMemo(() => {
-    const isAllowed = (item: { moduleKey?: string; facilityModule?: string; actionKey?: string; planFeature?: string }): boolean => {
+    const visibilityCtx: NavItemVisibilityContext = {
+      facilityLevel: facilityDetail?.level,
+      facilityOwnership: facilityDetail?.ownership,
+    };
+
+    const isAllowed = (item: { moduleKey?: string; facilityModule?: string; actionKey?: string; planFeature?: string; visibleWhen?: (ctx: NavItemVisibilityContext) => boolean }): boolean => {
       if (item.moduleKey && !canAccessModule(item.moduleKey as never)) return false;
       if (item.facilityModule && !hasModule(item.facilityModule as never)) return false;
       if (item.actionKey && !canPerformAction(item.actionKey as never)) return false;
       if (item.planFeature && !hasFeature(item.planFeature)) return false;
+      if (item.visibleWhen && !item.visibleWhen(visibilityCtx)) return false;
       return true;
     };
 
@@ -70,6 +77,7 @@ export function useNavigationItems(): NavigationResult {
     canPerformAction,
     hasModule,
     hasFeature,
+    facilityDetail,
     navigationMode,
     isClinicalNavigationEligible,
   ]);
