@@ -616,7 +616,7 @@ class TestStartVisitAPI:
         payload = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
         assert payload["otp"] == "123456"
         assert payload["intervention_codes"] == ["SHA-01", "SHA-02"]
-        assert payload["service_type"] == "outpatient"
+        assert payload["service_type"] == "OUTPATIENT"
         assert payload["patient_id"] == consent_token.identification_number
 
     def test_start_visit_missing_otp(self, authenticated_client, consent_token):
@@ -694,7 +694,7 @@ class TestStartVisitService:
             "intervention_codes": ["SHA-PROC-01"],
             "otp": "654321",
             "patient_id": consent_token.identification_number,
-            "service_type": "inpatient",
+            "service_type": "INPATIENT",
         }
 
         # Consent should be validated with returned token

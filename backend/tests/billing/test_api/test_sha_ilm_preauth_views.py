@@ -344,8 +344,11 @@ class TestEmtCreateEndpoint:
 class TestPreauthLocalBrowse:
     URL = "/api/sha/ilm/preauth/local/"
 
-    def test_requires_filter(self, sha_client):
-        assert sha_client.get(self.URL).status_code == 400
+    def test_lists_without_filter(self, sha_client):
+        """Should return 200 with empty results when no filter is provided (facility-scoped)."""
+        r = sha_client.get(self.URL)
+        assert r.status_code == 200
+        assert r.data["results"] == []
 
     def test_lists_by_patient(self, sha_client, sample_patient, sample_facility):
         SHAPreauth.objects.create(
