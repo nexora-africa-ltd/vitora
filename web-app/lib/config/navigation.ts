@@ -102,6 +102,8 @@ import type { FacilityModules } from '@/lib/auth/context';
 export interface NavItemVisibilityContext {
   facilityLevel?: string;
   facilityOwnership?: string;
+  /** Set of active clinic types in this facility (e.g. 'GENERAL_OPD', 'DENTAL') */
+  activeClinicTypes?: Set<string>;
 }
 
 export interface NavItem {
@@ -220,13 +222,13 @@ const _allNavItems: NavItemType[] = [
     facilityModule: 'outpatient',
     children: [
       { label: 'All Clinics', href: '/clinics', icon: Building2 },
-      { label: 'General OPD', href: '/clinics/general-opd', icon: StethoscopeIcon },
-      { label: 'MCH / Welfare', href: '/clinics/mch', icon: Baby },
-      { label: 'Eye Clinic', href: '/clinics/eye', icon: Eye },
-      { label: 'Dental Clinic', href: '/clinics/dental', icon: Activity },
-      { label: 'Surgical Clinic', href: '/clinics/surgical', icon: Scissors },
-      { label: 'Chronic Care', href: '/clinics/chronic-care', icon: HeartPulse },
-      { label: 'Immunization', href: '/clinics/immunization', icon: Syringe },
+      { label: 'General OPD', href: '/clinics/general-opd', icon: StethoscopeIcon, visibleWhen: ({ activeClinicTypes }) => !activeClinicTypes || activeClinicTypes.has('GENERAL_OPD') || activeClinicTypes.has('FILTER_CLINIC') },
+      { label: 'MCH / Welfare', href: '/clinics/mch', icon: Baby, visibleWhen: ({ activeClinicTypes }) => !activeClinicTypes || ['ANC', 'PNC', 'FP', 'CWC'].some(t => activeClinicTypes.has(t)) },
+      { label: 'Eye Clinic', href: '/clinics/eye', icon: Eye, visibleWhen: ({ activeClinicTypes }) => !activeClinicTypes || activeClinicTypes.has('EYE') },
+      { label: 'Dental Clinic', href: '/clinics/dental', icon: Activity, visibleWhen: ({ activeClinicTypes }) => !activeClinicTypes || activeClinicTypes.has('DENTAL') },
+      { label: 'Surgical Clinic', href: '/clinics/surgical', icon: Scissors, visibleWhen: ({ activeClinicTypes }) => !activeClinicTypes || activeClinicTypes.has('SURGICAL') },
+      { label: 'Chronic Care', href: '/clinics/chronic-care', icon: HeartPulse, visibleWhen: ({ activeClinicTypes }) => !activeClinicTypes || ['CCC', 'TB', 'DIABETIC', 'HYPERTENSION', 'ONCOLOGY', 'DIALYSIS'].some(t => activeClinicTypes.has(t)) },
+      { label: 'Immunization', href: '/clinics/immunization', icon: Syringe, visibleWhen: ({ activeClinicTypes }) => !activeClinicTypes || activeClinicTypes.has('IMMUNIZATION') },
       { label: 'Enrollments', href: '/clinics/enrollments', icon: ClipboardList, actionKey: 'clinics.manage_queue' },
     ],
   },
