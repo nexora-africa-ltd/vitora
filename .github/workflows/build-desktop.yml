@@ -99,21 +99,9 @@ jobs:
         run: node scripts/download-node.js --target ${{ matrix.node_target }}
         working-directory: desktop-app
 
-      # Code signing (Windows only — skipped if WINDOWS_CERTIFICATE_BASE64 secret is not set)
-      - name: Import code signing certificate
-        if: matrix.platform == 'windows-latest' && !inputs.skip_signing && env.CERTIFICATE_BASE64 != ''
-        env:
-          CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
-          CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-        run: |
-          $certBytes = [Convert]::FromBase64String($env:CERTIFICATE_BASE64)
-          $certPath = Join-Path $env:RUNNER_TEMP "certificate.pfx"
-          [IO.File]::WriteAllBytes($certPath, $certBytes)
-          $securePassword = ConvertTo-SecureString $env:CERTIFICATE_PASSWORD -AsPlainText -Force
-          Import-PfxCertificate -FilePath $certPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword
-          $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.HasPrivateKey }
-          echo "TAURI_SIGNING_CERTIFICATE_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
-        shell: pwsh
+      # Install Tauri CLI (cargo-based)
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2" --locked
 
       # Build Tauri
       - name: Build Tauri app
@@ -125,7 +113,7 @@ jobs:
         with:
           projectPath: desktop-app
           tauriScript: npm run tauri
-          args: --target ${{ matrix.target }} -c src-tauri/tauri.conf.production.json
+          args: --target ${{ matrix.target }} -c tauri.conf.production.json
           tagName: ${{ github.ref_name }}
           releaseName: "Vitora HMIS Desktop ${{ github.ref_name }}"
           releaseBody: |
