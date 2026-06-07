@@ -1,0 +1,145 @@
+name: Deploy HAPI FHIR & HL7 Mock to Azure Container Apps
+
+on:
+  push:
+    tags:
+      - 'production'
+    paths:
+      - 'docker/hapi-fhir/**'
+      - 'docker/hl7-mock/**'
+      - '.github/workflows/deploy-fhir.yml'
+  workflow_dispatch:
+    inputs:
+      deploy_target:
+        description: 'Which service to deploy'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - hapi-fhir
+          - hl7-mock
+
+env:
+  AZURE_RESOURCE_GROUP: vitora-rg
+  CONTAINER_APP_ENV: vitora-env
+  REGISTRY_NAME: vitoraacr
+  HAPI_FHIR_APP_NAME: vitora-hapi-fhir
+  HL7_MOCK_APP_NAME: vitora-hl7-mock
+
+jobs:
+  deploy-hapi-fhir:
+    name: Deploy HAPI FHIR Server
+    if: ${{ github.event.inputs.deploy_target != 'hl7-mock' }}
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy HAPI FHIR (public image)
+        run: |
+          HAPI_IMAGE="hapiproject/hapi:v7.6.0"
+
+          if az containerapp show --name ${{ env.HAPI_FHIR_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} &>/dev/null 2>&1; then
+            az containerapp update \
+              --name ${{ env.HAPI_FHIR_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --image "$HAPI_IMAGE" \
+              --output none
+          else
+            az containerapp create \
+              --name ${{ env.HAPI_FHIR_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --environment ${{ env.CONTAINER_APP_ENV }} \
+              --image "$HAPI_IMAGE" \
+              --cpu 0.5 --memory 1.0Gi \
+              --min-replicas 1 --max-replicas 1 \
+              --ingress internal --target-port 8080 \
+              --env-vars \
+                "hapi.fhir.server_address=http://${{ env.HAPI_FHIR_APP_NAME }}/fhir" \
+                "hapi.fhir.allow_multiple_delete=true" \
+                "hapi.fhir.reuse_cached_search_results_millis=5000" \
+              --output none
+          fi
+
+      - name: Verify HAPI FHIR
+        run: |
+          FQDN=$(az containerapp show \
+            --name ${{ env.HAPI_FHIR_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.configuration.ingress.fqdn" -o tsv)
+          echo "HAPI FHIR deployed (internal): https://${FQDN}/fhir"
+
+  deploy-hl7-mock:
+    name: Deploy HL7 Mock LIS
+    if: ${{ github.event.inputs.deploy_target != 'hapi-fhir' }}
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name ${{ env.REGISTRY_NAME }}
+
+      - name: Build and push HL7 Mock image
+        working-directory: docker/hl7-mock
+        run: |
+          IMAGE_TAG="${{ env.REGISTRY_NAME }}.azurecr.io/vitora-hl7-mock:${{ github.sha }}"
+          IMAGE_LATEST="${{ env.REGISTRY_NAME }}.azurecr.io/vitora-hl7-mock:latest"
+          docker build -t "$IMAGE_TAG" -t "$IMAGE_LATEST" .
+          docker push "$IMAGE_TAG"
+          docker push "$IMAGE_LATEST"
+
+      - name: Deploy HL7 Mock
+        run: |
+          IMAGE="${{ env.REGISTRY_NAME }}.azurecr.io/vitora-hl7-mock:${{ github.sha }}"
+
+          if az containerapp show --name ${{ env.HL7_MOCK_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} &>/dev/null 2>&1; then
+            az containerapp update \
+              --name ${{ env.HL7_MOCK_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --image "$IMAGE" \
+              --output none
+          else
+            az containerapp create \
+              --name ${{ env.HL7_MOCK_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --environment ${{ env.CONTAINER_APP_ENV }} \
+              --image "$IMAGE" \
+              --cpu 0.25 --memory 0.5Gi \
+              --min-replicas 1 --max-replicas 1 \
+              --ingress internal --transport tcp --target-port 2575 \
+              --output none
+          fi
+
+      - name: Verify HL7 Mock
+        run: |
+          STATUS=$(az containerapp show \
+            --name ${{ env.HL7_MOCK_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.runningStatus" -o tsv 2>/dev/null || echo "Unknown")
+          echo "HL7 Mock status: ${STATUS}"
