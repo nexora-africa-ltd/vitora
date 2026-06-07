@@ -99,9 +99,9 @@ jobs:
         run: node scripts/download-node.js --target ${{ matrix.node_target }}
         working-directory: desktop-app
 
-      # Code signing (Windows only)
+      # Code signing (Windows only — skipped if WINDOWS_CERTIFICATE_BASE64 secret is not set)
       - name: Import code signing certificate
-        if: matrix.platform == 'windows-latest' && !inputs.skip_signing
+        if: matrix.platform == 'windows-latest' && !inputs.skip_signing && env.CERTIFICATE_BASE64 != ''
         env:
           CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
           CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
@@ -117,7 +117,7 @@ jobs:
 
       # Build Tauri
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -125,7 +125,7 @@ jobs:
         with:
           projectPath: desktop-app
           tauriScript: npm run tauri
-          args: --target ${{ matrix.target }} -c tauri.conf.production.json
+          args: --target ${{ matrix.target }} -c src-tauri/tauri.conf.production.json
           tagName: ${{ github.ref_name }}
           releaseName: "Vitora HMIS Desktop ${{ github.ref_name }}"
           releaseBody: |
