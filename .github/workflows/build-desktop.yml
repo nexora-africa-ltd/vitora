@@ -110,12 +110,12 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: desktop-app
           tauriScript: npm run tauri
           args: --target ${{ matrix.target }} --bundles ${{ matrix.bundle_target }}
-          uploadUpdaterJson: false
-          uploadUpdaterSignatures: false
           tagName: ${{ github.ref_name }}
           releaseName: "Vitora HMIS Desktop ${{ github.ref_name }}"
           releaseBody: |
@@ -127,7 +127,7 @@ jobs:
             - **macOS**: Download the `.dmg`
 
             ## Auto-Update
-            Auto-update artifacts are disabled for this build while release signing is being configured.
+            Existing installations will auto-update within 24 hours.
           releaseDraft: true
           prerelease: false
 
@@ -135,7 +135,7 @@ jobs:
   publish-updater:
     needs: build
     runs-on: ubuntu-latest
-    if: false
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
