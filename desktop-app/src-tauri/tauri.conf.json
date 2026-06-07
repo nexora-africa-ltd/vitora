@@ -53,8 +53,8 @@
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
+      "icons/icon.ico",
+      "icons/icon.png"
     ],
     "externalBin": [],
     "resources": [],
@@ -84,7 +84,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE0OTczRkM2ODFENDk2QwpSV1JzU1Ixby9ITkpDaUE2WUliUHBWRG1SUm96Ymd2bmViS08rRlh3Y3ZrTkdEd2hKK0NHb3NrUgo=",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZGOUI3MzdEN0RGMTY2QzIKUldUQ1p2RjlmWE9iLzJ5NzJ1Y3dUem9oRFFmemRzMFdtM1VlVXk5N1BIVEtRYkJ5c29SampiRG0K",
       "endpoints": [
         "https://vitora-releases-dzf4f6hmfdadf3gk.z01.azurefd.net/updates"
       ]
