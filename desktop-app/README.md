@@ -95,7 +95,7 @@ desktop-app/
 │   └── bundle-standalone.js        # Copies web-app standalone build
 ├── src-tauri/
 │   ├── tauri.conf.json             # Main config (windows, plugins, bundle)
-│   ├── tauri.conf.production.json  # CI override (resources + binaries)
+│   ├── tauri.conf.production.json  # Legacy override (not used by CI)
 │   ├── Cargo.toml                  # Rust dependencies
 │   ├── capabilities/
 │   │   └── desktop.json            # Plugin permissions whitelist

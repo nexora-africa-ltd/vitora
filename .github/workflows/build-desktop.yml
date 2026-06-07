@@ -99,7 +99,6 @@ jobs:
         run: node scripts/download-node.js --target ${{ matrix.node_target }}
         working-directory: desktop-app
 
-      # Install Tauri CLI (cargo-based)
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2" --locked
 
@@ -113,7 +112,7 @@ jobs:
         with:
           projectPath: desktop-app
           tauriScript: npm run tauri
-          args: --target ${{ matrix.target }} -c tauri.conf.production.json
+          args: --target ${{ matrix.target }}
           tagName: ${{ github.ref_name }}
           releaseName: "Vitora HMIS Desktop ${{ github.ref_name }}"
           releaseBody: |

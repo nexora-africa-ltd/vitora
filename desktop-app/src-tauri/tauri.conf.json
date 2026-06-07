@@ -57,7 +57,10 @@
       "icons/icon.png"
     ],
     "externalBin": [],
-    "resources": [],
+    "resources": {
+      "standalone/**/*": "standalone/",
+      "binaries/*": "binaries/"
+    },
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
