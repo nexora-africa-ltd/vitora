@@ -1,0 +1,204 @@
+name: Deploy Umami to Azure Container Apps
+
+on:
+  push:
+    tags:
+      - 'production'
+    paths:
+      - 'monitoring/scripts/azure-deploy-monitoring.sh'
+      - '.github/workflows/deploy-umami.yml'
+  workflow_dispatch:
+    inputs:
+      umami_version:
+        description: 'Umami image tag (e.g. postgresql-v2.15.1)'
+        required: false
+        default: 'postgresql-v2.15.1'
+
+env:
+  AZURE_RESOURCE_GROUP: vitora-rg
+  CONTAINER_APP_ENV: vitora-env
+  AZURE_LOCATION: eastus
+  UMAMI_APP_NAME: vitora-umami
+  UMAMI_DB_APP_NAME: vitora-umami-db
+  UMAMI_IMAGE: ghcr.io/umami-software/umami
+  UMAMI_VERSION: ${{ github.event.inputs.umami_version || 'postgresql-v2.15.1' }}
+  STORAGE_ACCOUNT: vitoramonitoring
+
+jobs:
+  deploy:
+    name: Deploy Umami
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Ensure persistent storage exists
+        run: |
+          # Create storage account if missing
+          az storage account show \
+            --name ${{ env.STORAGE_ACCOUNT }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} &>/dev/null || \
+          az storage account create \
+            --name ${{ env.STORAGE_ACCOUNT }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --location ${{ env.AZURE_LOCATION }} \
+            --sku Standard_LRS \
+            --kind StorageV2 \
+            --output none
+
+          STORAGE_KEY=$(az storage account keys list \
+            --account-name ${{ env.STORAGE_ACCOUNT }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "[0].value" -o tsv)
+
+          # Create file share for Umami DB
+          az storage share-rm create \
+            --storage-account ${{ env.STORAGE_ACCOUNT }} \
+            --name umami-db-data \
+            --quota 5 \
+            --output none 2>/dev/null || true
+
+          # Link storage to Container Apps environment
+          az containerapp env storage set \
+            --name ${{ env.CONTAINER_APP_ENV }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --storage-name umamidbstorage \
+            --azure-file-account-name ${{ env.STORAGE_ACCOUNT }} \
+            --azure-file-account-key "$STORAGE_KEY" \
+            --azure-file-share-name umami-db-data \
+            --access-mode ReadWrite \
+            --output none 2>/dev/null || true
+
+      - name: Deploy Umami PostgreSQL
+        run: |
+          TEMPLATE=$(mktemp)
+          cat > "$TEMPLATE" << 'YAML'
+          properties:
+            template:
+              containers:
+                - name: vitora-umami-db
+                  image: postgres:16-alpine
+                  resources:
+                    cpu: 0.25
+                    memory: 0.5Gi
+                  env:
+                    - name: POSTGRES_DB
+                      value: umami
+                    - name: POSTGRES_USER
+                      value: umami
+                    - name: POSTGRES_PASSWORD
+                      secretRef: postgres-password
+                    - name: PGDATA
+                      value: /var/lib/postgresql/data/pgdata
+                  volumeMounts:
+                    - volumeName: umamidbvol
+                      mountPath: /var/lib/postgresql/data
+              scale:
+                minReplicas: 1
+                maxReplicas: 1
+              volumes:
+                - name: umamidbvol
+                  storageName: umamidbstorage
+                  storageType: AzureFile
+            configuration:
+              secrets:
+                - name: postgres-password
+                  value: "${{ secrets.UMAMI_DB_PASSWORD }}"
+              ingress:
+                external: false
+                transport: tcp
+                targetPort: 5432
+          YAML
+
+          # Create or update
+          if az containerapp show --name ${{ env.UMAMI_DB_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} &>/dev/null 2>&1; then
+            az containerapp update \
+              --name ${{ env.UMAMI_DB_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --yaml "$TEMPLATE" \
+              --output none
+          else
+            az containerapp create \
+              --name ${{ env.UMAMI_DB_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --environment ${{ env.CONTAINER_APP_ENV }} \
+              --yaml "$TEMPLATE" \
+              --output none
+          fi
+          rm -f "$TEMPLATE"
+
+      - name: Deploy Umami application
+        run: |
+          IMAGE="${{ env.UMAMI_IMAGE }}:${{ env.UMAMI_VERSION }}"
+          DB_URL="postgresql://umami:${{ secrets.UMAMI_DB_PASSWORD }}@${{ env.UMAMI_DB_APP_NAME }}:5432/umami"
+
+          # Update secrets
+          az containerapp secret set \
+            --name ${{ env.UMAMI_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --secrets \
+              "db-url=${DB_URL}" \
+              "app-secret=${{ secrets.UMAMI_APP_SECRET }}" \
+            --output none 2>/dev/null || true
+
+          # Create or update
+          if az containerapp show --name ${{ env.UMAMI_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} &>/dev/null 2>&1; then
+            az containerapp update \
+              --name ${{ env.UMAMI_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --image "$IMAGE" \
+              --set-env-vars \
+                "DATABASE_URL=secretref:db-url" \
+                "APP_SECRET=secretref:app-secret" \
+                "DISABLE_TELEMETRY=1" \
+              --output none
+          else
+            az containerapp create \
+              --name ${{ env.UMAMI_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --environment ${{ env.CONTAINER_APP_ENV }} \
+              --image "$IMAGE" \
+              --cpu 0.25 --memory 0.5Gi \
+              --min-replicas 1 --max-replicas 2 \
+              --ingress external --target-port 3000 \
+              --secrets \
+                "db-url=${DB_URL}" \
+                "app-secret=${{ secrets.UMAMI_APP_SECRET }}" \
+              --env-vars \
+                "DATABASE_URL=secretref:db-url" \
+                "APP_SECRET=secretref:app-secret" \
+                "DISABLE_TELEMETRY=1" \
+              --output none
+          fi
+
+      - name: Verify deployment
+        run: |
+          FQDN=$(az containerapp show \
+            --name ${{ env.UMAMI_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.configuration.ingress.fqdn" -o tsv)
+          echo "Umami deployed to: https://${FQDN}"
+
+          # Health check — Umami responds with 200 on /api/heartbeat
+          for i in $(seq 1 12); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${FQDN}/api/heartbeat" || echo "000")
+            if [[ "$STATUS" == "200" ]]; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "  Waiting for healthy... (attempt $i/12, got $STATUS)"
+            sleep 10
+          done
+          echo "WARNING: Health check did not pass within 2 minutes"

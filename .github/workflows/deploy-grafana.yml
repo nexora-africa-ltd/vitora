@@ -1,0 +1,255 @@
+name: Deploy Grafana & Prometheus to Azure Container Apps
+
+on:
+  push:
+    tags:
+      - 'production'
+    paths:
+      - 'monitoring/**'
+      - '.github/workflows/deploy-grafana.yml'
+  workflow_dispatch:
+    inputs:
+      grafana_version:
+        description: 'Grafana image tag (e.g. 11.6.0)'
+        required: false
+        default: '11.6.0'
+
+env:
+  AZURE_RESOURCE_GROUP: vitora-rg
+  CONTAINER_APP_ENV: vitora-env
+  AZURE_LOCATION: eastus
+  GRAFANA_APP_NAME: vitora-grafana
+  PROMETHEUS_APP_NAME: vitora-prometheus
+  REGISTRY_NAME: vitoraacr
+  PROMETHEUS_IMAGE_NAME: vitora-prometheus
+  GRAFANA_VERSION: ${{ github.event.inputs.grafana_version || '11.6.0' }}
+  STORAGE_ACCOUNT: vitoramonitoring
+
+jobs:
+  deploy:
+    name: Deploy Grafana & Prometheus
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name ${{ env.REGISTRY_NAME }}
+
+      - name: Ensure persistent storage exists
+        run: |
+          # Create storage account if missing
+          az storage account show \
+            --name ${{ env.STORAGE_ACCOUNT }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} &>/dev/null || \
+          az storage account create \
+            --name ${{ env.STORAGE_ACCOUNT }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --location ${{ env.AZURE_LOCATION }} \
+            --sku Standard_LRS \
+            --kind StorageV2 \
+            --output none
+
+          STORAGE_KEY=$(az storage account keys list \
+            --account-name ${{ env.STORAGE_ACCOUNT }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "[0].value" -o tsv)
+
+          # Grafana data share
+          az storage share-rm create \
+            --storage-account ${{ env.STORAGE_ACCOUNT }} \
+            --name grafana-data \
+            --quota 2 \
+            --output none 2>/dev/null || true
+
+          # Prometheus data share
+          az storage share-rm create \
+            --storage-account ${{ env.STORAGE_ACCOUNT }} \
+            --name prometheus-data \
+            --quota 10 \
+            --output none 2>/dev/null || true
+
+          # Link storage to Container Apps environment
+          az containerapp env storage set \
+            --name ${{ env.CONTAINER_APP_ENV }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --storage-name grafanastorage \
+            --azure-file-account-name ${{ env.STORAGE_ACCOUNT }} \
+            --azure-file-account-key "$STORAGE_KEY" \
+            --azure-file-share-name grafana-data \
+            --access-mode ReadWrite \
+            --output none 2>/dev/null || true
+
+          az containerapp env storage set \
+            --name ${{ env.CONTAINER_APP_ENV }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --storage-name prometheusstorage \
+            --azure-file-account-name ${{ env.STORAGE_ACCOUNT }} \
+            --azure-file-account-key "$STORAGE_KEY" \
+            --azure-file-share-name prometheus-data \
+            --access-mode ReadWrite \
+            --output none 2>/dev/null || true
+
+      - name: Build and push Prometheus image
+        working-directory: monitoring/prometheus/azure
+        run: |
+          IMAGE_TAG="${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.PROMETHEUS_IMAGE_NAME }}:${{ github.sha }}"
+          IMAGE_LATEST="${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.PROMETHEUS_IMAGE_NAME }}:latest"
+          docker build -t "$IMAGE_TAG" -t "$IMAGE_LATEST" .
+          docker push "$IMAGE_TAG"
+          docker push "$IMAGE_LATEST"
+
+      - name: Deploy Prometheus
+        run: |
+          PROM_IMAGE="${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.PROMETHEUS_IMAGE_NAME }}:${{ github.sha }}"
+
+          TEMPLATE=$(mktemp)
+          cat > "$TEMPLATE" << YAML
+          properties:
+            template:
+              containers:
+                - name: vitora-prometheus
+                  image: ${PROM_IMAGE}
+                  resources:
+                    cpu: 0.25
+                    memory: 0.5Gi
+                  args:
+                    - "--config.file=/etc/prometheus/prometheus.yml"
+                    - "--storage.tsdb.retention.time=30d"
+                    - "--web.enable-lifecycle"
+                  volumeMounts:
+                    - volumeName: promvol
+                      mountPath: /prometheus
+              scale:
+                minReplicas: 1
+                maxReplicas: 1
+              volumes:
+                - name: promvol
+                  storageName: prometheusstorage
+                  storageType: AzureFile
+            configuration:
+              ingress:
+                external: false
+                targetPort: 9090
+              registries:
+                - server: ${{ env.REGISTRY_NAME }}.azurecr.io
+                  identity: system
+          YAML
+
+          if az containerapp show --name ${{ env.PROMETHEUS_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} &>/dev/null 2>&1; then
+            az containerapp update \
+              --name ${{ env.PROMETHEUS_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --yaml "$TEMPLATE" \
+              --output none
+          else
+            az containerapp create \
+              --name ${{ env.PROMETHEUS_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --environment ${{ env.CONTAINER_APP_ENV }} \
+              --yaml "$TEMPLATE" \
+              --output none
+          fi
+          rm -f "$TEMPLATE"
+
+      - name: Deploy Grafana
+        run: |
+          GRAFANA_IMAGE="grafana/grafana:${{ env.GRAFANA_VERSION }}"
+
+          # Get Prometheus internal FQDN for datasource
+          PROM_FQDN=$(az containerapp show \
+            --name ${{ env.PROMETHEUS_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "vitora-prometheus")
+
+          TEMPLATE=$(mktemp)
+          cat > "$TEMPLATE" << YAML
+          properties:
+            template:
+              containers:
+                - name: vitora-grafana
+                  image: ${GRAFANA_IMAGE}
+                  resources:
+                    cpu: 0.25
+                    memory: 0.5Gi
+                  env:
+                    - name: GF_SECURITY_ADMIN_USER
+                      value: admin
+                    - name: GF_SECURITY_ADMIN_PASSWORD
+                      secretRef: admin-password
+                    - name: GF_SERVER_ROOT_URL
+                      value: "https://${{ env.GRAFANA_APP_NAME }}.${{ env.CONTAINER_APP_ENV }}.${AZURE_LOCATION}.azurecontainerapps.io"
+                    - name: GF_INSTALL_PLUGINS
+                      value: "grafana-clock-panel"
+                  volumeMounts:
+                    - volumeName: grafanavol
+                      mountPath: /var/lib/grafana
+              scale:
+                minReplicas: 1
+                maxReplicas: 1
+              volumes:
+                - name: grafanavol
+                  storageName: grafanastorage
+                  storageType: AzureFile
+            configuration:
+              secrets:
+                - name: admin-password
+                  value: "${{ secrets.GRAFANA_ADMIN_PASSWORD }}"
+              ingress:
+                external: true
+                targetPort: 3000
+          YAML
+
+          if az containerapp show --name ${{ env.GRAFANA_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} &>/dev/null 2>&1; then
+            az containerapp update \
+              --name ${{ env.GRAFANA_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --yaml "$TEMPLATE" \
+              --output none
+          else
+            az containerapp create \
+              --name ${{ env.GRAFANA_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --environment ${{ env.CONTAINER_APP_ENV }} \
+              --yaml "$TEMPLATE" \
+              --output none
+          fi
+          rm -f "$TEMPLATE"
+
+      - name: Verify deployments
+        run: |
+          GRAFANA_FQDN=$(az containerapp show \
+            --name ${{ env.GRAFANA_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.configuration.ingress.fqdn" -o tsv)
+          echo "Grafana deployed to: https://${GRAFANA_FQDN}"
+
+          # Grafana health check
+          for i in $(seq 1 12); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${GRAFANA_FQDN}/api/health" || echo "000")
+            if [[ "$STATUS" == "200" ]]; then
+              echo "Grafana health check passed!"
+              break
+            fi
+            echo "  Waiting for Grafana... (attempt $i/12, got $STATUS)"
+            sleep 10
+          done
+
+          # Prometheus (internal only — verify container is running)
+          PROM_STATUS=$(az containerapp show \
+            --name ${{ env.PROMETHEUS_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.runningStatus" -o tsv 2>/dev/null || echo "Unknown")
+          echo "Prometheus status: ${PROM_STATUS}"
