@@ -27,12 +27,15 @@ jobs:
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
             node_target: x86_64-pc-windows-msvc
+            bundle_target: nsis
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             node_target: x86_64-unknown-linux-gnu
+            bundle_target: deb
           - platform: macos-latest
             target: aarch64-apple-darwin
             node_target: aarch64-apple-darwin
+            bundle_target: dmg
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -112,15 +115,15 @@ jobs:
         with:
           projectPath: desktop-app
           tauriScript: npm run tauri
-          args: --target ${{ matrix.target }}
+          args: --target ${{ matrix.target }} --bundles ${{ matrix.bundle_target }}
           tagName: ${{ github.ref_name }}
           releaseName: "Vitora HMIS Desktop ${{ github.ref_name }}"
           releaseBody: |
             Desktop application release for Vitora HMIS.
 
             ## Installation
-            - **Windows**: Download the `.msi` or `.exe` installer
-            - **Linux**: Download the `.deb` or `.AppImage`
+            - **Windows**: Download the `.exe` installer
+            - **Linux**: Download the `.deb` installer
             - **macOS**: Download the `.dmg`
 
             ## Auto-Update
