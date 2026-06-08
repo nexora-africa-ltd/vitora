@@ -22,19 +22,7 @@
         "resizable": true,
         "fullscreen": false,
         "decorations": true,
-        "visible": false
-      },
-      {
-        "label": "splash",
-        "title": "Vitora HMIS",
-        "url": "splash.html",
-        "width": 400,
-        "height": 320,
-        "center": true,
-        "resizable": false,
-        "decorations": false,
-        "transparent": false,
-        "alwaysOnTop": true
+        "visible": true
       }
     ],
     "security": {
@@ -59,6 +47,7 @@
     "externalBin": [],
     "resources": {
       "standalone/**/*": "standalone/",
+      "standalone/.next/**/*": "standalone/.next/",
       "binaries/*": "binaries/"
     },
     "windows": {

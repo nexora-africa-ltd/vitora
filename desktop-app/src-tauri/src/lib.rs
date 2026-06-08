@@ -89,11 +89,23 @@ impl SidecarState {
             }
         };
 
+        // Validate node_modules/next exists before spawning
+        let node_modules_dir = standalone_dir.join("node_modules");
+        let next_module = node_modules_dir.join("next");
+        if !next_module.exists() {
+            return Err(format!(
+                "node_modules/next not found at: {}. The standalone bundle may be incomplete.",
+                next_module.display()
+            ));
+        }
+
         let child = Command::new(&node_bin)
             .arg(server_js.to_string_lossy().to_string())
             .env("PORT", port.to_string())
             .env("HOSTNAME", "127.0.0.1")
             .env("NEXT_PUBLIC_API_URL", AppConfig::load(app).api_url)
+            // Explicitly set NODE_PATH so Node.js can always find modules
+            .env("NODE_PATH", node_modules_dir.to_string_lossy().to_string())
             .current_dir(&standalone_dir)
             .spawn()
             .map_err(|e| format!("Failed to spawn Node sidecar: {}", e))?;
@@ -259,18 +271,14 @@ pub fn run() {
             // In dev mode, don't spawn sidecar — use the running dev server
             if cfg!(debug_assertions) {
                 log::info!("Dev mode: using external dev server at http://127.0.0.1:3009");
-                // Show main window immediately in dev (no splash)
+                // Navigate main window to dev server
                 if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                }
-                // Close splash if it exists in dev
-                if let Some(splash) = app.get_webview_window("splash") {
-                    let _ = splash.close();
+                    let _ = window.navigate("http://127.0.0.1:3009".parse().unwrap());
                 }
                 return Ok(());
             }
 
-            // Production: spawn sidecar and show splash while loading
+            // Production: spawn sidecar (main window shows loading state from frontend/index.html)
             log::info!("Spawning Node.js sidecar...");
             let handle_clone = handle.clone();
 
@@ -286,15 +294,10 @@ pub fn run() {
                         match state.wait_for_ready(Duration::from_secs(20)) {
                             Ok(()) => {
                                 log::info!("Sidecar is ready on port {}", port);
-                                // Navigate main window to sidecar URL and show it
+                                // Navigate main window to sidecar URL
                                 if let Some(main_window) = handle_clone.get_webview_window("main") {
                                     let url = format!("http://127.0.0.1:{}", port);
                                     let _ = main_window.navigate(url.parse().unwrap());
-                                    let _ = main_window.show();
-                                }
-                                // Close splash
-                                if let Some(splash) = handle_clone.get_webview_window("splash") {
-                                    let _ = splash.close();
                                 }
                             }
                             Err(e) => {
@@ -306,10 +309,6 @@ pub fn run() {
                                         e
                                     );
                                     let _ = main_window.navigate(error_html.parse().unwrap());
-                                    let _ = main_window.show();
-                                }
-                                if let Some(splash) = handle_clone.get_webview_window("splash") {
-                                    let _ = splash.close();
                                 }
                             }
                         }
@@ -322,10 +321,6 @@ pub fn run() {
                                 e
                             );
                             let _ = main_window.navigate(error_html.parse().unwrap());
-                            let _ = main_window.show();
-                        }
-                        if let Some(splash) = handle_clone.get_webview_window("splash") {
-                            let _ = splash.close();
                         }
                     }
                 }
