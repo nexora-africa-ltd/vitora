@@ -24,15 +24,36 @@ function copyDirSync(src, dest) {
     process.exit(1);
   }
 
-  // Use rsync for speed if available, fallback to cp -r
-  try {
-    execSync(`rsync -a --delete "${src}/" "${dest}/"`, { stdio: 'pipe' });
-  } catch {
-    // Fallback: rm + cp
+  // Platform-aware directory copy
+  if (process.platform === 'win32') {
+    // Windows: use robocopy (built-in, handles long paths)
     if (fs.existsSync(dest)) {
       fs.rmSync(dest, { recursive: true, force: true });
     }
-    execSync(`cp -r "${src}" "${dest}"`, { stdio: 'pipe' });
+    fs.mkdirSync(dest, { recursive: true });
+    try {
+      // robocopy returns 0-7 for success, 8+ for errors
+      const result = execSync(
+        `robocopy "${src}" "${dest}" /E /NFL /NDL /NJH /NJS /NC /NS`,
+        { stdio: 'pipe' }
+      );
+    } catch (e) {
+      // robocopy exit code 1 = files copied, which is success
+      if (e.status >= 8) {
+        throw new Error(`robocopy failed with exit code ${e.status}`);
+      }
+    }
+  } else {
+    // Unix: use rsync for speed if available, fallback to cp -r
+    try {
+      execSync(`rsync -a --delete "${src}/" "${dest}/"`, { stdio: 'pipe' });
+    } catch {
+      // Fallback: rm + cp
+      if (fs.existsSync(dest)) {
+        fs.rmSync(dest, { recursive: true, force: true });
+      }
+      execSync(`cp -r "${src}" "${dest}"`, { stdio: 'pipe' });
+    }
   }
 }
 
@@ -53,6 +74,38 @@ console.log(`  Copying public assets → ${publicDest}`);
 copyDirSync(PUBLIC_SRC, publicDest);
 
 // 4. Report size
-const sizeOutput = execSync(`du -sh "${DEST}"`).toString().trim();
-console.log(`  Bundle size: ${sizeOutput.split('\t')[0]}`);
+try {
+  const sizeOutput = execSync(
+    process.platform === 'win32'
+      ? `powershell -command "(Get-ChildItem -Recurse '${DEST}' | Measure-Object -Property Length -Sum).Sum / 1MB"`
+      : `du -sh "${DEST}"`
+  ).toString().trim();
+  const size = process.platform === 'win32'
+    ? `${Math.round(parseFloat(sizeOutput))}MB`
+    : sizeOutput.split('\t')[0];
+  console.log(`  Bundle size: ${size}`);
+} catch {
+  console.log('  Bundle size: (could not determine)');
+}
+
+// 5. Verify critical paths
+const criticalPaths = [
+  'server.js',
+  'node_modules/next/package.json',
+  'node_modules/next/dist/server/next.js',
+  '.next',
+];
+let missing = false;
+for (const p of criticalPaths) {
+  const full = path.join(DEST, p);
+  if (!fs.existsSync(full)) {
+    console.error(`  ERROR: Missing critical path: ${p}`);
+    missing = true;
+  }
+}
+if (missing) {
+  console.error('Bundle verification FAILED. The installer will not work correctly.');
+  process.exit(1);
+}
+
 console.log('Done!');
