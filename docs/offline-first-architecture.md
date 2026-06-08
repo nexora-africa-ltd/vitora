@@ -510,21 +510,21 @@ async fn export_backup(app: AppHandle, dest_path: String, encrypt: bool) -> Resu
 
 ### Phase 1: Local SQLite in Tauri (Foundation)
 
-- [ ] Add `better-sqlite3` to Next.js standalone sidecar
-- [ ] Define local schema (mirror Django models for facility-scoped data)
-- [ ] Implement read-from-local-SQLite for all pages
-- [ ] Implement write-to-local + queue for hub sync
-- [ ] Backup engine (rolling + daily + integrity check)
-- [ ] Settings UI for deployment mode selection
+- [x] Add `better-sqlite3` to Next.js standalone sidecar
+- [x] Define local schema (mirror Django models for facility-scoped data)
+- [x] Implement read-from-local-SQLite for all pages
+- [x] Implement write-to-local + queue for hub sync
+- [x] Backup engine (rolling + daily + integrity check)
+- [x] Settings UI for deployment mode selection
 
 ### Phase 2: REST Sync Endpoints (Django)
 
-- [ ] `POST /api/sync/push/` — batch accept changes
-- [ ] `GET /api/sync/pull/?since=<ts>` — incremental pull
-- [ ] `GET /api/sync/pull/?full=true` — full re-sync
-- [ ] `POST /api/sync/resolve-conflict/` — manual resolution
-- [ ] `GET /api/sync/status/` — health/status
-- [ ] Conflict detection and resolution logic (extend existing `SyncQueue`/`SyncConflict`)
+- [x] `POST /api/sync/push/` — batch accept changes
+- [x] `GET /api/sync/pull/?since=<ts>` — incremental pull
+- [x] `GET /api/sync/pull/?full=true` — full re-sync
+- [x] `POST /api/sync/resolve-conflict/` — manual resolution
+- [x] `GET /api/sync/status/` — health/status
+- [x] Conflict detection and resolution logic (extend existing `SyncQueue`/`SyncConflict`)
 
 ### Phase 3: Facility Hub Deployment
 
