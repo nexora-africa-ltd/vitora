@@ -79,7 +79,7 @@
     "@types/react-dom": "^18.2.18",
     "@xyflow/react": "^12.10.1",
     "autoprefixer": "^10.4.17",
-    "axios": "^1.6.5",
+    "axios": "^1.16.0",
     "better-sqlite3": "^12.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
