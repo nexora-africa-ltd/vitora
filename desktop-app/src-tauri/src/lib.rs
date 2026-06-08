@@ -165,6 +165,8 @@ impl SidecarState {
             .env("PORT", port.to_string())
             .env("HOSTNAME", "127.0.0.1")
             .env("NEXT_PUBLIC_API_URL", AppConfig::load(app).api_url)
+            // Skip Sentry instrumentation (requires native modules not in standalone)
+            .env("VITORA_DESKTOP", "1")
             // Explicitly set NODE_PATH so Node.js can always find modules
             .env("NODE_PATH", node_modules_dir.to_string_lossy().to_string())
             .current_dir(&standalone_dir)
