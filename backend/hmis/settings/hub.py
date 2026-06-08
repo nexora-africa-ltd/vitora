@@ -200,3 +200,5 @@ LOGGING = {
 HUB_ID = os.getenv("HUB_ID", "")
 HUB_FACILITY_ID = os.getenv("HUB_FACILITY_ID", "")
 HUB_ORGANIZATION_ID = os.getenv("HUB_ORGANIZATION_ID", "")
+HUB_FACILITY_NAME = os.getenv("HUB_FACILITY_NAME", "Vitora Hub")
+HUB_PORT = int(os.getenv("HUB_PORT", "9088"))
