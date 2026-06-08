@@ -11,6 +11,8 @@ Endpoints:
 
 import logging
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.apps import apps
 from django.conf import settings
 from django.db import transaction
@@ -73,6 +75,38 @@ def _resolve_organization(user):
     if profile:
         return profile.organization
     return None
+
+
+def _broadcast_sync_changes(facility_id: int, changes: list, client_id: str):
+    """
+    Broadcast accepted sync changes to all WebSocket clients in the facility group.
+
+    This is fire-and-forget: failures are logged but never block the HTTP response.
+    """
+    try:
+        channel_layer = get_channel_layer()
+        if channel_layer is None:
+            return
+
+        group_name = f"sync_{facility_id}"
+        broadcast_payload = {
+            "type": "sync_broadcast",
+            "source_client_id": client_id,
+            "changes": [
+                {
+                    "table": c.get("table"),
+                    "operation": c.get("operation"),
+                    "record_id": c.get("record_id"),
+                    "data": c.get("data"),
+                }
+                for c in changes
+            ],
+            "server_timestamp": timezone.now().isoformat(),
+        }
+
+        async_to_sync(channel_layer.group_send)(group_name, broadcast_payload)
+    except Exception:
+        logger.exception("Failed to broadcast sync changes to facility %s", facility_id)
 
 
 @api_view(["POST"])
@@ -177,6 +211,14 @@ def sync_push(request):
                 organization=organization,
             )
             accepted += 1
+
+    # Broadcast accepted changes to other LAN clients via WebSocket
+    if accepted > 0 and facility:
+        _broadcast_sync_changes(
+            facility_id=facility.pk,
+            changes=changes,
+            client_id=client_id,
+        )
 
     response_data = {
         "accepted": accepted,
