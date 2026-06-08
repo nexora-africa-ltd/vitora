@@ -552,6 +552,14 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 
 # ---------------------------------------------------------------------------
+# Offline Sync (REST sync API for Tauri desktop / facility hub clients)
+# ---------------------------------------------------------------------------
+SYNC_SERVER_URL = os.getenv("SYNC_SERVER_URL", "http://localhost:9088/api/sync")
+SYNC_ENABLED = os.getenv("SYNC_ENABLED", "false").lower() == "true"
+SYNC_BATCH_SIZE = int(os.getenv("SYNC_BATCH_SIZE", "100"))
+SYNC_MAX_RETRIES = int(os.getenv("SYNC_MAX_RETRIES", "3"))
+
+# ---------------------------------------------------------------------------
 # Superset Embedded Analytics (replaces Metabase)
 # ---------------------------------------------------------------------------
 SUPERSET_URL = os.getenv("SUPERSET_URL", "http://localhost:8088")

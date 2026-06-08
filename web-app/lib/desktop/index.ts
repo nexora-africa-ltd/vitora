@@ -252,3 +252,54 @@ export async function installUpdate(): Promise<void> {
   if (!invoke) return;
   await invoke('plugin:updater|download_and_install');
 }
+
+// ---------------------------------------------------------------------------
+// Deployment Mode & Sync Config
+// ---------------------------------------------------------------------------
+
+export type DeploymentMode = 'standalone' | 'lan_client' | 'lan_hub' | 'web_only';
+
+export interface AppConfig {
+  api_url: string;
+  deployment_mode: DeploymentMode;
+  client_id: string;
+  sync_interval_secs: number;
+  backup_interval_mins: number;
+}
+
+/**
+ * Get the full app configuration.
+ * Returns null in browser mode.
+ */
+export async function getAppConfig(): Promise<AppConfig | null> {
+  const invoke = getInvoke();
+  if (!invoke) return null;
+  return invoke<AppConfig>('get_app_config');
+}
+
+/**
+ * Set the deployment mode.
+ */
+export async function setDeploymentMode(mode: DeploymentMode): Promise<void> {
+  const invoke = getInvoke();
+  if (!invoke) return;
+  await invoke('set_deployment_mode', { mode });
+}
+
+/**
+ * Set the auto-sync interval (in seconds). 0 to disable.
+ */
+export async function setSyncInterval(seconds: number): Promise<void> {
+  const invoke = getInvoke();
+  if (!invoke) return;
+  await invoke('set_sync_interval', { seconds });
+}
+
+/**
+ * Set the auto-backup interval (in minutes). 0 to disable.
+ */
+export async function setBackupInterval(minutes: number): Promise<void> {
+  const invoke = getInvoke();
+  if (!invoke) return;
+  await invoke('set_backup_interval', { minutes });
+}

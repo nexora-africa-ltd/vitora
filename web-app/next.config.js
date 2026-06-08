@@ -18,6 +18,9 @@ const nextConfig = {
     },
   },
 
+  // Native modules that should not be bundled (used by Tauri sidecar only)
+  serverExternalPackages: ['better-sqlite3'],
+
   // Expose build info as environment variables for version checking
   env: {
     NEXT_PUBLIC_BUILD_ID: BUILD_ID,

@@ -19,7 +19,7 @@ pub mod commands;
 pub mod config;
 
 use commands::{list_printers, print_receipt};
-use config::{get_api_url, is_first_run, set_api_url, AppConfig};
+use config::{get_api_url, get_app_config, is_first_run, set_api_url, set_backup_interval, set_deployment_mode, set_sync_interval, AppConfig};
 
 /// Manages the Node.js sidecar process lifecycle.
 pub struct SidecarState {
@@ -307,6 +307,10 @@ pub fn run() {
             get_api_url,
             set_api_url,
             is_first_run,
+            get_app_config,
+            set_deployment_mode,
+            set_sync_interval,
+            set_backup_interval,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
