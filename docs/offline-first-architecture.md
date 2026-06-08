@@ -245,21 +245,30 @@ LAN latency is <1ms, so polling 5–20 clients every 3s is negligible load.
 
 ## Hub Discovery
 
-### Option A: mDNS (Recommended)
+### Option A: mDNS/DNS-SD (Primary — Recommended)
 
 The facility hub advertises itself via mDNS/Bonjour:
 
 ```
 Service: _vitora._tcp.local
 Port: 9088
-TXT: facility_id=<uuid>, facility_name=<name>, version=0.1.0
+TXT: facility_id=<uuid>, facility_name=<name>, version=0.3.0
 ```
 
 Tauri clients discover automatically on startup. No manual configuration needed.
 
-**Implementation:** Use `zeroconf` Python package on hub, Rust `mdns-sd` crate or Node `bonjour-service` on client.
+**Implementation:** `zeroconf` Python package on hub, Rust `mdns-sd` crate or Node `bonjour-service` on client.
 
-### Option B: Manual Configuration
+### Option B: UDP Broadcast Probe
+
+Client sends a UDP broadcast to `255.255.255.255:19088` with payload `VITORA_DISCOVER`. Hub responds with JSON:
+```json
+{ "url": "http://192.168.1.100:9088", "facility_id": "uuid", "facility_name": "Demo Clinic", "version": "0.3.0" }
+```
+
+Simplest possible discovery — works on any flat LAN, no library dependencies.
+
+### Option C: Manual Configuration (Always-Available Fallback)
 
 Settings UI in Tauri app:
 
@@ -276,14 +285,15 @@ Settings UI in Tauri app:
 └─────────────────────────────────────────┘
 ```
 
-### Option C: QR Code
+For networks where mDNS is blocked or VLAN'd, users (or IT staff) enter the hub IP/hostname directly. The "Scan Network" button triggers UDP broadcast probe.
 
-Hub displays a QR code in its admin UI containing:
-```json
-{ "url": "http://192.168.1.100:9088", "facility_id": "uuid", "token": "setup-token" }
-```
+### ~~Option D: QR Code~~ (Removed)
 
-New clients scan the QR to auto-configure. Useful for adding new workstations without IT knowledge.
+QR code pairing was removed from the plan. Rationale:
+- Raspberry Pi hubs are typically headless (no display to show QR)
+- Desktop PCs don't have cameras aimed at other screens
+- The problem QR solves (hub discovery) is better served by mDNS + UDP broadcast + manual entry
+- QR is a mobile-phone UX pattern that doesn't translate to PC-to-PC workflows
 
 ---
 
@@ -538,11 +548,14 @@ async fn export_backup(app: AppHandle, dest_path: String, encrypt: bool) -> Resu
 
 ### Phase 4: Real-Time LAN Communication
 
-- [ ] WebSocket connection from Tauri client to hub
-- [ ] Message types and handlers (record changes, alerts, queue updates)
-- [ ] Short-polling fallback
-- [ ] mDNS discovery (hub advertisement + client scanning)
-- [ ] QR code pairing flow
+- [x] WebSocket connection from Tauri client to hub (`HubWebSocketClient` with auto-reconnect)
+- [x] Message types and handlers (sync_changes, ping/pong, subscribe filtering)
+- [x] Short-polling fallback (HTTP GET every 3s when WebSocket unavailable)
+- [x] mDNS/DNS-SD discovery (hub advertises `_vitora._tcp.local` via zeroconf)
+- [x] UDP broadcast fallback for discovery (`VITORA_DISCOVER` on port 19088)
+- [x] Manual IP/hostname entry in client settings (always-available fallback)
+- [x] Hub discovery client (`probeHub`, `discoverHub`, subnet scan)
+- [x] 11 tests (UDP responder, mDNS registration, message routing, polling)
 
 ### Phase 5: Hardening
 
