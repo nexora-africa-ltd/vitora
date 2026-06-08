@@ -3,8 +3,10 @@ use std::process::Command;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
+use flate2::read::GzDecoder;
 use shared_child::SharedChild;
 use std::sync::Arc;
+use tar::Archive;
 use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
@@ -47,32 +49,86 @@ impl SidecarState {
         TcpListener::bind(format!("127.0.0.1:{}", port)).is_err()
     }
 
-    /// Spawn the Node.js sidecar with the standalone Next.js build.
-    pub fn spawn_sidecar(&self, app: &AppHandle) -> Result<u16, String> {
-        let port = Self::find_free_port();
+    /// Extract standalone.tar.gz to the app data directory if not already extracted.
+    fn ensure_standalone_extracted(app: &AppHandle) -> Result<std::path::PathBuf, String> {
+        let app_data_dir = app
+            .path()
+            .app_data_dir()
+            .map_err(|e| format!("Failed to get app data dir: {}", e))?;
 
-        // Resolve paths relative to the app resource directory
+        let standalone_dir = app_data_dir.join("standalone");
+        let server_js = standalone_dir.join("server.js");
+
+        // If already extracted and server.js exists, use it
+        if server_js.exists() {
+            log::info!("Standalone already extracted at: {}", standalone_dir.display());
+            return Ok(standalone_dir);
+        }
+
+        // Find the archive in resources
         let resource_dir = app
             .path()
             .resource_dir()
             .map_err(|e| format!("Failed to get resource dir: {}", e))?;
 
-        let standalone_dir = resource_dir.join("standalone");
-        let server_js = standalone_dir.join("server.js");
+        let archive_path = resource_dir.join("standalone.tar.gz");
+        if !archive_path.exists() {
+            return Err(format!(
+                "standalone.tar.gz not found at: {}. Is the archive bundled?",
+                archive_path.display()
+            ));
+        }
 
+        log::info!(
+            "Extracting standalone bundle from {} to {}",
+            archive_path.display(),
+            standalone_dir.display()
+        );
+
+        // Create target directory
+        std::fs::create_dir_all(&standalone_dir)
+            .map_err(|e| format!("Failed to create standalone dir: {}", e))?;
+
+        // Extract tar.gz
+        let tar_gz = std::fs::File::open(&archive_path)
+            .map_err(|e| format!("Failed to open archive: {}", e))?;
+        let tar = GzDecoder::new(tar_gz);
+        let mut archive = Archive::new(tar);
+
+        archive.unpack(&standalone_dir)
+            .map_err(|e| format!("Failed to extract archive: {}", e))?;
+
+        // Verify extraction
         if !server_js.exists() {
             return Err(format!(
-                "server.js not found at: {}. Is the standalone build bundled?",
+                "Extraction succeeded but server.js not found at: {}",
                 server_js.display()
             ));
         }
 
-        // Resolve Node.js binary: Tauri externalBin places it adjacent to the exe
-        // with the target triple suffix. On dev, use system node.
+        log::info!("Standalone bundle extracted successfully");
+        Ok(standalone_dir)
+    }
+
+    /// Spawn the Node.js sidecar with the standalone Next.js build.
+    pub fn spawn_sidecar(&self, app: &AppHandle) -> Result<u16, String> {
+        let port = Self::find_free_port();
+
+        // Extract standalone archive to app data dir (first run) or reuse existing
+        let standalone_dir = Self::ensure_standalone_extracted(app)?;
+        let server_js = standalone_dir.join("server.js");
+
+        // Resolve Node.js binary from resources
+        let resource_dir = app
+            .path()
+            .resource_dir()
+            .map_err(|e| format!("Failed to get resource dir: {}", e))?;
+
+        // Resolve Node.js binary: bundled as resource with target triple suffix.
+        // On dev, use system node.
         let node_bin = if cfg!(debug_assertions) {
             "node".to_string()
         } else {
-            // externalBin resolves to: <app_dir>/binaries/node-<target-triple>[.exe]
             let bin_dir = resource_dir.join("binaries");
             let node_name = if cfg!(target_os = "windows") {
                 format!("node-{}.exe", env!("TAURI_ENV_TARGET_TRIPLE"))
@@ -83,9 +139,14 @@ impl SidecarState {
             if bundled.exists() {
                 bundled.to_string_lossy().to_string()
             } else {
-                // Fallback: try system node
-                log::warn!("Bundled node not found at {:?}, falling back to system node", bundled);
-                "node".to_string()
+                // Fallback: try in resource root (flat layout) or system node
+                let flat = resource_dir.join(&node_name);
+                if flat.exists() {
+                    flat.to_string_lossy().to_string()
+                } else {
+                    log::warn!("Bundled node not found at {:?} or {:?}, falling back to system node", bundled, flat);
+                    "node".to_string()
+                }
             }
         };
 

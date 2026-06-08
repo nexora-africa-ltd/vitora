@@ -102,14 +102,15 @@ jobs:
         shell: bash
         working-directory: desktop-app/src-tauri
         run: |
-          echo "Checking standalone bundle..."
-          test -f standalone/server.js || { echo "FAIL: server.js missing"; exit 1; }
-          test -d standalone/node_modules/next || { echo "FAIL: node_modules/next missing"; exit 1; }
-          test -f standalone/node_modules/next/dist/server/next.js || { echo "FAIL: next entry point missing"; exit 1; }
-          test -d standalone/.next || { echo "FAIL: .next directory missing"; exit 1; }
-          echo "File count in standalone/node_modules: $(find standalone/node_modules -type f | wc -l)"
-          echo "File count in standalone/.next: $(find standalone/.next -type f | wc -l)"
-          echo "Standalone bundle verified OK"
+          echo "Checking standalone archive..."
+          test -f standalone.tar.gz || { echo "FAIL: standalone.tar.gz missing"; exit 1; }
+          ARCHIVE_SIZE=$(stat -c%s standalone.tar.gz 2>/dev/null || stat -f%z standalone.tar.gz)
+          echo "Archive size: $((ARCHIVE_SIZE / 1024 / 1024))MB"
+          # Verify archive contains critical files
+          tar -tzf standalone.tar.gz | grep -q "^./server.js" || { echo "FAIL: server.js not in archive"; exit 1; }
+          tar -tzf standalone.tar.gz | grep -q "node_modules/next/" || { echo "FAIL: node_modules/next not in archive"; exit 1; }
+          tar -tzf standalone.tar.gz | grep -q ".next/" || { echo "FAIL: .next not in archive"; exit 1; }
+          echo "Standalone archive verified OK"
 
       - name: Download Node.js binary for sidecar
         run: node scripts/download-node.js --target ${{ matrix.node_target }}

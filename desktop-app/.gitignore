@@ -3,6 +3,10 @@
 /standalone/
 /node_modules/
 
+# Bundled standalone archive (created during build)
+/src-tauri/standalone.tar.gz
+/src-tauri/standalone/
+
 # Bundled Node.js binary (fetched during build)
 /src-tauri/binaries/
 
