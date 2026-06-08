@@ -45,11 +45,10 @@
       "icons/icon.png"
     ],
     "externalBin": [],
-    "resources": {
-      "standalone/**/*": "standalone/",
-      "standalone/.next/**/*": "standalone/.next/",
-      "binaries/*": "binaries/"
-    },
+    "resources": [
+      "standalone.tar.gz",
+      "binaries/*"
+    ],
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",

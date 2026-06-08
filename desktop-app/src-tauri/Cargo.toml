@@ -30,6 +30,8 @@ port_check = "0.2"
 tokio = { version = "1", features = ["full"] }
 log = "0.4"
 env_logger = "0.11"
+flate2 = "1"
+tar = "0.4"
 
 [features]
 default = ["custom-protocol"]

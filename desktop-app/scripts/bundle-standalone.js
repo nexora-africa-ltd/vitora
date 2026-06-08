@@ -1,8 +1,9 @@
 /**
  * bundle-standalone.js
  *
- * Copies the Next.js standalone build output into the Tauri resource directory
- * so it gets bundled into the installer.
+ * Copies the Next.js standalone build output into a staging directory,
+ * then creates a standalone.tar.gz archive for Tauri to bundle as a single resource.
+ * The Rust app extracts this archive to AppData on first launch.
  *
  * Usage: node scripts/bundle-standalone.js
  * Run after `npm run build:web` and before `npm run build:tauri`.
@@ -16,7 +17,8 @@ const WEB_APP_DIR = path.resolve(__dirname, '../../web-app');
 const STANDALONE_SRC = path.join(WEB_APP_DIR, '.next/standalone');
 const STATIC_SRC = path.join(WEB_APP_DIR, '.next/static');
 const PUBLIC_SRC = path.join(WEB_APP_DIR, 'public');
-const DEST = path.resolve(__dirname, '../src-tauri/standalone');
+const STAGING_DIR = path.resolve(__dirname, '../src-tauri/standalone');
+const ARCHIVE_DEST = path.resolve(__dirname, '../src-tauri/standalone.tar.gz');
 
 function copyDirSync(src, dest) {
   if (!fs.existsSync(src)) {
@@ -26,29 +28,24 @@ function copyDirSync(src, dest) {
 
   // Platform-aware directory copy
   if (process.platform === 'win32') {
-    // Windows: use robocopy (built-in, handles long paths)
     if (fs.existsSync(dest)) {
       fs.rmSync(dest, { recursive: true, force: true });
     }
     fs.mkdirSync(dest, { recursive: true });
     try {
-      // robocopy returns 0-7 for success, 8+ for errors
-      const result = execSync(
+      execSync(
         `robocopy "${src}" "${dest}" /E /NFL /NDL /NJH /NJS /NC /NS`,
         { stdio: 'pipe' }
       );
     } catch (e) {
-      // robocopy exit code 1 = files copied, which is success
       if (e.status >= 8) {
         throw new Error(`robocopy failed with exit code ${e.status}`);
       }
     }
   } else {
-    // Unix: use rsync for speed if available, fallback to cp -r
     try {
       execSync(`rsync -a --delete "${src}/" "${dest}/"`, { stdio: 'pipe' });
     } catch {
-      // Fallback: rm + cp
       if (fs.existsSync(dest)) {
         fs.rmSync(dest, { recursive: true, force: true });
       }
@@ -59,36 +56,21 @@ function copyDirSync(src, dest) {
 
 console.log('Bundling Next.js standalone build for Tauri...');
 
-// 1. Copy standalone server
-console.log(`  Copying standalone build → ${DEST}`);
-copyDirSync(STANDALONE_SRC, DEST);
+// 1. Copy standalone server to staging
+console.log(`  Copying standalone build → ${STAGING_DIR}`);
+copyDirSync(STANDALONE_SRC, STAGING_DIR);
 
-// 2. Copy static assets into standalone/.next/static
-const staticDest = path.join(DEST, '.next/static');
+// 2. Copy static assets into staging/.next/static
+const staticDest = path.join(STAGING_DIR, '.next/static');
 console.log(`  Copying static assets → ${staticDest}`);
 copyDirSync(STATIC_SRC, staticDest);
 
-// 3. Copy public assets into standalone/public
-const publicDest = path.join(DEST, 'public');
+// 3. Copy public assets into staging/public
+const publicDest = path.join(STAGING_DIR, 'public');
 console.log(`  Copying public assets → ${publicDest}`);
 copyDirSync(PUBLIC_SRC, publicDest);
 
-// 4. Report size
-try {
-  const sizeOutput = execSync(
-    process.platform === 'win32'
-      ? `powershell -command "(Get-ChildItem -Recurse '${DEST}' | Measure-Object -Property Length -Sum).Sum / 1MB"`
-      : `du -sh "${DEST}"`
-  ).toString().trim();
-  const size = process.platform === 'win32'
-    ? `${Math.round(parseFloat(sizeOutput))}MB`
-    : sizeOutput.split('\t')[0];
-  console.log(`  Bundle size: ${size}`);
-} catch {
-  console.log('  Bundle size: (could not determine)');
-}
-
-// 5. Verify critical paths
+// 4. Verify critical paths before archiving
 const criticalPaths = [
   'server.js',
   'node_modules/next/package.json',
@@ -97,15 +79,43 @@ const criticalPaths = [
 ];
 let missing = false;
 for (const p of criticalPaths) {
-  const full = path.join(DEST, p);
+  const full = path.join(STAGING_DIR, p);
   if (!fs.existsSync(full)) {
     console.error(`  ERROR: Missing critical path: ${p}`);
     missing = true;
   }
 }
 if (missing) {
-  console.error('Bundle verification FAILED. The installer will not work correctly.');
+  console.error('Bundle verification FAILED. Cannot create archive.');
   process.exit(1);
 }
 
-console.log('Done!');
+// 5. Create tar.gz archive
+console.log(`  Creating archive → ${ARCHIVE_DEST}`);
+if (fs.existsSync(ARCHIVE_DEST)) {
+  fs.unlinkSync(ARCHIVE_DEST);
+}
+
+if (process.platform === 'win32') {
+  // Windows: use tar (available since Windows 10 1803)
+  execSync(
+    `tar -czf "${ARCHIVE_DEST}" -C "${STAGING_DIR}" .`,
+    { stdio: 'inherit' }
+  );
+} else {
+  execSync(
+    `tar -czf "${ARCHIVE_DEST}" -C "${STAGING_DIR}" .`,
+    { stdio: 'inherit' }
+  );
+}
+
+// 6. Report archive size
+const archiveStats = fs.statSync(ARCHIVE_DEST);
+const archiveSizeMB = (archiveStats.size / (1024 * 1024)).toFixed(1);
+console.log(`  Archive size: ${archiveSizeMB}MB`);
+
+// 7. Clean up staging directory (not needed in the bundle anymore)
+console.log('  Cleaning staging directory...');
+fs.rmSync(STAGING_DIR, { recursive: true, force: true });
+
+console.log('Done! standalone.tar.gz is ready for Tauri bundling.');

@@ -5039,11 +5039,13 @@ name = "vitora-hmis"
 version = "0.1.0"
 dependencies = [
  "env_logger",
+ "flate2",
  "log",
  "port_check",
  "serde",
  "serde_json",
  "shared_child",
+ "tar",
  "tauri",
  "tauri-build",
  "tauri-plugin-autostart",
