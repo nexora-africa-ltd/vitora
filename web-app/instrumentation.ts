@@ -1,8 +1,21 @@
 import * as Sentry from "@sentry/nextjs";
 
 export async function register() {
-  // Skip instrumentation in desktop app (standalone build lacks native modules)
+  // Desktop app: initialize local SQLite database and sync services
   if (process.env.VITORA_DESKTOP === "1") {
+    try {
+      const { initLocalDatabase } = await import("./lib/desktop/local-db");
+      const { startAutoSync } = await import("./lib/desktop/sync-engine");
+      const { startAutoBackups } = await import("./lib/desktop/backup-service");
+
+      initLocalDatabase();
+      startAutoBackups();
+      startAutoSync();
+
+      console.log("[Desktop] Local DB, sync, and backup services initialized");
+    } catch (e) {
+      console.warn("[Desktop] Failed to initialize offline services:", e);
+    }
     return;
   }
 
