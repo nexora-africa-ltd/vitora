@@ -522,6 +522,8 @@ urlpatterns = [
     path("api/moh-reports/", include("hmis.apps.moh_reporting.urls", namespace="moh_reporting")),
     # Core utilities API (PRC number generation, etc.)
     path("api/core/", include("hmis.apps.core.urls")),
+    # REST Sync API (offline-first Tauri/Hub clients)
+    path("api/sync/", include("hmis.apps.core.sync_urls")),
     # MFA (Multi-Factor Authentication) API
     path("api/mfa/", include("hmis.apps.core.mfa.urls", namespace="mfa")),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),

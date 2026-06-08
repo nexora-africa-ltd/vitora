@@ -6,16 +6,80 @@ use tauri::{AppHandle, Manager};
 const CONFIG_FILE: &str = "config.json";
 const DEFAULT_API_URL: &str = "https://api.vitora.digital";
 
+/// Deployment mode for the Tauri client.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum DeploymentMode {
+    /// Single user, syncs directly to cloud when online.
+    Standalone,
+    /// Multi-user facility, connects to a local hub on LAN.
+    LanClient,
+    /// This machine IS the hub (runs Django locally).
+    LanHub,
+    /// Web-only mode (uses PowerSync — not typical for Tauri).
+    WebOnly,
+}
+
+impl Default for DeploymentMode {
+    fn default() -> Self {
+        Self::Standalone
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     /// The base URL for the Vitora API (e.g., "https://api.vitora.digital")
     pub api_url: String,
+    /// Deployment mode for offline-first sync.
+    #[serde(default)]
+    pub deployment_mode: DeploymentMode,
+    /// Unique device identifier (generated on first run).
+    #[serde(default = "generate_client_id")]
+    pub client_id: String,
+    /// Auto-sync interval in seconds (0 = disabled).
+    #[serde(default = "default_sync_interval")]
+    pub sync_interval_secs: u64,
+    /// Auto-backup interval in minutes (0 = disabled).
+    #[serde(default = "default_backup_interval")]
+    pub backup_interval_mins: u64,
+}
+
+fn generate_client_id() -> String {
+    format!(
+        "tauri-{}-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis(),
+        &uuid_simple()
+    )
+}
+
+fn uuid_simple() -> String {
+    use std::time::SystemTime;
+    let t = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    format!("{:x}", t)
+}
+
+fn default_sync_interval() -> u64 {
+    30 // 30 seconds
+}
+
+fn default_backup_interval() -> u64 {
+    30 // 30 minutes
 }
 
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
             api_url: DEFAULT_API_URL.to_string(),
+            deployment_mode: DeploymentMode::default(),
+            client_id: generate_client_id(),
+            sync_interval_secs: default_sync_interval(),
+            backup_interval_mins: default_backup_interval(),
         }
     }
 }
@@ -95,4 +159,37 @@ pub fn set_api_url(app: AppHandle, url: String) -> Result<String, String> {
     config.api_url = url.clone();
     config.save(&app)?;
     Ok(url)
+}
+
+/// Tauri command: get the full app configuration.
+#[tauri::command]
+pub fn get_app_config(app: AppHandle) -> AppConfig {
+    AppConfig::load(&app)
+}
+
+/// Tauri command: set deployment mode.
+#[tauri::command]
+pub fn set_deployment_mode(app: AppHandle, mode: DeploymentMode) -> Result<String, String> {
+    let mut config = AppConfig::load(&app);
+    config.deployment_mode = mode.clone();
+    config.save(&app)?;
+    Ok(serde_json::to_string(&mode).unwrap_or_default())
+}
+
+/// Tauri command: set sync interval.
+#[tauri::command]
+pub fn set_sync_interval(app: AppHandle, seconds: u64) -> Result<(), String> {
+    let mut config = AppConfig::load(&app);
+    config.sync_interval_secs = seconds;
+    config.save(&app)?;
+    Ok(())
+}
+
+/// Tauri command: set backup interval.
+#[tauri::command]
+pub fn set_backup_interval(app: AppHandle, minutes: u64) -> Result<(), String> {
+    let mut config = AppConfig::load(&app);
+    config.backup_interval_mins = minutes;
+    config.save(&app)?;
+    Ok(())
 }

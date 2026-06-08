@@ -2,15 +2,34 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { isDesktop, setApiUrl } from '@/lib/desktop';
+import { isDesktop, setApiUrl, setDeploymentMode, type DeploymentMode } from '@/lib/desktop';
+
+const DEPLOYMENT_MODES: Array<{ value: DeploymentMode; label: string; description: string }> = [
+  {
+    value: 'standalone',
+    label: 'Standalone',
+    description: 'Single user. Syncs to cloud when internet is available.',
+  },
+  {
+    value: 'lan_client',
+    label: 'Facility Workstation',
+    description: 'Connects to a local facility server on LAN for multi-user sync.',
+  },
+  {
+    value: 'lan_hub',
+    label: 'Facility Server (Hub)',
+    description: 'This machine runs the local server. Other workstations connect to it.',
+  },
+];
 
 /**
  * Desktop-only first-run setup page.
- * Prompts for API server URL, validates connectivity, saves config.
+ * Prompts for deployment mode and API server URL, validates connectivity, saves config.
  * Only accessible when running inside Tauri desktop shell.
  */
 export default function DesktopSetupPage() {
   const router = useRouter();
+  const [mode, setMode] = useState<DeploymentMode>('standalone');
   const [url, setUrl] = useState('https://api.vitora.digital');
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState('');
@@ -51,6 +70,7 @@ export default function DesktopSetupPage() {
 
     const trimmed = url.replace(/\/$/, '');
     await setApiUrl(trimmed);
+    await setDeploymentMode(mode);
     // Redirect to login — the sidecar will use the new URL on next restart
     router.push('/login');
   }
@@ -70,11 +90,62 @@ export default function DesktopSetupPage() {
         <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 space-y-4">
           <div>
             <h2 className="text-lg font-semibold text-white">
+              Deployment Mode
+            </h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Choose how this device connects to the Vitora system.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            {DEPLOYMENT_MODES.map((option) => (
+              <label
+                key={option.value}
+                className={`flex items-start gap-3 rounded-md border p-3 cursor-pointer transition-colors ${
+                  mode === option.value
+                    ? 'border-cyan-500 bg-cyan-950/30'
+                    : 'border-slate-600 hover:border-slate-500'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="deployment-mode"
+                  value={option.value}
+                  checked={mode === option.value}
+                  onChange={() => {
+                    setMode(option.value);
+                    // Default URL based on mode
+                    if (option.value === 'lan_client' || option.value === 'lan_hub') {
+                      setUrl('http://192.168.1.100:9088');
+                    } else {
+                      setUrl('https://api.vitora.digital');
+                    }
+                    setError('');
+                    setSuccess(false);
+                  }}
+                  className="mt-1 accent-cyan-500"
+                />
+                <div>
+                  <span className="text-sm font-medium text-white">{option.label}</span>
+                  <p className="text-xs text-slate-400 mt-0.5">{option.description}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Server URL card */}
+        <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-white">
               Server Configuration
             </h2>
             <p className="mt-1 text-sm text-slate-400">
-              Enter the URL of your Vitora HMIS API server. For most users,
-              the default works.
+              {mode === 'lan_client'
+                ? 'Enter the LAN IP address of your facility server.'
+                : mode === 'lan_hub'
+                  ? 'This machine will serve other workstations. Enter the cloud sync URL.'
+                  : 'Enter the URL of your Vitora HMIS API server.'}
             </p>
           </div>
 
