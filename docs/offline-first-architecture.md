@@ -44,10 +44,10 @@ This eliminates the requirement for all facilities to have persistent internet w
 │  (for users with     │    │  │  - WebSocket server (Django Channels)   │   │
 │   reliable internet) │    │  │  - Syncs to cloud when internet avail.  │   │
 │                      │    │  └──────────────┬──────────────────────────┘   │
-└──────────────────────┘    │                 │ LAN (HTTP + WebSocket)        │
+└──────────────────────┘    │                 │ LAN (HTTP + WebSocket)       │
                             │    ┌────────────┼────────────┐                 │
                             │    │            │            │                 │
-                            │  ┌─▼──┐      ┌─▼──┐      ┌─▼──┐              │
+                            │  ┌─▼─-─┐      ┌─▼─-─┐      ┌─▼─-─┐             │
                             │  │ PC1 │      │ PC2 │      │ PC3 │             │
                             │  │Tauri│      │Tauri│      │Tauri│             │
                             │  │SQLit│      │SQLit│      │SQLit│             │
@@ -528,11 +528,13 @@ async fn export_backup(app: AppHandle, dest_path: String, encrypt: bool) -> Resu
 
 ### Phase 3: Facility Hub Deployment
 
-- [ ] Django configuration for local/hub mode (SQLite backend, reduced dependencies)
-- [ ] Hub installer script (Linux systemd, Windows service)
-- [ ] Django Channels WebSocket groups for facility broadcast
-- [ ] Hub → Cloud sync worker (background task)
-- [ ] Hub health monitoring and auto-restart
+- [x] Django configuration for local/hub mode (SQLite backend, reduced dependencies)
+- [x] Hub installer script (Linux systemd + Windows NSSM service)
+- [x] Django Channels WebSocket groups for facility broadcast (`ws/sync/{facility_id}/`)
+- [x] Hub → Cloud sync worker (background task, thread + Celery modes)
+- [x] Hub health monitoring endpoint (`GET /api/hub/health/`)
+- [x] Broadcast wiring: sync push → WebSocket group send to LAN clients
+- [x] 24 tests (health endpoint, WebSocket consumer, broadcast wiring, cloud sync worker)
 
 ### Phase 4: Real-Time LAN Communication
 

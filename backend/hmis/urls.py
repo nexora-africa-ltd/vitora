@@ -524,6 +524,8 @@ urlpatterns = [
     path("api/core/", include("hmis.apps.core.urls")),
     # REST Sync API (offline-first Tauri/Hub clients)
     path("api/sync/", include("hmis.apps.core.sync_urls")),
+    # Hub health endpoint (unauthenticated, for LAN discovery)
+    path("api/hub/health/", include("hmis.apps.core.hub_urls")),
     # MFA (Multi-Factor Authentication) API
     path("api/mfa/", include("hmis.apps.core.mfa.urls", namespace="mfa")),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
