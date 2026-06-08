@@ -42,6 +42,16 @@ pub struct AppConfig {
     /// Auto-backup interval in minutes (0 = disabled).
     #[serde(default = "default_backup_interval")]
     pub backup_interval_mins: u64,
+    /// URL of the facility hub on LAN (only used in LanClient mode).
+    /// Example: "http://192.168.1.100:9088"
+    #[serde(default)]
+    pub hub_url: String,
+    /// Facility ID for hub WebSocket connection and data scoping.
+    #[serde(default)]
+    pub facility_id: String,
+    /// Organization ID (set during pairing with hub or cloud).
+    #[serde(default)]
+    pub organization_id: String,
 }
 
 fn generate_client_id() -> String {
@@ -80,6 +90,9 @@ impl Default for AppConfig {
             client_id: generate_client_id(),
             sync_interval_secs: default_sync_interval(),
             backup_interval_mins: default_backup_interval(),
+            hub_url: String::new(),
+            facility_id: String::new(),
+            organization_id: String::new(),
         }
     }
 }
@@ -190,6 +203,60 @@ pub fn set_sync_interval(app: AppHandle, seconds: u64) -> Result<(), String> {
 pub fn set_backup_interval(app: AppHandle, minutes: u64) -> Result<(), String> {
     let mut config = AppConfig::load(&app);
     config.backup_interval_mins = minutes;
+    config.save(&app)?;
+    Ok(())
+}
+
+/// Tauri command: set the facility hub URL (for LanClient mode).
+#[tauri::command]
+pub fn set_hub_url(app: AppHandle, url: String) -> Result<String, String> {
+    if !url.is_empty() && !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err("Hub URL must start with http:// or https://".to_string());
+    }
+    let url = url.trim_end_matches('/').to_string();
+    let mut config = AppConfig::load(&app);
+    config.hub_url = url.clone();
+    config.save(&app)?;
+    Ok(url)
+}
+
+/// Tauri command: set the facility ID (for hub WebSocket connection).
+#[tauri::command]
+pub fn set_facility_id(app: AppHandle, facility_id: String) -> Result<(), String> {
+    let mut config = AppConfig::load(&app);
+    config.facility_id = facility_id;
+    config.save(&app)?;
+    Ok(())
+}
+
+/// Tauri command: set the organization ID.
+#[tauri::command]
+pub fn set_organization_id(app: AppHandle, organization_id: String) -> Result<(), String> {
+    let mut config = AppConfig::load(&app);
+    config.organization_id = organization_id;
+    config.save(&app)?;
+    Ok(())
+}
+
+/// Tauri command: save full hub connection config at once (used by setup wizard).
+#[tauri::command]
+pub fn save_hub_config(
+    app: AppHandle,
+    hub_url: String,
+    facility_id: String,
+    organization_id: String,
+) -> Result<(), String> {
+    if !hub_url.is_empty() && !hub_url.starts_with("http://") && !hub_url.starts_with("https://") {
+        return Err("Hub URL must start with http:// or https://".to_string());
+    }
+    let mut config = AppConfig::load(&app);
+    config.hub_url = hub_url.trim_end_matches('/').to_string();
+    config.facility_id = facility_id;
+    config.organization_id = organization_id;
+    // In LAN client mode, the hub URL is also the API URL
+    if config.deployment_mode == DeploymentMode::LanClient && !config.hub_url.is_empty() {
+        config.api_url = config.hub_url.clone();
+    }
     config.save(&app)?;
     Ok(())
 }

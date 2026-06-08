@@ -265,6 +265,9 @@ export interface AppConfig {
   client_id: string;
   sync_interval_secs: number;
   backup_interval_mins: number;
+  hub_url: string;
+  facility_id: string;
+  organization_id: string;
 }
 
 /**
@@ -302,4 +305,50 @@ export async function setBackupInterval(minutes: number): Promise<void> {
   const invoke = getInvoke();
   if (!invoke) return;
   await invoke('set_backup_interval', { minutes });
+}
+
+// ---------------------------------------------------------------------------
+// Hub Connection & Discovery
+// ---------------------------------------------------------------------------
+
+/**
+ * Set the facility hub URL (for LAN client mode).
+ * Example: "http://192.168.1.100:9088"
+ */
+export async function setHubUrl(url: string): Promise<string | null> {
+  const invoke = getInvoke();
+  if (!invoke) return null;
+  return invoke<string>('set_hub_url', { url });
+}
+
+/**
+ * Set the facility ID (for WebSocket sync connection).
+ */
+export async function setFacilityId(facilityId: string): Promise<void> {
+  const invoke = getInvoke();
+  if (!invoke) return;
+  await invoke('set_facility_id', { facilityId });
+}
+
+/**
+ * Set the organization ID.
+ */
+export async function setOrganizationId(organizationId: string): Promise<void> {
+  const invoke = getInvoke();
+  if (!invoke) return;
+  await invoke('set_organization_id', { organizationId });
+}
+
+/**
+ * Save full hub connection config at once (used by setup wizard).
+ * In LAN client mode, this also sets the API URL to the hub URL.
+ */
+export async function saveHubConfig(
+  hubUrl: string,
+  facilityId: string,
+  organizationId: string
+): Promise<void> {
+  const invoke = getInvoke();
+  if (!invoke) return;
+  await invoke('save_hub_config', { hubUrl, facilityId, organizationId });
 }
