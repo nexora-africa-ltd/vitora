@@ -106,10 +106,10 @@ jobs:
           test -f standalone.tar.gz || { echo "FAIL: standalone.tar.gz missing"; exit 1; }
           ARCHIVE_SIZE=$(stat -c%s standalone.tar.gz 2>/dev/null || stat -f%z standalone.tar.gz)
           echo "Archive size: $((ARCHIVE_SIZE / 1024 / 1024))MB"
-          # Verify archive contains critical files
-          tar -tzf standalone.tar.gz | grep -q "^./server.js" || { echo "FAIL: server.js not in archive"; exit 1; }
+          # Verify archive contains critical files (match with or without ./ prefix)
+          tar -tzf standalone.tar.gz | grep -q "server\.js$" || { echo "FAIL: server.js not in archive"; exit 1; }
           tar -tzf standalone.tar.gz | grep -q "node_modules/next/" || { echo "FAIL: node_modules/next not in archive"; exit 1; }
-          tar -tzf standalone.tar.gz | grep -q ".next/" || { echo "FAIL: .next not in archive"; exit 1; }
+          tar -tzf standalone.tar.gz | grep -q "\.next/" || { echo "FAIL: .next not in archive"; exit 1; }
           echo "Standalone archive verified OK"
 
       - name: Download Node.js binary for sidecar
