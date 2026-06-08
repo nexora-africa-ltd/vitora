@@ -26,7 +26,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' http://127.0.0.1:* https://*.vitora.digital https://*.powersync.journeyapps.com wss://*.powersync.journeyapps.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; worker-src 'self' blob:; frame-src 'self' https://*.vitora.digital"
+      "csp": "default-src 'self'; connect-src 'self' http://127.0.0.1:* https://*.vitora.digital wss://*.vitora.digital https://*.azurecontainerapps.io wss://*.azurecontainerapps.io https://*.powersync.journeyapps.com wss://*.powersync.journeyapps.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; worker-src 'self' blob:; frame-src 'self' https://*.vitora.digital"
     },
     "trayIcon": {
       "iconPath": "icons/icon.png",
