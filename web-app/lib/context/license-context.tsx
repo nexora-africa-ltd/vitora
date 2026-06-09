@@ -99,19 +99,32 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [hasToken, queryClient]);
 
+  // Listen for license-expired events from the Axios interceptor (web mode).
+  // This covers the case where the backend rejects a write due to expired license
+  // even if we don't have a local license token (cloud/web mode).
+  const [serverDegraded, setServerDegraded] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setServerDegraded(true);
+    window.addEventListener('vitora:license-expired', handler);
+    return () => window.removeEventListener('vitora:license-expired', handler);
+  }, []);
+
   const isLicensed = useMemo(() => {
+    if (serverDegraded) return false;
     if (!license) return !hasToken; // No token = not gated (web mode)
     return license.valid && license.subscription_status === 'ACTIVE';
-  }, [license, hasToken]);
+  }, [license, hasToken, serverDegraded]);
 
   const isDegraded = useMemo(() => {
+    if (serverDegraded) return true;
     if (!license) return false;
     return (
       !license.valid ||
       license.subscription_status === 'EXPIRED' ||
       license.subscription_status === 'SUSPENDED'
     );
-  }, [license]);
+  }, [license, serverDegraded]);
 
   const isCheckInOverdue = useMemo(() => {
     return license?.check_in_overdue ?? false;

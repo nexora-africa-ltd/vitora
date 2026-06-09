@@ -9,6 +9,10 @@ from rest_framework import permissions
 from rest_framework.request import Request
 from rest_framework.views import APIView
 
+# Re-export from core to avoid circular imports (DRF resolves DEFAULT_PERMISSION_CLASSES
+# from core.permissions which is loaded before licensing)
+from hmis.apps.core.permissions import RequiresActiveLicense  # noqa: F401
+
 
 class RequiresFeature(permissions.BasePermission):
     """
@@ -85,34 +89,3 @@ def requires_feature(feature_key: str):
     ConfiguredRequiresFeature.__name__ = f"RequiresFeature_{feature_key}"
     ConfiguredRequiresFeature.__qualname__ = f"RequiresFeature_{feature_key}"
     return ConfiguredRequiresFeature
-
-
-class RequiresActiveLicense(permissions.BasePermission):
-    """
-    Permission that checks if the user's organization has an active
-    subscription (not expired/suspended).
-
-    Used for write operations in degraded mode — reads still pass.
-    """
-
-    message = "Your license has expired. Read-only mode is active."
-
-    def has_permission(self, request: Request, view: APIView) -> bool:  # noqa: ARG002
-        # Always allow reads
-        if request.method in permissions.SAFE_METHODS:
-            return True
-
-        org = self._get_user_organization(request)
-        if not org:
-            return True
-
-        return org.subscription_status not in ("SUSPENDED", "EXPIRED")
-
-    def _get_user_organization(self, request: Request):
-        user = request.user
-        if not user or not user.is_authenticated:
-            return None
-        profile = getattr(user, "staff_profile", None)
-        if profile:
-            return profile.organization
-        return None

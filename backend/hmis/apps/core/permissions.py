@@ -783,3 +783,49 @@ class WriteRequiresRolePermission(permissions.BasePermission):
                 perm = f"{app_label}.{django_action}_{resource_lower}"
                 return user.has_perm(perm)
         return False
+
+
+class RequiresActiveLicense(permissions.BasePermission):
+    """
+    Permission that checks if the user's organization has an active
+    subscription (not expired/suspended).
+
+    Used for write operations in degraded mode — reads still pass.
+    Returns a structured 403 with code='license_expired' so the frontend
+    interceptor can trigger degraded mode without extra API calls.
+
+    Controlled by settings.SUBSCRIPTION_EXPIRY_ENFORCEMENT (default True).
+    Disabled in test.py by default to avoid affecting unrelated tests.
+    """
+
+    message = "Your license has expired. Read-only mode is active."
+    code = "license_expired"
+
+    def has_permission(self, request, view):  # noqa: ARG002
+        from django.conf import settings as django_settings
+
+        # Skip enforcement when disabled (tests, local dev)
+        if not getattr(django_settings, "SUBSCRIPTION_EXPIRY_ENFORCEMENT", True):
+            return True
+
+        # Always allow reads
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        # Unauthenticated requests are handled by IsAuthenticated
+        user = request.user
+        if not user or not user.is_authenticated:
+            return True
+
+        profile = getattr(user, "staff_profile", None)
+        if not profile:
+            return True
+
+        org = profile.organization
+        if not org:
+            return True
+
+        if org.subscription_status in ("SUSPENDED", "EXPIRED"):
+            return False
+
+        return True

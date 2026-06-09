@@ -24,13 +24,8 @@ export function LicenseBanner() {
     return null;
   }
 
-  // No token stored = web mode, no banner needed
-  if (!license) {
-    return null;
-  }
-
-  const isExpired = license.subscription_status === 'EXPIRED';
-  const isSuspended = license.subscription_status === 'SUSPENDED';
+  const isExpired = license?.subscription_status === 'EXPIRED';
+  const isSuspended = license?.subscription_status === 'SUSPENDED';
 
   let message: string;
   let Icon = AlertTriangle;
@@ -43,6 +38,9 @@ export function LicenseBanner() {
     message =
       'This installation has not connected to the internet in over 30 days. Connect to refresh your license.';
     Icon = WifiOff;
+  } else if (isDegraded && !license) {
+    // Server-side degradation detected (web mode, no local token)
+    message = 'Your subscription has expired. New records cannot be created until renewed.';
   } else {
     message = 'License verification failed. Some features may be limited.';
   }
