@@ -14,6 +14,8 @@ import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { MFAGraceBanner } from '@/components/auth/mfa-grace-banner';
 import { OnboardingBanner } from '@/components/auth/onboarding-banner';
 import { OfflineBanner } from '@/components/shared/offline-banner';
+import { LicenseBanner } from '@/components/shared/license-banner';
+import { LicenseGuard } from '@/components/shared/license-guard';
 import { GlobalPeekPanel } from '@/components/shared/global-peek-panel';
 import { PushNotificationPrompt } from '@/components/notifications/push-notification-prompt';
 import { cn } from '@/lib/utils/cn';
@@ -61,6 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <SyncProvider>
         <AIChatProvider>
           <IdleTimerProvider>
+            <LicenseGuard />
             <div className="min-h-screen bg-background">
               {/* Sidebar */}
               <Sidebar
@@ -86,6 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* Page content */}
                 <main className="min-h-[calc(100vh-4rem)] p-4 pb-28 md:p-6 md:pb-28 xl:p-8 xl:pb-8">
                   <OfflineBanner />
+                  <LicenseBanner />
                   <MFAGraceBanner />
                   <OnboardingBanner />
                   <RouteGuard>{children}</RouteGuard>
