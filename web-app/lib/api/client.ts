@@ -127,6 +127,13 @@ apiClient.interceptors.response.use(
         }
         return Promise.reject(error);
       }
+      if (data && data.code === 'license_expired') {
+        // Emit a custom event so the LicenseProvider can update degraded state
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('vitora:license-expired'));
+        }
+        return Promise.reject(error);
+      }
     }
 
     // Handle 401 Unauthorized — try cookie-based refresh

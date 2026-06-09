@@ -668,8 +668,14 @@ class TestRequiresFeaturePermission:
         assert perm.has_permission(request, view) is False
 
 
+@pytest.mark.django_db
 class TestRequiresActiveLicense:
     """Tests for RequiresActiveLicense permission."""
+
+    @pytest.fixture(autouse=True)
+    def enable_enforcement(self, settings):
+        """Enable subscription expiry enforcement for these tests."""
+        settings.SUBSCRIPTION_EXPIRY_ENFORCEMENT = True
 
     @pytest.fixture
     def user_with_org(

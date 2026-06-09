@@ -220,6 +220,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",  # Require authentication by default
         "hmis.apps.core.permissions.WriteRequiresRolePermission",  # Gate writes by role
+        "hmis.apps.core.permissions.RequiresActiveLicense",  # Block writes on expired license
     ],
     "DEFAULT_PAGINATION_CLASS": "hmis.apps.core.pagination.StandardPagination",
     "PAGE_SIZE": 20,
@@ -246,6 +247,7 @@ REST_FRAMEWORK = {
         "password_reset": "5/hour",  # Password reset requests
         "ai_proactive": "2/minute",  # Proactive insights - max 2 per minute per user
     },
+    "EXCEPTION_HANDLER": "hmis.apps.core.exception_handler.exception_handler",
 }
 
 # MFA enforcement — default True (production-safe).
