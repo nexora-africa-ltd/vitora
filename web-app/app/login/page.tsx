@@ -35,6 +35,7 @@ export default function LoginPage() {
   } | null>(null);
   const [logoutReason, setLogoutReason] = useState<'idle' | null>(null);
   const [isOffline, setIsOffline] = useState(false);
+  const [isDesktopMode, setIsDesktopMode] = useState(false);
   const { login, verifyMFA } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -44,6 +45,7 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true);
     setIsOffline(!navigator.onLine);
+    setIsDesktopMode(isDesktop());
     const goOffline = () => setIsOffline(true);
     const goOnline = () => setIsOffline(false);
     window.addEventListener('offline', goOffline);
@@ -388,7 +390,7 @@ export default function LoginPage() {
               </div>
 
               {/* Remember Me — desktop app only */}
-              {isDesktop() && (
+              {isDesktopMode && (
                 <div className="flex items-center gap-2">
                   <input
                     id="remember-me"
