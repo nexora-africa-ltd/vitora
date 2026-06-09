@@ -205,3 +205,5 @@ poetry.lock
 backend/hmis/apps/core/fixtures/sha-decrypt.py
 backend/sha.pem
 mobile/*.apk
+
+!*.tmp/todo.md

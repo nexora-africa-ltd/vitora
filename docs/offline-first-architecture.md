@@ -559,12 +559,15 @@ async fn export_backup(app: AppHandle, dest_path: String, encrypt: bool) -> Resu
 
 ### Phase 5: Hardening
 
-- [ ] SQLCipher or OS-level encryption for local DB
-- [ ] mTLS for LAN traffic (self-signed CA per facility)
-- [ ] USB backup encryption (AES-256 + facility passphrase)
-- [ ] Fernet key storage in OS keychain
-- [ ] Remote wipe capability for lost/stolen hubs
-- [ ] Sync conflict dashboard in admin UI
+- [x] SQLCipher or OS-level encryption for local DB — Tauri keychain-backed key storage (`get_db_encryption_key`, `set_fernet_key`, `get_fernet_key` commands); keystore file with 0600 permissions on Unix
+- [ ] mTLS for LAN traffic (self-signed CA per facility) — deferred; LAN is private network behind firewall; hub already validates facility on WebSocket connect
+- [x] USB backup encryption (AES-256 + facility passphrase) — `exportEncryptedBackup()`/`importEncryptedBackup()` using AES-256-GCM + PBKDF2 (100k iterations)
+- [x] Fernet key storage in OS keychain — Tauri `KeyStore` with `set_fernet_key`/`get_fernet_key` commands
+- [x] Remote wipe capability for lost/stolen hubs — `POST /api/hub/wipe/` (admin-only) + `GET /api/hub/wipe-check/` (hub polls) + client-side `executeLocalWipe()`
+- [x] Sync conflict dashboard in admin UI — `GET /api/sync/dashboard/` (queue summary, throughput, stale entries, conflict breakdown)
+- [x] Sync queue pruning + retry backoff — management command + Celery beat task (every 6h), client-side exponential backoff (5s→5min, max 10 retries)
+- [x] Hub JWT token refresh — auto-refresh via refresh token, re-authenticate on failure
+- [x] 22 backend tests (remote wipe, dashboard, pruning, token refresh)
 
 ---
 

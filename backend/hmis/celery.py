@@ -259,6 +259,16 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.core.tasks.verify_staff_hwr_licenses",
         "schedule": crontab(minute=0, hour=4, day_of_week="sunday"),
     },
+    # Hub→Cloud sync: push/pull every 30 seconds (hub deployments only)
+    "hub-cloud-sync-cycle": {
+        "task": "hmis.hub_cloud_sync",
+        "schedule": 30.0,
+    },
+    # Sync queue pruning: mark max-retries as failed, purge old entries (every 6h)
+    "prune-sync-queue": {
+        "task": "hmis.apps.core.tasks.prune_sync_queue",
+        "schedule": crontab(minute=0, hour="*/6"),
+    },
 }
 
 # Timezone configuration
