@@ -19,7 +19,7 @@ pub mod commands;
 pub mod config;
 
 use commands::{list_printers, print_receipt};
-use config::{get_api_url, get_app_config, get_db_encryption_key, get_fernet_key, is_first_run, save_hub_config, set_api_url, set_backup_interval, set_deployment_mode, set_facility_id, set_fernet_key, set_hub_url, set_organization_id, set_sync_interval, AppConfig};
+use config::{get_api_url, get_app_config, get_db_encryption_key, get_fernet_key, get_installation_id, get_license_token, store_license_token, clear_license_token, is_first_run, save_hub_config, set_api_url, set_backup_interval, set_deployment_mode, set_facility_id, set_fernet_key, set_hub_url, set_organization_id, set_sync_interval, AppConfig};
 
 /// Manages the Node.js sidecar process lifecycle.
 pub struct SidecarState {
@@ -318,6 +318,10 @@ pub fn run() {
             get_db_encryption_key,
             set_fernet_key,
             get_fernet_key,
+            get_installation_id,
+            store_license_token,
+            get_license_token,
+            clear_license_token,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
