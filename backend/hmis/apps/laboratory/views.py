@@ -21,6 +21,7 @@ from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.permissions import RequiresActiveShiftPermission, WriteRequiresRolePermission
+from hmis.apps.licensing.permissions import requires_feature
 
 from .models import (
     AnalyzerRun,
@@ -514,7 +515,12 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             "items__result__validations__validated_by",
         )
     )
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        RequiresActiveShiftPermission,
+        requires_feature("laboratory"),
+    ]
     filter_backends = [filters.DjangoFilterBackend, SearchFilter]
     filterset_fields = ["patient", "encounter", "status", "priority", "order_type"]
     search_fields = [

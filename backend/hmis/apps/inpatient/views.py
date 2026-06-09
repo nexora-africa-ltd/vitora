@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import WriteRequiresRolePermission, get_client_ip
+from hmis.apps.licensing.permissions import requires_feature
 from hmis.apps.patients.models import Patient
 
 from .models import (
@@ -1337,7 +1338,11 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         "mch_registration",
     ).all()
     serializer_class = AdmissionSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [
+        IsAuthenticated,
+        WriteRequiresRolePermission,
+        requires_feature("inpatient"),
+    ]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["patient", "ward", "admission_status", "payer_type"]
     search_fields = ["admission_number", "patient__first_name", "patient__last_name"]

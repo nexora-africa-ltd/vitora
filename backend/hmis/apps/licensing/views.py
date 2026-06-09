@@ -371,6 +371,72 @@ class InstallationViewSet(viewsets.ReadOnlyModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @action(detail=True, methods=["post"], url_path="send-code")
+    def send_code(self, request, pk=None):
+        """Email the activation code to the organization's contact email.
+
+        Accepts optional overrides in the request body:
+          - to_email: override recipient (defaults to org contact_email)
+          - subject: override email subject
+          - body: override email body (plain text — will be wrapped in the HTML template)
+        """
+        from hmis.apps.core.services.email_service import send_activation_code_email
+
+        installation = self.get_object()
+
+        if not installation.activation_code:
+            return Response(
+                {"error": "No activation code available for this installation."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        org = installation.organization
+
+        # Allow recipient override
+        to_email = (request.data.get("to_email") or "").strip()
+        if not to_email:
+            to_email = getattr(org, "contact_email", "") or ""
+        if not to_email:
+            return Response(
+                {"error": "No recipient email provided and organization has no contact email."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Allow subject/body overrides
+        custom_subject = (request.data.get("subject") or "").strip()
+        custom_body = (request.data.get("body") or "").strip()
+
+        if custom_body:
+            # Use custom body — render with a minimal wrapper template
+            from hmis.apps.core.services.email_service import _send
+
+            subject = custom_subject or f"Vitora HMIS Activation Code — {org.name}"
+            # Wrap plain text in basic HTML with line breaks preserved
+            html_body = (
+                "<div style=\"font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;"
+                'font-size:14px;color:#18181b;line-height:1.6;white-space:pre-wrap">'
+                f"{custom_body}</div>"
+            )
+            success = _send(subject=subject, html_body=html_body, to_email=to_email)
+        else:
+            success = send_activation_code_email(
+                to_email=to_email,
+                organization_name=org.name,
+                activation_code=installation.activation_code,
+                installation_name=installation.name or "",
+                facility_name=installation.facility.name if installation.facility else "",
+            )
+
+        if success:
+            return Response(
+                {"sent_to": to_email, "organization": org.name},
+                status=status.HTTP_200_OK,
+            )
+        return Response(
+            {"error": "Failed to send email. Please try again."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
 
 def _get_client_ip(request: Request) -> str:
     """Extract client IP from request headers."""

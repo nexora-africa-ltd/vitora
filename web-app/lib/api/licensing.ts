@@ -12,7 +12,12 @@ import type {
   ActivationRequest,
   ActivationResponse,
   CheckInRequest,
+  GenerateCodeRequest,
+  GenerateCodeResponse,
+  InstallationDetail,
+  InstallationListItem,
   LicenseStatus,
+  PaginatedInstallations,
 } from '@/lib/types/licensing';
 
 const LICENSE_TOKEN_KEY = 'vitora_license_token';
@@ -139,5 +144,53 @@ export const licensingApi = {
       localStorage.setItem(INSTALLATION_ID_KEY, id);
     }
     return id;
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Admin API (Nexora superuser only)
+// ---------------------------------------------------------------------------
+
+export const licensingAdminApi = {
+  /** List all installations (paginated). */
+  async list(params?: { page?: number; search?: string }): Promise<PaginatedInstallations> {
+    const response = await apiClient.get('/api/licensing/installations/', { params });
+    return response.data as PaginatedInstallations;
+  },
+
+  /** Get installation detail. */
+  async get(id: number): Promise<InstallationDetail> {
+    const response = await apiClient.get(`/api/licensing/installations/${id}/`);
+    return response.data as InstallationDetail;
+  },
+
+  /** Revoke an installation. */
+  async revoke(id: number, reason?: string): Promise<void> {
+    await apiClient.post(`/api/licensing/installations/${id}/revoke/`, { reason });
+  },
+
+  /** Suspend an installation. */
+  async suspend(id: number, reason?: string): Promise<void> {
+    await apiClient.post(`/api/licensing/installations/${id}/suspend/`, { reason });
+  },
+
+  /** Reactivate a suspended installation. */
+  async reactivate(id: number): Promise<void> {
+    await apiClient.post(`/api/licensing/installations/${id}/reactivate/`);
+  },
+
+  /** Generate a new activation code. */
+  async generateCode(data: GenerateCodeRequest): Promise<GenerateCodeResponse> {
+    const response = await apiClient.post('/api/licensing/generate-code/', data);
+    return response.data as GenerateCodeResponse;
+  },
+
+  /** Email the activation code to the organization's contact email. */
+  async sendCode(
+    id: number,
+    payload?: { to_email: string; subject: string; body: string },
+  ): Promise<{ sent_to: string; organization: string }> {
+    const response = await apiClient.post(`/api/licensing/installations/${id}/send-code/`, payload || {});
+    return response.data;
   },
 };

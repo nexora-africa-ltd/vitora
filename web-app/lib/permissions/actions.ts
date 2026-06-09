@@ -312,6 +312,7 @@ export const ACTION_PERMISSIONS = {
   'admin.manage_roles': ['ADMIN'],
   'admin.view_audit_logs': ['ADMIN', 'ORG-ADMIN', 'COMPLIANCE_OFFICER'],
   'admin.view_hl7_messages': ['ADMIN'],
+  'admin.manage_licensing': ['ADMIN'],
   'admin.manage_facilities': ['ADMIN', 'ORG-ADMIN'],
   'admin.manage_schedules': ['ADMIN', 'ORG-ADMIN'],
   'admin.view_reports': ['ADMIN', 'ORG-ADMIN', 'HR_OFFICER', 'COMPLIANCE_OFFICER'],
