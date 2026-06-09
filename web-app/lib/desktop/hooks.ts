@@ -147,7 +147,7 @@ export function useLocalSyncStatus() {
 export function useLocalSync() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<unknown, Error, boolean>({
     mutationFn: async (full = false) => {
       const res = await fetch('/api/local-db/sync', {
         method: 'POST',

@@ -145,7 +145,7 @@ export function writeLocal(options: WriteOptions): Record<string, unknown> | nul
   if (operation === 'CREATE') {
     // Generate ID if not provided
     const id = (data.id as string) || generateUUID();
-    const record = { ...data, id, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    const record: Record<string, unknown> = { ...data, id, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
 
     const columns = Object.keys(record);
     const placeholders = columns.map(() => '?').join(', ');
@@ -166,7 +166,7 @@ export function writeLocal(options: WriteOptions): Record<string, unknown> | nul
   }
 
   if (operation === 'UPDATE' && recordId) {
-    const record = { ...data, updated_at: new Date().toISOString() };
+    const record: Record<string, unknown> = { ...data, updated_at: new Date().toISOString() };
     const columns = Object.keys(record);
     const setClause = columns.map((col) => `"${col}" = ?`).join(', ');
     const values = columns.map((col) => {
