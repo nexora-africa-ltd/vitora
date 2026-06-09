@@ -178,3 +178,4 @@ jobs:
             FACILITY_PHONE=${{ vars.FACILITY_PHONE || '' }}
             FACILITY_EMAIL=${{ vars.FACILITY_EMAIL || '' }}
             FACILITY_LICENSE=${{ vars.FACILITY_LICENSE || '' }}
+            LICENSE_SIGNING_KEY=secretref:license-signing-key

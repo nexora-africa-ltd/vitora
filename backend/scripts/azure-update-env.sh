@@ -70,6 +70,7 @@ declare -A SECRETS=(
   ["vapid-private-key"]="${VAPID_PRIVATE_KEY:-}"
   ["dhis2-username"]="${DHIS2_USERNAME:-}"
   ["dhis2-password"]="${DHIS2_PASSWORD:-}"
+  ["license-signing-key"]="${LICENSE_SIGNING_KEY:-}"
 )
 
 SECRET_ARGS=()
@@ -228,6 +229,7 @@ az containerapp update \
     "FACILITY_PHONE=${FACILITY_PHONE:-}" \
     "FACILITY_EMAIL=${FACILITY_EMAIL:-}" \
     "FACILITY_LICENSE=${FACILITY_LICENSE:-}" \
+    "LICENSE_SIGNING_KEY=secretref:license-signing-key" \
   --output none
 
 echo ""
