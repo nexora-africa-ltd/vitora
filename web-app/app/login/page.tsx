@@ -15,12 +15,14 @@ import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { DhaLogo } from '@/components/ui/dha-logo';
 import { setupApi } from '@/lib/api/onboarding';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
+import { isDesktop, storeCredentials, getCredentials, clearCredentials } from '@/lib/desktop';
 import Link from 'next/link';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<{username?: string; password?: string}>({});
@@ -50,6 +52,18 @@ export default function LoginPage() {
       window.removeEventListener('offline', goOffline);
       window.removeEventListener('online', goOnline);
     };
+  }, []);
+
+  // Load saved credentials on desktop (Remember Me)
+  useEffect(() => {
+    if (!isDesktop()) return;
+    getCredentials().then((creds) => {
+      if (creds) {
+        setUsername(creds.username);
+        setPassword(creds.password);
+        setRememberMe(true);
+      }
+    });
   }, []);
 
   // Check for logout reason (e.g., idle timeout)
@@ -102,6 +116,15 @@ export default function LoginPage() {
       if (!result.success) {
         setError(result.error || 'Login failed. Please try again.');
         return;
+      }
+
+      // Save or clear credentials based on Remember Me (desktop only)
+      if (isDesktop()) {
+        if (rememberMe) {
+          storeCredentials(username, password);
+        } else {
+          clearCredentials();
+        }
       }
 
       if (result.mfaRequired) {
@@ -363,6 +386,22 @@ export default function LoginPage() {
                   <p className="text-sm text-destructive">{validationErrors.password}</p>
                 )}
               </div>
+
+              {/* Remember Me — desktop app only */}
+              {isDesktop() && (
+                <div className="flex items-center gap-2">
+                  <input
+                    id="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                  />
+                  <label htmlFor="remember-me" className="text-sm text-muted-foreground select-none cursor-pointer">
+                    Remember me
+                  </label>
+                </div>
+              )}
 
               <Button type="submit" className="w-full h-11" disabled={isLoading}>
                 {isLoading ? (

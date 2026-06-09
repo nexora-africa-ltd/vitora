@@ -1,5 +1,5 @@
 use std::net::TcpListener;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -19,7 +19,7 @@ pub mod commands;
 pub mod config;
 
 use commands::{list_printers, print_receipt};
-use config::{get_api_url, get_app_config, get_db_encryption_key, get_fernet_key, get_installation_id, get_license_token, store_license_token, clear_license_token, is_first_run, save_hub_config, set_api_url, set_backup_interval, set_deployment_mode, set_facility_id, set_fernet_key, set_hub_url, set_organization_id, set_sync_interval, AppConfig};
+use config::{get_api_url, get_app_config, get_db_encryption_key, get_fernet_key, get_installation_id, get_license_token, store_license_token, clear_license_token, store_credentials, get_credentials, clear_credentials, is_first_run, save_hub_config, set_api_url, set_backup_interval, set_deployment_mode, set_facility_id, set_fernet_key, set_hub_url, set_organization_id, set_sync_interval, AppConfig};
 
 /// Manages the Node.js sidecar process lifecycle.
 pub struct SidecarState {
@@ -160,7 +160,8 @@ impl SidecarState {
             ));
         }
 
-        let child = Command::new(&node_bin)
+        let mut child = Command::new(&node_bin);
+        child
             .arg(server_js.to_string_lossy().to_string())
             .env("PORT", port.to_string())
             .env("HOSTNAME", "127.0.0.1")
@@ -170,6 +171,19 @@ impl SidecarState {
             // Explicitly set NODE_PATH so Node.js can always find modules
             .env("NODE_PATH", node_modules_dir.to_string_lossy().to_string())
             .current_dir(&standalone_dir)
+            // Suppress stdout/stderr to prevent console window allocation on Windows
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+
+        // On Windows, suppress the console window for the child process
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            child.creation_flags(CREATE_NO_WINDOW);
+        }
+
+        let child = child
             .spawn()
             .map_err(|e| format!("Failed to spawn Node sidecar: {}", e))?;
 
@@ -322,6 +336,9 @@ pub fn run() {
             store_license_token,
             get_license_token,
             clear_license_token,
+            store_credentials,
+            get_credentials,
+            clear_credentials,
         ])
         .setup(|app| {
             let handle = app.handle().clone();

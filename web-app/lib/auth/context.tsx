@@ -229,6 +229,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void initializeAuth();
   }, [syncUserFromBackend]);
 
+  // Re-verify auth when the window becomes visible (e.g., desktop app restored from tray)
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== 'visible') return;
+
+      const userStr = localStorage.getItem(USER_KEY);
+      if (!userStr) return; // Not logged in, nothing to verify
+
+      try {
+        const storedUser = JSON.parse(userStr) as User;
+        await syncUserFromBackend(storedUser);
+      } catch {
+        // Cookie expired while hidden — clear auth and force redirect to login
+        localStorage.removeItem(USER_KEY);
+        document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+        setState({
+          user: null,
+          tokens: null,
+          isAuthenticated: false,
+          isLoading: false,
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [syncUserFromBackend]);
+
   // Login function — uses cookie-based auth endpoint
   const login = useCallback(async (username: string, password: string): Promise<LoginResult> => {
     setState((prev) => ({ ...prev, isLoading: true }));

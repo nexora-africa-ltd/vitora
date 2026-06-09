@@ -282,6 +282,12 @@ struct KeyStore {
     /// License JWT token (RS256-signed, issued by Nexora license server).
     #[serde(default)]
     license_token: String,
+    /// Saved username for "Remember Me" on login.
+    #[serde(default)]
+    saved_username: String,
+    /// Saved password for "Remember Me" on login (desktop only, file perms 0o600).
+    #[serde(default)]
+    saved_password: String,
 }
 
 impl KeyStore {
@@ -401,6 +407,38 @@ pub fn get_license_token(app: AppHandle) -> String {
 pub fn clear_license_token(app: AppHandle) -> Result<(), String> {
     let mut store = KeyStore::load(&app);
     store.license_token = String::new();
+    store.save(&app)?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Saved Credentials (Remember Me)
+// ---------------------------------------------------------------------------
+
+/// Tauri command: store login credentials in the secure keystore.
+#[tauri::command]
+pub fn store_credentials(app: AppHandle, username: String, password: String) -> Result<(), String> {
+    let mut store = KeyStore::load(&app);
+    store.saved_username = username;
+    store.saved_password = password;
+    store.save(&app)?;
+    Ok(())
+}
+
+/// Tauri command: retrieve saved login credentials from the secure keystore.
+/// Returns empty strings if no credentials are stored.
+#[tauri::command]
+pub fn get_credentials(app: AppHandle) -> (String, String) {
+    let store = KeyStore::load(&app);
+    (store.saved_username, store.saved_password)
+}
+
+/// Tauri command: clear saved credentials (used on explicit logout).
+#[tauri::command]
+pub fn clear_credentials(app: AppHandle) -> Result<(), String> {
+    let mut store = KeyStore::load(&app);
+    store.saved_username = String::new();
+    store.saved_password = String::new();
     store.save(&app)?;
     Ok(())
 }
