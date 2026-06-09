@@ -152,6 +152,8 @@ secrets/
 *.pem
 *.key
 *.crt
+# License public key must be distributed with every installation — un-ignore it
+!backend/keys/license_public.pem
 
 # Logs
 logs/
