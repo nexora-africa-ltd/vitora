@@ -61,6 +61,7 @@ from hmis.apps.billing.sha_serializers import (
 from hmis.apps.core.kms import get_kms_provider
 from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.permissions import SHAPermission, WriteRequiresRolePermission
+from hmis.apps.licensing.permissions import requires_feature
 
 logger = logging.getLogger(__name__)
 
@@ -351,7 +352,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     )
     tenant_scope = "facility"
     lookup_value_regex = r"\d+"
-    permission_classes = [IsAuthenticated, SHAPermission]
+    permission_classes = [IsAuthenticated, SHAPermission, requires_feature("sha_claims")]
     renderer_classes = [JSONRenderer, BrowsableAPIRenderer, CSVRenderer, XLSXRenderer]
     pagination_class = SHAPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]

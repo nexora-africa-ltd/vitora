@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { LabClinicianSocketProvider } from '@/components/laboratory/lab-clinician-socket-provider';
+import { LaboratoryLicenseGate } from './license-gate';
 
 export const metadata: Metadata = {
   title: 'Laboratory | Vitora HMIS',
@@ -12,8 +13,10 @@ export default function LaboratoryLayout({
   children: React.ReactNode;
 }) {
   return (
-    <LabClinicianSocketProvider>
-      {children}
-    </LabClinicianSocketProvider>
+    <LaboratoryLicenseGate>
+      <LabClinicianSocketProvider>
+        {children}
+      </LabClinicianSocketProvider>
+    </LaboratoryLicenseGate>
   );
 }

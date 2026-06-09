@@ -344,3 +344,35 @@ def send_org_activated_email(
         html_body=html_body,
         to_email=to_email,
     )
+
+
+# ============================================================================
+# Licensing Emails
+# ============================================================================
+
+
+def send_activation_code_email(
+    *,
+    to_email: str,
+    organization_name: str,
+    activation_code: str,
+    installation_name: str = "",
+    facility_name: str = "",
+) -> bool:
+    """Send an activation code to an organization's contact email."""
+    html_body = render_to_string(
+        "emails/activation_code.html",
+        {
+            "organization_name": organization_name,
+            "activation_code": activation_code,
+            "installation_name": installation_name,
+            "facility_name": facility_name,
+            "support_email": getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@vitora.health"),
+        },
+    )
+
+    return _send(
+        subject=f"Vitora HMIS Activation Code — {organization_name}",
+        html_body=html_body,
+        to_email=to_email,
+    )

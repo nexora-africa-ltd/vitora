@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 0">
+  <tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1)">
+      <!-- Header -->
+      <tr><td style="background:#0f766e;padding:24px 32px">
+        <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600">Vitora HMIS</h1>
+      </td></tr>
+      <!-- Body -->
+      <tr><td style="padding:32px">
+        <h2 style="margin:0 0 16px;color:#18181b;font-size:18px">Your Activation Code</h2>
+        <p style="margin:0 0 8px;color:#3f3f46;font-size:14px;line-height:1.6">
+          Dear <strong>{{ organization_name }}</strong> team,
+        </p>
+        <p style="margin:0 0 16px;color:#3f3f46;font-size:14px;line-height:1.6">
+          Your Vitora HMIS activation code for
+          {% if installation_name %}<strong>{{ installation_name }}</strong>{% else %}your new installation{% endif %}
+          is ready:
+        </p>
+        <!-- Code block -->
+        <table cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 24px">
+          <tr><td align="center" style="padding:16px;background:#f4f4f5;border-radius:6px;border:1px dashed #d4d4d8">
+            <span style="font-family:'Courier New',monospace;font-size:24px;font-weight:700;color:#18181b;letter-spacing:2px">{{ activation_code }}</span>
+          </td></tr>
+        </table>
+        <h3 style="margin:0 0 12px;color:#18181b;font-size:15px;font-weight:600">How to activate</h3>
+        <ol style="margin:0 0 24px;padding-left:20px;color:#3f3f46;font-size:14px;line-height:1.8">
+          <li>Launch the Vitora HMIS application</li>
+          <li>On the activation screen, enter the code above</li>
+          <li>The system will verify and activate your license</li>
+        </ol>
+        <p style="margin:0 0 8px;color:#71717a;font-size:13px;line-height:1.5">
+          This code is <strong>single-use</strong> and is linked to your organization.
+        </p>
+        {% if facility_name %}
+        <p style="margin:0 0 8px;color:#71717a;font-size:13px;line-height:1.5">
+          Facility: <strong>{{ facility_name }}</strong>
+        </p>
+        {% endif %}
+      </td></tr>
+      <!-- Footer -->
+      <tr><td style="padding:16px 32px;background:#f4f4f5;border-top:1px solid #e4e4e7">
+        <p style="margin:0;color:#a1a1aa;font-size:11px;text-align:center">
+          If you have trouble activating, contact us at {{ support_email }}.<br>
+          &copy; Nexora Labs. All rights reserved.
+        </p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>

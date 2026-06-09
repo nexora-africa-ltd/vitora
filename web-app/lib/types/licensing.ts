@@ -54,3 +54,36 @@ export interface InstallationListItem {
   os_info: string;
   created_at: string;
 }
+
+export interface InstallationDetail extends InstallationListItem {
+  organization: number;
+  facility: number | null;
+  facility_name: string;
+  activation_code: string;
+  activated_by: number | null;
+  check_in_ip: string;
+  revoked_at: string | null;
+  revoked_reason: string;
+  updated_at: string;
+}
+
+export interface GenerateCodeRequest {
+  organization_id: number;
+  name?: string;
+  facility_id?: number;
+}
+
+export interface GenerateCodeResponse {
+  id: number;
+  activation_code: string;
+  organization: string;
+  facility: string | null;
+  status: InstallationStatus;
+}
+
+export interface PaginatedInstallations {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: InstallationListItem[];
+}
