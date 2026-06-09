@@ -526,6 +526,8 @@ urlpatterns = [
     path("api/sync/", include("hmis.apps.core.sync_urls")),
     # Hub endpoints (health, remote wipe)
     path("api/hub/", include("hmis.apps.core.hub_urls")),
+    # Licensing (activation, check-in, status)
+    path("api/licensing/", include("hmis.apps.licensing.urls")),
     # MFA (Multi-Factor Authentication) API
     path("api/mfa/", include("hmis.apps.core.mfa.urls", namespace="mfa")),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
