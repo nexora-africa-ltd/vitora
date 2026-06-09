@@ -98,6 +98,7 @@ INSTALLED_APPS = [
     "hmis.apps.blood_bank.apps.BloodBankConfig",
     "hmis.apps.dialysis.apps.DialysisConfig",
     "hmis.apps.insurance.apps.InsuranceConfig",
+    "hmis.apps.licensing.apps.LicensingConfig",
 ]
 
 MIDDLEWARE = [
