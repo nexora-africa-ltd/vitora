@@ -295,3 +295,175 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+// ---------------------------------------------------------------------------
+// Encrypted Backup (AES-256-GCM + facility passphrase)
+// ---------------------------------------------------------------------------
+
+const ENCRYPTION_MAGIC = Buffer.from('VITORA_ENC_V1\0');
+const SALT_LENGTH = 32;
+const IV_LENGTH = 12;
+const AUTH_TAG_LENGTH = 16;
+const KEY_ITERATIONS = 100_000;
+
+/**
+ * Derive a 256-bit AES key from a passphrase using PBKDF2.
+ */
+function deriveKey(passphrase: string, salt: Buffer): Buffer {
+  const crypto = require('crypto');
+  return crypto.pbkdf2Sync(passphrase, salt, KEY_ITERATIONS, 32, 'sha256');
+}
+
+/**
+ * Export an encrypted backup to a destination path (e.g., USB drive).
+ * Uses AES-256-GCM with a passphrase-derived key (PBKDF2).
+ *
+ * File format:
+ *   [14B magic] [32B salt] [12B iv] [encrypted data] [16B auth tag]
+ */
+export function exportEncryptedBackup(
+  destPath: string,
+  passphrase: string
+): BackupInfo | null {
+  if (!isLocalDbAvailable()) return null;
+  if (!passphrase || passphrase.length < 8) {
+    console.error('[Backup] Passphrase must be at least 8 characters');
+    return null;
+  }
+
+  const crypto = require('crypto');
+  const db = getLocalDb();
+
+  try {
+    // First create a plain backup to a temp file
+    const tmpDir = path.join(getBackupDir(), 'tmp');
+    fs.mkdirSync(tmpDir, { recursive: true });
+    const tmpPath = path.join(tmpDir, `export-${Date.now()}.db`);
+
+    db.backup(tmpPath);
+    const plainData = fs.readFileSync(tmpPath);
+
+    // Encrypt
+    const salt = crypto.randomBytes(SALT_LENGTH);
+    const key = deriveKey(passphrase, salt);
+    const iv = crypto.randomBytes(IV_LENGTH);
+
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    const encrypted = Buffer.concat([cipher.update(plainData), cipher.final()]);
+    const authTag = cipher.getAuthTag();
+
+    // Write encrypted file: magic + salt + iv + ciphertext + tag
+    const dir = path.dirname(destPath);
+    fs.mkdirSync(dir, { recursive: true });
+    const fd = fs.openSync(destPath, 'w');
+    fs.writeSync(fd, ENCRYPTION_MAGIC);
+    fs.writeSync(fd, salt);
+    fs.writeSync(fd, iv);
+    fs.writeSync(fd, encrypted);
+    fs.writeSync(fd, authTag);
+    fs.closeSync(fd);
+
+    // Clean up temp file
+    try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
+
+    const stats = fs.statSync(destPath);
+    console.log(`[Backup] Encrypted export: ${destPath} (${formatBytes(stats.size)})`);
+
+    return {
+      path: destPath,
+      timestamp: new Date().toISOString(),
+      sizeBytes: stats.size,
+      type: 'export',
+    };
+  } catch (error) {
+    console.error('[Backup] Encrypted export failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Import and decrypt an encrypted backup file.
+ * Returns the decrypted database as a temporary file path, or null on failure.
+ */
+export function importEncryptedBackup(
+  encryptedPath: string,
+  passphrase: string
+): string | null {
+  const crypto = require('crypto');
+
+  try {
+    const fileData = fs.readFileSync(encryptedPath);
+
+    // Verify magic header
+    const magic = fileData.subarray(0, ENCRYPTION_MAGIC.length);
+    if (!magic.equals(ENCRYPTION_MAGIC)) {
+      console.error('[Backup] Not a Vitora encrypted backup file');
+      return null;
+    }
+
+    let offset = ENCRYPTION_MAGIC.length;
+    const salt = fileData.subarray(offset, offset + SALT_LENGTH);
+    offset += SALT_LENGTH;
+    const iv = fileData.subarray(offset, offset + IV_LENGTH);
+    offset += IV_LENGTH;
+
+    // Auth tag is the last 16 bytes
+    const authTag = fileData.subarray(fileData.length - AUTH_TAG_LENGTH);
+    const ciphertext = fileData.subarray(offset, fileData.length - AUTH_TAG_LENGTH);
+
+    // Decrypt
+    const key = deriveKey(passphrase, salt);
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(authTag);
+
+    let decrypted: Buffer;
+    try {
+      decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+    } catch {
+      console.error('[Backup] Decryption failed — wrong passphrase or corrupted file');
+      return null;
+    }
+
+    // Write decrypted data to temp file
+    const tmpDir = path.join(getBackupDir(), 'tmp');
+    fs.mkdirSync(tmpDir, { recursive: true });
+    const tmpPath = path.join(tmpDir, `decrypted-${Date.now()}.db`);
+    fs.writeFileSync(tmpPath, decrypted);
+
+    // Verify integrity of decrypted database
+    const Database = require('better-sqlite3');
+    const testDb = new Database(tmpPath, { readonly: true });
+    const result = testDb.pragma('integrity_check') as Array<{ integrity_check: string }>;
+    testDb.close();
+
+    if (result[0]?.integrity_check !== 'ok') {
+      console.error('[Backup] Decrypted database is corrupted');
+      try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
+      return null;
+    }
+
+    console.log('[Backup] Encrypted backup decrypted and verified');
+    return tmpPath;
+  } catch (error) {
+    console.error('[Backup] Import failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Restore from an encrypted backup: decrypt, verify, then replace current DB.
+ */
+export function restoreFromEncryptedBackup(
+  encryptedPath: string,
+  passphrase: string
+): boolean {
+  const tmpPath = importEncryptedBackup(encryptedPath, passphrase);
+  if (!tmpPath) return false;
+
+  const success = restoreFromBackup(tmpPath);
+
+  // Clean up temp file
+  try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
+
+  return success;
+}

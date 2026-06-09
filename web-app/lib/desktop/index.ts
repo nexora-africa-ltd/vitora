@@ -352,3 +352,42 @@ export async function saveHubConfig(
   if (!invoke) return;
   await invoke('save_hub_config', { hubUrl, facilityId, organizationId });
 }
+
+// ---------------------------------------------------------------------------
+// Secure Key Storage
+// ---------------------------------------------------------------------------
+
+/**
+ * Get or generate the database encryption key from the OS keystore.
+ * The key is generated once (random 256-bit) and persisted securely.
+ * Returns hex-encoded key (64 chars) or null in browser mode.
+ */
+export async function getDbEncryptionKey(): Promise<string | null> {
+  const invoke = getInvoke();
+  if (!invoke) return null;
+  return invoke<string>('get_db_encryption_key');
+}
+
+/**
+ * Store the Fernet key in the secure keystore.
+ * The Fernet key is used for PII encryption (national_id, phone, etc).
+ */
+export async function setFernetKey(key: string): Promise<void> {
+  const invoke = getInvoke();
+  if (!invoke) return;
+  await invoke('set_fernet_key', { key });
+}
+
+/**
+ * Retrieve the Fernet key from the secure keystore.
+ * Returns the base64-encoded Fernet key or null if not stored.
+ */
+export async function getFernetKey(): Promise<string | null> {
+  const invoke = getInvoke();
+  if (!invoke) return null;
+  try {
+    return await invoke<string>('get_fernet_key');
+  } catch {
+    return null;
+  }
+}

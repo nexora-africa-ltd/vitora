@@ -415,3 +415,88 @@ def sync_conflicts_list(request):
             "offset": offset,
         }
     )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def sync_dashboard(request):
+    """
+    Sync health dashboard for admin UI.
+
+    Returns:
+    - queue_summary: counts by status (PENDING, SYNCING, SYNCED, FAILED, CONFLICT)
+    - conflict_summary: counts by model_name, top unresolved conflicts
+    - throughput: entries synced in last hour/day
+    - stale_entries: entries stuck in PENDING > 1 hour
+    """
+    from datetime import timedelta
+
+    from django.db.models import Count
+
+    facility = _resolve_facility(request.user)
+    organization = _resolve_organization(request.user)
+
+    qs = SyncQueue.objects.all()
+    if facility:
+        qs = qs.filter(facility=facility)
+    elif organization:
+        qs = qs.filter(organization=organization)
+
+    now = timezone.now()
+    one_hour_ago = now - timedelta(hours=1)
+    one_day_ago = now - timedelta(days=1)
+
+    # Queue summary by status
+    queue_summary = dict(
+        qs.values("status").annotate(count=Count("id")).values_list("status", "count")
+    )
+
+    # Throughput
+    synced_last_hour = qs.filter(status="SYNCED", synced_at__gte=one_hour_ago).count()
+    synced_last_day = qs.filter(status="SYNCED", synced_at__gte=one_day_ago).count()
+
+    # Stale entries (pending > 1 hour)
+    stale_count = qs.filter(status="PENDING", created_at__lt=one_hour_ago).count()
+
+    # High-retry entries (retry_count >= 5)
+    high_retry = qs.filter(
+        status__in=["PENDING", "FAILED"],
+        retry_count__gte=5,
+    ).count()
+
+    # Conflict summary by model
+    conflict_qs = SyncConflict.objects.filter(status="PENDING")
+    conflict_by_model = list(
+        conflict_qs.values("model_name").annotate(count=Count("id")).order_by("-count")[:10]
+    )
+
+    # Recent conflicts (last 10)
+    recent_conflicts = SyncConflictDetailSerializer(
+        conflict_qs.order_by("-detected_at")[:10], many=True
+    ).data
+
+    return Response(
+        {
+            "queue_summary": {
+                "PENDING": queue_summary.get("PENDING", 0),
+                "SYNCING": queue_summary.get("SYNCING", 0),
+                "SYNCED": queue_summary.get("SYNCED", 0),
+                "FAILED": queue_summary.get("FAILED", 0),
+                "CONFLICT": queue_summary.get("CONFLICT", 0),
+            },
+            "throughput": {
+                "synced_last_hour": synced_last_hour,
+                "synced_last_day": synced_last_day,
+            },
+            "health": {
+                "stale_entries": stale_count,
+                "high_retry_entries": high_retry,
+            },
+            "conflicts": {
+                "total_pending": conflict_qs.count(),
+                "by_model": conflict_by_model,
+                "recent": recent_conflicts,
+            },
+            "server_timestamp": now,
+        }
+    )

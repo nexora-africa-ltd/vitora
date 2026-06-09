@@ -424,3 +424,60 @@ export function getSyncStatus(): SyncStatus {
     isSyncing: syncing,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Retry back-off & pruning
+// ---------------------------------------------------------------------------
+
+/** Base delay for exponential backoff (ms). */
+const BACKOFF_BASE_MS = 5_000;
+/** Maximum backoff delay (ms). */
+const BACKOFF_MAX_MS = 5 * 60 * 1000; // 5 minutes
+/** Maximum retry attempts before marking as FAILED permanently. */
+const MAX_RETRIES = 10;
+
+/**
+ * Check if an outbox entry is eligible for retry based on exponential backoff.
+ * Delay = min(BACKOFF_BASE * 2^retryCount, BACKOFF_MAX).
+ */
+export function isRetryEligible(retryCount: number, createdAt: string): boolean {
+  if (retryCount >= MAX_RETRIES) return false;
+  const delay = Math.min(BACKOFF_BASE_MS * Math.pow(2, retryCount), BACKOFF_MAX_MS);
+  const nextRetryAt = new Date(createdAt).getTime() + delay * (retryCount + 1);
+  return Date.now() >= nextRetryAt;
+}
+
+/**
+ * Prune completed and permanently-failed outbox entries.
+ * - Removes PUSHED entries older than `maxAgeHours` (default 24h).
+ * - Marks entries with retryCount >= MAX_RETRIES as FAILED permanently.
+ * Returns the number of pruned entries.
+ */
+export function pruneOutbox(maxAgeHours = 24): number {
+  if (!isLocalDbAvailable()) return 0;
+  const db = getLocalDb();
+
+  // Mark permanently failed entries
+  db.prepare(
+    `UPDATE _sync_outbox SET status = 'FAILED', error_message = 'Max retries exceeded'
+     WHERE status = 'PENDING' AND retry_count >= ?`
+  ).run(MAX_RETRIES);
+
+  // Delete pushed entries older than threshold
+  const cutoff = new Date(Date.now() - maxAgeHours * 60 * 60 * 1000).toISOString();
+  const result = db.prepare(
+    `DELETE FROM _sync_outbox WHERE status = 'PUSHED' AND created_at < ?`
+  ).run(cutoff);
+
+  // Delete permanently failed entries older than 7 days
+  const failedCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const failedResult = db.prepare(
+    `DELETE FROM _sync_outbox WHERE status = 'FAILED' AND created_at < ?`
+  ).run(failedCutoff);
+
+  const total = (result.changes || 0) + (failedResult.changes || 0);
+  if (total > 0) {
+    console.log(`[Sync] Pruned ${total} outbox entries`);
+  }
+  return total;
+}

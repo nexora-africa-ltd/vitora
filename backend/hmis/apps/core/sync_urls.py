@@ -9,6 +9,7 @@ from django.urls import path
 
 from .sync_views import (
     sync_conflicts_list,
+    sync_dashboard,
     sync_pull,
     sync_push,
     sync_resolve_conflict,
@@ -21,4 +22,5 @@ urlpatterns = [
     path("status/", sync_status, name="sync-status"),
     path("resolve/", sync_resolve_conflict, name="sync-resolve-conflict"),
     path("conflicts/", sync_conflicts_list, name="sync-conflicts-list"),
+    path("dashboard/", sync_dashboard, name="sync-dashboard"),
 ]

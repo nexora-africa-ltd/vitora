@@ -13,6 +13,7 @@ The cloud server exposes the same /api/sync/push/ and /api/sync/pull/ endpoints.
 
 import logging
 import threading
+import time
 from datetime import datetime
 
 import requests
@@ -22,6 +23,9 @@ from django.utils import timezone
 from hmis.apps.core.models import SyncQueue
 
 logger = logging.getLogger(__name__)
+
+# Token refresh buffer: refresh 60s before expiry
+TOKEN_REFRESH_BUFFER_SECS = 60
 
 
 class HubCloudSyncWorker:
@@ -46,6 +50,10 @@ class HubCloudSyncWorker:
         self._thread: threading.Thread | None = None
         self._last_pull_timestamp: datetime | None = None
         self._auth_token: str = ""
+        self._refresh_token: str = ""
+        self._token_expiry: float = 0  # unix timestamp when access token expires
+        self._auth_username: str = ""
+        self._auth_password: str = ""
 
     @property
     def is_configured(self) -> bool:
@@ -208,10 +216,49 @@ class HubCloudSyncWorker:
         )
 
     def _get_auth_headers(self) -> dict:
-        """Return authorization headers for cloud requests."""
+        """Return authorization headers, refreshing the token if needed."""
+        self._ensure_valid_token()
         if self._auth_token:
             return {"Authorization": f"Bearer {self._auth_token}"}
         return {}
+
+    def _ensure_valid_token(self):
+        """Refresh the access token if it's expired or about to expire."""
+        if not self._auth_token:
+            return
+
+        if time.time() < (self._token_expiry - TOKEN_REFRESH_BUFFER_SECS):
+            return  # Still valid
+
+        # Try refresh token first
+        if self._refresh_token and self._refresh_access_token():
+            return
+
+        # Refresh failed or no refresh token — re-authenticate
+        if self._auth_username and self._auth_password:
+            self.authenticate(self._auth_username, self._auth_password)
+
+    def _refresh_access_token(self) -> bool:
+        """Use the refresh token to get a new access token. Returns True on success."""
+        try:
+            base_url = self.server_url.rstrip("/").rsplit("/sync", 1)[0]
+            response = requests.post(
+                f"{base_url}/token/refresh/",
+                json={"refresh": self._refresh_token},
+                timeout=15,
+            )
+            if response.status_code == 200:
+                data = response.json()
+                self._auth_token = data.get("access", "")
+                # JWT access tokens default to 5 minutes in SimpleJWT
+                self._token_expiry = time.time() + 300
+                logger.debug("Hub access token refreshed via refresh token")
+                return True
+            logger.warning("Hub token refresh returned %d", response.status_code)
+            return False
+        except requests.RequestException as e:
+            logger.warning("Hub token refresh network error: %s", e)
+            return False
 
     def _post(self, url: str, **kwargs) -> requests.Response:
         """Make authenticated POST request to cloud."""
@@ -229,6 +276,7 @@ class HubCloudSyncWorker:
         Authenticate the hub with the cloud server.
 
         Call this once at startup with hub service account credentials.
+        Stores refresh token for automatic re-authentication.
         """
         try:
             response = requests.post(
@@ -237,7 +285,13 @@ class HubCloudSyncWorker:
                 timeout=15,
             )
             if response.status_code == 200:
-                self._auth_token = response.json().get("access", "")
+                data = response.json()
+                self._auth_token = data.get("access", "")
+                self._refresh_token = data.get("refresh", "")
+                # JWT access tokens default to 5 minutes in SimpleJWT
+                self._token_expiry = time.time() + 300
+                self._auth_username = username
+                self._auth_password = password
                 return True
             logger.warning("Hub auth failed: %d", response.status_code)
             return False

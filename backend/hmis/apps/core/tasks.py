@@ -851,3 +851,57 @@ def _publish_license_event(event_type: str, profile, extra: dict) -> None:
         )
     except Exception:
         logger.exception("Failed to publish license event %s for staff %s", event_type, profile.pk)
+
+
+@shared_task(
+    name="hmis.apps.core.tasks.prune_sync_queue",
+)
+def prune_sync_queue():
+    """
+    Prune old and permanently-failed sync queue entries.
+
+    - Marks entries with retry_count >= MAX_RETRIES as permanently FAILED.
+    - Deletes SYNCED entries older than 24 hours.
+    - Deletes FAILED entries older than 7 days.
+
+    Runs every 6 hours via Celery Beat.
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from hmis.apps.core.models import SyncQueue
+
+    max_retries = getattr(settings, "SYNC_MAX_RETRIES", 10)
+    now = timezone.now()
+
+    # Mark permanently failed
+    pf_count = SyncQueue.objects.filter(
+        status="PENDING",
+        retry_count__gte=max_retries,
+    ).update(status="FAILED", error_message="Max retries exceeded")
+
+    # Delete old synced (24h)
+    synced_deleted, _ = SyncQueue.objects.filter(
+        status="SYNCED",
+        synced_at__lt=now - timedelta(hours=24),
+    ).delete()
+
+    # Delete old failed (7 days)
+    failed_deleted, _ = SyncQueue.objects.filter(
+        status="FAILED",
+        created_at__lt=now - timedelta(days=7),
+    ).delete()
+
+    logger.info(
+        "Sync queue pruned: %d synced, %d failed deleted, %d marked permanently failed",
+        synced_deleted,
+        failed_deleted,
+        pf_count,
+    )
+
+    return {
+        "synced_deleted": synced_deleted,
+        "failed_deleted": failed_deleted,
+        "permanently_failed": pf_count,
+    }
