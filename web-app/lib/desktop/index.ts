@@ -440,3 +440,51 @@ export async function clearLicenseToken(): Promise<void> {
   if (!invoke) return;
   await invoke('clear_license_token');
 }
+
+// ---------------------------------------------------------------------------
+// Saved Credentials (Remember Me — Desktop Only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Store login credentials in the OS-level secure keystore.
+ * Only available in desktop (Tauri) mode; no-op in browser.
+ */
+export async function storeCredentials(username: string, password: string): Promise<boolean> {
+  const invoke = getInvoke();
+  if (!invoke) return false;
+  try {
+    await invoke('store_credentials', { username, password });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Retrieve saved login credentials from the OS-level secure keystore.
+ * Returns null in browser mode or if no credentials are stored.
+ */
+export async function getCredentials(): Promise<{ username: string; password: string } | null> {
+  const invoke = getInvoke();
+  if (!invoke) return null;
+  try {
+    const [username, password] = await invoke<[string, string]>('get_credentials');
+    if (!username) return null;
+    return { username, password };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Clear saved credentials (used on explicit logout).
+ */
+export async function clearCredentials(): Promise<void> {
+  const invoke = getInvoke();
+  if (!invoke) return;
+  try {
+    await invoke('clear_credentials');
+  } catch {
+    // ignore
+  }
+}

@@ -20,6 +20,7 @@ import {
   type WebSocketConnectionState,
   getConnectionStatusText,
 } from '@/lib/hooks/use-websocket';
+import { useNetworkStatus } from '@/lib/hooks/use-network-status';
 import {
   Tooltip,
   TooltipContent,
@@ -94,11 +95,19 @@ export function WebSocketStatus({
   size = 'md',
   lastUpdate,
 }: WebSocketStatusProps) {
+  const { isOnline } = useNetworkStatus();
   const statusText = getConnectionStatusText(connectionState);
-  const indicatorState = mapConnectionState(connectionState);
   const lastUpdateText = formatLastUpdate(lastUpdate);
 
+  // Determine effective state: network offline overrides everything
+  const effectiveState = !isOnline ? 'offline' : connectionState;
+
+  const indicatorState = !isOnline
+    ? 'down' as const
+    : mapConnectionState(connectionState);
+
   const getLabel = () => {
+    if (!isOnline) return 'Offline';
     switch (connectionState) {
       case 'connected':
         return 'Live';
@@ -106,6 +115,9 @@ export function WebSocketStatus({
         return 'Reconnecting...';
       case 'connecting':
         return 'Connecting...';
+      case 'disconnected':
+      case 'error':
+        return 'Polling';
       default:
         return 'Polling';
     }
@@ -113,15 +125,22 @@ export function WebSocketStatus({
 
   const tooltipContent = (
     <div className="text-xs">
-      <div className="font-medium">{statusText}</div>
-      {connectionState === 'reconnecting' && (
+      <div className="font-medium">
+        {!isOnline ? 'Backend unreachable' : statusText}
+      </div>
+      {isOnline && connectionState === 'reconnecting' && (
         <div className="text-muted-foreground mt-1">
           Attempt {reconnectAttempts}/{maxReconnectAttempts}
         </div>
       )}
-      {(connectionState === 'disconnected' || connectionState === 'error') && (
+      {!isOnline && (
         <div className="text-muted-foreground mt-1">
-          Using polling fallback (updates every 15-30s)
+          Cannot reach the server. Data may be stale.
+        </div>
+      )}
+      {isOnline && (connectionState === 'disconnected' || connectionState === 'error') && (
+        <div className="text-muted-foreground mt-1">
+          WebSocket unavailable — using HTTP polling (updates every 15-30s)
         </div>
       )}
     </div>

@@ -1,6 +1,8 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import React, { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth/context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useFacility } from '@/lib/context/facility-context';
 import type { FacilityModules } from '@/lib/auth/context';
@@ -56,10 +58,32 @@ function AccessDenied() {
 }
 
 /**
- * @deprecated AuthGuard is no longer needed - auth redirects are handled by middleware.
- * Remove this wrapper from layouts. Use PermissionGuard for permission-based access.
+ * AuthGuard — redirects to /login when the user's session has expired.
+ * Wraps the dashboard layout to force navigation on auth loss.
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  // Redirect to login when session expires (e.g., desktop app restored from tray)
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/login');
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null; // Will redirect
+  }
+
   return <>{children}</>;
 }
 
