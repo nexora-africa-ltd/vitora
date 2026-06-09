@@ -5,7 +5,7 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Building2,
@@ -13,6 +13,7 @@ import {
   Palette,
   Shield,
   Database,
+  Monitor,
 } from 'lucide-react';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,13 +24,21 @@ import { FacilitySettingsTab } from '@/components/settings/facility-settings';
 import { DischargeTemplateSettings } from '@/components/settings/discharge-template-settings';
 import { DHIS2SettingsTab } from '@/components/settings/dhis2-settings';
 import { AppearanceSettings } from '@/components/settings/appearance-settings';
+import { DesktopSettingsTab } from '@/components/settings/desktop-settings';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { isDesktop } from '@/lib/desktop';
 
 export default function SettingsPage() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'security';
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [showDesktop, setShowDesktop] = useState(false);
+
+  // Detect desktop mode after mount (avoids hydration mismatch)
+  useEffect(() => {
+    setShowDesktop(isDesktop());
+  }, []);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -71,6 +80,13 @@ export default function SettingsPage() {
             <span className="sm:hidden">Theme</span>
             <span className="hidden sm:inline">Appearance</span>
           </TabsTrigger>
+          {showDesktop && (
+            <TabsTrigger value="desktop" className="gap-1.5 text-xs sm:text-sm">
+              <Monitor className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="sm:hidden">Desktop</span>
+              <span className="hidden sm:inline">Desktop</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Security Settings (MFA) */}
@@ -115,6 +131,13 @@ export default function SettingsPage() {
         <TabsContent value="appearance" className="space-y-4 mt-4">
           <AppearanceSettings />
         </TabsContent>
+
+        {/* Desktop Settings (Tauri only) */}
+        {showDesktop && (
+          <TabsContent value="desktop" className="space-y-4 mt-4">
+            <DesktopSettingsTab />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
