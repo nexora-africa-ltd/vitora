@@ -2,7 +2,8 @@ import * as Sentry from "@sentry/nextjs";
 
 export async function register() {
   // Desktop app: initialize local SQLite database and sync services
-  if (process.env.VITORA_DESKTOP === "1") {
+  // Guard with NEXT_RUNTIME to prevent Edge bundler from tracing Node.js-only imports
+  if (process.env.VITORA_DESKTOP === "1" && process.env.NEXT_RUNTIME === "nodejs") {
     try {
       const { initLocalDatabase } = await import("./lib/desktop/local-db");
       const { startAutoSync } = await import("./lib/desktop/sync-engine");
