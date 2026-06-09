@@ -62,7 +62,41 @@ DATABASES = {
 # Security
 # ---------------------------------------------------------------------------
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "hub-change-me-in-production")
+
+def _get_or_generate_secret_key() -> str:
+    """
+    Return SECRET_KEY from env, or generate-and-persist one in the hub data
+    directory on first run.  Never falls back to a hardcoded string.
+    """
+    key = os.getenv("DJANGO_SECRET_KEY", "")
+    if key:
+        return key
+
+    import secrets as _secrets  # stdlib — always available
+
+    key_file = os.path.join(
+        os.getenv("HUB_DATA_DIR", str(BASE_DIR)),  # noqa: F405
+        ".hub_secret_key",
+    )
+    if os.path.exists(key_file):
+        with open(key_file) as f:
+            stored = f.read().strip()
+        if stored:
+            return stored
+
+    # Generate a new 50-char URL-safe secret key (Django convention)
+    new_key = _secrets.token_urlsafe(50)
+    # Write with owner-read-only permissions (0600)
+    old_umask = os.umask(0o177)
+    try:
+        with open(key_file, "w") as f:
+            f.write(new_key)
+    finally:
+        os.umask(old_umask)
+    return new_key
+
+
+SECRET_KEY = _get_or_generate_secret_key()
 
 # Session: use DB-backed sessions (no Redis required)
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
