@@ -5,6 +5,7 @@ The private key is held by the Nexora licensing service (cloud).
 The public key is embedded in every installation for local verification.
 """
 
+import base64
 import datetime
 import os
 from pathlib import Path
@@ -28,14 +29,26 @@ CHECK_IN_WINDOW_DAYS = 30
 
 
 def get_private_key() -> str:
-    """Load the private signing key (only available on the Nexora licensing server)."""
+    """
+    Load the private signing key.
+
+    Resolution order:
+    1. LICENSE_SIGNING_KEY env var (base64-encoded PEM, for Azure Container App secrets)
+    2. File at LICENSE_PRIVATE_KEY_PATH (for local dev / Key Vault volume mount)
+    """
+    # Try base64-encoded env var first (production: Container App secret)
+    encoded = os.getenv("LICENSE_SIGNING_KEY", "")
+    if encoded:
+        return base64.b64decode(encoded).decode("utf-8")
+
+    # Fall back to file path (local dev)
     try:
         with open(PRIVATE_KEY_PATH) as f:
             return f.read()
     except FileNotFoundError as exc:
         raise RuntimeError(
-            f"License private key not found at {PRIVATE_KEY_PATH}. "
-            "This key should only exist on the Nexora licensing server."
+            "License private key not available. Set LICENSE_SIGNING_KEY env var "
+            f"(base64-encoded PEM) or place key at {PRIVATE_KEY_PATH}."
         ) from exc
 
 
