@@ -330,37 +330,10 @@ pub fn get_db_encryption_key(app: AppHandle) -> Result<String, String> {
     let mut store = KeyStore::load(&app);
 
     if store.db_encryption_key.is_empty() {
-        // Generate a random 32-byte key (hex-encoded = 64 chars)
-        use std::time::SystemTime;
-        let seed = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos();
-
-        // Simple CSPRNG-like key from multiple entropy sources
+        // Generate a cryptographically secure 256-bit key using the OS CSPRNG
+        use rand::RngCore;
         let mut key_bytes = [0u8; 32];
-        let nanos = seed.to_le_bytes();
-        for (i, b) in nanos.iter().enumerate() {
-            if i < 32 {
-                key_bytes[i] = b.wrapping_add((i as u8).wrapping_mul(37));
-            }
-        }
-        // Mix in process ID and additional timing
-        let pid = std::process::id();
-        for i in 0..4 {
-            key_bytes[16 + i] ^= ((pid >> (i * 8)) & 0xFF) as u8;
-        }
-        let now2 = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos();
-        let delta = now2.wrapping_sub(seed);
-        for (i, b) in delta.to_le_bytes().iter().enumerate() {
-            if i < 32 {
-                key_bytes[i] ^= *b;
-            }
-        }
-
+        rand::rngs::OsRng.fill_bytes(&mut key_bytes);
         store.db_encryption_key = key_bytes.iter().map(|b| format!("{:02x}", b)).collect();
         store.save(&app)?;
     }
