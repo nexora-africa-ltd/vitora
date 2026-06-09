@@ -13,6 +13,7 @@ import { InstallPromptBanner } from '@/components/shared/install-prompt-banner';
 import { NewVersionToast } from '@/components/shared/new-version-toast';
 import { PageRefreshProvider } from '@/lib/context/page-refresh-context';
 import { FacilityProvider } from '@/lib/context/facility-context';
+import { LicenseProvider } from '@/lib/context/license-context';
 import { NavigationModeProvider } from '@/lib/context/navigation-mode-context';
 import { createQueryClient } from '@/lib/query-client';
 import { initChunkErrorHandler } from '@/lib/utils/chunk-error-handler';
@@ -60,22 +61,24 @@ export function Providers({ children }: ProvidersProps) {
         >
           <AuthProvider>
             <FacilityProvider>
-              <NavigationModeProvider>
-                {/* Demo mode banner - shows in staging environment */}
-                <DemoBanner />
-                {/* Active facility indicator */}
-                <FacilityBanner />
-                <InstallPromptBanner />
-                <Suspense fallback={null}>
-                  <NavigationProgress />
-                </Suspense>
-                {children}
-                <Toaster />
-                {/* New version notification toast */}
-                <NewVersionToast />
-                {/* Demo watermark - subtle indicator for screenshots */}
-                <DemoWatermark />
-              </NavigationModeProvider>
+              <LicenseProvider>
+                <NavigationModeProvider>
+                  {/* Demo mode banner - shows in staging environment */}
+                  <DemoBanner />
+                  {/* Active facility indicator */}
+                  <FacilityBanner />
+                  <InstallPromptBanner />
+                  <Suspense fallback={null}>
+                    <NavigationProgress />
+                  </Suspense>
+                  {children}
+                  <Toaster />
+                  {/* New version notification toast */}
+                  <NewVersionToast />
+                  {/* Demo watermark - subtle indicator for screenshots */}
+                  <DemoWatermark />
+                </NavigationModeProvider>
+              </LicenseProvider>
             </FacilityProvider>
           </AuthProvider>
         </ThemeProvider>
