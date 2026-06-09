@@ -8,7 +8,7 @@
  * (provided by Nexora after purchase) and the app activates itself.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { licensingApi } from '@/lib/api/licensing';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,10 +21,15 @@ import { HelpPopover } from '@/components/shared/help-popover';
 export default function ActivatePage() {
   const router = useRouter();
   const [code, setCode] = useState('');
-  const [installationId, setInstallationId] = useState(licensingApi.getInstallationId() || '');
+  const [installationId, setInstallationId] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Resolve installation ID on mount (Tauri keystore → localStorage fallback)
+  useEffect(() => {
+    licensingApi.getInstallationIdAsync().then((id) => setInstallationId(id));
+  }, []);
 
   async function handleActivate(e: React.FormEvent) {
     e.preventDefault();

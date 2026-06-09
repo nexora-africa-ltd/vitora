@@ -391,3 +391,52 @@ export async function getFernetKey(): Promise<string | null> {
     return null;
   }
 }
+
+// ---------------------------------------------------------------------------
+// License / Installation ID
+// ---------------------------------------------------------------------------
+
+/**
+ * Get the stable installation ID from Tauri's config (generated on first run).
+ * Returns null in browser mode — caller should fall back to localStorage UUID.
+ */
+export async function getInstallationId(): Promise<string | null> {
+  const invoke = getInvoke();
+  if (!invoke) return null;
+  return invoke<string>('get_installation_id');
+}
+
+/**
+ * Store the license JWT in the OS-level secure keystore.
+ * Falls back to localStorage in browser mode (handled by caller).
+ */
+export async function storeLicenseToken(token: string): Promise<boolean> {
+  const invoke = getInvoke();
+  if (!invoke) return false;
+  try {
+    await invoke('store_license_token', { token });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Retrieve the license JWT from the OS-level secure keystore.
+ * Returns null in browser mode or if no token is stored.
+ */
+export async function getLicenseToken(): Promise<string | null> {
+  const invoke = getInvoke();
+  if (!invoke) return null;
+  const token = await invoke<string>('get_license_token');
+  return token || null; // empty string → null
+}
+
+/**
+ * Clear the stored license token (on revocation or factory reset).
+ */
+export async function clearLicenseToken(): Promise<void> {
+  const invoke = getInvoke();
+  if (!invoke) return;
+  await invoke('clear_license_token');
+}

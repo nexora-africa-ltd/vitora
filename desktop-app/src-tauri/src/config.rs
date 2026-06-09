@@ -279,6 +279,9 @@ struct KeyStore {
     /// Fernet key for PII encryption (base64-encoded, 44 chars).
     #[serde(default)]
     fernet_key: String,
+    /// License JWT token (RS256-signed, issued by Nexora license server).
+    #[serde(default)]
+    license_token: String,
 }
 
 impl KeyStore {
@@ -361,4 +364,43 @@ pub fn get_fernet_key(app: AppHandle) -> Result<String, String> {
         return Err("No Fernet key stored".to_string());
     }
     Ok(store.fernet_key)
+}
+
+// ---------------------------------------------------------------------------
+// License / Installation ID
+// ---------------------------------------------------------------------------
+
+/// Tauri command: get the stable installation ID (same as client_id from config).
+/// This is generated once on first run and persists across updates.
+#[tauri::command]
+pub fn get_installation_id(app: AppHandle) -> String {
+    AppConfig::load(&app).client_id
+}
+
+/// Tauri command: store the license JWT in the secure keystore.
+#[tauri::command]
+pub fn store_license_token(app: AppHandle, token: String) -> Result<(), String> {
+    if token.is_empty() {
+        return Err("Token cannot be empty".to_string());
+    }
+    let mut store = KeyStore::load(&app);
+    store.license_token = token;
+    store.save(&app)?;
+    Ok(())
+}
+
+/// Tauri command: retrieve the license JWT from the secure keystore.
+/// Returns empty string if no token is stored (signals unactivated state).
+#[tauri::command]
+pub fn get_license_token(app: AppHandle) -> String {
+    KeyStore::load(&app).license_token
+}
+
+/// Tauri command: clear the license token (used on revocation or reset).
+#[tauri::command]
+pub fn clear_license_token(app: AppHandle) -> Result<(), String> {
+    let mut store = KeyStore::load(&app);
+    store.license_token = String::new();
+    store.save(&app)?;
+    Ok(())
 }

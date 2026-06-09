@@ -7,7 +7,7 @@
  * and triggers background check-ins (desktop mode only).
  */
 
-import { createContext, useCallback, useContext, useEffect, useMemo, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { licensingApi } from '@/lib/api/licensing';
 import { isDesktop } from '@/lib/desktop';
@@ -39,9 +39,19 @@ const LicenseContext = createContext<LicenseContextValue | undefined>(undefined)
 
 export function LicenseProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  const [tokenRestored, setTokenRestored] = useState(false);
+
+  // On mount, restore token from Tauri keystore → localStorage (async)
+  useEffect(() => {
+    if (isDesktop()) {
+      licensingApi.getStoredTokenAsync().then(() => setTokenRestored(true));
+    } else {
+      setTokenRestored(true);
+    }
+  }, []);
 
   // Only fetch license status if we have a stored token
-  const hasToken = typeof window !== 'undefined' && !!licensingApi.getStoredToken();
+  const hasToken = tokenRestored && typeof window !== 'undefined' && !!licensingApi.getStoredToken();
 
   const { data: license, isLoading } = useQuery<LicenseStatus>({
     queryKey: ['license', 'status'],
@@ -58,7 +68,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
 
     const doCheckIn = async () => {
       try {
-        const installationId = licensingApi.getInstallationId();
+        const installationId = await licensingApi.getInstallationIdAsync();
         await licensingApi.checkIn({
           installation_id: installationId,
           app_version: process.env.NEXT_PUBLIC_APP_VERSION || '0.0.0',
