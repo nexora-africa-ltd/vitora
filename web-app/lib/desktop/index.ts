@@ -10,18 +10,21 @@ declare global {
         invoke: <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>;
       };
     };
+    __TAURI_INTERNALS__?: {
+      invoke?: <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>;
+    };
   }
 }
 
 /** Returns true if running inside a Tauri desktop shell. */
 export function isDesktop(): boolean {
-  return typeof window !== 'undefined' && window.__TAURI__ !== undefined;
+  return typeof window !== 'undefined' && (window.__TAURI__ !== undefined || window.__TAURI_INTERNALS__ !== undefined);
 }
 
 /** Get the Tauri invoke function, or null if not in Tauri. */
 function getInvoke() {
   if (!isDesktop()) return null;
-  return window.__TAURI__!.core.invoke;
+  return window.__TAURI__?.core.invoke ?? window.__TAURI_INTERNALS__?.invoke ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,13 +131,13 @@ export async function getSidecarPort(): Promise<number | null> {
  */
 export async function isFirstRun(): Promise<boolean> {
   const invoke = getInvoke();
-  if (!invoke) return false;
+  if (!invoke) return isDesktop();
   return invoke<boolean>('is_first_run');
 }
 
 /**
  * Get the configured API base URL.
- * Returns default (https://api.vitora.digital) if not configured or not in desktop mode.
+ * Returns configured API URL, or the web app API URL when not in desktop mode.
  */
 export async function getApiUrl(): Promise<string> {
   const invoke = getInvoke();
@@ -201,7 +204,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
 export function onDeepLink(
   callback: (urls: string[]) => void
 ): (() => void) | null {
-  if (typeof window === 'undefined' || !window.__TAURI__) return null;
+  if (!isDesktop()) return null;
 
   // Listen for the 'deep-link' event emitted by the Rust side
   const handler = (event: Event) => {

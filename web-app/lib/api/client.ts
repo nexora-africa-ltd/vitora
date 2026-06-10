@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { tokenStorage } from '@/lib/auth/storage';
+import { isDesktop } from '@/lib/desktop';
 import { API_BASE_URL } from '@/lib/utils/constants';
 
 /**
@@ -96,7 +97,7 @@ apiClient.interceptors.request.use(
       config.headers['X-Organization-Id'] = String(_activeOrganizationId);
     }
     // Identify desktop app to the backend (analytics + debugging)
-    if (typeof window !== 'undefined' && window.__TAURI__) {
+    if (isDesktop()) {
       config.headers['X-Vitora-Client'] = 'desktop/0.1.0';
     }
     return config;

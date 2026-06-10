@@ -11,6 +11,8 @@ import {
 } from '@/lib/desktop';
 import { discoverHub, probeHub, type HubInfo } from '@/lib/desktop/hub-discovery';
 
+const DEFAULT_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io';
+
 const DEPLOYMENT_MODES: Array<{ value: DeploymentMode; label: string; description: string }> = [
   {
     value: 'standalone',
@@ -37,7 +39,7 @@ const DEPLOYMENT_MODES: Array<{ value: DeploymentMode; label: string; descriptio
 export default function DesktopSetupPage() {
   const router = useRouter();
   const [mode, setMode] = useState<DeploymentMode>('standalone');
-  const [url, setUrl] = useState('https://api.vitora.digital');
+  const [url, setUrl] = useState(DEFAULT_API_URL);
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -176,7 +178,7 @@ export default function DesktopSetupPage() {
                     if (option.value === 'lan_client' || option.value === 'lan_hub') {
                       setUrl('http://192.168.1.100:9088');
                     } else {
-                      setUrl('https://api.vitora.digital');
+                      setUrl(DEFAULT_API_URL);
                     }
                     setError('');
                     setSuccess(false);
@@ -223,7 +225,7 @@ export default function DesktopSetupPage() {
                 setError('');
                 setSuccess(false);
               }}
-              placeholder="https://api.vitora.digital"
+              placeholder={DEFAULT_API_URL}
               className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white placeholder-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
             />
           </div>
