@@ -268,6 +268,7 @@ export interface AppConfig {
   hub_url: string;
   facility_id: string;
   organization_id: string;
+  setup_completed: boolean;
 }
 
 /**

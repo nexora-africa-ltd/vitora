@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { clearAllDrafts } from '@/lib/hooks/use-draft-save';
+import { API_BASE_URL } from '@/lib/utils/constants';
 import type { OrgMembership } from '@/lib/types/membership';
 
 // Facility modules matching backend Facility.modules property
@@ -119,6 +120,41 @@ const AUTH_COOKIE_NAME = 'vitora_authenticated';
 const IDLE_ACTIVITY_KEY = 'vitora_last_activity';
 // MFA grace period deadline (ISO 8601)
 const MFA_GRACE_KEY = 'vitora_mfa_grace_deadline';
+
+async function getAuthApiUrl(): Promise<string> {
+  if (typeof window === 'undefined' || !window.__TAURI__) {
+    return API_BASE_URL;
+  }
+
+  try {
+    const { getApiUrl } = await import('@/lib/desktop');
+    const desktopApiUrl = await getApiUrl();
+    return desktopApiUrl || API_BASE_URL;
+  } catch {
+    return API_BASE_URL;
+  }
+}
+
+async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+  const contentType = response.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    const data = await response.json().catch(() => null);
+    if (data && typeof data === 'object') {
+      if (typeof data.detail === 'string') return data.detail;
+      if (typeof data.error === 'string') return data.error;
+      if (typeof data.message === 'string') return data.message;
+
+      const fieldMessages = Object.values(data)
+        .flatMap((value) => Array.isArray(value) ? value : [value])
+        .filter((value): value is string => typeof value === 'string');
+      if (fieldMessages.length > 0) return fieldMessages.join(' ');
+    }
+  }
+
+  const text = await response.text().catch(() => '');
+  return text.trim() || fallback;
+}
 
 /**
  * Auth provider component
@@ -262,7 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, isLoading: true }));
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088';
+      const apiUrl = await getAuthApiUrl();
       const tokenResponse = await fetch(
         `${apiUrl}/api/auth/login/`,
         {
@@ -274,10 +310,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
 
       if (!tokenResponse.ok) {
-        const error = await tokenResponse.json();
         return {
           success: false,
-          error: error.detail || error.error || 'Login failed',
+          error: await readErrorMessage(tokenResponse, 'Login failed. Please check your credentials and try again.'),
         };
       }
 
@@ -351,7 +386,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, isLoading: true }));
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088';
+      const apiUrl = await getAuthApiUrl();
       const response = await fetch(
         `${apiUrl}/api/auth/mfa-verify/`,
         {
@@ -367,8 +402,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
 
       if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || errData.detail || 'MFA verification failed');
+        throw new Error(await readErrorMessage(response, 'MFA verification failed'));
       }
 
       const data = await response.json();
@@ -415,11 +449,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Logout function — clears httpOnly cookies via backend + local state
   const logout = useCallback(() => {
     // Clear httpOnly cookies server-side (fire-and-forget)
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088';
-    fetch(`${apiUrl}/api/auth/logout/`, {
-      method: 'POST',
-      credentials: 'include',
-    }).catch(() => { /* ignore — local cleanup still happens */ });
+    getAuthApiUrl()
+      .then((apiUrl) => fetch(`${apiUrl}/api/auth/logout/`, {
+        method: 'POST',
+        credentials: 'include',
+      }))
+      .catch(() => { /* ignore — local cleanup still happens */ });
 
     // Clear local data
     localStorage.removeItem(USER_KEY);
@@ -441,7 +476,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Refresh token function — uses cookie-based refresh
   const refreshToken = useCallback(async () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088';
+    const apiUrl = await getAuthApiUrl();
     const response = await fetch(
       `${apiUrl}/api/auth/refresh/`,
       {
