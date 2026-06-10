@@ -123,6 +123,12 @@ export default function DesktopSetupPage() {
       await saveHubConfig(trimmed, hubInfo.facilityId, hubInfo.facilityName);
     }
 
+    // Hub mode: redirect to hub setup wizard for installation
+    if (mode === 'lan_hub') {
+      router.push('/hub-setup');
+      return;
+    }
+
     // After setup, go to license activation (activation code validates the install)
     router.push('/activate');
   }

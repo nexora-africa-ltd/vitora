@@ -1,0 +1,268 @@
+name: Build Hub Artifact
+
+# Builds a self-contained tarball of the Django backend for facility hub deployment.
+# Uploads to Azure Blob Storage for unauthenticated download (no public repo needed).
+# Triggered on hub version tags or manually.
+
+on:
+  push:
+    tags:
+      - "hub-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number (e.g., 0.3.1)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  PYTHON_VERSION: "3.11"
+  # Azure Blob container for hub releases
+  BLOB_CONTAINER: "releases"
+  # CDN endpoint: https://get.vitora.digital maps to this container
+  CDN_BASE_URL: "https://get.vitora.digital"
+
+jobs:
+  build:
+    name: Build Hub Package
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ -n "${{ inputs.version }}" ]]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            # Extract from tag: hub-v0.3.1 → 0.3.1
+            TAG="${GITHUB_REF_NAME}"
+            echo "version=${TAG#hub-v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Export requirements
+        working-directory: backend
+        run: |
+          poetry export --without dev --format requirements.txt --output requirements-hub.txt
+
+      - name: Package hub artifact
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ARTIFACT="vitora-hub-${VERSION}"
+          mkdir -p "dist/${ARTIFACT}"
+
+          # Copy backend application code
+          cp -r backend/hmis "dist/${ARTIFACT}/"
+          cp -r backend/data "dist/${ARTIFACT}/"
+          cp backend/manage.py "dist/${ARTIFACT}/"
+          cp backend/requirements-hub.txt "dist/${ARTIFACT}/"
+          cp backend/pyproject.toml "dist/${ARTIFACT}/"
+
+          # Copy hub-specific scripts (Linux + Windows)
+          mkdir -p "dist/${ARTIFACT}/scripts"
+          cp backend/scripts/install-hub.sh "dist/${ARTIFACT}/scripts/"
+          cp backend/scripts/update-hub.sh "dist/${ARTIFACT}/scripts/"
+          cp backend/scripts/install-hub-windows.ps1 "dist/${ARTIFACT}/scripts/"
+          cp backend/scripts/update-hub-windows.ps1 "dist/${ARTIFACT}/scripts/"
+
+          # Write version file
+          echo "$VERSION" > "dist/${ARTIFACT}/VERSION"
+
+          # Create tarball (Linux/macOS)
+          cd dist
+          tar -czf "${ARTIFACT}.tar.gz" "${ARTIFACT}"
+
+          # Create zip (Windows)
+          zip -qr "${ARTIFACT}.zip" "${ARTIFACT}"
+
+          echo "artifact_path=dist/${ARTIFACT}.tar.gz" >> "$GITHUB_ENV"
+          echo "artifact_zip_path=dist/${ARTIFACT}.zip" >> "$GITHUB_ENV"
+          echo "artifact_name=${ARTIFACT}.tar.gz" >> "$GITHUB_ENV"
+          echo "version=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Compute checksums
+        run: |
+          sha256sum "${{ env.artifact_path }}" > "${{ env.artifact_path }}.sha256"
+          sha256sum "${{ env.artifact_zip_path }}" > "${{ env.artifact_zip_path }}.sha256"
+
+      - name: Upload build artifact (CI)
+        uses: actions/upload-artifact@v4
+        with:
+          name: hub-package
+          path: |
+            ${{ env.artifact_path }}
+            ${{ env.artifact_path }}.sha256
+            ${{ env.artifact_zip_path }}
+            ${{ env.artifact_zip_path }}.sha256
+
+      - name: Upload to Azure Blob Storage
+        if: env.AZURE_STORAGE_CONNECTION_STRING != ''
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Upload versioned artifact: /hub/vitora-hub-0.3.1.tar.gz
+          az storage blob upload \
+            --container-name "$BLOB_CONTAINER" \
+            --name "hub/vitora-hub-${VERSION}.tar.gz" \
+            --file "${{ env.artifact_path }}" \
+            --overwrite \
+            --content-type application/gzip
+
+          # Upload checksum
+          az storage blob upload \
+            --container-name "$BLOB_CONTAINER" \
+            --name "hub/vitora-hub-${VERSION}.tar.gz.sha256" \
+            --file "${{ env.artifact_path }}.sha256" \
+            --overwrite \
+            --content-type text/plain
+
+          # Upload as "latest" (symlink-like): /hub/vitora-hub-latest.tar.gz
+          az storage blob upload \
+            --container-name "$BLOB_CONTAINER" \
+            --name "hub/vitora-hub-latest.tar.gz" \
+            --file "${{ env.artifact_path }}" \
+            --overwrite \
+            --content-type application/gzip
+
+          # Write latest version manifest: /hub/latest.json
+          TARBALL_SHA=$(cat ${{ env.artifact_path }}.sha256 | awk '{print $1}')
+          ZIP_SHA=$(cat ${{ env.artifact_zip_path }}.sha256 | awk '{print $1}')
+          python3 -c "
+          import json
+          manifest = {
+              'version': '${VERSION}',
+              'url': '${CDN_BASE_URL}/hub/vitora-hub-${VERSION}.tar.gz',
+              'url_zip': '${CDN_BASE_URL}/hub/vitora-hub-${VERSION}.zip',
+              'sha256': '${TARBALL_SHA}',
+              'sha256_zip': '${ZIP_SHA}'
+          }
+          with open('/tmp/hub-latest.json', 'w') as f:
+              json.dump(manifest, f, indent=2)
+          "
+
+          az storage blob upload \
+            --container-name "$BLOB_CONTAINER" \
+            --name "hub/latest.json" \
+            --file /tmp/hub-latest.json \
+            --overwrite \
+            --content-type application/json \
+            --content-cache-control "max-age=300"
+
+          # Upload the installer script itself: /hub (downloaded via curl https://get.vitora.digital/hub)
+          az storage blob upload \
+            --container-name "$BLOB_CONTAINER" \
+            --name "hub" \
+            --file backend/scripts/install-hub.sh \
+            --overwrite \
+            --content-type "text/x-shellscript" \
+            --content-cache-control "max-age=600"
+
+          # Upload Windows installer: /hub.ps1 (downloaded via irm https://get.vitora.digital/hub.ps1)
+          az storage blob upload \
+            --container-name "$BLOB_CONTAINER" \
+            --name "hub.ps1" \
+            --file backend/scripts/install-hub-windows.ps1 \
+            --overwrite \
+            --content-type "text/plain" \
+            --content-cache-control "max-age=600"
+
+          # Upload Windows zip artifact: /hub/vitora-hub-0.3.1.zip
+          az storage blob upload \
+            --container-name "$BLOB_CONTAINER" \
+            --name "hub/vitora-hub-${VERSION}.zip" \
+            --file "${{ env.artifact_zip_path }}" \
+            --overwrite \
+            --content-type application/zip
+
+          # Upload zip checksum
+          az storage blob upload \
+            --container-name "$BLOB_CONTAINER" \
+            --name "hub/vitora-hub-${VERSION}.zip.sha256" \
+            --file "${{ env.artifact_zip_path }}.sha256" \
+            --overwrite \
+            --content-type text/plain
+
+          # Upload as "latest" zip: /hub/vitora-hub-latest.zip
+          az storage blob upload \
+            --container-name "$BLOB_CONTAINER" \
+            --name "hub/vitora-hub-latest.zip" \
+            --file "${{ env.artifact_zip_path }}" \
+            --overwrite \
+            --content-type application/zip
+
+          # Upload Windows update script: /hub-update.ps1
+          az storage blob upload \
+            --container-name "$BLOB_CONTAINER" \
+            --name "hub-update.ps1" \
+            --file backend/scripts/update-hub-windows.ps1 \
+            --overwrite \
+            --content-type "text/plain" \
+            --content-cache-control "max-age=600"
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/hub-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Vitora Hub v${{ steps.version.outputs.version }}"
+          body: |
+            ## Vitora HMIS — Facility Hub v${{ steps.version.outputs.version }}
+
+            ### Install (new facility)
+
+            **Linux / Raspberry Pi:**
+            ```bash
+            curl -sSL https://get.vitora.digital/hub | sudo bash
+            ```
+
+            **Windows (PowerShell as Admin):**
+            ```powershell
+            irm https://get.vitora.digital/hub.ps1 | iex
+            ```
+
+            ### Update (existing hub)
+
+            **Linux:**
+            ```bash
+            sudo bash /opt/vitora/scripts/update-hub.sh
+            ```
+
+            **Windows (PowerShell as Admin):**
+            ```powershell
+            powershell -ExecutionPolicy Bypass -File C:\VitoraHub\scripts\update-hub-windows.ps1
+            ```
+
+            ### Requirements
+
+            | Platform | Requirements |
+            |----------|-------------|
+            | Linux | Ubuntu 22.04+ / Debian 12+ / Raspberry Pi OS, Python 3.11+, 2GB+ RAM |
+            | Windows | Windows 10/11 / Server 2019+, Python 3.11+ on PATH, 4GB+ RAM |
+
+            ### What's included
+            - Django backend application
+            - Pre-exported pip requirements (no Poetry needed on hub)
+            - Database migrations
+            - Static files
+            - Service template (systemd on Linux, NSSM on Windows)
+            - Update scripts for both platforms
+          files: |
+            ${{ env.artifact_path }}
+            ${{ env.artifact_path }}.sha256
+            ${{ env.artifact_zip_path }}
+            ${{ env.artifact_zip_path }}.sha256
+          fail_on_unmatched_files: true
