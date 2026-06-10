@@ -51,7 +51,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Poetry
-        run: pip install poetry
+        run: |
+          pip install poetry
+          poetry self add poetry-plugin-export
 
       - name: Export requirements
         working-directory: backend
