@@ -31,7 +31,7 @@ import { Badge } from '@/components/ui/badge';
 import { CircularProgress } from '@/components/ui/circular-progress';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useFacility } from '@/lib/context/facility-context';
-import { useAIDischargeAssess, useAIEnabled, useStoredDischargeResults, aiKeys } from '@/lib/hooks/use-ai';
+import { useAIDischargeAssess, useAIDischargeConditions, useAIEnabled, useStoredDischargeResults, aiKeys } from '@/lib/hooks/use-ai';
 import { toast } from 'sonner';
 import { AIFeedbackButtons } from '@/components/shared/ai-feedback-buttons';
 import { useQueryClient } from '@tanstack/react-query';
@@ -124,7 +124,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 function CriterionItem({ criterion }: { criterion: AIDischargeCriterion }) {
   return (
-    <div className="flex items-start gap-2 py-1.5">
+    <div className="flex items-start gap-2 py-1.5" role="listitem" aria-label={`${criterion.name}: ${criterion.met ? 'met' : 'not met'}`}>
       {criterion.met ? (
         <Check className="h-4 w-4 mt-0.5 shrink-0 text-green-600 dark:text-green-400" />
       ) : (
@@ -177,6 +177,12 @@ export function DischargeReadinessPanel({
   const [showDetails, setShowDetails] = React.useState(false);
   const panelId = React.useId();
 
+  // Load supported conditions (for condition-specific criteria indicators)
+  const { data: conditionsData } = useAIDischargeConditions();
+  const hasConditionSpecificCriteria = conditionsData?.conditions?.some(
+    (c) => primaryDiagnosis.toLowerCase().includes(c.toLowerCase())
+  ) ?? false;
+
   // Load stored discharge results
   const { data: storedResults } = useStoredDischargeResults(admissionId);
   const latestStored = storedResults?.[0];
@@ -199,8 +205,13 @@ export function DischargeReadinessPanel({
   }, [result, queryClient, admissionId]);
 
   // Auto-trigger from widget quick action
+  const autoTriggerRef = React.useRef(autoTrigger);
+  autoTriggerRef.current = autoTrigger;
+  const hasFiredAutoTrigger = React.useRef(false);
+
   React.useEffect(() => {
-    if (autoTrigger && isAIEnabled && !isPending && !displayResult) {
+    if (autoTriggerRef.current && isAIEnabled && !isPending && !displayResult && !hasFiredAutoTrigger.current) {
+      hasFiredAutoTrigger.current = true;
       mutate({
         admission_id: admissionId,
         patient_age: patientAge,
@@ -219,8 +230,7 @@ export function DischargeReadinessPanel({
       });
       onAutoTriggerConsumed?.();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoTrigger]);
+  }, [autoTrigger, isAIEnabled, isPending, displayResult, mutate, admissionId, patientAge, primaryDiagnosis, admissionType, daysAdmitted, vitalsHistory, labResults, currentMedications, canAmbulate, canTolerateOral, hasFollowUpArranged, hasCaregiverAtHome, hasNhifOrSha, chwReferralMade, onAutoTriggerConsumed]);
 
   // Map criteria categories to facility modules — hide criteria for disabled modules
   const CATEGORY_MODULE_MAP: Record<string, keyof import('@/lib/auth/context').FacilityModules> = {
@@ -290,17 +300,25 @@ export function DischargeReadinessPanel({
       <CardContent className="space-y-3">
         {/* Initial State */}
         {!hasResult && !isPending && !isError && !displayResult && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={disabled || isPending}
-            onClick={handleAssess}
-            className="gap-2"
-          >
-            <ClipboardCheck className="h-4 w-4" />
-            Assess Discharge Readiness
-          </Button>
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled || isPending}
+              onClick={handleAssess}
+              className="gap-2"
+            >
+              <ClipboardCheck className="h-4 w-4" />
+              Assess Discharge Readiness
+            </Button>
+            {hasConditionSpecificCriteria && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Check className="h-3 w-3 text-green-500" />
+                Condition-specific criteria available for this diagnosis
+              </p>
+            )}
+          </div>
         )}
 
         {/* Loading */}
@@ -315,12 +333,20 @@ export function DischargeReadinessPanel({
         {hasResult && readinessConfig && (
           <div className="space-y-3">
             {/* Readiness Score Banner */}
-            <div className={cn('rounded-lg p-4 border', readinessConfig.bgColor, readinessConfig.borderColor)}>
+            <div
+              className={cn('rounded-lg p-4 border', readinessConfig.bgColor, readinessConfig.borderColor)}
+              role="status"
+              aria-label={`Discharge readiness: ${readinessConfig.label}, ${Math.round(displayResult.readiness_score * 100)} percent`}
+            >
               <div className="flex flex-col items-center gap-2 text-center">
                 <CircularProgress
                   value={displayResult.readiness_score * 100}
                   size={80}
                   strokeWidth={6}
+                  aria-valuenow={Math.round(displayResult.readiness_score * 100)}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label="Readiness score"
                   indicatorClassName={cn(
                     displayResult.readiness_level === 'ready'
                       ? 'stroke-green-500 dark:stroke-green-400'
@@ -380,6 +406,8 @@ export function DischargeReadinessPanel({
               variant="ghost"
               size="sm"
               onClick={() => setShowDetails(!showDetails)}
+              aria-expanded={showDetails}
+              aria-controls={`${panelId}-criteria`}
               className="w-full justify-between text-muted-foreground hover:text-foreground"
             >
               <span className="text-sm">
@@ -389,9 +417,9 @@ export function DischargeReadinessPanel({
             </Button>
 
             {showDetails && (
-              <div className="space-y-3">
+              <div id={`${panelId}-criteria`} role="list" aria-label="Discharge criteria checklist" className="space-y-3">
                 {Object.entries(groupedCriteria).map(([category, criteria]) => (
-                  <div key={category} className="space-y-1">
+                  <div key={category} className="space-y-1" role="group" aria-label={CATEGORY_LABELS[category] ?? category}>
                     <h5 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       {CATEGORY_LABELS[category] ?? category}
                     </h5>
@@ -453,11 +481,11 @@ export function DischargeReadinessPanel({
         )}
 
         {/* Error */}
-        {isError && !displayResult && (
-          <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
+        {isError && (
+          <div className="flex items-start gap-2 text-sm text-muted-foreground bg-destructive/10 rounded-md p-3">
             <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
             <div>
-              <p>Failed to assess discharge readiness. Please try again.</p>
+              <p>{displayResult ? 'Re-assessment failed. Showing previous result.' : 'Failed to assess discharge readiness. Please try again.'}</p>
               <Button
                 type="button"
                 variant="ghost"

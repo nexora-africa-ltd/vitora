@@ -366,15 +366,27 @@ export function extractFollowUpDate(text: string): string | null {
 export function parseMedicationLines(lines: string[]): { drug_name: string; dosage: string; frequency: string; duration: string }[] {
   const result: { drug_name: string; dosage: string; frequency: string; duration: string }[] = [];
 
-  // Skip table header/separator lines and non-medication notes
+  // Skip table header/separator lines and non-medication content
   const isSkippable = (line: string) => {
     const t = line.trim();
+    if (!t) return true;
+    // Markdown headers (## Section, # Title, etc.)
+    if (/^#{1,6}\s/.test(t)) return true;
     // Separator row: |---|---|
     if (/^\|[\s-]+\|/.test(t)) return true;
     // Header row containing keywords like "Medication", "Drug", "Dose", "Frequency"
     if (/^\|.*\b(medication|drug\s*name|dose|frequency|duration)\b/i.test(t)) return true;
     // Footer notes: "All doses are...", "Note:", etc.
     if (/^(\|?\s*)?(all\s+doses|note\s*:|n\.b\.|disclaimer)/i.test(t)) return true;
+    // Section labels that are clearly not medications
+    if (/^(primary|secondary|discharge\s*diagnosis|condition\s*at|follow[\s-]?up|hospital\s*course|history|clinical\s*presentation|the\s+clinical)/i.test(t)) return true;
+    // Lines that are clearly prose/sentences (>60 chars without pipe separators, not starting with bullet+drug)
+    if (t.length > 80 && !t.includes('|') && !/^[-*\d.]\s/.test(t)) return true;
+    // ICD-10/diagnosis patterns: "K35.8 - ...", "**Primary:**"
+    if (/^(\*\*)?[A-Z]\d{2}\.?\d*\s*[-–]/.test(t)) return true;
+    if (/^\*\*(primary|secondary|diagnosis)\*\*/i.test(t)) return true;
+    // Status phrases not related to medications
+    if (/^(improving|stable|deteriorating|resolved|worsening)\b/i.test(t)) return true;
     return false;
   };
 

@@ -851,6 +851,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "readmission_risk",
                 "readmission_risk_level",
                 "recommendations",
+                "stored_id",
                 "unmet_criteria_count",
                 "vitals_stability",
             }

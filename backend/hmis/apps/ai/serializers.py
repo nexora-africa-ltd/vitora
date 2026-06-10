@@ -1405,6 +1405,7 @@ class DischargeAssessResponseSerializer(serializers.Serializer):
     )
     mode = serializers.CharField(required=False)
     error = serializers.CharField(required=False, allow_null=True)
+    stored_id = serializers.CharField(required=False, allow_null=True)
 
 
 # =============================================================================

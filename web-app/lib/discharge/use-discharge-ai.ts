@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useAIClinicalDocument } from '@/lib/hooks/use-ai';
+import { useAIClinicalDocument, useAIClinicalAssist } from '@/lib/hooks/use-ai';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { ClinicalDocAdmissionContext, ClinicalDocPatientContext, ClinicalDocGenerationMode, AIPatientContext, ClinicalDocSection, ClinicalDocEncounterContext } from '@/lib/types/ai';
 import type { Encounter } from '@/lib/types/encounter';
@@ -172,6 +172,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
   } = params;
 
   const clinicalDocument = useAIClinicalDocument();
+  const clinicalAssist = useAIClinicalAssist();
   const { toast } = useToast();
 
   // Build shared AI request context
@@ -807,47 +808,54 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     if (!ctx || !admission) return;
     setGeneratingFollowUp(true);
     try {
-      const result = await clinicalDocument.mutateAsync({
-        document_type: 'discharge_summary',
-        patient_context: ctx.docPatientCtx,
-        admission_context: ctx.admissionCtx,
-        encounter_context: ctx.encounterCtx,
-        output_format: 'structured',
-        generation_mode: generationMode,
-        ...templateFields(),
-        additional_instructions: [
-          'Generate ONLY the Follow-up Plan section. Include specific follow-up appointments, timeline, warning signs to watch for, and when to return to hospital.',
-          'Be specific with timing (e.g., "Return in 2 weeks" or "Follow-up on 2026-04-06").',
-        ].filter(Boolean).join(' '),
+      const diagnosis = ctx.admissionCtx.primary_diagnosis || 'unspecified';
+      const los = ctx.admissionCtx.length_of_stay_days ?? 0;
+      const ward = ctx.admissionCtx.ward || '';
+      const dischargeTypeStr = ctx.admissionCtx.discharge_type || 'NORMAL';
+
+      const query = [
+        `Generate a brief follow-up plan for a patient being discharged after ${los} days for ${diagnosis}.`,
+        ward ? `Ward: ${ward}.` : '',
+        dischargeTypeStr !== 'NORMAL' ? `Discharge type: ${dischargeTypeStr}.` : '',
+        'Include: specific follow-up appointment timing, what to monitor at home, and warning signs that require immediate return.',
+        'Be specific with timing (e.g., "Return in 2 weeks" or "Review in 7 days").',
+        'Keep it concise — 2-4 actionable sentences. Do NOT include disease pathophysiology or textbook explanations.',
+      ].filter(Boolean).join(' ');
+
+      const result = await clinicalAssist.mutateAsync({
+        query,
+        patient_context: {
+          patient_age: ctx.docPatientCtx.patient_age,
+          patient_sex: ctx.docPatientCtx.patient_sex,
+          allergies: ctx.docPatientCtx.allergies,
+          comorbidities: ctx.docPatientCtx.comorbidities,
+          current_medications: ctx.docPatientCtx.current_medications,
+        },
+        verbosity: 'concise',
       });
 
-      let content = '';
-      if (result.sections?.length) {
-        const match = result.sections.find((s: any) =>
-          /follow.?up|plan/i.test(s.title)
-        ) || result.sections[0];
-        if (match) {
-          const parsed = parseAdvisories(match.content);
-          content = parsed.cleanContent;
-        }
-      } else if (result.full_text) {
-        const parsed = parseAdvisories(result.full_text);
-        content = parsed.cleanContent;
-      }
-
-      if (content) {
-        const firstLine = content.split('\n').find((l) => l.trim());
+      const content = result.response?.trim();
+      if (content && content.length > 10) {
+        // Strip markdown headers if any
+        const cleaned = content
+          .split('\n')
+          .filter((l) => !l.trim().startsWith('#'))
+          .join('\n')
+          .trim();
+        const firstLine = cleaned.split('\n').find((l) => l.trim());
         if (firstLine) setFollowUpInstructions(firstLine.replace(/^[-*\d.]+\s*/, '').replace(/\*\*/g, '').trim());
-        const extractedDate = extractFollowUpDate(content);
+        const extractedDate = extractFollowUpDate(cleaned);
         if (extractedDate && !followUpDate) setFollowUpDate(extractedDate);
         toast({ title: 'Follow-up Generated', description: 'Follow-up instructions generated. Review and adjust as needed.' });
+      } else {
+        toast({ title: 'No Content', description: 'TibaBot returned no follow-up instructions.', variant: 'destructive' });
       }
     } catch {
       toast({ title: 'Generation Failed', description: 'Could not generate follow-up instructions.', variant: 'destructive' });
     } finally {
       setGeneratingFollowUp(false);
     }
-  }, [admission, buildAIContext, clinicalDocument, toast, generationMode, followUpDate, setGeneratingFollowUp, setFollowUpInstructions, setFollowUpDate]);
+  }, [admission, buildAIContext, clinicalAssist, toast, followUpDate, setGeneratingFollowUp, setFollowUpInstructions, setFollowUpDate]);
 
   // Generate patient instructions
   const handleGeneratePatientInstructions = useCallback(async () => {
@@ -855,48 +863,53 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     if (!ctx || !admission) return;
     setGeneratingPatientInstructions(true);
     try {
-      const result = await clinicalDocument.mutateAsync({
-        document_type: 'discharge_summary',
-        patient_context: ctx.docPatientCtx,
-        admission_context: ctx.admissionCtx,
-        encounter_context: ctx.encounterCtx,
-        output_format: 'structured',
-        generation_mode: generationMode,
-        ...templateFields(),
-        additional_instructions: [
-          'Generate concise, actionable patient discharge instructions — NOT patient education.',
-          'Format as a short numbered list of 4-8 practical instructions the patient must follow at home.',
-          'Each item should be one sentence. Examples: "Take Paracetamol 1g every 8 hours for 3 days.", "Return to clinic if fever exceeds 38.5°C or wound becomes red/swollen.", "Avoid heavy lifting for 2 weeks."',
-          'Do NOT explain what the condition is, how vaccines work, or why treatment was given — that belongs in Patient Education, not here.',
-          'Focus on: medications to take, activity restrictions, warning signs requiring return, follow-up appointments, and wound/site care.',
-        ].filter(Boolean).join(' '),
+      const diagnosis = ctx.admissionCtx.primary_diagnosis || 'unspecified';
+      const los = ctx.admissionCtx.length_of_stay_days ?? 0;
+      const medsGiven = ctx.admissionCtx.medications_given
+        ?.map((m: any) => m.drug_name).filter(Boolean).slice(0, 5).join(', ') || '';
+
+      const query = [
+        `Generate concise patient discharge instructions for a patient discharged after ${los} days for ${diagnosis}.`,
+        medsGiven ? `Key medications: ${medsGiven}.` : '',
+        'Format as a numbered list of 4-8 practical home-care instructions.',
+        'Each item should be one actionable sentence.',
+        'Focus on: medications to take, activity restrictions, wound/site care, warning signs requiring return, and dietary advice.',
+        'Do NOT explain disease pathophysiology, how treatments work, or include textbook information.',
+        'Write in patient-friendly language.',
+      ].filter(Boolean).join(' ');
+
+      const result = await clinicalAssist.mutateAsync({
+        query,
+        patient_context: {
+          patient_age: ctx.docPatientCtx.patient_age,
+          patient_sex: ctx.docPatientCtx.patient_sex,
+          allergies: ctx.docPatientCtx.allergies,
+          comorbidities: ctx.docPatientCtx.comorbidities,
+          current_medications: ctx.docPatientCtx.current_medications,
+        },
+        verbosity: 'concise',
       });
 
-      let content = '';
-      if (result.sections?.length) {
-        const match = result.sections.find((s: any) =>
-          /patient|education|instruction|discharge/i.test(s.title)
-        ) || result.sections[0];
-        if (match) {
-          const parsed = parseAdvisories(match.content);
-          content = parsed.cleanContent;
-        }
-      } else if (result.full_text) {
-        const parsed = parseAdvisories(result.full_text);
-        content = parsed.cleanContent;
-      }
-
-      if (content) {
-        setPatientInstructions(content);
+      const content = result.response?.trim();
+      if (content && content.length > 10) {
+        // Strip markdown headers if any
+        const cleaned = content
+          .split('\n')
+          .filter((l) => !l.trim().startsWith('#'))
+          .join('\n')
+          .trim();
+        setPatientInstructions(cleaned);
         setInstructionsGenerated(true);
         toast({ title: 'Instructions Generated', description: 'Patient instructions generated. Review and edit as needed.' });
+      } else {
+        toast({ title: 'No Content', description: 'TibaBot returned no patient instructions.', variant: 'destructive' });
       }
     } catch {
       toast({ title: 'Generation Failed', description: 'Could not generate patient instructions.', variant: 'destructive' });
     } finally {
       setGeneratingPatientInstructions(false);
     }
-  }, [admission, buildAIContext, clinicalDocument, toast, generationMode, setGeneratingPatientInstructions, setPatientInstructions, setInstructionsGenerated]);
+  }, [admission, buildAIContext, clinicalAssist, toast, setGeneratingPatientInstructions, setPatientInstructions, setInstructionsGenerated]);
 
   // Generate medication suggestions
   const handleGenerateMedSuggestions = useCallback(async () => {
@@ -904,52 +917,78 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     if (!ctx || !admission) return;
     setGeneratingMeds(true);
     try {
-      const result = await clinicalDocument.mutateAsync({
-        document_type: 'discharge_summary',
-        patient_context: ctx.docPatientCtx,
-        admission_context: ctx.admissionCtx,
-        encounter_context: ctx.encounterCtx,
-        output_format: 'structured',
-        generation_mode: 'generate',
-        ...templateFields(),
-        additional_instructions: [
-          'Generate ONLY the Discharge Medications section.',
-          'For each medication, provide the drug name, suggested dosage, frequency, and duration on separate lines.',
-          'Format each medication as: "- Drug Name | Dosage | Frequency | Duration".',
-          'Only include medications that are clinically appropriate for discharge continuity.',
-        ].filter(Boolean).join(' '),
+      // Build a focused medication context string
+      const medsGivenDuringStay = ctx.admissionCtx.medications_given
+        ?.map((m: any) => `${m.drug_name} ${m.dose} ${m.route} ${m.frequency}`.trim())
+        .filter(Boolean) ?? [];
+      const currentMeds = ctx.docPatientCtx.current_medications ?? [];
+      const diagnosis = ctx.admissionCtx.primary_diagnosis || 'unspecified';
+      const los = ctx.admissionCtx.length_of_stay_days ?? 0;
+
+      const query = [
+        `Suggest 3-8 discharge (take-home) medications for a patient admitted for ${diagnosis} (${los} days).`,
+        medsGivenDuringStay.length > 0 ? `Medications given during admission: ${medsGivenDuringStay.join('; ')}.` : '',
+        currentMeds.length > 0 ? `Pre-admission medications: ${currentMeds.join('; ')}.` : '',
+        'For each medication use EXACTLY this format on its own line: "- Drug Name | Dosage | Frequency | Duration"',
+        'Example: "- Amoxicillin | 500mg | TDS | 7 days"',
+        'If IV medications were given during stay, suggest equivalent oral step-down.',
+        'Return ONLY the medication list. No headers, no explanations, no disease information.',
+      ].filter(Boolean).join(' ');
+
+      const result = await clinicalAssist.mutateAsync({
+        query,
+        patient_context: {
+          patient_age: ctx.docPatientCtx.patient_age,
+          patient_sex: ctx.docPatientCtx.patient_sex,
+          allergies: ctx.docPatientCtx.allergies,
+          comorbidities: ctx.docPatientCtx.comorbidities,
+          current_medications: ctx.docPatientCtx.current_medications,
+        },
+        verbosity: 'concise',
       });
 
-      let medText = '';
-      if (result.sections?.length) {
-        const match = result.sections.find((s: any) =>
-          /medication/i.test(s.title)
-        ) || result.sections[0];
-        if (match) {
-          const parsed = parseAdvisories(match.content);
-          medText = parsed.cleanContent;
-        }
-      } else if (result.full_text) {
-        const parsed = parseAdvisories(result.full_text);
-        medText = parsed.cleanContent;
-      }
+      const content = result.response?.trim();
+      if (content && content.length > 5) {
+        // Strip markdown headers and non-medication lines
+        const lines = content
+          .split('\n')
+          .filter((l) => {
+            const t = l.trim();
+            if (!t) return false;
+            if (t.startsWith('#')) return false;
+            // Keep lines that look like medication entries (bullets or pipe-delimited)
+            if (t.startsWith('-') || t.startsWith('*') || t.includes('|') || /^\d+[.)]\s/.test(t)) return true;
+            return false;
+          });
 
-      if (medText) {
-        const lines = medText.split('\n').filter((l) => l.trim());
-        const parsed = parseMedicationLines(lines);
-        if (parsed.length > 0) {
-          setSuggestedMeds(parsed);
-          toast({ title: 'Medications Suggested', description: `TibaBot suggested ${parsed.length} medication(s). Click + to add them.` });
+        if (lines.length > 0) {
+          const parsed = parseMedicationLines(lines);
+          if (parsed.length > 0) {
+            setSuggestedMeds(parsed);
+            toast({ title: 'Medications Suggested', description: `TibaBot suggested ${parsed.length} medication(s). Click + to add them.` });
+          } else {
+            toast({ title: 'No Suggestions', description: 'TibaBot could not extract specific medications. Add them manually.', variant: 'destructive' });
+          }
         } else {
-          toast({ title: 'No Suggestions', description: 'TibaBot could not extract specific medications. Add them manually.', variant: 'destructive' });
+          // Fallback: try parsing the whole response through parseMedicationLines
+          const allLines = content.split('\n').filter((l) => l.trim());
+          const parsed = parseMedicationLines(allLines);
+          if (parsed.length > 0) {
+            setSuggestedMeds(parsed);
+            toast({ title: 'Medications Suggested', description: `TibaBot suggested ${parsed.length} medication(s). Click + to add them.` });
+          } else {
+            toast({ title: 'No Suggestions', description: 'TibaBot returned no medication data. Add medications manually.', variant: 'destructive' });
+          }
         }
+      } else {
+        toast({ title: 'No Suggestions', description: 'TibaBot returned no medication data. Add medications manually.', variant: 'destructive' });
       }
     } catch {
       toast({ title: 'Generation Failed', description: 'Could not generate medication suggestions.', variant: 'destructive' });
     } finally {
       setGeneratingMeds(false);
     }
-  }, [admission, buildAIContext, clinicalDocument, toast, setGeneratingMeds, setSuggestedMeds]);
+  }, [admission, buildAIContext, clinicalAssist, toast, setGeneratingMeds, setSuggestedMeds]);
 
   return {
     clinicalDocument,
