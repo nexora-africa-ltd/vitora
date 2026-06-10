@@ -117,6 +117,10 @@ jobs:
           grep -q "server\.js" /tmp/archive-contents.txt || { echo "FAIL: server.js not in archive"; exit 1; }
           grep -q "node_modules/next/" /tmp/archive-contents.txt || { echo "FAIL: node_modules/next not in archive"; exit 1; }
           grep -q "\.next/" /tmp/archive-contents.txt || { echo "FAIL: .next not in archive"; exit 1; }
+          if tar -xOzf standalone.tar.gz 2>/dev/null | grep -q "api\.vitora\.digital"; then
+            echo "FAIL: legacy api.vitora.digital host found in standalone archive"
+            exit 1
+          fi
           echo "Standalone archive verified OK"
 
       - name: Download Node.js binary for sidecar

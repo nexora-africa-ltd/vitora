@@ -15,9 +15,15 @@ import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { DhaLogo } from '@/components/ui/dha-logo';
 import { setupApi } from '@/lib/api/onboarding';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
-import { isDesktop, isFirstRun, storeCredentials, getCredentials, clearCredentials } from '@/lib/desktop';
+import { isDesktop, isFirstRun, storeCredentials, getCredentials, clearCredentials, getAppConfig } from '@/lib/desktop';
 import { licensingApi } from '@/lib/api/licensing';
 import Link from 'next/link';
+
+const LEGACY_DESKTOP_API_URL = 'https://api.vitora.digital';
+
+function normalizeApiUrl(url?: string | null): string {
+  return (url || '').trim().replace(/\/+$/, '');
+}
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -63,6 +69,14 @@ export default function LoginPage() {
 
     async function runDesktopGates() {
       if (!isDesktop()) return;
+
+      const config = await getAppConfig();
+      if (cancelled) return;
+
+      if (!config?.setup_completed || normalizeApiUrl(config.api_url) === LEGACY_DESKTOP_API_URL) {
+        router.replace('/desktop-setup');
+        return;
+      }
 
       const firstRun = await isFirstRun();
       if (cancelled) return;

@@ -3,6 +3,9 @@
  * Falls back gracefully in browser mode (all functions return false/undefined).
  */
 
+const DEFAULT_DESKTOP_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io';
+const LEGACY_DESKTOP_API_URL = 'https://api.vitora.digital';
+
 declare global {
   interface Window {
     __TAURI__?: {
@@ -25,6 +28,14 @@ export function isDesktop(): boolean {
 function getInvoke() {
   if (!isDesktop()) return null;
   return window.__TAURI__?.core.invoke ?? window.__TAURI_INTERNALS__?.invoke ?? null;
+}
+
+function normalizeDesktopApiUrl(url?: string | null): string {
+  const normalized = (url || '').trim().replace(/\/+$/, '');
+  if (!normalized || normalized === LEGACY_DESKTOP_API_URL) {
+    return DEFAULT_DESKTOP_API_URL;
+  }
+  return normalized;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,8 +152,8 @@ export async function isFirstRun(): Promise<boolean> {
  */
 export async function getApiUrl(): Promise<string> {
   const invoke = getInvoke();
-  if (!invoke) return process.env.NEXT_PUBLIC_API_URL || '';
-  return invoke<string>('get_api_url');
+  if (!invoke) return DEFAULT_DESKTOP_API_URL;
+  return normalizeDesktopApiUrl(await invoke<string>('get_api_url'));
 }
 
 /**

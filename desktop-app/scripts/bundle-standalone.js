@@ -19,6 +19,16 @@ const STATIC_SRC = path.join(WEB_APP_DIR, '.next/static');
 const PUBLIC_SRC = path.join(WEB_APP_DIR, 'public');
 const STAGING_DIR = path.resolve(__dirname, '../src-tauri/standalone');
 const ARCHIVE_DEST = path.resolve(__dirname, '../src-tauri/standalone.tar.gz');
+const LEGACY_API_HOST = 'api.vitora.digital';
+const TEXT_FILE_EXTENSIONS = new Set([
+  '.css',
+  '.html',
+  '.js',
+  '.json',
+  '.map',
+  '.mjs',
+  '.txt',
+]);
 
 function copyDirSync(src, dest) {
   if (!fs.existsSync(src)) {
@@ -54,7 +64,49 @@ function copyDirSync(src, dest) {
   }
 }
 
+function assertNoLegacyApiHost(dir) {
+  const offenders = [];
+
+  function walk(current) {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const fullPath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+        continue;
+      }
+
+      if (!TEXT_FILE_EXTENSIONS.has(path.extname(entry.name))) {
+        continue;
+      }
+
+      const contents = fs.readFileSync(fullPath, 'utf8');
+      if (contents.includes(LEGACY_API_HOST)) {
+        offenders.push(path.relative(dir, fullPath));
+      }
+    }
+  }
+
+  walk(dir);
+
+  if (offenders.length > 0) {
+    console.error(`  ERROR: Legacy API host '${LEGACY_API_HOST}' found in standalone bundle:`);
+    for (const offender of offenders.slice(0, 20)) {
+      console.error(`    - ${offender}`);
+    }
+    if (offenders.length > 20) {
+      console.error(`    ...and ${offenders.length - 20} more`);
+    }
+    process.exit(1);
+  }
+}
+
 console.log('Bundling Next.js standalone build for Tauri...');
+
+// Remove stale output before copying. If a later step fails, Tauri must not reuse an old archive.
+fs.rmSync(STAGING_DIR, { recursive: true, force: true });
+if (fs.existsSync(ARCHIVE_DEST)) {
+  fs.unlinkSync(ARCHIVE_DEST);
+}
 
 // 1. Copy standalone server to staging
 console.log(`  Copying standalone build → ${STAGING_DIR}`);
@@ -90,11 +142,10 @@ if (missing) {
   process.exit(1);
 }
 
+assertNoLegacyApiHost(STAGING_DIR);
+
 // 5. Create tar.gz archive
 console.log(`  Creating archive → ${ARCHIVE_DEST}`);
-if (fs.existsSync(ARCHIVE_DEST)) {
-  fs.unlinkSync(ARCHIVE_DEST);
-}
 
 if (process.platform === 'win32') {
   // Windows: use tar (available since Windows 10 1803)
