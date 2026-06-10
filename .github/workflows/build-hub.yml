@@ -71,12 +71,13 @@ jobs:
           cp backend/requirements-hub.txt "dist/${ARTIFACT}/"
           cp backend/pyproject.toml "dist/${ARTIFACT}/"
 
-          # Copy hub-specific scripts (Linux + Windows)
+          # Copy hub-specific scripts (Linux + Windows + Pi)
           mkdir -p "dist/${ARTIFACT}/scripts"
           cp backend/scripts/install-hub.sh "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/update-hub.sh "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/install-hub-windows.ps1 "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/update-hub-windows.ps1 "dist/${ARTIFACT}/scripts/"
+          cp backend/scripts/pi-setup.sh "dist/${ARTIFACT}/scripts/"
 
           # Write version file
           echo "$VERSION" > "dist/${ARTIFACT}/VERSION"
@@ -212,6 +213,15 @@ jobs:
             --file backend/scripts/update-hub-windows.ps1 \
             --overwrite \
             --content-type "text/plain" \
+            --content-cache-control "max-age=600"
+
+          # Upload Raspberry Pi first-boot script: /pi-setup
+          az storage blob upload \
+            --container-name "$BLOB_CONTAINER" \
+            --name "pi-setup" \
+            --file backend/scripts/pi-setup.sh \
+            --overwrite \
+            --content-type "text/x-shellscript" \
             --content-cache-control "max-age=600"
 
       - name: Create GitHub Release

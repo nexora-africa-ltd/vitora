@@ -26,10 +26,12 @@ import {
   Copy,
   Terminal,
   Monitor,
+  Cpu,
+  Search,
 } from 'lucide-react';
 
 type Step = 'requirements' | 'configure' | 'install' | 'verify';
-type OsPlatform = 'linux' | 'windows';
+type OsPlatform = 'linux' | 'raspberry-pi' | 'windows';
 
 interface HubConfig {
   hubId: string;
@@ -82,7 +84,7 @@ export default function HubSetupWizardPage() {
       return `${envVars.join('; ')}; irm https://get.vitora.digital/hub.ps1 | iex`;
     }
 
-    // Linux
+    // Linux and Raspberry Pi use the same installer
     const envVars = [
       `HUB_ID="${config.hubId}"`,
       `HUB_FACILITY_ID="${config.facilityId}"`,
@@ -102,27 +104,39 @@ export default function HubSetupWizardPage() {
 
   const handleVerify = async () => {
     const port = config.port || '9088';
-    try {
-      const res = await fetch(`http://127.0.0.1:${port}/api/hub/health/`, {
-        signal: AbortSignal.timeout(5000),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.hub_id) {
-          setVerified(true);
-          setInstallLog((prev) => [
-            ...prev,
-            `✓ Hub is running: ${data.hub_id} (v${data.version})`,
-          ]);
-        }
-      } else {
-        setInstallError(`Hub responded with status ${res.status}. Check the service logs.`);
-      }
-    } catch {
-      setInstallError(
-        'Cannot reach the hub. Make sure the installation completed and the service is running.'
-      );
+    const addresses = ['127.0.0.1'];
+    // For Raspberry Pi, also try mDNS address
+    if (platform === 'raspberry-pi') {
+      addresses.push('vitora-hub.local');
     }
+
+    for (const host of addresses) {
+      try {
+        const res = await fetch(`http://${host}:${port}/api/hub/health/`, {
+          signal: AbortSignal.timeout(5000),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.hub_id) {
+            setVerified(true);
+            setInstallLog((prev) => [
+              ...prev,
+              `✓ Hub is running at ${host}:${port}: ${data.hub_id} (v${data.version})`,
+            ]);
+            return;
+          }
+        }
+      } catch {
+        // Try next address
+        continue;
+      }
+    }
+
+    setInstallError(
+      platform === 'raspberry-pi'
+        ? 'Cannot reach the hub at 127.0.0.1 or vitora-hub.local. Ensure SSH installation completed and the Pi is on the same network.'
+        : 'Cannot reach the hub. Make sure the installation completed and the service is running.'
+    );
   };
 
   const handleFinish = () => {
@@ -186,37 +200,48 @@ export default function HubSetupWizardPage() {
               </p>
 
               {/* OS Platform Selector */}
-              <div className="flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => setPlatform('linux')}
-                  className={`flex-1 flex items-center justify-center gap-2 rounded-md border p-3 transition-colors ${
+                  className={`flex flex-col items-center gap-1.5 rounded-md border p-3 transition-colors ${
                     platform === 'linux'
                       ? 'border-cyan-500 bg-cyan-950/30 text-white'
                       : 'border-slate-600 text-slate-400 hover:border-slate-500'
                   }`}
                 >
                   <Terminal className="h-4 w-4" />
-                  <span className="text-sm font-medium">Linux / Raspberry Pi</span>
+                  <span className="text-xs font-medium">Linux / PC</span>
+                </button>
+                <button
+                  onClick={() => setPlatform('raspberry-pi')}
+                  className={`flex flex-col items-center gap-1.5 rounded-md border p-3 transition-colors ${
+                    platform === 'raspberry-pi'
+                      ? 'border-cyan-500 bg-cyan-950/30 text-white'
+                      : 'border-slate-600 text-slate-400 hover:border-slate-500'
+                  }`}
+                >
+                  <Cpu className="h-4 w-4" />
+                  <span className="text-xs font-medium">Raspberry Pi</span>
                 </button>
                 <button
                   onClick={() => setPlatform('windows')}
-                  className={`flex-1 flex items-center justify-center gap-2 rounded-md border p-3 transition-colors ${
+                  className={`flex flex-col items-center gap-1.5 rounded-md border p-3 transition-colors ${
                     platform === 'windows'
                       ? 'border-cyan-500 bg-cyan-950/30 text-white'
                       : 'border-slate-600 text-slate-400 hover:border-slate-500'
                   }`}
                 >
                   <Monitor className="h-4 w-4" />
-                  <span className="text-sm font-medium">Windows</span>
+                  <span className="text-xs font-medium">Windows</span>
                 </button>
               </div>
 
               <div className="space-y-2">
-                {platform === 'linux' ? (
+                {platform === 'linux' && (
                   <>
                     {[
-                      { label: 'Operating System', detail: 'Ubuntu 22.04+, Debian 12+, or Raspberry Pi OS' },
-                      { label: 'Python', detail: 'Python 3.11 or higher' },
+                      { label: 'Operating System', detail: 'Ubuntu 22.04+, Debian 12+' },
+                      { label: 'Python', detail: 'Python 3.11+ (auto-installed if missing)' },
                       { label: 'RAM', detail: '2GB minimum (4GB recommended)' },
                       { label: 'Storage', detail: '1GB free disk space' },
                       { label: 'Network', detail: 'LAN connectivity (internet for initial setup and cloud sync)' },
@@ -231,7 +256,46 @@ export default function HubSetupWizardPage() {
                       </div>
                     ))}
                   </>
-                ) : (
+                )}
+                {platform === 'raspberry-pi' && (
+                  <>
+                    <div className="rounded-md border border-cyan-700/50 bg-cyan-950/20 p-3 mb-3">
+                      <p className="text-xs text-cyan-300 font-medium mb-1">Recommended for small facilities</p>
+                      <p className="text-xs text-slate-400">
+                        A Raspberry Pi 4/5 makes an excellent always-on hub server. The installer auto-configures
+                        mDNS discovery so desktop clients find it as <code className="bg-slate-800 px-1 rounded text-cyan-300">vitora-hub.local</code>.
+                      </p>
+                    </div>
+                    {[
+                      { label: 'Hardware', detail: 'Raspberry Pi 4 (2GB+) or Pi 5. Include a case with passive cooling.' },
+                      { label: 'OS', detail: 'Raspberry Pi OS (Bookworm/Debian 12) — use "Lite" for headless.' },
+                      { label: 'Storage', detail: '16GB+ micro SD card (32GB recommended). Consider USB SSD for longevity.' },
+                      { label: 'Network', detail: 'Ethernet (preferred) or WiFi. Static IP recommended.' },
+                      { label: 'Power', detail: 'Official USB-C power supply (5V 3A for Pi 4, 5V 5A for Pi 5).' },
+                      { label: 'SSH', detail: 'Enable SSH during OS imaging (Raspberry Pi Imager → gear icon).' },
+                    ].map((req) => (
+                      <div key={req.label} className="flex items-start gap-3 rounded-md border border-slate-600 p-3">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
+                        <div>
+                          <span className="text-sm font-medium text-white">{req.label}</span>
+                          <p className="text-xs text-slate-400">{req.detail}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="rounded-md border border-slate-600 bg-slate-900/50 p-3 mt-2">
+                      <p className="text-xs font-medium text-slate-300 mb-2">Quick Pi Setup (before running installer):</p>
+                      <ol className="text-xs text-slate-400 space-y-1 list-decimal list-inside">
+                        <li>Flash Pi OS Lite with <a href="https://www.raspberrypi.com/software/" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">Raspberry Pi Imager</a></li>
+                        <li>In Imager settings: enable SSH, set username/password, configure WiFi (if no ethernet)</li>
+                        <li>Insert SD card, connect ethernet (recommended), power on</li>
+                        <li>Find Pi IP: check router DHCP leases, or try <code className="bg-slate-800 px-1 rounded">ping raspberrypi.local</code></li>
+                        <li>SSH in: <code className="bg-slate-800 px-1 rounded">ssh pi@{'<ip-address>'}</code></li>
+                        <li>Run the installer command (shown in step 3)</li>
+                      </ol>
+                    </div>
+                  </>
+                )}
+                {platform === 'windows' && (
                   <>
                     {[
                       { label: 'Operating System', detail: 'Windows 10/11 or Windows Server 2019+' },
@@ -362,23 +426,36 @@ export default function HubSetupWizardPage() {
               <p className="text-sm text-slate-400">
                 {platform === 'windows'
                   ? 'Open PowerShell as Administrator and run the following command:'
-                  : 'Open a terminal on this machine and run the following command:'}
+                  : platform === 'raspberry-pi'
+                    ? 'SSH into your Raspberry Pi and run the following command:'
+                    : 'Open a terminal on this machine and run the following command:'}
               </p>
 
               {/* Platform indicator */}
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 {platform === 'windows' ? (
                   <><Monitor className="h-3.5 w-3.5" /> Windows (PowerShell)</>
+                ) : platform === 'raspberry-pi' ? (
+                  <><Cpu className="h-3.5 w-3.5" /> Raspberry Pi (SSH)</>
                 ) : (
-                  <><Terminal className="h-3.5 w-3.5" /> Linux / macOS (Bash)</>
+                  <><Terminal className="h-3.5 w-3.5" /> Linux (Bash)</>
                 )}
-                <button
-                  onClick={() => setPlatform(platform === 'linux' ? 'windows' : 'linux')}
-                  className="text-cyan-400 hover:underline ml-2"
-                >
-                  Switch to {platform === 'linux' ? 'Windows' : 'Linux'}
-                </button>
               </div>
+
+              {/* Pi first-boot setup (optional) */}
+              {platform === 'raspberry-pi' && (
+                <div className="rounded-md border border-slate-600 bg-slate-900/50 p-3 space-y-2">
+                  <p className="text-xs font-medium text-slate-300">
+                    Optional: Run first-boot setup (sets hostname, static IP, SD card optimization):
+                  </p>
+                  <pre className="rounded bg-slate-900 border border-slate-700 p-2 text-xs text-green-300 overflow-x-auto whitespace-pre-wrap break-all">
+                    curl -sSL https://get.vitora.digital/pi-setup | sudo bash
+                  </pre>
+                  <p className="text-xs text-slate-500">
+                    Skip if your Pi is already configured. The main installer below handles everything else.
+                  </p>
+                </div>
+              )}
 
               {/* Install command */}
               <div className="relative">
@@ -411,6 +488,14 @@ export default function HubSetupWizardPage() {
                           <li>It will download ~50MB and install Python dependencies</li>
                           <li>A Windows service (VitoraHub) will be created and started</li>
                         </>
+                      ) : platform === 'raspberry-pi' ? (
+                        <>
+                          <li>SSH into the Pi first: <code className="bg-slate-800 px-1 rounded">ssh pi@raspberrypi.local</code></li>
+                          <li>Python 3.11+ will be auto-installed if needed (Pi OS Bookworm has it)</li>
+                          <li>Installation takes 5-10 minutes on Pi 4 (slower network + ARM compilation)</li>
+                          <li>mDNS will be configured — clients connect via <code className="bg-slate-800 px-1 rounded">vitora-hub.local</code></li>
+                          <li>SD card write optimization applied automatically</li>
+                        </>
                       ) : (
                         <>
                           <li>The command requires <code className="bg-slate-800 px-1 rounded">sudo</code> (root access)</li>
@@ -423,6 +508,23 @@ export default function HubSetupWizardPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Raspberry Pi mDNS discovery note */}
+              {platform === 'raspberry-pi' && (
+                <div className="rounded-md bg-cyan-900/20 border border-cyan-700/50 p-3">
+                  <div className="flex items-start gap-2">
+                    <Search className="h-4 w-4 shrink-0 text-cyan-400 mt-0.5" />
+                    <div className="text-xs text-cyan-200 space-y-1">
+                      <p className="font-medium">Auto-Discovery</p>
+                      <p className="text-cyan-300">
+                        After installation, the Pi will advertise itself on the local network as{' '}
+                        <code className="bg-slate-800 px-1 rounded font-mono">vitora-hub.local:{config.port}</code>.
+                        Desktop apps on the same network will automatically detect it.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Log output (if install triggered via Tauri shell) */}
               {installLog.length > 0 && (
