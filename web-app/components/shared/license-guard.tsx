@@ -1,42 +1,43 @@
 'use client';
 
 /**
- * LicenseGuard — redirects to /activate when:
+ * LicenseGuard — blocks dashboard rendering and redirects to /activate when:
  * 1. Running in desktop mode (Tauri)
  * 2. No license token is stored
  *
- * Renders nothing visually. Add inside the dashboard layout.
+ * In browser mode, passes through immediately.
+ * Wrap children in this component to enforce the license gate.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { isDesktop } from '@/lib/desktop';
 import { licensingApi } from '@/lib/api/licensing';
 
-export function LicenseGuard() {
+export function LicenseGuard({ children }: { children?: ReactNode }) {
   const router = useRouter();
-  const [checked, setChecked] = useState(false);
+  const [licensed, setLicensed] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!isDesktop()) {
-      setChecked(true);
+      setLicensed(true);
       return;
     }
 
-    // Check if we have a license token (async to check keystore)
     licensingApi.getStoredTokenAsync().then((token) => {
       if (!token) {
         router.replace('/activate');
       } else {
-        setChecked(true);
+        setLicensed(true);
       }
     });
   }, [router]);
 
-  // Don't block rendering — this is advisory, not a hard gate
-  if (!checked && isDesktop()) {
-    return null;
+  // In browser mode or once licensed, render children
+  if (licensed) {
+    return <>{children}</>;
   }
 
+  // Desktop mode, still checking or redirecting — block rendering
   return null;
 }

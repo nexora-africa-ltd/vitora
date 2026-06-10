@@ -63,7 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <SyncProvider>
         <AIChatProvider>
           <IdleTimerProvider>
-            <LicenseGuard />
+            <LicenseGuard>
             <div className="min-h-screen bg-background">
               {/* Sidebar */}
               <Sidebar
@@ -123,6 +123,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {/* Push notification prompt (shows once per session) */}
               <PushNotificationPrompt />
             </div>
+            </LicenseGuard>
           </IdleTimerProvider>
         </AIChatProvider>
       </SyncProvider>
