@@ -68,6 +68,17 @@ done
 
 NON_INTERACTIVE="${NON_INTERACTIVE:-false}"
 
+# --- Detect Raspberry Pi ---
+IS_RASPBERRY_PI=false
+if [[ -f /sys/firmware/devicetree/base/model ]]; then
+    PI_MODEL=$(cat /sys/firmware/devicetree/base/model 2>/dev/null | tr -d '\0')
+    if [[ "$PI_MODEL" == *"Raspberry Pi"* ]]; then
+        IS_RASPBERRY_PI=true
+    fi
+elif grep -qi "raspberry" /proc/cpuinfo 2>/dev/null; then
+    IS_RASPBERRY_PI=true
+fi
+
 # --- Pre-checks ---
 if [[ $EUID -ne 0 ]]; then
     error "This script must be run as root (use sudo)."
@@ -84,18 +95,81 @@ else
     exit 1
 fi
 
-if ! command -v python3 &>/dev/null; then
-    error "Python 3 is required. Install with: apt install python3 python3-venv python3-pip"
-    exit 1
-fi
+# --- Ensure Python 3.11+ ---
+ensure_python() {
+    if command -v python3 &>/dev/null; then
+        local ver
+        ver=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+        local major minor
+        major=$(echo "$ver" | cut -d. -f1)
+        minor=$(echo "$ver" | cut -d. -f2)
+        if [[ "$major" -ge 3 && "$minor" -ge 11 ]]; then
+            info "Python $ver found — OK"
+            return 0
+        fi
+        warn "Python $ver found but 3.11+ required. Attempting install..."
+    else
+        warn "Python 3 not found. Attempting install..."
+    fi
 
-PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-PYTHON_MAJOR=$(echo "$PYTHON_VERSION" | cut -d. -f1)
-PYTHON_MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
-if [[ "$PYTHON_MAJOR" -lt 3 ]] || [[ "$PYTHON_MAJOR" -eq 3 && "$PYTHON_MINOR" -lt 11 ]]; then
-    error "Python 3.11+ required (found $PYTHON_VERSION)."
-    exit 1
-fi
+    # Detect distro
+    if [[ -f /etc/os-release ]]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release
+    fi
+
+    case "${ID:-}" in
+        debian|raspbian)
+            # Debian 12+ (Bookworm) has Python 3.11
+            if [[ "${VERSION_ID:-0}" -ge 12 ]]; then
+                apt-get update -qq
+                apt-get install -y -qq python3 python3-venv python3-pip python3-dev
+            else
+                # Debian 11 (Bullseye) — build from source
+                warn "Debian ${VERSION_ID} detected. Installing Python 3.11 from source..."
+                apt-get update -qq
+                apt-get install -y -qq build-essential zlib1g-dev libncurses5-dev \
+                    libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev \
+                    libsqlite3-dev wget
+                local py_src="/tmp/Python-3.11.9"
+                download "https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tgz" "/tmp/Python-3.11.9.tgz"
+                tar -xzf /tmp/Python-3.11.9.tgz -C /tmp
+                cd "$py_src"
+                ./configure --enable-optimizations --prefix=/usr/local 2>&1 | tail -5
+                make -j"$(nproc)" 2>&1 | tail -3
+                make altinstall 2>&1 | tail -3
+                cd /
+                rm -rf "$py_src" /tmp/Python-3.11.9.tgz
+                # Symlink if python3 still points to old version
+                update-alternatives --install /usr/bin/python3 python3 /usr/local/bin/python3.11 1
+            fi
+            ;;
+        ubuntu)
+            # Try deadsnakes PPA for older Ubuntu
+            if ! command -v python3.11 &>/dev/null; then
+                apt-get update -qq
+                apt-get install -y -qq software-properties-common
+                add-apt-repository -y ppa:deadsnakes/ppa
+                apt-get update -qq
+                apt-get install -y -qq python3.11 python3.11-venv python3.11-dev
+                update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+            fi
+            ;;
+        *)
+            error "Unsupported distro: ${ID:-unknown}. Install Python 3.11+ manually."
+            exit 1
+            ;;
+    esac
+
+    # Verify
+    if ! python3 -c "import sys; assert sys.version_info >= (3, 11)" 2>/dev/null; then
+        error "Python 3.11+ installation failed. Install manually."
+        exit 1
+    fi
+    info "Python 3.11+ installed successfully."
+}
+
+ensure_python
 
 # --- Download helper ---
 download() {
@@ -187,6 +261,59 @@ step "1/7 Installing system dependencies..."
 apt-get update -qq
 apt-get install -y -qq python3-venv python3-pip python3-dev \
     build-essential libffi-dev libssl-dev sqlite3
+
+# --- Raspberry Pi Optimizations ---
+if [[ "$IS_RASPBERRY_PI" == "true" ]]; then
+    info "Raspberry Pi detected: $PI_MODEL"
+    info "Applying Pi-specific optimizations..."
+
+    # Install avahi for mDNS discovery (vitora-hub.local)
+    apt-get install -y -qq avahi-daemon avahi-utils
+
+    # Set hostname for mDNS
+    CURRENT_HOSTNAME=$(hostname)
+    if [[ "$CURRENT_HOSTNAME" != "vitora-hub" ]]; then
+        info "Setting hostname to 'vitora-hub' for LAN discovery (vitora-hub.local)"
+        hostnamectl set-hostname vitora-hub 2>/dev/null || echo "vitora-hub" > /etc/hostname
+        sed -i "s/127\.0\.1\.1.*$/127.0.1.1\tvitora-hub/" /etc/hosts 2>/dev/null || true
+    fi
+
+    # Configure avahi to advertise the hub service
+    mkdir -p /etc/avahi/services
+    cat > /etc/avahi/services/vitora-hub.service <<AVAHI_EOF
+<?xml version="1.0" standalone='no'?>
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<service-group>
+  <name>Vitora HMIS Hub</name>
+  <service>
+    <type>_http._tcp</type>
+    <port>${HUB_PORT}</port>
+    <txt-record>path=/api/hub/health/</txt-record>
+    <txt-record>version=${VERSION}</txt-record>
+  </service>
+</service-group>
+AVAHI_EOF
+
+    # Enable and start avahi
+    systemctl enable avahi-daemon 2>/dev/null || true
+    systemctl restart avahi-daemon 2>/dev/null || true
+
+    # SD card write optimization — reduce journal writes
+    if [[ -d /etc/systemd/journald.conf.d ]]; then
+        mkdir -p /etc/systemd/journald.conf.d
+    fi
+    cat > /etc/systemd/journald.conf.d/vitora-sdcard.conf <<JOURNAL_EOF
+[Journal]
+# Reduce SD card writes for Vitora Hub
+Storage=volatile
+RuntimeMaxUse=50M
+Compress=yes
+JOURNAL_EOF
+    systemctl restart systemd-journald 2>/dev/null || true
+
+    # Optimize SQLite for SD card (set at DB creation time via Django settings)
+    info "Pi optimizations applied: mDNS (vitora-hub.local), reduced journaling"
+fi
 
 # Create application user
 if ! id -u "$APP_USER" &>/dev/null; then
@@ -337,6 +464,7 @@ fi
 
 # --- Done ---
 LAN_IP=$(hostname -I | awk '{print $1}')
+MDNS_NAME=$(hostname).local
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║       Vitora Hub v${VERSION} installed!              ║${NC}"
@@ -350,11 +478,19 @@ echo ""
 echo "  ┌─────────────────────────────────────────────────┐"
 echo "  │ LAN clients connect to:                          │"
 echo "  │   http://${LAN_IP}:${HUB_PORT}                   │"
+if [[ "$IS_RASPBERRY_PI" == "true" ]]; then
+echo "  │   http://${MDNS_NAME}:${HUB_PORT}  (mDNS)       │"
+fi
 echo "  └─────────────────────────────────────────────────┘"
 echo ""
 echo "  Desktop app setup:"
 echo "    1. Choose 'Facility Workstation' mode"
+if [[ "$IS_RASPBERRY_PI" == "true" ]]; then
+echo "    2. Enter hub URL: http://${MDNS_NAME}:${HUB_PORT}"
+echo "       (or by IP: http://${LAN_IP}:${HUB_PORT})"
+else
 echo "    2. Enter hub URL: http://${LAN_IP}:${HUB_PORT}"
+fi
 echo "    3. Or choose 'Facility Server (Hub)' if this is the only PC"
 echo ""
 echo "  Manage:"
