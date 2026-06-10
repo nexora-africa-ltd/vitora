@@ -52,6 +52,9 @@ pub struct AppConfig {
     /// Organization ID (set during pairing with hub or cloud).
     #[serde(default)]
     pub organization_id: String,
+    /// Whether the desktop first-run setup wizard has been completed.
+    #[serde(default)]
+    pub setup_completed: bool,
 }
 
 fn generate_client_id() -> String {
@@ -93,6 +96,7 @@ impl Default for AppConfig {
             hub_url: String::new(),
             facility_id: String::new(),
             organization_id: String::new(),
+            setup_completed: false,
         }
     }
 }
@@ -138,10 +142,16 @@ impl AppConfig {
         Ok(())
     }
 
-    /// Check if this is a first run (no config file exists).
+    /// Check if this is a first run (no config file exists or setup is incomplete).
     pub fn is_first_run(app: &AppHandle) -> bool {
         match Self::config_path(app) {
-            Ok(path) => !path.exists(),
+            Ok(path) => {
+                if !path.exists() {
+                    return true;
+                }
+
+                !Self::load(app).setup_completed
+            }
             Err(_) => true,
         }
     }
@@ -170,6 +180,7 @@ pub fn set_api_url(app: AppHandle, url: String) -> Result<String, String> {
 
     let mut config = AppConfig::load(&app);
     config.api_url = url.clone();
+    config.setup_completed = true;
     config.save(&app)?;
     Ok(url)
 }
@@ -253,6 +264,7 @@ pub fn save_hub_config(
     config.hub_url = hub_url.trim_end_matches('/').to_string();
     config.facility_id = facility_id;
     config.organization_id = organization_id;
+    config.setup_completed = true;
     // In LAN client mode, the hub URL is also the API URL
     if config.deployment_mode == DeploymentMode::LanClient && !config.hub_url.is_empty() {
         config.api_url = config.hub_url.clone();

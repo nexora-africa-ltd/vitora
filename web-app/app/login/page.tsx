@@ -57,24 +57,36 @@ export default function LoginPage() {
     };
   }, []);
 
-  // Desktop first-run gate: redirect to /desktop-setup if no config exists
+  // Desktop gates: run setup before activation before login.
   useEffect(() => {
-    if (!isDesktop()) return;
-    isFirstRun().then((firstRun) => {
+    let cancelled = false;
+
+    async function runDesktopGates() {
+      if (!isDesktop()) return;
+
+      const firstRun = await isFirstRun();
+      if (cancelled) return;
+
       if (firstRun) {
+        router.replace('/desktop-setup');
+        return;
+      }
+
+      const token = await licensingApi.getStoredTokenAsync();
+      if (!cancelled && !token) {
+        router.replace('/activate');
+      }
+    }
+
+    runDesktopGates().catch(() => {
+      if (!cancelled) {
         router.replace('/desktop-setup');
       }
     });
-  }, [router]);
 
-  // Desktop license gate: redirect to /activate if no license token
-  useEffect(() => {
-    if (!isDesktop()) return;
-    licensingApi.getStoredTokenAsync().then((token) => {
-      if (!token) {
-        router.replace('/activate');
-      }
-    });
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   // Load saved credentials on desktop (Remember Me)
