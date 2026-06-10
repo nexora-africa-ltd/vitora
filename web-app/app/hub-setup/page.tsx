@@ -47,7 +47,7 @@ const DEFAULT_CONFIG: HubConfig = {
   facilityId: '',
   organizationId: '',
   encryptionKey: '',
-  syncUrl: 'https://api.vitora.digital/api/sync',
+  syncUrl: 'https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io/api/sync',
   port: '9088',
 };
 
@@ -392,7 +392,7 @@ export default function HubSetupWizardPage() {
                       type="url"
                       value={config.syncUrl}
                       onChange={(e) => setConfig({ ...config, syncUrl: e.target.value })}
-                      placeholder="https://api.vitora.digital/api/sync"
+                      placeholder="https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io/api/sync"
                       className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white placeholder-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                     />
                   </div>

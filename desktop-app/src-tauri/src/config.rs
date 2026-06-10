@@ -4,7 +4,8 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
 const CONFIG_FILE: &str = "config.json";
-const DEFAULT_API_URL: &str = "https://api.vitora.digital";
+const DEFAULT_API_URL: &str = "https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io";
+const LEGACY_API_URL: &str = "https://api.vitora.digital";
 
 /// Deployment mode for the Tauri client.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -142,7 +143,7 @@ impl AppConfig {
         Ok(())
     }
 
-    /// Check if this is a first run (no config file exists or setup is incomplete).
+    /// Check if this is a first run (no config file exists, setup is incomplete, or legacy API URL is configured).
     pub fn is_first_run(app: &AppHandle) -> bool {
         match Self::config_path(app) {
             Ok(path) => {
@@ -150,7 +151,8 @@ impl AppConfig {
                     return true;
                 }
 
-                !Self::load(app).setup_completed
+                let config = Self::load(app);
+                !config.setup_completed || config.api_url == LEGACY_API_URL
             }
             Err(_) => true,
         }

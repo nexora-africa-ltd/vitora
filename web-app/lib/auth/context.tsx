@@ -122,12 +122,12 @@ const IDLE_ACTIVITY_KEY = 'vitora_last_activity';
 const MFA_GRACE_KEY = 'vitora_mfa_grace_deadline';
 
 async function getAuthApiUrl(): Promise<string> {
-  if (typeof window === 'undefined' || !window.__TAURI__) {
-    return API_BASE_URL;
-  }
-
   try {
-    const { getApiUrl } = await import('@/lib/desktop');
+    const { getApiUrl, isDesktop } = await import('@/lib/desktop');
+    if (!isDesktop()) {
+      return API_BASE_URL;
+    }
+
     const desktopApiUrl = await getApiUrl();
     return desktopApiUrl || API_BASE_URL;
   } catch {
