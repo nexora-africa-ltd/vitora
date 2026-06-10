@@ -16,6 +16,7 @@ import { DhaLogo } from '@/components/ui/dha-logo';
 import { setupApi } from '@/lib/api/onboarding';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
 import { isDesktop, storeCredentials, getCredentials, clearCredentials } from '@/lib/desktop';
+import { licensingApi } from '@/lib/api/licensing';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -55,6 +56,16 @@ export default function LoginPage() {
       window.removeEventListener('online', goOnline);
     };
   }, []);
+
+  // Desktop license gate: redirect to /activate if no license token
+  useEffect(() => {
+    if (!isDesktop()) return;
+    licensingApi.getStoredTokenAsync().then((token) => {
+      if (!token) {
+        router.replace('/activate');
+      }
+    });
+  }, [router]);
 
   // Load saved credentials on desktop (Remember Me)
   useEffect(() => {
