@@ -102,6 +102,15 @@ impl Default for AppConfig {
     }
 }
 
+fn normalize_api_url(url: &str) -> String {
+    let trimmed = url.trim().trim_end_matches('/');
+    if trimmed.is_empty() || trimmed == LEGACY_API_URL {
+        DEFAULT_API_URL.to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
 impl AppConfig {
     /// Get the config file path in the app data directory.
     fn config_path(app: &AppHandle) -> Result<PathBuf, String> {
@@ -121,7 +130,12 @@ impl AppConfig {
                 if path.exists() {
                     match fs::read_to_string(&path) {
                         Ok(contents) => {
-                            serde_json::from_str(&contents).unwrap_or_default()
+                            let mut config: AppConfig = serde_json::from_str(&contents).unwrap_or_default();
+                            if config.api_url.trim().trim_end_matches('/') == LEGACY_API_URL {
+                                config.setup_completed = false;
+                            }
+                            config.api_url = normalize_api_url(&config.api_url);
+                            config
                         }
                         Err(_) => Self::default(),
                     }
@@ -152,7 +166,7 @@ impl AppConfig {
                 }
 
                 let config = Self::load(app);
-                !config.setup_completed || config.api_url == LEGACY_API_URL
+                !config.setup_completed
             }
             Err(_) => true,
         }
@@ -178,7 +192,7 @@ pub fn set_api_url(app: AppHandle, url: String) -> Result<String, String> {
     if !url.starts_with("http://") && !url.starts_with("https://") {
         return Err("API URL must start with http:// or https://".to_string());
     }
-    let url = url.trim_end_matches('/').to_string();
+    let url = normalize_api_url(&url);
 
     let mut config = AppConfig::load(&app);
     config.api_url = url.clone();
