@@ -17,6 +17,7 @@ permissions:
 env:
   NODE_VERSION: "22"
   RUST_TOOLCHAIN: "stable"
+  CDN_BASE_URL: "https://get.vitora.digital"
 
 jobs:
   build:
@@ -129,27 +130,20 @@ jobs:
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: desktop-app
           tauriScript: npm run tauri
           args: --target ${{ matrix.target }} --bundles ${{ matrix.bundle_target }}
-          tagName: ${{ github.ref_name }}
-          releaseName: "Vitora HMIS Desktop ${{ github.ref_name }}"
-          releaseBody: |
-            Desktop application release for Vitora HMIS.
 
-            ## Installation
-            - **Windows**: Download the `.exe` installer
-            - **Linux**: Download the `.deb` installer
-            - **macOS**: Download the `.dmg`
-
-            ## Auto-Update
-            Existing installations will auto-update within 24 hours.
-          releaseDraft: true
-          prerelease: false
+      - name: Upload desktop bundle artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.target }}
+          path: desktop-app/src-tauri/target/${{ matrix.target }}/release/bundle/**/*
+          if-no-files-found: error
+          retention-days: 7
 
   # Generate updater endpoint JSON after all platforms build
   publish-updater:
@@ -160,75 +154,127 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download release artifacts info
+      - name: Download desktop bundle artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          path: dist/desktop
+          merge-multiple: true
+
+      - name: Upload desktop artifacts to Azure Blob
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+
+          find dist/desktop -type f \
+            \( -name '*.exe' -o -name '*.exe.sig' -o -name '*.deb' -o -name '*.deb.sig' -o -name '*.dmg' -o -name '*.dmg.sig' -o -name '*.app.tar.gz' -o -name '*.app.tar.gz.sig' -o -name '*.AppImage' -o -name '*.AppImage.sig' \) \
+            -print0 | while IFS= read -r -d '' file; do
+              name=$(basename "$file")
+              content_type="application/octet-stream"
+              case "$name" in
+                *.exe) content_type="application/vnd.microsoft.portable-executable" ;;
+                *.deb) content_type="application/vnd.debian.binary-package" ;;
+                *.dmg) content_type="application/x-apple-diskimage" ;;
+                *.tar.gz) content_type="application/gzip" ;;
+                *.AppImage) content_type="application/octet-stream" ;;
+                *.sig) content_type="text/plain" ;;
+              esac
+
+              az storage blob upload \
+                --container-name releases \
+                --name "desktop/${TAG}/${name}" \
+                --file "$file" \
+                --overwrite \
+                --content-type "$content_type"
+            done
+
+      - name: Create or update GitHub Release (best effort)
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           TAG="${GITHUB_REF_NAME}"
           VERSION="${TAG#desktop-v}"
 
-          # Wait for release to be created by tauri-action
-          sleep 30
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Vitora HMIS Desktop ${TAG}" \
+              --notes "Desktop application release for Vitora HMIS ${VERSION}."
+          else
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --draft \
+              --title "Vitora HMIS Desktop ${TAG}" \
+              --notes "Desktop application release for Vitora HMIS ${VERSION}."
+          fi
 
-          # Get release info
-          RELEASE_JSON=$(gh release view "$TAG" --json assets,body --repo "$GITHUB_REPOSITORY")
+          find dist/desktop -type f \
+            \( -name '*.exe' -o -name '*.exe.sig' -o -name '*.deb' -o -name '*.deb.sig' -o -name '*.dmg' -o -name '*.dmg.sig' -o -name '*.app.tar.gz' -o -name '*.app.tar.gz.sig' -o -name '*.AppImage' -o -name '*.AppImage.sig' \) \
+            -print0 | while IFS= read -r -d '' file; do
+              gh release upload "$TAG" "$file" --clobber --repo "$GITHUB_REPOSITORY"
+            done
 
-          # Extract artifact URLs and signatures
-          echo "$RELEASE_JSON" | jq -r '.assets[] | .name + " " + .url' > /tmp/assets.txt
+      - name: Generate updater manifest
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#desktop-v}"
 
-          # Generate updater JSON
           node -e "
           const fs = require('fs');
-          const assets = fs.readFileSync('/tmp/assets.txt', 'utf8').trim().split('\n');
+          const path = require('path');
           const version = '${VERSION}';
-          const repoUrl = 'https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}';
+          const cdnUrl = '${CDN_BASE_URL}/desktop/${TAG}';
 
-          function findAsset(pattern) {
-            const match = assets.find(a => a.match(pattern));
-            return match ? match.split(' ')[0] : null;
+          function walk(dir) {
+            return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+              const fullPath = path.join(dir, entry.name);
+              return entry.isDirectory() ? walk(fullPath) : [fullPath];
+            });
           }
 
-          function getSignature(name) {
-            const sigAsset = assets.find(a => a.startsWith(name + '.sig'));
-            return sigAsset ? sigAsset.split(' ')[0] : '';
+          const files = walk('dist/desktop');
+          function findFile(pattern) {
+            return files.find((file) => pattern.test(path.basename(file)));
+          }
+
+          function assetUrl(file) {
+            return cdnUrl + '/' + encodeURIComponent(path.basename(file));
+          }
+
+          function signatureFor(file) {
+            const sigFile = file + '.sig';
+            return fs.existsSync(sigFile) ? fs.readFileSync(sigFile, 'utf8').trim() : '';
           }
 
           const platforms = {};
 
           // Windows NSIS
-          const winNsis = findAsset(/\.exe$/);
+          const winNsis = findFile(/\.exe$/);
           if (winNsis) {
             platforms['windows-x86_64'] = {
-              signature: '',
-              url: repoUrl + '/' + winNsis
+              signature: signatureFor(winNsis),
+              url: assetUrl(winNsis)
             };
           }
 
-          // Linux AppImage
-          const linuxAppImage = findAsset(/\.AppImage$/);
-          if (linuxAppImage) {
+          // Linux package
+          const linuxPackage = findFile(/\.(AppImage|deb)$/);
+          if (linuxPackage) {
             platforms['linux-x86_64'] = {
-              signature: '',
-              url: repoUrl + '/' + linuxAppImage
+              signature: signatureFor(linuxPackage),
+              url: assetUrl(linuxPackage)
             };
           }
 
           // macOS
-          const macDmg = findAsset(/\.app\.tar\.gz$/);
-          if (macDmg) {
+          const macPackage = findFile(/(\.app\.tar\.gz|\.dmg)$/);
+          if (macPackage) {
             platforms['darwin-aarch64'] = {
-              signature: '',
-              url: repoUrl + '/' + macDmg
+              signature: signatureFor(macPackage),
+              url: assetUrl(macPackage)
             };
-          }
-
-          // Read signatures from .sig files
-          for (const [platform, info] of Object.entries(platforms)) {
-            const sigName = info.url.split('/').pop() + '.sig';
-            const sigAsset = assets.find(a => a.startsWith(sigName));
-            if (sigAsset) {
-              info.signature = sigAsset.split(' ')[1] || '';
-            }
           }
 
           const updater = {
@@ -256,6 +302,7 @@ jobs:
             --content-cache-control "max-age=300"
 
       - name: Upload updater manifest as release asset
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
