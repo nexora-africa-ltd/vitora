@@ -46,6 +46,7 @@ import { AdmissionPrescriptionsPicker } from '@/components/discharge/admission-p
 import { ClinicalReferenceCard } from '@/components/discharge/clinical-reference-card';
 import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders, useClearanceStatus, useKardexByAdmission, useTemperatureReadings, useFluidBalanceSheets, useBPReadings, useBloodTransfusions, useDefaultDischargeTemplate } from '@/lib/hooks/use-inpatient';
 import { useAdmissionPrescriptions, useUpdatePrescription } from '@/lib/hooks/use-pharmacy';
+import { inpatientApi } from '@/lib/api/inpatient';
 import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { useAIEnabled, useAICDSEvaluate, useStoredCarePlans, useAISuggestionAudit, useStoredDischargeResults } from '@/lib/hooks/use-ai';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
@@ -1015,6 +1016,23 @@ export default function DischargePage() {
         discharge_medications: allDischargeMeds,
       });
       clearDraft();
+
+      // Auto-create prescriptions for manual INTERNAL medications
+      const hasManualInternal = manualMeds.some((m) => m.dispensing_type === 'INTERNAL');
+      if (hasManualInternal && result.id) {
+        try {
+          const rxResult = await inpatientApi.createDischargePrescriptions(result.id);
+          if (rxResult.created.length > 0) {
+            toast({ title: 'Prescriptions Created', description: `${rxResult.created.length} prescription(s) auto-created for pharmacy dispensing.` });
+          }
+          if (rxResult.failed.length > 0) {
+            toast({ title: 'Some Medications Not Matched', description: `${rxResult.failed.map((f) => f.drug_name).join(', ')} not found in drug catalog. Create prescriptions manually.`, variant: 'destructive' });
+          }
+        } catch {
+          // Non-blocking — discharge already succeeded
+          console.warn('Failed to auto-create prescriptions from discharge medications');
+        }
+      }
 
       // Redirect to Last Office for deceased discharges so clinician can complete
       // cause of death, certification, and morgue details

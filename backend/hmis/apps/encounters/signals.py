@@ -6,6 +6,7 @@ Auto-releases ER beds when an encounter is closed or cancelled.
 
 import logging
 
+from django.db.models import Q
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
@@ -177,7 +178,8 @@ def _notify_critical_vitals(instance):
 
         # Notify doctors and nurses in the facility
         clinicians = User.objects.filter(
-            staff_profile__facilities__id=facility_id,
+            Q(staff_profile__primary_facility_id=facility_id)
+            | Q(staff_profile__secondary_facilities__id=facility_id),
             staff_profile__primary_role__code__in=[
                 "DOCTOR",
                 "CLINICAL_OFFICER",

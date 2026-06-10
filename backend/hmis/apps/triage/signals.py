@@ -4,6 +4,7 @@ Signals for Triage app.
 This module contains Django signals for automatic updates related to triage assessments.
 """
 
+from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
@@ -184,7 +185,8 @@ def _notify_urgent_triage(instance, encounter):
 
         # Notify doctors and clinical officers in the same facility
         clinicians = User.objects.filter(
-            staff_profile__facilities__id=facility_id,
+            Q(staff_profile__primary_facility_id=facility_id)
+            | Q(staff_profile__secondary_facilities__id=facility_id),
             staff_profile__primary_role__code__in=[
                 "DOCTOR",
                 "CLINICAL_OFFICER",
