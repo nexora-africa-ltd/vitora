@@ -65,7 +65,8 @@
         "displayLanguageSelector": false,
         "startMenuFolder": "Vitora HMIS",
         "headerImage": null,
-        "sidebarImage": null
+        "sidebarImage": null,
+        "installerHooks": "nsis-hooks.nsi"
       },
       "webviewInstallMode": {
         "type": "embedBootstrapper",
