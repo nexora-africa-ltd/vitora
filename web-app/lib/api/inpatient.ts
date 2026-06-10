@@ -152,6 +152,13 @@ import type {
 
 type Paginated<T> = { count: number; next: string | null; previous: string | null; results: T[] };
 
+/** Result from POST /api/inpatient/discharges/{id}/create-prescriptions/ */
+export interface DischargePrescriptionsResult {
+  created: Array<{ drug_name: string; prescription_id: number; prescription_number: string }>;
+  failed: Array<{ drug_name: string; reason: string }>;
+  detail: string;
+}
+
 export const inpatientApi = {
   // ============================================================================
   // Wards
@@ -326,6 +333,13 @@ export const inpatientApi = {
   async updateDischarge(dischargeId: number, data: Partial<DischargeCreateData>): Promise<Discharge> {
     const response = await apiClient.patch<Discharge>(`/api/inpatient/discharges/${dischargeId}/`, data);
     return parseResponse(DischargeSchema, response.data, { context: 'inpatientApi.updateDischarge' });
+  },
+
+  async createDischargePrescriptions(dischargeId: number): Promise<DischargePrescriptionsResult> {
+    const response = await apiClient.post<DischargePrescriptionsResult>(
+      `/api/inpatient/discharges/${dischargeId}/create-prescriptions/`
+    );
+    return response.data;
   },
 
   // ============================================================================

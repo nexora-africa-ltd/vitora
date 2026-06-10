@@ -11,6 +11,7 @@ This module contains Django signals for pharmacy-billing integration:
 import logging
 from decimal import Decimal
 
+from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -411,7 +412,8 @@ def _notify_stock_alert(instance, critical: bool):
 
         # Notify pharmacists and managers
         staff = User.objects.filter(
-            staff_profile__facilities__id=facility_id,
+            Q(staff_profile__primary_facility_id=facility_id)
+            | Q(staff_profile__secondary_facilities__id=facility_id),
             staff_profile__primary_role__code__in=[
                 "PHARMACIST",
                 "PHARMACY_TECH",

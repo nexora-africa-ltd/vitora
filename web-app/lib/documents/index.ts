@@ -172,6 +172,11 @@ export {
 } from './print-discharge';
 
 export {
+  printDischargePrescription,
+  type PrintDischargePrescriptionOptions,
+} from './print-discharge-prescription';
+
+export {
   printSickNote,
   type PrintSickNoteOptions,
 } from './print-sick-note';

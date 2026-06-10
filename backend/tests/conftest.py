@@ -124,7 +124,38 @@ def mock_settings(monkeypatch) -> Generator[None, None, None]:
 @pytest.fixture
 def sample_organization(db):
     """Create a sample Organization for testing."""
-    from hmis.apps.core.models import Organization
+    from hmis.apps.core.models import Organization, SubscriptionPlan
+
+    # Ensure a subscription plan exists with all features enabled for tests
+    plan, _ = SubscriptionPlan.objects.get_or_create(
+        code="TEST_ALL_FEATURES",
+        defaults={
+            "name": "Test All Features Plan",
+            "features": {
+                "outpatient": True,
+                "inpatient": True,
+                "emergency": True,
+                "pharmacy": True,
+                "laboratory": True,
+                "imaging": True,
+                "theatre": True,
+                "dialysis": True,
+                "icu": True,
+                "maternity": True,
+                "mortuary": True,
+                "blood_bank": True,
+                "inventory": True,
+                "billing": True,
+                "scheduling": True,
+                "triage": True,
+                "surveillance": True,
+                "immunizations": True,
+                "allied_health": True,
+                "sha_claims": True,
+                "ai_assistant": True,
+            },
+        },
+    )
 
     return Organization.objects.create(
         name="Test Hospital Group",
@@ -132,6 +163,7 @@ def sample_organization(db):
         contact_email="admin@test-hospital.co.ke",
         is_active=True,
         is_verified=True,
+        subscription_plan=plan,
     )
 
 

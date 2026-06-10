@@ -24,7 +24,7 @@ import remarkGfm from 'remark-gfm';
 import { useAdmission, useDischargeByAdmission } from '@/lib/hooks/use-inpatient';
 import { useDefaultDischargeTemplate } from '@/lib/hooks/use-inpatient';
 import { useFacility } from '@/lib/context/facility-context';
-import { printDischargeDocument } from '@/lib/documents';
+import { printDischargeDocument, printDischargePrescription } from '@/lib/documents';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import { SignatureBadge } from '@/components/shared/signature-badge';
@@ -346,11 +346,35 @@ export default function DischargeDetailPage() {
       {/* Discharge Medications */}
       {discharge.discharge_medications && discharge.discharge_medications.length > 0 && (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               <Pill className="h-5 w-5" />
               Discharge Medications
             </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                printDischargePrescription({
+                  medications: discharge.discharge_medications,
+                  patientName: admission.patient_name || '',
+                  patientIdentifier: admission.admission_number,
+                  patientAge: admission.patient_age ? `${admission.patient_age} Years` : undefined,
+                  patientSex: admission.patient_gender === 'M' ? 'Male' : admission.patient_gender === 'F' ? 'Female' : admission.patient_gender === 'O' ? 'Other' : undefined,
+                  dischargeDate: discharge.discharge_date,
+                  diagnosis: discharge.final_diagnosis_text || discharge.final_diagnosis || undefined,
+                  facilityName: facility?.name,
+                  facilityMflCode: facility?.mfl_code,
+                  facilityLocation: facilityDetail ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}` : undefined,
+                  facilityLogoUrl: facilityDetail?.effective_logo_url,
+                  clinicianName: discharge.discharged_by_username || undefined,
+                });
+              }}
+              className="gap-1.5 text-xs"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              Print Prescription
+            </Button>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
