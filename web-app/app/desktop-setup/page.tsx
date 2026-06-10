@@ -123,7 +123,8 @@ export default function DesktopSetupPage() {
       await saveHubConfig(trimmed, hubInfo.facilityId, hubInfo.facilityName);
     }
 
-    router.push('/login');
+    // After setup, go to license activation (activation code validates the install)
+    router.push('/activate');
   }
 
   return (

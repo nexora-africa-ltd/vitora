@@ -15,7 +15,7 @@ import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { DhaLogo } from '@/components/ui/dha-logo';
 import { setupApi } from '@/lib/api/onboarding';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
-import { isDesktop, storeCredentials, getCredentials, clearCredentials } from '@/lib/desktop';
+import { isDesktop, isFirstRun, storeCredentials, getCredentials, clearCredentials } from '@/lib/desktop';
 import { licensingApi } from '@/lib/api/licensing';
 import Link from 'next/link';
 
@@ -56,6 +56,16 @@ export default function LoginPage() {
       window.removeEventListener('online', goOnline);
     };
   }, []);
+
+  // Desktop first-run gate: redirect to /desktop-setup if no config exists
+  useEffect(() => {
+    if (!isDesktop()) return;
+    isFirstRun().then((firstRun) => {
+      if (firstRun) {
+        router.replace('/desktop-setup');
+      }
+    });
+  }, [router]);
 
   // Desktop license gate: redirect to /activate if no license token
   useEffect(() => {
