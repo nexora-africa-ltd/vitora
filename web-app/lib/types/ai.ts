@@ -728,6 +728,7 @@ export interface AIDischargeAssessResponse {
   vitals_stability?: string | null;
   mode?: string;
   error?: string | null;
+  stored_id?: string | null;
 }
 
 /** Response from GET /api/ai/discharge/conditions/ */

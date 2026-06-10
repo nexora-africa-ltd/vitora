@@ -1056,6 +1056,12 @@ export default function AdmissionDetailPage() {
               primaryDiagnosis={
                 admission.admitting_diagnosis_text || admission.admitting_diagnosis || ''
               }
+              admissionType={
+                admission.ward_type === 'SURGICAL' ? 'surgical'
+                  : admission.ward_type === 'MATERNITY' ? 'obstetric'
+                  : admission.ward_type === 'PEDIATRIC' ? 'pediatric'
+                  : 'medical'
+              }
               daysAdmitted={daysAdmitted}
               vitalsHistory={wardRounds?.results?.map((wr) => {
                 const v = wr.vital_signs ?? wr;
@@ -1075,6 +1081,10 @@ export default function AdmissionDetailPage() {
                 v.systolic_bp != null || v.respiratory_rate != null
               )}
               currentMedications={admission.clinical_context?.current_medications}
+              canAmbulate={kardex?.mobility_status ? ['AMBULANT', 'INDEPENDENT', 'WALKS_INDEPENDENTLY'].includes(kardex.mobility_status.toUpperCase()) : null}
+              canTolerateOral={kardex?.dietary_requirements ? !['NIL_BY_MOUTH', 'NBM', 'NPO', 'IV_ONLY'].includes(kardex.dietary_requirements.toUpperCase().replace(/\s+/g, '_')) : null}
+              hasCaregiverAtHome={null}
+              chwReferralMade={null}
               autoTrigger={autoTriggerDischarge}
               onAutoTriggerConsumed={() => setAutoTriggerDischarge(false)}
             />

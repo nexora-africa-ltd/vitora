@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import {
-  ChevronDown,
-  ChevronUp,
+  Eye,
+  EyeOff,
   Activity,
   Pill,
   FlaskConical,
@@ -13,10 +13,14 @@ import {
   Droplets,
   HeartPulse,
   ShieldAlert,
+  Pin,
+  PinOff,
 } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { WardRound, AdmissionOrdersResponse, NursingKardex, TemperatureReading, FluidBalanceSheet, BPMonitoringReading, BloodTransfusion } from '@/lib/types/inpatient';
 
 // ---------------------------------------------------------------------------
@@ -87,7 +91,8 @@ export function ClinicalReferenceCard({
   bpReadings,
   bloodTransfusions,
 }: ClinicalReferenceCardProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
+  const [isPinned, setIsPinned] = useState(false);
 
   const rounds = wardRounds?.results ?? [];
   const labOrders = orders?.lab_orders ?? [];
@@ -105,9 +110,20 @@ export function ClinicalReferenceCard({
 
   if (!hasData) return null;
 
+  const handlePin = () => {
+    if (!isPinned) {
+      // Expand when pinning
+      setIsOpen(true);
+    }
+    setIsPinned(!isPinned);
+  };
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
+    <Card className={cn(
+      'transition-all duration-200',
+      isPinned && 'sticky top-0 z-40 shadow-lg border-primary/30 max-h-[45vh] flex flex-col',
+    )}>
+      <CardHeader className="pb-2 shrink-0">
         <div className="flex w-full items-center justify-between">
           <div className="flex items-center gap-2">
             <button
@@ -117,21 +133,59 @@ export function ClinicalReferenceCard({
             >
               <CardTitle className="text-base">Clinical Reference</CardTitle>
             </button>
+            {isPinned && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Pinned</Badge>
+            )}
             <HelpPopover content="Read-only summary of the patient's admission data — ward rounds, labs, imaging, prescriptions, nursing kardex, and observation charts. Use as a reference while completing the discharge summary." />
           </div>
-          <button
-            type="button"
-            onClick={() => setIsOpen(!isOpen)}
-            className="inline-flex items-center justify-center rounded-md h-7 w-7 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            aria-label={isOpen ? 'Collapse clinical reference' : 'Expand clinical reference'}
-          >
-            {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </button>
+          <div className="flex items-center gap-1">
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={handlePin}
+                    className={cn(
+                      'inline-flex items-center justify-center rounded-md h-7 w-7 hover:bg-accent hover:text-accent-foreground',
+                      isPinned ? 'text-primary' : 'text-muted-foreground',
+                    )}
+                    aria-label={isPinned ? 'Unpin clinical reference' : 'Pin clinical reference to top'}
+                    aria-pressed={isPinned}
+                  >
+                    {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{isPinned ? 'Unpin from top' : 'Pin to top while scrolling'}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="inline-flex items-center justify-center rounded-md h-7 w-7 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    aria-label={isOpen ? 'Hide clinical reference' : 'Show clinical reference'}
+                  >
+                    {isOpen ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{isOpen ? 'Hide content' : 'Show content'}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
       </CardHeader>
 
       {isOpen && (
-        <CardContent className="pt-0 space-y-5 text-sm">
+        <CardContent className={cn(
+          'pt-0 space-y-5 text-sm',
+          isPinned && 'overflow-y-auto min-h-0',
+        )}>
           {/* ---- Ward Rounds ---- */}
           {rounds.length > 0 && (
             <div>

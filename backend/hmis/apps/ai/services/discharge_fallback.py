@@ -11,27 +11,33 @@ from typing import Any
 
 
 def _check_vitals_stability(vitals_history: list[dict[str, Any]]) -> str | None:
-    """Simple vitals stability check based on last two readings."""
+    """Simple vitals stability check based on last two readings.
+
+    Uses clinically appropriate thresholds per vital sign rather than
+    a flat percentage change, since a 20% temperature swing is catastrophic
+    while a 20% heart rate change may be benign.
+    """
     if len(vitals_history) < 2:
         return None
 
     last = vitals_history[-1]
     prev = vitals_history[-2]
 
-    # Check for instability markers
+    # Absolute change thresholds (clinically meaningful instability)
+    VITAL_THRESHOLDS: dict[str, float] = {
+        "heart_rate": 20,  # >20 bpm change
+        "systolic_bp": 30,  # >30 mmHg change
+        "temperature": 1.0,  # >1°C change
+        "respiratory_rate": 8,  # >8 breaths/min change
+        "oxygen_saturation": 4,  # >4% SpO2 change
+    }
+
     unstable_count = 0
-    for vital in (
-        "heart_rate",
-        "systolic_bp",
-        "temperature",
-        "respiratory_rate",
-        "oxygen_saturation",
-    ):
+    for vital, threshold in VITAL_THRESHOLDS.items():
         curr_val = last.get(vital)
         prev_val = prev.get(vital)
         if curr_val is not None and prev_val is not None:
-            change_pct = abs(curr_val - prev_val) / max(prev_val, 1) * 100
-            if change_pct > 20:
+            if abs(curr_val - prev_val) > threshold:
                 unstable_count += 1
 
     if unstable_count >= 2:

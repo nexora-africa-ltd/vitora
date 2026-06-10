@@ -283,6 +283,7 @@ export const AIDischargeAssessResponseSchema = z.object({
   vitals_stability: z.string().nullable().optional(),
   mode: z.string().optional(),
   error: z.string().nullable().optional(),
+  stored_id: z.string().nullable().optional(),
 }).passthrough();
 
 /** Schema for GET /api/ai/discharge/conditions/ response */

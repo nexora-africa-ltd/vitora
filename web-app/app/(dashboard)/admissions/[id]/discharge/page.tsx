@@ -47,7 +47,7 @@ import { ClinicalReferenceCard } from '@/components/discharge/clinical-reference
 import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders, useClearanceStatus, useKardexByAdmission, useTemperatureReadings, useFluidBalanceSheets, useBPReadings, useBloodTransfusions, useDefaultDischargeTemplate } from '@/lib/hooks/use-inpatient';
 import { useAdmissionPrescriptions, useUpdatePrescription } from '@/lib/hooks/use-pharmacy';
 import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
-import { useAIEnabled, useAICDSEvaluate, useStoredCarePlans, useAISuggestionAudit } from '@/lib/hooks/use-ai';
+import { useAIEnabled, useAICDSEvaluate, useStoredCarePlans, useAISuggestionAudit, useStoredDischargeResults } from '@/lib/hooks/use-ai';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useOptionalPatientContext } from '@/lib/context/patient-context';
@@ -131,6 +131,11 @@ export default function DischargePage() {
   const createDischarge = useCreateDischarge();
   const isAIEnabled = useAIEnabled();
   const cdsEvaluate = useAICDSEvaluate();
+
+  // Discharge readiness state (for warning integration)
+  const { data: storedDischargeResults } = useStoredDischargeResults(admissionId);
+  const latestReadiness = storedDischargeResults?.[0]?.result_data as { readiness_level?: string; unmet_criteria_count?: number } | undefined;
+  const isNotReady = latestReadiness?.readiness_level === 'not_ready';
 
   // Fetch prescriptions for this admission
   const { data: admissionPrescriptions = [] } = useAdmissionPrescriptions(admissionId);
@@ -1267,6 +1272,12 @@ export default function DischargePage() {
           admissionId={admissionId}
           patientAge={admission.patient_age ?? 0}
           primaryDiagnosis={admission.admitting_diagnosis_text || admission.admitting_diagnosis || ''}
+          admissionType={
+            admission.ward_type === 'SURGICAL' ? 'surgical'
+              : admission.ward_type === 'MATERNITY' ? 'obstetric'
+              : admission.ward_type === 'PEDIATRIC' ? 'pediatric'
+              : 'medical'
+          }
           daysAdmitted={lengthOfStay}
           vitalsHistory={wardRounds?.results?.map((wr) => {
             const v = wr.vital_signs;
@@ -1287,16 +1298,20 @@ export default function DischargePage() {
           )}
           labResults={orders?.lab_orders?.flatMap((lo) =>
             lo.items
-              .filter((item) => item.has_result && item.result)
+              .filter((item) => item.has_result && item.result && item.result.numeric_value != null)
               .map((item) => ({
                 test_name: item.test_name || 'Unknown',
-                value: item.result?.numeric_value ?? 0,
+                value: item.result!.numeric_value as number,
                 unit: item.result?.result_unit || '',
               }))
           )}
           currentMedications={patientCtx.current_medications}
+          canAmbulate={kardex?.mobility_status ? ['AMBULANT', 'INDEPENDENT', 'WALKS_INDEPENDENTLY'].includes(kardex.mobility_status.toUpperCase()) : null}
+          canTolerateOral={kardex?.dietary_requirements ? !['NIL_BY_MOUTH', 'NBM', 'NPO', 'IV_ONLY'].includes(kardex.dietary_requirements.toUpperCase().replace(/\s+/g, '_')) : null}
           hasFollowUpArranged={!!followUpDate}
+          hasCaregiverAtHome={null}
           hasNhifOrSha={patientContext?.hasSHA ?? null}
+          chwReferralMade={null}
         />
       )}
 
@@ -1463,6 +1478,16 @@ export default function DischargePage() {
                 )}
               </div>
             </div>
+
+            {/* Readiness warning — shown when last assessment returned 'not_ready' */}
+            {isNotReady && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50/70 dark:border-amber-800 dark:bg-amber-950/30 px-3 py-2 text-sm">
+                <ShieldAlert className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span className="text-amber-900 dark:text-amber-200">
+                  Discharge readiness assessment shows <strong>Not Ready</strong> ({latestReadiness?.unmet_criteria_count ?? 0} unmet criteria). Review the assessment panel before proceeding.
+                </span>
+              </div>
+            )}
 
             {/* AI Mode Toggle */}
             {isAIEnabled && (
