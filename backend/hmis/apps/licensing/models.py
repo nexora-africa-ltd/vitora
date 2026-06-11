@@ -7,8 +7,6 @@ License tokens (JWT, RS256-signed) are issued on activation and refreshed
 on periodic check-ins.
 """
 
-import uuid
-
 from django.db import models
 
 from hmis.apps.core.models import TimeStampedModel
@@ -33,10 +31,11 @@ class Installation(TimeStampedModel):
     # Identity
     # ------------------------------------------------------------------
 
-    installation_id = models.UUIDField(
+    installation_id = models.CharField(
+        max_length=200,
         unique=True,
-        default=uuid.uuid4,
-        editable=False,
+        blank=True,
+        default="",
         help_text="Unique hardware/installation identifier generated on first run.",
     )
     name = models.CharField(
