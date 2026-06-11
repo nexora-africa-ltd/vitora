@@ -43,7 +43,10 @@ $VenvDir = "$InstallDir\venv"
 $DataDir = "$InstallDir\data"
 $LogDir = "$InstallDir\logs"
 $HubPort = if ($Port) { $Port } elseif ($env:HUB_PORT) { $env:HUB_PORT } else { "9088" }
-$NssmUrl = "https://nssm.cc/release/nssm-2.24.zip"
+$NssmUrls = @(
+    "https://get.vitora.digital/tools/nssm-2.24.zip",
+    "https://nssm.cc/release/nssm-2.24.zip"
+)
 $NssmDir = "$InstallDir\nssm"
 
 # --- Helper Functions ---
@@ -203,7 +206,20 @@ $nssmExe = "$NssmDir\nssm.exe"
 if (-not (Test-Path $nssmExe)) {
     Write-Info "Downloading NSSM..."
     $zipPath = "$env:TEMP\nssm.zip"
-    Invoke-WebRequest -Uri $NssmUrl -OutFile $zipPath -UseBasicParsing
+    $downloaded = $false
+    foreach ($url in $NssmUrls) {
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
+            $downloaded = $true
+            break
+        } catch {
+            Write-Host "  [WARN] Mirror unavailable: $url" -ForegroundColor Yellow
+        }
+    }
+    if (-not $downloaded) {
+        Write-Err "All NSSM download mirrors failed. Check internet connection."
+        exit 1
+    }
     Expand-Archive -Path $zipPath -DestinationPath "$env:TEMP\nssm_extract" -Force
 
     $extracted = Get-ChildItem -Path "$env:TEMP\nssm_extract" -Recurse -Filter "nssm.exe" |
@@ -234,17 +250,17 @@ if (-not (Test-Path "$VenvDir\Scripts\python.exe")) {
     & python -m venv $VenvDir
 }
 
-$pip = "$VenvDir\Scripts\pip.exe"
 $python = "$VenvDir\Scripts\python.exe"
 
 Write-Info "Installing Python dependencies..."
-& $pip install --quiet --upgrade pip
+# Use python -m pip (avoids "To modify pip, please run..." error on old pip)
+& $python -m pip install --quiet --upgrade pip
 if (Test-Path "$InstallDir\requirements-hub.txt") {
-    & $pip install --quiet -r "$InstallDir\requirements-hub.txt"
+    & $python -m pip install --quiet -r "$InstallDir\requirements-hub.txt"
 } elseif (Test-Path "$InstallDir\requirements.txt") {
-    & $pip install --quiet -r "$InstallDir\requirements.txt"
+    & $python -m pip install --quiet -r "$InstallDir\requirements.txt"
 }
-& $pip install --quiet daphne whitenoise
+& $python -m pip install --quiet daphne whitenoise
 
 # --- Generate Secret Key ---
 $secretKey = & $python -c "import secrets; print(secrets.token_urlsafe(50))"

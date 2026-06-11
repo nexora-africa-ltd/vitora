@@ -58,7 +58,10 @@ jobs:
       - name: Export requirements
         working-directory: backend
         run: |
-          poetry export --without dev --format requirements.txt --output requirements-hub.txt
+          # Strip python_version/platform markers so hub works on Python 3.11+ (project declares ^3.12)
+          poetry export --without dev --without-hashes --format requirements.txt --output requirements-hub-raw.txt
+          sed 's/ ; python_version.*//; s/ ; platform_system.*//; s/ ; sys_platform.*//; s/ ; implementation_name.*//' requirements-hub-raw.txt > requirements-hub.txt
+          rm requirements-hub-raw.txt
 
       - name: Package hub artifact
         run: |
