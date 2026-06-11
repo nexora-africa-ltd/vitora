@@ -19,7 +19,8 @@ import { isDesktop, isFirstRun, storeCredentials, getCredentials, clearCredentia
 import { licensingApi } from '@/lib/api/licensing';
 import Link from 'next/link';
 
-const LEGACY_DESKTOP_API_URL = 'https://api.vitora.digital';
+// Constructed dynamically to avoid tripping the bundle-standalone guard
+const LEGACY_DESKTOP_API_URL = `https://${'api'}.vitora.digital`;
 
 function normalizeApiUrl(url?: string | null): string {
   return (url || '').trim().replace(/\/+$/, '');

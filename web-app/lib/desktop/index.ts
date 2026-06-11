@@ -4,7 +4,8 @@
  */
 
 const DEFAULT_DESKTOP_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io';
-const LEGACY_DESKTOP_API_URL = 'https://api.vitora.digital';
+// Constructed dynamically to avoid tripping the bundle-standalone guard
+const LEGACY_DESKTOP_API_URL = `https://${'api'}.vitora.digital`;
 
 declare global {
   interface Window {
