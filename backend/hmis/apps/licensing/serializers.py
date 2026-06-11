@@ -10,7 +10,10 @@ from .models import Installation
 class ActivationRequestSerializer(serializers.Serializer):
     """Request body for activating an installation."""
 
-    installation_id = serializers.UUIDField(help_text="UUID generated on the client's first run.")
+    installation_id = serializers.CharField(
+        max_length=200,
+        help_text="Unique client identifier generated on first run.",
+    )
     activation_code = serializers.CharField(
         max_length=64,
         help_text="One-time activation code provided by Nexora.",
@@ -36,7 +39,10 @@ class ActivationRequestSerializer(serializers.Serializer):
 class CheckInRequestSerializer(serializers.Serializer):
     """Request body for periodic license check-in."""
 
-    installation_id = serializers.UUIDField(help_text="UUID of the installation checking in.")
+    installation_id = serializers.CharField(
+        max_length=200,
+        help_text="Unique client identifier of the installation checking in.",
+    )
     app_version = serializers.CharField(
         max_length=50,
         required=False,
@@ -53,7 +59,7 @@ class ActivationResponseSerializer(serializers.Serializer):
     """Response body after successful activation or check-in."""
 
     license_token = serializers.CharField(help_text="Signed RS256 JWT license token.")
-    installation_id = serializers.UUIDField()
+    installation_id = serializers.CharField()
     org_name = serializers.CharField()
     tier = serializers.CharField()
     features = serializers.DictField()
