@@ -65,6 +65,12 @@ function copyDirSync(src, dest) {
 }
 
 function assertNoLegacyApiHost(dir) {
+  // Regex that matches the legacy host used as an API target (assigned to a
+  // variable, passed to fetch, used as baseURL, etc.) but NOT when it only
+  // appears in an equality comparison for migration detection.
+  // We flag a file if it contains the host AND it appears in a context that
+  // looks like a configuration value rather than a guard comparison.
+  const COMPARISON_RE = new RegExp(`[!=]=\\s*['"\`]https?://${LEGACY_API_HOST.replace(/\./g, '\\.')}|https?://${LEGACY_API_HOST.replace(/\./g, '\\.')}['"\`]\\s*[!=]=`);
   const offenders = [];
 
   function walk(current) {
@@ -80,7 +86,16 @@ function assertNoLegacyApiHost(dir) {
       }
 
       const contents = fs.readFileSync(fullPath, 'utf8');
-      if (contents.includes(LEGACY_API_HOST)) {
+      if (!contents.includes(LEGACY_API_HOST)) {
+        continue;
+      }
+
+      // Count total occurrences vs comparison-only occurrences
+      const allMatches = contents.split(LEGACY_API_HOST).length - 1;
+      const comparisonMatches = (contents.match(COMPARISON_RE) || []).length;
+
+      // If every occurrence is in a comparison context, it's safe
+      if (allMatches > comparisonMatches) {
         offenders.push(path.relative(dir, fullPath));
       }
     }
