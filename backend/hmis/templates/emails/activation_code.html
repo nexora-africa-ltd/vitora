@@ -6,8 +6,11 @@
   <tr><td align="center">
     <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1)">
       <!-- Header -->
-      <tr><td style="background:#0f766e;padding:24px 32px">
-        <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600">Vitora HMIS</h1>
+      <tr><td style="background:#0f766e;padding:20px 32px" align="center">
+        <img src="https://www.vitora.digital/assets/images/light-theme-logo.png"
+             alt="Vitora HMIS"
+             width="140"
+             style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-width:140px">
       </td></tr>
       <!-- Body -->
       <tr><td style="padding:32px">
@@ -42,10 +45,14 @@
         {% endif %}
       </td></tr>
       <!-- Footer -->
-      <tr><td style="padding:16px 32px;background:#f4f4f5;border-top:1px solid #e4e4e7">
-        <p style="margin:0;color:#a1a1aa;font-size:11px;text-align:center">
-          If you have trouble activating, contact us at {{ support_email }}.<br>
-          &copy; Nexora Labs. All rights reserved.
+      <tr><td style="padding:20px 32px;background:#f4f4f5;border-top:1px solid #e4e4e7" align="center">
+        <p style="margin:0 0 8px;color:#71717a;font-size:12px;line-height:1.5">
+          If you have trouble activating, contact us at
+          <a href="mailto:{{ support_email }}" style="color:#0f766e;text-decoration:none">{{ support_email }}</a>.
+        </p>
+        <p style="margin:0;color:#a1a1aa;font-size:11px;line-height:1.5">
+          Vitora HMIS is a product of <strong>Nexora Africa Ltd</strong>.<br>
+          &copy; Nexora Africa Ltd. All rights reserved.
         </p>
       </td></tr>
     </table>

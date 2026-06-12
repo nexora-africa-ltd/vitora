@@ -192,12 +192,23 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 # ---------------------------------------------------------------------------
 
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"  # noqa: F405
 
-# WhiteNoise for serving static files without nginx
+# Write static files to a writable data dir (NOT inside the install dir,
+# which on Windows lives under C:\Program Files\ and is read-only by default).
+# Falls back to BASE_DIR/staticfiles when HUB_DATA_DIR is not set (dev/test).
+_hub_data_dir = os.getenv("HUB_DATA_DIR", "").strip()
+if _hub_data_dir:
+    STATIC_ROOT = os.path.join(_hub_data_dir, "staticfiles")
+    os.makedirs(STATIC_ROOT, exist_ok=True)
+else:
+    STATIC_ROOT = BASE_DIR / "staticfiles"  # noqa: F405
+
+# WhiteNoise for serving static files without nginx.
+# Use the non-manifest variant: tolerates missing files (returns 404 instead
+# of 500) and doesn't require staticfiles.json to be perfectly in sync.
 STORAGES = {
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
 

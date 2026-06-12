@@ -276,6 +276,7 @@ HUB_FACILITY_ID=$FacilityId
 HUB_ORGANIZATION_ID=$OrgId
 HUB_PORT=$HubPort
 HUB_DB_PATH=$DataDir\hub.sqlite3
+HUB_DATA_DIR=$DataDir
 HUB_LOG_FILE=$LogDir\hub.log
 SYNC_SERVER_URL=$SyncUrl
 ALLOWED_HOSTS=*
@@ -291,6 +292,7 @@ Write-Info "Configuration saved."
 $env:DJANGO_ENV = "hub"
 $env:DJANGO_SETTINGS_MODULE = "hmis.settings"
 $env:HUB_DB_PATH = "$DataDir\hub.sqlite3"
+$env:HUB_DATA_DIR = "$DataDir"
 $env:HUB_ID = $HubId
 $env:HUB_FACILITY_ID = $FacilityId
 $env:HUB_ORGANIZATION_ID = $OrgId
@@ -301,7 +303,16 @@ $env:ENCRYPTION_KEY = $EncryptionKey
 Write-Step 6 "Initializing database..."
 Push-Location $InstallDir
 & $python manage.py migrate --no-input
-& $python manage.py collectstatic --no-input --clear 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Warn "migrate failed (exit $LASTEXITCODE)"
+}
+
+# Collect static files (Django admin CSS, etc.).  Don't swallow errors —
+# if this fails the admin page will be unstyled.
+& $python manage.py collectstatic --no-input --clear
+if ($LASTEXITCODE -ne 0) {
+    Write-Warn "collectstatic failed (exit $LASTEXITCODE). Django admin will be unstyled until this is resolved."
+}
 Pop-Location
 
 # Create superuser (skip in non-interactive mode)
@@ -346,6 +357,7 @@ $envVars = @(
     "HUB_FACILITY_ID=$FacilityId",
     "HUB_ORGANIZATION_ID=$OrgId",
     "HUB_DB_PATH=$DataDir\hub.sqlite3",
+    "HUB_DATA_DIR=$DataDir",
     "HUB_LOG_FILE=$LogDir\hub.log",
     "SYNC_SERVER_URL=$SyncUrl",
     "ALLOWED_HOSTS=*"

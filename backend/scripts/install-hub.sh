@@ -377,6 +377,7 @@ HUB_FACILITY_ID=${HUB_FACILITY_ID}
 HUB_ORGANIZATION_ID=${HUB_ORGANIZATION_ID}
 HUB_PORT=${HUB_PORT}
 HUB_DB_PATH=${DB_DIR}/hub.sqlite3
+HUB_DATA_DIR=${DB_DIR}
 HUB_LOG_FILE=${LOG_DIR}/hub.log
 SYNC_SERVER_URL=${SYNC_URL}
 ALLOWED_HOSTS=*
@@ -392,15 +393,21 @@ cd "$APP_DIR"
 export DJANGO_ENV=hub
 export DJANGO_SETTINGS_MODULE=hmis.settings
 export HUB_DB_PATH="${DB_DIR}/hub.sqlite3"
+export HUB_DATA_DIR="${DB_DIR}"
 export HUB_ID="$HUB_ID"
 export HUB_FACILITY_ID="$HUB_FACILITY_ID"
 export HUB_ORGANIZATION_ID="$HUB_ORGANIZATION_ID"
 export DJANGO_SECRET_KEY="temporary-for-migration"
 
 "$VENV_DIR/bin/python" manage.py migrate --no-input
-"$VENV_DIR/bin/python" manage.py collectstatic --no-input 2>/dev/null || true
 
-chown -R "$APP_USER:$APP_USER" "$DB_DIR" "$APP_DIR/staticfiles" 2>/dev/null || true
+# Collect static files (Django admin CSS, etc.).  Don't swallow errors —
+# if this fails the admin page will be unstyled.
+if ! "$VENV_DIR/bin/python" manage.py collectstatic --no-input; then
+    warn "collectstatic failed.  Django admin will be unstyled until this is resolved."
+fi
+
+chown -R "$APP_USER:$APP_USER" "$DB_DIR" 2>/dev/null || true
 
 # Create superuser (skip in non-interactive mode)
 if [[ "$NON_INTERACTIVE" != "true" ]]; then
