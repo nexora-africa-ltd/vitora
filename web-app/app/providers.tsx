@@ -17,6 +17,7 @@ import { LicenseProvider } from '@/lib/context/license-context';
 import { NavigationModeProvider } from '@/lib/context/navigation-mode-context';
 import { createQueryClient } from '@/lib/query-client';
 import { initChunkErrorHandler } from '@/lib/utils/chunk-error-handler';
+import { initDesktopApiUrl } from '@/lib/api/client';
 
 // Only load devtools in development - use dynamic import to avoid build errors
 const ReactQueryDevtools = dynamic(
@@ -48,6 +49,11 @@ export function Providers({ children }: ProvidersProps) {
   // Initialize chunk error handler to recover from stale chunks after deployment
   useEffect(() => {
     initChunkErrorHandler();
+  }, []);
+
+  // Initialize desktop API URL from Tauri config (resolves hub URL for apiClient)
+  useEffect(() => {
+    initDesktopApiUrl();
   }, []);
 
   return (
