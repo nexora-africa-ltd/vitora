@@ -18,6 +18,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from .bootstrap import build_activation_bootstrap_payload
 from .models import Installation
 from .serializers import (
     ActivationRequestSerializer,
@@ -54,7 +55,11 @@ def activate_installation(request: Request) -> Response:
     # Find the pending installation by activation code (case-insensitive)
     try:
         installation = Installation.objects.select_related(
-            "organization", "organization__subscription_plan"
+            "facility",
+            "facility__county",
+            "facility__sub_county",
+            "organization",
+            "organization__subscription_plan",
         ).get(
             activation_code__iexact=activation_code,
             status=Installation.Status.PENDING,
@@ -90,15 +95,7 @@ def activate_installation(request: Request) -> Response:
     decoded = pyjwt.decode(token, options={"verify_signature": False})
 
     return Response(
-        {
-            "license_token": token,
-            "installation_id": str(installation.installation_id),
-            "org_name": payload.get("org_name", ""),
-            "tier": payload.get("tier", ""),
-            "features": payload.get("features", {}),
-            "expires_at": decoded.get("exp"),
-            "check_in_by": decoded.get("check_in_by"),
-        },
+        build_activation_bootstrap_payload(installation, token, decoded),
         status=status.HTTP_200_OK,
     )
 
