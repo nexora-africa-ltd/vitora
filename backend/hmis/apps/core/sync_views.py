@@ -23,6 +23,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.models import SyncConflict, SyncQueue
+from hmis.apps.core.sync_registry import downward_sync_models
 from hmis.apps.core.sync_serializers import (
     SyncConflictDetailSerializer,
     SyncConflictResolveSerializer,
@@ -247,6 +248,7 @@ def sync_pull(request):
 
     since = request.query_params.get("since")
     full = request.query_params.get("full", "").lower() == "true"
+    direction = request.query_params.get("direction", "").lower()
     tables_param = request.query_params.get("tables", "")
     limit = min(int(request.query_params.get("limit", "500")), 1000)
 
@@ -257,7 +259,9 @@ def sync_pull(request):
         )
 
     # Filter to requested tables (or all syncable)
-    tables = set(tables_param.split(",")) & SYNCABLE_TABLES if tables_param else SYNCABLE_TABLES
+    allowed_tables = downward_sync_models() if direction == "down" else SYNCABLE_TABLES
+    requested_tables = {table.strip() for table in tables_param.split(",") if table.strip()}
+    tables = requested_tables & allowed_tables if requested_tables else allowed_tables
 
     # Build queryset
     qs = SyncQueue.objects.filter(
@@ -291,11 +295,12 @@ def sync_pull(request):
 
     changes = []
     for entry in entries:
+        record_id = entry.record_id if direction == "down" else str(entry.record_id)
         changes.append(
             {
                 "table": entry.model_name,
                 "operation": entry.operation,
-                "record_id": str(entry.record_id) if entry.record_id else None,
+                "record_id": record_id if entry.record_id else None,
                 "data": entry.data,
                 "timestamp": entry.synced_at or entry.created_at,
                 "server_sequence": entry.pk,
@@ -304,6 +309,7 @@ def sync_pull(request):
 
     response_data = {
         "changes": changes,
+        "entries": changes,
         "server_timestamp": timezone.now(),
         "has_more": has_more,
         "next_cursor": str(entries[-1].pk) if has_more and entries else None,

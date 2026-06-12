@@ -81,3 +81,18 @@ def is_upward_sync_model(model_label: str) -> bool:
     """Return whether a model should auto-queue upward changes from a hub."""
     entry = get_registry_entry(model_label)
     return bool(entry and entry.direction in {SyncDirection.UP, SyncDirection.BOTH})
+
+
+def is_downward_sync_model(model_label: str) -> bool:
+    """Return whether a model can be pulled downward from cloud to hub."""
+    entry = get_registry_entry(model_label)
+    return bool(entry and entry.direction in {SyncDirection.DOWN, SyncDirection.BOTH})
+
+
+def downward_sync_models() -> set[str]:
+    """Return all registry labels allowed in cloud-to-hub pulls."""
+    return {
+        model_label
+        for model_label, entry in SYNC_REGISTRY.items()
+        if entry.direction in {SyncDirection.DOWN, SyncDirection.BOTH}
+    }

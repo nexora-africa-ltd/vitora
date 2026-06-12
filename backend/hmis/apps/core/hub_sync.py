@@ -21,6 +21,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from hmis.apps.core.models import SyncQueue
+from hmis.apps.core.sync_materializer import materialize_entry
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +162,7 @@ class HubCloudSyncWorker:
 
     def _pull_changes(self) -> int:
         """Pull changes from cloud since last pull. Returns count received."""
-        params: dict = {"limit": str(self.batch_size)}
+        params: dict = {"limit": str(self.batch_size), "direction": "down"}
 
         if self._last_pull_timestamp:
             params["since"] = self._last_pull_timestamp.isoformat()
@@ -180,14 +181,25 @@ class HubCloudSyncWorker:
                 return 0
 
             data = response.json()
-            changes = data.get("changes", [])
+            changes = data.get("entries") or data.get("changes", [])
             server_ts = data.get("server_timestamp")
 
             if server_ts:
                 self._last_pull_timestamp = datetime.fromisoformat(server_ts)
 
-            # Queue pulled changes locally as SYNCED (they came from cloud)
+            applied = 0
             for change in changes:
+                result = materialize_entry(change)
+                if not result.get("success"):
+                    logger.warning(
+                        "Failed to apply pulled change %s:%s: %s",
+                        change.get("table"),
+                        change.get("record_id"),
+                        result.get("error"),
+                    )
+                    continue
+
+                # Queue pulled changes locally as SYNCED (they came from cloud)
                 SyncQueue.objects.update_or_create(
                     model_name=change["table"],
                     record_id=change.get("record_id"),
@@ -198,8 +210,9 @@ class HubCloudSyncWorker:
                         "synced_at": timezone.now(),
                     },
                 )
+                applied += 1
 
-            return len(changes)
+            return applied
 
         except requests.RequestException as e:
             logger.warning("Cloud pull network error: %s", e)
