@@ -38,6 +38,19 @@ CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 # ---------------------------------------------------------------------------
+# Cookie Auth — HTTP LAN (no HTTPS)
+# ---------------------------------------------------------------------------
+# The hub runs on plain HTTP over LAN.  Secure=True would prevent the browser
+# from storing the cookies, and SameSite=Lax blocks cross-origin fetch.
+# The Tauri webview is on 127.0.0.1:<sidecar-port> while the hub is on
+# 192.168.x.x:9088, which are different origins.
+AUTH_COOKIE_SECURE = False
+AUTH_COOKIE_SAMESITE = "Lax"
+AUTH_COOKIE_DOMAIN = None  # Let the browser scope to the hub's IP
+CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SECURE = False
+
+# ---------------------------------------------------------------------------
 # Database — SQLite with WAL mode (performant for <20 concurrent users)
 # ---------------------------------------------------------------------------
 
@@ -182,6 +195,13 @@ STORAGES = {
     },
 }
 
+# Insert WhiteNoise middleware right after SecurityMiddleware
+try:
+    _sec_idx = MIDDLEWARE.index("django.middleware.security.SecurityMiddleware")  # noqa: F405
+    MIDDLEWARE.insert(_sec_idx + 1, "whitenoise.middleware.WhiteNoiseMiddleware")  # noqa: F405
+except ValueError:
+    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")  # noqa: F405
+
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
@@ -236,3 +256,6 @@ HUB_FACILITY_ID = os.getenv("HUB_FACILITY_ID", "")
 HUB_ORGANIZATION_ID = os.getenv("HUB_ORGANIZATION_ID", "")
 HUB_FACILITY_NAME = os.getenv("HUB_FACILITY_NAME", "Vitora Hub")
 HUB_PORT = int(os.getenv("HUB_PORT", "9088"))
+
+# Enable the setup wizard so admins can bootstrap org/facility/user via the web UI
+SETUP_WIZARD_ENABLED = True
