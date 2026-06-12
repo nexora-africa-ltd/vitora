@@ -530,10 +530,13 @@ class SyncVersionMixin(models.Model):
 |------------|---------|--------|
 | Non-PII (names, clinical) | ✅ Yes | Plaintext |
 | Fernet-encrypted PII (national_id, phone, email) | ✅ Yes | **Encrypted blob** (transferred as-is, same key on cloud) |
-| Passwords | ❌ Never | Excluded via `exclude_fields` |
+| Password hashes | ✅ Yes | Django hash string (pbkdf2/argon2) — required for offline auth |
 | Session tokens | ❌ Never | Not in model |
+| last_login | ❌ Excluded | Ephemeral, per-device |
 
 The hub and cloud share the same `ENCRYPTION_KEY` (set during activation). Encrypted fields are synced as their ciphertext — never decrypted in transit.
+
+> **Design note (password hashes)**: Password hashes MUST be synced bidirectionally so staff can authenticate on both hub (offline) and cloud. Django stores one-way hashes (PBKDF2 with 600k iterations or Argon2) that are not reversible. They are no more sensitive in transit than the clinical data already being synced over TLS. The `auth.User` registry entry uses `LAST_WRITE_WINS` conflict policy so the most recent password change (on either hub or cloud) takes precedence.
 
 ---
 
