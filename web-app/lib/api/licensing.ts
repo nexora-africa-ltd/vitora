@@ -188,7 +188,7 @@ export const licensingAdminApi = {
   /** Email the activation code to the organization's contact email. */
   async sendCode(
     id: number,
-    payload?: { to_email: string; subject: string; body: string },
+    payload?: { to_email: string; subject?: string; body?: string },
   ): Promise<{ sent_to: string; organization: string }> {
     const response = await apiClient.post(`/api/licensing/installations/${id}/send-code/`, payload || {});
     return response.data;
