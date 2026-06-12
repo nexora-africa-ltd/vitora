@@ -20,6 +20,10 @@ class CoreConfig(AppConfig):
         with contextlib.suppress(ImportError):
             from hmis.apps.core import signals  # noqa: F401
 
+        # Import hub sync signals to register auto-queue handlers.
+        with contextlib.suppress(ImportError):
+            from hmis.apps.core import sync_signals  # noqa: F401
+
         # Import OpenAPI extensions so drf-spectacular can discover them.
         with contextlib.suppress(ImportError):
             from hmis.apps.core import openapi  # noqa: F401
