@@ -105,10 +105,11 @@ def activate_installation(request: Request) -> Response:
 @permission_classes([permissions.AllowAny])
 def check_in(request: Request) -> Response:
     """
-    Periodic check-in to refresh the license token.
+    Periodic check-in to refresh the license token (Phase 3 enhanced).
 
-    Called by the desktop app every 24h when internet is available.
-    Returns a fresh token with updated features/limits from the org's plan.
+    Called by the hub every 6 hours. Accepts telemetry, binary hashes,
+    and hardware fingerprint. Performs integrity verification and issues
+    a fresh JWT.
     """
     serializer = CheckInRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -130,7 +131,7 @@ def check_in(request: Request) -> Response:
     if installation.status == Installation.Status.REVOKED:
         return Response(
             {"error": "This installation has been revoked.", "code": "revoked"},
-            status=status.HTTP_403_FORBIDDEN,
+            status=status.HTTP_401_UNAUTHORIZED,
         )
 
     if installation.status == Installation.Status.SUSPENDED:
@@ -146,41 +147,135 @@ def check_in(request: Request) -> Response:
         )
 
     # Update metadata
+    client_ip = _get_client_ip(request)
+    app_version = data.get("version") or data.get("app_version") or installation.app_version
+
     installation.last_check_in = timezone.now()
-    installation.check_in_ip = _get_client_ip(request)
-    installation.app_version = data.get("app_version") or installation.app_version
+    installation.check_in_ip = client_ip
+    installation.app_version = app_version
     installation.os_info = data.get("os_info") or installation.os_info
+    installation.hostname = data.get("hostname") or installation.hostname
+    installation.check_in_count = (installation.check_in_count or 0) + 1
+
+    # Phase 3: Hardware fingerprint binding
+    hardware_fp = data.get("hardware_fingerprint", "")
+    if hardware_fp and not installation.hardware_fingerprint:
+        # First check-in with fingerprint — bind it
+        installation.hardware_fingerprint = hardware_fp
+        # Note: mismatch detection handled below (clone detection)
+
+    # Phase 3: Binary integrity verification
+    binary_hashes = data.get("binary_hashes", {})
+    integrity_result = None
+    if binary_hashes:
+        installation.last_reported_hashes = binary_hashes
+        integrity_result = _verify_integrity(installation, binary_hashes, app_version)
 
     # Sign a fresh token
     payload = build_license_payload(installation)
+
+    # Add tamper_detected flag if integrity check failed
+    if integrity_result and not integrity_result.get("match", True):
+        payload.setdefault("features", {})["tamper_detected"] = True
+
     token = sign_license_token(payload)
     installation.license_jwt = token
-    installation.save(
-        update_fields=[
-            "last_check_in",
-            "check_in_ip",
-            "app_version",
-            "os_info",
-            "license_jwt",
-            "updated_at",
-        ]
-    )
+
+    update_fields = [
+        "last_check_in",
+        "check_in_ip",
+        "app_version",
+        "os_info",
+        "hostname",
+        "check_in_count",
+        "hardware_fingerprint",
+        "last_reported_hashes",
+        "license_jwt",
+        "updated_at",
+    ]
+    installation.save(update_fields=update_fields)
+
+    # Log the check-in
+    _create_check_in_log(installation, data, client_ip, integrity_result)
 
     import jwt as pyjwt
 
     decoded = pyjwt.decode(token, options={"verify_signature": False})
 
-    return Response(
-        {
-            "license_token": token,
-            "installation_id": str(installation.installation_id),
-            "org_name": payload.get("org_name", ""),
-            "tier": payload.get("tier", ""),
-            "features": payload.get("features", {}),
-            "expires_at": decoded.get("exp"),
-            "check_in_by": decoded.get("check_in_by"),
-        },
-        status=status.HTTP_200_OK,
+    # Build response
+    response_data = {
+        "license": token,
+        "license_token": token,  # Legacy compatibility
+        "installation_id": str(installation.installation_id),
+        "org_name": payload.get("org_name", ""),
+        "tier": payload.get("tier", ""),
+        "features": payload.get("features", {}),
+        "expires_at": decoded.get("exp"),
+        "check_in_by": decoded.get("check_in_by"),
+        "binary_manifest_id": installation.binary_manifest_id,
+        "actions": [],
+    }
+
+    # Detect clone: different hardware fingerprint
+    if (
+        hardware_fp
+        and installation.hardware_fingerprint
+        and hardware_fp != installation.hardware_fingerprint
+    ):
+        response_data["actions"].append(
+            {"type": "hardware_mismatch", "message": "Hardware fingerprint does not match."}
+        )
+
+    return Response(response_data, status=status.HTTP_200_OK)
+
+
+def _verify_integrity(installation, binary_hashes: dict, app_version: str) -> dict | None:
+    """
+    Compare reported binary hashes against the expected release manifest.
+
+    Returns the verification result dict, or None if no manifest exists.
+    """
+    from .models import ReleaseManifest
+
+    try:
+        manifest = ReleaseManifest.objects.get(version=app_version)
+    except ReleaseManifest.DoesNotExist:
+        # No manifest for this version — can't verify (expected during dev)
+        return None
+
+    result = manifest.verify_hashes(binary_hashes)
+
+    if not result["match"]:
+        # Flag tamper if not already flagged
+        if not installation.tamper_flagged_at:
+            installation.flag_tamper()
+        installation.binary_manifest_id = manifest.manifest_id
+        installation.save(update_fields=["binary_manifest_id", "updated_at"])
+    else:
+        # Hashes match — clear any previous tamper flag
+        if installation.tamper_flagged_at and not installation.tamper_resolved_at:
+            installation.clear_tamper()
+
+    return result
+
+
+def _create_check_in_log(installation, data: dict, client_ip: str, integrity_result) -> None:
+    """Create a CheckInLog entry for audit trail."""
+    from .models import CheckInLog
+
+    CheckInLog.objects.create(
+        installation=installation,
+        ip_address=client_ip,
+        hostname=data.get("hostname", ""),
+        app_version=data.get("version") or data.get("app_version", ""),
+        os_info=data.get("os_info", ""),
+        uptime_seconds=data.get("uptime_seconds", 0),
+        user_count_24h=data.get("user_count_24h", 0),
+        encounter_count_24h=data.get("encounter_count_24h", 0),
+        hardware_fingerprint=data.get("hardware_fingerprint", ""),
+        binary_hashes=data.get("binary_hashes", {}),
+        integrity_match=integrity_result.get("match") if integrity_result else None,
+        token_issued=True,
     )
 
 
