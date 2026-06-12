@@ -51,12 +51,12 @@ def activate_installation(request: Request) -> Response:
     activation_code = data["activation_code"]
     installation_id = data["installation_id"]
 
-    # Find the pending installation by activation code
+    # Find the pending installation by activation code (case-insensitive)
     try:
         installation = Installation.objects.select_related(
             "organization", "organization__subscription_plan"
         ).get(
-            activation_code=activation_code,
+            activation_code__iexact=activation_code,
             status=Installation.Status.PENDING,
         )
     except Installation.DoesNotExist:
