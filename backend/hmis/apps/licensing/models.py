@@ -135,6 +135,52 @@ class Installation(TimeStampedModel):
         help_text="OS info reported on last check-in.",
     )
 
+    # ------------------------------------------------------------------
+    # Phase 3: Integrity & Hardware Binding
+    # ------------------------------------------------------------------
+
+    hardware_fingerprint = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="SHA-256 of hardware identifiers (CPU + MB serial + disk UUID).",
+    )
+    binary_manifest_id = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Expected manifest version for integrity checks (e.g., '1.4.5-r3').",
+    )
+    hostname = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Hostname reported at last check-in.",
+    )
+    tamper_flagged_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When binary integrity mismatch was first detected.",
+    )
+    tamper_resolved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When tamper flag was manually cleared.",
+    )
+    revocation_epoch = models.PositiveIntegerField(
+        default=0,
+        help_text="Monotonic counter; incremented by cloud to force token refresh.",
+    )
+    last_reported_hashes = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Binary hashes from last check-in {path: sha256}.",
+    )
+    check_in_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Total number of successful check-ins.",
+    )
+
     class Meta:
         ordering = ["-created_at"]
 
@@ -162,3 +208,142 @@ class Installation(TimeStampedModel):
         self.status = self.Status.SUSPENDED
         self.revoked_reason = reason
         self.save(update_fields=["status", "revoked_reason", "updated_at"])
+
+    @property
+    def is_tampered(self) -> bool:
+        """True if integrity mismatch detected and not yet resolved."""
+        return self.tamper_flagged_at is not None and self.tamper_resolved_at is None
+
+    def flag_tamper(self) -> None:
+        """Mark this installation as having mismatched binary hashes."""
+        from django.utils import timezone
+
+        if not self.tamper_flagged_at:
+            self.tamper_flagged_at = timezone.now()
+            self.save(update_fields=["tamper_flagged_at", "updated_at"])
+
+    def clear_tamper(self) -> None:
+        """Clear the tamper flag (support override)."""
+        from django.utils import timezone
+
+        self.tamper_resolved_at = timezone.now()
+        self.save(update_fields=["tamper_resolved_at", "updated_at"])
+
+
+class ReleaseManifest(TimeStampedModel):
+    """
+    Expected binary integrity manifest for a given hub release version.
+
+    The cloud stores the expected SHA-256 hashes of all compiled .so files
+    for each released version. During check-in, the hub's reported hashes
+    are compared against this manifest.
+    """
+
+    version = models.CharField(
+        max_length=50,
+        unique=True,
+        help_text="Release version string (e.g., '1.4.5').",
+    )
+    manifest_id = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Manifest identifier (e.g., '1.4.5-r3').",
+    )
+    file_hashes = models.JSONField(
+        default=dict,
+        help_text="Map of relative file path → expected SHA-256 hash.",
+    )
+    published_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When this release was published.",
+    )
+    signed_by = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Identity of the release signer (e.g., CI build ID, GPG key fingerprint).",
+    )
+
+    class Meta:
+        ordering = ["-published_at"]
+
+    def __str__(self) -> str:
+        return f"Manifest {self.manifest_id} ({len(self.file_hashes)} files)"
+
+    def verify_hashes(self, reported_hashes: dict[str, str]) -> dict:
+        """
+        Compare reported binary hashes against expected manifest.
+
+        Returns:
+            {
+                "match": True/False,
+                "mismatched_files": [list of paths that don't match],
+                "missing_files": [expected but not reported],
+                "extra_files": [reported but not expected],
+            }
+        """
+        expected = self.file_hashes
+        mismatched = []
+        missing = []
+        extra = []
+
+        for path, expected_hash in expected.items():
+            reported_hash = reported_hashes.get(path)
+            if reported_hash is None:
+                missing.append(path)
+            elif reported_hash != expected_hash:
+                mismatched.append(path)
+
+        for path in reported_hashes:
+            if path not in expected:
+                extra.append(path)
+
+        return {
+            "match": not mismatched and not missing,
+            "mismatched_files": mismatched,
+            "missing_files": missing,
+            "extra_files": extra,
+        }
+
+
+class CheckInLog(TimeStampedModel):
+    """
+    Audit log of hub check-in events.
+
+    Stores each check-in attempt with metadata for monitoring,
+    tamper detection forensics, and clone detection.
+    """
+
+    installation = models.ForeignKey(
+        Installation,
+        on_delete=models.CASCADE,
+        related_name="check_in_logs",
+    )
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    hostname = models.CharField(max_length=255, blank=True, default="")
+    app_version = models.CharField(max_length=50, blank=True, default="")
+    os_info = models.CharField(max_length=200, blank=True, default="")
+    uptime_seconds = models.PositiveIntegerField(default=0)
+    user_count_24h = models.PositiveIntegerField(default=0)
+    encounter_count_24h = models.PositiveIntegerField(default=0)
+    hardware_fingerprint = models.CharField(max_length=128, blank=True, default="")
+    binary_hashes = models.JSONField(default=dict, blank=True)
+    integrity_match = models.BooleanField(
+        null=True,
+        help_text="True if binary hashes matched expected manifest.",
+    )
+    token_issued = models.BooleanField(
+        default=True,
+        help_text="Whether a fresh license JWT was issued.",
+    )
+    notes = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["installation", "-created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"CheckIn {self.installation_id} @ {self.created_at}"

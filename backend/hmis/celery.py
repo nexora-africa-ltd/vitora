@@ -270,6 +270,11 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.core.tasks.prune_sync_queue",
         "schedule": crontab(minute=0, hour="*/6"),
     },
+    # License check-in: hub reports telemetry + integrity hashes to cloud (every 6h)
+    "license-check-in": {
+        "task": "hmis.apps.licensing.tasks.license_check_in",
+        "schedule": crontab(minute=15, hour="*/6"),
+    },
 }
 
 # Timezone configuration

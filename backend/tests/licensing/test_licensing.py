@@ -434,7 +434,7 @@ class TestCheckIn:
         assert active_installation.last_check_in is not None
 
     def test_revoked_installation_rejected(self, api_client, active_installation):
-        """Revoked installation should get 403."""
+        """Revoked installation should get 401 (triggers hub token wipe)."""
         active_installation.revoke(reason="Payment failed")
 
         response = api_client.post(
@@ -443,7 +443,7 @@ class TestCheckIn:
             format="json",
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert response.data["code"] == "revoked"
 
     def test_suspended_installation_rejected(self, api_client, active_installation):

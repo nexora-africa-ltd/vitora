@@ -38,7 +38,7 @@ class ActivationRequestSerializer(serializers.Serializer):
 
 
 class CheckInRequestSerializer(serializers.Serializer):
-    """Request body for periodic license check-in."""
+    """Request body for periodic license check-in (Phase 3 enhanced)."""
 
     installation_id = serializers.CharField(
         max_length=200,
@@ -53,6 +53,53 @@ class CheckInRequestSerializer(serializers.Serializer):
         max_length=200,
         required=False,
         default="",
+    )
+    # Phase 3 additions
+    license_jti = serializers.CharField(
+        max_length=200,
+        required=False,
+        default="",
+        help_text="JTI of the current license JWT.",
+    )
+    version = serializers.CharField(
+        max_length=50,
+        required=False,
+        default="",
+        help_text="Alias for app_version (Phase 3 payload format).",
+    )
+    uptime_seconds = serializers.IntegerField(
+        required=False,
+        default=0,
+    )
+    hostname = serializers.CharField(
+        max_length=255,
+        required=False,
+        default="",
+    )
+    ip_address = serializers.CharField(
+        max_length=45,
+        required=False,
+        default="",
+    )
+    user_count_24h = serializers.IntegerField(
+        required=False,
+        default=0,
+    )
+    encounter_count_24h = serializers.IntegerField(
+        required=False,
+        default=0,
+    )
+    binary_hashes = serializers.DictField(
+        child=serializers.CharField(),
+        required=False,
+        default=dict,
+        help_text="Map of relative file path → SHA-256 hash of compiled binaries.",
+    )
+    hardware_fingerprint = serializers.CharField(
+        max_length=128,
+        required=False,
+        default="",
+        help_text="SHA-256 of hardware identifiers.",
     )
 
 
@@ -96,6 +143,7 @@ class InstallationDetailSerializer(serializers.ModelSerializer):
 
     org_name = serializers.CharField(source="organization.name", read_only=True)
     facility_name = serializers.CharField(source="facility.name", read_only=True, default="")
+    is_tampered = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Installation
@@ -113,10 +161,19 @@ class InstallationDetailSerializer(serializers.ModelSerializer):
             "activated_by",
             "last_check_in",
             "check_in_ip",
+            "check_in_count",
             "app_version",
             "os_info",
+            "hostname",
+            "hardware_fingerprint",
+            "binary_manifest_id",
+            "tamper_flagged_at",
+            "tamper_resolved_at",
+            "revocation_epoch",
+            "last_reported_hashes",
             "revoked_at",
             "revoked_reason",
+            "is_tampered",
             "created_at",
             "updated_at",
         ]

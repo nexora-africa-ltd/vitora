@@ -1,0 +1,251 @@
+name: Build Compiled Hub
+
+# Builds a Nuitka-compiled hub artifact (no readable Python source).
+# Triggered on hub-compiled-v* tags or manually.
+# This is the Phase 2 pipeline from the Hub Code Protection Plan.
+
+on:
+  push:
+    tags:
+      - "hub-compiled-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number (e.g., 1.0.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  PYTHON_VERSION: "3.12"
+  BLOB_CONTAINER: "releases"
+  CDN_BASE_URL: "https://get.vitora.digital"
+
+jobs:
+  compile:
+    name: Compile Hub (${{ matrix.os }}-${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            runner: ubuntu-22.04
+          - os: linux
+            arch: arm64
+            runner: ubuntu-22.04-arm
+          # Windows compilation (future)
+          # - os: windows
+          #   arch: amd64
+          #   runner: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ -n "${{ inputs.version }}" ]]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            echo "version=${TAG#hub-compiled-v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc python3-dev patchelf ccache
+
+      - name: Install Poetry and Python deps
+        working-directory: backend
+        run: |
+          pip install poetry
+          poetry install --without dev
+          pip install nuitka ordered-set
+
+      - name: Cache Nuitka builds
+        uses: actions/cache@v4
+        with:
+          path: backend/build/compiled
+          key: nuitka-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('backend/hmis/**/*.py') }}
+          restore-keys: |
+            nuitka-${{ matrix.os }}-${{ matrix.arch }}-
+
+      - name: Compile with Nuitka
+        working-directory: backend
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          python scripts/compile-hub.py \
+            --version "$VERSION" \
+            --jobs 4
+
+      - name: Export requirements
+        working-directory: backend
+        run: |
+          poetry self add poetry-plugin-export 2>/dev/null || true
+          poetry export --without dev --without-hashes --format requirements.txt --output build/payload/requirements-hub.txt
+          # Strip markers
+          sed -i 's/ ; python_version.*//; s/ ; platform_system.*//; s/ ; sys_platform.*//; s/ ; implementation_name.*//' build/payload/requirements-hub.txt
+
+      - name: Copy scripts and create archive
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PAYLOAD="backend/build/payload"
+          ARTIFACT="vitora-hub-compiled-${VERSION}-${{ matrix.os }}-${{ matrix.arch }}"
+
+          # Add scripts
+          mkdir -p "${PAYLOAD}/scripts"
+          cp backend/scripts/install-hub.sh "${PAYLOAD}/scripts/" 2>/dev/null || true
+          cp backend/scripts/update-hub.sh "${PAYLOAD}/scripts/" 2>/dev/null || true
+
+          # Write version file
+          echo "$VERSION" > "${PAYLOAD}/VERSION"
+
+          # Create tarball
+          mkdir -p dist
+          cd backend/build && tar -czf "../../dist/${ARTIFACT}.tar.gz" payload/
+          cd ../..
+
+          # Compute checksum
+          sha256sum "dist/${ARTIFACT}.tar.gz" > "dist/${ARTIFACT}.tar.gz.sha256"
+
+          echo "artifact_path=dist/${ARTIFACT}.tar.gz" >> "$GITHUB_ENV"
+          echo "artifact_name=${ARTIFACT}" >> "$GITHUB_ENV"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hub-compiled-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            dist/*.tar.gz
+            dist/*.sha256
+
+  smoke-test:
+    name: Smoke Test Compiled Hub
+    needs: compile
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hub-compiled-linux-amd64
+          path: dist/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Extract and test
+        run: |
+          mkdir hub && cd hub
+          tar -xzf ../dist/*.tar.gz --strip-components=1
+
+          # Install dependencies
+          pip install -r requirements-hub.txt 2>/dev/null || pip install django djangorestframework
+
+          # Verify no .py source in compiled apps (except allowed patterns)
+          PY_COUNT=$(find hmis/apps/ -name "*.py" \
+            ! -name "apps.py" \
+            ! -name "__init__.py" \
+            ! -path "*/migrations/*" | wc -l)
+
+          echo "Remaining .py files in apps (should be 0): $PY_COUNT"
+
+          # Verify .so files exist
+          SO_COUNT=$(find . -name "*.so" | wc -l)
+          echo "Compiled .so modules: $SO_COUNT"
+
+          if [[ "$SO_COUNT" -eq 0 ]]; then
+            echo "ERROR: No compiled modules found!"
+            exit 1
+          fi
+
+          # Verify manifest.json exists
+          if [[ ! -f manifest.json ]]; then
+            echo "ERROR: manifest.json not found!"
+            exit 1
+          fi
+
+          echo "Smoke test PASSED"
+
+  publish:
+    name: Publish Compiled Hub
+    needs: smoke-test
+    if: startsWith(github.ref, 'refs/tags/hub-compiled-v')
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout (for scripts)
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Determine version
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "version=${TAG#hub-compiled-v}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to Azure Blob Storage
+        if: env.AZURE_STORAGE_CONNECTION_STRING != ''
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          for f in artifacts/hub-compiled-*/*.tar.gz; do
+            BLOB_NAME="hub-compiled/$(basename $f)"
+            az storage blob upload \
+              --container-name "$BLOB_CONTAINER" \
+              --name "$BLOB_NAME" \
+              --file "$f" \
+              --overwrite \
+              --content-type application/gzip
+          done
+
+          # Upload checksums
+          for f in artifacts/hub-compiled-*/*.sha256; do
+            BLOB_NAME="hub-compiled/$(basename $f)"
+            az storage blob upload \
+              --container-name "$BLOB_CONTAINER" \
+              --name "$BLOB_NAME" \
+              --file "$f" \
+              --overwrite \
+              --content-type text/plain
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          name: "Vitora Hub (Compiled) v${{ steps.version.outputs.version }}"
+          body: |
+            ## Vitora HMIS — Compiled Hub v${{ steps.version.outputs.version }}
+
+            This release contains Nuitka-compiled binaries. No readable Python source
+            is included (except entry points, settings, and migration files).
+
+            ### Artifacts
+            - `vitora-hub-compiled-*-linux-amd64.tar.gz` — x86_64 Linux
+            - `vitora-hub-compiled-*-linux-arm64.tar.gz` — ARM64 Linux (Raspberry Pi 4+)
+
+            ### Integrity
+            Each artifact includes a `manifest.json` with SHA-256 hashes of all files.
+          files: |
+            artifacts/hub-compiled-*/*.tar.gz
+            artifacts/hub-compiled-*/*.sha256

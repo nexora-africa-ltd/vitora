@@ -250,6 +250,24 @@ clean:
 	rm -rf build/
 	rm -rf *.egg-info
 
+# ---------------------------------------------------------------------------
+# Hub compilation (Phase 2 — Code Protection)
+# ---------------------------------------------------------------------------
+
+build-compiled-hub: ## Compile hub with Nuitka (requires nuitka + C compiler)
+	@echo "Building compiled hub artifact..."
+	python scripts/compile-hub.py --version $$(cat VERSION 2>/dev/null || echo "dev") --jobs 4
+	@echo "Compiled hub payload ready at build/payload/"
+
+build-compiled-hub-dry: ## Dry-run: show what would be compiled
+	python scripts/compile-hub.py --dry-run
+
+package-hub: build-compiled-hub ## Compile + package into tarball
+	@VERSION=$$(cat VERSION 2>/dev/null || echo "dev"); \
+	mkdir -p dist; \
+	cd build && tar -czf ../dist/vitora-hub-$${VERSION}.tar.gz payload/; \
+	echo "Package ready: dist/vitora-hub-$${VERSION}.tar.gz"
+
 coverage-html:
 	poetry run pytest --cov=hmis --cov-report=html
 	@echo "Coverage report generated in htmlcov/index.html"
