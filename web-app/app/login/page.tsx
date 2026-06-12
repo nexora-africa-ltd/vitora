@@ -197,8 +197,10 @@ export default function LoginPage() {
         return;
       }
 
-      // Check if setup wizard needs to run before entering the app
-      if (process.env.NEXT_PUBLIC_SETUP_WIZARD_ENABLED === 'true') {
+      // Check if setup wizard needs to run before entering the app.
+      // Always check in desktop mode (the hub may have an empty DB and
+      // need first-run setup). On web, gate on the build-time flag.
+      if (isDesktop() || process.env.NEXT_PUBLIC_SETUP_WIZARD_ENABLED === 'true') {
         try {
           const setupStatus = await setupApi.check();
           if (setupStatus.setup_required) {

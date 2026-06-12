@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertDialog,
@@ -242,7 +241,6 @@ export default function InstallationDetailPage({ params }: { params: Promise<{ i
           code={installation.activation_code}
           orgEmail={orgDetail?.contact_email}
           orgName={installation.org_name}
-          installationName={installation.name}
         />
       )}
     </div>
@@ -263,22 +261,19 @@ function ActivationCodeCard({
   code,
   orgEmail,
   orgName,
-  installationName,
 }: {
   installationId: number;
   code: string;
   orgEmail?: string;
   orgName: string;
-  installationName: string;
 }) {
   const [composeOpen, setComposeOpen] = useState(false);
   const [emailTo, setEmailTo] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
-  const [emailBody, setEmailBody] = useState('');
   const codeRef = useRef<HTMLInputElement>(null);
 
   const sendMutation = useMutation({
-    mutationFn: (payload: { to_email: string; subject: string; body: string }) =>
+    mutationFn: (payload: { to_email: string; subject?: string }) =>
       licensingAdminApi.sendCode(installationId, payload),
     onSuccess: (data) => {
       toast.success(`Activation code emailed to ${data.sent_to}`);
@@ -290,20 +285,8 @@ function ActivationCodeCard({
   });
 
   const openCompose = () => {
-    const name = installationName || 'your new installation';
     setEmailTo(orgEmail || '');
     setEmailSubject(`Vitora HMIS Activation Code — ${orgName}`);
-    setEmailBody(
-      `Dear ${orgName} team,\n\n` +
-      `Your Vitora HMIS activation code for "${name}" is ready:\n\n` +
-      `    ${code}\n\n` +
-      `How to activate:\n` +
-      `1. Launch the Vitora HMIS application\n` +
-      `2. On the activation screen, enter the code above\n` +
-      `3. The system will verify and activate your license\n\n` +
-      `This code is single-use. If you encounter any issues, contact support@nexora.africa.\n\n` +
-      `Best regards,\nNexora Africa Ltd`
-    );
     setComposeOpen(true);
   };
 
@@ -371,16 +354,16 @@ function ActivationCodeCard({
 
       {/* Compose Email Dialog */}
       <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Send Activation Code</DialogTitle>
             <DialogDescription>
-              Review and edit the email before sending.
+              The email uses our branded activation template with step-by-step instructions.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email-to">To</Label>
+              <Label htmlFor="email-to">Recipient</Label>
               <Input
                 id="email-to"
                 type="email"
@@ -390,23 +373,18 @@ function ActivationCodeCard({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email-subject">Subject</Label>
+              <Label htmlFor="email-subject">Subject (optional)</Label>
               <Input
                 id="email-subject"
                 value={emailSubject}
                 onChange={(e) => setEmailSubject(e.target.value)}
+                placeholder="Vitora HMIS Activation Code"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email-body">Message</Label>
-              <Textarea
-                id="email-body"
-                value={emailBody}
-                onChange={(e) => setEmailBody(e.target.value)}
-                rows={12}
-                className="font-mono text-sm"
-              />
-            </div>
+            <p className="text-xs text-muted-foreground">
+              The activation code <span className="font-mono font-semibold">{code}</span> and
+              setup instructions will be included automatically.
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setComposeOpen(false)}>
@@ -416,8 +394,7 @@ function ActivationCodeCard({
               onClick={() =>
                 sendMutation.mutate({
                   to_email: emailTo,
-                  subject: emailSubject,
-                  body: emailBody,
+                  subject: emailSubject || undefined,
                 })
               }
               disabled={sendMutation.isPending || !emailTo}
