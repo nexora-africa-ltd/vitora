@@ -1,6 +1,6 @@
 # Hub ↔ Cloud Sync & Activation Flow
 
-> **Status**: Design Plan
+> **Status**: Implemented (Phase 1-5 complete)
 > **Author**: Engineering
 > **Date**: 2026-06-12
 > **Scope**: Hub provisioning, activation, bidirectional sync
@@ -554,7 +554,7 @@ The hub and cloud share the same `ENCRYPTION_KEY` (set during activation). Encry
 | **3a** | Pull endpoint (cloud→hub reference data) | 1 day | — |
 | **3b** | Hub pull consumer (apply reference data locally) | 1 day | 3a |
 | **4** | Conflict resolution (version vectors, resolution UI) | 3 days | 2b |
-| **5** | PII transit encryption verification + key provisioning | 1 day | 1a |
+| **5** | PII transit encryption, credential portability, key provisioning | 1 day | 1a |
 
 **Total: ~17 days (3.5 weeks)**
 
@@ -577,9 +577,10 @@ For hubs already deployed with the old manual-ID flow:
 3. Hub update script adds `SYNC_SERVER_URL` and `LICENSE_TOKEN` to .env
 4. On next restart, hub begins syncing
 
-Management command for one-time migration:
+Management command for one-time migration (implemented):
 ```bash
 python manage.py migrate_to_activation --hub-id="reception-hub-1" --license-token="<jwt>"
+# Verifies token via check-in, writes SYNC_SERVER_URL + LICENSE_TOKEN to .env
 ```
 
 ---

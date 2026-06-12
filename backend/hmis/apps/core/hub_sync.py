@@ -11,10 +11,12 @@ server and pulls any cloud changes back. Works in two modes:
 The cloud server exposes the same /api/sync/push/ and /api/sync/pull/ endpoints.
 """
 
+import json
 import logging
 import threading
 import time
 from datetime import datetime
+from pathlib import Path
 
 import requests
 from django.conf import settings
@@ -27,6 +29,9 @@ logger = logging.getLogger(__name__)
 
 # Token refresh buffer: refresh 60s before expiry
 TOKEN_REFRESH_BUFFER_SECS = 60
+
+# File where last pull timestamp is persisted across restarts
+SYNC_STATE_FILENAME = ".hub_sync_state.json"
 
 
 class HubCloudSyncWorker:
@@ -55,6 +60,41 @@ class HubCloudSyncWorker:
         self._token_expiry: float = 0  # unix timestamp when access token expires
         self._auth_username: str = ""
         self._auth_password: str = ""
+
+        # Restore persisted sync state
+        self._state_file = self._resolve_state_file()
+        self._load_state()
+
+    def _resolve_state_file(self) -> Path:
+        """Determine the path for persisted sync state."""
+        data_dir = getattr(settings, "HUB_DATA_DIR", "")
+        if data_dir:
+            return Path(data_dir) / SYNC_STATE_FILENAME
+        return Path(settings.BASE_DIR) / SYNC_STATE_FILENAME
+
+    def _load_state(self):
+        """Load persisted last_pull_timestamp from disk."""
+        if self._state_file.exists():
+            try:
+                state = json.loads(self._state_file.read_text())
+                ts = state.get("last_pull_timestamp")
+                if ts:
+                    self._last_pull_timestamp = datetime.fromisoformat(ts)
+                    logger.info("Restored last_pull_timestamp: %s", ts)
+            except (json.JSONDecodeError, ValueError, OSError) as exc:
+                logger.warning("Could not load sync state: %s", exc)
+
+    def _save_state(self):
+        """Persist last_pull_timestamp to disk."""
+        state = {
+            "last_pull_timestamp": (
+                self._last_pull_timestamp.isoformat() if self._last_pull_timestamp else None
+            ),
+        }
+        try:
+            self._state_file.write_text(json.dumps(state))
+        except OSError as exc:
+            logger.warning("Could not save sync state: %s", exc)
 
     @property
     def is_configured(self) -> bool:
@@ -106,9 +146,9 @@ class HubCloudSyncWorker:
 
     def _push_pending(self) -> int:
         """Push PENDING entries to the cloud server. Returns count pushed."""
-        pending = SyncQueue.objects.filter(status="PENDING").order_by("created_at")[
-            : self.batch_size
-        ]
+        pending = SyncQueue.objects.filter(status="PENDING").order_by(
+            "data__sync_meta__priority", "created_at"
+        )[: self.batch_size]
         if not pending:
             return 0
 
@@ -186,6 +226,7 @@ class HubCloudSyncWorker:
 
             if server_ts:
                 self._last_pull_timestamp = datetime.fromisoformat(server_ts)
+                self._save_state()
 
             applied = 0
             for change in changes:
