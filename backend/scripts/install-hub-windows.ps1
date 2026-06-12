@@ -104,49 +104,74 @@ Write-Info "Version: $Version"
 Write-Info "Download: $DownloadUrl"
 Write-Host ""
 
-# --- Configuration (Interactive or Env Vars) ---
-if ($NonInteractive) {
-    $HubId = $env:HUB_ID
-    $FacilityId = $env:HUB_FACILITY_ID
-    $OrgId = $env:HUB_ORGANIZATION_ID
-    $SyncUrl = if ($env:SYNC_URL) { $env:SYNC_URL } else { "https://api.vitora.digital/api/sync" }
-    $EncryptionKey = $env:ENCRYPTION_KEY
+# --- Configuration (Activation-Driven) ---
+$CloudUrl = if ($env:CLOUD_URL) { $env:CLOUD_URL } else { "https://api.vitora.digital" }
 
-    if (-not $HubId -or -not $FacilityId -or -not $OrgId -or -not $EncryptionKey) {
-        Write-Err "Non-interactive mode requires: HUB_ID, HUB_FACILITY_ID, HUB_ORGANIZATION_ID, ENCRYPTION_KEY"
+if ($NonInteractive) {
+    $ActivationCode = $env:ACTIVATION_CODE
+    if (-not $ActivationCode) {
+        Write-Err "Non-interactive mode requires: ACTIVATION_CODE environment variable"
         exit 1
     }
+    if ($env:CLOUD_URL) { $CloudUrl = $env:CLOUD_URL }
 } else {
-    Write-Host "Enter the configuration values from your Vitora cloud admin panel."
-    Write-Host "(Found at: Settings -> Facilities -> Hub Setup)" -ForegroundColor DarkGray
+    Write-Host "This installer will activate a hub by connecting to the Vitora cloud."
+    Write-Host "You need an activation code from your cloud admin panel."
+    Write-Host "(Found at: Settings -> Facilities -> Hub Setup -> Generate Code)" -ForegroundColor DarkGray
     Write-Host ""
 
-    $HubId = Read-Host "  Hub ID (unique name for this hub, e.g. 'reception-hub-1')"
-    $FacilityId = Read-Host "  Facility ID (from cloud admin)"
-    $OrgId = Read-Host "  Organization ID (from cloud admin)"
-    $SyncUrl = Read-Host "  Cloud Sync URL [https://api.vitora.digital/api/sync]"
-    if (-not $SyncUrl) { $SyncUrl = "https://api.vitora.digital/api/sync" }
-    $EncryptionKey = Read-Host "  Encryption Key (must match cloud)" -AsSecureString
-    $EncryptionKey = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($EncryptionKey)
-    )
+    $ActivationCode = Read-Host "  Activation Code"
+    $cloudInput = Read-Host "  Cloud URL [https://api.vitora.digital]"
+    if ($cloudInput) { $CloudUrl = $cloudInput }
 
     Write-Host ""
-    Write-Info "Configuration summary:"
-    Write-Host "  Hub ID:          $HubId"
-    Write-Host "  Facility:        $FacilityId"
-    Write-Host "  Organization:    $OrgId"
-    Write-Host "  Cloud Sync URL:  $SyncUrl"
-    Write-Host "  Port:            $HubPort"
-    Write-Host "  Install Dir:     $InstallDir"
-    Write-Host ""
-
-    $confirm = Read-Host "Proceed with installation? [y/N]"
+    $confirm = Read-Host "Proceed with activation and installation? [y/N]"
     if ($confirm -notmatch "^[Yy]$") {
         Write-Info "Cancelled."
         exit 0
     }
 }
+
+# --- Activate with Cloud ---
+Write-Step "A" "Activating hub with cloud..."
+$InstallationId = "hub-$($env:COMPUTERNAME)-$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
+
+try {
+    $activationBody = @{
+        activation_code = $ActivationCode
+        installation_id = $InstallationId
+    } | ConvertTo-Json
+
+    $activationResponse = Invoke-RestMethod -Uri "$CloudUrl/api/licensing/activate/" `
+        -Method POST -Body $activationBody -ContentType "application/json" -UseBasicParsing
+} catch {
+    Write-Err "Activation failed. Check your activation code and internet connection."
+    Write-Err "Cloud URL: $CloudUrl/api/licensing/activate/"
+    Write-Err "Error: $_"
+    exit 1
+}
+
+# Parse activation response
+$LicenseToken = $activationResponse.license_token
+$HubId = $InstallationId
+$OrgId = $activationResponse.organization.id
+$FacilityId = $activationResponse.facility.id
+$SyncUrl = if ($activationResponse.sync_url) { $activationResponse.sync_url } else { "$CloudUrl/api/sync" }
+$OrgName = $activationResponse.organization.name
+$FacilityName = $activationResponse.facility.name
+$EncryptionKey = if ($activationResponse.encryption_key) { $activationResponse.encryption_key } else { "" }
+
+Write-Info "Activation successful!"
+Write-Host ""
+Write-Host "  Organization:  $OrgName (ID: $OrgId)"
+Write-Host "  Facility:      $FacilityName (ID: $FacilityId)"
+Write-Host "  Hub ID:        $HubId"
+Write-Host "  Sync URL:      $SyncUrl"
+Write-Host ""
+
+# Save activation response for seeding
+$activationFile = "$env:TEMP\vitora-activation.json"
+$activationResponse | ConvertTo-Json -Depth 10 | Set-Content -Path $activationFile
 
 # --- Create Directories ---
 Write-Step 1 "Creating directories..."
@@ -279,6 +304,7 @@ HUB_DB_PATH=$DataDir\hub.sqlite3
 HUB_DATA_DIR=$DataDir
 HUB_LOG_FILE=$LogDir\hub.log
 SYNC_SERVER_URL=$SyncUrl
+LICENSE_TOKEN=$LicenseToken
 ALLOWED_HOSTS=*
 HUB_VERSION=$Version
 "@
@@ -306,6 +332,14 @@ Push-Location $InstallDir
 if ($LASTEXITCODE -ne 0) {
     Write-Warn "migrate failed (exit $LASTEXITCODE)"
 }
+
+# Seed org/facility from activation data
+Write-Info "Seeding organization and facility from activation data..."
+& $python manage.py seed_from_activation --response-file="$activationFile"
+if ($LASTEXITCODE -ne 0) {
+    Write-Warn "seed_from_activation failed (exit $LASTEXITCODE)"
+}
+Remove-Item -Path $activationFile -Force -ErrorAction SilentlyContinue
 
 # Collect static files (Django admin CSS, etc.).  Don't swallow errors —
 # if this fails the admin page will be unstyled.
@@ -360,6 +394,7 @@ $envVars = @(
     "HUB_DATA_DIR=$DataDir",
     "HUB_LOG_FILE=$LogDir\hub.log",
     "SYNC_SERVER_URL=$SyncUrl",
+    "LICENSE_TOKEN=$LicenseToken",
     "ALLOWED_HOSTS=*"
 ) -join "`n"
 & $nssmExe set $ServiceName AppEnvironmentExtra $envVars

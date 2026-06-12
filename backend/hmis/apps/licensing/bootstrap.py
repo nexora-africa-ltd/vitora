@@ -26,6 +26,7 @@ def build_activation_bootstrap_payload(
         "expires_at": decoded.get("exp"),
         "check_in_by": decoded.get("check_in_by"),
         "sync_url": getattr(settings, "SYNC_SERVER_URL", "https://api.vitora.digital/api/sync"),
+        "encryption_key": getattr(settings, "ENCRYPTION_KEY", ""),
         "organization": serialize_organization(organization),
         "facility": serialize_facility(facility) if facility else None,
         "bootstrap": {
