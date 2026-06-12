@@ -22,12 +22,21 @@ class SyncRegistryEntry:
     priority: int
     exclude_fields: tuple[str, ...] = field(default_factory=tuple)
     batch_size: int | None = None
+    conflict_policy: str | None = None
 
 
 SYNC_REGISTRY: dict[str, SyncRegistryEntry] = {
     # Core identity
-    "core.Organization": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=1),
-    "core.Facility": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=1),
+    "core.Organization": SyncRegistryEntry(
+        direction=SyncDirection.BOTH,
+        priority=1,
+        conflict_policy="REMOTE_WINS",
+    ),
+    "core.Facility": SyncRegistryEntry(
+        direction=SyncDirection.BOTH,
+        priority=1,
+        conflict_policy="REMOTE_WINS",
+    ),
     "core.StaffProfile": SyncRegistryEntry(direction=SyncDirection.UP, priority=2),
     "auth.User": SyncRegistryEntry(
         direction=SyncDirection.UP,

@@ -6,8 +6,10 @@ from typing import Any
 
 from django.apps import apps
 from django.db import transaction
+from django.utils.dateparse import parse_datetime
 
-from hmis.apps.core.sync_registry import SYNC_REGISTRY
+from hmis.apps.core.models import SyncConflict, SyncQueue
+from hmis.apps.core.sync_registry import SYNC_REGISTRY, SyncDirection
 
 SYNC_META_KEY = "sync_meta"
 
@@ -27,6 +29,36 @@ def materialize_entry(entry: dict[str, Any]) -> dict[str, Any]:
     except LookupError:
         return {"success": False, "error": f"Model not found: {table}"}
 
+    registry_entry = SYNC_REGISTRY[table]
+    local_change = find_pending_local_change(table, record_id)
+    if local_change:
+        strategy = choose_conflict_strategy(
+            direction=registry_entry.direction,
+            conflict_policy=registry_entry.conflict_policy,
+            local_change=local_change,
+            remote_entry=entry,
+        )
+        conflict = create_sync_conflict(
+            table=table,
+            record_id=record_id,
+            local_change=local_change,
+            remote_data=data,
+        )
+        if strategy == "LOCAL_WINS":
+            conflict.resolve(local_change.data, strategy=strategy)
+            return {"success": True, "conflict": True, "strategy": strategy}
+
+        result = apply_entry(model, operation, record_id, data)
+        if result.get("success"):
+            conflict.resolve(data, strategy=strategy)
+            return {"success": True, "conflict": True, "strategy": strategy}
+        return result
+
+    return apply_entry(model, operation, record_id, data)
+
+
+def apply_entry(model, operation: str, record_id: Any, data: dict[str, Any]) -> dict[str, Any]:
+    """Apply a non-conflicting entry to the database."""
     cleaned_data = clean_model_data(model, data)
 
     try:
@@ -42,7 +74,7 @@ def materialize_entry(entry: dict[str, Any]) -> dict[str, Any]:
                 if updated == 0:
                     return {
                         "success": False,
-                        "error": f"Record not found: {table}:{record_id}",
+                        "error": f"Record not found: {model._meta.label}:{record_id}",
                     }
             elif operation == "DELETE":
                 model.objects.filter(pk=record_id).delete()
@@ -52,6 +84,55 @@ def materialize_entry(entry: dict[str, Any]) -> dict[str, Any]:
         return {"success": False, "error": str(exc)}
 
     return {"success": True}
+
+
+def find_pending_local_change(model_label: str, record_id: Any) -> SyncQueue | None:
+    """Find the newest local unsynced change for a model/record pair."""
+    return (
+        SyncQueue.objects.filter(
+            model_name=model_label,
+            record_id=record_id,
+            status__in=["PENDING", "SYNCING"],
+        )
+        .order_by("-created_at")
+        .first()
+    )
+
+
+def choose_conflict_strategy(
+    *,
+    direction: SyncDirection,
+    conflict_policy: str | None,
+    local_change: SyncQueue,
+    remote_entry: dict[str, Any],
+) -> str:
+    """Choose a conflict strategy from sync direction and timestamps."""
+    if conflict_policy in {"LOCAL_WINS", "REMOTE_WINS"}:
+        return conflict_policy
+
+    if direction == SyncDirection.DOWN:
+        return "REMOTE_WINS"
+    if direction == SyncDirection.UP:
+        return "LOCAL_WINS"
+
+    remote_timestamp = parse_datetime(str(remote_entry.get("timestamp") or ""))
+    if remote_timestamp and remote_timestamp >= local_change.created_at:
+        return "REMOTE_WINS"
+    return "LOCAL_WINS"
+
+
+def create_sync_conflict(
+    *, table: str, record_id: Any, local_change: SyncQueue, remote_data: dict[str, Any]
+) -> SyncConflict:
+    """Create a SyncConflict row for audit/resolution tracking."""
+    return SyncConflict.objects.create(
+        model_name=table,
+        record_id=record_id,
+        local_data=local_change.data,
+        remote_data=remote_data,
+        resolution_strategy="LAST_WRITE_WINS",
+        status="PENDING",
+    )
 
 
 def get_model_for_label(model_label: str):
