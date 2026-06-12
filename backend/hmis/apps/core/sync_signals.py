@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Signals that queue hub-local changes for cloud sync."""
 
 from __future__ import annotations

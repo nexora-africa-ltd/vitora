@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Backfill scheduling resources and recurring schedules for theatres."""
 
 from django.core.management.base import BaseCommand

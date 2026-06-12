@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Serializers for L4 Microbiology module."""
 
 from rest_framework import serializers

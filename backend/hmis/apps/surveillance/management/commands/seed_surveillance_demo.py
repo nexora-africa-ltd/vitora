@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Management command to seed demo surveillance data for testing.
 

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Models for Critical Value Management.
 Phase L6.2 of Vitora LIS Implementation Plan.

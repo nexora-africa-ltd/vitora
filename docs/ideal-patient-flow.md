@@ -4,7 +4,7 @@
 
 **Version**: 1.0
 **Created**: January 3, 2026
-**Author**: Engineering Team, Nexora Africa Ltd
+**Author**: Engineering Team, Nexora Consulting Ltd
 
 ---
 

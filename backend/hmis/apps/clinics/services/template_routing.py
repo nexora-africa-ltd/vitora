@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Clinic → ClinicalTemplate routing helpers.
 
 This module provides a small, explicit mapping between a clinic's `clinic_type`

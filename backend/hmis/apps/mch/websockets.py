@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """WebSocket broadcast helpers for MCH labour partographs."""
 
 from asgiref.sync import async_to_sync

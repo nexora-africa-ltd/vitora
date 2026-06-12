@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Automated CQM Evaluation Engine for Vitora HMIS.
 

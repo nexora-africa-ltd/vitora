@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Signals for Phase L3: Analyzer Interfacing.
 

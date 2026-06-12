@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 import django_filters
 
 from .models import ProcedureCatalog, ProcedureOrder

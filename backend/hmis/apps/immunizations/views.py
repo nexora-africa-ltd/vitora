@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Views for the immunizations app."""
 
 import django_filters.rest_framework

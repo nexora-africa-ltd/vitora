@@ -5,7 +5,7 @@
 **Version**: 1.2
 **Created**: February 26, 2026
 **Updated**: February 27, 2026
-**Author**: Engineering Team, Nexora Africa Ltd
+**Author**: Engineering Team, Nexora Consulting Ltd
 **Status**: Backend Complete ✅ | Frontend Complete ✅
 
 ---

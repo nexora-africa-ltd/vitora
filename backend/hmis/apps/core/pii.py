@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 PII (Personally Identifiable Information) encryption utilities.
 

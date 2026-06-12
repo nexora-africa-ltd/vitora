@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """SHA authentication service with support for legacy DHA and ILM middleware."""
 
 import base64

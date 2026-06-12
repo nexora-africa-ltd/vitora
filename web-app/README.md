@@ -317,4 +317,4 @@ Set these in **Vercel → Project Settings → Environment Variables**:
 
 ## License
 
-Apache-2.0 - Nexora Africa Ltd © 2026
+Apache-2.0 - Nexora Consulting Ltd © 2026

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """URL configuration for laboratory microbiology sub-module."""
 
 from django.urls import include, path

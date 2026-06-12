@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Reusable HTTP client for private insurance API integrations.
 
 Mirrors ``IlmClient`` from the DHA HIE integration. Each outbound call is

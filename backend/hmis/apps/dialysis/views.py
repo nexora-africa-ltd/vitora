@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Dialysis views."""
 
 from django_filters import rest_framework as filters

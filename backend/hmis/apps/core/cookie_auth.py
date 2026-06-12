@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 HttpOnly cookie-based JWT authentication views for the web frontend.
 

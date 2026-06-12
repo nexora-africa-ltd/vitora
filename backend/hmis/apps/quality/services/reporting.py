@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Quarterly and annual report aggregation services.
 
 Aggregates MonthlyClinicReports into quarterly/annual reports.

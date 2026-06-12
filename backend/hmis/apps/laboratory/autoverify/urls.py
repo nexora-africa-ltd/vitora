@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """URL configuration for autoverify module."""
 
 from rest_framework.routers import DefaultRouter

@@ -16,7 +16,7 @@ Usage:
     # Or run directly:
     DJANGO_SETTINGS_MODULE=hmis.settings.staging python scripts/seed_demo_data.py
 
-Author: Nexora Africa Ltd
+Author: Nexora Consulting Ltd
 """
 
 import os

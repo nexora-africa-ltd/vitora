@@ -1580,13 +1580,13 @@ npx expo start         # Development
 - **Documentation**: [docs/](docs/)
 - **Issues**: GitHub Issues
 - **Contact**: dev@nexora.africa
-- **Company**: Nexora Africa Ltd
+- **Company**: Nexora Consulting Ltd
 
 ---
 
 ## License
 
-Proprietary - Nexora Africa Ltd © 2026
+Proprietary - Nexora Consulting Ltd © 2026
 
 ---
 

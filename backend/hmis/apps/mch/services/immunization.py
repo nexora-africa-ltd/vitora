@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Immunization scheduling services for KEPI."""
 
 from datetime import timedelta

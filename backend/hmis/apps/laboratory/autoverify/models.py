@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Models for Delta Checks & Auto-Verification.
 Phase L2 of Vitora LIS Implementation Plan.

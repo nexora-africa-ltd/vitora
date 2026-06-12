@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Serializers for standalone Pharmacy operations."""
 
 from datetime import date, timedelta

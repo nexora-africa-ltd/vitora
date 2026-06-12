@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Views for L5 Reporting & Analytics."""
 
 from datetime import date, timedelta

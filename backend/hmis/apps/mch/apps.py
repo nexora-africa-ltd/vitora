@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Django app configuration for the MCH (Maternal & Child Health) module.
 """

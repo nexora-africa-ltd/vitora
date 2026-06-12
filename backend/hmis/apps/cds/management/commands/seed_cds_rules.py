@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Management command to seed initial CDS rules from ``data/cds_rules.json``.
 

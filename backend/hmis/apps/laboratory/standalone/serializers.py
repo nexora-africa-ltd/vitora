@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Serializers for standalone LIS operations."""
 
 from rest_framework import serializers

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Domain event signals for L4 Microbiology module."""
 
 from django.db.models.signals import post_save

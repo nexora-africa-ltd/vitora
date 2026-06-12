@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 MLLP (Minimal Lower Layer Protocol) Client for HL7 Message Transport.
 

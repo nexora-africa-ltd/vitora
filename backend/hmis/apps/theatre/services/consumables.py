@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Stock-aware theatre consumable services."""
 
 from decimal import ROUND_HALF_UP, Decimal

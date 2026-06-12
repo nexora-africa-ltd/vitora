@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Delta Check Engine.
 Compares current lab result to patient's most recent prior result

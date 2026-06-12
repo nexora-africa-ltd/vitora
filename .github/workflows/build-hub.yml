@@ -84,6 +84,10 @@ jobs:
           cp backend/scripts/update-hub-windows.ps1 "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/pi-setup.sh "dist/${ARTIFACT}/scripts/"
 
+          # Include license public key for local JWT verification (NOT the private key)
+          mkdir -p "dist/${ARTIFACT}/keys"
+          cp backend/keys/license_public.pem "dist/${ARTIFACT}/keys/"
+
           # Write version file
           echo "$VERSION" > "dist/${ARTIFACT}/VERSION"
 

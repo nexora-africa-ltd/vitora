@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 SMART on FHIR Views.
 
@@ -131,10 +132,10 @@ class CapabilityStatementView(APIView):
             "status": "active",
             "experimental": False,
             "date": "2026-01-31",
-            "publisher": "Nexora Africa Ltd",
+            "publisher": "Nexora Consulting Ltd",
             "contact": [
                 {
-                    "name": "Nexora Africa Ltd",
+                    "name": "Nexora Consulting Ltd",
                     "telecom": [{"system": "email", "value": "dev@nexora.africa"}],
                 }
             ],

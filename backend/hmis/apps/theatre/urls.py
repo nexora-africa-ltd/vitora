@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 from django.urls import include, path
 from rest_framework import routers
 

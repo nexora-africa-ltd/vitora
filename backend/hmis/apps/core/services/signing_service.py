@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Document Signing Service — RSA-2048 digital signatures for clinical documents.
 

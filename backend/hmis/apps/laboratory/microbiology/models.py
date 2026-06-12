@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 L4: Microbiology Module — Culture & Sensitivity models.
 

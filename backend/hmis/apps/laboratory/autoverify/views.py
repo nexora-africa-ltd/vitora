@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Views for Delta Checks & Auto-Verification."""
 
 from django_filters import rest_framework as filters

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Seed demo surgical patients and surgery cases for theatre walkthroughs."""
 
 from collections import Counter

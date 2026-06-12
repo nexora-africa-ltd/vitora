@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Management command to load lab test reference ranges into LabResultTemplate.
 

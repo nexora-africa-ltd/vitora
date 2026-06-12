@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Django admin configuration for pharmacy models."""
 
 from django.contrib import admin

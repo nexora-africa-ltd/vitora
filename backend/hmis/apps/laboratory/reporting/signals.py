@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Signals for L5 reporting module.
 
 Auto-creates TATSnapshot when a lab order reaches COMPLETED status.

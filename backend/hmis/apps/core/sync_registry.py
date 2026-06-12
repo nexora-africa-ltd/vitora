@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Declarative registry for hub/cloud data sync."""
 
 from __future__ import annotations

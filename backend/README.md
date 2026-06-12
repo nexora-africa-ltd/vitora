@@ -509,4 +509,4 @@ All checks must pass before merging to main branch.
 
 ## License
 
-Apache-2.0 - Nexora Africa Ltd © 2026
+Apache-2.0 - Nexora Consulting Ltd © 2026

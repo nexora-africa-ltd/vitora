@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Clinic reporting services.
 
 Implements Priority 3 (MonthlyClinicReport) aggregation.

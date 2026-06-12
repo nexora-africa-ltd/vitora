@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Models for Worksheets & Label Generation.
 Phase L5.3 of Vitora LIS Implementation Plan.

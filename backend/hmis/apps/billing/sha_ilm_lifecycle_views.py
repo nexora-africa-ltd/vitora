@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """DHA HIE Middleware (ILM) — Phase 4 lifecycle polish views.
 
 Mounts under ``/api/sha/ilm/lifecycle/...`` and ``/api/sha/ilm/uploads/``.

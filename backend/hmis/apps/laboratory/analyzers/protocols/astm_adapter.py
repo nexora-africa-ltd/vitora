@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 ASTM E1394/LIS2-A2 Protocol Adapter.
 

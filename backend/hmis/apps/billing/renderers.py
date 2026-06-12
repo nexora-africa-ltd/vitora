@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Custom DRF renderers used by billing endpoints."""
 
 from __future__ import annotations

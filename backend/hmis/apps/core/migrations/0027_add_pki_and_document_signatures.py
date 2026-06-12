@@ -37,7 +37,7 @@ class Migration(migrations.Migration):
                 (
                     "subject_dn",
                     models.CharField(
-                        help_text="Distinguished Name (e.g., 'CN=Vitora HMIS Root CA, O=Nexora Africa Ltd, C=KE')",
+                        help_text="Distinguished Name (e.g., 'CN=Vitora HMIS Root CA, O=Nexora Consulting Ltd, C=KE')",
                         max_length=500,
                     ),
                 ),

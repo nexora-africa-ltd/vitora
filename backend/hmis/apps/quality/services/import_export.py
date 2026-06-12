@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Quality measure import/export services."""
 
 from __future__ import annotations

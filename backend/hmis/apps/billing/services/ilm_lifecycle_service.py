@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """DHA HIE Middleware (ILM) — lifecycle polish (OTP, discharge, NoK, etc.).
 
 Phase 4 implementation. Wraps the ~10 ``/api/v1/...`` operations that

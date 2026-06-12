@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Serializers for Worksheets & Label Generation."""
 
 from rest_framework import serializers

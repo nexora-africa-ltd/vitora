@@ -488,7 +488,7 @@ class TestHubCloudSyncWorker:
         mock_response.json.return_value = {
             "changes": [
                 {
-                    "table": "patients_patient",
+                    "table": "patients.Patient",
                     "operation": "CREATE",
                     "record_id": "99",
                     "data": {"first_name": "CloudPatient"},
@@ -498,12 +498,18 @@ class TestHubCloudSyncWorker:
             "has_more": False,
         }
 
-        with patch("hmis.apps.core.hub_sync.requests.get", return_value=mock_response):
+        with (
+            patch("hmis.apps.core.hub_sync.requests.get", return_value=mock_response),
+            patch(
+                "hmis.apps.core.hub_sync.materialize_entry",
+                return_value={"success": True},
+            ),
+        ):
             pulled = worker._pull_changes()
 
         assert pulled == 1
         # Should be stored as SYNCED
-        entry = SyncQueue.objects.get(model_name="patients_patient", record_id=99)
+        entry = SyncQueue.objects.get(model_name="patients.Patient", record_id=99)
         assert entry.status == "SYNCED"
         assert entry.data["first_name"] == "CloudPatient"
 

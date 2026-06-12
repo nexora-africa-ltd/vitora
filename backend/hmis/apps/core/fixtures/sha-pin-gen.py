@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 #!/usr/bin/env python3
 """
 SHA PIN Encryption Utility

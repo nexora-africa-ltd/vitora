@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Auto-Verification Engine.
 Evaluates all active rules for a lab result and auto-verifies if all pass.

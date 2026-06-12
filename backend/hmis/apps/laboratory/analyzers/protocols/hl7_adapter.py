@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 HL7 v2.x Bidirectional Protocol Adapter.
 

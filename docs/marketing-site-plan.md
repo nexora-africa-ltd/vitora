@@ -28,7 +28,7 @@
 
 ### 1.1 What We're Building
 
-A public-facing marketing website for **Vitora HMIS** — an offline-first Hospital Management Information System built for Kenya's healthcare infrastructure by **Nexora Africa Ltd**. The site will:
+A public-facing marketing website for **Vitora HMIS** — an offline-first Hospital Management Information System built for Kenya's healthcare infrastructure by **Nexora Consulting Ltd**. The site will:
 
 - Communicate the product's value proposition to hospital administrators, health IT decision-makers, county health directors, and NGOs
 - Showcase features, integrations (SHA, KHIS/DHIS2), and AI capabilities (TibaBot)

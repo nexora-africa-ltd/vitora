@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Local fallback for discharge readiness assessment.
 
@@ -36,9 +37,8 @@ def _check_vitals_stability(vitals_history: list[dict[str, Any]]) -> str | None:
     for vital, threshold in VITAL_THRESHOLDS.items():
         curr_val = last.get(vital)
         prev_val = prev.get(vital)
-        if curr_val is not None and prev_val is not None:
-            if abs(curr_val - prev_val) > threshold:
-                unstable_count += 1
+        if curr_val is not None and prev_val is not None and abs(curr_val - prev_val) > threshold:
+            unstable_count += 1
 
     if unstable_count >= 2:
         return "unstable"

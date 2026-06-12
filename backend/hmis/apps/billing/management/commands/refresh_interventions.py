@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Management command to refresh the local SHA BenefitsAndInterventions JSONL
 from the DHA KNHTS OCL API.

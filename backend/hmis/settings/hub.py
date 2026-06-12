@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Facility Hub settings for Vitora HMIS.
 
@@ -276,3 +277,28 @@ HUB_PORT = int(os.getenv("HUB_PORT", "9088"))
 
 # Enable the setup wizard so admins can bootstrap org/facility/user via the web UI
 SETUP_WIZARD_ENABLED = True
+
+# ---------------------------------------------------------------------------
+# Hub License Guard
+# ---------------------------------------------------------------------------
+# Add HubLicenseGuardMiddleware after authentication (to verify JWT on requests)
+MIDDLEWARE.insert(  # noqa: F405
+    MIDDLEWARE.index("django.contrib.auth.middleware.AuthenticationMiddleware") + 1,  # noqa: F405
+    "hmis.apps.core.middleware.HubLicenseGuardMiddleware",
+)
+
+# Path to the cached license JWT file (written by installer / check-in task)
+HUB_LICENSE_TOKEN_PATH = os.path.join(
+    os.getenv("HUB_DATA_DIR", str(BASE_DIR)),  # noqa: F405
+    "license.jwt",
+)
+
+# ---------------------------------------------------------------------------
+# Hub Feature Gate — Cloud-Only Modules (Phase 1)
+# ---------------------------------------------------------------------------
+# On hubs, these modules require a valid license AND the feature enabled.
+# Without internet → these modules degrade after license expiry.
+# The feature gate is enforced by SubscriptionFeatureGateMiddleware (already
+# in base MIDDLEWARE) via the plan features, plus the HubLicenseGuardMiddleware
+# blocks everything when the license is fully expired.
+SUBSCRIPTION_FEATURE_ENFORCEMENT = True

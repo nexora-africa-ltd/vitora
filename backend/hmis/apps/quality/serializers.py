@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Serializers for Quality Measures & Reporting.
 
 Field lists MUST match the frontend Zod schemas exactly to prevent schema drift.

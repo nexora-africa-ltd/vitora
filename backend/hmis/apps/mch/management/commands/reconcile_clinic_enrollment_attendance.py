@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 from __future__ import annotations
 
 from django.core.management.base import BaseCommand

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Theatre scheduling service.
 
 Bridges theatre booking with the shared scheduling module.

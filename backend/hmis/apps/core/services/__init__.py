@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Services module for core app."""
 
 from hmis.apps.core.services.fhir_validator import FHIRValidator

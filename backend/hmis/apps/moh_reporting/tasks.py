@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Celery tasks for MOH report generation."""
 
 from __future__ import annotations

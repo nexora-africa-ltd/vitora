@@ -13,7 +13,7 @@ def populate_code_systems(apps, schema_editor):
             "name": "Vitora Laboratory Codes",
             "uri": "https://vitora.health/fhir/CodeSystem/laboratory",
             "version": "1.0",
-            "publisher": "Nexora Africa Ltd",
+            "publisher": "Nexora Consulting Ltd",
             "description": "Internal laboratory test codes used in Vitora HMIS. "
             "Maps to LOINC where applicable.",
             "is_internal": True,

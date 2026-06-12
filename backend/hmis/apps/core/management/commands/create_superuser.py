@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Management command to create a superuser for Vitora HMIS.
 Used for initial setup and admin access.

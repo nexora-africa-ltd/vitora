@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Custom Prometheus metrics for the billing app."""
 
 from prometheus_client import REGISTRY, Gauge

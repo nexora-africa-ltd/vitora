@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Local WHO ICD-11 API Service for Vitora HMIS.
 

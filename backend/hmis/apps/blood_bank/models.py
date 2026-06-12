@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Blood Bank models for Vitora HMIS."""
 
 from django.conf import settings

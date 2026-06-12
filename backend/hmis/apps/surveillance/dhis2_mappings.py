@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 DHIS2 Data Element Mapping Service for IDSR Reporting.
 

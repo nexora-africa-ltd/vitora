@@ -29,7 +29,7 @@ def root_ca(db, pki_service):
     """Initialize a root CA for testing."""
     return pki_service.initialize_ca(
         name="Test Root CA",
-        org="Nexora Africa Ltd",
+        org="Nexora Consulting Ltd",
         country="KE",
         key_size=2048,
         validity_years=10,

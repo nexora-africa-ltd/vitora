@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Exception hierarchy for DHA HIE Middleware (ILM) integrations.
 
 These exceptions are raised by `IlmClient` and the per-domain ILM services

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Seed demo patients and clinical data for Quality Measures evaluation.
 
 Creates realistic data across multiple clinics so that the automated CQM

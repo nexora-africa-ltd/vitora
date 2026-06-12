@@ -416,4 +416,4 @@ Authorization: Bearer <token>
 
 ---
 
-*Document prepared by Nexora Africa Ltd Engineering Team*
+*Document prepared by Nexora Consulting Ltd Engineering Team*

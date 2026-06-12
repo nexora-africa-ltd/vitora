@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 from django.contrib import admin
 from django.utils.html import format_html
 

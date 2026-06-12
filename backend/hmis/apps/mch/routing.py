@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """WebSocket routing for MCH realtime channels."""
 
 from django.urls import re_path

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 JWKS (JSON Web Key Set) key management for TibaBot user-identity JWTs.
 

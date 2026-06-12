@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """DHA HIE Middleware (ILM) — ePrescriptions (Phase 5).
 
 Wraps the four ``/api/v1/prescriptions...`` operations:

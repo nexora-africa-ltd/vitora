@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Seed realistic demo vaccine stock, cold chain equipment, and temperature logs.
 
