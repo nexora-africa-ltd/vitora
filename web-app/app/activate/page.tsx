@@ -38,7 +38,7 @@ export default function ActivatePage() {
 
     try {
       const response = await licensingApi.activate({
-        activation_code: code.trim().toUpperCase(),
+        activation_code: code.trim(),
         installation_id: installationId.trim(),
       });
 

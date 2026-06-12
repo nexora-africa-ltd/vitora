@@ -59,12 +59,6 @@ impl SidecarState {
         let standalone_dir = app_data_dir.join("standalone");
         let server_js = standalone_dir.join("server.js");
 
-        // If already extracted and server.js exists, use it
-        if server_js.exists() {
-            log::info!("Standalone already extracted at: {}", standalone_dir.display());
-            return Ok(standalone_dir);
-        }
-
         // Find the archive in resources
         let resource_dir = app
             .path()
@@ -77,6 +71,42 @@ impl SidecarState {
                 "standalone.tar.gz not found at: {}. Is the archive bundled?",
                 archive_path.display()
             ));
+        }
+
+        // If already extracted, check if the bundled archive is newer than the
+        // extracted server.js. If so, the app was updated and we need to
+        // re-extract. Otherwise reuse the existing extraction.
+        if server_js.exists() {
+            let archive_newer = std::fs::metadata(&archive_path)
+                .and_then(|m| m.modified())
+                .ok()
+                .and_then(|archive_mtime| {
+                    std::fs::metadata(&server_js)
+                        .and_then(|m| m.modified())
+                        .ok()
+                        .map(|server_mtime| archive_mtime > server_mtime)
+                })
+                .unwrap_or(false);
+
+            if !archive_newer {
+                log::info!(
+                    "Standalone already extracted at: {}",
+                    standalone_dir.display()
+                );
+                return Ok(standalone_dir);
+            }
+
+            log::info!(
+                "Bundled archive is newer than extracted standalone; re-extracting"
+            );
+            // Remove the stale extraction so the new bundle is clean
+            if let Err(e) = std::fs::remove_dir_all(&standalone_dir) {
+                log::warn!(
+                    "Failed to remove stale standalone dir {}: {}",
+                    standalone_dir.display(),
+                    e
+                );
+            }
         }
 
         log::info!(
