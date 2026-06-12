@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Nutrition/Dietetics models for Vitora HMIS.
 

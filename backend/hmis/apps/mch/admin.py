@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Admin configuration for MCH module."""
 
 from django.contrib import admin

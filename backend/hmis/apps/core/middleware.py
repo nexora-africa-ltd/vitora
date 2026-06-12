@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Middleware for audit logging and multitenancy.
 
@@ -615,3 +616,226 @@ class MediaSecurityMiddleware:
                 response["Content-Disposition"] = "attachment"
             response["X-Content-Type-Options"] = "nosniff"
         return response
+
+
+# ---------------------------------------------------------------------------
+# Hub License Guard Middleware (Phase 1 — Code Protection Plan)
+# ---------------------------------------------------------------------------
+
+
+class HubLicenseGuardMiddleware:
+    """
+    Enforce license validity on hub installations.
+
+    Only active when ``DJANGO_ENV=hub``.  Reads the cached license JWT from
+    the file path specified by ``HUB_LICENSE_TOKEN_PATH`` (default:
+    ``/var/lib/vitora-hub/license.jwt``) and enforces a tiered grace period:
+
+    1. **Valid** — proceed normally.
+    2. **Expired ≤7 days (soft grace)** — proceed, attach warning header.
+    3. **Expired 7–14 days** — read-only mode (block writes).
+    4. **Expired >14 days or revoked** — block all requests except check-in
+       and login endpoints.
+
+    Exempt paths (always accessible):
+    - ``/api/licensing/`` — check-in, activation, status
+    - ``/api/token/`` — login
+    - ``/api/auth/`` — cookie auth
+    - ``/api/hub/`` — hub health, wipe check
+    - ``/admin/`` — Django admin (local ops)
+    - ``/static/`` — static files
+
+    The license JWT is verified using the embedded RS256 public key.
+    """
+
+    EXEMPT_PREFIXES = (
+        "/api/licensing/",
+        "/api/token/",
+        "/api/auth/",
+        "/api/hub/",
+        "/admin/",
+        "/static/",
+    )
+
+    WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+    # Grace period thresholds (seconds)
+    SOFT_GRACE_SECONDS = 7 * 24 * 3600  # 7 days
+    HARD_GRACE_SECONDS = 14 * 24 * 3600  # 14 days
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self._cached_token = None
+        self._cached_payload = None
+        self._cache_time = None
+
+    def __call__(self, request):
+        import json
+        import os
+        import time
+
+        from django.conf import settings as django_settings
+        from django.http import HttpResponse
+
+        # Only enforce on hub installations
+        if os.getenv("DJANGO_ENV", "") != "hub":
+            return self.get_response(request)
+
+        # Exempt paths
+        if any(request.path.startswith(p) for p in self.EXEMPT_PREFIXES):
+            return self.get_response(request)
+
+        # Only check API routes
+        if not request.path.startswith("/api/"):
+            return self.get_response(request)
+
+        # Try to verify the license
+        payload, error = self._get_license_payload(django_settings)
+
+        if error == "missing":
+            # No license file at all — block everything
+            return HttpResponse(
+                json.dumps(
+                    {
+                        "detail": "Hub is not activated. Please enter an activation code.",
+                        "code": "hub_not_activated",
+                    }
+                ),
+                content_type="application/json",
+                status=403,
+            )
+
+        if error == "invalid":
+            # Corrupt or tampered token
+            return HttpResponse(
+                json.dumps(
+                    {
+                        "detail": "License token is invalid. Please contact Nexora support.",
+                        "code": "hub_license_invalid",
+                    }
+                ),
+                content_type="application/json",
+                status=403,
+            )
+
+        if error == "expired":
+            # Check grace period tier
+            exp = payload.get("exp", 0)
+            seconds_past_expiry = int(time.time()) - exp
+
+            if seconds_past_expiry <= self.SOFT_GRACE_SECONDS:
+                # Soft grace: allow all, add warning header
+                response = self.get_response(request)
+                response["X-License-Warning"] = "expired-soft-grace"
+                return response
+
+            if seconds_past_expiry <= self.HARD_GRACE_SECONDS:
+                # Hard grace: read-only
+                if request.method in self.WRITE_METHODS:
+                    return HttpResponse(
+                        json.dumps(
+                            {
+                                "detail": (
+                                    "License expired. Hub is in read-only mode. "
+                                    "Please restore internet connectivity for license renewal."
+                                ),
+                                "code": "hub_license_read_only",
+                            }
+                        ),
+                        content_type="application/json",
+                        status=403,
+                    )
+                response = self.get_response(request)
+                response["X-License-Warning"] = "expired-read-only"
+                return response
+
+            # Past hard grace: full block
+            return HttpResponse(
+                json.dumps(
+                    {
+                        "detail": (
+                            "License expired over 14 days ago. Hub is locked. "
+                            "Please restore internet connectivity or contact Nexora support."
+                        ),
+                        "code": "hub_license_locked",
+                    }
+                ),
+                content_type="application/json",
+                status=403,
+            )
+
+        # Valid license — proceed
+        response = self.get_response(request)
+
+        # Attach feature flags to request for downstream use
+        if payload:
+            request._license_features = payload.get("features", {})
+
+        return response
+
+    def _get_license_payload(self, django_settings):
+        """
+        Load and verify the license JWT.
+
+        Returns:
+            (payload_dict, None) on success
+            (partial_payload, "expired") if signature valid but expired
+            (None, "missing") if file doesn't exist
+            (None, "invalid") if signature verification fails
+        """
+        import os
+        import time
+
+        import jwt as pyjwt
+
+        # Cache for 60 seconds to avoid re-reading file on every request
+        now = time.time()
+        if self._cached_payload and self._cache_time and (now - self._cache_time < 60):
+            # Check if cached result was expired
+            exp = self._cached_payload.get("exp", 0)
+            if exp > now:
+                return self._cached_payload, None
+            else:
+                return self._cached_payload, "expired"
+
+        token_path = getattr(
+            django_settings,
+            "HUB_LICENSE_TOKEN_PATH",
+            "/var/lib/vitora-hub/license.jwt",
+        )
+
+        # Also check env var (set during activation)
+        token = os.getenv("LICENSE_TOKEN", "")
+        if not token:
+            try:
+                with open(token_path) as f:
+                    token = f.read().strip()
+            except (FileNotFoundError, PermissionError):
+                return None, "missing"
+
+        if not token:
+            return None, "missing"
+
+        try:
+            from hmis.apps.licensing.tokens import verify_license_token
+
+            payload = verify_license_token(token)
+            self._cached_payload = payload
+            self._cache_time = now
+            return payload, None
+        except pyjwt.ExpiredSignatureError:
+            # Decode without verification to get claims for grace period calc
+            try:
+                payload = pyjwt.decode(
+                    token,
+                    options={"verify_exp": False, "verify_signature": False},
+                )
+                self._cached_payload = payload
+                self._cache_time = now
+                return payload, "expired"
+            except Exception:
+                return None, "invalid"
+        except (pyjwt.InvalidSignatureError, pyjwt.DecodeError):
+            return None, "invalid"
+        except Exception:
+            return None, "invalid"

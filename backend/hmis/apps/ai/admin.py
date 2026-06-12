@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Admin configuration for AI models (chat sessions, stored results, facility keys).
 """

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Backfill DeathRecord entries for historical DECEASED inpatient discharges.
 

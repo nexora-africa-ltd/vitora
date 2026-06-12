@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 SHA FHIR Profile Validator for Vitora HMIS.
 

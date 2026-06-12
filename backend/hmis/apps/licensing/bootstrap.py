@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Bootstrap helpers for activation-driven hub provisioning."""
 
 from __future__ import annotations

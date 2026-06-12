@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """drf-spectacular extensions for custom Vitora API components."""
 
 from drf_spectacular.extensions import OpenApiAuthenticationExtension

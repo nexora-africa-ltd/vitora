@@ -306,7 +306,7 @@ backend/hmis/apps/pharmacy/templates/pharmacy/emails/
         </div>
         <div class="footer">
             <p>This is an automated notification from Vitora HMIS</p>
-            <p>© 2026 Nexora Africa Ltd</p>
+            <p>© 2026 Nexora Consulting Ltd</p>
         </div>
     </div>
 </body>
@@ -333,7 +333,7 @@ View in Dashboard: {{ dashboard_url }}
 
 ---
 This is an automated notification from Vitora HMIS
-© 2026 Nexora Africa Ltd
+© 2026 Nexora Consulting Ltd
 ```
 
 ---

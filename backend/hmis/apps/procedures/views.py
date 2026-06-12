@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 from datetime import date, datetime, timedelta
 
 from django_filters.rest_framework import DjangoFilterBackend

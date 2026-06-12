@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Hub health/status endpoint for monitoring and LAN client discovery.
 Remote wipe endpoint for lost/stolen hub devices.

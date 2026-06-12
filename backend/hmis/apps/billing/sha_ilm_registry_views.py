@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """DHA HIE Middleware (ILM) — pre-visit registries & eligibility views.
 
 Wraps :class:`IlmRegistriesService` so the frontend can call the 8 read-only

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Laboratory services module.
 
 This package consolidates all laboratory service classes.

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """DHA HIE Middleware (ILM) — preauthorisation, doctor-consent & emergency.
 
 Phase 3 implementation. Wraps the 10 ``/api/v1/...`` operations that govern:

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 DHIS2 credential resolution for multi-facility / multi-org deployments.
 

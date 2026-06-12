@@ -16,7 +16,7 @@ Only after the web app implementation is complete should we shift focus to offli
 
 ### Product & Company Context
 
-**Vitora HMIS** is a **software product** developed by **Nexora Africa Ltd**, an IT company.
+**Vitora HMIS** is a **software product** developed by **Nexora Consulting Ltd**, an IT company.
 
 > ⚠️ **IMPORTANT**: Vitora is the **name of the software product**, NOT a healthcare facility. When creating placeholder facility names, use generic names like "Demo Health Facility", "Sample Clinic", or "[Facility Name]" - never use "Vitora" as a facility name.
 

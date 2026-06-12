@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Dialysis domain event signals."""
 
 from django.db.models.signals import post_save

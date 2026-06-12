@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Management command to aggregate consumption data from Dispensing and
 StockAdjustment records into ConsumptionRecord summaries.

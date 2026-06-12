@@ -2,7 +2,7 @@
 name = "vitora-hmis"
 version = "0.1.0"
 description = "Vitora HMIS Desktop Application"
-authors = ["Nexora Africa Ltd"]
+authors = ["Nexora Consulting Ltd"]
 edition = "2021"
 
 [lib]

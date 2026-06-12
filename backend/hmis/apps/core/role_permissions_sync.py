@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Utility to sync a Role's permissions_matrix to its linked Django Group permissions.
 

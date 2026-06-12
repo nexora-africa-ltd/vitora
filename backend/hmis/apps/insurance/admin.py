@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Admin configuration for the insurance app."""
 
 from django.contrib import admin

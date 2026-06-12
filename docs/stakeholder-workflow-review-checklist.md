@@ -302,4 +302,4 @@ _______________________________________________
 
 *Document Version: 1.0*
 *Last Updated: January 2026*
-*Prepared by: Nexora Africa Ltd*
+*Prepared by: Nexora Consulting Ltd*

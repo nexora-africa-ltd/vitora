@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Apply cloud sync entries to the local database."""
 
 from __future__ import annotations

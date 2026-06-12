@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Migrate an existing hub (installed with manual IDs) to the activation-driven flow.
 

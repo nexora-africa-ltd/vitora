@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """PDF export helpers for theatre documentation."""
 
 import io

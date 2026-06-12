@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """HL7 message and endpoint serializers."""
 
 from rest_framework import serializers

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 CDS Signals — Auto-evaluate CDS rules on encounter save.
 """

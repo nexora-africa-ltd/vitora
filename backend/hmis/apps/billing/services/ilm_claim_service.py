@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """DHA HIE Middleware (ILM) claim build & dispatch service.
 
 Implements the 15 ``/api/v1/claims/*`` operations defined in the Postman

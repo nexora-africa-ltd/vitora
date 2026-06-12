@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Abstract base class for private insurance API adapters.
 
 Each insurer (or insurer type) provides a concrete subclass. The adapter

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Read-Model Projection Infrastructure for Vitora HMIS.
 

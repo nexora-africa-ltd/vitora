@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Lookup helpers for resolving the active DHA consent token for a claim flow.
 
 The Postman collection requires the consent token (returned from OTP validation)

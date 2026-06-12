@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Live-linking services for unified MCH and clinic workflows."""
 
 from __future__ import annotations

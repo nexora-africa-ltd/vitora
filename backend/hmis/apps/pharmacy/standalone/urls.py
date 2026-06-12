@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """URL configuration for standalone Pharmacy operations."""
 
 from django.urls import include, path

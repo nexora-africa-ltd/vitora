@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Serializers for the MCH (Maternal & Child Health) module."""
 
 import json

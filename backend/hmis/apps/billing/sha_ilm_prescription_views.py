@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """DHA HIE Middleware (ILM) — Phase 5 ePrescription views.
 
 Mounts under ``/api/sha/ilm/prescriptions/...``.

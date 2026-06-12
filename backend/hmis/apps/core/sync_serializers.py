@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Serializers for the REST sync API (offline-first Tauri/Hub clients).
 

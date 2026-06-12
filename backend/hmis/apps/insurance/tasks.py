@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Celery tasks for private insurance background processing.
 
 All tasks follow the project pattern:

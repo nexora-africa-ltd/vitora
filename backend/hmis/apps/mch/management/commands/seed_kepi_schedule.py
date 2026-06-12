@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Seed KEPI vaccine schedule reference data."""
 
 import json

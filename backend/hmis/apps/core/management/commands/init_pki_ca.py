@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Management command to initialize the PKI root Certificate Authority.
 
@@ -27,8 +28,8 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--org",
-            default="Nexora Africa Ltd",
-            help="Organization name (default: 'Nexora Africa Ltd').",
+            default="Nexora Consulting Ltd",
+            help="Organization name (default: 'Nexora Consulting Ltd').",
         )
         parser.add_argument(
             "--country",

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 ADX (Aggregate Data Exchange) export service for DHIS2.
 

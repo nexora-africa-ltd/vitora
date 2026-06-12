@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """SHA PII decryption helpers.
 
 The DHA/SHA gateway sometimes returns sensitive payloads in a hybrid-encrypted

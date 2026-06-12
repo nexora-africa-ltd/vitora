@@ -212,7 +212,7 @@ python manage.py backfill_audit_hashes
 │   ┌───────────────────────────────┐          │
 │   │     Root CA (Self-Signed)     │          │
 │   │   CN=Vitora HMIS Root CA     │          │
-│   │   O=Nexora Africa Ltd        │          │
+│   │   O=Nexora Consulting Ltd        │          │
 │   │   C=KE                       │          │
 │   │   RSA-2048, 10-year validity  │          │
 │   └─────────┬─────────────────────┘          │

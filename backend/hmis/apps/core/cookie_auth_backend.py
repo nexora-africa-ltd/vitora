@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 CookieJWTAuthentication — DRF auth backend that reads JWT from httpOnly cookies.
 

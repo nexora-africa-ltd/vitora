@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Import ICD-11 reference codes from the WHO CSV export."""
 
 import csv

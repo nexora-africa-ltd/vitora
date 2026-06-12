@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Seed Discharge Summary Templates — common Kenyan hospital formats.
 

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """App configuration for Allied Health module."""
 
 from django.apps import AppConfig

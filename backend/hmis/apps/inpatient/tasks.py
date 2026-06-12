@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Celery tasks for Inpatient module.
 
@@ -106,7 +107,7 @@ This admission requires your immediate review. Please verify the placement is cl
 appropriate or coordinate a transfer to an appropriate ward.
 
 ---
-Vitora HMIS - Nexora Africa Ltd
+Vitora HMIS - Nexora Consulting Ltd
 This is an automated notification. Do not reply to this email.
 """
 

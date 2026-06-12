@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Populate Clinic.default_clinical_template for existing clinics.
 
 This is a safe backfill command intended for environments that already have

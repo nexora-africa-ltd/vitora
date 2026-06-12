@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Management command to seed Kenya-specific quality indicators."""
 
 from __future__ import annotations

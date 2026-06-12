@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Views for the inpatient app.
 """
@@ -2118,7 +2119,8 @@ class DischargeViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
         # Filter to only manual INTERNAL meds (no existing prescription_id)
         manual_internal = [
-            m for m in meds
+            m
+            for m in meds
             if not m.get("prescription_id")
             and m.get("dispensing_type", "EXTERNAL") == "INTERNAL"
             and m.get("drug_name")
@@ -2126,7 +2128,11 @@ class DischargeViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
         if not manual_internal:
             return Response(
-                {"detail": "No manual INTERNAL medications to convert.", "created": [], "failed": []},
+                {
+                    "detail": "No manual INTERNAL medications to convert.",
+                    "created": [],
+                    "failed": [],
+                },
                 status=status.HTTP_200_OK,
             )
 
@@ -2181,28 +2187,35 @@ class DischargeViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 instructions=med.get("instructions", ""),
             )
 
-            created.append({
-                "drug_name": drug_name,
-                "prescription_id": prescription.id,
-                "prescription_number": prescription.prescription_number,
-            })
+            created.append(
+                {
+                    "drug_name": drug_name,
+                    "prescription_id": prescription.id,
+                    "prescription_number": prescription.prescription_number,
+                }
+            )
 
         # Update discharge_medications JSON with prescription_ids for matched meds
         if created:
             created_map = {c["drug_name"].lower(): c["prescription_id"] for c in created}
             updated_meds = []
             for m in meds:
-                if m.get("drug_name", "").strip().lower() in created_map and not m.get("prescription_id"):
+                if m.get("drug_name", "").strip().lower() in created_map and not m.get(
+                    "prescription_id"
+                ):
                     m["prescription_id"] = created_map[m["drug_name"].strip().lower()]
                 updated_meds.append(m)
             discharge.discharge_medications = updated_meds
             discharge.save(update_fields=["discharge_medications"])
 
-        return Response({
-            "created": created,
-            "failed": failed,
-            "detail": f"Created {len(created)} prescription(s). {len(failed)} failed.",
-        }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+        return Response(
+            {
+                "created": created,
+                "failed": failed,
+                "detail": f"Created {len(created)} prescription(s). {len(failed)} failed.",
+            },
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
 
 
 def _estimate_quantity(duration: str, frequency: str) -> int:
@@ -2222,13 +2235,29 @@ def _estimate_quantity(duration: str, frequency: str) -> int:
     # Parse frequency
     freq_lower = frequency.lower().strip()
     freq_map = {
-        "od": 1, "once daily": 1, "once a day": 1, "daily": 1, "qd": 1,
-        "bd": 2, "bid": 2, "twice daily": 2, "twice a day": 2, "b.d.": 2,
-        "tds": 3, "tid": 3, "three times daily": 3, "t.d.s.": 3, "8 hourly": 3,
-        "qid": 4, "qds": 4, "four times daily": 4, "6 hourly": 4,
+        "od": 1,
+        "once daily": 1,
+        "once a day": 1,
+        "daily": 1,
+        "qd": 1,
+        "bd": 2,
+        "bid": 2,
+        "twice daily": 2,
+        "twice a day": 2,
+        "b.d.": 2,
+        "tds": 3,
+        "tid": 3,
+        "three times daily": 3,
+        "t.d.s.": 3,
+        "8 hourly": 3,
+        "qid": 4,
+        "qds": 4,
+        "four times daily": 4,
+        "6 hourly": 4,
         "stat": 1,
         "prn": 1,  # As needed — estimate 1/day
-        "nocte": 1, "at night": 1,
+        "nocte": 1,
+        "at night": 1,
     }
     times_per_day = freq_map.get(freq_lower, 1)
 

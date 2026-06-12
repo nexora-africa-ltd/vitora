@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 PKI Service — X.509 Certificate Authority and Certificate Management.
 
@@ -55,7 +56,7 @@ class PKIService:
     def initialize_ca(
         self,
         name: str = "Vitora HMIS Root CA",
-        org: str = "Nexora Africa Ltd",
+        org: str = "Nexora Consulting Ltd",
         country: str = "KE",
         key_size: int = 2048,
         validity_years: int = 10,
@@ -250,7 +251,7 @@ class PKIService:
         parent_org = (
             parent_ca.subject_dn.split("O=")[1].split(",")[0].strip()
             if "O=" in parent_ca.subject_dn
-            else "Nexora Africa Ltd"
+            else "Nexora Consulting Ltd"
         )
         issuer = x509.Name(
             [
@@ -416,7 +417,7 @@ class PKIService:
                     (
                         ca.subject_dn.split("O=")[1].split(",")[0].strip()
                         if "O=" in ca.subject_dn
-                        else "Nexora Africa Ltd"
+                        else "Nexora Consulting Ltd"
                     ),
                 ),
                 x509.NameAttribute(NameOID.COMMON_NAME, ca.name),

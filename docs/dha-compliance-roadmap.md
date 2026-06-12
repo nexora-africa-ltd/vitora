@@ -52,7 +52,7 @@ Gaps are categorized into four tiers:
 - **Action**:
   - [ ] Complete DPIA sign-offs (Security Review, Legal Review, DPO Approval)
   - [ ] Submit Data Controller registration (healthcare facility)
-  - [ ] Submit Data Processor registration (Nexora Africa Ltd)
+  - [ ] Submit Data Processor registration (Nexora Consulting Ltd)
   - [ ] Document registration numbers in system settings
 - **Owner**: Legal / Compliance
 - **Effort**: 2 weeks (administrative)

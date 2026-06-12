@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Domain event signals for Worksheets & Labels."""
 
 from django.db.models.signals import post_save

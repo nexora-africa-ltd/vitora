@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Signals for standalone LIS module."""
 
 from django.db.models.signals import post_save

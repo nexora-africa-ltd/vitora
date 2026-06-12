@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Signals for the immunizations app.
 
 - Syncs scheduling Appointment completion → ImmunizationRecord status.

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Reflex testing engine.
 Evaluates reflex rules when lab results are entered.

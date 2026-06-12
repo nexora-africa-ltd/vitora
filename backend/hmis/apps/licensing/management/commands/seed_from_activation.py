@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Seed a local hub database from a cloud activation response."""
 
 from django.core.management.base import BaseCommand

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """HL7 Endpoint and Message admin configuration."""
 
 from django.contrib import admin

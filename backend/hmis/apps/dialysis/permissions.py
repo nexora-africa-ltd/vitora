@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Dialysis RBAC permissions."""
 
 from rest_framework.permissions import SAFE_METHODS, BasePermission

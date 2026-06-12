@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Health and readiness helpers for the local ICD-11 fallback catalog."""
 
 import logging

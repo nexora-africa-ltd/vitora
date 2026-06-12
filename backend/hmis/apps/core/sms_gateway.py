@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 SMS Gateway module for sending SMS via Africa's Talking.
 

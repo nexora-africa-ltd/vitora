@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Patient-app RBAC permissions (Last Office / Death Records)."""
 
 from rest_framework.permissions import SAFE_METHODS, BasePermission

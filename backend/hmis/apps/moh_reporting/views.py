@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """MOH Reporting API views."""
 
 from __future__ import annotations

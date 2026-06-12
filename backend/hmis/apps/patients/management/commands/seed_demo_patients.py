@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Seed 10 outpatient demo patients with diverse demographics."""
 
 from datetime import date

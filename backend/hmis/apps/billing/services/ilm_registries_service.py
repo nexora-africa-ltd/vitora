@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """DHA HIE Middleware (ILM) — pre-visit registries & eligibility service.
 
 Implements the 8 read-only ``/api/v1/...`` operations needed BEFORE a clinical

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 KMS (Key Management System) Module for Vitora HMIS.
 

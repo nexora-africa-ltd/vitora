@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 from django.conf import settings
 from django.db import models
 from django.utils import timezone

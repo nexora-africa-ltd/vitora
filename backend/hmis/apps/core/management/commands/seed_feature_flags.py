@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Seed Feature Flags — creates or updates the canonical set of feature flags.
 

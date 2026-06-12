@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Clinic billing helpers.
 
 Implements Clinics Module Priority 2: Billing ↔ ClinicVisit integration.

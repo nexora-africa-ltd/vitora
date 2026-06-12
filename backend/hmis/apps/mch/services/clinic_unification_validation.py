@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Validation and observability queries for MCH and clinics flow unification."""
 
 from __future__ import annotations

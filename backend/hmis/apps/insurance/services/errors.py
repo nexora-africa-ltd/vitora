@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Exception hierarchy for private insurance API integrations.
 
 Mirrors the DHA ``DHAError`` hierarchy so callers can catch a single

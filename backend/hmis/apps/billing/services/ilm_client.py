@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Shared HTTP client for the DHA HIE Middleware (ILM).
 
 Every per-domain ILM service (claim build, preauth, emergency, prescriptions,

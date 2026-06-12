@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Convenience helpers for publishing domain events from Django signal handlers.
 

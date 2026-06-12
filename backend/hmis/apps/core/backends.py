@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 

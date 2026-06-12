@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Helpers for building multipart/form-data payloads for ILM uploads.
 
 Used by preauth attachment and SHR document upload services. Streams file

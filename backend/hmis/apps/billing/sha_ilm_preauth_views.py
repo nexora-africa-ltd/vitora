@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """DHA HIE Middleware (ILM) — preauth, doctor-consent & emergency views.
 
 Phase 3 endpoints. Mounted under ``/api/sha/ilm/...`` in ``sha_urls.py``.

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Blood Bank URL routing."""
 
 from django.urls import include, path

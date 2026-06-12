@@ -11,7 +11,7 @@
 | **Version** | 2.0 |
 | **Last Updated** | January 2, 2026 |
 | **Status** | Active |
-| **Owner** | Engineering Lead, Nexora Africa Ltd |
+| **Owner** | Engineering Lead, Nexora Consulting Ltd |
 | **Traceability** | Linked to [ROADMAP.md](../ROADMAP.md) sprints |
 
 ---
@@ -1717,4 +1717,4 @@ These stories address system behavior in exceptional situations.
 
 ---
 
-*Document maintained by Nexora Africa Ltd Engineering Team*
+*Document maintained by Nexora Consulting Ltd Engineering Team*

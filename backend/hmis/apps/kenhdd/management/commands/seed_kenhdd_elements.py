@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Management command to seed KENHDD data elements from ``data/kenhdd_elements.json``.
 

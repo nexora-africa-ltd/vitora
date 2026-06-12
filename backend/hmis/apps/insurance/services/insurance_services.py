@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """High-level insurance service classes.
 
 These orchestrate adapter calls, persist results back onto models,

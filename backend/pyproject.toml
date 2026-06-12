@@ -2,7 +2,7 @@
 name = "vitora-hmis"
 version = "0.1.0"
 description = "Vitora HMIS - Offline-first Hospital Management Information System for Kenya"
-authors = ["Nexora Africa Ltd <dev@nexora.africa>"]
+authors = ["Nexora Consulting Ltd <dev@nexora.africa>"]
 readme = "README.md"
 packages = [{include = "hmis"}]
 

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """URL routing for MCH module."""
 
 from django.urls import include, path

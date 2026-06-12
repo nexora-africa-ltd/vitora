@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """FHIR R4 module for Vitora HMIS.
 
 This module contains FHIR-related utilities, profiles, and validators

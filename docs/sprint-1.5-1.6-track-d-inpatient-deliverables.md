@@ -866,5 +866,5 @@ PENDING ──► ACCEPTED ──► (Admission created)
 
 ---
 
-*Document prepared by Nexora Africa Ltd Engineering Team*
+*Document prepared by Nexora Consulting Ltd Engineering Team*
 *Based on consultant stakeholder feedback - January 2026*

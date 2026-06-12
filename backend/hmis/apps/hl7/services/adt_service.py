@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 ADT (Admit/Discharge/Transfer) message builder for HL7 v2.5.1.
 

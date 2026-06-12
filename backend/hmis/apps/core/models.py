@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Core models for Vitora HMIS.
 
@@ -4148,7 +4149,7 @@ class CertificateAuthority(models.Model):
     )
     subject_dn = models.CharField(
         max_length=500,
-        help_text="Distinguished Name (e.g., 'CN=Vitora HMIS Root CA, O=Nexora Africa Ltd, C=KE')",
+        help_text="Distinguished Name (e.g., 'CN=Vitora HMIS Root CA, O=Nexora Consulting Ltd, C=KE')",
     )
     public_key_pem = models.TextField(
         help_text="PEM-encoded public key",

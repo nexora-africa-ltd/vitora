@@ -793,7 +793,7 @@ This admission requires your review. Please verify the placement is clinically a
 or coordinate a transfer to an appropriate ward.
 
 ---
-Vitora HMIS - Nexora Africa Ltd
+Vitora HMIS - Nexora Consulting Ltd
     """
 
     send_mail(

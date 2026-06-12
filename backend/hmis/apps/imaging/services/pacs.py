@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 PACS (Picture Archiving and Communication System) storage service.
 

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 REST API views for offline-first sync (Tauri desktop / facility hub clients).
 

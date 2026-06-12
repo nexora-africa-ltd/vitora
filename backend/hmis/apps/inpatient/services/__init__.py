@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Service layer for inpatient domain logic."""
 
 from hmis.apps.inpatient.services.bed_assignment import (

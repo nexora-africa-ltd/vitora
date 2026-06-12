@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """
 Pre-built analyzer driver templates for common Kenya lab analyzers.
 
