@@ -375,6 +375,40 @@ class TestSyncPullEndpoint:
         assert "timestamp" in change
         assert "server_sequence" in change
 
+    def test_pull_downward_direction_returns_entries_contract(
+        self, authenticated_client, sync_pull_url, sample_facility, sample_organization
+    ):
+        """Cloud-to-hub pulls should expose the Phase 3 entries response contract."""
+        from hmis.apps.core.models import SyncQueue
+
+        queue_entry = SyncQueue.objects.create(
+            operation="UPDATE",
+            model_name="core.Facility",
+            record_id=sample_facility.id,
+            data={"id": sample_facility.id, "has_laboratory": True},
+            status="SYNCED",
+            synced_at=timezone.now(),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get(
+            sync_pull_url,
+            {"full": "true", "direction": "down", "tables": "core.Facility"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["has_more"] is False
+        assert response.data["server_timestamp"] is not None
+        assert len(response.data["entries"]) == 1
+        assert response.data["entries"] == response.data["changes"]
+        entry = response.data["entries"][0]
+        assert entry["table"] == "core.Facility"
+        assert entry["operation"] == "UPDATE"
+        assert entry["record_id"] == sample_facility.id
+        assert entry["data"]["has_laboratory"] is True
+        assert entry["server_sequence"] == queue_entry.id
+
     def test_pull_no_results_for_future_since(
         self, authenticated_client, sync_pull_url, synced_queue_entries
     ):
