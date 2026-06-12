@@ -13,10 +13,13 @@ Covers:
 """
 
 import datetime
+import json
 import uuid
 
 import jwt as pyjwt
 import pytest  # type: ignore
+from django.conf import settings
+from django.core.management import call_command
 from django.utils import timezone
 from rest_framework import status
 
@@ -78,6 +81,7 @@ def license_org(db, sample_organization):
 def pending_installation(db, license_org, sample_facility):
     """A pending installation with an activation code."""
     return Installation.objects.create(
+        installation_id=f"pending-{uuid.uuid4()}",
         organization=license_org,
         facility=sample_facility,
         name="Test Hub",
@@ -90,6 +94,7 @@ def pending_installation(db, license_org, sample_facility):
 def active_installation(db, license_org, sample_facility):
     """An already-activated installation."""
     installation = Installation.objects.create(
+        installation_id=f"active-{uuid.uuid4()}",
         organization=license_org,
         facility=sample_facility,
         name="Active Hub",
@@ -246,9 +251,48 @@ class TestActivation:
         # Verify installation was updated
         pending_installation.refresh_from_db()
         assert pending_installation.status == Installation.Status.ACTIVE
-        assert pending_installation.installation_id == client_uuid
+        assert pending_installation.installation_id == str(client_uuid)
         assert pending_installation.activation_code == ""  # Cleared
         assert pending_installation.license_jwt != ""
+
+    def test_activation_returns_hub_bootstrap_payload(self, api_client, pending_installation):
+        """Activation should return org/facility data needed to seed a local hub."""
+        client_uuid = uuid.uuid4()
+
+        response = api_client.post(
+            "/api/licensing/activate/",
+            {
+                "installation_id": str(client_uuid),
+                "activation_code": "TEST-ACTIVATION-CODE",
+                "app_version": "0.2.0",
+                "os_info": "Windows 11",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["sync_url"] == settings.SYNC_SERVER_URL
+        assert response.data["organization"] == {
+            "id": pending_installation.organization.id,
+            "name": pending_installation.organization.name,
+            "slug": pending_installation.organization.slug,
+            "contact_email": pending_installation.organization.contact_email,
+            "contact_phone": pending_installation.organization.contact_phone,
+        }
+        assert response.data["facility"]["id"] == pending_installation.facility.id
+        assert response.data["facility"]["name"] == pending_installation.facility.name
+        assert response.data["facility"]["mfl_code"] == pending_installation.facility.mfl_code
+        assert response.data["facility"]["level"] == pending_installation.facility.level
+        assert response.data["facility"]["ownership"] == pending_installation.facility.ownership
+        assert response.data["facility"]["county_id"] == pending_installation.facility.county_id
+        assert (
+            response.data["facility"]["sub_county_id"]
+            == pending_installation.facility.sub_county_id
+        )
+        assert response.data["facility"]["modules"]["outpatient"] is True
+        assert "bootstrap" in response.data
+        assert "departments" in response.data["bootstrap"]
+        assert "roles" in response.data["bootstrap"]
 
     def test_invalid_activation_code_rejected(self, api_client):
         """Invalid code should return 400."""
@@ -292,6 +336,73 @@ class TestActivation:
         """Missing required fields should return 400."""
         response = api_client.post("/api/licensing/activate/", {}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+class TestSeedFromActivationCommand:
+    """Tests for seeding hub identity from the cloud activation response."""
+
+    def test_seed_from_activation_creates_org_and_facility_with_cloud_ids(
+        self, db, tmp_path, sample_county, sample_sub_county
+    ):
+        """Command should mirror cloud org/facility primary keys locally."""
+        from hmis.apps.core.models import Facility, Organization
+
+        payload = {
+            "installation_id": "hub-test-001",
+            "status": "ACTIVE",
+            "sync_url": "https://api.vitora.digital/api/sync",
+            "organization": {
+                "id": 4242,
+                "name": "Demo Health Facility Group",
+                "slug": "demo-health-facility-group",
+                "contact_email": "admin@example.test",
+                "contact_phone": "+254700000000",
+            },
+            "facility": {
+                "id": 9090,
+                "name": "Demo Health Facility",
+                "mfl_code": "MFL-9090",
+                "level": "4",
+                "ownership": "PRIVATE",
+                "county_id": sample_county.id,
+                "county_name": sample_county.name,
+                "sub_county_id": sample_sub_county.id,
+                "sub_county_name": sample_sub_county.name,
+                "modules": {
+                    "outpatient": True,
+                    "inpatient": True,
+                    "pharmacy": True,
+                    "laboratory": True,
+                    "billing": True,
+                    "imaging": False,
+                },
+            },
+            "bootstrap": {"departments": [], "roles": []},
+        }
+        response_file = tmp_path / "activation.json"
+        response_file.write_text(json.dumps(payload))
+
+        call_command("seed_from_activation", response_file=str(response_file), verbosity=0)
+
+        org = Organization.objects.get(pk=4242)
+        facility = Facility.objects.get(pk=9090)
+        assert org.name == "Demo Health Facility Group"
+        assert org.slug == "demo-health-facility-group"
+        assert org.contact_email == "admin@example.test"
+        assert org.contact_phone == "+254700000000"
+        assert org.is_active is True
+        assert org.is_verified is True
+        assert facility.organization == org
+        assert facility.name == "Demo Health Facility"
+        assert facility.mfl_code == "MFL-9090"
+        assert facility.county == sample_county
+        assert facility.sub_county == sample_sub_county
+        assert facility.has_outpatient is True
+        assert facility.has_inpatient is True
+        assert facility.has_pharmacy is True
+        assert facility.has_laboratory is True
+        assert facility.has_billing is True
+        assert facility.has_imaging is False
 
 
 # ---------------------------------------------------------------------------
