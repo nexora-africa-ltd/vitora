@@ -37,11 +37,16 @@ SYNC_REGISTRY: dict[str, SyncRegistryEntry] = {
         priority=1,
         conflict_policy="REMOTE_WINS",
     ),
-    "core.StaffProfile": SyncRegistryEntry(direction=SyncDirection.UP, priority=2),
-    "auth.User": SyncRegistryEntry(
-        direction=SyncDirection.UP,
+    "core.StaffProfile": SyncRegistryEntry(
+        direction=SyncDirection.BOTH,
         priority=2,
-        exclude_fields=("password",),
+        conflict_policy="LAST_WRITE_WINS",
+    ),
+    "auth.User": SyncRegistryEntry(
+        direction=SyncDirection.BOTH,
+        priority=2,
+        conflict_policy="LAST_WRITE_WINS",
+        exclude_fields=("last_login",),
     ),
     # Clinical data
     "patients.Patient": SyncRegistryEntry(direction=SyncDirection.UP, priority=3),

@@ -22,12 +22,19 @@ class TestHubSyncRegistry:
         assert entry.direction == SyncDirection.UP
         assert entry.priority == 3
 
-    def test_passwords_are_excluded_for_user_sync(self):
-        """User sync should never queue password hashes."""
+    def test_last_login_excluded_for_user_sync(self):
+        """User sync should exclude ephemeral last_login field."""
         from hmis.apps.core.sync_registry import SYNC_REGISTRY
 
         entry = SYNC_REGISTRY["auth.User"]
-        assert "password" in entry.exclude_fields
+        assert "last_login" in entry.exclude_fields
+
+    def test_user_password_hash_is_synced(self):
+        """User sync should include the password hash for offline auth."""
+        from hmis.apps.core.sync_registry import SYNC_REGISTRY
+
+        entry = SYNC_REGISTRY["auth.User"]
+        assert "password" not in entry.exclude_fields
 
 
 class TestHubSyncSignals:

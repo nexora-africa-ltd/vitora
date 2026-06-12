@@ -9,7 +9,7 @@ from django.db import transaction
 from django.utils.dateparse import parse_datetime
 
 from hmis.apps.core.models import SyncConflict, SyncQueue
-from hmis.apps.core.sync_registry import SYNC_REGISTRY, SyncDirection
+from hmis.apps.core.sync_registry import SYNC_REGISTRY, SyncDirection, SyncRegistryEntry
 
 SYNC_META_KEY = "sync_meta"
 
@@ -48,18 +48,26 @@ def materialize_entry(entry: dict[str, Any]) -> dict[str, Any]:
             conflict.resolve(local_change.data, strategy=strategy)
             return {"success": True, "conflict": True, "strategy": strategy}
 
-        result = apply_entry(model, operation, record_id, data)
+        result = apply_entry(model, operation, record_id, data, registry_entry=registry_entry)
         if result.get("success"):
             conflict.resolve(data, strategy=strategy)
             return {"success": True, "conflict": True, "strategy": strategy}
         return result
 
-    return apply_entry(model, operation, record_id, data)
+    return apply_entry(model, operation, record_id, data, registry_entry=registry_entry)
 
 
-def apply_entry(model, operation: str, record_id: Any, data: dict[str, Any]) -> dict[str, Any]:
+def apply_entry(
+    model,
+    operation: str,
+    record_id: Any,
+    data: dict[str, Any],
+    *,
+    registry_entry: SyncRegistryEntry | None = None,
+) -> dict[str, Any]:
     """Apply a non-conflicting entry to the database."""
-    cleaned_data = clean_model_data(model, data)
+    exclude = registry_entry.exclude_fields if registry_entry else ()
+    cleaned_data = clean_model_data(model, data, exclude_fields=exclude)
 
     try:
         with transaction.atomic():
@@ -141,11 +149,15 @@ def get_model_for_label(model_label: str):
     return apps.get_model(app_label, model_name)
 
 
-def clean_model_data(model, data: dict[str, Any]) -> dict[str, Any]:
+def clean_model_data(
+    model, data: dict[str, Any], *, exclude_fields: tuple[str, ...] = ()
+) -> dict[str, Any]:
     """Keep only concrete model fields and map FK values to *_id fields."""
     cleaned: dict[str, Any] = {}
     for field in model._meta.concrete_fields:
         if field.primary_key:
+            continue
+        if field.name in exclude_fields or field.attname in exclude_fields:
             continue
         if field.name in data:
             key = field.attname if getattr(field, "many_to_one", False) else field.name
