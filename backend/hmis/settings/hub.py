@@ -50,6 +50,12 @@ AUTH_COOKIE_DOMAIN = None  # Let the browser scope to the hub's IP
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = False
 
+# WhiteNoise middleware for serving static files (must be after SecurityMiddleware)
+MIDDLEWARE.insert(  # noqa: F405
+    MIDDLEWARE.index("django.middleware.security.SecurityMiddleware") + 1,  # noqa: F405
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+)
+
 # ---------------------------------------------------------------------------
 # Database — SQLite with WAL mode (performant for <20 concurrent users)
 # ---------------------------------------------------------------------------

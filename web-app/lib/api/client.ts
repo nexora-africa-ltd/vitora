@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { tokenStorage } from '@/lib/auth/storage';
-import { isDesktop } from '@/lib/desktop';
+import { isDesktop, getApiUrl } from '@/lib/desktop';
 import { API_BASE_URL } from '@/lib/utils/constants';
 
 /**
@@ -8,7 +8,37 @@ import { API_BASE_URL } from '@/lib/utils/constants';
  * Used for constructing full URLs for resources like DICOM WADO.
  */
 export function getApiBaseUrl(): string {
-  return API_BASE_URL;
+  return _desktopApiUrl || API_BASE_URL;
+}
+
+// ---------------------------------------------------------------------------
+// Desktop dynamic API URL — resolved from Tauri config at runtime
+// ---------------------------------------------------------------------------
+let _desktopApiUrl: string | null = null;
+let _desktopApiUrlPromise: Promise<string> | null = null;
+
+/**
+ * Initialize the desktop API URL from Tauri config.
+ * Call this early in the app lifecycle (e.g., in a provider).
+ * Returns the resolved URL or falls back to API_BASE_URL.
+ */
+export async function initDesktopApiUrl(): Promise<string> {
+  if (!isDesktop()) return API_BASE_URL;
+  if (_desktopApiUrl) return _desktopApiUrl;
+  if (!_desktopApiUrlPromise) {
+    _desktopApiUrlPromise = getApiUrl().then(url => {
+      _desktopApiUrl = url;
+      // Update the axios instance default for any requests that bypass the interceptor
+      apiClient.defaults.baseURL = url;
+      return url;
+    });
+  }
+  return _desktopApiUrlPromise;
+}
+
+/** Get the resolved desktop API URL (sync, returns null if not yet initialized). */
+export function getDesktopApiUrl(): string | null {
+  return _desktopApiUrl;
 }
 
 // ---------------------------------------------------------------------------
@@ -84,10 +114,25 @@ const processQueue = (error: Error | null) => {
 
 /**
  * Request interceptor — attaches facility & organization scoping headers.
- * Auth is handled automatically by httpOnly cookies (withCredentials).
+ * In web mode: auth via httpOnly cookies (withCredentials).
+ * In desktop mode: auth via Authorization Bearer header (cookies don't work cross-origin over HTTP).
  */
 apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
+    // In desktop mode, ensure we have the hub URL before making requests
+    if (isDesktop()) {
+      if (!_desktopApiUrl && _desktopApiUrlPromise) {
+        await _desktopApiUrlPromise;
+      }
+      if (_desktopApiUrl) {
+        config.baseURL = _desktopApiUrl;
+      }
+      // Desktop: attach Bearer token (httpOnly cookies don't work cross-origin HTTP)
+      const accessToken = tokenStorage.getAccessToken();
+      if (accessToken) {
+        config.headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+    }
     // Attach facility ID header for multi-facility data scoping
     if (_activeFacilityId != null) {
       config.headers['X-Facility-Id'] = String(_activeFacilityId);
@@ -174,12 +219,32 @@ apiClient.interceptors.response.use(
 );
 
 /**
- * Refresh access token via httpOnly cookie.
- * The refresh token is in a cookie; the backend reads it and sets a new access cookie.
+ * Refresh access token.
+ * Web mode: via httpOnly cookie (backend reads refresh cookie, sets new access cookie).
+ * Desktop mode: via POST /api/token/refresh/ with refresh token in body.
  */
 async function refreshViaCookie(): Promise<boolean> {
   try {
-    await axios.post(`${API_BASE_URL}/api/auth/refresh/`, {}, { withCredentials: true });
+    const baseUrl = _desktopApiUrl || API_BASE_URL;
+
+    if (isDesktop()) {
+      // Desktop: use token-based refresh (cookies don't work cross-origin HTTP)
+      const refreshToken = tokenStorage.getRefreshToken();
+      if (!refreshToken) return false;
+      const resp = await axios.post(
+        `${baseUrl}/api/token/refresh/`,
+        { refresh: refreshToken },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+      if (resp.data?.access) {
+        tokenStorage.setTokens(resp.data.access, refreshToken);
+        return true;
+      }
+      return false;
+    }
+
+    // Web: cookie-based refresh
+    await axios.post(`${baseUrl}/api/auth/refresh/`, {}, { withCredentials: true });
     return true;
   } catch {
     tokenStorage.clearAll();

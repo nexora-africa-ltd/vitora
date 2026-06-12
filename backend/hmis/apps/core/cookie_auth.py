@@ -147,6 +147,14 @@ class CookieLoginView(APIView):
 
         response = Response(user_data, status=status.HTTP_200_OK)
 
+        # Desktop clients can't use cross-origin httpOnly cookies (different
+        # origins over HTTP, SameSite blocks them).  Return tokens in the body
+        # so the desktop frontend can use Authorization: Bearer headers instead.
+        if request.headers.get("X-Vitora-Client", "").startswith("desktop"):
+            user_data["access"] = data["access"]
+            user_data["refresh"] = data["refresh"]
+            return Response(user_data, status=status.HTTP_200_OK)
+
         return _set_auth_cookies(response, data["access"], data["refresh"])
 
 

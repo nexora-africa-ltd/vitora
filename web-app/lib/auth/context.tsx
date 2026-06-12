@@ -298,13 +298,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, isLoading: true }));
 
     try {
+      const { isDesktop } = await import('@/lib/desktop');
+      const desktop = isDesktop();
       const apiUrl = await getAuthApiUrl();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (desktop) {
+        headers['X-Vitora-Client'] = 'desktop/0.1.0';
+      }
       const tokenResponse = await fetch(
         `${apiUrl}/api/auth/login/`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',  // Receive httpOnly cookies
+          headers,
+          credentials: 'include',  // Receive httpOnly cookies (web mode)
           body: JSON.stringify({ username, password }),
         }
       );
@@ -345,6 +351,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         permissions: [],
         facility: null,
       };
+
+      // In desktop mode, tokens are returned in the body (cross-origin
+      // httpOnly cookies don't work over HTTP LAN). Store them for Bearer auth.
+      if (desktop && data.access && data.refresh) {
+        const { tokenStorage } = await import('@/lib/auth/storage');
+        tokenStorage.setTokens(data.access, data.refresh);
+      }
 
       // Store user profile (non-sensitive) in localStorage
       localStorage.setItem(USER_KEY, JSON.stringify(user));
