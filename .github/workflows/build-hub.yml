@@ -75,6 +75,7 @@ jobs:
         run: |
           pip install poetry
           poetry self add poetry-plugin-export
+          poetry config virtualenvs.create false
 
       - name: Export requirements
         working-directory: backend
@@ -98,14 +99,6 @@ jobs:
         run: |
           poetry install --without dev --no-root
           pip install nuitka ordered-set zstandard
-
-      - name: Cache Nuitka builds
-        uses: actions/cache@v4
-        with:
-          path: backend/build/compiled
-          key: nuitka-${{ matrix.platform }}-${{ hashFiles('backend/hmis/**/*.py') }}
-          restore-keys: |
-            nuitka-${{ matrix.platform }}-
 
       - name: Compile with Nuitka
         working-directory: backend
