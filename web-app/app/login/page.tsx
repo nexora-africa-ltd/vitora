@@ -86,9 +86,13 @@ export default function LoginPage() {
         return;
       }
 
-      const token = await licensingApi.getStoredTokenAsync();
-      if (!cancelled && !token) {
-        router.replace('/activate');
+      // LAN client workstations don't need their own license — the hub
+      // holds the license. Only standalone/lan_hub need local activation.
+      if (config?.deployment_mode !== 'lan_client') {
+        const token = await licensingApi.getStoredTokenAsync();
+        if (!cancelled && !token) {
+          router.replace('/activate');
+        }
       }
     }
 

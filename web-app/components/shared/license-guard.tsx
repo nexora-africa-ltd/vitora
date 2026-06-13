@@ -11,7 +11,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { isDesktop } from '@/lib/desktop';
+import { isDesktop, getAppConfig } from '@/lib/desktop';
 import { licensingApi } from '@/lib/api/licensing';
 
 export function LicenseGuard({ children }: { children?: ReactNode }) {
@@ -24,12 +24,21 @@ export function LicenseGuard({ children }: { children?: ReactNode }) {
       return;
     }
 
-    licensingApi.getStoredTokenAsync().then((token) => {
-      if (!token) {
-        router.replace('/activate');
-      } else {
+    // LAN client workstations authenticate with the hub — they don't hold
+    // their own license token. Skip the activation gate for this mode.
+    getAppConfig().then((config) => {
+      if (config?.deployment_mode === 'lan_client') {
         setLicensed(true);
+        return;
       }
+
+      licensingApi.getStoredTokenAsync().then((token) => {
+        if (!token) {
+          router.replace('/activate');
+        } else {
+          setLicensed(true);
+        }
+      });
     });
   }, [router]);
 
