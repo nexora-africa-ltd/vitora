@@ -180,6 +180,20 @@ apiClient.interceptors.response.use(
         }
         return Promise.reject(error);
       }
+      // Hub license guard codes — redirect to activate page instead of logging out
+      if (data && (data.code === 'hub_not_activated' || data.code === 'hub_license_invalid' || data.code === 'hub_license_locked')) {
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/activate')) {
+          window.location.href = '/activate';
+        }
+        return Promise.reject(error);
+      }
+      // Hub read-only mode — allow through but emit event for UI feedback
+      if (data && data.code === 'hub_license_read_only') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('vitora:license-read-only'));
+        }
+        return Promise.reject(error);
+      }
     }
 
     // Handle 401 Unauthorized — try cookie-based refresh
