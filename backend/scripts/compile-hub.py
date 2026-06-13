@@ -73,9 +73,9 @@ def find_app_dir(app_module: str) -> Path:
     return BACKEND_DIR / app_module.replace(".", "/")
 
 
-def should_keep_plain(filepath: Path, app_dir: Path) -> bool:
+def should_keep_plain(filepath: Path, app_dir: Path, base_dir: Path = BACKEND_DIR) -> bool:
     """Check if a file should be kept as plain Python."""
-    rel = filepath.relative_to(BACKEND_DIR)
+    rel = filepath.relative_to(base_dir)
     rel_str = str(rel)
 
     # Global keeps
@@ -218,7 +218,7 @@ def assemble_payload(output_dir: Path, payload_dir: Path) -> None:
         if not payload_app_dir.exists():
             continue
         for py_file in payload_app_dir.rglob("*.py"):
-            if not should_keep_plain(py_file, payload_app_dir):
+            if not should_keep_plain(py_file, payload_app_dir, base_dir=payload_dir):
                 py_file.unlink()
                 removed += 1
 
