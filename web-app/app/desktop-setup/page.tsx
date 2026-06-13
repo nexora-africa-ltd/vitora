@@ -131,7 +131,15 @@ export default function DesktopSetupPage() {
       return;
     }
 
-    // After setup, go to license activation (activation code validates the install)
+    // LAN client (Facility Workstation): skip activation — workstations
+    // authenticate with the hub using staff username/password, not an
+    // activation code. Only the hub itself needs activation.
+    if (mode === 'lan_client') {
+      router.push('/login');
+      return;
+    }
+
+    // Standalone mode: go to license activation (activation code validates the install)
     router.push('/activate');
   }
 
