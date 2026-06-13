@@ -181,6 +181,104 @@ class Installation(TimeStampedModel):
         help_text="Total number of successful check-ins.",
     )
 
+    # ------------------------------------------------------------------
+    # Phase 4: Distribution Hardening
+    # ------------------------------------------------------------------
+
+    class DeliveryMode(models.TextChoices):
+        TARBALL = "TARBALL", "Tarball (native)"
+        CONTAINER = "CONTAINER", "Container (Docker)"
+        MSI = "MSI", "Windows MSI"
+
+    class UpdateChannel(models.TextChoices):
+        STABLE = "stable", "Stable"
+        BETA = "beta", "Beta"
+
+    delivery_mode = models.CharField(
+        max_length=20,
+        choices=DeliveryMode.choices,
+        default=DeliveryMode.TARBALL,
+        help_text="How this installation receives updates.",
+    )
+    update_channel = models.CharField(
+        max_length=20,
+        choices=UpdateChannel.choices,
+        default=UpdateChannel.STABLE,
+        help_text="Update channel: stable or beta.",
+    )
+    last_update_check = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the last update check was performed.",
+    )
+    pending_update_version = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Version of a pending (downloaded but not applied) update.",
+    )
+    update_deferred_until = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Customer-deferred update deadline.",
+    )
+    container_image_digest = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="SHA-256 digest of the running container image.",
+    )
+
+    # ------------------------------------------------------------------
+    # Phase 5: Aggressive Controls
+    # ------------------------------------------------------------------
+
+    class ProtectionTier(models.TextChoices):
+        STANDARD = "STANDARD", "Standard (Phase 2+3)"
+        ENHANCED = "ENHANCED", "Enhanced (+ SQLCipher)"
+        MAXIMUM = "MAXIMUM", "Maximum (+ TPM + per-customer)"
+
+    protection_tier = models.CharField(
+        max_length=20,
+        choices=ProtectionTier.choices,
+        default=ProtectionTier.STANDARD,
+        help_text="Protection level for this installation.",
+    )
+    sqlcipher_enabled = models.BooleanField(
+        default=False,
+        help_text="Whether the local database is encrypted with SQLCipher.",
+    )
+    tpm_available = models.BooleanField(
+        default=False,
+        help_text="Whether TPM 2.0 attestation is available on this hardware.",
+    )
+    tpm_ak_public = models.TextField(
+        blank=True,
+        default="",
+        help_text="TPM attestation key public part (base64) for cloud verification.",
+    )
+    last_tpm_quote_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the last TPM PCR quote was received.",
+    )
+    build_id = models.CharField(
+        max_length=16,
+        blank=True,
+        default="",
+        help_text="Watermark build ID embedded in this installation's binaries.",
+    )
+    canary_token = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="Canary token for provenance tracking.",
+    )
+    is_per_customer_build = models.BooleanField(
+        default=False,
+        help_text="Whether this installation has a unique per-customer build.",
+    )
+
     class Meta:
         ordering = ["-created_at"]
 

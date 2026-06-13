@@ -275,6 +275,11 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.licensing.tasks.license_check_in",
         "schedule": crontab(minute=15, hour="*/6"),
     },
+    # Phase 4: Check for hub updates daily at 3 AM
+    "hub-update-check": {
+        "task": "hmis.apps.licensing.tasks.check_for_updates",
+        "schedule": crontab(minute=0, hour=3),
+    },
 }
 
 # Timezone configuration
