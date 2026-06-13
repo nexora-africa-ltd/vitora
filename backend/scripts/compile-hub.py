@@ -129,9 +129,6 @@ def compile_app(
     if jobs:
         cmd.append(f"--jobs={jobs}")
 
-    # Nuitka Django plugin for model metaclass support
-    cmd.append("--enable-plugin=django")
-
     if dry_run:
         print(f"    [DRY RUN] {' '.join(cmd)}")
         return True
