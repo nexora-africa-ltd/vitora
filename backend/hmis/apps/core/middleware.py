@@ -694,6 +694,8 @@ class HubLicenseGuardMiddleware:
         "/api/token/",
         "/api/auth/",
         "/api/hub/",
+        "/api/staff/me/",
+        "/api/core/setup/",
         "/admin/",
         "/static/",
     )
@@ -876,7 +878,15 @@ class HubLicenseGuardMiddleware:
                 return payload, "expired"
             except Exception:
                 return None, "invalid"
-        except (pyjwt.InvalidSignatureError, pyjwt.DecodeError):
+        except (pyjwt.InvalidSignatureError, pyjwt.DecodeError) as exc:
+            import logging
+
+            logging.getLogger("hmis.licensing").warning(
+                "License token verification failed: %s", exc
+            )
             return None, "invalid"
-        except Exception:
+        except Exception as exc:
+            import logging
+
+            logging.getLogger("hmis.licensing").warning("License token verification error: %s", exc)
             return None, "invalid"
