@@ -33,6 +33,7 @@ HUB_PORT="${HUB_PORT:-9088}"
 LOG_DIR="/var/log/vitora"
 DB_DIR="/var/lib/vitora"
 VERSION=""
+DELIVERY_MODE="native"  # native | container
 
 # Colors
 RED='\033[0;31m'
@@ -51,6 +52,7 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --version|-v) VERSION="$2"; shift 2 ;;
         --port|-p) HUB_PORT="$2"; shift 2 ;;
+        --mode|-m) DELIVERY_MODE="$2"; shift 2 ;;
         --non-interactive) NON_INTERACTIVE=true; shift ;;
         --help|-h)
             echo "Usage: install-hub.sh [OPTIONS]"
@@ -58,6 +60,7 @@ while [[ $# -gt 0 ]]; do
             echo "Options:"
             echo "  --version, -v    Specify release version (default: latest)"
             echo "  --port, -p       Hub port (default: 9088)"
+            echo "  --mode, -m       Delivery mode: native or container (default: native)"
             echo "  --non-interactive  Skip prompts (use env vars for config)"
             echo "  --help, -h       Show this help"
             exit 0
@@ -353,6 +356,84 @@ fi
 mkdir -p "$APP_DIR" "$LOG_DIR" "$DB_DIR"
 chown "$APP_USER:$APP_USER" "$LOG_DIR" "$DB_DIR"
 
+# ==========================================================================
+# Container Mode — pull signed OCI image + docker compose
+# ==========================================================================
+if [[ "$DELIVERY_MODE" == "container" ]]; then
+    step "2/7 Installing Docker (container mode)..."
+
+    # Ensure Docker is installed
+    if ! command -v docker &>/dev/null; then
+        info "Installing Docker..."
+        curl -fsSL https://get.docker.com | sh
+        systemctl enable --now docker
+        usermod -aG docker "$APP_USER" || true
+    fi
+
+    step "3/7 Pulling Vitora Hub container v${VERSION}..."
+    REGISTRY="registry.vitora.digital"
+    IMAGE="${REGISTRY}/hub:${VERSION}"
+
+    docker pull "$IMAGE" || {
+        error "Failed to pull container image: $IMAGE"
+        exit 1
+    }
+
+    # Verify image signature with cosign (if available)
+    if command -v cosign &>/dev/null; then
+        info "Verifying container signature..."
+        cosign verify --key "${APP_DIR}/keys/cosign.pub" "$IMAGE" 2>/dev/null || \
+            warn "Image signature verification failed (continuing — install cosign for enforcement)"
+    fi
+
+    step "4/7 Generating docker-compose.yml..."
+    cat > "${APP_DIR}/docker-compose.yml" <<COMPOSE
+version: "3.8"
+services:
+  hub:
+    image: ${IMAGE}
+    container_name: vitora-hub
+    restart: unless-stopped
+    ports:
+      - "${HUB_PORT}:9088"
+    volumes:
+      - vitora-data:/data
+      - ${APP_DIR}/.env:/opt/vitora-hub/.env:ro
+    env_file:
+      - ${APP_DIR}/.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9088/api/health/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  vitora-data:
+COMPOSE
+
+    step "5/7 Starting container..."
+    cd "$APP_DIR" && docker compose up -d
+
+    step "6/7 Verifying health..."
+    sleep 10
+    if curl -sf "http://127.0.0.1:${HUB_PORT}/api/health/" >/dev/null 2>&1; then
+        info "Health check passed."
+    else
+        warn "Health check did not pass immediately — container may still be starting."
+    fi
+
+    step "7/7 Container deployment complete!"
+    echo ""
+    info "Vitora Hub (container mode) is running at: http://$(hostname -I | awk '{print $1}'):${HUB_PORT}"
+    info "Manage with: cd ${APP_DIR} && docker compose [logs|restart|stop]"
+    exit 0
+fi
+
+# ==========================================================================
+# Native Mode — tarball extraction + venv + systemd
+# ==========================================================================
+
 # --- Download Release Artifact ---
 step "2/7 Downloading Vitora Hub v${VERSION}..."
 TEMP_ARCHIVE="/tmp/${ARTIFACT_NAME}"
@@ -368,6 +449,10 @@ download "$DOWNLOAD_URL" "$TEMP_ARCHIVE" || {
 info "Extracting to ${APP_DIR}..."
 tar -xzf "$TEMP_ARCHIVE" -C "$APP_DIR" --strip-components=1
 rm -f "$TEMP_ARCHIVE"
+
+# Harden directory permissions: root-owned, group-readable by service user only
+chown -R root:"$APP_USER" "$APP_DIR"
+chmod -R 750 "$APP_DIR"
 
 # Verify extraction
 if [[ ! -f "$APP_DIR/manage.py" ]]; then

@@ -15,7 +15,7 @@ import secrets
 
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action, api_view, authentication_classes, permission_classes
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -392,6 +392,76 @@ def generate_activation_code(request: Request) -> Response:
             "status": installation.status,
         },
         status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["POST"])
+@authentication_classes([])  # License JWT, not a user JWT — skip DRF auth
+@permission_classes([permissions.AllowAny])
+def registry_token(request: Request) -> Response:
+    """
+    Exchange a valid license JWT for a short-lived Docker registry pull token.
+
+    POST /api/licensing/registry-token/
+    Authorization: Bearer <license-jwt>
+    Body: {"installation_id": "..."}
+
+    Returns a short-lived bearer token scoped for pulling the hub image.
+    """
+    import time as _time
+
+    # Manually extract token — don't rely on DRF auth (this is a license JWT, not user JWT)
+    auth_header = request.META.get("HTTP_AUTHORIZATION", "")
+    if not auth_header.startswith("Bearer "):
+        return Response(
+            {"detail": "License JWT required in Authorization header."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    from .tokens import verify_license_token
+
+    license_jwt = auth_header[7:]
+    payload = verify_license_token(license_jwt)
+    if payload is None:
+        return Response(
+            {"detail": "Invalid or expired license token."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    installation_id = request.data.get("installation_id", "")
+    if installation_id and installation_id != payload.get("installation_id"):
+        return Response(
+            {"detail": "Installation ID mismatch."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    # Generate a short-lived registry token (1 hour)
+    import hashlib
+    import hmac
+
+    from django.conf import settings as _settings
+
+    secret = getattr(_settings, "DJANGO_SECRET_KEY", "") or getattr(_settings, "SECRET_KEY", "")
+    inst_id = payload.get("installation_id", installation_id)
+    expires_at = int(_time.time()) + 3600  # 1 hour
+
+    # HMAC-based token: not a full JWT but sufficient for private registry auth
+    token_data = f"{inst_id}:{expires_at}"
+    signature = hmac.new(
+        secret.encode(),
+        token_data.encode(),
+        hashlib.sha256,
+    ).hexdigest()[:32]
+    registry_pull_token = f"{token_data}:{signature}"
+
+    return Response(
+        {
+            "token": registry_pull_token,
+            "expires_at": expires_at,
+            "registry": "registry.vitora.digital",
+            "scope": "pull",
+        },
+        status=status.HTTP_200_OK,
     )
 
 

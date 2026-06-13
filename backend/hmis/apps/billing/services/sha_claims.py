@@ -1497,6 +1497,7 @@ class SHAClaimsService:
         Submit claim bundle to SHA API.
 
         Uses the official endpoint: POST /v1/shr-med/bundle
+        On hub installations, routes through the Vitora cloud proxy.
 
         Args:
             bundle: FHIR Bundle to submit
@@ -1509,6 +1510,16 @@ class SHAClaimsService:
             requests.RequestException: If API call fails
             SHAAuthError: If authentication fails
         """
+        from hmis.apps.licensing.cloud_proxy import is_hub_mode, submit_sha_claim_via_cloud
+
+        # Hub mode: route through cloud proxy (hub never holds SHA credentials)
+        if is_hub_mode():
+            proxy_response = submit_sha_claim_via_cloud(
+                {"bundle": bundle, "claim_id": claim.pk, "claim_number": claim.claim_number}
+            )
+            if not proxy_response.success:
+                raise requests.RequestException(f"Cloud proxy error: {proxy_response.error}")
+            return proxy_response.data
         # Get auth headers
         headers = self.auth_service.get_auth_headers()
         headers["Content-Type"] = "application/fhir+json"

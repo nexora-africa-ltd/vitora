@@ -95,6 +95,38 @@ def license_check_in(self) -> dict:
         "hardware_fingerprint": hardware_fp,
     }
 
+    # Phase 5C: Include build ID (watermark)
+    try:
+        from hmis.apps.licensing.watermark import get_build_id
+
+        build_id = get_build_id()
+        if build_id:
+            check_in_data["build_id"] = build_id
+    except Exception:  # noqa: S110 — optional; must not crash check-in
+        pass
+
+    # Phase 5D: Include canary token
+    try:
+        from hmis.apps.licensing.canary import get_local_canary
+
+        canary = get_local_canary()
+        if canary:
+            check_in_data["canary_token"] = canary
+    except Exception:  # noqa: S110
+        pass
+
+    # Phase 5B: Include TPM quote if TPM is available
+    try:
+        from hmis.apps.licensing.tpm import generate_pcr_quote, is_tpm_available
+
+        if is_tpm_available():
+            nonce = payload.get("tpm_nonce", installation_id[:16])
+            quote_data = generate_pcr_quote(nonce)
+            if quote_data:
+                check_in_data["tpm_quote"] = quote_data
+    except Exception:  # noqa: S110
+        pass
+
     # Send check-in
     try:
         response = requests.post(
@@ -115,6 +147,16 @@ def license_check_in(self) -> dict:
             # Write new token to disk
             _save_license_token(new_token, token_path)
             logger.info("License check-in successful; token refreshed.")
+
+        # Phase 5A: Store cloud key part for SQLCipher (if provided)
+        cloud_key = data.get("cloud_key")
+        if cloud_key:
+            try:
+                from hmis.apps.licensing.sqlcipher_backend import store_cloud_key_part
+
+                store_cloud_key_part(cloud_key)
+            except Exception as exc:
+                logger.warning("Failed to store cloud key part: %s", exc)
 
         return {
             "success": True,

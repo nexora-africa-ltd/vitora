@@ -225,6 +225,33 @@ if (-not (Test-Path "$InstallDir\manage.py")) {
 }
 Write-Info "Extraction complete."
 
+# Harden directory permissions: Administrators have full control,
+# SYSTEM has full control, authenticated users have read+execute only.
+# This prevents casual modification by non-admin users.
+Write-Info "Hardening directory permissions..."
+try {
+    $acl = Get-Acl $InstallDir
+    $acl.SetAccessRuleProtection($true, $false)  # Disable inheritance
+    # Remove all existing rules
+    $acl.Access | ForEach-Object { $acl.RemoveAccessRule($_) } | Out-Null
+    # Administrators: Full Control
+    $adminRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+        "BUILTIN\Administrators", "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
+    $acl.AddAccessRule($adminRule)
+    # SYSTEM: Full Control (needed for service)
+    $systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+        "NT AUTHORITY\SYSTEM", "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
+    $acl.AddAccessRule($systemRule)
+    # Users: Read & Execute only (no modify/write)
+    $userRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+        "BUILTIN\Users", "ReadAndExecute", "ContainerInherit,ObjectInherit", "None", "Allow")
+    $acl.AddAccessRule($userRule)
+    Set-Acl $InstallDir $acl
+    Write-Info "ACLs set: Admins=FullControl, Users=ReadOnly"
+} catch {
+    Write-Warn "Could not set restrictive ACLs: $_"
+}
+
 # --- Download NSSM ---
 Write-Step 3 "Setting up service manager..."
 $nssmExe = "$NssmDir\nssm.exe"

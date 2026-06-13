@@ -261,6 +261,10 @@ def generate_manifest(payload_dir: Path, version: str) -> dict:
     manifest_path.write_text(json.dumps(manifest, indent=2))
     print(f"  MANIFEST generated: {len(manifest['files'])} files")
 
+    # Also write to output dir (parent of payload) for CI signing step
+    output_manifest = payload_dir.parent / "manifest.json"
+    output_manifest.write_text(json.dumps(manifest, indent=2))
+
     return manifest
 
 

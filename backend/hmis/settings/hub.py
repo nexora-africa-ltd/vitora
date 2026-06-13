@@ -287,6 +287,9 @@ MIDDLEWARE.insert(  # noqa: F405
     "hmis.apps.core.middleware.HubLicenseGuardMiddleware",
 )
 
+# Hub Watermark Middleware (Phase 5C — injects X-Vitora-Build header)
+MIDDLEWARE.append("hmis.apps.core.middleware.HubWatermarkMiddleware")  # noqa: F405
+
 # Path to the cached license JWT file (written by installer / check-in task)
 HUB_LICENSE_TOKEN_PATH = os.path.join(
     os.getenv("HUB_DATA_DIR", str(BASE_DIR)),  # noqa: F405
