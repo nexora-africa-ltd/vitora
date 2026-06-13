@@ -26,8 +26,20 @@ env:
 
 jobs:
   compile:
-    name: Compile Hub (linux-amd64)
-    runs-on: ubuntu-22.04
+    name: Compile Hub (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-amd64
+            runner: ubuntu-22.04
+            ext: tar.gz
+            shell: bash
+          - platform: windows-amd64
+            runner: windows-2022
+            ext: zip
+            shell: pwsh
 
     steps:
       - name: Checkout
@@ -35,6 +47,7 @@ jobs:
 
       - name: Determine version
         id: version
+        shell: bash
         run: |
           if [[ -n "${{ inputs.version }}" ]]; then
             echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
@@ -48,26 +61,40 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install system dependencies
+      # --- Linux-only system deps ---
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc python3-dev patchelf ccache
 
+      # --- Windows MSVC is pre-installed on windows-2022 ---
+
       - name: Install Poetry
+        shell: bash
         run: |
           pip install poetry
           poetry self add poetry-plugin-export
 
       - name: Export requirements
         working-directory: backend
+        shell: bash
         run: |
-          # Strip python_version/platform markers so hub works on Python 3.11+
           poetry export --without dev --without-hashes --format requirements.txt --output requirements-hub-raw.txt
-          sed 's/ ; python_version.*//; s/ ; platform_system.*//; s/ ; sys_platform.*//; s/ ; implementation_name.*//' requirements-hub-raw.txt > requirements-hub.txt
-          rm requirements-hub-raw.txt
+          python -c "
+          import re
+          with open('requirements-hub-raw.txt') as f:
+              lines = f.readlines()
+          with open('requirements-hub.txt', 'w') as f:
+              for line in lines:
+                  cleaned = re.sub(r' ; (python_version|platform_system|sys_platform|implementation_name).*', '', line)
+                  f.write(cleaned)
+          "
+          rm -f requirements-hub-raw.txt
 
       - name: Install Python dependencies (for Nuitka)
         working-directory: backend
+        shell: bash
         run: |
           poetry install --without dev --no-root
           pip install nuitka ordered-set zstandard
@@ -76,24 +103,25 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/build/compiled
-          key: nuitka-linux-amd64-${{ hashFiles('backend/hmis/**/*.py') }}
+          key: nuitka-${{ matrix.platform }}-${{ hashFiles('backend/hmis/**/*.py') }}
           restore-keys: |
-            nuitka-linux-amd64-
+            nuitka-${{ matrix.platform }}-
 
       - name: Compile with Nuitka
         working-directory: backend
+        shell: bash
         run: |
           python scripts/compile-hub.py \
             --output-dir build/compiled \
             --version "${{ steps.version.outputs.version }}" \
             --jobs 4
 
-      - name: Sign manifest
+      - name: Sign manifest (Linux only)
+        if: runner.os == 'Linux' && env.COSIGN_PRIVATE_KEY != ''
         working-directory: backend
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
-        if: env.COSIGN_PRIVATE_KEY != ''
         run: |
           COSIGN_VERSION="v2.2.4"
           curl -sLO "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64"
@@ -106,24 +134,21 @@ jobs:
             echo "Manifest signed: ${MANIFEST}.sig"
           fi
 
-      - name: Package hub artifact
+      - name: Package hub artifact (Linux)
+        if: runner.os == 'Linux'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          ARTIFACT="vitora-hub-${VERSION}"
+          ARTIFACT="vitora-hub-${VERSION}-linux-amd64"
           mkdir -p "dist/${ARTIFACT}"
 
-          # Copy COMPILED application code (Nuitka output)
           cp -r backend/build/compiled/payload/* "dist/${ARTIFACT}/"
           cp -r backend/data "dist/${ARTIFACT}/"
           cp backend/manage.py "dist/${ARTIFACT}/"
           cp backend/requirements-hub.txt "dist/${ARTIFACT}/"
           cp backend/pyproject.toml "dist/${ARTIFACT}/"
-
-          # Copy signed manifest
           cp backend/build/compiled/manifest.json "dist/${ARTIFACT}/" 2>/dev/null || true
           cp backend/build/compiled/manifest.json.sig "dist/${ARTIFACT}/" 2>/dev/null || true
 
-          # Copy hub-specific scripts (Linux + Windows + Pi)
           mkdir -p "dist/${ARTIFACT}/scripts"
           cp backend/scripts/install-hub.sh "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/update-hub.sh "dist/${ARTIFACT}/scripts/"
@@ -131,38 +156,69 @@ jobs:
           cp backend/scripts/update-hub-windows.ps1 "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/pi-setup.sh "dist/${ARTIFACT}/scripts/"
 
-          # Include license public key for local JWT verification
           mkdir -p "dist/${ARTIFACT}/keys"
           cp backend/keys/license_public.pem "dist/${ARTIFACT}/keys/"
 
-          # Write version file
           echo "$VERSION" > "dist/${ARTIFACT}/VERSION"
 
-          # Create tarball
           cd dist
           tar -czf "${ARTIFACT}.tar.gz" "${ARTIFACT}"
-
-          # Create zip (for Windows)
-          zip -qr "${ARTIFACT}.zip" "${ARTIFACT}"
+          sha256sum "${ARTIFACT}.tar.gz" > "${ARTIFACT}.tar.gz.sha256"
 
           echo "artifact_path=dist/${ARTIFACT}.tar.gz" >> "$GITHUB_ENV"
-          echo "artifact_zip_path=dist/${ARTIFACT}.zip" >> "$GITHUB_ENV"
-          echo "artifact_name=${ARTIFACT}" >> "$GITHUB_ENV"
 
-      - name: Compute checksums
+      - name: Package hub artifact (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          sha256sum "${{ env.artifact_path }}" > "${{ env.artifact_path }}.sha256"
-          sha256sum "${{ env.artifact_zip_path }}" > "${{ env.artifact_zip_path }}.sha256"
+          $VERSION = "${{ steps.version.outputs.version }}"
+          $ARTIFACT = "vitora-hub-${VERSION}-windows-amd64"
+          New-Item -ItemType Directory -Force -Path "dist\${ARTIFACT}"
 
-      - name: Upload build artifact (CI)
+          Copy-Item -Recurse "backend\build\compiled\payload\*" "dist\${ARTIFACT}\"
+          Copy-Item -Recurse "backend\data" "dist\${ARTIFACT}\data"
+          Copy-Item "backend\manage.py" "dist\${ARTIFACT}\"
+          Copy-Item "backend\requirements-hub.txt" "dist\${ARTIFACT}\"
+          Copy-Item "backend\pyproject.toml" "dist\${ARTIFACT}\"
+          if (Test-Path "backend\build\compiled\manifest.json") {
+            Copy-Item "backend\build\compiled\manifest.json" "dist\${ARTIFACT}\"
+          }
+
+          New-Item -ItemType Directory -Force -Path "dist\${ARTIFACT}\scripts"
+          Copy-Item "backend\scripts\install-hub-windows.ps1" "dist\${ARTIFACT}\scripts\"
+          Copy-Item "backend\scripts\update-hub-windows.ps1" "dist\${ARTIFACT}\scripts\"
+          Copy-Item "backend\scripts\install-hub.sh" "dist\${ARTIFACT}\scripts\"
+          Copy-Item "backend\scripts\update-hub.sh" "dist\${ARTIFACT}\scripts\"
+          Copy-Item "backend\scripts\pi-setup.sh" "dist\${ARTIFACT}\scripts\"
+
+          New-Item -ItemType Directory -Force -Path "dist\${ARTIFACT}\keys"
+          Copy-Item "backend\keys\license_public.pem" "dist\${ARTIFACT}\keys\"
+
+          Set-Content -Path "dist\${ARTIFACT}\VERSION" -Value $VERSION
+
+          Compress-Archive -Path "dist\${ARTIFACT}" -DestinationPath "dist\${ARTIFACT}.zip"
+          $hash = (Get-FileHash "dist\${ARTIFACT}.zip" -Algorithm SHA256).Hash.ToLower()
+          Set-Content -Path "dist\${ARTIFACT}.zip.sha256" -Value "${hash}  ${ARTIFACT}.zip"
+
+          echo "artifact_zip_path=dist\${ARTIFACT}.zip" >> $env:GITHUB_ENV
+
+      - name: Upload build artifact (Linux)
+        if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
-          name: hub-package
+          name: hub-linux-amd64
           path: |
-            ${{ env.artifact_path }}
-            ${{ env.artifact_path }}.sha256
-            ${{ env.artifact_zip_path }}
-            ${{ env.artifact_zip_path }}.sha256
+            dist/vitora-hub-*-linux-amd64.tar.gz
+            dist/vitora-hub-*-linux-amd64.tar.gz.sha256
+
+      - name: Upload build artifact (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hub-windows-amd64
+          path: |
+            dist/vitora-hub-*-windows-amd64.zip
+            dist/vitora-hub-*-windows-amd64.zip.sha256
 
   smoke-test:
     name: Smoke Test Compiled Hub
@@ -170,10 +226,10 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Download amd64 artifact
+      - name: Download Linux artifact
         uses: actions/download-artifact@v4
         with:
-          name: hub-package
+          name: hub-linux-amd64
           path: dist/
 
       - name: Set up Python
@@ -247,11 +303,9 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
 
-          # --- Linux amd64 tarball (primary) ---
-          TARBALL="artifacts/hub-package/vitora-hub-${VERSION}.tar.gz"
-          ZIP="artifacts/hub-package/vitora-hub-${VERSION}.zip"
+          # --- Linux amd64 tarball ---
+          TARBALL="artifacts/hub-linux-amd64/vitora-hub-${VERSION}-linux-amd64.tar.gz"
 
-          # Versioned upload
           az storage blob upload \
             --container-name "$BLOB_CONTAINER" \
             --name "hub/vitora-hub-${VERSION}.tar.gz" \
@@ -266,7 +320,6 @@ jobs:
             --overwrite \
             --content-type text/plain
 
-          # "latest" symlink
           az storage blob upload \
             --container-name "$BLOB_CONTAINER" \
             --name "hub/vitora-hub-latest.tar.gz" \
@@ -274,42 +327,41 @@ jobs:
             --overwrite \
             --content-type application/gzip
 
-          # Windows zip
+          # --- Windows amd64 zip (natively compiled .pyd) ---
+          WIN_ZIP="artifacts/hub-windows-amd64/vitora-hub-${VERSION}-windows-amd64.zip"
+
           az storage blob upload \
             --container-name "$BLOB_CONTAINER" \
             --name "hub/vitora-hub-${VERSION}.zip" \
-            --file "$ZIP" \
+            --file "$WIN_ZIP" \
             --overwrite \
             --content-type application/zip
 
           az storage blob upload \
             --container-name "$BLOB_CONTAINER" \
             --name "hub/vitora-hub-${VERSION}.zip.sha256" \
-            --file "${ZIP}.sha256" \
+            --file "${WIN_ZIP}.sha256" \
             --overwrite \
             --content-type text/plain
 
           az storage blob upload \
             --container-name "$BLOB_CONTAINER" \
             --name "hub/vitora-hub-latest.zip" \
-            --file "$ZIP" \
+            --file "$WIN_ZIP" \
             --overwrite \
             --content-type application/zip
 
-          # ARM64 tarball not built yet (requires self-hosted runner)
-
           # --- latest.json manifest ---
           TARBALL_SHA=$(cat "${TARBALL}.sha256" | awk '{print $1}')
-          ZIP_SHA=$(cat "${ZIP}.sha256" | awk '{print $1}')
+          WIN_ZIP_SHA=$(cat "${WIN_ZIP}.sha256" | awk '{print $1}')
           python3 -c "
           import json
           manifest = {
               'version': '${VERSION}',
               'url': '${CDN_BASE_URL}/hub/vitora-hub-${VERSION}.tar.gz',
               'url_zip': '${CDN_BASE_URL}/hub/vitora-hub-${VERSION}.zip',
-              'url_arm64': '${CDN_BASE_URL}/hub/vitora-hub-${VERSION}-arm64.tar.gz',
               'sha256': '${TARBALL_SHA}',
-              'sha256_zip': '${ZIP_SHA}'
+              'sha256_zip': '${WIN_ZIP_SHA}'
           }
           with open('/tmp/hub-latest.json', 'w') as f:
               json.dump(manifest, f, indent=2)
@@ -394,8 +446,7 @@ jobs:
             | Platform | File |
             |----------|------|
             | Linux x86_64 | `vitora-hub-${{ steps.version.outputs.version }}-linux-amd64.tar.gz` |
-            | Linux ARM64 (Pi 4+) | `vitora-hub-${{ steps.version.outputs.version }}-linux-arm64.tar.gz` |
-            | Windows x64 | `vitora-hub-${{ steps.version.outputs.version }}-linux-amd64.zip` |
+            | Windows x64 | `vitora-hub-${{ steps.version.outputs.version }}-windows-amd64.zip` |
 
             ### Requirements
 
@@ -410,7 +461,6 @@ jobs:
           files: |
             artifacts/hub-linux-amd64/*.tar.gz
             artifacts/hub-linux-amd64/*.sha256
-            artifacts/hub-linux-amd64/*.zip
-            artifacts/hub-linux-arm64/*.tar.gz
-            artifacts/hub-linux-arm64/*.sha256
+            artifacts/hub-windows-amd64/*.zip
+            artifacts/hub-windows-amd64/*.sha256
           fail_on_unmatched_files: false
