@@ -521,6 +521,7 @@ class SubscriptionFeatureGateMiddleware:
         "/api/procedures/": "theatre",
         "/api/moh-reports/": "dhis2_reporting",
         "/api/dhis2-configs/": "dhis2_reporting",
+        "/api/analytics/": "analytics",
         # Newer modules — backfilled to close tier-gating gaps.
         "/api/triage/": "triage",
         "/api/surveillance/": "surveillance",
@@ -615,6 +616,46 @@ class MediaSecurityMiddleware:
             if "Content-Disposition" not in response:
                 response["Content-Disposition"] = "attachment"
             response["X-Content-Type-Options"] = "nosniff"
+        return response
+
+
+# ---------------------------------------------------------------------------
+# Hub Watermark Middleware (Phase 5C — Build ID in HTTP responses)
+# ---------------------------------------------------------------------------
+
+
+class HubWatermarkMiddleware:
+    """
+    Inject X-Vitora-Build header on all responses when running as a hub.
+
+    Only active when DJANGO_ENV=hub. The build ID is cached for the
+    lifetime of the process (retrieved once from env / .build-id file).
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self._build_id: str | None = None
+
+    def __call__(self, request):
+        import os
+
+        response = self.get_response(request)
+
+        # Only inject on hub installations
+        if os.getenv("DJANGO_ENV") != "hub":
+            return response
+
+        if self._build_id is None:
+            try:
+                from hmis.apps.licensing.watermark import get_build_id
+
+                self._build_id = get_build_id() or ""
+            except Exception:
+                self._build_id = ""
+
+        if self._build_id:
+            response["X-Vitora-Build"] = self._build_id
+
         return response
 
 

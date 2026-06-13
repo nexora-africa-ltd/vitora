@@ -299,6 +299,7 @@ class SHAEligibilityService:
 
         Uses GET request to /v2/eligibility with query parameters
         per the official SHA API specification.
+        On hub installations, routes through the Vitora cloud proxy.
 
         Implements exponential backoff: 1s, 2s, 4s between retries.
 
@@ -313,6 +314,15 @@ class SHAEligibilityService:
             requests.RequestException: If all retries fail
             SHAAuthError: If authentication fails
         """
+        from hmis.apps.licensing.cloud_proxy import check_sha_eligibility_via_cloud, is_hub_mode
+
+        # Hub mode: route through cloud proxy
+        if is_hub_mode():
+            proxy_response = check_sha_eligibility_via_cloud(request_params)
+            if not proxy_response.success:
+                raise requests.RequestException(f"Cloud proxy error: {proxy_response.error}")
+            return proxy_response.data
+
         last_exception: Exception | None = None
 
         for attempt in range(self.max_retries):

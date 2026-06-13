@@ -2490,6 +2490,7 @@ class SubscriptionPlan(TimeStampedModel):
         ("ai_assistant", "AI Assistant (TibaBot)"),
         ("sha_claims", "SHA Claims Integration"),
         ("dhis2_reporting", "DHIS2 / KHIS Reporting"),
+        ("analytics", "Analytics & BI Dashboards"),
         ("api_access", "API Access"),
         ("custom_reports", "Custom Reports"),
         ("offline_sync", "Offline Sync"),

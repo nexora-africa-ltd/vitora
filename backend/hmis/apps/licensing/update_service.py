@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import shutil
 import subprocess  # nosec B404 - needed for docker commands
 from dataclasses import dataclass
@@ -475,6 +476,199 @@ def _find_manifest(staging_dir: Path) -> Path | None:
     """Find manifest.json in the staging directory."""
     for manifest in staging_dir.rglob("manifest.json"):
         return manifest
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Container Lifecycle (Phase 4 gap closure)
+# ---------------------------------------------------------------------------
+
+HEALTH_CHECK_URL = "http://127.0.0.1:9088/api/health/"
+HEALTH_CHECK_TIMEOUT = 5
+HEALTH_CHECK_RETRIES = 6  # 6 x 5s = 30s total wait
+
+
+def restart_container(image_ref: str) -> bool:
+    """
+    Restart the hub container with the new image.
+
+    Uses docker compose to pull the new image tag and recreate the service.
+    Falls back to raw `docker stop` + `docker run` if compose is unavailable.
+
+    Returns:
+        True if the container restarted and health check passed.
+    """
+    compose_file = Path(getattr(settings, "HUB_COMPOSE_FILE", "/opt/vitora-hub/docker-compose.yml"))
+
+    if compose_file.exists():
+        return _restart_via_compose(compose_file, image_ref)
+    return _restart_via_docker(image_ref)
+
+
+def _restart_via_compose(compose_file: Path, image_ref: str) -> bool:
+    """Restart using docker compose."""
+    import time
+
+    compose_dir = compose_file.parent
+    try:
+        # Update the image reference in the environment
+        env = os.environ.copy()
+        env["VITORA_HUB_IMAGE"] = image_ref
+
+        result = subprocess.run(  # noqa: S603, S607  # nosec B603 B607
+            ["docker", "compose", "-f", str(compose_file), "up", "-d", "--no-deps", "hub"],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            cwd=str(compose_dir),
+            env=env,
+        )
+        if result.returncode != 0:
+            logger.error("docker compose up failed: %s", result.stderr)
+            return False
+
+        # Wait for health check
+        time.sleep(5)
+        return _wait_for_health()
+
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        logger.error("Container compose restart error: %s", exc)
+        return False
+
+
+def _restart_via_docker(image_ref: str) -> bool:
+    """Restart using raw docker commands (fallback)."""
+    import time
+
+    container_name = "vitora-hub"
+    try:
+        # Stop current container
+        subprocess.run(  # noqa: S603, S607  # nosec B603 B607
+            ["docker", "stop", container_name],
+            capture_output=True,
+            timeout=30,
+        )
+        subprocess.run(  # noqa: S603, S607  # nosec B603 B607
+            ["docker", "rm", container_name],
+            capture_output=True,
+            timeout=10,
+        )
+
+        # Start new container
+        result = subprocess.run(  # noqa: S603, S607  # nosec B603 B607
+            [
+                "docker",
+                "run",
+                "-d",
+                "--name",
+                container_name,
+                "--restart",
+                "unless-stopped",
+                "-p",
+                "9088:9088",
+                "-v",
+                "vitora-data:/data",
+                image_ref,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            logger.error("docker run failed: %s", result.stderr)
+            return False
+
+        time.sleep(5)
+        return _wait_for_health()
+
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        logger.error("Container restart error: %s", exc)
+        return False
+
+
+def _wait_for_health() -> bool:
+    """Poll health endpoint until healthy or timeout."""
+    import time
+
+    for attempt in range(HEALTH_CHECK_RETRIES):
+        try:
+            response = requests.get(HEALTH_CHECK_URL, timeout=HEALTH_CHECK_TIMEOUT)
+            if response.status_code in (200, 401):
+                logger.info("Health check passed on attempt %d", attempt + 1)
+                return True
+        except requests.RequestException:
+            pass
+        time.sleep(5)
+
+    logger.error("Health check failed after %d attempts", HEALTH_CHECK_RETRIES)
+    return False
+
+
+def rollback_container(previous_image: str) -> bool:
+    """
+    Rollback to the previous container image after a failed update.
+
+    Args:
+        previous_image: The image reference to rollback to.
+
+    Returns:
+        True if rollback succeeded.
+    """
+    logger.warning("Rolling back container to: %s", previous_image)
+    return restart_container(previous_image)
+
+
+def apply_container_update(update: UpdateInfo, license_token: str = "") -> bool:  # nosec B107
+    """
+    Full container update lifecycle: pull, verify, restart, health-check, rollback on failure.
+
+    Args:
+        update: UpdateInfo with version and digest.
+        license_token: License JWT for registry auth.
+
+    Returns:
+        True if update applied successfully.
+    """
+    image_ref = f"{REGISTRY}/{IMAGE_NAME}:{update.version}"
+
+    # Get current image for rollback
+    current_image = _get_current_container_image()
+
+    # Pull and verify new image
+    if not pull_container_update(update, license_token):
+        logger.error("Failed to pull/verify update %s", update.version)
+        return False
+
+    # Restart with new image
+    if not restart_container(image_ref):
+        logger.error("Restart failed; triggering rollback")
+        if current_image:
+            rollback_container(current_image)
+        return False
+
+    logger.info("Container update to %s completed successfully", update.version)
+    return True
+
+
+def _get_current_container_image() -> str | None:
+    """Get the image reference of the currently running hub container."""
+    try:
+        result = subprocess.run(  # noqa: S603, S607  # nosec B603 B607
+            [
+                "docker",
+                "inspect",
+                "--format",
+                "{{.Config.Image}}",
+                "vitora-hub",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
     return None
 
 

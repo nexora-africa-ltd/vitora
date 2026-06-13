@@ -16,6 +16,7 @@ urlpatterns = [
     path("check-in/", views.check_in, name="licensing-check-in"),
     path("status/", views.license_status, name="licensing-status"),
     path("generate-code/", views.generate_activation_code, name="licensing-generate-code"),
+    path("registry-token/", views.registry_token, name="licensing-registry-token"),
     # Cloud relay endpoints (hubs forward requests here)
     path("cloud/sha/submit/", cloud_relay_views.cloud_sha_submit, name="cloud-sha-submit"),
     path("cloud/sha/preauth/", cloud_relay_views.cloud_sha_preauth, name="cloud-sha-preauth"),

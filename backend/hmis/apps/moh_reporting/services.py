@@ -505,11 +505,25 @@ class DHIS2SubmissionService:
         import requests
 
         from hmis.apps.core.dhis2 import resolve_dhis2_credentials
+        from hmis.apps.licensing.cloud_proxy import is_hub_mode, submit_khis_report_via_cloud
 
         if report.status != MOHReportStatus.APPROVED:
             raise ValueError("Only approved reports can be submitted to DHIS2")
 
         payload = cls.prepare_payload(report)
+
+        # Hub mode: route through cloud proxy (hub doesn't hold DHIS2 credentials)
+        if is_hub_mode():
+            proxy_response = submit_khis_report_via_cloud(
+                {"payload": payload, "report_type": type(report).__name__}
+            )
+            if not proxy_response.success:
+                error = {"status": "error", "message": proxy_response.error}
+                report.mark_failed(error)
+                return error
+            report.mark_submitted(proxy_response.data)
+            return proxy_response.data
+
         facility = getattr(report, "facility", None)
         creds = resolve_dhis2_credentials(facility)
 

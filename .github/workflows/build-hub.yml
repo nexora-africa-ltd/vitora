@@ -63,18 +63,49 @@ jobs:
           sed 's/ ; python_version.*//; s/ ; platform_system.*//; s/ ; sys_platform.*//; s/ ; implementation_name.*//' requirements-hub-raw.txt > requirements-hub.txt
           rm requirements-hub-raw.txt
 
+      - name: Install Nuitka and compile
+        working-directory: backend
+        run: |
+          pip install nuitka ordered-set zstandard
+          python scripts/compile-hub.py \
+            --output-dir build/compiled \
+            --version "${{ steps.version.outputs.version }}"
+
+      - name: Sign manifest
+        working-directory: backend
+        env:
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+        run: |
+          # Install cosign
+          COSIGN_VERSION="v2.2.4"
+          curl -sLO "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64"
+          chmod +x cosign-linux-amd64
+          sudo mv cosign-linux-amd64 /usr/local/bin/cosign
+
+          # Sign manifest.json with cosign (blob signing)
+          MANIFEST="build/compiled/manifest.json"
+          if [[ -f "$MANIFEST" ]]; then
+            cosign sign-blob --yes --key env://COSIGN_PRIVATE_KEY "$MANIFEST" > "${MANIFEST}.sig"
+            echo "Manifest signed: ${MANIFEST}.sig"
+          fi
+
       - name: Package hub artifact
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           ARTIFACT="vitora-hub-${VERSION}"
           mkdir -p "dist/${ARTIFACT}"
 
-          # Copy backend application code
-          cp -r backend/hmis "dist/${ARTIFACT}/"
+          # Copy COMPILED application code (Nuitka output)
+          cp -r backend/build/compiled/payload/* "dist/${ARTIFACT}/"
           cp -r backend/data "dist/${ARTIFACT}/"
           cp backend/manage.py "dist/${ARTIFACT}/"
           cp backend/requirements-hub.txt "dist/${ARTIFACT}/"
           cp backend/pyproject.toml "dist/${ARTIFACT}/"
+
+          # Copy signed manifest
+          cp backend/build/compiled/manifest.json "dist/${ARTIFACT}/"
+          cp backend/build/compiled/manifest.json.sig "dist/${ARTIFACT}/" 2>/dev/null || true
 
           # Copy hub-specific scripts (Linux + Windows + Pi)
           mkdir -p "dist/${ARTIFACT}/scripts"
