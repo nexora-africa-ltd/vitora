@@ -30,25 +30,12 @@ from pathlib import Path
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 
 # Apps to compile (relative to BACKEND_DIR)
-APPS_TO_COMPILE = [
-    "hmis.apps.core",
-    "hmis.apps.patients",
-    "hmis.apps.encounters",
-    "hmis.apps.billing",
-    "hmis.apps.pharmacy",
-    "hmis.apps.laboratory",
-    "hmis.apps.scheduling",
-    "hmis.apps.triage",
-    "hmis.apps.inpatient",
-    "hmis.apps.clinics",
-    "hmis.apps.licensing",
-    "hmis.apps.ai",
-    "hmis.apps.surveillance",
-    "hmis.apps.quality",
-    "hmis.apps.imaging",
-    "hmis.apps.allied_health",
-    "hmis.apps.clinical_templates",
-]
+# Auto-discover all apps under hmis/apps/ that have an __init__.py
+APPS_TO_COMPILE = sorted(
+    f"hmis.apps.{d.name}"
+    for d in (BACKEND_DIR / "hmis" / "apps").iterdir()
+    if d.is_dir() and (d / "__init__.py").exists() and d.name != "__pycache__"
+)
 
 # Files that MUST remain as plain Python (entry points, settings, migrations)
 KEEP_PLAIN = {
