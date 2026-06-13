@@ -26,18 +26,8 @@ env:
 
 jobs:
   compile:
-    name: Compile Hub (${{ matrix.os }}-${{ matrix.arch }})
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: linux
-            arch: amd64
-            runner: ubuntu-22.04
-          - os: linux
-            arch: arm64
-            runner: ubuntu-22.04-arm
+    name: Compile Hub (linux-amd64)
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout
@@ -86,9 +76,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/build/compiled
-          key: nuitka-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('backend/hmis/**/*.py') }}
+          key: nuitka-linux-amd64-${{ hashFiles('backend/hmis/**/*.py') }}
           restore-keys: |
-            nuitka-${{ matrix.os }}-${{ matrix.arch }}-
+            nuitka-linux-amd64-
 
       - name: Compile with Nuitka
         working-directory: backend
@@ -119,7 +109,7 @@ jobs:
       - name: Package hub artifact
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          ARTIFACT="vitora-hub-${VERSION}-${{ matrix.os }}-${{ matrix.arch }}"
+          ARTIFACT="vitora-hub-${VERSION}"
           mkdir -p "dist/${ARTIFACT}"
 
           # Copy COMPILED application code (Nuitka output)
@@ -167,7 +157,7 @@ jobs:
       - name: Upload build artifact (CI)
         uses: actions/upload-artifact@v4
         with:
-          name: hub-${{ matrix.os }}-${{ matrix.arch }}
+          name: hub-package
           path: |
             ${{ env.artifact_path }}
             ${{ env.artifact_path }}.sha256
@@ -183,7 +173,7 @@ jobs:
       - name: Download amd64 artifact
         uses: actions/download-artifact@v4
         with:
-          name: hub-linux-amd64
+          name: hub-package
           path: dist/
 
       - name: Set up Python
@@ -258,8 +248,8 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
 
           # --- Linux amd64 tarball (primary) ---
-          TARBALL="artifacts/hub-linux-amd64/vitora-hub-${VERSION}-linux-amd64.tar.gz"
-          ZIP="artifacts/hub-linux-amd64/vitora-hub-${VERSION}-linux-amd64.zip"
+          TARBALL="artifacts/hub-package/vitora-hub-${VERSION}.tar.gz"
+          ZIP="artifacts/hub-package/vitora-hub-${VERSION}.zip"
 
           # Versioned upload
           az storage blob upload \
@@ -306,23 +296,7 @@ jobs:
             --overwrite \
             --content-type application/zip
 
-          # --- ARM64 tarball (Raspberry Pi) ---
-          ARM_TARBALL="artifacts/hub-linux-arm64/vitora-hub-${VERSION}-linux-arm64.tar.gz"
-          if [[ -f "$ARM_TARBALL" ]]; then
-            az storage blob upload \
-              --container-name "$BLOB_CONTAINER" \
-              --name "hub/vitora-hub-${VERSION}-arm64.tar.gz" \
-              --file "$ARM_TARBALL" \
-              --overwrite \
-              --content-type application/gzip
-
-            az storage blob upload \
-              --container-name "$BLOB_CONTAINER" \
-              --name "hub/vitora-hub-${VERSION}-arm64.tar.gz.sha256" \
-              --file "${ARM_TARBALL}.sha256" \
-              --overwrite \
-              --content-type text/plain
-          fi
+          # ARM64 tarball not built yet (requires self-hosted runner)
 
           # --- latest.json manifest ---
           TARBALL_SHA=$(cat "${TARBALL}.sha256" | awk '{print $1}')
