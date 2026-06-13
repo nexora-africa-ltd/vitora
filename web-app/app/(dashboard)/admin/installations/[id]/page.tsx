@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { licensingAdminApi } from '@/lib/api/licensing';
 import { organizationsApi } from '@/lib/api/organizations';
+import { facilitiesApi } from '@/lib/api/facilities';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { PageHeader } from '@/components/shared/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +40,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Monitor, Calendar, Ban, Pause, Play, Copy, Send } from 'lucide-react';
+import { Monitor, Calendar, Ban, Pause, Play, Copy, Send, Building } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import type { InstallationStatus } from '@/lib/types/licensing';
@@ -234,6 +242,14 @@ export default function InstallationDetailPage({ params }: { params: Promise<{ i
         </Card>
       </div>
 
+      {/* Facility Link */}
+      <FacilityLinkCard
+        installationId={installation.id}
+        currentFacilityId={installation.facility}
+        currentFacilityName={installation.facility_name}
+        organizationId={installation.organization}
+      />
+
       {/* Activation code (if pending) */}
       {installation.status === 'PENDING' && installation.activation_code && (
         <ActivationCodeCard
@@ -407,5 +423,84 @@ function ActivationCodeCard({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function FacilityLinkCard({
+  installationId,
+  currentFacilityId,
+  currentFacilityName,
+  organizationId,
+}: {
+  installationId: number;
+  currentFacilityId: number | null;
+  currentFacilityName: string;
+  organizationId: number;
+}) {
+  const [selectedFacilityId, setSelectedFacilityId] = useState<string>(
+    currentFacilityId ? String(currentFacilityId) : '',
+  );
+  const queryClient = useQueryClient();
+
+  const { data: facilitiesData } = useQuery({
+    queryKey: ['facilities', { organization: organizationId }],
+    queryFn: () => facilitiesApi.list({ organization: organizationId, page_size: 100 }),
+  });
+
+  const linkMutation = useMutation({
+    mutationFn: (facilityId: number) =>
+      licensingAdminApi.patch(installationId, { facility: facilityId }),
+    onSuccess: () => {
+      toast.success('Facility linked to installation');
+      queryClient.invalidateQueries({ queryKey: ['admin', 'installations'] });
+    },
+    onError: () => toast.error('Failed to link facility'),
+  });
+
+  const facilities = facilitiesData?.results || [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Building className="h-4 w-4" /> Facility
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {currentFacilityId ? (
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">{currentFacilityName}</span>
+            <Badge variant="outline">Linked</Badge>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-destructive">
+              No facility linked. The hub activation will fail without a facility.
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Select value={selectedFacilityId} onValueChange={setSelectedFacilityId}>
+                <SelectTrigger className="sm:w-[280px]">
+                  <SelectValue placeholder="Select a facility..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {facilities.map((f) => (
+                    <SelectItem key={f.id} value={String(f.id)}>
+                      {f.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                disabled={!selectedFacilityId || linkMutation.isPending}
+                onClick={() => linkMutation.mutate(Number(selectedFacilityId))}
+              >
+                {linkMutation.isPending ? 'Linking...' : 'Link Facility'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

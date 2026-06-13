@@ -465,9 +465,10 @@ def registry_token(request: Request) -> Response:
     )
 
 
-class InstallationViewSet(viewsets.ReadOnlyModelViewSet):
+class InstallationViewSet(viewsets.ModelViewSet):
     """Admin viewset for managing installations."""
 
+    http_method_names = ["get", "patch", "head", "options"]
     permission_classes = [permissions.IsAdminUser]
     queryset = Installation.objects.select_related("organization", "facility").order_by(
         "-created_at"
