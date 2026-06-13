@@ -51,6 +51,7 @@ KEEP_PLAIN = {
 PLAIN_PATTERNS = {
     "apps.py",  # Django app autodiscovery
     "migrations/",  # Django migration framework requires source
+    "management/",  # Django management command discovery requires source
     "__init__.py",  # Package markers (minimal, no IP)
 }
 
