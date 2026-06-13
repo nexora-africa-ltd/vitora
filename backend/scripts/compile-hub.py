@@ -279,8 +279,8 @@ def main() -> None:
     parser.add_argument(
         "--payload-dir",
         type=Path,
-        default=BACKEND_DIR / "build" / "payload",
-        help="Directory for the assembled payload",
+        default=None,
+        help="Directory for the assembled payload (default: <output-dir>/payload)",
     )
     parser.add_argument(
         "--version",
@@ -291,6 +291,10 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", help="Print commands without executing")
     parser.add_argument("--jobs", type=int, default=0, help="Parallel compilation jobs (0=auto)")
     args = parser.parse_args()
+
+    # Default payload-dir is inside output-dir
+    if args.payload_dir is None:
+        args.payload_dir = args.output_dir / "payload"
 
     print("Vitora HMIS Hub Compilation (Nuitka)")
     print(f"  Backend dir: {BACKEND_DIR}")
