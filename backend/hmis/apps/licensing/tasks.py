@@ -191,3 +191,63 @@ def _get_usage_counts_24h() -> tuple[int, int]:
         return user_count, encounter_count
     except Exception:
         return 0, 0
+
+
+# ---------------------------------------------------------------------------
+# Phase 4: Auto-update check task
+# ---------------------------------------------------------------------------
+
+
+@shared_task(
+    name="hmis.apps.licensing.tasks.check_for_updates",
+    max_retries=2,
+    default_retry_delay=1800,  # 30 minutes between retries
+)
+def check_for_updates() -> dict:
+    """
+    Check for available hub updates (Phase 4).
+
+    Runs daily via Celery beat. Compares the current version against
+    the cloud update manifest and records available updates.
+
+    Only runs when DJANGO_ENV=hub.
+    """
+    if os.getenv("DJANGO_ENV", "") != "hub":
+        return {"skipped": True, "reason": "not a hub installation"}
+
+    from hmis.apps.licensing.update_service import check_for_update
+
+    current_version = _get_app_version()
+    if current_version == "unknown":
+        return {"skipped": True, "reason": "version unknown"}
+
+    # Read license token for authenticated access
+    token_path = getattr(settings, "HUB_LICENSE_TOKEN_PATH", "/var/lib/vitora-hub/license.jwt")
+    token = os.getenv("LICENSE_TOKEN", "")
+    if not token:
+        try:
+            token = Path(token_path).read_text().strip()
+        except (FileNotFoundError, PermissionError):
+            token = ""
+
+    update_info = check_for_update(current_version, license_token=token)
+
+    if update_info is None:
+        logger.info("No updates available (current: %s).", current_version)
+        return {"up_to_date": True, "version": current_version}
+
+    logger.info(
+        "Update available: %s → %s (channel: %s)",
+        current_version,
+        update_info.version,
+        update_info.channel,
+    )
+
+    return {
+        "update_available": True,
+        "current_version": current_version,
+        "available_version": update_info.version,
+        "channel": update_info.channel,
+        "is_container": update_info.is_container_update,
+        "release_notes_url": update_info.release_notes_url,
+    }

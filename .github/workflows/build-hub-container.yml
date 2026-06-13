@@ -1,0 +1,271 @@
+name: Build Hub Container
+
+# Builds a signed OCI image of the compiled hub for containerised delivery.
+# Phase 4 of the Hub Code Protection Plan.
+# Triggered on hub-container-v* tags or manually.
+
+on:
+  push:
+    tags:
+      - "hub-container-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number (e.g., 1.0.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  PYTHON_VERSION: "3.12"
+  REGISTRY: registry.vitora.digital
+  IMAGE_NAME: hub
+  COSIGN_VERSION: "2.2.4"
+
+jobs:
+  build-and-push:
+    name: Build & Push (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-22.04
+          - platform: linux/arm64
+            runner: ubuntu-22.04-arm
+
+    outputs:
+      digest-amd64: ${{ steps.push.outputs.digest }}
+      digest-arm64: ${{ steps.push.outputs.digest }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ -n "${{ inputs.version }}" ]]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            echo "version=${TAG#hub-container-v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to private registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Download compiled hub artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hub-compiled-${{ matrix.platform == 'linux/amd64' && 'linux-amd64' || 'linux-arm64' }}
+          path: dist/
+        continue-on-error: true
+
+      - name: Build compiled hub (if no pre-built artifact)
+        if: steps.download.outcome == 'failure'
+        working-directory: backend
+        run: |
+          pip install poetry nuitka ordered-set
+          poetry install --without dev
+          python scripts/compile-hub.py --version "${{ steps.version.outputs.version }}" --jobs 4
+
+      - name: Extract compiled payload
+        run: |
+          if [[ -f dist/*.tar.gz ]]; then
+            mkdir -p backend/build/payload
+            tar -xzf dist/*.tar.gz -C backend/build/payload --strip-components=1
+          fi
+
+      - name: Build and push image
+        id: push
+        uses: docker/build-push-action@v5
+        with:
+          context: backend
+          file: backend/Dockerfile.hub
+          platforms: ${{ matrix.platform }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+  sign:
+    name: Sign & Verify Image
+    needs: build-and-push
+    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/hub-container-v')
+
+    steps:
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: v${{ env.COSIGN_VERSION }}
+
+      - name: Determine version
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "version=${TAG#hub-container-v}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to private registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Sign image with cosign (Azure Key Vault)
+        env:
+          COSIGN_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_KEY_PASSWORD }}
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}"
+
+          cosign sign --key env://COSIGN_KEY \
+            -a "version=${{ steps.version.outputs.version }}" \
+            -a "commit=${{ github.sha }}" \
+            -a "build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            "$IMAGE"
+
+      - name: Verify signature
+        env:
+          COSIGN_KEY: ${{ secrets.COSIGN_PUBLIC_KEY }}
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}"
+          cosign verify --key env://COSIGN_KEY "$IMAGE"
+
+  smoke-test:
+    name: Smoke Test Container
+    needs: build-and-push
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout (for compose template)
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ -n "${{ inputs.version }}" ]]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            echo "version=${TAG#hub-container-v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Log in to private registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Run hub container
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}"
+
+          # Start the hub in test mode
+          docker run -d --name hub-test \
+            -e DJANGO_ENV=hub \
+            -e DJANGO_SETTINGS_MODULE=hmis.settings.development \
+            -e SECRET_KEY=test-secret-key-for-ci \
+            -p 9088:9088 \
+            "$IMAGE"
+
+          # Wait for startup
+          sleep 10
+
+          # Health check
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9088/api/health/ || echo "000")
+
+          if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "401" ]]; then
+            echo "Smoke test PASSED (HTTP $HTTP_CODE)"
+          else
+            echo "Smoke test FAILED (HTTP $HTTP_CODE)"
+            docker logs hub-test
+            exit 1
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f hub-test || true
+
+  publish-manifest:
+    name: Publish Update Manifest
+    needs: [sign, smoke-test]
+    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/hub-container-v')
+
+    steps:
+      - name: Determine version
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "version=${TAG#hub-container-v}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to private registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Get image digest
+        id: digest
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}"
+          DIGEST=$(docker manifest inspect "$IMAGE" | jq -r '.digest')
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: Publish update manifest to Azure Blob
+        if: env.AZURE_STORAGE_CONNECTION_STRING != ''
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DIGEST="${{ steps.digest.outputs.digest }}"
+
+          # Write update manifest
+          python3 -c "
+          import json
+          manifest = {
+              'version': '${VERSION}',
+              'channel': 'stable',
+              'registry': '${{ env.REGISTRY }}',
+              'image': '${{ env.IMAGE_NAME }}',
+              'digest': '${DIGEST}',
+              'published_at': '$(date -u +%Y-%m-%dT%H:%M:%SZ)',
+              'minimum_version': '0.1.0',
+              'release_notes_url': 'https://docs.vitora.digital/releases/${VERSION}'
+          }
+          with open('/tmp/container-latest.json', 'w') as f:
+              json.dump(manifest, f, indent=2)
+          "
+
+          az storage blob upload \
+            --container-name releases \
+            --name "hub-container/latest.json" \
+            --file /tmp/container-latest.json \
+            --overwrite \
+            --content-type application/json \
+            --content-cache-control "max-age=300"
