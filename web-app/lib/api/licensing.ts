@@ -193,4 +193,10 @@ export const licensingAdminApi = {
     const response = await apiClient.post(`/api/licensing/installations/${id}/send-code/`, payload || {});
     return response.data;
   },
+
+  /** Update installation fields (e.g., link a facility). */
+  async patch(id: number, data: { facility?: number | null; name?: string }): Promise<InstallationDetail> {
+    const response = await apiClient.patch(`/api/licensing/installations/${id}/`, data);
+    return response.data as InstallationDetail;
+  },
 };
