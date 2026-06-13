@@ -113,12 +113,16 @@ def compile_app(
 
     print(f"  COMPILE {app_module}")
 
+    # Nuitka 2.x requires --mode=package with a filesystem path
+    # (old --module <dotted.name> syntax is removed)
+    app_path = str(app_dir.relative_to(BACKEND_DIR))
+
     cmd = [
         sys.executable,
         "-m",
         "nuitka",
-        "--module",
-        app_module,
+        "--mode=package",
+        app_path,
         f"--include-package={app_module}",
         f"--output-dir={output_dir}",
         "--remove-output",
