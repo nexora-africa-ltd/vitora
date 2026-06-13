@@ -196,13 +196,15 @@ def assemble_payload(output_dir: Path, payload_dir: Path) -> None:
     # Now replace .py files with compiled .so/.pyd where available
     compiled_count = 0
     for so_file in output_dir.glob("**/*.so"):
-        # Determine the corresponding .py file in the payload
-        # Nuitka outputs: hmis.apps.core.cpython-312-x86_64-linux-gnu.so
-        # or module-level .so files
+        # Skip files already inside the payload directory
+        if payload_dir in so_file.parents:
+            continue
         _place_compiled_file(so_file, output_dir, payload_dir)
         compiled_count += 1
 
     for pyd_file in output_dir.glob("**/*.pyd"):
+        if payload_dir in pyd_file.parents:
+            continue
         _place_compiled_file(pyd_file, output_dir, payload_dir)
         compiled_count += 1
 
