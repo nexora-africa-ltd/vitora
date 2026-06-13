@@ -360,9 +360,18 @@ if ($LASTEXITCODE -ne 0) {
     Write-Warn "migrate failed (exit $LASTEXITCODE)"
 }
 
+# Load Kenya location data (counties, sub-counties, wards)
+if (Test-Path "$InstallDir\data\kenya_locations.csv") {
+    Write-Info "Loading Kenya location data..."
+    & $python manage.py import_kenya_locations "data\kenya_locations.csv"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warn "import_kenya_locations failed (exit $LASTEXITCODE)"
+    }
+}
+
 # Seed org/facility from activation data
 Write-Info "Seeding organization and facility from activation data..."
-& $python manage.py seed_from_activation --response-file="$activationFile"
+& $python manage.py seed_from_activation --response-file="$activationFile" --skip-locations
 if ($LASTEXITCODE -ne 0) {
     Write-Warn "seed_from_activation failed (exit $LASTEXITCODE)"
 }

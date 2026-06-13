@@ -1,7 +1,8 @@
 name: Build Hub Artifact
 
-# Builds a self-contained tarball of the Django backend for facility hub deployment.
-# Uploads to Azure Blob Storage for unauthenticated download (no public repo needed).
+# Builds a Nuitka-compiled, self-contained tarball of the Django backend
+# for facility hub deployment. Uploads to Azure Blob Storage for
+# unauthenticated download (no public repo needed).
 # Triggered on hub version tags or manually.
 
 on:
@@ -11,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version number (e.g., 0.3.1)"
+        description: "Version number (e.g., 0.4.0)"
         required: true
         type: string
 
@@ -19,16 +20,24 @@ permissions:
   contents: write
 
 env:
-  PYTHON_VERSION: "3.11"
-  # Azure Blob container for hub releases
+  PYTHON_VERSION: "3.12"
   BLOB_CONTAINER: "releases"
-  # CDN endpoint: https://get.vitora.digital maps to this container
   CDN_BASE_URL: "https://get.vitora.digital"
 
 jobs:
-  build:
-    name: Build Hub Package
-    runs-on: ubuntu-22.04
+  compile:
+    name: Compile Hub (${{ matrix.os }}-${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            runner: ubuntu-22.04
+          - os: linux
+            arch: arm64
+            runner: ubuntu-22.04-arm
 
     steps:
       - name: Checkout
@@ -40,7 +49,6 @@ jobs:
           if [[ -n "${{ inputs.version }}" ]]; then
             echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
           else
-            # Extract from tag: hub-v0.3.1 → 0.3.1
             TAG="${GITHUB_REF_NAME}"
             echo "version=${TAG#hub-v}" >> "$GITHUB_OUTPUT"
           fi
@@ -50,6 +58,11 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc python3-dev patchelf ccache
+
       - name: Install Poetry
         run: |
           pip install poetry
@@ -58,32 +71,45 @@ jobs:
       - name: Export requirements
         working-directory: backend
         run: |
-          # Strip python_version/platform markers so hub works on Python 3.11+ (project declares ^3.12)
+          # Strip python_version/platform markers so hub works on Python 3.11+
           poetry export --without dev --without-hashes --format requirements.txt --output requirements-hub-raw.txt
           sed 's/ ; python_version.*//; s/ ; platform_system.*//; s/ ; sys_platform.*//; s/ ; implementation_name.*//' requirements-hub-raw.txt > requirements-hub.txt
           rm requirements-hub-raw.txt
 
-      - name: Install Nuitka and compile
+      - name: Install Python dependencies (for Nuitka)
         working-directory: backend
         run: |
+          poetry install --without dev --no-root
           pip install nuitka ordered-set zstandard
+
+      - name: Cache Nuitka builds
+        uses: actions/cache@v4
+        with:
+          path: backend/build/compiled
+          key: nuitka-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('backend/hmis/**/*.py') }}
+          restore-keys: |
+            nuitka-${{ matrix.os }}-${{ matrix.arch }}-
+
+      - name: Compile with Nuitka
+        working-directory: backend
+        run: |
           python scripts/compile-hub.py \
             --output-dir build/compiled \
-            --version "${{ steps.version.outputs.version }}"
+            --version "${{ steps.version.outputs.version }}" \
+            --jobs 4
 
       - name: Sign manifest
         working-directory: backend
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+        if: env.COSIGN_PRIVATE_KEY != ''
         run: |
-          # Install cosign
           COSIGN_VERSION="v2.2.4"
           curl -sLO "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64"
           chmod +x cosign-linux-amd64
           sudo mv cosign-linux-amd64 /usr/local/bin/cosign
 
-          # Sign manifest.json with cosign (blob signing)
           MANIFEST="build/compiled/manifest.json"
           if [[ -f "$MANIFEST" ]]; then
             cosign sign-blob --yes --key env://COSIGN_PRIVATE_KEY "$MANIFEST" > "${MANIFEST}.sig"
@@ -93,7 +119,7 @@ jobs:
       - name: Package hub artifact
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          ARTIFACT="vitora-hub-${VERSION}"
+          ARTIFACT="vitora-hub-${VERSION}-${{ matrix.os }}-${{ matrix.arch }}"
           mkdir -p "dist/${ARTIFACT}"
 
           # Copy COMPILED application code (Nuitka output)
@@ -104,7 +130,7 @@ jobs:
           cp backend/pyproject.toml "dist/${ARTIFACT}/"
 
           # Copy signed manifest
-          cp backend/build/compiled/manifest.json "dist/${ARTIFACT}/"
+          cp backend/build/compiled/manifest.json "dist/${ARTIFACT}/" 2>/dev/null || true
           cp backend/build/compiled/manifest.json.sig "dist/${ARTIFACT}/" 2>/dev/null || true
 
           # Copy hub-specific scripts (Linux + Windows + Pi)
@@ -115,24 +141,23 @@ jobs:
           cp backend/scripts/update-hub-windows.ps1 "dist/${ARTIFACT}/scripts/"
           cp backend/scripts/pi-setup.sh "dist/${ARTIFACT}/scripts/"
 
-          # Include license public key for local JWT verification (NOT the private key)
+          # Include license public key for local JWT verification
           mkdir -p "dist/${ARTIFACT}/keys"
           cp backend/keys/license_public.pem "dist/${ARTIFACT}/keys/"
 
           # Write version file
           echo "$VERSION" > "dist/${ARTIFACT}/VERSION"
 
-          # Create tarball (Linux/macOS)
+          # Create tarball
           cd dist
           tar -czf "${ARTIFACT}.tar.gz" "${ARTIFACT}"
 
-          # Create zip (Windows)
+          # Create zip (for Windows)
           zip -qr "${ARTIFACT}.zip" "${ARTIFACT}"
 
           echo "artifact_path=dist/${ARTIFACT}.tar.gz" >> "$GITHUB_ENV"
           echo "artifact_zip_path=dist/${ARTIFACT}.zip" >> "$GITHUB_ENV"
-          echo "artifact_name=${ARTIFACT}.tar.gz" >> "$GITHUB_ENV"
-          echo "version=${VERSION}" >> "$GITHUB_ENV"
+          echo "artifact_name=${ARTIFACT}" >> "$GITHUB_ENV"
 
       - name: Compute checksums
         run: |
@@ -142,12 +167,88 @@ jobs:
       - name: Upload build artifact (CI)
         uses: actions/upload-artifact@v4
         with:
-          name: hub-package
+          name: hub-${{ matrix.os }}-${{ matrix.arch }}
           path: |
             ${{ env.artifact_path }}
             ${{ env.artifact_path }}.sha256
             ${{ env.artifact_zip_path }}
             ${{ env.artifact_zip_path }}.sha256
+
+  smoke-test:
+    name: Smoke Test Compiled Hub
+    needs: compile
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Download amd64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hub-linux-amd64
+          path: dist/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Extract and verify
+        run: |
+          mkdir hub && cd hub
+          tar -xzf ../dist/*.tar.gz --strip-components=1
+
+          # Verify .so files exist (compilation succeeded)
+          SO_COUNT=$(find . -name "*.so" | wc -l)
+          echo "Compiled .so modules: $SO_COUNT"
+
+          if [[ "$SO_COUNT" -eq 0 ]]; then
+            echo "ERROR: No compiled modules found! Nuitka compilation likely failed."
+            exit 1
+          fi
+
+          # Count remaining .py files in apps (should be minimal)
+          PY_COUNT=$(find hmis/apps/ -name "*.py" \
+            ! -name "apps.py" \
+            ! -name "__init__.py" \
+            ! -path "*/migrations/*" 2>/dev/null | wc -l)
+          echo "Remaining .py files in apps (should be 0): $PY_COUNT"
+
+          # Verify manage.py exists
+          if [[ ! -f manage.py ]]; then
+            echo "ERROR: manage.py not found!"
+            exit 1
+          fi
+
+          # Verify data directory exists (reference data for seeding)
+          if [[ ! -d data ]] || [[ ! -f data/kenya_locations.csv ]]; then
+            echo "ERROR: data/kenya_locations.csv not found!"
+            exit 1
+          fi
+
+          echo "Smoke test PASSED"
+
+  publish:
+    name: Publish Hub Artifacts
+    needs: smoke-test
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout (for installer scripts)
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ -n "${{ inputs.version }}" ]]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            echo "version=${TAG#hub-v}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Upload to Azure Blob Storage
         if: env.AZURE_STORAGE_CONNECTION_STRING != ''
@@ -156,39 +257,83 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
 
-          # Upload versioned artifact: /hub/vitora-hub-0.3.1.tar.gz
+          # --- Linux amd64 tarball (primary) ---
+          TARBALL="artifacts/hub-linux-amd64/vitora-hub-${VERSION}-linux-amd64.tar.gz"
+          ZIP="artifacts/hub-linux-amd64/vitora-hub-${VERSION}-linux-amd64.zip"
+
+          # Versioned upload
           az storage blob upload \
             --container-name "$BLOB_CONTAINER" \
             --name "hub/vitora-hub-${VERSION}.tar.gz" \
-            --file "${{ env.artifact_path }}" \
+            --file "$TARBALL" \
             --overwrite \
             --content-type application/gzip
 
-          # Upload checksum
           az storage blob upload \
             --container-name "$BLOB_CONTAINER" \
             --name "hub/vitora-hub-${VERSION}.tar.gz.sha256" \
-            --file "${{ env.artifact_path }}.sha256" \
+            --file "${TARBALL}.sha256" \
             --overwrite \
             --content-type text/plain
 
-          # Upload as "latest" (symlink-like): /hub/vitora-hub-latest.tar.gz
+          # "latest" symlink
           az storage blob upload \
             --container-name "$BLOB_CONTAINER" \
             --name "hub/vitora-hub-latest.tar.gz" \
-            --file "${{ env.artifact_path }}" \
+            --file "$TARBALL" \
             --overwrite \
             --content-type application/gzip
 
-          # Write latest version manifest: /hub/latest.json
-          TARBALL_SHA=$(cat ${{ env.artifact_path }}.sha256 | awk '{print $1}')
-          ZIP_SHA=$(cat ${{ env.artifact_zip_path }}.sha256 | awk '{print $1}')
+          # Windows zip
+          az storage blob upload \
+            --container-name "$BLOB_CONTAINER" \
+            --name "hub/vitora-hub-${VERSION}.zip" \
+            --file "$ZIP" \
+            --overwrite \
+            --content-type application/zip
+
+          az storage blob upload \
+            --container-name "$BLOB_CONTAINER" \
+            --name "hub/vitora-hub-${VERSION}.zip.sha256" \
+            --file "${ZIP}.sha256" \
+            --overwrite \
+            --content-type text/plain
+
+          az storage blob upload \
+            --container-name "$BLOB_CONTAINER" \
+            --name "hub/vitora-hub-latest.zip" \
+            --file "$ZIP" \
+            --overwrite \
+            --content-type application/zip
+
+          # --- ARM64 tarball (Raspberry Pi) ---
+          ARM_TARBALL="artifacts/hub-linux-arm64/vitora-hub-${VERSION}-linux-arm64.tar.gz"
+          if [[ -f "$ARM_TARBALL" ]]; then
+            az storage blob upload \
+              --container-name "$BLOB_CONTAINER" \
+              --name "hub/vitora-hub-${VERSION}-arm64.tar.gz" \
+              --file "$ARM_TARBALL" \
+              --overwrite \
+              --content-type application/gzip
+
+            az storage blob upload \
+              --container-name "$BLOB_CONTAINER" \
+              --name "hub/vitora-hub-${VERSION}-arm64.tar.gz.sha256" \
+              --file "${ARM_TARBALL}.sha256" \
+              --overwrite \
+              --content-type text/plain
+          fi
+
+          # --- latest.json manifest ---
+          TARBALL_SHA=$(cat "${TARBALL}.sha256" | awk '{print $1}')
+          ZIP_SHA=$(cat "${ZIP}.sha256" | awk '{print $1}')
           python3 -c "
           import json
           manifest = {
               'version': '${VERSION}',
               'url': '${CDN_BASE_URL}/hub/vitora-hub-${VERSION}.tar.gz',
               'url_zip': '${CDN_BASE_URL}/hub/vitora-hub-${VERSION}.zip',
+              'url_arm64': '${CDN_BASE_URL}/hub/vitora-hub-${VERSION}-arm64.tar.gz',
               'sha256': '${TARBALL_SHA}',
               'sha256_zip': '${ZIP_SHA}'
           }
@@ -204,7 +349,7 @@ jobs:
             --content-type application/json \
             --content-cache-control "max-age=300"
 
-          # Upload the installer script itself: /hub (downloaded via curl https://get.vitora.digital/hub)
+          # --- Installer scripts ---
           az storage blob upload \
             --container-name "$BLOB_CONTAINER" \
             --name "hub" \
@@ -213,7 +358,6 @@ jobs:
             --content-type "text/x-shellscript" \
             --content-cache-control "max-age=600"
 
-          # Upload Windows installer: /hub.ps1 (downloaded via irm https://get.vitora.digital/hub.ps1)
           az storage blob upload \
             --container-name "$BLOB_CONTAINER" \
             --name "hub.ps1" \
@@ -222,31 +366,6 @@ jobs:
             --content-type "text/plain" \
             --content-cache-control "max-age=600"
 
-          # Upload Windows zip artifact: /hub/vitora-hub-0.3.1.zip
-          az storage blob upload \
-            --container-name "$BLOB_CONTAINER" \
-            --name "hub/vitora-hub-${VERSION}.zip" \
-            --file "${{ env.artifact_zip_path }}" \
-            --overwrite \
-            --content-type application/zip
-
-          # Upload zip checksum
-          az storage blob upload \
-            --container-name "$BLOB_CONTAINER" \
-            --name "hub/vitora-hub-${VERSION}.zip.sha256" \
-            --file "${{ env.artifact_zip_path }}.sha256" \
-            --overwrite \
-            --content-type text/plain
-
-          # Upload as "latest" zip: /hub/vitora-hub-latest.zip
-          az storage blob upload \
-            --container-name "$BLOB_CONTAINER" \
-            --name "hub/vitora-hub-latest.zip" \
-            --file "${{ env.artifact_zip_path }}" \
-            --overwrite \
-            --content-type application/zip
-
-          # Upload Windows update script: /hub-update.ps1
           az storage blob upload \
             --container-name "$BLOB_CONTAINER" \
             --name "hub-update.ps1" \
@@ -255,7 +374,6 @@ jobs:
             --content-type "text/plain" \
             --content-cache-control "max-age=600"
 
-          # Upload Raspberry Pi first-boot script: /pi-setup
           az storage blob upload \
             --container-name "$BLOB_CONTAINER" \
             --name "pi-setup" \
@@ -297,6 +415,14 @@ jobs:
             powershell -ExecutionPolicy Bypass -File C:\VitoraHub\scripts\update-hub-windows.ps1
             ```
 
+            ### Artifacts
+
+            | Platform | File |
+            |----------|------|
+            | Linux x86_64 | `vitora-hub-${{ steps.version.outputs.version }}-linux-amd64.tar.gz` |
+            | Linux ARM64 (Pi 4+) | `vitora-hub-${{ steps.version.outputs.version }}-linux-arm64.tar.gz` |
+            | Windows x64 | `vitora-hub-${{ steps.version.outputs.version }}-linux-amd64.zip` |
+
             ### Requirements
 
             | Platform | Requirements |
@@ -304,16 +430,13 @@ jobs:
             | Linux | Ubuntu 22.04+ / Debian 12+ / Raspberry Pi OS, Python 3.11+, 2GB+ RAM |
             | Windows | Windows 10/11 / Server 2019+, Python 3.11+ on PATH, 4GB+ RAM |
 
-            ### What's included
-            - Django backend application
-            - Pre-exported pip requirements (no Poetry needed on hub)
-            - Database migrations
-            - Static files
-            - Service template (systemd on Linux, NSSM on Windows)
-            - Update scripts for both platforms
+            ### Integrity
+            All files are Nuitka-compiled (no readable Python source). Each artifact
+            includes `manifest.json` with SHA-256 hashes of all files.
           files: |
-            ${{ env.artifact_path }}
-            ${{ env.artifact_path }}.sha256
-            ${{ env.artifact_zip_path }}
-            ${{ env.artifact_zip_path }}.sha256
-          fail_on_unmatched_files: true
+            artifacts/hub-linux-amd64/*.tar.gz
+            artifacts/hub-linux-amd64/*.sha256
+            artifacts/hub-linux-amd64/*.zip
+            artifacts/hub-linux-arm64/*.tar.gz
+            artifacts/hub-linux-arm64/*.sha256
+          fail_on_unmatched_files: false

@@ -115,6 +115,49 @@ def serialize_roles(*, organization, facility) -> list[dict[str, Any]]:
     ]
 
 
+def seed_bootstrap_data(bootstrap: dict[str, Any], *, organization, facility) -> dict[str, int]:
+    """Seed departments and roles from bootstrap payload data."""
+    from hmis.apps.core.models import Department, Role
+
+    counts = {"departments": 0, "roles": 0}
+
+    for dept_data in bootstrap.get("departments") or []:
+        _, created = Department.objects.update_or_create(
+            code=dept_data["code"],
+            organization=organization,
+            defaults={
+                "name": dept_data["name"],
+                "department_type": dept_data.get("department_type", ""),
+                "description": dept_data.get("description", ""),
+                "facility": facility if dept_data.get("facility_id") else None,
+                "is_active": dept_data.get("is_active", True),
+            },
+        )
+        if created:
+            counts["departments"] += 1
+
+    for role_data in bootstrap.get("roles") or []:
+        _, created = Role.objects.update_or_create(
+            code=role_data["code"],
+            organization=organization,
+            defaults={
+                "name": role_data["name"],
+                "category": role_data.get("category", ""),
+                "scope": role_data.get("scope", "FACILITY"),
+                "facility": facility if role_data.get("facility_id") else None,
+                "permissions_matrix": role_data.get("permissions_matrix", {}),
+                "hierarchy_level": role_data.get("hierarchy_level", 50),
+                "requires_license": role_data.get("requires_license", False),
+                "license_body": role_data.get("license_body", ""),
+                "is_active": role_data.get("is_active", True),
+            },
+        )
+        if created:
+            counts["roles"] += 1
+
+    return counts
+
+
 def load_activation_response(response_file: str) -> dict[str, Any]:
     """Load an activation response JSON file."""
     path = Path(response_file)
@@ -151,11 +194,21 @@ def seed_from_activation_payload(payload: dict[str, Any]) -> tuple[Any, Any]:
     org.contact_phone = org_data.get("contact_phone", "")
     org.save(update_fields=["contact_email_encrypted", "contact_phone_encrypted", "updated_at"])
 
-    try:
-        county = County.objects.get(pk=facility_data["county_id"])
-        sub_county = SubCounty.objects.get(pk=facility_data["sub_county_id"], county=county)
-    except (County.DoesNotExist, SubCounty.DoesNotExist) as exc:
-        raise CommandError("Activation payload references an unknown county/sub-county.") from exc
+    # Create county/subcounty if they don't exist (hub may not have location data loaded yet)
+    county, _ = County.objects.get_or_create(
+        pk=facility_data["county_id"],
+        defaults={
+            "name": facility_data.get("county_name", "Unknown County"),
+            "code": facility_data["county_id"],
+        },
+    )
+    sub_county, _ = SubCounty.objects.get_or_create(
+        pk=facility_data["sub_county_id"],
+        defaults={
+            "name": facility_data.get("sub_county_name", "Unknown Sub-County"),
+            "county": county,
+        },
+    )
 
     facility_defaults = {
         "organization": org,

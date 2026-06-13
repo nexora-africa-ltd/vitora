@@ -515,9 +515,15 @@ export DJANGO_SECRET_KEY="temporary-for-migration"
 
 "$VENV_DIR/bin/python" manage.py migrate --no-input
 
+# Load Kenya location data (counties, sub-counties, wards)
+if [[ -f "$APP_DIR/data/kenya_locations.csv" ]]; then
+    info "Loading Kenya location data..."
+    "$VENV_DIR/bin/python" manage.py import_kenya_locations "data/kenya_locations.csv" || warn "import_kenya_locations failed"
+fi
+
 # Seed org/facility from activation data
 info "Seeding organization and facility from activation data..."
-"$VENV_DIR/bin/python" manage.py seed_from_activation --response-file="$ACTIVATION_RESPONSE"
+"$VENV_DIR/bin/python" manage.py seed_from_activation --response-file="$ACTIVATION_RESPONSE" --skip-locations
 rm -f "$ACTIVATION_RESPONSE"
 
 # Collect static files (Django admin CSS, etc.).  Don't swallow errors —

@@ -468,7 +468,7 @@ def registry_token(request: Request) -> Response:
 class InstallationViewSet(viewsets.ModelViewSet):
     """Admin viewset for managing installations."""
 
-    http_method_names = ["get", "patch", "head", "options"]
+    http_method_names = ["get", "patch", "post", "head", "options"]
     permission_classes = [permissions.IsAdminUser]
     queryset = Installation.objects.select_related("organization", "facility").order_by(
         "-created_at"
@@ -478,6 +478,10 @@ class InstallationViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             return InstallationListSerializer
         return InstallationDetailSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Installations are created via generate-code, not direct POST."""
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     @action(detail=True, methods=["post"])
     def revoke(self, request, pk=None):
