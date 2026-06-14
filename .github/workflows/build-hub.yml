@@ -376,18 +376,41 @@ jobs:
           # failures, missing-MSVC-runtime errors, and ABI mismatches that
           # silently degrade to 'cannot import name X' at runtime.
           pip install -r requirements-hub.txt
+          if ($LASTEXITCODE -ne 0) { Write-Error "pip install failed"; exit $LASTEXITCODE }
+
           $env:DJANGO_SETTINGS_MODULE = "hmis.settings.hub"
           $env:HUB_DATA_DIR = $PWD.Path
           $env:ENCRYPTION_KEY = (python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
-          python -c @"
-          import django
-          django.setup()
-          from hmis.apps.encounters import signals
-          from hmis.apps.patients import models
-          assert signals.__file__.endswith('.pyd'), f'signals not compiled: {signals.__file__}'
-          print('IMPORT OK:', signals.__file__)
-          print('IMPORT OK:', models.Patient)
-          "@
+          Write-Host "ENCRYPTION_KEY length: $($env:ENCRYPTION_KEY.Length)"
+
+          # Build the import test script line-by-line — PowerShell here-strings
+          # inside a YAML | block are fragile (the closing '@ must be at column 0
+          # which depends on YAML de-indentation rules).
+          $lines = @(
+            'import sys',
+            'print("python:", sys.version)',
+            'print("executable:", sys.executable)',
+            'import importlib.machinery',
+            'print("EXTENSION_SUFFIXES:", importlib.machinery.EXTENSION_SUFFIXES)',
+            'import django',
+            'django.setup()',
+            'from hmis.apps.encounters import signals',
+            'from hmis.apps.patients import models',
+            'assert signals.__file__.endswith(".pyd"), f"signals not compiled: {signals.__file__}"',
+            'print("IMPORT OK signals:", signals.__file__)',
+            'print("IMPORT OK Patient:", models.Patient)'
+          )
+          Set-Content -Path import_test.py -Value $lines -Encoding UTF8
+
+          Write-Host "--- import_test.py ---"
+          Get-Content import_test.py
+          Write-Host "--- running ---"
+
+          python import_test.py
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Import test failed with exit $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
 
   publish:
     name: Publish Hub Artifacts
