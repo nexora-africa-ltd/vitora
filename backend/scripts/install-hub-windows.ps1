@@ -19,7 +19,7 @@
 #
 # Prerequisites:
 #   - Windows 10/11 or Windows Server 2019+
-#   - Python 3.11+ installed and on PATH
+#   - Python 3.12 installed and on PATH (exact version, not 3.11 or 3.13)
 #   - Administrator privileges
 # ============================================================================
 
@@ -56,12 +56,17 @@ function Write-Warn  { param($msg) Write-Host "[WARN] $msg" -ForegroundColor Yel
 function Write-Err   { param($msg) Write-Host "[ERROR] $msg" -ForegroundColor Red }
 
 function Test-PythonVersion {
+    # We require EXACTLY Python 3.12 because the hub ships pre-compiled .pyd
+    # files tagged for the cp312 ABI. Other Python minor versions silently
+    # cannot load them, causing 'cannot import name' errors at startup.
     try {
         $ver = & python --version 2>&1
         if ($ver -match "Python (\d+)\.(\d+)") {
             $major = [int]$Matches[1]
             $minor = [int]$Matches[2]
-            if ($major -ge 3 -and $minor -ge 11) { return $true }
+            if ($major -eq 3 -and $minor -eq 12) { return $true }
+            Write-Err "Found Python $major.$minor, but Python 3.12 is required."
+            Write-Err "The hub binaries are compiled for Python 3.12 only."
         }
     } catch {}
     return $false
@@ -90,10 +95,12 @@ Write-Host ""
 
 # --- Pre-checks ---
 if (-not (Test-PythonVersion)) {
-    Write-Err "Python 3.11+ is required. Install from https://python.org"
+    Write-Err "Python 3.12 is required (exact version - not 3.11, 3.13, etc.)."
+    Write-Err "Download Python 3.12: https://www.python.org/downloads/release/python-31210/"
+    Write-Err "During install, check 'Add python.exe to PATH'."
     exit 1
 }
-Write-Info "Python version OK"
+Write-Info "Python 3.12 OK"
 
 # --- Resolve Version ---
 $Version = Resolve-LatestVersion
