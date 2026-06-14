@@ -180,6 +180,42 @@ Write-Host ""
 $activationFile = "$env:TEMP\vitora-activation.json"
 $activationResponse | ConvertTo-Json -Depth 10 | Set-Content -Path $activationFile
 
+# --- Stop existing service (if upgrading) ---
+# When re-running the installer, the VitoraHub Windows service loads .pyd
+# files into memory via Daphne. Those files cannot be deleted while loaded,
+# causing "Access to the path is denied" during extraction. Stop the service
+# first and wait for it to fully release its file handles.
+$existingService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+if ($existingService) {
+    if ($existingService.Status -ne 'Stopped') {
+        Write-Info "Stopping existing $ServiceName service (this may take a few seconds)..."
+        try {
+            Stop-Service -Name $ServiceName -Force -ErrorAction Stop
+            # Wait up to 30s for the service to fully stop and release handles
+            $waited = 0
+            while ((Get-Service -Name $ServiceName).Status -ne 'Stopped' -and $waited -lt 30) {
+                Start-Sleep -Seconds 1
+                $waited++
+            }
+            # Give the OS another moment to flush file handles after the
+            # service reports stopped (daphne/python child processes may
+            # linger briefly).
+            Start-Sleep -Seconds 2
+        } catch {
+            Write-Warn "Could not stop $ServiceName service automatically: $_"
+            Write-Warn "If extraction fails, stop the service manually with: sc.exe stop $ServiceName"
+        }
+    }
+    # Also kill any orphaned python.exe processes that might still hold .pyd
+    # files (in case the service was killed but children survived).
+    Get-Process -Name python -ErrorAction SilentlyContinue | Where-Object {
+        $_.Path -and $_.Path.StartsWith($InstallDir, [StringComparison]::OrdinalIgnoreCase)
+    } | ForEach-Object {
+        Write-Info "Terminating orphaned hub python process (PID $($_.Id))..."
+        Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+    }
+}
+
 # --- Create Directories ---
 Write-Step 1 "Creating directories..."
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
@@ -206,19 +242,39 @@ $tempExtract = "$env:TEMP\vitora-hub-extract"
 if (Test-Path $tempExtract) { Remove-Item -Recurse -Force $tempExtract }
 Expand-Archive -Path $tempArchive -DestinationPath $tempExtract -Force
 
+# Helper: remove a path with retries to handle transient file locks
+# (Windows AV scanners, lingering python child processes, etc.)
+function Remove-PathWithRetry {
+    param([string]$Path, [int]$MaxAttempts = 5)
+    for ($i = 1; $i -le $MaxAttempts; $i++) {
+        try {
+            Remove-Item -Recurse -Force -Path $Path -ErrorAction Stop
+            return
+        } catch {
+            if ($i -eq $MaxAttempts) {
+                Write-Err "Failed to remove $Path after $MaxAttempts attempts."
+                Write-Err "Likely cause: a file is locked by a running process."
+                Write-Err "Stop the $ServiceName service and any python.exe processes under $InstallDir, then retry."
+                throw
+            }
+            Start-Sleep -Milliseconds (500 * $i)
+        }
+    }
+}
+
 # Find the inner folder (e.g., vitora-hub-0.3.1/) and copy contents
 $innerDir = Get-ChildItem -Path $tempExtract -Directory | Select-Object -First 1
 if ($innerDir) {
     Get-ChildItem -Path $innerDir.FullName | ForEach-Object {
         $dest = Join-Path $InstallDir $_.Name
-        if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+        if (Test-Path $dest) { Remove-PathWithRetry -Path $dest }
         Move-Item -Path $_.FullName -Destination $dest
     }
 } else {
     # Flat zip — move all contents
     Get-ChildItem -Path $tempExtract | ForEach-Object {
         $dest = Join-Path $InstallDir $_.Name
-        if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+        if (Test-Path $dest) { Remove-PathWithRetry -Path $dest }
         Move-Item -Path $_.FullName -Destination $dest
     }
 }

@@ -459,6 +459,17 @@ download "$DOWNLOAD_URL" "$TEMP_ARCHIVE" || {
 }
 
 info "Extracting to ${APP_DIR}..."
+
+# Stop the service first if upgrading. On Linux, open files can be unlinked,
+# but stopping the service avoids stale .so files in the running process and
+# guarantees a clean restart with the new code.
+if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
+    info "Stopping existing ${SERVICE_NAME} service..."
+    systemctl stop "$SERVICE_NAME" || warn "Could not stop ${SERVICE_NAME} (continuing anyway)"
+    # Brief pause so the service fully releases handles before we overwrite files
+    sleep 2
+fi
+
 tar -xzf "$TEMP_ARCHIVE" -C "$APP_DIR" --strip-components=1
 rm -f "$TEMP_ARCHIVE"
 

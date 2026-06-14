@@ -582,6 +582,84 @@ class TestGenerateActivationCode:
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
+    def test_multiple_pending_codes_can_coexist(self, authenticated_client, license_org):
+        """Generating multiple pending codes should not collide on installation_id.
+
+        Regression: installation_id had default="" + unique=True, so only one
+        pending row could exist at a time. Fixed by pre-populating a unique
+        placeholder identifier on creation.
+        """
+        user = authenticated_client.handler._force_user
+        user.is_staff = True
+        user.is_superuser = True
+        user.save()
+
+        ids = []
+        for i in range(3):
+            response = authenticated_client.post(
+                "/api/licensing/generate-code/",
+                {"organization_id": license_org.pk, "name": f"Hub {i}"},
+                format="json",
+            )
+            assert response.status_code == status.HTTP_201_CREATED, response.data
+            ids.append(response.data["id"])
+
+        # All three rows exist with unique placeholder installation_ids
+        from hmis.apps.licensing.models import Installation
+
+        rows = Installation.objects.filter(pk__in=ids)
+        assert rows.count() == 3
+        placeholders = {row.installation_id for row in rows}
+        assert len(placeholders) == 3, "Placeholder installation_ids must be unique"
+        for ph in placeholders:
+            assert ph.startswith("pending-"), f"Expected placeholder, got {ph!r}"
+
+    def test_activate_overwrites_placeholder_installation_id(self, api_client, license_org):
+        """After installer activation, installation_id should be the hub-generated value.
+
+        Regression: previously the row was created with installation_id="" and
+        the activate view would update it, but customers reported it didn't
+        appear to "sync back". Now we pre-populate a placeholder and the
+        activate view explicitly replaces it.
+        """
+        # Create a pending row via the admin endpoint
+        from django.contrib.auth import get_user_model
+
+        from hmis.apps.licensing.models import Installation
+
+        admin = get_user_model().objects.create_user(
+            "admin-x", password="x", is_staff=True, is_superuser=True
+        )
+        api_client.force_authenticate(user=admin)
+        gen_response = api_client.post(
+            "/api/licensing/generate-code/",
+            {"organization_id": license_org.pk, "name": "Reception"},
+            format="json",
+        )
+        assert gen_response.status_code == status.HTTP_201_CREATED
+        installation_pk = gen_response.data["id"]
+        activation_code = gen_response.data["activation_code"]
+
+        pending = Installation.objects.get(pk=installation_pk)
+        assert pending.installation_id.startswith("pending-")
+
+        # Now simulate the installer activating
+        api_client.force_authenticate(user=None)
+        hub_id = "hub-CUSTOMER-PC-1734512000"
+        activate_response = api_client.post(
+            "/api/licensing/activate/",
+            {"activation_code": activation_code, "installation_id": hub_id},
+            format="json",
+        )
+        assert activate_response.status_code == status.HTTP_200_OK, activate_response.data
+
+        # The row's installation_id should now be the hub-generated value
+        activated = Installation.objects.get(pk=installation_pk)
+        assert activated.installation_id == hub_id
+        assert activated.status == Installation.Status.ACTIVE
+        # And the response payload reflects it
+        assert activate_response.data["installation_id"] == hub_id
+
 
 # ---------------------------------------------------------------------------
 # Admin: revoke/suspend/reactivate tests

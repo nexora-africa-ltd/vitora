@@ -89,7 +89,7 @@ class TestCompileHubScript:
         assert spec is not None
 
     def test_apps_to_compile_are_valid(self):
-        """All apps listed for compilation should exist as directories."""
+        """All compile roots listed for compilation should exist as directories."""
         script = Path(__file__).resolve().parent.parent.parent / "scripts" / "compile-hub.py"
         backend_dir = script.parent.parent
 
@@ -99,12 +99,16 @@ class TestCompileHubScript:
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        for app_module in module.APPS_TO_COMPILE:
-            app_dir = backend_dir / app_module.replace(".", "/")
-            assert app_dir.exists(), f"App directory not found: {app_dir}"
+        # The script discovers .py files under each COMPILE_ROOT directory
+        # (relative to BACKEND_DIR) and emits per-file .so/.pyd extensions.
+        assert hasattr(module, "COMPILE_ROOTS"), "compile-hub.py must expose COMPILE_ROOTS"
+        assert module.COMPILE_ROOTS, "COMPILE_ROOTS must not be empty"
+        for root_name in module.COMPILE_ROOTS:
+            root_dir = backend_dir / root_name
+            assert root_dir.is_dir(), f"Compile root directory not found: {root_dir}"
 
     def test_keep_plain_files_exist(self):
-        """Files marked as keep-plain should exist."""
+        """Keep-plain entries should be valid basenames or directory names."""
         script = Path(__file__).resolve().parent.parent.parent / "scripts" / "compile-hub.py"
         backend_dir = script.parent.parent
 
@@ -114,9 +118,38 @@ class TestCompileHubScript:
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        for f in module.KEEP_PLAIN:
-            path = backend_dir / f
-            assert path.exists(), f"Keep-plain file not found: {path}"
+        # KEEP_PLAIN_BASENAMES are matched by filename anywhere under the
+        # compile roots; verify each name actually appears in the codebase.
+        assert hasattr(module, "KEEP_PLAIN_BASENAMES")
+        assert hasattr(module, "KEEP_PLAIN_DIRS")
+        assert module.KEEP_PLAIN_BASENAMES, "KEEP_PLAIN_BASENAMES must not be empty"
+        assert module.KEEP_PLAIN_DIRS, "KEEP_PLAIN_DIRS must not be empty"
+
+        # manage.py is a sentinel basename that must exist at backend root
+        assert "manage.py" in module.KEEP_PLAIN_BASENAMES
+        assert (backend_dir / "manage.py").is_file()
+
+        # Sentinel basenames that MUST exist somewhere under compile roots
+        required_basenames = {"__init__.py", "apps.py", "wsgi.py", "asgi.py"}
+        for basename in required_basenames & set(module.KEEP_PLAIN_BASENAMES):
+            found = any(
+                any((backend_dir / root).rglob(basename))
+                for root in module.COMPILE_ROOTS
+                if (backend_dir / root).is_dir()
+            )
+            assert found, f"Required keep-plain basename {basename!r} not present in codebase"
+
+        # Sentinel dirs that MUST exist (migrations, management, settings).
+        # Other entries (static, locale, tests, fixtures) are defensive guards
+        # for apps that may add them later — don't require them to exist.
+        required_dirs = {"migrations", "management", "settings"}
+        for dirname in required_dirs & set(module.KEEP_PLAIN_DIRS):
+            found = any(
+                any(p.is_dir() for p in (backend_dir / root).rglob(dirname))
+                for root in module.COMPILE_ROOTS
+                if (backend_dir / root).is_dir()
+            )
+            assert found, f"Required keep-plain directory {dirname!r} not present in codebase"
 
 
 # ---------------------------------------------------------------------------
