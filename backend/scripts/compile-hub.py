@@ -132,33 +132,42 @@ extensions = [
 {chr(10).join(extensions_code_lines)}
 ]
 
-setup(
-    name="vitora-hub-compiled",
-    ext_modules=cythonize(
-        extensions,
-        nthreads={jobs},
-        compiler_directives={{
-            "language_level": "3",
-            "always_allow_keywords": True,
-            "binding": True,
-            "embedsignature": False,
-            # Treat Python type hints as docs, not Cython type declarations.
-            "annotation_typing": False,
-            # Do NOT infer C types from Python assignments - keeps semantics 100% Python.
-            "infer_types": False,
-            # Keep Python-level binary operator dispatch.
-            "c_api_binop_methods": False,
-            # Don't auto-generate cpdef for Python functions.
-            "auto_cpdef": False,
-        }},
-        # If a file fails to translate, skip it (keeps .py - degraded protection but build wins).
-        exclude_failures=True,
-        build_dir="build/cython_c",
-        force=True,
-        quiet=False,
-    ),
-    script_args=["build_ext", "--inplace", "--build-temp", "build/cython_obj", "-j", "{jobs}"],
-)
+
+def _build():
+    setup(
+        name="vitora-hub-compiled",
+        ext_modules=cythonize(
+            extensions,
+            nthreads={jobs},
+            compiler_directives={{
+                "language_level": "3",
+                "always_allow_keywords": True,
+                "binding": True,
+                "embedsignature": False,
+                # Treat Python type hints as docs, not Cython type declarations.
+                "annotation_typing": False,
+                # Do NOT infer C types from Python assignments - keeps semantics 100% Python.
+                "infer_types": False,
+                # Keep Python-level binary operator dispatch.
+                "c_api_binop_methods": False,
+                # Don't auto-generate cpdef for Python functions.
+                "auto_cpdef": False,
+            }},
+            # If a file fails to translate, skip it (keeps .py - degraded protection but build wins).
+            exclude_failures=True,
+            build_dir="build/cython_c",
+            force=True,
+            quiet=False,
+        ),
+        script_args=["build_ext", "--inplace", "--build-temp", "build/cython_obj", "-j", "{jobs}"],
+    )
+
+
+if __name__ == "__main__":
+    # Required on Windows (spawn start method) so worker processes do not
+    # re-enter the build when they re-import this module.
+    multiprocessing.freeze_support()
+    _build()
 """
     setup_path = payload_dir / "_cython_setup.py"
     setup_path.write_text(setup_py, encoding="utf-8")
