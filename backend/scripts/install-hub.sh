@@ -16,7 +16,7 @@
 #
 # Prerequisites:
 #   - Ubuntu 22.04+ or Debian 12+
-#   - Python 3.11+
+#   - Python 3.12 (EXACT version - the hub binaries are compiled for cp312 ABI)
 #   - 2GB+ RAM recommended
 #   - curl or wget
 # ============================================================================
@@ -98,19 +98,29 @@ else
     exit 1
 fi
 
-# --- Ensure Python 3.11+ ---
+# --- Ensure Python 3.12 (EXACT version) ---
+# The hub ships pre-compiled .so files tagged for the cp312 ABI. Other
+# Python minor versions silently cannot load them, causing 'cannot import
+# name' errors at startup. We resolve PYTHON_BIN to the python3.12
+# interpreter and use it explicitly throughout the rest of the script.
+PYTHON_BIN=""
 ensure_python() {
+    # Look for python3.12 directly first (most reliable).
+    if command -v python3.12 &>/dev/null; then
+        PYTHON_BIN="$(command -v python3.12)"
+        info "Python 3.12 found at $PYTHON_BIN"
+        return 0
+    fi
+    # Fall back to checking if generic python3 happens to be 3.12.
     if command -v python3 &>/dev/null; then
         local ver
         ver=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-        local major minor
-        major=$(echo "$ver" | cut -d. -f1)
-        minor=$(echo "$ver" | cut -d. -f2)
-        if [[ "$major" -ge 3 && "$minor" -ge 11 ]]; then
-            info "Python $ver found — OK"
+        if [[ "$ver" == "3.12" ]]; then
+            PYTHON_BIN="$(command -v python3)"
+            info "Python 3.12 found at $PYTHON_BIN"
             return 0
         fi
-        warn "Python $ver found but 3.11+ required. Attempting install..."
+        warn "Python $ver found but EXACTLY 3.12 is required. Attempting install..."
     else
         warn "Python 3 not found. Attempting install..."
     fi
@@ -123,53 +133,52 @@ ensure_python() {
 
     case "${ID:-}" in
         debian|raspbian)
-            # Debian 12+ (Bookworm) has Python 3.11
-            if [[ "${VERSION_ID:-0}" -ge 12 ]]; then
+            # Debian 13+ (Trixie) has Python 3.12 in main repos.
+            if [[ "${VERSION_ID:-0}" -ge 13 ]]; then
                 apt-get update -qq
-                apt-get install -y -qq python3 python3-venv python3-pip python3-dev
+                apt-get install -y -qq python3.12 python3.12-venv python3.12-dev
             else
-                # Debian 11 (Bullseye) — build from source
-                warn "Debian ${VERSION_ID} detected. Installing Python 3.11 from source..."
+                # Older Debian — build from source.
+                warn "Debian ${VERSION_ID} detected. Installing Python 3.12 from source..."
                 apt-get update -qq
                 apt-get install -y -qq build-essential zlib1g-dev libncurses5-dev \
                     libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev \
                     libsqlite3-dev wget
-                local py_src="/tmp/Python-3.11.9"
-                download "https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tgz" "/tmp/Python-3.11.9.tgz"
-                tar -xzf /tmp/Python-3.11.9.tgz -C /tmp
+                local py_src="/tmp/Python-3.12.7"
+                download "https://www.python.org/ftp/python/3.12.7/Python-3.12.7.tgz" "/tmp/Python-3.12.7.tgz"
+                tar -xzf /tmp/Python-3.12.7.tgz -C /tmp
                 cd "$py_src"
                 ./configure --enable-optimizations --prefix=/usr/local 2>&1 | tail -5
                 make -j"$(nproc)" 2>&1 | tail -3
                 make altinstall 2>&1 | tail -3
                 cd /
-                rm -rf "$py_src" /tmp/Python-3.11.9.tgz
-                # Symlink if python3 still points to old version
-                update-alternatives --install /usr/bin/python3 python3 /usr/local/bin/python3.11 1
+                rm -rf "$py_src" /tmp/Python-3.12.7.tgz
             fi
             ;;
         ubuntu)
-            # Try deadsnakes PPA for older Ubuntu
-            if ! command -v python3.11 &>/dev/null; then
+            # Ubuntu 24.04+ ships Python 3.12. Older versions use deadsnakes PPA.
+            if ! command -v python3.12 &>/dev/null; then
                 apt-get update -qq
                 apt-get install -y -qq software-properties-common
                 add-apt-repository -y ppa:deadsnakes/ppa
                 apt-get update -qq
-                apt-get install -y -qq python3.11 python3.11-venv python3.11-dev
-                update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+                apt-get install -y -qq python3.12 python3.12-venv python3.12-dev
             fi
             ;;
         *)
-            error "Unsupported distro: ${ID:-unknown}. Install Python 3.11+ manually."
+            error "Unsupported distro: ${ID:-unknown}. Install Python 3.12 manually."
             exit 1
             ;;
     esac
 
     # Verify
-    if ! python3 -c "import sys; assert sys.version_info >= (3, 11)" 2>/dev/null; then
-        error "Python 3.11+ installation failed. Install manually."
+    if command -v python3.12 &>/dev/null; then
+        PYTHON_BIN="$(command -v python3.12)"
+        info "Python 3.12 installed successfully at $PYTHON_BIN"
+    else
+        error "Python 3.12 installation failed. Install manually."
         exit 1
     fi
-    info "Python 3.11+ installed successfully."
 }
 
 ensure_python
@@ -290,7 +299,10 @@ echo ""
 # --- System Setup ---
 step "1/7 Installing system dependencies..."
 apt-get update -qq
-apt-get install -y -qq python3-venv python3-pip python3-dev \
+# Note: python3.12-venv is needed because we run "$PYTHON_BIN -m venv".
+# The generic python3-venv only provides the venv module for the default
+# python3, which may not be 3.12.
+apt-get install -y -qq python3.12-venv python3-pip python3-dev \
     build-essential libffi-dev libssl-dev sqlite3
 
 # --- Raspberry Pi Optimizations ---
@@ -462,7 +474,7 @@ fi
 
 # --- Python Environment ---
 step "3/7 Setting up Python environment..."
-python3 -m venv "$VENV_DIR"
+"$PYTHON_BIN" -m venv "$VENV_DIR"
 # shellcheck disable=SC1091
 source "$VENV_DIR/bin/activate"
 

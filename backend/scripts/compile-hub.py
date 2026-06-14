@@ -51,6 +51,7 @@ KEEP_PLAIN_BASENAMES = {
     "apps.py",  # Django app registry discovery
     "wsgi.py",  # WSGI entry point (read by gunicorn/uvicorn)
     "asgi.py",  # ASGI entry point
+    "celery.py",  # Celery CLI does `python -m hmis.celery`; spawn-mode pickle safety
 }
 
 # Directory names anywhere under COMPILE_ROOTS that stay plain
