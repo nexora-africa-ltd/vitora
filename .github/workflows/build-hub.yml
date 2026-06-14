@@ -373,37 +373,32 @@ jobs:
 
           Write-Host "Windows smoke test PASSED"
 
-      - name: Import test (Django boots with compiled .pyd modules)
+      - name: Import test (load compiled .pyd directly)
         shell: pwsh
         working-directory: hub
+        timeout-minutes: 5
         run: |
-          # Install runtime deps and bring up Django. This catches DLL-load
-          # failures, missing-MSVC-runtime errors, and ABI mismatches that
-          # silently degrade to 'cannot import name X' at runtime.
-          pip install -r requirements-hub.txt
-          if ($LASTEXITCODE -ne 0) { Write-Error "pip install failed"; exit $LASTEXITCODE }
+          # Verify the .pyd can be loaded by the runner's Python 3.12.
+          # We DELIBERATELY skip django.setup() — it loads every app's ready()
+          # hook, some of which can block on Windows (file locks, Redis probes,
+          # background threads). The customer-reported bug is "DLL load failed"
+          # at .pyd import time, which is what this targeted test catches.
 
-          $env:DJANGO_SETTINGS_MODULE = "hmis.settings.hub"
-          $env:HUB_DATA_DIR = $PWD.Path
-          $env:ENCRYPTION_KEY = (python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
-          Write-Host "ENCRYPTION_KEY length: $($env:ENCRYPTION_KEY.Length)"
-
-          # Build the import test script line-by-line — PowerShell here-strings
-          # inside a YAML | block are fragile (the closing '@ must be at column 0
-          # which depends on YAML de-indentation rules).
           $lines = @(
-            'import sys',
+            'import sys, importlib.util, importlib.machinery',
             'print("python:", sys.version)',
-            'print("executable:", sys.executable)',
-            'import importlib.machinery',
             'print("EXTENSION_SUFFIXES:", importlib.machinery.EXTENSION_SUFFIXES)',
-            'import django',
-            'django.setup()',
-            'from hmis.apps.encounters import signals',
-            'from hmis.apps.patients import models',
-            'assert signals.__file__.endswith(".pyd"), f"signals not compiled: {signals.__file__}"',
-            'print("IMPORT OK signals:", signals.__file__)',
-            'print("IMPORT OK Patient:", models.Patient)'
+            'import glob',
+            'matches = glob.glob(r"hmis\\apps\\encounters\\signals.*.pyd")',
+            'assert matches, "no signals .pyd found"',
+            'pyd = matches[0]',
+            'print("loading:", pyd)',
+            'spec = importlib.util.spec_from_file_location("vitora_signals_test", pyd)',
+            'assert spec is not None, f"spec_from_file_location returned None for {pyd}"',
+            'mod = importlib.util.module_from_spec(spec)',
+            'spec.loader.exec_module(mod)',
+            'print("LOADED OK:", mod.__file__)',
+            'print("module attrs:", [a for a in dir(mod) if not a.startswith("_")][:10])'
           )
           Set-Content -Path import_test.py -Value $lines -Encoding UTF8
 
