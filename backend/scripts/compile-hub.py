@@ -57,6 +57,7 @@ KEEP_PLAIN_BASENAMES = {
 KEEP_PLAIN_DIRS = {
     "migrations",  # Django migration framework lists .py files
     "management",  # Django command discovery lists .py files
+    "settings",  # Django settings (config, must stay readable & ABI-agnostic)
     "templates",  # Not Python
     "static",  # Not Python
     "__pycache__",  # Cache, never ship
