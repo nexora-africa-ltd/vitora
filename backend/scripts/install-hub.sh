@@ -533,6 +533,12 @@ if [[ -f "$APP_DIR/data/kenya_locations.csv" ]]; then
     "$VENV_DIR/bin/python" manage.py import_kenya_locations "data/kenya_locations.csv" || warn "import_kenya_locations failed"
 fi
 
+# Initialize all production reference data (subscription plans, RBAC roles,
+# ICD-10, LOINC, drugs, CDS rules, KEPI schedule, notifiable diseases, etc).
+# Idempotent — safe to re-run on upgrade.
+info "Initializing reference data (this may take a few minutes)..."
+"$VENV_DIR/bin/python" manage.py initialize_hub || warn "initialize_hub completed with errors; some reference data may be missing"
+
 # Seed org/facility from activation data
 info "Seeding organization and facility from activation data..."
 "$VENV_DIR/bin/python" manage.py seed_from_activation --response-file="$ACTIVATION_RESPONSE" --skip-locations
