@@ -97,8 +97,13 @@ jobs:
         working-directory: backend
         shell: bash
         run: |
-          poetry install --without dev --no-root
-          pip install "cython>=3.0" setuptools wheel
+          # Install from the exported requirements file rather than 'poetry install'.
+          # Poetry's install path on Windows tries to uninstall/downgrade packages
+          # already pre-installed in the GitHub-hosted Python toolcache (e.g. certifi),
+          # and Windows file locks cause "[WinError 32] file in use" failures.
+          # pip install -r is idempotent and only installs what's missing.
+          pip install --no-warn-script-location -r requirements-hub.txt
+          pip install --no-warn-script-location "cython>=3.0" setuptools wheel
 
       - name: Compile with Cython
         working-directory: backend
