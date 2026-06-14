@@ -628,7 +628,7 @@ jobs:
             | Windows | Windows 10/11 / Server 2019+, Python 3.11+ on PATH, 4GB+ RAM |
 
             ### Integrity
-            All files are Nuitka-compiled (no readable Python source). Each artifact
+            All files are Cython-compiled (no readable Python source). Each artifact
             includes `manifest.json` with SHA-256 hashes of all files.
           files: |
             artifacts/hub-linux-amd64/*.tar.gz
