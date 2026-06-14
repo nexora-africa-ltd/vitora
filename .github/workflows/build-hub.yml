@@ -1,9 +1,9 @@
 name: Build Hub Artifact
 
-# Builds a Nuitka-compiled, self-contained tarball of the Django backend
-# for facility hub deployment. Uploads to Azure Blob Storage for
-# unauthenticated download (no public repo needed).
-# Triggered on hub version tags or manually.
+# Builds a Cython-compiled, self-contained tarball/zip of the Django backend
+# for facility hub deployment. Each .py file becomes a sibling .so (Linux)
+# or .pyd (Windows). Uploads to Azure Blob Storage for unauthenticated
+# download. Triggered on hub version tags or manually.
 
 on:
   push:
@@ -93,14 +93,14 @@ jobs:
           "
           rm -f requirements-hub-raw.txt
 
-      - name: Install Python dependencies (for Nuitka)
+      - name: Install Python dependencies (for Cython)
         working-directory: backend
         shell: bash
         run: |
           poetry install --without dev --no-root
-          pip install nuitka ordered-set zstandard
+          pip install "cython>=3.0" setuptools wheel
 
-      - name: Compile with Nuitka
+      - name: Compile with Cython
         working-directory: backend
         shell: bash
         run: |
@@ -152,6 +152,9 @@ jobs:
           mkdir -p "dist/${ARTIFACT}/keys"
           cp backend/keys/license_public.pem "dist/${ARTIFACT}/keys/"
 
+          # Bundle the EULA at the root of the hub install
+          cp backend/scripts/HUB-EULA.txt "dist/${ARTIFACT}/EULA.txt"
+
           echo "$VERSION" > "dist/${ARTIFACT}/VERSION"
 
           cd dist
@@ -186,6 +189,9 @@ jobs:
 
           New-Item -ItemType Directory -Force -Path "dist\${ARTIFACT}\keys"
           Copy-Item "backend\keys\license_public.pem" "dist\${ARTIFACT}\keys\"
+
+          # Bundle the EULA at the root of the hub install
+          Copy-Item "backend\scripts\HUB-EULA.txt" "dist\${ARTIFACT}\EULA.txt"
 
           Set-Content -Path "dist\${ARTIFACT}\VERSION" -Value $VERSION
 
@@ -239,21 +245,43 @@ jobs:
           SO_COUNT=$(find . -name "*.so" | wc -l)
           echo "Compiled .so modules: $SO_COUNT"
 
-          if [[ "$SO_COUNT" -eq 0 ]]; then
-            echo "ERROR: No compiled modules found! Nuitka compilation likely failed."
+          if [[ "$SO_COUNT" -lt 100 ]]; then
+            echo "ERROR: Expected at least 100 .so modules, found $SO_COUNT — Cython build likely failed."
             exit 1
           fi
 
-          # Count remaining .py files in apps (should be minimal)
-          PY_COUNT=$(find hmis/apps/ -name "*.py" \
-            ! -name "apps.py" \
-            ! -name "__init__.py" \
-            ! -path "*/migrations/*" 2>/dev/null | wc -l)
-          echo "Remaining .py files in apps (should be 0): $PY_COUNT"
+          # Verify the encounters/signals fix landed (was the v0.4.1 bug)
+          if ! ls hmis/apps/encounters/signals.*.so >/dev/null 2>&1; then
+            echo "ERROR: hmis/apps/encounters/signals.*.so missing — this was the v0.4.1 install bug"
+            exit 1
+          fi
+          echo "encounters/signals compiled correctly: $(ls hmis/apps/encounters/signals.*.so)"
+
+          # Sanity: management commands kept as .py (Django needs to scan dirs)
+          MGMT_PY=$(find hmis/apps/ -path "*/management/commands/*.py" ! -name "__init__.py" | wc -l)
+          echo "Management command .py files (must be >0): $MGMT_PY"
+          if [[ "$MGMT_PY" -eq 0 ]]; then
+            echo "ERROR: No management commands as plain .py — Django can't discover them"
+            exit 1
+          fi
+
+          # Sanity: migrations kept as .py
+          MIG_PY=$(find hmis/apps/ -path "*/migrations/*.py" ! -name "__init__.py" | wc -l)
+          echo "Migration .py files (must be >0): $MIG_PY"
+          if [[ "$MIG_PY" -eq 0 ]]; then
+            echo "ERROR: No migrations as plain .py — Django can't apply them"
+            exit 1
+          fi
 
           # Verify manage.py exists
           if [[ ! -f manage.py ]]; then
             echo "ERROR: manage.py not found!"
+            exit 1
+          fi
+
+          # Verify EULA bundled
+          if [[ ! -f EULA.txt ]]; then
+            echo "ERROR: EULA.txt not bundled!"
             exit 1
           fi
 
@@ -264,6 +292,26 @@ jobs:
           fi
 
           echo "Smoke test PASSED"
+
+      - name: Import test (Django boots with compiled modules)
+        working-directory: hub
+        run: |
+          # Install runtime deps and try to bring up Django.
+          # This catches Cython binary-incompatibility issues that the simple
+          # file-count check above would miss.
+          pip install -r requirements-hub.txt
+          export DJANGO_SETTINGS_MODULE=hmis.settings.hub
+          export HUB_DATA_DIR=$(pwd)
+          export ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+          python -c "
+          import django
+          django.setup()
+          from hmis.apps.encounters import signals
+          from hmis.apps.patients import models
+          assert signals.__file__.endswith('.so'), f'signals not compiled: {signals.__file__}'
+          print('IMPORT OK:', signals.__file__)
+          print('IMPORT OK:', models.Patient)
+          "
 
   publish:
     name: Publish Hub Artifacts
