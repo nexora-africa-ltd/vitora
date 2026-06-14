@@ -42,7 +42,10 @@ SEED_STEPS: tuple[SeedStep, ...] = (
     # --- Core platform ---
     SeedStep("seed_subscription_plans", "Subscription plans (FREE/BASIC/PRO/ENT)", required=True),
     SeedStep("load_default_roles", "Default RBAC roles & permissions", required=True),
+    SeedStep("sync_role_permissions", "Sync role matrix to Django Group permissions"),
+    SeedStep("setup_allied_health_permissions", "Allied health permission groups"),
     SeedStep("seed_feature_flags", "Feature flags"),
+    SeedStep("init_pki_ca", "PKI root CA for document signing"),
     # --- Clinical reference catalogues ---
     SeedStep("import_icd10", "ICD-10 diagnosis codes"),
     SeedStep("import_loinc", "LOINC lab codes"),
