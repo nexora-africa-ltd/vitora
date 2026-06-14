@@ -220,7 +220,7 @@ jobs:
             dist/vitora-hub-*-windows-amd64.zip.sha256
 
   smoke-test:
-    name: Smoke Test Compiled Hub
+    name: Smoke Test Compiled Hub (Linux)
     needs: compile
     runs-on: ubuntu-22.04
 
@@ -313,9 +313,85 @@ jobs:
           print('IMPORT OK:', models.Patient)
           "
 
+  smoke-test-windows:
+    name: Smoke Test Compiled Hub (Windows)
+    needs: compile
+    runs-on: windows-2022
+
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hub-windows-amd64
+          path: dist/
+
+      - name: Set up Python 3.12 (MUST match build ABI)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Extract and verify
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path hub | Out-Null
+          $zip = Get-ChildItem dist\*.zip | Select-Object -First 1
+          Expand-Archive -Path $zip.FullName -DestinationPath hub
+          # Zip has a single top-level dir - flatten it.
+          $inner = Get-ChildItem hub | Where-Object { $_.PSIsContainer } | Select-Object -First 1
+          Get-ChildItem $inner.FullName -Force | Move-Item -Destination hub
+          Remove-Item -Recurse -Force $inner.FullName
+
+          $pydCount = (Get-ChildItem hub -Recurse -Filter "*.pyd").Count
+          Write-Host "Compiled .pyd modules: $pydCount"
+          if ($pydCount -lt 100) {
+            Write-Error "Expected at least 100 .pyd modules, found $pydCount — Cython build likely failed."
+            exit 1
+          }
+
+          $signalsPyd = Get-ChildItem hub\hmis\apps\encounters\signals.*.pyd -ErrorAction SilentlyContinue
+          if (-not $signalsPyd) {
+            Write-Error "hmis\apps\encounters\signals.*.pyd missing — the install would fail with 'cannot import name signals'"
+            Write-Host "Files actually in hub\hmis\apps\encounters:"
+            Get-ChildItem hub\hmis\apps\encounters | Format-Table Name, Length
+            exit 1
+          }
+          Write-Host "encounters\signals compiled: $($signalsPyd.Name)"
+
+          # Verify all .pyd files use cp312 ABI tag (must match what installer enforces).
+          $wrongAbi = Get-ChildItem hub -Recurse -Filter "*.pyd" |
+            Where-Object { $_.Name -notmatch '\.cp312-' }
+          if ($wrongAbi) {
+            Write-Error "Found .pyd files with wrong ABI tag (expected cp312):"
+            $wrongAbi | Select-Object -First 10 FullName | Format-Table
+            exit 1
+          }
+
+          Write-Host "Windows smoke test PASSED"
+
+      - name: Import test (Django boots with compiled .pyd modules)
+        shell: pwsh
+        working-directory: hub
+        run: |
+          # Install runtime deps and bring up Django. This catches DLL-load
+          # failures, missing-MSVC-runtime errors, and ABI mismatches that
+          # silently degrade to 'cannot import name X' at runtime.
+          pip install -r requirements-hub.txt
+          $env:DJANGO_SETTINGS_MODULE = "hmis.settings.hub"
+          $env:HUB_DATA_DIR = $PWD.Path
+          $env:ENCRYPTION_KEY = (python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+          python -c @"
+          import django
+          django.setup()
+          from hmis.apps.encounters import signals
+          from hmis.apps.patients import models
+          assert signals.__file__.endswith('.pyd'), f'signals not compiled: {signals.__file__}'
+          print('IMPORT OK:', signals.__file__)
+          print('IMPORT OK:', models.Patient)
+          "@
+
   publish:
     name: Publish Hub Artifacts
-    needs: smoke-test
+    needs: [smoke-test, smoke-test-windows]
     runs-on: ubuntu-22.04
 
     steps:

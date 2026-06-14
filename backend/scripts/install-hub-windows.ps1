@@ -305,11 +305,38 @@ if (-not (Test-Path $nssmExe)) {
 
 # --- Python Environment ---
 Write-Step 4 "Setting up Python environment..."
+
+# If a venv already exists from a previous install, verify its interpreter
+# actually IS Python 3.12 — not just whatever `python` was at the time it was
+# created. A 3.11 venv silently fails to load .cp312-win_amd64.pyd modules
+# with "DLL load failed".
+if (Test-Path "$VenvDir\Scripts\python.exe") {
+    $venvVersion = & "$VenvDir\Scripts\python.exe" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null
+    if ($venvVersion -ne "3.12") {
+        Write-Warn "Existing venv uses Python $venvVersion, but Vitora Hub requires 3.12. Rebuilding venv..."
+        Remove-Item -Recurse -Force $VenvDir
+    } else {
+        Write-Info "Existing venv is Python 3.12. Reusing."
+    }
+}
+
 if (-not (Test-Path "$VenvDir\Scripts\python.exe")) {
     & python -m venv $VenvDir
+    if ($LASTEXITCODE -ne 0) {
+        Write-Err "Failed to create venv. Check that Python 3.12 is installed and on PATH."
+        exit 1
+    }
 }
 
 $python = "$VenvDir\Scripts\python.exe"
+
+# Belt-and-suspenders: confirm the venv we're about to use is really 3.12.
+$venvVersionCheck = & $python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null
+if ($venvVersionCheck -ne "3.12") {
+    Write-Err "venv interpreter is Python $venvVersionCheck, expected 3.12. Aborting to avoid ABI mismatch."
+    Write-Err "Compiled .pyd modules are tagged cp312 and will fail to import on any other version."
+    exit 1
+}
 
 Write-Info "Installing Python dependencies..."
 # Use python -m pip (avoids "To modify pip, please run..." error on old pip)
