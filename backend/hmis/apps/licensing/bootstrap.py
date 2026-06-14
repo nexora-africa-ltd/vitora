@@ -137,20 +137,30 @@ def seed_bootstrap_data(bootstrap: dict[str, Any], *, organization, facility) ->
             counts["departments"] += 1
 
     for role_data in bootstrap.get("roles") or []:
+        # Role.code has a global unique constraint, so we must look up by code
+        # alone. The hub may already have system-default roles (organization=None)
+        # seeded by load_default_roles during initialize_hub. The bootstrap
+        # payload also includes those system roles (organization_id=None) plus
+        # any org-specific roles. We preserve the existing organization for
+        # system roles and attach org-specific roles to the activating org.
+        is_org_scoped_role = bool(role_data.get("organization_id"))
+        defaults = {
+            "name": role_data["name"],
+            "category": role_data.get("category", ""),
+            "scope": role_data.get("scope", "FACILITY"),
+            "facility": facility if role_data.get("facility_id") else None,
+            "permissions_matrix": role_data.get("permissions_matrix", {}),
+            "hierarchy_level": role_data.get("hierarchy_level", 50),
+            "requires_license": role_data.get("requires_license", False),
+            "license_body": role_data.get("license_body", ""),
+            "is_active": role_data.get("is_active", True),
+        }
+        if is_org_scoped_role:
+            defaults["organization"] = organization
+
         _, created = Role.objects.update_or_create(
             code=role_data["code"],
-            organization=organization,
-            defaults={
-                "name": role_data["name"],
-                "category": role_data.get("category", ""),
-                "scope": role_data.get("scope", "FACILITY"),
-                "facility": facility if role_data.get("facility_id") else None,
-                "permissions_matrix": role_data.get("permissions_matrix", {}),
-                "hierarchy_level": role_data.get("hierarchy_level", 50),
-                "requires_license": role_data.get("requires_license", False),
-                "license_body": role_data.get("license_body", ""),
-                "is_active": role_data.get("is_active", True),
-            },
+            defaults=defaults,
         )
         if created:
             counts["roles"] += 1
