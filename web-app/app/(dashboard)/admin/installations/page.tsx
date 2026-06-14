@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { licensingAdminApi } from '@/lib/api/licensing';
 import { organizationsApi } from '@/lib/api/organizations';
+import type { FacilityListItem } from '@/lib/types/facility';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { PageHeader } from '@/components/shared/page-header';
@@ -52,6 +53,7 @@ export default function InstallationsPage() {
   const [search, setSearch] = useState('');
   const [generateOpen, setGenerateOpen] = useState(false);
   const [orgId, setOrgId] = useState('');
+  const [facilityId, setFacilityId] = useState('');
   const [installName, setInstallName] = useState('');
 
   const { data, isLoading } = useQuery({
@@ -72,8 +74,20 @@ export default function InstallationsPage() {
     sublabel: org.county_name ?? undefined,
   }));
 
+  const { data: facilitiesData } = useQuery({
+    queryKey: ['admin', 'org-facilities', orgId],
+    queryFn: () => organizationsApi.listFacilities(parseInt(orgId)),
+    enabled: isSuperuser && generateOpen && !!orgId,
+  });
+
+  const facilityOptions = (facilitiesData ?? []).map((f: FacilityListItem) => ({
+    value: String(f.id),
+    label: f.name,
+    sublabel: f.mfl_code ? `MFL ${f.mfl_code}` : undefined,
+  }));
+
   const generateMutation = useMutation({
-    mutationFn: (data: { organization_id: number; name?: string }) =>
+    mutationFn: (data: { organization_id: number; name?: string; facility_id?: number }) =>
       licensingAdminApi.generateCode(data),
     onSuccess: (result) => {
       toast.success('Activation code generated', {
@@ -83,6 +97,7 @@ export default function InstallationsPage() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'installations'] });
       setGenerateOpen(false);
       setOrgId('');
+      setFacilityId('');
       setInstallName('');
     },
     onError: () => toast.error('Failed to generate code'),
@@ -131,11 +146,29 @@ export default function InstallationsPage() {
                     <SearchableSelect
                       options={orgOptions}
                       value={orgId}
-                      onValueChange={setOrgId}
+                      onValueChange={(v) => {
+                        setOrgId(v);
+                        setFacilityId('');
+                      }}
                       placeholder="Select organization..."
                       searchPlaceholder="Search organizations..."
                       emptyMessage="No organizations found."
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Facility</Label>
+                    <SearchableSelect
+                      options={facilityOptions}
+                      value={facilityId}
+                      onValueChange={setFacilityId}
+                      placeholder={orgId ? 'Select facility...' : 'Select organization first'}
+                      searchPlaceholder="Search facilities..."
+                      emptyMessage={orgId ? 'No facilities found.' : 'Select an organization first.'}
+                      disabled={!orgId}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      The hub will be locked to this facility. Each hub is a single physical install.
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="install-name">Installation Name (optional)</Label>
@@ -152,10 +185,11 @@ export default function InstallationsPage() {
                     onClick={() =>
                       generateMutation.mutate({
                         organization_id: parseInt(orgId),
+                        facility_id: facilityId ? parseInt(facilityId) : undefined,
                         name: installName || undefined,
                       })
                     }
-                    disabled={!orgId || generateMutation.isPending}
+                    disabled={!orgId || !facilityId || generateMutation.isPending}
                   >
                     {generateMutation.isPending ? 'Generating...' : 'Generate'}
                   </Button>

@@ -12,6 +12,7 @@ Endpoints:
 """
 
 import secrets
+import uuid
 
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
@@ -374,10 +375,16 @@ def generate_activation_code(request: Request) -> Response:
     # Generate a unique activation code (16 chars, URL-safe)
     code = secrets.token_urlsafe(12)  # 16 chars
 
+    # Pre-populate a unique placeholder installation_id so multiple PENDING
+    # rows can coexist (the field has unique=True + default=""). The installer
+    # overwrites this with its own hub-HOSTNAME-EPOCH identifier on activation.
+    placeholder_installation_id = f"pending-{uuid.uuid4().hex[:24]}"
+
     installation = Installation.objects.create(
         organization=org,
         facility=facility,
         name=data.get("name", ""),
+        installation_id=placeholder_installation_id,
         activation_code=code,
         status=Installation.Status.PENDING,
         activated_by=request.user,
