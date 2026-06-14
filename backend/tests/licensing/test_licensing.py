@@ -662,6 +662,92 @@ class TestGenerateActivationCode:
 
 
 # ---------------------------------------------------------------------------
+# Bootstrap seeding tests
+# ---------------------------------------------------------------------------
+
+
+class TestSeedBootstrapData:
+    """Tests for seed_bootstrap_data (activation payload → local hub records)."""
+
+    def test_seeds_system_role_without_collision(self, db, license_org, sample_facility):
+        """A system role (organization_id=None) in the payload must update the
+        existing hub-side system role rather than failing the global unique
+        constraint on Role.code.
+
+        Regression: bootstrap previously called update_or_create with
+        organization=<customer_org> in the lookup, which missed the existing
+        org=None system role, then INSERT failed on `UNIQUE constraint failed:
+        core_role.code` during seed_from_activation.
+        """
+        from hmis.apps.core.models import Role
+        from hmis.apps.licensing.bootstrap import seed_bootstrap_data
+
+        # Simulate initialize_hub having seeded a global system role
+        Role.objects.create(
+            code="DOCTOR",
+            name="Doctor (system)",
+            category="CLINICAL",
+            scope="ORG",
+            organization=None,
+        )
+
+        payload = {
+            "departments": [],
+            "roles": [
+                {
+                    "code": "DOCTOR",
+                    "name": "Doctor",
+                    "category": "CLINICAL",
+                    "scope": "ORG",
+                    "organization_id": None,
+                    "facility_id": None,
+                    "permissions_matrix": {},
+                    "hierarchy_level": 20,
+                    "is_active": True,
+                },
+            ],
+        }
+
+        counts = seed_bootstrap_data(payload, organization=license_org, facility=sample_facility)
+
+        # Should not raise, should update existing system role (not create new)
+        assert counts["roles"] == 0
+        role = Role.objects.get(code="DOCTOR")
+        assert role.organization is None, "System role must keep organization=None"
+        assert role.name == "Doctor"
+
+    def test_seeds_org_scoped_role_attaches_to_organization(self, db, license_org, sample_facility):
+        """A payload role with organization_id set should be attached to the
+        activating organization on the hub."""
+        from hmis.apps.core.models import Role
+        from hmis.apps.licensing.bootstrap import seed_bootstrap_data
+
+        payload = {
+            "departments": [],
+            "roles": [
+                {
+                    "code": "CUSTOM-ROLE",
+                    "name": "Custom Role",
+                    "category": "CLINICAL",
+                    "scope": "FACILITY",
+                    "organization_id": 99,  # Whatever cloud org id; hub maps to its org
+                    "facility_id": 99,
+                    "permissions_matrix": {},
+                    "hierarchy_level": 50,
+                    "is_active": True,
+                },
+            ],
+        }
+
+        counts = seed_bootstrap_data(payload, organization=license_org, facility=sample_facility)
+
+        assert counts["roles"] == 1
+        role = Role.objects.get(code="CUSTOM-ROLE")
+        assert role.organization_id == license_org.pk
+        assert role.facility_id == sample_facility.pk
+
+
+# ---------------------------------------------------------------------------
 # Admin: revoke/suspend/reactivate tests
 # ---------------------------------------------------------------------------
 

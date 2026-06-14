@@ -499,8 +499,16 @@ Write-Step 7 "Installing Windows service..."
 $existingService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if ($existingService) {
     Write-Warn "Service '$ServiceName' already exists. Removing..."
-    & $nssmExe stop $ServiceName 2>$null
-    & $nssmExe remove $ServiceName confirm
+    # nssm.exe writes to stderr and returns non-zero when the service is
+    # already stopped. With $ErrorActionPreference = "Stop", PowerShell would
+    # convert that stderr into a terminating error. Merge stderr into stdout
+    # and discard, then ignore the exit code via $LASTEXITCODE.
+    if ($existingService.Status -eq 'Running') {
+        & $nssmExe stop $ServiceName 2>&1 | Out-Null
+    }
+    $global:LASTEXITCODE = 0
+    & $nssmExe remove $ServiceName confirm 2>&1 | Out-Null
+    $global:LASTEXITCODE = 0
     Start-Sleep -Seconds 2
 }
 
