@@ -7,6 +7,7 @@ import json
 
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models.fields.files import FieldFile
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.forms.models import model_to_dict
@@ -32,6 +33,12 @@ def should_queue_upward_sync(model_label: str) -> bool:
 def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) -> dict:
     """Serialize a model instance into JSON-safe sync data."""
     data = model_to_dict(instance, exclude=list(exclude_fields))
+    # FileField / ImageField return FieldFile instances that DjangoJSONEncoder
+    # cannot serialize. Convert them to their stored path string (or None when
+    # no file is attached) so the sync payload stays JSON-safe.
+    for key, value in list(data.items()):
+        if isinstance(value, FieldFile):
+            data[key] = value.name or None
     data["id"] = instance.pk
     json_safe = json.loads(json.dumps(data, cls=DjangoJSONEncoder))
     return json_safe
