@@ -428,6 +428,18 @@ jobs:
           az storage blob upload \
             --container-name "$BLOB_CONTAINER" \
             --name "hub.ps1" \
+            --file backend/scripts/bootstrap-hub-windows.ps1 \
+            --overwrite \
+            --content-type "text/plain" \
+            --content-cache-control "max-age=600"
+
+          # The real installer. Downloaded by hub.ps1 to a temp file and
+          # run as a child process so `exit N` in the installer cannot
+          # terminate the user's PowerShell host when invoked via
+          # `irm https://get.vitora.digital/hub.ps1 | iex`.
+          az storage blob upload \
+            --container-name "$BLOB_CONTAINER" \
+            --name "install-hub-windows.ps1" \
             --file backend/scripts/install-hub-windows.ps1 \
             --overwrite \
             --content-type "text/plain" \
