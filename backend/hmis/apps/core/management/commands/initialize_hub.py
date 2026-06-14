@@ -47,7 +47,16 @@ SEED_STEPS: tuple[SeedStep, ...] = (
     SeedStep("seed_feature_flags", "Feature flags"),
     SeedStep("init_pki_ca", "PKI root CA for document signing"),
     # --- Clinical reference catalogues ---
-    SeedStep("import_icd10", "ICD-10 diagnosis codes"),
+    SeedStep(
+        "import_icd10",
+        "ICD-10 diagnosis codes",
+        options=("data/icd10_kenya_common.csv",),
+    ),
+    SeedStep(
+        "import_icd11",
+        "ICD-11 diagnosis codes",
+        options=("data/ICD-11.csv",),
+    ),
     SeedStep("import_loinc", "LOINC lab codes"),
     SeedStep("import_drugs", "Drug catalogue (Kenya medicines)"),
     SeedStep("seed_snomed_common", "Common SNOMED CT codes"),
