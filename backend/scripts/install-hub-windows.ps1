@@ -403,6 +403,15 @@ if (Test-Path "$InstallDir\data\kenya_locations.csv") {
     }
 }
 
+# Initialize all production reference data (subscription plans, RBAC roles,
+# ICD-10, LOINC, drugs, CDS rules, KEPI schedule, notifiable diseases, etc).
+# Idempotent — safe to re-run on upgrade.
+Write-Info "Initializing reference data (this may take a few minutes)..."
+& $python manage.py initialize_hub
+if ($LASTEXITCODE -ne 0) {
+    Write-Warn "initialize_hub completed with errors (exit $LASTEXITCODE). Some reference data may be missing."
+}
+
 # Seed org/facility from activation data
 Write-Info "Seeding organization and facility from activation data..."
 & $python manage.py seed_from_activation --response-file="$activationFile" --skip-locations
