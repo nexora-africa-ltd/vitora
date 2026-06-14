@@ -117,3 +117,25 @@ class TestHubSyncSignals:
             "id": patient_id,
             "sync_meta": {"priority": 3, "direction": "up"},
         }
+
+    @override_settings(ENVIRONMENT="hub", SYNC_ENABLED=True)
+    def test_organization_with_imagefield_serializes_without_typeerror(self, sample_organization):
+        """Saving a model with an ImageField/FileField must not break the sync signal.
+
+        Regression: TypeError("Object of type ImageFieldFile is not JSON serializable")
+        on Windows hub install during seed_from_activation (Organization.logo).
+        """
+        import hmis.apps.core.sync_signals  # noqa: F401
+
+        SyncQueue.objects.all().delete()
+
+        # Touch the org to fire post_save without setting a file
+        sample_organization.name = sample_organization.name + " (resaved)"
+        sample_organization.save(update_fields=["name"])
+
+        entry = SyncQueue.objects.get(
+            model_name="core.Organization", record_id=sample_organization.id
+        )
+        # logo is empty → None in the payload, not a FieldFile
+        assert entry.data["logo"] is None
+        assert entry.operation == "UPDATE"
