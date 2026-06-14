@@ -1,0 +1,100 @@
+VITORA HMIS — FACILITY HUB
+END-USER LICENSE AGREEMENT (EULA)
+
+Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+
+IMPORTANT — READ CAREFULLY BEFORE INSTALLING OR USING THE SOFTWARE.
+
+By installing, copying, or otherwise using the Vitora HMIS Facility Hub
+software ("Hub"), you ("Licensee") agree to be bound by the terms of this
+End-User License Agreement ("EULA"). If you do not agree, do not install
+or use the Hub.
+
+1. GRANT OF LICENSE
+   Nexora Consulting Ltd ("Nexora") grants Licensee a limited, non-exclusive,
+   non-transferable, revocable license to install and operate one (1)
+   instance of the Hub on the Licensee's premises, solely for the internal
+   purpose of operating the healthcare facility named in Licensee's
+   subscription agreement with Nexora.
+
+2. ACTIVATION & HARDWARE BINDING
+   The Hub requires activation against Nexora's cloud licensing service.
+   Upon activation, the Hub may bind itself to the hardware fingerprint of
+   the host machine. Re-binding to different hardware requires a new
+   activation. Licensee shall not interfere with, bypass, or otherwise
+   circumvent the activation, hardware-binding, telemetry, or license-
+   verification mechanisms of the Hub.
+
+3. PROHIBITED ACTS
+   Licensee shall NOT, directly or indirectly:
+     (a) reverse engineer, decompile, disassemble, deobfuscate, or
+         otherwise attempt to derive the source code, algorithms, file
+         formats, or programming interfaces of the Hub, except to the
+         minimum extent expressly permitted by applicable mandatory law;
+     (b) modify, adapt, translate, or create derivative works of the Hub;
+     (c) remove, alter, or obscure any copyright, trademark, license, or
+         other proprietary notice;
+     (d) rent, lease, lend, sell, sublicense, distribute, or otherwise
+         transfer the Hub to any third party;
+     (e) use the Hub to provide services to any organization other than
+         the Licensee's own operations, except under a separate written
+         agreement with Nexora;
+     (f) use the Hub, or any component thereof, to develop or improve a
+         competing product or service;
+     (g) publicly disclose benchmarks, performance characteristics, or
+         vulnerability details without prior written approval.
+
+4. TRADE SECRETS
+   The Hub embodies trade secrets and confidential know-how of Nexora,
+   including but not limited to clinical decision rules, payer
+   adjudication logic, synchronization protocols, and license-enforcement
+   mechanisms. Licensee shall maintain the confidentiality of such trade
+   secrets and shall not disclose them to any third party.
+
+5. UPDATES & MONITORING
+   The Hub may periodically contact Nexora's cloud service to report
+   health metrics, license status, and version information, and to receive
+   security and feature updates. Licensee consents to such communication.
+
+6. DATA RESPONSIBILITY
+   Licensee is the data controller of all patient and operational data
+   processed by the Hub. Licensee is responsible for compliance with the
+   Kenya Data Protection Act 2019 and all other applicable laws, including
+   obtaining patient consent, maintaining audit logs, and securing the
+   host hardware against unauthorized physical access.
+
+7. TERM & TERMINATION
+   This EULA is effective until terminated. Nexora may terminate this EULA
+   immediately upon notice if Licensee breaches any term. Upon termination,
+   Licensee shall cease all use of the Hub and destroy all copies in its
+   possession. Sections 3, 4, 8, 9, and 10 survive termination.
+
+8. NO WARRANTY
+   THE HUB IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING WITHOUT LIMITATION WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. NEXORA DOES NOT
+   WARRANT THAT THE HUB WILL BE UNINTERRUPTED, ERROR-FREE, OR SECURE.
+
+9. LIMITATION OF LIABILITY
+   TO THE MAXIMUM EXTENT PERMITTED BY LAW, NEXORA'S TOTAL CUMULATIVE
+   LIABILITY ARISING OUT OF OR RELATING TO THIS EULA SHALL NOT EXCEED THE
+   FEES PAID BY LICENSEE TO NEXORA FOR THE TWELVE (12) MONTHS PRECEDING
+   THE EVENT GIVING RISE TO THE CLAIM. IN NO EVENT SHALL NEXORA BE LIABLE
+   FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES.
+
+10. GOVERNING LAW & JURISDICTION
+    This EULA is governed by the laws of the Republic of Kenya, without
+    regard to conflict-of-laws principles. Any dispute shall be resolved
+    exclusively in the courts of Nairobi, Kenya.
+
+11. ENTIRE AGREEMENT
+    This EULA, together with any signed subscription agreement between
+    Licensee and Nexora, constitutes the entire agreement regarding the
+    Hub and supersedes all prior or contemporaneous communications.
+
+CONTACT
+    Nexora Consulting Ltd
+    legal@nexora.africa
+    https://nexora.africa
+
+Last updated: 2026-06-14
