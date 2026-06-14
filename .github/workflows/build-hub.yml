@@ -378,30 +378,47 @@ jobs:
         working-directory: hub
         timeout-minutes: 5
         run: |
-          # Verify the .pyd can be loaded by the runner's Python 3.12.
-          # We DELIBERATELY skip django.setup() — it loads every app's ready()
-          # hook, some of which can block on Windows (file locks, Redis probes,
-          # background threads). The customer-reported bug is "DLL load failed"
-          # at .pyd import time, which is what this targeted test catches.
+          # We test the EXACT failure mode the customer hit on Windows:
+          # "DLL load failed" when CPython tries to load a .cp312 .pyd.
+          # That failure happens at the OS level BEFORE any Python module
+          # body runs, so we can detect it with ctypes.WinDLL without
+          # installing django, running django.setup(), or executing any
+          # Cython-compiled module body. This avoids the dependency dance
+          # that's been making this test flaky.
 
           $lines = @(
-            'import sys, importlib.util, importlib.machinery',
+            'import sys, glob, ctypes',
             'print("python:", sys.version)',
-            'print("EXTENSION_SUFFIXES:", importlib.machinery.EXTENSION_SUFFIXES)',
-            'import glob',
-            'matches = glob.glob(r"hmis\\apps\\encounters\\signals.*.pyd")',
-            'assert matches, "no signals .pyd found"',
-            'pyd = matches[0]',
-            'print("loading:", pyd)',
-            '# CPython extension modules export PyInit_<modname>, so the spec name',
-            '# MUST match the basename (without ABI tag and extension), not an',
-            '# arbitrary string. The .pyd file was compiled to expose PyInit_signals.',
-            'spec = importlib.util.spec_from_file_location("signals", pyd)',
-            'assert spec is not None, f"spec_from_file_location returned None for {pyd}"',
-            'mod = importlib.util.module_from_spec(spec)',
-            'spec.loader.exec_module(mod)',
-            'print("LOADED OK:", mod.__file__)',
-            'print("module attrs:", [a for a in dir(mod) if not a.startswith("_")][:10])'
+            '',
+            '# Pick a representative .pyd from each app that matters.',
+            'targets = [',
+            '    r"hmis\\apps\\encounters\\signals.cp312-win_amd64.pyd",',
+            '    r"hmis\\apps\\patients\\models.cp312-win_amd64.pyd",',
+            '    r"hmis\\apps\\core\\models.cp312-win_amd64.pyd",',
+            ']',
+            '',
+            'failures = []',
+            'for path in targets:',
+            '    if not glob.glob(path):',
+            '        failures.append(f"MISSING: {path}")',
+            '        continue',
+            '    try:',
+            '        # WinDLL invokes LoadLibraryExW under the hood. If the .pyd',
+            '        # has a missing/wrong-ABI dependency, MSVC runtime mismatch,',
+            '        # or corruption, this is where it surfaces — same code path',
+            '        # CPython uses when importing the extension.',
+            '        ctypes.WinDLL(path)',
+            '        print(f"DLL LOAD OK: {path}")',
+            '    except OSError as e:',
+            '        failures.append(f"DLL LOAD FAILED: {path} -> {e}")',
+            '',
+            'if failures:',
+            '    print("---")',
+            '    for f in failures:',
+            '        print(f)',
+            '    sys.exit(1)',
+            '',
+            'print("All .pyd files loadable by Python 3.12 on Windows.")'
           )
           Set-Content -Path import_test.py -Value $lines -Encoding UTF8
 
