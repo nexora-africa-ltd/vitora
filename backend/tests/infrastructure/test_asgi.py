@@ -74,13 +74,13 @@ class TestAsgiConfiguration:
         assert len(dashboard_patterns) >= 1, "Dashboard WebSocket patterns should be included"
 
     def test_websocket_urlpatterns_count(self):
-        """Should have 19 total WebSocket URL patterns."""
+        """Should have 20 total WebSocket URL patterns."""
         # 1 clinic queue + 1 comments + 3 lab + 2 MCH (partograph + facility)
         # + 2 inpatient + 1 triage/emergency + 1 surveillance alerts
         # + 1 pharmacy queue + 2 billing (invoices + sha-claims)
         # + 1 scheduling + 1 imaging + 1 immunizations
-        # + 2 core (dashboard + notifications) = 19 patterns
-        assert len(websocket_urlpatterns) == 19
+        # + 3 core (dashboard + notifications + sync) = 20 patterns
+        assert len(websocket_urlpatterns) == 20
 
     def test_clinic_queue_pattern_exists(self):
         """Clinic queue WebSocket pattern should exist."""
@@ -244,4 +244,5 @@ class TestAsgiWebsocketRouting:
                 or "immunization" in pattern
                 or "dashboard" in pattern
                 or "notifications" in pattern
+                or "sync" in pattern
             )
