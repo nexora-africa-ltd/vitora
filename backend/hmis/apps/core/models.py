@@ -17,7 +17,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
 from django.utils import timezone
 
-from hmis.apps.core.mixins import FacilityScopedModel, OrganizationScopedModel
+from hmis.apps.core.mixins import FacilityScopedModel, OrganizationScopedModel, SyncOriginMixin
 from hmis.apps.core.pii import encrypted_pii_property
 from hmis.apps.core.upload_validators import validate_image_upload as _validate_image_upload
 
@@ -1381,7 +1381,7 @@ class Role(models.Model):
         return True
 
 
-class StaffProfile(models.Model):
+class StaffProfile(SyncOriginMixin, models.Model):
     """
     Extended profile for hospital staff members.
 
@@ -1413,7 +1413,8 @@ class StaffProfile(models.Model):
     employee_id = models.CharField(
         max_length=50,
         unique=True,
-        help_text="Unique employee ID (e.g., VH-2026-001)",
+        blank=True,
+        help_text="Unique employee ID (e.g., VH-2026-001). Auto-generated if left blank.",
     )
     title = models.CharField(
         max_length=20,
@@ -1590,6 +1591,20 @@ class StaffProfile(models.Model):
         """Return formatted name."""
         return self.get_full_name()
 
+    @classmethod
+    def generate_employee_id(cls) -> str:
+        """Generate a unique employee ID in the format VH-YYYY-XXXX."""
+        import secrets
+        from datetime import date
+
+        year = date.today().year
+        for _ in range(10):
+            candidate = f"VH-{year}-{secrets.token_hex(3).upper()}"
+            if not cls.objects.filter(employee_id=candidate).exists():
+                return candidate
+        # Fallback with longer hex to avoid collision
+        return f"VH-{year}-{secrets.token_hex(5).upper()}"
+
     def clean(self):
         """Validate cross-organization constraints."""
         from django.core.exceptions import ValidationError
@@ -1604,7 +1619,9 @@ class StaffProfile(models.Model):
             raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
-        """Auto-set organization from primary_facility on save."""
+        """Auto-generate employee_id and auto-set organization on save."""
+        if not self.employee_id:
+            self.employee_id = self.generate_employee_id()
         if self.primary_facility and self.primary_facility.organization:
             self.organization = self.primary_facility.organization
         super().save(*args, **kwargs)

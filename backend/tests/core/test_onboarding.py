@@ -35,10 +35,11 @@ class TestOrganizationOnboardingModel:
         assert sample_organization.onboarding_complete is True
 
     def test_checklist_returns_three_steps(self, sample_organization, sample_facility):
-        """Checklist should return 3 required steps."""
+        """Checklist should return 3 steps (2 required, 1 optional)."""
         steps = sample_organization.get_onboarding_checklist()
         assert len(steps) == 3
-        assert all(s["required"] for s in steps)
+        required_steps = [s for s in steps if s["required"]]
+        assert len(required_steps) == 2
         keys = [s["key"] for s in steps]
         assert "facility_modules" in keys
         assert "first_clinic" in keys
@@ -221,6 +222,30 @@ class TestOnboardingStatusEndpoint:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["complete"] is True
         assert response.data["completed_at"] is not None
+
+    def test_post_succeeds_without_inviting_staff(
+        self,
+        authenticated_client,
+        sample_organization,
+        sample_facility,
+        test_staff_profile,
+    ):
+        """POST should succeed with modules + clinic done, even without extra staff."""
+        from hmis.apps.clinics.models import Clinic
+
+        # Complete required steps only (modules + clinic)
+        sample_facility.has_outpatient = True
+        sample_facility.has_pharmacy = True
+        sample_facility.save(update_fields=["has_outpatient", "has_pharmacy"])
+
+        Clinic.objects.create(facility=sample_facility, name="OPD", code="OPD-001")
+
+        # Only 1 staff member (the admin) — invite_staff is optional
+        assert sample_organization.staff_count == 1
+
+        response = authenticated_client.post(self.URL)
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["complete"] is True
 
     def test_post_idempotent_when_already_complete(self, authenticated_client, sample_organization):
         """POST when already complete should return success."""

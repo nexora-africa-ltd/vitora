@@ -340,10 +340,8 @@ def invitation_accept(request):
         if invitation.employee_id:
             profile_kwargs["employee_id"] = invitation.employee_id
         else:
-            # Auto-generate employee_id
-            import secrets
-
-            profile_kwargs["employee_id"] = f"VH-{date.today().year}-{secrets.token_hex(3).upper()}"
+            # Auto-generate employee_id using model classmethod
+            profile_kwargs["employee_id"] = StaffProfile.generate_employee_id()
         if invitation.job_title:
             profile_kwargs["job_title"] = invitation.job_title
         if data.get("phone_number"):
