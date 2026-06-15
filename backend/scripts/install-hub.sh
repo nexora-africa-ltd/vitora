@@ -508,6 +508,7 @@ cat > "$APP_DIR/.env" <<EOF
 DJANGO_ENV=hub
 DJANGO_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(50))")
 ENCRYPTION_KEY=${ENCRYPTION_KEY}
+PII_HMAC_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
 HUB_ID=${HUB_ID}
 HUB_FACILITY_ID=${HUB_FACILITY_ID}
 HUB_ORGANIZATION_ID=${HUB_ORGANIZATION_ID}
@@ -523,6 +524,49 @@ EOF
 
 chmod 600 "$APP_DIR/.env"
 chown "$APP_USER:$APP_USER" "$APP_DIR/.env"
+
+# --- Hub Shell Wrapper ---
+# Convenience script that loads .env and invokes any manage.py command
+# (defaults to `shell`). Lets admins run Django commands without having to
+# manually export environment variables every time.
+cat > "$APP_DIR/hub-shell.sh" <<'WRAPPER_EOF'
+#!/usr/bin/env bash
+#
+# Vitora Hub management shell — loads .env and runs a Django manage.py command.
+#
+# Usage:
+#   sudo ./hub-shell.sh                          # Opens Django shell
+#   sudo ./hub-shell.sh createsuperuser          # Creates a superuser
+#   sudo ./hub-shell.sh changepassword admin     # Changes a user's password
+#   sudo ./hub-shell.sh migrate                  # Runs migrations
+#
+set -euo pipefail
+
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$APP_DIR/.env"
+VENV_PY="$APP_DIR/venv/bin/python"
+
+if [[ -f "$ENV_FILE" ]]; then
+    # Export every non-comment KEY=VALUE line from .env
+    set -a
+    # shellcheck disable=SC1090
+    source <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$ENV_FILE")
+    set +a
+else
+    echo "WARNING: No .env file at $ENV_FILE — hub may not start correctly." >&2
+fi
+
+cd "$APP_DIR"
+if [[ $# -eq 0 ]]; then
+    exec "$VENV_PY" manage.py shell
+else
+    exec "$VENV_PY" manage.py "$@"
+fi
+WRAPPER_EOF
+
+chmod 750 "$APP_DIR/hub-shell.sh"
+chown "root:$APP_USER" "$APP_DIR/hub-shell.sh"
+info "Hub management wrapper installed at $APP_DIR/hub-shell.sh"
 
 # --- Database Setup ---
 step "5/7 Initializing database..."
@@ -658,4 +702,9 @@ echo "  Manage:"
 echo "    sudo systemctl restart $SERVICE_NAME"
 echo "    sudo systemctl stop $SERVICE_NAME"
 echo "    sudo bash /opt/vitora/scripts/update-hub.sh     # Update to latest"
+echo ""
+echo "  Django shell / commands (loads .env automatically):"
+echo "    sudo $APP_DIR/hub-shell.sh                       # Open Django shell"
+echo "    sudo $APP_DIR/hub-shell.sh createsuperuser       # Create a superuser"
+echo "    sudo $APP_DIR/hub-shell.sh changepassword admin  # Reset a password"
 echo ""

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from hmis.apps.billing.models import Invoice, InvoiceItem, Service
@@ -21,11 +20,9 @@ from hmis.apps.clinics.models import ClinicVisit
 
 
 def _get_system_user():
-    User = get_user_model()
-    system_user, _ = User.objects.get_or_create(
-        username="system", defaults={"email": "system@vitora.local", "is_active": True}
-    )
-    return system_user
+    from hmis.apps.core.utils import get_system_user
+
+    return get_system_user()
 
 
 @transaction.atomic

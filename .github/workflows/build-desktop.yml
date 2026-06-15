@@ -1,5 +1,49 @@
 name: Build Desktop App
 
+# ===========================================================================
+# Vitora HMIS — Desktop App Build Pipeline (Tauri v2 + Next.js)
+# ===========================================================================
+#
+# Builds cross-platform desktop installers using Tauri v2 (Rust + WebView).
+# The desktop app bundles a standalone Next.js server (from web-app/) and a
+# Node.js sidecar binary, so the full frontend runs locally without a browser.
+#
+# Trigger:
+#   - Push a tag matching `desktop-v*` (e.g., `desktop-v0.3.0`)
+#   - Manual dispatch (workflow_dispatch) for testing
+#
+# Build matrix:
+#   | Platform       | Target                       | Output       |
+#   |----------------|------------------------------|--------------|
+#   | Windows x64    | x86_64-pc-windows-msvc       | .exe (NSIS)  |
+#   | Linux x64      | x86_64-unknown-linux-gnu     | .deb         |
+#   | macOS ARM      | aarch64-apple-darwin         | .dmg         |
+#
+# Publish pipeline (publish-updater job):
+#   1. Collects artifacts from all 3 platform builds
+#   2. Uploads installers + .sig files to Azure Blob Storage:
+#        Container: releases → desktop/{tag}/{filename}
+#        CDN URL:   https://get.vitora.digital/desktop/{tag}/{filename}
+#   3. Creates/updates a GitHub Release with all platform binaries
+#   4. Generates `latest.json` updater manifest (Tauri built-in updater)
+#      and uploads to both Azure Blob (`releases/updates`) and GitHub Release
+#
+# Updater flow:
+#   The desktop app checks `https://get.vitora.digital/updates` for new
+#   versions. The `latest.json` manifest contains version, signature, and
+#   per-platform download URLs. Tauri's built-in updater handles download,
+#   signature verification, and in-place upgrade.
+#
+# Required secrets:
+#   - TAURI_SIGNING_PRIVATE_KEY      — Ed25519 key for update signature (.sig)
+#   - TAURI_SIGNING_PRIVATE_KEY_PASSWORD — passphrase for the signing key
+#   - AZURE_STORAGE_CONNECTION_STRING — Azure Blob Storage (container: releases)
+#   - RELEASE_TOKEN                   — GitHub PAT with contents:write scope
+#
+# Required vars (GitHub environment):
+#   - NEXT_PUBLIC_API_URL             — Backend API base URL (defaults to prod)
+# ===========================================================================
+
 on:
   push:
     tags:
@@ -20,6 +64,7 @@ env:
   CDN_BASE_URL: "https://get.vitora.digital"
 
 jobs:
+  # --- Stage 1: Build per-platform installers in parallel ---
   build:
     strategy:
       fail-fast: false
@@ -62,7 +107,7 @@ jobs:
         with:
           workspaces: desktop-app/src-tauri -> target
 
-      # Linux dependencies for Tauri
+      # --- Linux system deps (WebKit2GTK for Tauri WebView) ---
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
         run: |
@@ -77,7 +122,9 @@ jobs:
             libsoup-3.0-dev \
             libjavascriptcoregtk-4.1-dev
 
-      # Build Next.js web-app
+      # --- Build the Next.js frontend in "standalone" output mode ---
+      # Standalone mode produces a self-contained server.js + minimal node_modules
+      # that gets bundled inside the Tauri app as a sidecar.
       - name: Install web-app dependencies
         run: npm ci
         working-directory: web-app
@@ -90,7 +137,9 @@ jobs:
           NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io' }}
           NEXT_PUBLIC_POWERSYNC_URL: ""
 
-      # Prepare desktop-app
+      # --- Bundle standalone Next.js server into Tauri resources ---
+      # `bundle-standalone` creates standalone.tar.gz containing server.js,
+      # .next/, and node_modules — extracted at runtime by the Rust sidecar manager.
       - name: Install desktop-app dependencies
         run: npm ci
         working-directory: desktop-app
@@ -120,6 +169,9 @@ jobs:
           # Legacy host check is handled by bundle-standalone.js with comparison-context awareness
           echo "Standalone archive verified OK"
 
+      # --- Node.js sidecar: platform-specific Node binary bundled with the app ---
+      # The desktop app ships its own Node.js to run the Next.js standalone server
+      # without requiring Node to be installed on the user's machine.
       - name: Download Node.js binary for sidecar
         run: node scripts/download-node.js --target ${{ matrix.node_target }}
         working-directory: desktop-app
@@ -127,7 +179,10 @@ jobs:
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2" --locked
 
-      # Build Tauri
+      # --- Compile Rust + bundle installer (NSIS/deb/dmg) ---
+      # Tauri action compiles the Rust shell, embeds web assets + sidecar,
+      # and produces the platform-specific installer. Update signatures (.sig)
+      # are generated using TAURI_SIGNING_PRIVATE_KEY.
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -146,7 +201,10 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  # Generate updater endpoint JSON after all platforms build
+  # --- Stage 2: Publish artifacts + updater manifest ---
+  # Runs after all platform builds complete. Uploads to Azure CDN and
+  # generates the Tauri updater manifest (latest.json) so existing installs
+  # can self-update via the built-in updater dialog.
   publish-updater:
     needs: build
     runs-on: ubuntu-latest
@@ -162,6 +220,10 @@ jobs:
           path: dist/desktop
           merge-multiple: true
 
+      # --- Upload installers + signatures to Azure CDN ---
+      # Each platform's installer and .sig are uploaded to:
+      #   releases/desktop/{tag}/{filename}
+      # Public CDN URL: https://get.vitora.digital/desktop/{tag}/{filename}
       - name: Upload desktop artifacts to Azure Blob
         env:
           AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
@@ -190,6 +252,9 @@ jobs:
                 --content-type "$content_type"
             done
 
+      # --- GitHub Release (draft) ---
+      # Creates a draft release with all platform binaries attached.
+      # Maintainer reviews and publishes manually.
       - name: Create or update GitHub Release (best effort)
         continue-on-error: true
         env:
@@ -217,6 +282,11 @@ jobs:
               gh release upload "$TAG" "$file" --clobber --repo "$GITHUB_REPOSITORY"
             done
 
+      # --- Tauri auto-updater manifest (latest.json) ---
+      # Generates a JSON manifest that the Tauri built-in updater checks.
+      # Contains per-platform download URLs + Ed25519 signatures.
+      # Uploaded to: releases/updates (Azure) and GitHub Release asset.
+      # Desktop app polls: https://get.vitora.digital/updates
       - name: Generate updater manifest
         run: |
           TAG="${GITHUB_REF_NAME}"
@@ -289,6 +359,7 @@ jobs:
           console.log(JSON.stringify(updater, null, 2));
           "
 
+      # Blob path: releases/updates (no version suffix — always "latest")
       - name: Upload updater manifest to Azure Blob
         if: env.AZURE_STORAGE_CONNECTION_STRING != ''
         env:
@@ -302,6 +373,7 @@ jobs:
             --content-type application/json \
             --content-cache-control "max-age=300"
 
+      # Also attach to GitHub Release so it's visible in the release page.
       - name: Upload updater manifest as release asset
         continue-on-error: true
         env:

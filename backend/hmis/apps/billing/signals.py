@@ -53,20 +53,14 @@ def create_invoice_for_encounter(sender, instance, created, **kwargs):
     else:
         # Create new draft invoice for the encounter
         # Get or create a system user for auto-created invoices
-        from django.contrib.auth import get_user_model
+        from hmis.apps.core.utils import get_system_user
 
-        User = get_user_model()
-
-        # Try to get the system user or first superuser
-        system_user, _ = User.objects.get_or_create(
-            username="system",
-            defaults={
-                "email": "system@vitora.local",
-                "is_active": True,
-            },
-        )
+        system_user = get_system_user()
         if not system_user:
-            # Create a system user if none exists
+            # Fallback (should never happen)
+            from django.contrib.auth import get_user_model
+
+            User = get_user_model()
             system_user = User.objects.create_user(
                 username="system",
                 email="system@vitora.local",
@@ -154,15 +148,9 @@ def _maybe_create_phc_claim(encounter):
     invoice = Invoice.objects.filter(encounter=encounter).first()
 
     try:
-        from django.contrib.auth import get_user_model
+        from hmis.apps.core.utils import get_system_user
 
-        User = get_user_model()
-        system_user = User.objects.filter(username="system").first()
-        if not system_user:
-            system_user = User.objects.get_or_create(
-                username="system",
-                defaults={"email": "system@vitora.local", "is_active": True},
-            )[0]
+        system_user = get_system_user()
 
         claim = SHAClaim.objects.create(
             patient=encounter.patient,

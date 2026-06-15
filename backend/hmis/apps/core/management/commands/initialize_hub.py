@@ -129,6 +129,12 @@ class Command(BaseCommand):
         skip = set(options.get("skip") or [])
         strict = options.get("strict", False)
 
+        # Ensure the system user exists before any seeds that need created_by
+        from hmis.apps.core.utils import get_system_user
+
+        get_system_user()
+        self.stdout.write(self.style.SUCCESS("  System user ensured (username='system')"))
+
         steps = [s for s in SEED_STEPS if (not only or s.command in only) and s.command not in skip]
 
         if not steps:

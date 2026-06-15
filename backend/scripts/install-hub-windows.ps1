@@ -406,6 +406,7 @@ if (Test-Path "$InstallDir\requirements-hub.txt") {
 
 # --- Generate Secret Key ---
 $secretKey = & $python -c "import secrets; print(secrets.token_urlsafe(50))"
+$piiHmacKey = & $python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 # --- Write Environment File ---
 Write-Step 5 "Writing configuration..."
@@ -413,6 +414,7 @@ $envContent = @"
 DJANGO_ENV=hub
 DJANGO_SECRET_KEY=$secretKey
 ENCRYPTION_KEY=$EncryptionKey
+PII_HMAC_KEY=$piiHmacKey
 HUB_ID=$HubId
 HUB_FACILITY_ID=$FacilityId
 HUB_ORGANIZATION_ID=$OrgId
@@ -430,6 +432,55 @@ Set-Content -Path "$InstallDir\.env" -Value $envContent
 # Write version file
 Set-Content -Path "$InstallDir\VERSION" -Value $Version
 Write-Info "Configuration saved."
+
+# --- Hub Shell Wrapper ---
+# Convenience script that loads .env and invokes any manage.py command
+# (defaults to `shell`). Lets admins run Django commands without having to
+# manually export environment variables every time.
+$hubShellContent = @'
+<#
+.SYNOPSIS
+    Vitora Hub management shell — loads .env and runs a Django manage.py command.
+
+.DESCRIPTION
+    Loads C:\VitoraHub\.env into the current process environment so the
+    correct settings module, database path, and secret key are used. Then
+    invokes `manage.py` with any arguments you pass.
+
+.EXAMPLE
+    .\hub-shell.ps1                          # Opens Django shell
+    .\hub-shell.ps1 createsuperuser          # Creates a superuser
+    .\hub-shell.ps1 changepassword admin     # Changes a user's password
+    .\hub-shell.ps1 migrate                  # Runs migrations
+#>
+
+$ErrorActionPreference = "Stop"
+$InstallDir = "C:\VitoraHub"
+
+# Load .env into the current process
+$envFile = Join-Path $InstallDir ".env"
+if (Test-Path $envFile) {
+    Get-Content $envFile | ForEach-Object {
+        if ($_ -match '^\s*([^#=][^=]*)=(.*)$') {
+            [Environment]::SetEnvironmentVariable($matches[1].Trim(), $matches[2].Trim(), 'Process')
+        }
+    }
+} else {
+    Write-Warning "No .env file at $envFile — hub may not start correctly."
+}
+
+# Default to `shell` if no args
+$pyArgs = if ($args.Count -eq 0) { @("shell") } else { $args }
+
+Push-Location $InstallDir
+try {
+    & "$InstallDir\venv\Scripts\python.exe" "manage.py" @pyArgs
+} finally {
+    Pop-Location
+}
+'@
+Set-Content -Path "$InstallDir\hub-shell.ps1" -Value $hubShellContent
+Write-Info "Hub management wrapper installed at $InstallDir\hub-shell.ps1"
 
 # --- Set Environment Variables for Setup ---
 $env:DJANGO_ENV = "hub"
@@ -530,6 +581,7 @@ $envVars = @(
     "DJANGO_SETTINGS_MODULE=hmis.settings",
     "DJANGO_SECRET_KEY=$secretKey",
     "ENCRYPTION_KEY=$EncryptionKey",
+    "PII_HMAC_KEY=$piiHmacKey",
     "HUB_ID=$HubId",
     "HUB_FACILITY_ID=$FacilityId",
     "HUB_ORGANIZATION_ID=$OrgId",
@@ -621,4 +673,9 @@ Write-Host "  Manage:"
 Write-Host "    Restart-Service $ServiceName"
 Write-Host "    Stop-Service $ServiceName"
 Write-Host "    $nssmExe edit $ServiceName"
+Write-Host ""
+Write-Host "  Django shell / commands (loads .env automatically):"
+Write-Host "    $InstallDir\hub-shell.ps1                       # Open Django shell"
+Write-Host "    $InstallDir\hub-shell.ps1 createsuperuser       # Create a superuser"
+Write-Host "    $InstallDir\hub-shell.ps1 changepassword admin  # Reset a password"
 Write-Host ""

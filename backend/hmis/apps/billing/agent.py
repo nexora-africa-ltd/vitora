@@ -33,11 +33,9 @@ User = get_user_model()
 
 def _get_system_user():
     """Get or create the system user used for automated billing actions."""
-    user, _ = User.objects.get_or_create(
-        username="system",
-        defaults={"email": "system@vitora.local", "is_active": True},
-    )
-    return user
+    from hmis.apps.core.utils import get_system_user
+
+    return get_system_user()
 
 
 class BillingAgentService:

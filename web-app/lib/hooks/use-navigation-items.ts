@@ -6,6 +6,7 @@ import { useFacility } from '@/lib/context/facility-context';
 import { useNavigationMode } from '@/lib/context/navigation-mode-context';
 import { useSubscription } from '@/lib/hooks/use-subscription';
 import { useClinics } from '@/lib/hooks/use-clinics';
+import { useNetworkStatus } from '@/lib/hooks/use-network-status';
 import {
   mainNavItems,
   hasChildren,
@@ -29,6 +30,7 @@ export function useNavigationItems(): NavigationResult {
   const { navigationMode, isClinicalNavigationEligible } = useNavigationMode();
   const { hasFeature } = useSubscription();
   const { data: clinicsData } = useClinics({ page_size: 200, status: 'ACTIVE' });
+  const { isSustainedOffline } = useNetworkStatus();
 
   // Derive the set of active clinic types from fetched clinics
   const activeClinicTypes = useMemo(() => {
@@ -43,12 +45,14 @@ export function useNavigationItems(): NavigationResult {
       activeClinicTypes,
     };
 
-    const isAllowed = (item: { moduleKey?: string; facilityModule?: string; actionKey?: string; planFeature?: string; visibleWhen?: (ctx: NavItemVisibilityContext) => boolean }): boolean => {
+    const isAllowed = (item: { moduleKey?: string; facilityModule?: string; actionKey?: string; planFeature?: string; requiresInternet?: boolean; visibleWhen?: (ctx: NavItemVisibilityContext) => boolean }): boolean => {
       if (item.moduleKey && !canAccessModule(item.moduleKey as never)) return false;
       if (item.facilityModule && !hasModule(item.facilityModule as never)) return false;
       if (item.actionKey && !canPerformAction(item.actionKey as never)) return false;
       if (item.planFeature && !hasFeature(item.planFeature)) return false;
       if (item.visibleWhen && !item.visibleWhen(visibilityCtx)) return false;
+      // Hide internet-dependent items when sustained offline
+      if (item.requiresInternet && isSustainedOffline) return false;
       return true;
     };
 
@@ -90,5 +94,6 @@ export function useNavigationItems(): NavigationResult {
     activeClinicTypes,
     navigationMode,
     isClinicalNavigationEligible,
+    isSustainedOffline,
   ]);
 }

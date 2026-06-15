@@ -6,7 +6,7 @@ import { WifiOff, Wifi, CloudUpload, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 export function OfflineBanner() {
-  const { isOnline, wasOffline } = useNetworkStatus();
+  const { isOnline, wasOffline, isSustainedOffline } = useNetworkStatus();
   const { pendingChanges, lastError, isSyncing } = useSyncStatus();
 
   const showOffline = !isOnline;
@@ -29,9 +29,11 @@ export function OfflineBanner() {
       {showOffline && (
         <span className="flex items-center justify-center gap-2">
           <WifiOff className="h-4 w-4" />
-          You&apos;re offline.{pendingChanges > 0
-            ? ` ${pendingChanges} change${pendingChanges !== 1 ? 's' : ''} will sync when reconnected.`
-            : ' Some features may be unavailable.'}
+          You&apos;re offline.{isSustainedOffline
+            ? ' Some modules have been hidden because they require internet.'
+            : pendingChanges > 0
+              ? ` ${pendingChanges} change${pendingChanges !== 1 ? 's' : ''} will sync when reconnected.`
+              : ' Some features may be unavailable.'}
         </span>
       )}
       {showBackOnline && (
