@@ -73,7 +73,25 @@ def apply_entry(
     try:
         with transaction.atomic():
             if operation == "CREATE":
-                if record_id is not None:
+                # Origin-based dedup: if record carries origin_hub_id + origin_local_id,
+                # check if we already have it (prevents PK collision on re-sync).
+                origin_hub = cleaned_data.get("origin_hub_id")
+                origin_local = cleaned_data.get("origin_local_id")
+                has_origin_fields = hasattr(model, "origin_hub_id")
+
+                if has_origin_fields and origin_hub and origin_local:
+                    # Dedup by origin pair
+                    existing = model.objects.filter(
+                        origin_hub_id=origin_hub, origin_local_id=origin_local
+                    ).first()
+                    if existing:
+                        # Already exists — update instead of create
+                        cleaned_data.pop(model._meta.pk.name, None)
+                        model.objects.filter(pk=existing.pk).update(**cleaned_data)
+                    else:
+                        cleaned_data.pop(model._meta.pk.name, None)
+                        model.objects.create(**cleaned_data)
+                elif record_id is not None:
                     cleaned_data.pop(model._meta.pk.name, None)
                     model.objects.update_or_create(pk=record_id, defaults=cleaned_data)
                 else:

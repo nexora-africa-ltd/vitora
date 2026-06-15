@@ -223,7 +223,71 @@ def resolve_request_tenant(request):
             pass
 
 
-class OrganizationScopedModel(models.Model):
+# ============================================================================
+# Sync Origin Tracking (Hub ↔ Cloud deduplication)
+# ============================================================================
+
+
+class SyncOriginMixin(models.Model):
+    """
+    Abstract mixin for tracking where a record was originally created.
+
+    Prevents PK collisions when hub-created records are pushed to the cloud
+    (and vice versa). The cloud uses (origin_hub_id, origin_local_id) as a
+    dedup key — if a pushed record already exists (same origin pair), it's
+    updated rather than re-created.
+
+    Records created on the cloud have origin_hub_id=None.
+    Records created on a hub have origin_hub_id set to the hub's HUB_ID
+    and origin_local_id set to the local integer PK.
+
+    Usage:
+        class Patient(SyncOriginMixin, FacilityScopedModel):
+            ...
+
+    On hub save (auto-populated by SyncOriginMixin.save()):
+        origin_hub_id = "HUB-abc123"
+        origin_local_id = 42
+
+    On cloud receipt (sync materializer):
+        Looks up existing record by (origin_hub_id, origin_local_id)
+        If found → UPDATE; else → CREATE with new cloud PK
+    """
+
+    origin_hub_id = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Hub ID where this record was originally created (null = cloud-created).",
+    )
+    origin_local_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Original PK on the source hub (for dedup on cloud receipt).",
+    )
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        """Auto-stamp origin_hub_id on first save if running on a hub."""
+        import os
+
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+
+        # After first save, stamp the hub origin if not already set
+        if is_new and not self.origin_hub_id:
+            hub_id = os.getenv("HUB_ID")
+            if hub_id:
+                self.origin_hub_id = hub_id
+                self.origin_local_id = self.pk
+                super().save(update_fields=["origin_hub_id", "origin_local_id"])
+
+
+class OrganizationScopedModel(SyncOriginMixin, models.Model):
     """
     Abstract base for models scoped to an Organization (tenant).
 
