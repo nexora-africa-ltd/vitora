@@ -569,12 +569,11 @@ class Command(BaseCommand):
         if cat_created and not dry_run:
             self.stdout.write(self.style.SUCCESS("  Created ServiceCategory: PROC"))
 
+        from hmis.apps.core.utils import get_system_user
+
         system_user = User.objects.filter(is_superuser=True).first()
         if not system_user:
-            system_user, _ = User.objects.get_or_create(
-                username="system",
-                defaults={"is_active": False, "first_name": "System", "last_name": "Account"},
-            )
+            system_user = get_system_user()
 
         linked = 0
         svc_created = 0

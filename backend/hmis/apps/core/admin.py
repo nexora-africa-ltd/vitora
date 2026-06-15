@@ -404,7 +404,7 @@ class OrgMembershipInline(admin.TabularInline):
     extra = 0
     fields = ["organization", "role", "department", "is_primary", "status", "joined_at"]
     readonly_fields = ["joined_at"]
-    raw_id_fields = ["organization", "role", "department"]
+    autocomplete_fields = ["organization", "role", "department"]
 
 
 @admin.register(StaffProfile)
@@ -1838,7 +1838,7 @@ class OrgMembershipAdmin(admin.ModelAdmin):
         "staff_profile__employee_id",
         "organization__name",
     ]
-    raw_id_fields = ["staff_profile", "organization", "role", "department", "invited_by"]
+    autocomplete_fields = ["staff_profile", "organization", "role", "department", "invited_by"]
     filter_horizontal = ["facilities"]
     readonly_fields = ["joined_at", "created_at", "updated_at"]
     ordering = ["-joined_at"]

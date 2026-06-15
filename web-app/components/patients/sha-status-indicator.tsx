@@ -14,6 +14,7 @@ import {
   Loader2,
   Database,
   RefreshCw,
+  WifiOff,
 } from 'lucide-react';
 import {
   Popover,
@@ -24,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
+import { useRequiresInternet } from '@/lib/hooks/use-requires-internet';
 import type {
   DirectEligibilityCheckResponse,
   ClientRegistryClient,
@@ -54,6 +56,7 @@ export function SHAStatusIndicator({
   identificationNumber,
   enabled = true,
 }: SHAStatusIndicatorProps) {
+  const { isSustainedOffline, offlineTooltip } = useRequiresInternet();
   const [eligibilityState, setEligibilityState] = useState<EligibilityState>('idle');
   const [eligibilityData, setEligibilityData] = useState<DirectEligibilityCheckResponse | null>(null);
   const [eligibilityError, setEligibilityError] = useState<string | null>(null);
@@ -109,12 +112,12 @@ export function SHAStatusIndicator({
     }
   }, [identificationNumber]);
 
-  // Auto-trigger on mount
+  // Auto-trigger on mount (skip if sustained offline)
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || isSustainedOffline) return;
     checkEligibility();
     checkCR();
-  }, [enabled, checkEligibility, checkCR]);
+  }, [enabled, isSustainedOffline, checkEligibility, checkCR]);
 
   const handleRetry = () => {
     checkEligibility();
@@ -144,15 +147,21 @@ export function SHAStatusIndicator({
                 <SHALogo size="sm" />
                 <span className="text-sm font-medium">SHA Verification</span>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRetry}
-                disabled={isChecking}
-                className="h-6 w-6 p-0"
-              >
-                <RefreshCw className={cn('h-3 w-3', isChecking && 'animate-spin')} />
-              </Button>
+              {isSustainedOffline ? (
+                <span className="text-xs text-muted-foreground flex items-center gap-1" title={offlineTooltip}>
+                  <WifiOff className="h-3 w-3" /> Offline
+                </span>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRetry}
+                  disabled={isChecking}
+                  className="h-6 w-6 p-0"
+                >
+                  <RefreshCw className={cn('h-3 w-3', isChecking && 'animate-spin')} />
+                </Button>
+              )}
             </div>
 
             {/* Eligibility Section */}

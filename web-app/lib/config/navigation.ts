@@ -120,6 +120,11 @@ export interface NavItem {
   planFeature?: string;
   /** Custom visibility predicate based on facility attributes */
   visibleWhen?: (ctx: NavItemVisibilityContext) => boolean;
+  /**
+   * When true, this item is hidden if the device has been offline for 10+ minutes.
+   * Use for actions that submit to external services (SHA, DHIS2, DHA, SMS, AI).
+   */
+  requiresInternet?: boolean;
   badge?: number;
 }
 
@@ -135,6 +140,11 @@ export interface NavItemWithChildren {
   children: NavItem[];
   /** When set, the item is only included if the flag is true. */
   featureFlag?: boolean;
+  /**
+   * When true, the entire section is hidden if the device has been offline for 10+ minutes.
+   * Use for sections that are entirely internet-dependent (SHA, DHIS2, AI).
+   */
+  requiresInternet?: boolean;
 }
 
 export type NavItemType = NavItem | NavItemWithChildren;
@@ -155,7 +165,7 @@ const _allNavItems: NavItemType[] = [
     moduleKey: 'patients',
     children: [
       { label: 'All Patients', href: '/patients', icon: Users },
-      { label: 'Patient Lookup', href: '/patients/lookup', icon: KenyaCoatOfArmsIcon },
+      { label: 'Patient Lookup', href: '/patients/lookup', icon: KenyaCoatOfArmsIcon, requiresInternet: true },
       { label: 'New Patient', href: '/patients/new', icon: UserPlus2 },
     ],
   },
@@ -210,8 +220,8 @@ const _allNavItems: NavItemType[] = [
       { label: 'Dashboard', href: '/surveillance', icon: LayoutDashboard, actionKey: 'surveillance.view_dashboard' },
       { label: 'Notifiable Cases', href: '/surveillance/cases', icon: AlertTriangle, actionKey: 'surveillance.report_case' },
       { label: 'Alerts', href: '/surveillance/alerts', icon: CircleAlert, actionKey: 'surveillance.view_alerts' },
-      { label: 'IDSR Reports', href: '/surveillance/idsr', icon: BarChart3, actionKey: 'surveillance.submit_idsr' },
-      { label: 'IHR Compliance', href: '/surveillance/ihr', icon: Globe, actionKey: 'surveillance.submit_ihr' },
+      { label: 'IDSR Reports', href: '/surveillance/idsr', icon: BarChart3, actionKey: 'surveillance.submit_idsr', requiresInternet: true },
+      { label: 'IHR Compliance', href: '/surveillance/ihr', icon: Globe, actionKey: 'surveillance.submit_ihr', requiresInternet: true },
       { label: 'Thresholds', href: '/surveillance/thresholds', icon: SquareActivity, actionKey: 'surveillance.manage_thresholds' },
     ],
   },
@@ -451,20 +461,20 @@ const _allNavItems: NavItemType[] = [
       { label: 'Payments', href: '/transactions/payments', icon: CreditCard, actionKey: 'billing.record_payment' },
       { label: 'Receipts', href: '/transactions/receipts', icon: Receipt, actionKey: 'billing.view_receipts' },
       { label: 'Credit Notes', href: '/transactions/credit-notes', icon: ScrollText, actionKey: 'billing.view_credit_notes' },
-      { label: 'SHA Claims', href: '/transactions/sha-claims', icon: SHAIcon, actionKey: 'billing.submit_sha_claim' },
-      { label: 'Pre-authorizations', href: '/transactions/preauths', icon: ClipboardList, actionKey: 'billing.submit_sha_claim' },
-      { label: 'Capitation', href: '/transactions/capitation', icon: Repeat2, actionKey: 'billing.view_reports', visibleWhen: ({ facilityLevel, facilityOwnership }) => {
+      { label: 'SHA Claims', href: '/transactions/sha-claims', icon: SHAIcon, actionKey: 'billing.submit_sha_claim', requiresInternet: true },
+      { label: 'Pre-authorizations', href: '/transactions/preauths', icon: ClipboardList, actionKey: 'billing.submit_sha_claim', requiresInternet: true },
+      { label: 'Capitation', href: '/transactions/capitation', icon: Repeat2, actionKey: 'billing.view_reports', requiresInternet: true, visibleWhen: ({ facilityLevel, facilityOwnership }) => {
         if (!facilityLevel) return true; // Show if level unknown (avoid hiding prematurely)
         const level = parseInt(facilityLevel.replace(/[^0-9]/g, ''), 10);
         if (level === 2 || level === 3) return true;
         if (level === 4 && facilityOwnership === 'GOK') return true;
         return false;
       } },
-      { label: 'OTP Whitelist', href: '/transactions/sha-claims/whitelist', icon: ShieldAlert, actionKey: 'billing.submit_sha_claim' },
-      { label: 'Insurance', href: '/insurance', icon: Shield, actionKey: 'billing.view_insurance', facilityModule: 'private_insurance' },
+      { label: 'OTP Whitelist', href: '/transactions/sha-claims/whitelist', icon: ShieldAlert, actionKey: 'billing.submit_sha_claim', requiresInternet: true },
+      { label: 'Insurance', href: '/insurance', icon: Shield, actionKey: 'billing.view_insurance', facilityModule: 'private_insurance', requiresInternet: true },
       { label: 'Supplier Bills', href: '/transactions/supplier-bills', icon: FileSpreadsheet, actionKey: 'billing.view_supplier_bills' },
       { label: 'Reports', href: '/transactions/reports', icon: BarChart3, actionKey: 'billing.view_reports' },
-      { label: 'Reconciliation', href: '/transactions/reconciliation', icon: Scale, actionKey: 'billing.reconcile' },
+      { label: 'Reconciliation', href: '/transactions/reconciliation', icon: Scale, actionKey: 'billing.reconcile', requiresInternet: true },
       { label: 'Services', href: '/finance/services', icon: Tag, actionKey: 'billing.view_dashboard' },
       { label: 'Payment Points', href: '/finance/payment-points', icon: Wallet, actionKey: 'billing.view_dashboard' },
       { label: 'Payments Config', href: '/finance/payments-config', icon: Settings, actionKey: 'billing.view_dashboard' },
@@ -485,7 +495,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Transfers', href: '/inventory/transfers', icon: ArrowLeftRight, actionKey: 'inventory.view_transfers' },
       { label: 'Ward Stock', href: '/inventory/ward-stock', icon: BedDouble, actionKey: 'inventory.view_ward_stock' },
       { label: 'Stock Counts', href: '/inventory/stock-counts', icon: ListOrdered, actionKey: 'inventory.view_stock_counts' },
-      { label: 'eTIMS', href: '/inventory/etims', icon: Receipt, actionKey: 'inventory.view_etims' },
+      { label: 'eTIMS', href: '/inventory/etims', icon: Receipt, actionKey: 'inventory.view_etims', requiresInternet: true },
       { label: 'Forecasting', href: '/inventory/forecasting', icon: BarChart3, actionKey: 'inventory.view_forecasts' },
     ],
   },
@@ -515,6 +525,7 @@ const _allNavItems: NavItemType[] = [
     moduleKey: 'moh_reporting',
     facilityModule: 'moh_reporting',
     planFeature: 'dhis2_reporting',
+    requiresInternet: true,
   },
   {
     label: 'CDS',
@@ -522,6 +533,7 @@ const _allNavItems: NavItemType[] = [
     moduleKey: 'cds',
     facilityModule: 'cds',
     planFeature: 'ai_assistant',
+    requiresInternet: true,
     children: [
       { label: 'Dashboard', href: '/cds', icon: LayoutDashboard, actionKey: 'cds.view_dashboard' },
       { label: 'Rules', href: '/cds/rules', icon: Shield, actionKey: 'cds.manage_rules' },
@@ -535,6 +547,7 @@ const _allNavItems: NavItemType[] = [
     facilityModule: 'ai_assistant',
     planFeature: 'ai_assistant',
     featureFlag: ENABLE_AI,
+    requiresInternet: true,
     children: [
       { label: 'Chat', href: '/ai', icon: MessageSquare, actionKey: 'ai.use_chat' },
       { label: 'Drug Formulary', href: '/ai/formulary', icon: Pill, actionKey: 'ai.use_chat' },
@@ -554,15 +567,15 @@ const _allNavItems: NavItemType[] = [
       { label: 'Departments', href: '/admin/departments', icon: Building2, actionKey: 'admin.manage_departments' },
       { label: 'Roles', href: '/admin/roles', icon: ShieldUser, actionKey: 'admin.manage_roles' },
       { label: 'Staff', href: '/admin/staff', icon: UserCog, actionKey: 'admin.manage_staff' },
-      { label: 'HWR Lookup', href: '/admin/hwr-lookup', icon: KenyaCoatOfArmsIcon, actionKey: 'admin.manage_staff' },
-      { label: 'Facility Lookup', href: '/admin/facility-lookup', icon: KenyaCoatOfArmsIcon, actionKey: 'admin.manage_departments' },
-      { label: 'SHA Intervention Lookup', href: '/admin/sha-intervention-lookup', icon: KenyaCoatOfArmsIcon, actionKey: 'admin.manage_departments' },
+      { label: 'HWR Lookup', href: '/admin/hwr-lookup', icon: KenyaCoatOfArmsIcon, actionKey: 'admin.manage_staff', requiresInternet: true },
+      { label: 'Facility Lookup', href: '/admin/facility-lookup', icon: KenyaCoatOfArmsIcon, actionKey: 'admin.manage_departments', requiresInternet: true },
+      { label: 'SHA Intervention Lookup', href: '/admin/sha-intervention-lookup', icon: KenyaCoatOfArmsIcon, actionKey: 'admin.manage_departments', requiresInternet: true },
       { label: 'Join Requests', href: '/admin/join-requests', icon: UserPlus, actionKey: 'admin.manage_staff' },
       { label: 'Audit Logs', href: '/admin/audit-logs', icon: ScrollText, actionKey: 'admin.view_audit_logs' },
       { label: 'Audit Integrity', href: '/admin/audit-integrity', icon: Fingerprint, actionKey: 'admin.view_audit_logs' },
       { label: 'Certificates', href: '/admin/certificates', icon: Lock, actionKey: 'admin.view_audit_logs' },
-      { label: 'HL7 Messages', href: '/admin/hl7-messages', icon: Network, actionKey: 'admin.view_hl7_messages' },
-      { label: 'HL7 Endpoints', href: '/admin/hl7-endpoints', icon: Network, actionKey: 'admin.view_hl7_messages' },
+      { label: 'HL7 Messages', href: '/admin/hl7-messages', icon: Network, actionKey: 'admin.view_hl7_messages', requiresInternet: true },
+      { label: 'HL7 Endpoints', href: '/admin/hl7-endpoints', icon: Network, actionKey: 'admin.view_hl7_messages', requiresInternet: true },
       { label: 'KENHDD Compliance', href: '/admin/kenhdd-compliance', icon: BookCheck, actionKey: 'admin.view_audit_logs' },
       { label: 'Reports', href: '/reports', icon: FileText, actionKey: 'admin.view_reports' },
     ],

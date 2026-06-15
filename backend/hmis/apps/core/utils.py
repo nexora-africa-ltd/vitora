@@ -8,6 +8,33 @@ This module provides shared utility functions used across the application.
 from datetime import datetime
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
+
+
+def get_system_user():
+    """
+    Get or create the system user for automated/background operations.
+
+    The system user is a non-login service account used by signals, billing
+    agents, seed commands, and other automated processes that need to satisfy
+    `created_by` FK constraints. It has no password and cannot log in.
+
+    Returns:
+        User instance with username='system'
+    """
+    User = get_user_model()
+    user, _ = User.objects.get_or_create(
+        username="system",
+        defaults={
+            "email": "system@vitora.local",
+            "first_name": "System",
+            "last_name": "Account",
+            "is_active": True,
+            "is_staff": False,
+            "is_superuser": False,
+        },
+    )
+    return user
 
 
 def generate_prc_number(facility_code: str | None = None) -> str:
