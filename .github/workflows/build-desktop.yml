@@ -252,9 +252,8 @@ jobs:
                 --content-type "$content_type"
             done
 
-      # --- GitHub Release (draft) ---
-      # Creates a draft release with all platform binaries attached.
-      # Maintainer reviews and publishes manually.
+      # --- GitHub Release ---
+      # Creates a published release with all platform binaries attached.
       - name: Create or update GitHub Release (best effort)
         continue-on-error: true
         env:
@@ -271,7 +270,6 @@ jobs:
           else
             gh release create "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
-              --draft \
               --title "Vitora HMIS Desktop ${TAG}" \
               --notes "Desktop application release for Vitora HMIS ${VERSION}."
           fi
