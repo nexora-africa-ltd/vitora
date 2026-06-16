@@ -73,14 +73,4 @@ class Migration(migrations.Migration):
                 null=True,
             ),
         ),
-        migrations.AlterField(
-            model_name="staffprofile",
-            name="employee_id",
-            field=models.CharField(
-                blank=True,
-                help_text="Unique employee ID (e.g., VH-2026-001). Auto-generated if left blank.",
-                max_length=50,
-                unique=True,
-            ),
-        ),
     ]
