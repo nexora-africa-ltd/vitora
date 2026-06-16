@@ -79,7 +79,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZGOUI3MzdEN0RGMTY2QzIKUldUQ1p2RjlmWE9iLzJ5NzJ1Y3dUem9oRFFmemRzMFdtM1VlVXk5N1BIVEtRYkJ5c29SampiRG0K",
       "endpoints": [
-        "https://vitora-releases-dzf4f6hmfdadf3gk.z01.azurefd.net/updates"
+        "https://get.vitora.digital/updates"
       ]
     },
     "deep-link": {
