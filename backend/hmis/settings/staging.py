@@ -156,6 +156,11 @@ PII_HMAC_KEY = os.getenv("PII_HMAC_KEY", "")
 # =============================================================================
 # PowerSync — offline-first data sync
 # =============================================================================
+
+# Hub↔Cloud sync: enable so cloud queues downward changes for hub pull
+SYNC_ENABLED = True
+ENVIRONMENT = "staging"
+
 # Set the PowerSync Cloud instance URL here for staging demos.
 # The frontend reads NEXT_PUBLIC_POWERSYNC_URL separately.
 POWERSYNC_URL = os.getenv("POWERSYNC_URL", "")
