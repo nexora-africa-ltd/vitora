@@ -195,13 +195,29 @@ Log "Dependencies updated"
 # --- Step 7: Run migrations ---
 Write-Step 7 "Running database migrations..."
 $pythonExe = "$VenvDir\Scripts\python.exe"
-$env:DJANGO_SETTINGS_MODULE = "hmis.settings.development"
+
+# Load .env if present (may set DJANGO_SETTINGS_MODULE, HUB_DB_PATH, etc.)
+$envFile = "$InstallDir\.env"
+if (Test-Path $envFile) {
+    Get-Content $envFile | ForEach-Object {
+        if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$') {
+            [System.Environment]::SetEnvironmentVariable($Matches[1], $Matches[2].Trim('"').Trim("'"))
+        }
+    }
+}
+# Default to hub settings (uses hub.sqlite3, not vitora.db)
+if (-not $env:DJANGO_SETTINGS_MODULE) {
+    $env:DJANGO_SETTINGS_MODULE = "hmis.settings.hub"
+}
+$env:DJANGO_ENV = "hub"
 Push-Location $InstallDir
-try {
-    & $pythonExe manage.py migrate --noinput 2>&1 | Out-Null
-    Write-Ok "Migrations complete."
-} catch {
-    Write-Err "Migration failed! Restoring backup..."
+$migrateOutput = & $pythonExe manage.py migrate --noinput 2>&1
+$migrateExit = $LASTEXITCODE
+Log "migrate output:`n$($migrateOutput | Out-String)"
+if ($migrateExit -ne 0) {
+    Write-Err "Migration failed (exit code $migrateExit)!"
+    Write-Host ($migrateOutput | Out-String) -ForegroundColor Red
+    Write-Err "Restoring backup..."
     # Rollback
     foreach ($item in $itemsToBackup) {
         $src = Join-Path $backupPath $item
@@ -218,9 +234,10 @@ try {
     Pop-Location
     Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
     Write-Err "Rolled back to $CurrentVersion"
-    Log "ROLLBACK: migration failed"
+    Log "ROLLBACK: migration failed (exit $migrateExit)"
     exit 1
 }
+Write-Ok "Migrations complete."
 Pop-Location
 Log "Migrations applied"
 
