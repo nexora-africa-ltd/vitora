@@ -275,6 +275,10 @@ HUB_ORGANIZATION_ID = os.getenv("HUB_ORGANIZATION_ID", "")
 HUB_FACILITY_NAME = os.getenv("HUB_FACILITY_NAME", "Vitora Hub")
 HUB_PORT = int(os.getenv("HUB_PORT", "9088"))
 
+# Auto-update: set to False to disable automatic update application.
+# When False, updates are still checked/reported but not applied automatically.
+HUB_AUTO_UPDATE = os.getenv("HUB_AUTO_UPDATE", "true").lower() in ("true", "1", "yes")
+
 # Enable the setup wizard so admins can bootstrap org/facility/user via the web UI
 SETUP_WIZARD_ENABLED = True
 

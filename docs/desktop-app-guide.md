@@ -354,7 +354,7 @@ npm run build:tauri            # Tauri build → src-tauri/target/release/bundle
 - **Matrix**: Windows x86_64, Linux x86_64, macOS aarch64
 - **Signing**: Ed25519 for updater artifacts
 - **Output**: GitHub Release (draft) with installers + `latest.json` updater manifest
-- **CDN**: Azure Front Door at `https://vitora-releases-dzf4f6hmfdadf3gk.z01.azurefd.net/updates`
+- **CDN**: Azure Front Door at `https://get.vitora.digital/updates`
 
 ### Required CI Secrets
 
