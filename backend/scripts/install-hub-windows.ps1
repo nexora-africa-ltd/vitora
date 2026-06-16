@@ -496,9 +496,41 @@ $env:ENCRYPTION_KEY = $EncryptionKey
 # --- Database Setup ---
 Write-Step 6 "Initializing database..."
 Push-Location $InstallDir
-& $python manage.py migrate --no-input
-if ($LASTEXITCODE -ne 0) {
-    Write-Warn "migrate failed (exit $LASTEXITCODE)"
+
+# Skip migrations if the DB already has all migrations applied.
+# Django's `migrate --no-input` is idempotent but still loads and checks all
+# 500+ migration files against the DB, which takes 30-40 min on slow Windows
+# hardware with SQLite. A direct row-count check is instant.
+$dbPath = "$DataDir\hub.sqlite3"
+$skipMigrate = $false
+if (Test-Path $dbPath) {
+    # Count migration files shipped with this version
+    $migFileCount = (Get-ChildItem -Path "$InstallDir\hmis\apps" -Recurse -Filter "*.py" |
+        Where-Object { $_.FullName -match "\\migrations\\" -and $_.Name -ne "__init__.py" }).Count
+    # Count already-applied migrations in the DB
+    $appliedCount = & $python -c "
+import sqlite3, sys
+try:
+    conn = sqlite3.connect(r'$dbPath')
+    cur = conn.cursor()
+    cur.execute('SELECT COUNT(*) FROM django_migrations')
+    print(cur.fetchone()[0])
+    conn.close()
+except Exception:
+    print(0)
+" 2>$null
+    $appliedCount = [int]$appliedCount
+    if ($appliedCount -ge $migFileCount -and $migFileCount -gt 0) {
+        $skipMigrate = $true
+        Write-Info "All $appliedCount migrations already applied — skipping migrate."
+    }
+}
+
+if (-not $skipMigrate) {
+    & $python manage.py migrate --no-input
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warn "migrate failed (exit $LASTEXITCODE)"
+    }
 }
 
 # Load Kenya location data (counties, sub-counties, wards)

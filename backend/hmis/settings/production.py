@@ -57,6 +57,10 @@ else:
 MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")  # noqa: F405
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
+# Hub↔Cloud sync: enable so cloud queues downward changes for hub pull
+SYNC_ENABLED = True
+ENVIRONMENT = "production"
+
 # PowerSync integration — env vars for the PowerSync service (self-hosted)
 # These are read by powersync/powersync.yaml, not by Django directly.
 # Listed here for documentation and .env template purposes.

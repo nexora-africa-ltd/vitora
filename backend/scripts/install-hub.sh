@@ -580,7 +580,30 @@ export HUB_FACILITY_ID="$HUB_FACILITY_ID"
 export HUB_ORGANIZATION_ID="$HUB_ORGANIZATION_ID"
 export DJANGO_SECRET_KEY="temporary-for-migration"
 
-"$VENV_DIR/bin/python" manage.py migrate --no-input
+# Skip migrations if DB already has all migrations applied (saves 30+ min on slow HW).
+SKIP_MIGRATE=false
+if [[ -f "$HUB_DB_PATH" ]]; then
+    MIG_FILE_COUNT=$(find "$APP_DIR/hmis/apps" -path "*/migrations/*.py" ! -name "__init__.py" 2>/dev/null | wc -l)
+    APPLIED_COUNT=$("$VENV_DIR/bin/python" -c "
+import sqlite3
+try:
+    conn = sqlite3.connect('$HUB_DB_PATH')
+    cur = conn.cursor()
+    cur.execute('SELECT COUNT(*) FROM django_migrations')
+    print(cur.fetchone()[0])
+    conn.close()
+except Exception:
+    print(0)
+" 2>/dev/null)
+    if [[ "$APPLIED_COUNT" -ge "$MIG_FILE_COUNT" && "$MIG_FILE_COUNT" -gt 0 ]]; then
+        SKIP_MIGRATE=true
+        info "All $APPLIED_COUNT migrations already applied — skipping migrate."
+    fi
+fi
+
+if [[ "$SKIP_MIGRATE" == "false" ]]; then
+    "$VENV_DIR/bin/python" manage.py migrate --no-input
+fi
 
 # Load Kenya location data (counties, sub-counties, wards)
 if [[ -f "$APP_DIR/data/kenya_locations.csv" ]]; then
