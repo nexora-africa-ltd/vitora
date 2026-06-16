@@ -6,6 +6,10 @@ from django.db import migrations
 def seed_initial_clinics(apps, schema_editor) -> None:
     Clinic = apps.get_model("clinics", "Clinic")
 
+    # Post-multitenancy: skip unscoped seeding; onboarding seed-defaults handles it
+    if any(f.name == "facility" for f in Clinic._meta.get_fields()):
+        return
+
     default_clinics = [
         {
             "code": "OPD-DEFAULT",
