@@ -96,7 +96,19 @@ Write-Step 3 "Stopping $ServiceName service..."
 $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if ($svc -and $svc.Status -eq 'Running') {
     Stop-Service -Name $ServiceName -Force
-    Start-Sleep -Seconds 3
+    # Wait for the service to fully stop AND for any child Python process to
+    # release SQLite WAL/SHM file handles. A flat 3s sleep was racy and caused
+    # spurious "database is locked" failures during migrate on slower hardware.
+    $deadline = (Get-Date).AddSeconds(30)
+    while ((Get-Date) -lt $deadline) {
+        $svc.Refresh()
+        $pythonStillRunning = Get-Process -Name "python" -ErrorAction SilentlyContinue |
+            Where-Object { $_.Path -and $_.Path.StartsWith($InstallDir) }
+        if ($svc.Status -eq 'Stopped' -and -not $pythonStillRunning) { break }
+        Start-Sleep -Milliseconds 500
+    }
+    # Final settling for SQLite WAL checkpoint
+    Start-Sleep -Seconds 2
     Write-Ok "Service stopped."
 } else {
     Write-Info "Service not running."
@@ -211,8 +223,25 @@ if (-not $env:DJANGO_SETTINGS_MODULE) {
 }
 $env:DJANGO_ENV = "hub"
 Push-Location $InstallDir
-$migrateOutput = & $pythonExe manage.py migrate --noinput 2>&1
-$migrateExit = $LASTEXITCODE
+
+# Retry migrate up to 3 times if we hit a transient SQLite "database is locked"
+# error (can happen if the service's child Python process briefly held the WAL
+# file after Stop-Service returned).
+$migrateOutput = $null
+$migrateExit = 1
+for ($attempt = 1; $attempt -le 3; $attempt++) {
+    $migrateOutput = & $pythonExe manage.py migrate --noinput --traceback 2>&1
+    $migrateExit = $LASTEXITCODE
+    if ($migrateExit -eq 0) { break }
+    $outStr = ($migrateOutput | Out-String)
+    if ($outStr -match 'database is locked' -and $attempt -lt 3) {
+        Write-Info "Migrate hit 'database is locked' (attempt $attempt/3) — retrying in 5s..."
+        Log "migrate attempt $attempt failed with database lock; retrying"
+        Start-Sleep -Seconds 5
+        continue
+    }
+    break
+}
 Log "migrate output:`n$($migrateOutput | Out-String)"
 if ($migrateExit -ne 0) {
     Write-Err "Migration failed (exit code $migrateExit)!"
