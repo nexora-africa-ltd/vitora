@@ -280,6 +280,11 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.licensing.tasks.check_for_updates",
         "schedule": crontab(minute=0, hour=3),
     },
+    # Phase 4: Auto-apply hub updates daily at 3:10 AM (after check completes)
+    "hub-auto-update": {
+        "task": "hmis.apps.licensing.tasks.auto_apply_update",
+        "schedule": crontab(minute=10, hour=3),
+    },
 }
 
 # Timezone configuration
