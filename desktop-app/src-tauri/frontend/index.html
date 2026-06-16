@@ -74,6 +74,15 @@
     <p class="subtitle">Hospital Management Information System</p>
     <div class="spinner"></div>
     <p class="status" id="status">Starting application...</p>
+    <p class="status" style="margin-top: 24px; opacity: 0.5;" id="version"></p>
   </div>
+  <script>
+    // Display version from Tauri if available
+    if (window.__TAURI__) {
+      window.__TAURI__.core.invoke('get_app_version').then(function(v) {
+        document.getElementById('version').textContent = 'v' + v;
+      }).catch(function() {});
+    }
+  </script>
 </body>
 </html>

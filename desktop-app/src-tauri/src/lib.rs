@@ -119,14 +119,23 @@ impl SidecarState {
         std::fs::create_dir_all(&standalone_dir)
             .map_err(|e| format!("Failed to create standalone dir: {}", e))?;
 
-        // Extract tar.gz
+        // Extract tar.gz — iterate entries for progress logging
         let tar_gz = std::fs::File::open(&archive_path)
             .map_err(|e| format!("Failed to open archive: {}", e))?;
         let tar = GzDecoder::new(tar_gz);
         let mut archive = Archive::new(tar);
 
-        archive.unpack(&standalone_dir)
-            .map_err(|e| format!("Failed to extract archive: {}", e))?;
+        let start = Instant::now();
+        let mut entry_count: u32 = 0;
+        for entry_result in archive.entries().map_err(|e| format!("Failed to read archive entries: {}", e))? {
+            let mut entry = entry_result.map_err(|e| format!("Failed to read entry: {}", e))?;
+            entry.unpack_in(&standalone_dir).map_err(|e| format!("Failed to extract entry: {}", e))?;
+            entry_count += 1;
+            if entry_count % 500 == 0 {
+                log::info!("Extracted {} files so far...", entry_count);
+            }
+        }
+        log::info!("Extracted {} files in {:.1}s", entry_count, start.elapsed().as_secs_f64());
 
         // Verify extraction
         if !server_js.exists() {
@@ -277,15 +286,30 @@ fn get_sidecar_port(state: State<SidecarState>) -> u16 {
     state.port()
 }
 
+/// Tauri command: get the app version from tauri.conf.json (embedded at build time).
+#[tauri::command]
+fn get_app_version(app: AppHandle) -> String {
+    app.config().version.clone().unwrap_or_else(|| "unknown".to_string())
+}
+
 /// Build the system tray with menu items.
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    let version = app.config().version.clone().unwrap_or_else(|| "unknown".to_string());
+    let version_label = format!("Vitora HMIS v{}", version);
+
+    let version_item = MenuItemBuilder::with_id("version", &version_label)
+        .enabled(false)
+        .build(app)?;
     let show = MenuItemBuilder::with_id("show", "Show Vitora").build(app)?;
-    let separator = PredefinedMenuItem::separator(app)?;
+    let sep1 = PredefinedMenuItem::separator(app)?;
+    let sep2 = PredefinedMenuItem::separator(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
 
     let menu = MenuBuilder::new(app)
+        .item(&version_item)
+        .item(&sep1)
         .item(&show)
-        .item(&separator)
+        .item(&sep2)
         .item(&quit)
         .build()?;
 
@@ -346,6 +370,7 @@ pub fn run() {
         .manage(sidecar)
         .invoke_handler(tauri::generate_handler![
             get_sidecar_port,
+            get_app_version,
             print_receipt,
             list_printers,
             get_api_url,
@@ -407,13 +432,27 @@ pub fn run() {
             log::info!("Spawning Node.js sidecar...");
             let handle_clone = handle.clone();
 
+            // Emit startup progress to the loading screen
+            fn emit_status(handle: &AppHandle, msg: &str) {
+                if let Some(w) = handle.get_webview_window("main") {
+                    let _ = w.eval(&format!(
+                        "try {{ document.getElementById('status').textContent = '{}'; }} catch(_) {{}}",
+                        msg
+                    ));
+                }
+            }
+
             // Spawn sidecar in a background thread to avoid blocking the event loop
             std::thread::spawn(move || {
                 let state = handle_clone.state::<SidecarState>();
 
+                emit_status(&handle_clone, "Preparing application files...");
+
                 match state.spawn_sidecar(&handle_clone) {
                     Ok(port) => {
                         log::info!("Sidecar spawned on port {}", port);
+
+                        emit_status(&handle_clone, "Starting server...");
 
                         // Wait for the sidecar to be ready (max 20s)
                         match state.wait_for_ready(Duration::from_secs(20)) {
