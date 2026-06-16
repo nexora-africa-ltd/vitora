@@ -89,7 +89,7 @@ pydantic==2.12.5
 pydicom==3.0.1
 pydotenv==0.0.7
 pygments==2.19.2
-pyjwt==2.12.1
+pyjwt==2.13.0
 pynetdicom==3.0.4
 pyopenssl==25.1.0
 pyotp==2.9.0
