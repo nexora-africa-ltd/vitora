@@ -101,13 +101,32 @@ impl SidecarState {
             log::info!(
                 "Bundled archive is newer than extracted standalone; re-extracting"
             );
-            // Remove the stale extraction so the new bundle is clean
-            if let Err(e) = std::fs::remove_dir_all(&standalone_dir) {
-                log::warn!(
-                    "Failed to remove stale standalone dir {}: {}",
-                    standalone_dir.display(),
-                    e
-                );
+            // Remove the stale extraction so the new bundle is clean.
+            // On Windows the OS can briefly hold handles after a process exit
+            // (especially after `app.restart()` from the updater), so retry a
+            // few times before giving up.
+            let mut removed = false;
+            for attempt in 1..=5 {
+                match std::fs::remove_dir_all(&standalone_dir) {
+                    Ok(()) => { removed = true; break; }
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => { removed = true; break; }
+                    Err(e) => {
+                        log::warn!(
+                            "Failed to remove stale standalone dir {} (attempt {}/5): {}",
+                            standalone_dir.display(),
+                            attempt,
+                            e
+                        );
+                        std::thread::sleep(Duration::from_millis(500 * attempt));
+                    }
+                }
+            }
+            if !removed {
+                return Err(format!(
+                    "Could not remove stale standalone dir {}; files are locked. \
+                     Close any running Vitora processes and try again.",
+                    standalone_dir.display()
+                ));
             }
         }
 
