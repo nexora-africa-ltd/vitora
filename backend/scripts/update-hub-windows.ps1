@@ -224,51 +224,134 @@ if (-not $env:DJANGO_SETTINGS_MODULE) {
 $env:DJANGO_ENV = "hub"
 Push-Location $InstallDir
 
-# Retry migrate up to 3 times if we hit a transient SQLite "database is locked"
-# error (can happen if the service's child Python process briefly held the WAL
-# file after Stop-Service returned).
-$migrateOutput = $null
-$migrateExit = 1
-for ($attempt = 1; $attempt -le 3; $attempt++) {
-    # Temporarily allow stderr (e.g. python-magic warnings) without throwing
-    # a NativeCommandError under $ErrorActionPreference = 'Stop'.
+# Smart per-app migration: Django's `migrate` loads ALL migration files and
+# builds the full dependency graph even when only a handful are unapplied.
+# On slow Windows hardware with SQLite this scan takes 30-40 min. Instead
+# we query the DB to find apps with unapplied migrations and run `migrate
+# <app>` only for those -- dramatically faster on version upgrades.
+$dbPath = if ($env:HUB_DB_PATH) { $env:HUB_DB_PATH } else { "$InstallDir\data\hub.sqlite3" }
+$appsToMigrate = @()
+if (Test-Path $dbPath) {
     $prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
-    $migrateOutput = & $pythonExe manage.py migrate --noinput --traceback 2>&1
-    $migrateExit = $LASTEXITCODE
-    $ErrorActionPreference = $prevEAP
-    if ($migrateExit -eq 0) { break }
-    $outStr = ($migrateOutput | Out-String)
-    if ($outStr -match 'database is locked' -and $attempt -lt 3) {
-        Write-Info "Migrate hit 'database is locked' (attempt $attempt/3) -- retrying in 5s..."
-        Log "migrate attempt $attempt failed with database lock; retrying"
-        Start-Sleep -Seconds 5
+    $appsToMigrate = (& $pythonExe -c "
+import os, sqlite3, pathlib, json
+db = r'$dbPath'
+apps_dir = os.path.join(r'$InstallDir', 'hmis', 'apps')
+conn = sqlite3.connect(db)
+cur = conn.cursor()
+try:
+    cur.execute('SELECT app, name FROM django_migrations')
+    applied = set()
+    for row in cur.fetchall():
+        applied.add((row[0], row[1]))
+except Exception:
+    applied = set()
+conn.close()
+
+need = []
+for app_dir in sorted(pathlib.Path(apps_dir).iterdir()):
+    mig_dir = app_dir / 'migrations'
+    if not mig_dir.is_dir():
         continue
-    }
-    break
+    app_label = app_dir.name
+    for f in sorted(mig_dir.glob('*.py')):
+        if f.name == '__init__.py':
+            continue
+        mig_name = f.stem
+        if (app_label, mig_name) not in applied:
+            need.append(app_label)
+            break
+print(json.dumps(need))
+" 2>$null) | ConvertFrom-Json
+    $ErrorActionPreference = $prevEAP
 }
-Log "migrate output:`n$($migrateOutput | Out-String)"
-if ($migrateExit -ne 0) {
-    Write-Err "Migration failed (exit code $migrateExit)!"
-    Write-Host ($migrateOutput | Out-String) -ForegroundColor Red
-    Write-Err "Restoring backup..."
-    # Rollback
-    foreach ($item in $itemsToBackup) {
-        $src = Join-Path $backupPath $item
-        $dest = Join-Path $InstallDir $item
-        if (Test-Path $src) {
-            if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
-            if ((Get-Item $src).PSIsContainer) {
-                Copy-Item -Path $src -Destination $dest -Recurse
-            } else {
-                Copy-Item -Path $src -Destination $dest
+
+if ($null -eq $appsToMigrate -or $appsToMigrate.Count -eq 0) {
+    if (Test-Path $dbPath) {
+        Write-Ok "All migrations already applied -- skipping."
+        Log "No unapplied migrations found"
+    } else {
+        # DB doesn't exist (shouldn't happen on update, but handle gracefully)
+        Write-Info "No database found -- running full migration..."
+        $prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        $migrateOutput = & $pythonExe manage.py migrate --noinput --traceback 2>&1
+        $migrateExit = $LASTEXITCODE
+        $ErrorActionPreference = $prevEAP
+        Log "migrate output:`n$($migrateOutput | Out-String)"
+        if ($migrateExit -ne 0) {
+            Write-Err "Migration failed (exit code $migrateExit)!"
+            Write-Host ($migrateOutput | Out-String) -ForegroundColor Red
+            Write-Err "Restoring backup..."
+            foreach ($item in $itemsToBackup) {
+                $src = Join-Path $backupPath $item
+                $dest = Join-Path $InstallDir $item
+                if (Test-Path $src) {
+                    if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+                    if ((Get-Item $src).PSIsContainer) {
+                        Copy-Item -Path $src -Destination $dest -Recurse
+                    } else {
+                        Copy-Item -Path $src -Destination $dest
+                    }
+                }
             }
+            Pop-Location
+            Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
+            Write-Err "Rolled back to $CurrentVersion"
+            Log "ROLLBACK: migration failed (exit $migrateExit)"
+            exit 1
         }
     }
-    Pop-Location
-    Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
-    Write-Err "Rolled back to $CurrentVersion"
-    Log "ROLLBACK: migration failed (exit $migrateExit)"
-    exit 1
+} else {
+    Write-Info "$($appsToMigrate.Count) app(s) need migration: $($appsToMigrate -join ', ')"
+    Log "Apps to migrate: $($appsToMigrate -join ', ')"
+    $migrateFailed = $false
+    foreach ($app in $appsToMigrate) {
+        Write-Info "  Migrating $app..."
+        $migrateOutput = $null
+        $migrateExit = 1
+        for ($attempt = 1; $attempt -le 3; $attempt++) {
+            $prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+            $migrateOutput = & $pythonExe manage.py migrate $app --noinput --traceback 2>&1
+            $migrateExit = $LASTEXITCODE
+            $ErrorActionPreference = $prevEAP
+            if ($migrateExit -eq 0) { break }
+            $outStr = ($migrateOutput | Out-String)
+            if ($outStr -match 'database is locked' -and $attempt -lt 3) {
+                Write-Info "  Migrate $app hit 'database is locked' (attempt $attempt/3) -- retrying in 5s..."
+                Log "migrate $app attempt $attempt failed with database lock; retrying"
+                Start-Sleep -Seconds 5
+                continue
+            }
+            break
+        }
+        Log "migrate $app output:`n$($migrateOutput | Out-String)"
+        if ($migrateExit -ne 0) {
+            Write-Err "Migration failed for $app (exit code $migrateExit)!"
+            Write-Host ($migrateOutput | Out-String) -ForegroundColor Red
+            $migrateFailed = $true
+            break
+        }
+    }
+    if ($migrateFailed) {
+        Write-Err "Restoring backup..."
+        foreach ($item in $itemsToBackup) {
+            $src = Join-Path $backupPath $item
+            $dest = Join-Path $InstallDir $item
+            if (Test-Path $src) {
+                if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+                if ((Get-Item $src).PSIsContainer) {
+                    Copy-Item -Path $src -Destination $dest -Recurse
+                } else {
+                    Copy-Item -Path $src -Destination $dest
+                }
+            }
+        }
+        Pop-Location
+        Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
+        Write-Err "Rolled back to $CurrentVersion"
+        Log "ROLLBACK: migration failed"
+        exit 1
+    }
 }
 Write-Ok "Migrations complete."
 Pop-Location
