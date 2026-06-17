@@ -504,11 +504,13 @@ Push-Location $InstallDir
 # $LASTEXITCODE after each call instead.
 $prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
 
-# Smart per-app migration: Django's `migrate` loads ALL migration files into
-# memory and builds the full dependency graph even when only 2 out of 500+
-# need applying -- that scan alone takes 30-40 min on slow Windows hardware.
-# Instead we query the DB directly for apps with unapplied migrations and
-# run `migrate <app>` only for those, which is dramatically faster.
+# Smart migration: query the DB directly for unapplied migrations so we can
+# skip the migrate step entirely on hot reinstalls. When migrations ARE
+# pending, run a single `manage.py migrate` invocation (not one per app) --
+# Django rebuilds the full graph on every startup, so per-app loops just
+# multiply that overhead. Output is streamed live with --verbosity 2 so the
+# user sees "Applying foo.0001_initial... OK" instead of staring at a blank
+# screen for 20+ min.
 $dbPath = "$DataDir\hub.sqlite3"
 $appsToMigrate = @()
 if (Test-Path $dbPath) {
@@ -548,21 +550,21 @@ if ($null -eq $appsToMigrate -or $appsToMigrate.Count -eq 0) {
     if (Test-Path $dbPath) {
         Write-Info "All migrations already applied -- skipping migrate."
     } else {
-        # Fresh install -- run full migrate
+        # Fresh install -- run full migrate with streaming output
         Write-Info "Fresh install -- running full migration..."
-        & $python manage.py migrate --no-input
+        & $python manage.py migrate --no-input --verbosity 2 2>&1 |
+            ForEach-Object { Write-Host "  $_" }
         if ($LASTEXITCODE -ne 0) {
             Write-Warn "migrate failed (exit $LASTEXITCODE)"
         }
     }
 } else {
     Write-Info "$($appsToMigrate.Count) app(s) need migration: $($appsToMigrate -join ', ')"
-    foreach ($app in $appsToMigrate) {
-        Write-Info "  Migrating $app..."
-        & $python manage.py migrate $app --no-input
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warn "migrate $app failed (exit $LASTEXITCODE)"
-        }
+    Write-Info "Running migrations (streaming progress)..."
+    & $python manage.py migrate --no-input --verbosity 2 2>&1 |
+        ForEach-Object { Write-Host "  $_" }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warn "migrate failed (exit $LASTEXITCODE)"
     }
 }
 

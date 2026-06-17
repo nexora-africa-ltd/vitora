@@ -224,11 +224,13 @@ if (-not $env:DJANGO_SETTINGS_MODULE) {
 $env:DJANGO_ENV = "hub"
 Push-Location $InstallDir
 
-# Smart per-app migration: Django's `migrate` loads ALL migration files and
-# builds the full dependency graph even when only a handful are unapplied.
-# On slow Windows hardware with SQLite this scan takes 30-40 min. Instead
-# we query the DB to find apps with unapplied migrations and run `migrate
-# <app>` only for those -- dramatically faster on version upgrades.
+# Smart migration: query the DB directly for unapplied migrations so we can
+# skip the migrate step entirely on hot upgrades. When migrations ARE pending,
+# we run a single `manage.py migrate` invocation rather than one per app --
+# Django rebuilds the full migration graph on every invocation, and that
+# startup cost (3-5s Python + 5-15s graph build) dominates per-app loops.
+# Output is streamed live with --verbosity 2 so the user can see "Applying
+# foo.0001_initial... OK" rather than staring at a blank prompt for 20 min.
 $dbPath = if ($env:HUB_DB_PATH) { $env:HUB_DB_PATH } else { "$InstallDir\data\hub.sqlite3" }
 $appsToMigrate = @()
 if (Test-Path $dbPath) {
@@ -274,13 +276,14 @@ if ($null -eq $appsToMigrate -or $appsToMigrate.Count -eq 0) {
         # DB doesn't exist (shouldn't happen on update, but handle gracefully)
         Write-Info "No database found -- running full migration..."
         $prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
-        $migrateOutput = & $pythonExe manage.py migrate --noinput --traceback 2>&1
+        # Stream output live so user sees progress; also Tee to log file.
+        $migrateOutput = & $pythonExe manage.py migrate --noinput --verbosity 2 --traceback 2>&1 |
+            Tee-Object -Variable streamed | ForEach-Object { Write-Host "  $_"; $_ }
         $migrateExit = $LASTEXITCODE
         $ErrorActionPreference = $prevEAP
-        Log "migrate output:`n$($migrateOutput | Out-String)"
+        Log "migrate output:`n$($streamed | Out-String)"
         if ($migrateExit -ne 0) {
             Write-Err "Migration failed (exit code $migrateExit)!"
-            Write-Host ($migrateOutput | Out-String) -ForegroundColor Red
             Write-Err "Restoring backup..."
             foreach ($item in $itemsToBackup) {
                 $src = Join-Path $backupPath $item
@@ -304,33 +307,31 @@ if ($null -eq $appsToMigrate -or $appsToMigrate.Count -eq 0) {
 } else {
     Write-Info "$($appsToMigrate.Count) app(s) need migration: $($appsToMigrate -join ', ')"
     Log "Apps to migrate: $($appsToMigrate -join ', ')"
-    $migrateFailed = $false
-    foreach ($app in $appsToMigrate) {
-        Write-Info "  Migrating $app..."
-        $migrateOutput = $null
-        $migrateExit = 1
-        for ($attempt = 1; $attempt -le 3; $attempt++) {
-            $prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
-            $migrateOutput = & $pythonExe manage.py migrate $app --noinput --traceback 2>&1
-            $migrateExit = $LASTEXITCODE
-            $ErrorActionPreference = $prevEAP
-            if ($migrateExit -eq 0) { break }
-            $outStr = ($migrateOutput | Out-String)
-            if ($outStr -match 'database is locked' -and $attempt -lt 3) {
-                Write-Info "  Migrate $app hit 'database is locked' (attempt $attempt/3) -- retrying in 5s..."
-                Log "migrate $app attempt $attempt failed with database lock; retrying"
-                Start-Sleep -Seconds 5
-                continue
-            }
-            break
+    Write-Info "Running migrations (streaming progress)..."
+    $migrateExit = 1
+    $streamed = $null
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        $prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        # Single migrate call streams each "Applying app.NNNN_name... OK" line
+        # live to the console so the user sees real-time progress.
+        $streamed = & $pythonExe manage.py migrate --noinput --verbosity 2 --traceback 2>&1 |
+            ForEach-Object { Write-Host "  $_"; $_ }
+        $migrateExit = $LASTEXITCODE
+        $ErrorActionPreference = $prevEAP
+        if ($migrateExit -eq 0) { break }
+        $outStr = ($streamed | Out-String)
+        if ($outStr -match 'database is locked' -and $attempt -lt 3) {
+            Write-Info "  migrate hit 'database is locked' (attempt $attempt/3) -- retrying in 5s..."
+            Log "migrate attempt $attempt failed with database lock; retrying"
+            Start-Sleep -Seconds 5
+            continue
         }
-        Log "migrate $app output:`n$($migrateOutput | Out-String)"
-        if ($migrateExit -ne 0) {
-            Write-Err "Migration failed for $app (exit code $migrateExit)!"
-            Write-Host ($migrateOutput | Out-String) -ForegroundColor Red
-            $migrateFailed = $true
-            break
-        }
+        break
+    }
+    Log "migrate output:`n$($streamed | Out-String)"
+    $migrateFailed = ($migrateExit -ne 0)
+    if ($migrateFailed) {
+        Write-Err "Migration failed (exit code $migrateExit)!"
     }
     if ($migrateFailed) {
         Write-Err "Restoring backup..."
