@@ -15,9 +15,11 @@
 //   - A Tauri command `check_for_updates` exposed to the frontend so a
 //     Settings page can offer the same action.
 
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_updater::UpdaterExt;
+
+use crate::SidecarState;
 
 /// Run a manual update check, prompting the user via native dialogs.
 ///
@@ -104,7 +106,24 @@ pub async fn check_and_install(app: AppHandle, silent_when_uptodate: bool) {
 
             match result {
                 Ok(()) => {
-                    log::info!("Update installed; restarting app");
+                    log::info!("Update installed; preparing to restart app");
+
+                    // Explicitly kill the Node.js sidecar BEFORE restarting.
+                    //
+                    // On Windows, `app.restart()` calls `process::exit()` after
+                    // spawning the new instance, which does NOT run Drop impls.
+                    // The Node.js child therefore survives the restart, keeps
+                    // its file handles on the extracted standalone directory,
+                    // and blocks the new instance's re-extraction of the
+                    // updated standalone.tar.gz -- producing a corrupt
+                    // standalone and a blank window.
+                    let state = app.state::<SidecarState>();
+                    state.kill();
+                    // Give the OS a moment to release file handles before
+                    // the new process starts and tries to re-extract.
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+
+                    log::info!("Restarting app");
                     app.restart();
                 }
                 Err(e) => {
