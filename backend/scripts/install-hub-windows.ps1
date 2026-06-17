@@ -474,6 +474,7 @@ $pyArgs = if ($args.Count -eq 0) { @("shell") } else { $args }
 
 Push-Location $InstallDir
 try {
+    $ErrorActionPreference = "Continue"  # Prevent stderr warnings from terminating
     & "$InstallDir\venv\Scripts\python.exe" "manage.py" @pyArgs
 } finally {
     Pop-Location
@@ -496,6 +497,12 @@ $env:ENCRYPTION_KEY = $EncryptionKey
 # --- Database Setup ---
 Write-Step 6 "Initializing database..."
 Push-Location $InstallDir
+
+# Native Python commands may emit warnings on stderr (e.g. python-magic).
+# Under $ErrorActionPreference = 'Stop' that raises NativeCommandError.
+# Relax to 'Continue' for the whole management-command block; we check
+# $LASTEXITCODE after each call instead.
+$prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
 
 # Skip migrations if the DB already has all migrations applied.
 # Django's `migrate --no-input` is idempotent but still loads and checks all
@@ -565,6 +572,7 @@ Remove-Item -Path $activationFile -Force -ErrorAction SilentlyContinue
 if ($LASTEXITCODE -ne 0) {
     Write-Warn "collectstatic failed (exit $LASTEXITCODE). Django admin will be unstyled until this is resolved."
 }
+$ErrorActionPreference = $prevEAP
 Pop-Location
 
 # Create superuser (skip in non-interactive mode)
