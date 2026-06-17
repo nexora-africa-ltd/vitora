@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,7 @@ def build_activation_bootstrap_payload(
         "bootstrap": {
             "departments": serialize_departments(organization=organization, facility=facility),
             "roles": serialize_roles(organization=organization, facility=facility),
+            "users": serialize_users_summary(organization=organization),
         },
     }
     return payload
@@ -113,6 +115,112 @@ def serialize_roles(*, organization, facility) -> list[dict[str, Any]]:
         }
         for role in queryset.order_by("hierarchy_level", "name")
     ]
+
+
+def serialize_users_summary(*, organization) -> list[dict[str, Any]]:
+    """Serialize a lightweight user manifest for the activating organization.
+
+    Returns usernames, PKs, superuser flag, and primary role code -- NO
+    password hashes.  The hub installer uses this to:
+    1. Warn about username collisions before ``createsuperuser``.
+    2. Let the operator skip local superuser creation when cloud admins exist.
+    3. Pre-create placeholder User rows so the sync materializer can
+       ``update_or_create`` by PK without colliding with hub-local users.
+    """
+    # Staff profiles link users to the organization
+    from hmis.apps.core.models import StaffProfile
+
+    staff_qs = StaffProfile.objects.filter(organization=organization).select_related(
+        "user", "primary_role"
+    )
+
+    users = []
+    for sp in staff_qs.order_by("user__username"):
+        u = sp.user
+        users.append(
+            {
+                "id": u.pk,
+                "username": u.username,
+                "email": u.email or "",
+                "is_superuser": u.is_superuser,
+                "is_active": u.is_active,
+                "role_code": sp.primary_role.code if sp.primary_role else "",
+                "role_name": sp.primary_role.name if sp.primary_role else "",
+            }
+        )
+    return users
+
+
+def seed_cloud_users(users_data: list[dict[str, Any]], *, organization, facility) -> dict[str, int]:
+    """Create placeholder User + StaffProfile rows from the cloud user manifest.
+
+    Each user is created with ``set_unusable_password()`` and ``is_active=False``
+    so the account cannot be used for local login until the real credentials
+    are synced down from the cloud.  The primary purpose is to **reserve the
+    cloud PK** in the local ``auth_user`` table so that:
+
+    1. Hub-created users (e.g. via ``createsuperuser``) do not collide on PK
+       with cloud users when the sync materializer later does
+       ``update_or_create(pk=...)`` .
+    2. The ``createsuperuser`` command can detect username conflicts and warn
+       the operator.
+    """
+    from django.contrib.auth import get_user_model
+
+    from hmis.apps.core.models import Department, Role, StaffProfile
+
+    User = get_user_model()
+    counts = {"created": 0, "skipped": 0}
+
+    # Resolve fallback role/department for placeholder profiles (both NOT NULL)
+    fallback_role = Role.objects.filter(is_active=True).order_by("hierarchy_level").first()
+    fallback_dept = Department.objects.filter(is_active=True).first()
+
+    for u_data in users_data:
+        cloud_pk = u_data.get("id")
+        username = u_data.get("username", "")
+        if not cloud_pk or not username:
+            continue
+
+        # Skip if the PK or username already exists locally
+        if (
+            User.objects.filter(pk=cloud_pk).exists()
+            or User.objects.filter(username=username).exists()
+        ):
+            counts["skipped"] += 1
+            continue
+
+        user = User(
+            pk=cloud_pk,
+            username=username,
+            email=u_data.get("email", ""),
+            is_superuser=u_data.get("is_superuser", False),
+            is_staff=u_data.get("is_superuser", False),
+            is_active=False,  # Cannot login until real sync
+        )
+        user.set_unusable_password()
+        user.save()
+
+        # Create a minimal StaffProfile so role info is preserved
+        role_code = u_data.get("role_code", "")
+        role = Role.objects.filter(code=role_code, is_active=True).first() if role_code else None
+        if not role:
+            role = fallback_role
+
+        if role and fallback_dept and not StaffProfile.objects.filter(user=user).exists():
+            StaffProfile.objects.create(
+                user=user,
+                employee_id=f"CLOUD-{cloud_pk}",
+                organization=organization,
+                primary_facility=facility,
+                primary_role=role,
+                primary_department=fallback_dept,
+                date_joined=date.today(),
+            )
+
+        counts["created"] += 1
+
+    return counts
 
 
 def seed_bootstrap_data(bootstrap: dict[str, Any], *, organization, facility) -> dict[str, int]:

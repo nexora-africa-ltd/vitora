@@ -161,6 +161,12 @@ SYNC_MAX_RETRIES = int(os.getenv("SYNC_MAX_RETRIES", "5"))
 # How often the hub pushes changes to cloud (seconds)
 HUB_CLOUD_SYNC_INTERVAL = int(os.getenv("HUB_CLOUD_SYNC_INTERVAL", "30"))
 
+# Hub-created users start their PK at this offset so they never collide with
+# cloud-assigned PKs (which start at 1 and grow sequentially).  The value
+# 100_000 gives the cloud room for ~100k users before any chance of overlap —
+# far beyond realistic usage for any single organization.
+HUB_USER_PK_OFFSET = int(os.getenv("HUB_USER_PK_OFFSET", "100000"))
+
 # ---------------------------------------------------------------------------
 # Celery (optional — for background sync to cloud)
 # ---------------------------------------------------------------------------
