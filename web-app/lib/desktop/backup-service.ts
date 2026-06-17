@@ -66,8 +66,11 @@ export function createBackup(type: 'rolling' | 'daily'): BackupInfo | null {
   const destPath = path.join(backupDir, filename);
 
   try {
-    // Use backup API (atomic, safe for concurrent reads)
-    db.backup(destPath);
+    // Flush WAL into main DB, then copy synchronously.
+    // (Note: better-sqlite3's db.backup() is async/Promise-based; using it without
+    // awaiting causes ENOENT races AND unhandled-rejection crashes in Node 15+.)
+    db.pragma('wal_checkpoint(FULL)');
+    fs.copyFileSync(getDbPath(), destPath);
 
     const stats = fs.statSync(destPath);
 
@@ -102,7 +105,8 @@ export function exportBackup(destPath: string): BackupInfo | null {
     const dir = path.dirname(destPath);
     fs.mkdirSync(dir, { recursive: true });
 
-    db.backup(destPath);
+    db.pragma('wal_checkpoint(FULL)');
+    fs.copyFileSync(getDbPath(), destPath);
     const stats = fs.statSync(destPath);
 
     console.log(`[Backup] Exported to: ${destPath} (${formatBytes(stats.size)})`);
@@ -340,7 +344,8 @@ export function exportEncryptedBackup(
     fs.mkdirSync(tmpDir, { recursive: true });
     const tmpPath = path.join(tmpDir, `export-${Date.now()}.db`);
 
-    db.backup(tmpPath);
+    db.pragma('wal_checkpoint(FULL)');
+    fs.copyFileSync(getDbPath(), tmpPath);
     const plainData = fs.readFileSync(tmpPath);
 
     // Encrypt

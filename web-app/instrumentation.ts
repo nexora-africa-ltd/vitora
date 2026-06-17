@@ -4,6 +4,16 @@ export async function register() {
   // Desktop app: initialize local SQLite database and sync services
   // Guard with NEXT_RUNTIME to prevent Edge bundler from tracing Node.js-only imports
   if (process.env.VITORA_DESKTOP === "1" && process.env.NEXT_RUNTIME === "nodejs") {
+    // Safety net: keep the sidecar alive even if a background task throws.
+    // Node 15+ defaults to terminating on unhandled rejections, which would kill
+    // the Next.js server *after* the HTTP port is bound, leaving the WebView blank.
+    process.on("unhandledRejection", (reason) => {
+      console.error("[Desktop] Unhandled rejection (kept alive):", reason);
+    });
+    process.on("uncaughtException", (err) => {
+      console.error("[Desktop] Uncaught exception (kept alive):", err);
+    });
+
     try {
       const { initLocalDatabase } = await import("./lib/desktop/local-db");
       const { startAutoSync } = await import("./lib/desktop/sync-engine");
