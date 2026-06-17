@@ -63,12 +63,15 @@ def should_queue_downward_sync(model_label: str) -> bool:
 def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) -> dict:
     """Serialize a model instance into JSON-safe sync data."""
     data = model_to_dict(instance, exclude=list(exclude_fields))
-    # FileField / ImageField return FieldFile instances that DjangoJSONEncoder
-    # cannot serialize. Convert them to their stored path string (or None when
-    # no file is attached) so the sync payload stays JSON-safe.
+    # ``model_to_dict`` returns FieldFile instances for File/Image fields and
+    # lists of related model instances for ManyToMany fields. Neither is JSON
+    # serializable by DjangoJSONEncoder, so coerce them to safe primitives
+    # (stored path / list of PKs) before dumping.
     for key, value in list(data.items()):
         if isinstance(value, FieldFile):
             data[key] = value.name or None
+        elif isinstance(value, list) and value and hasattr(value[0], "pk"):
+            data[key] = [item.pk for item in value]
     data["id"] = instance.pk
     json_safe = json.loads(json.dumps(data, cls=DjangoJSONEncoder))
     return json_safe
