@@ -629,7 +629,10 @@ if (-not $NonInteractive) {
         Write-Info "Create an admin account for this hub:"
         Push-Location $InstallDir
         $prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
-        & $python manage.py createsuperuser --force
+        # Use our custom create_superuser (underscore) -- it creates a StaffProfile
+        # linked to the hub's organization/facility and honours HUB_USER_PK_OFFSET.
+        # Django's built-in createsuperuser does neither.
+        & $python manage.py create_superuser --force
         $ErrorActionPreference = $prevEAP
         Pop-Location
     }
