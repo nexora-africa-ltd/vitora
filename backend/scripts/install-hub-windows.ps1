@@ -504,39 +504,65 @@ Push-Location $InstallDir
 # $LASTEXITCODE after each call instead.
 $prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
 
-# Skip migrations if the DB already has all migrations applied.
-# Django's `migrate --no-input` is idempotent but still loads and checks all
-# 500+ migration files against the DB, which takes 30-40 min on slow Windows
-# hardware with SQLite. A direct row-count check is instant.
+# Smart per-app migration: Django's `migrate` loads ALL migration files into
+# memory and builds the full dependency graph even when only 2 out of 500+
+# need applying -- that scan alone takes 30-40 min on slow Windows hardware.
+# Instead we query the DB directly for apps with unapplied migrations and
+# run `migrate <app>` only for those, which is dramatically faster.
 $dbPath = "$DataDir\hub.sqlite3"
-$skipMigrate = $false
+$appsToMigrate = @()
 if (Test-Path $dbPath) {
-    # Count migration files shipped with this version
-    $migFileCount = (Get-ChildItem -Path "$InstallDir\hmis\apps" -Recurse -Filter "*.py" |
-        Where-Object { $_.FullName -match "\\migrations\\" -and $_.Name -ne "__init__.py" }).Count
-    # Count already-applied migrations in the DB
-    $appliedCount = & $python -c "
-import sqlite3, sys
+    $appsToMigrate = (& $python -c "
+import os, sqlite3, pathlib, json
+db = r'$dbPath'
+apps_dir = os.path.join(r'$InstallDir', 'hmis', 'apps')
+conn = sqlite3.connect(db)
+cur = conn.cursor()
 try:
-    conn = sqlite3.connect(r'$dbPath')
-    cur = conn.cursor()
-    cur.execute('SELECT COUNT(*) FROM django_migrations')
-    print(cur.fetchone()[0])
-    conn.close()
+    cur.execute('SELECT app, name FROM django_migrations')
+    applied = set()
+    for row in cur.fetchall():
+        applied.add((row[0], row[1]))
 except Exception:
-    print(0)
-" 2>$null
-    $appliedCount = [int]$appliedCount
-    if ($appliedCount -ge $migFileCount -and $migFileCount -gt 0) {
-        $skipMigrate = $true
-        Write-Info "All $appliedCount migrations already applied -- skipping migrate."
-    }
+    applied = set()
+conn.close()
+
+need = []
+for app_dir in sorted(pathlib.Path(apps_dir).iterdir()):
+    mig_dir = app_dir / 'migrations'
+    if not mig_dir.is_dir():
+        continue
+    app_label = app_dir.name
+    for f in sorted(mig_dir.glob('*.py')):
+        if f.name == '__init__.py':
+            continue
+        mig_name = f.stem
+        if (app_label, mig_name) not in applied:
+            need.append(app_label)
+            break
+print(json.dumps(need))
+" 2>$null) | ConvertFrom-Json
 }
 
-if (-not $skipMigrate) {
-    & $python manage.py migrate --no-input
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warn "migrate failed (exit $LASTEXITCODE)"
+if ($null -eq $appsToMigrate -or $appsToMigrate.Count -eq 0) {
+    if (Test-Path $dbPath) {
+        Write-Info "All migrations already applied -- skipping migrate."
+    } else {
+        # Fresh install -- run full migrate
+        Write-Info "Fresh install -- running full migration..."
+        & $python manage.py migrate --no-input
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warn "migrate failed (exit $LASTEXITCODE)"
+        }
+    }
+} else {
+    Write-Info "$($appsToMigrate.Count) app(s) need migration: $($appsToMigrate -join ', ')"
+    foreach ($app in $appsToMigrate) {
+        Write-Info "  Migrating $app..."
+        & $python manage.py migrate $app --no-input
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warn "migrate $app failed (exit $LASTEXITCODE)"
+        }
     }
 }
 
