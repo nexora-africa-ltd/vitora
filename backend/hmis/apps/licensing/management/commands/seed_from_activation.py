@@ -1,6 +1,7 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Seed a local hub database from a cloud activation response."""
 
+import json
 import os
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from django.core.management.base import BaseCommand
 from hmis.apps.licensing.bootstrap import (
     load_activation_response,
     seed_bootstrap_data,
+    seed_cloud_users,
     seed_from_activation_payload,
 )
 
@@ -59,6 +61,22 @@ class Command(BaseCommand):
                     f"Seeded {counts['departments']} department(s) and {counts['roles']} role(s)."
                 )
             )
+
+        # Seed cloud user placeholders + save manifest for createsuperuser
+        users_data = bootstrap.get("users") or []
+        if users_data:
+            user_counts = seed_cloud_users(users_data, organization=organization, facility=facility)
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Seeded {user_counts['created']} cloud user placeholder(s) "
+                    f"({user_counts['skipped']} already existed)."
+                )
+            )
+            # Save manifest so createsuperuser can check for username conflicts
+            data_dir = os.getenv("HUB_DATA_DIR", str(Path.cwd()))
+            manifest_path = Path(data_dir) / "cloud_users.json"
+            manifest_path.write_text(json.dumps(users_data, indent=2))
+            self.stdout.write(f"Cloud user manifest saved to {manifest_path}")
 
     def _load_kenya_locations(self):
         """Load Kenya county data from bundled CSV if counties table is empty."""

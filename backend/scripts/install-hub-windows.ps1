@@ -577,10 +577,36 @@ Pop-Location
 
 # Create superuser (skip in non-interactive mode)
 if (-not $NonInteractive) {
-    Write-Info "Create an admin account for this hub:"
-    Push-Location $InstallDir
-    & $python manage.py createsuperuser
-    Pop-Location
+    # Check if cloud already has admin accounts (manifest written by seed_from_activation)
+    $cloudManifest = "$DataDir\cloud_users.json"
+    $skipSuperuser = $false
+    if (Test-Path $cloudManifest) {
+        $cloudUsers = Get-Content $cloudManifest -Raw | ConvertFrom-Json
+        $cloudAdmins = @($cloudUsers | Where-Object {
+            $_.is_superuser -eq $true -or $_.role_code -in @("ADMIN", "ORG-ADMIN", "OWNER")
+        })
+        if ($cloudAdmins.Count -gt 0) {
+            $adminNames = ($cloudAdmins | ForEach-Object { $_.username }) -join ", "
+            Write-Host ""
+            Write-Host "  Cloud already has admin account(s): $adminNames" -ForegroundColor Yellow
+            Write-Host "  These will sync to this hub automatically." -ForegroundColor Gray
+            Write-Host ""
+            $choice = Read-Host "  Create a local admin anyway? [y/N]"
+            if ($choice -notmatch "^[Yy]$") {
+                $skipSuperuser = $true
+                Write-Info "Skipped local superuser creation. Use cloud credentials after first sync."
+            }
+        }
+    }
+
+    if (-not $skipSuperuser) {
+        Write-Info "Create an admin account for this hub:"
+        Push-Location $InstallDir
+        $prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        & $python manage.py createsuperuser --force
+        $ErrorActionPreference = $prevEAP
+        Pop-Location
+    }
 }
 
 # --- Install Windows Service via NSSM ---
