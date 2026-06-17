@@ -230,8 +230,12 @@ Push-Location $InstallDir
 $migrateOutput = $null
 $migrateExit = 1
 for ($attempt = 1; $attempt -le 3; $attempt++) {
+    # Temporarily allow stderr (e.g. python-magic warnings) without throwing
+    # a NativeCommandError under $ErrorActionPreference = 'Stop'.
+    $prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
     $migrateOutput = & $pythonExe manage.py migrate --noinput --traceback 2>&1
     $migrateExit = $LASTEXITCODE
+    $ErrorActionPreference = $prevEAP
     if ($migrateExit -eq 0) { break }
     $outStr = ($migrateOutput | Out-String)
     if ($outStr -match 'database is locked' -and $attempt -lt 3) {
@@ -273,7 +277,9 @@ Log "Migrations applied"
 # --- Step 8: Collect static files ---
 Write-Step 8 "Collecting static files..."
 Push-Location $InstallDir
+$prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
 & $pythonExe manage.py collectstatic --noinput 2>&1 | Out-Null
+$ErrorActionPreference = $prevEAP
 Pop-Location
 Write-Ok "Static files collected."
 
