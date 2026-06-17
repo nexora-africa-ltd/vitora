@@ -17,8 +17,10 @@ use tauri_plugin_deep_link::DeepLinkExt;
 
 pub mod commands;
 pub mod config;
+pub mod updater;
 
 use commands::{list_printers, print_receipt};
+use updater::check_for_updates;
 use config::{get_api_url, get_app_config, get_db_encryption_key, get_fernet_key, get_installation_id, get_license_token, store_license_token, clear_license_token, store_credentials, get_credentials, clear_credentials, is_first_run, save_hub_config, set_api_url, set_backup_interval, set_deployment_mode, set_facility_id, set_fernet_key, set_hub_url, set_organization_id, set_sync_interval, AppConfig};
 
 /// Manages the Node.js sidecar process lifecycle.
@@ -301,6 +303,7 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .enabled(false)
         .build(app)?;
     let show = MenuItemBuilder::with_id("show", "Show Vitora").build(app)?;
+    let check_updates = MenuItemBuilder::with_id("check-updates", "Check for Updates…").build(app)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
@@ -309,6 +312,7 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .item(&version_item)
         .item(&sep1)
         .item(&show)
+        .item(&check_updates)
         .item(&sep2)
         .item(&quit)
         .build()?;
@@ -329,6 +333,12 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                     let _ = window.show();
                     let _ = window.set_focus();
                 }
+            }
+            "check-updates" => {
+                let app_handle = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    updater::check_and_install(app_handle, false).await;
+                });
             }
             "quit" => {
                 let state = app.state::<SidecarState>();
@@ -394,6 +404,7 @@ pub fn run() {
             store_credentials,
             get_credentials,
             clear_credentials,
+            check_for_updates,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
