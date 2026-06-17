@@ -1,10 +1,10 @@
 # ============================================================================
-# Vitora HMIS — Facility Hub Windows Installer
+# Vitora HMIS -- Facility Hub Windows Installer
 #
 # Installs and configures the Django backend as a local facility hub
 # running as a Windows service via NSSM (Non-Sucking Service Manager).
 #
-# Downloads a pre-built release artifact from Azure CDN — no repo clone needed.
+# Downloads a pre-built release artifact from Azure CDN -- no repo clone needed.
 #
 # Usage (Run as Administrator):
 #   # Download and run (one-liner):
@@ -271,7 +271,7 @@ if ($innerDir) {
         Move-Item -Path $_.FullName -Destination $dest
     }
 } else {
-    # Flat zip — move all contents
+    # Flat zip -- move all contents
     Get-ChildItem -Path $tempExtract | ForEach-Object {
         $dest = Join-Path $InstallDir $_.Name
         if (Test-Path $dest) { Remove-PathWithRetry -Path $dest }
@@ -363,7 +363,7 @@ if (-not (Test-Path $nssmExe)) {
 Write-Step 4 "Setting up Python environment..."
 
 # If a venv already exists from a previous install, verify its interpreter
-# actually IS Python 3.12 — not just whatever `python` was at the time it was
+# actually IS Python 3.12 -- not just whatever `python` was at the time it was
 # created. A 3.11 venv silently fails to load .cp312-win_amd64.pyd modules
 # with "DLL load failed".
 if (Test-Path "$VenvDir\Scripts\python.exe") {
@@ -440,7 +440,7 @@ Write-Info "Configuration saved."
 $hubShellContent = @'
 <#
 .SYNOPSIS
-    Vitora Hub management shell — loads .env and runs a Django manage.py command.
+    Vitora Hub management shell -- loads .env and runs a Django manage.py command.
 
 .DESCRIPTION
     Loads C:\VitoraHub\.env into the current process environment so the
@@ -466,7 +466,7 @@ if (Test-Path $envFile) {
         }
     }
 } else {
-    Write-Warning "No .env file at $envFile — hub may not start correctly."
+    Write-Warning "No .env file at $envFile -- hub may not start correctly."
 }
 
 # Default to `shell` if no args
@@ -522,7 +522,7 @@ except Exception:
     $appliedCount = [int]$appliedCount
     if ($appliedCount -ge $migFileCount -and $migFileCount -gt 0) {
         $skipMigrate = $true
-        Write-Info "All $appliedCount migrations already applied — skipping migrate."
+        Write-Info "All $appliedCount migrations already applied -- skipping migrate."
     }
 }
 
@@ -544,7 +544,7 @@ if (Test-Path "$InstallDir\data\kenya_locations.csv") {
 
 # Initialize all production reference data (subscription plans, RBAC roles,
 # ICD-10, LOINC, drugs, CDS rules, KEPI schedule, notifiable diseases, etc).
-# Idempotent — safe to re-run on upgrade.
+# Idempotent -- safe to re-run on upgrade.
 Write-Info "Initializing reference data (this may take a few minutes)..."
 & $python manage.py initialize_hub
 if ($LASTEXITCODE -ne 0) {
@@ -559,7 +559,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 Remove-Item -Path $activationFile -Force -ErrorAction SilentlyContinue
 
-# Collect static files (Django admin CSS, etc.).  Don't swallow errors —
+# Collect static files (Django admin CSS, etc.).  Don't swallow errors --
 # if this fails the admin page will be unstyled.
 & $python manage.py collectstatic --no-input --clear
 if ($LASTEXITCODE -ne 0) {
