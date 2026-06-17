@@ -453,6 +453,9 @@ class StaffProfileAdmin(admin.ModelAdmin):
 
     actions = ["activate_staff", "deactivate_staff", "suspend_staff", "export_to_csv"]
 
+    class Media:
+        js = ("admin/js/staffprofile_generate_id.js",)
+
     fieldsets = (
         (
             "User & Identity",
