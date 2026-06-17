@@ -1,4 +1,5 @@
-use std::net::TcpListener;
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -46,9 +47,40 @@ impl SidecarState {
             .port()
     }
 
-    /// Check if the sidecar HTTP server is responding.
+    /// Check if the sidecar HTTP server is actually serving requests.
+    ///
+    /// We deliberately do NOT use `TcpListener::bind` here: Next.js binds its
+    /// port very early in startup, well before it is ready to handle HTTP
+    /// requests. A bind probe therefore fires too early and the WebView
+    /// navigates to a server that hangs / returns nothing -> blank screen.
+    ///
+    /// Instead, open a TCP connection, send a minimal HTTP/1.1 GET, and
+    /// confirm we read an HTTP response line back.
     fn is_port_ready(port: u16) -> bool {
-        TcpListener::bind(format!("127.0.0.1:{}", port)).is_err()
+        let addr = format!("127.0.0.1:{}", port);
+        let mut stream = match TcpStream::connect_timeout(
+            &match addr.parse() {
+                Ok(a) => a,
+                Err(_) => return false,
+            },
+            Duration::from_millis(500),
+        ) {
+            Ok(s) => s,
+            Err(_) => return false,
+        };
+        let _ = stream.set_read_timeout(Some(Duration::from_millis(1500)));
+        let _ = stream.set_write_timeout(Some(Duration::from_millis(500)));
+        // Use HEAD against a known-cheap path; Next.js answers any path early
+        // once the route handler is ready.
+        let req = b"HEAD / HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
+        if stream.write_all(req).is_err() {
+            return false;
+        }
+        let mut buf = [0u8; 16];
+        match stream.read(&mut buf) {
+            Ok(n) if n >= 5 => buf[..5] == *b"HTTP/",
+            _ => false,
+        }
     }
 
     /// Extract standalone.tar.gz to the app data directory if not already extracted.
@@ -230,10 +262,47 @@ impl SidecarState {
             .env("VITORA_DESKTOP", "1")
             // Explicitly set NODE_PATH so Node.js can always find modules
             .env("NODE_PATH", node_modules_dir.to_string_lossy().to_string())
-            .current_dir(&standalone_dir)
-            // Suppress stdout/stderr to prevent console window allocation on Windows
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
+            .current_dir(&standalone_dir);
+
+        // Pipe Node stdout/stderr to log files in the app log dir so we can
+        // actually diagnose blank-screen / startup failures in the field.
+        // Previously these were piped to /dev/null, making post-update
+        // crashes invisible.
+        let log_dir = app
+            .path()
+            .app_log_dir()
+            .ok()
+            .or_else(|| app.path().app_data_dir().ok().map(|d| d.join("logs")));
+        if let Some(ref dir) = log_dir {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        match log_dir.as_ref().map(|d| (d.join("sidecar-stdout.log"), d.join("sidecar-stderr.log"))) {
+            Some((stdout_path, stderr_path)) => {
+                // Truncate on each spawn so old data doesn't accumulate forever
+                // and the most recent run is always at the top.
+                let stdout_file = std::fs::File::create(&stdout_path).ok();
+                let stderr_file = std::fs::File::create(&stderr_path).ok();
+                if let Some(f) = stdout_file {
+                    child.stdout(Stdio::from(f));
+                } else {
+                    child.stdout(Stdio::null());
+                }
+                if let Some(f) = stderr_file {
+                    child.stderr(Stdio::from(f));
+                } else {
+                    child.stderr(Stdio::null());
+                }
+                log::info!(
+                    "Sidecar stdout -> {} | stderr -> {}",
+                    stdout_path.display(),
+                    stderr_path.display()
+                );
+            }
+            None => {
+                child.stdout(Stdio::null());
+                child.stderr(Stdio::null());
+            }
+        }
 
         // On Windows, suppress the console window for the child process
         #[cfg(target_os = "windows")]
@@ -259,15 +328,34 @@ impl SidecarState {
     }
 
     /// Wait for the sidecar to start responding (up to timeout).
+    ///
+    /// Detects early child death by checking `try_wait` so we fail fast with
+    /// a useful error instead of waiting the full timeout when Node has
+    /// already crashed.
     pub fn wait_for_ready(&self, timeout: Duration) -> Result<(), String> {
         let port = *self.port.lock().unwrap();
         let start = Instant::now();
 
         while start.elapsed() < timeout {
+            // If the child has exited, no point in waiting longer.
+            if let Some(child) = self.child.lock().unwrap().clone() {
+                match child.try_wait() {
+                    Ok(Some(status)) => {
+                        return Err(format!(
+                            "Sidecar exited prematurely with {:?}; check sidecar-stderr.log",
+                            status
+                        ));
+                    }
+                    Ok(None) => { /* still running */ }
+                    Err(e) => {
+                        log::warn!("try_wait on sidecar failed: {}", e);
+                    }
+                }
+            }
             if Self::is_port_ready(port) {
                 return Ok(());
             }
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(250));
         }
 
         Err(format!(
@@ -484,8 +572,11 @@ pub fn run() {
 
                         emit_status(&handle_clone, "Starting server...");
 
-                        // Wait for the sidecar to be ready (max 20s)
-                        match state.wait_for_ready(Duration::from_secs(20)) {
+                        // Wait for the sidecar to actually serve HTTP (max 60s).
+                        // After an update the standalone is freshly re-extracted
+                        // and Node's first-start (JIT compile, route table) on
+                        // slow Windows disks easily exceeds 20s.
+                        match state.wait_for_ready(Duration::from_secs(60)) {
                             Ok(()) => {
                                 log::info!("Sidecar is ready on port {}", port);
                                 // Navigate main window to sidecar URL
