@@ -8,8 +8,8 @@
  * In browser/web mode, PowerSync handles local storage instead.
  */
 
-import path from 'path';
-import fs from 'fs';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
 
 // better-sqlite3 is a native module — only available in Node.js (Tauri sidecar)
 let Database: typeof import('better-sqlite3') | null = null;
