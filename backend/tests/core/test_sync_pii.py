@@ -63,6 +63,38 @@ class TestUserBidirectionalSync:
         for entry in entries:
             assert "last_login" not in entry.data
 
+    @override_settings(ENVIRONMENT="staging", SYNC_ENABLED=True)
+    def test_user_save_with_groups_does_not_500(self, sample_organization, sample_facility):
+        """Regression: saving a User with groups must not break sync serialization.
+
+        Previously, ``model_to_dict`` returned Group/Permission instances for the
+        ``groups`` and ``user_permissions`` M2M fields. ``DjangoJSONEncoder``
+        then raised ``TypeError: Object of type Group is not JSON serializable``
+        when the post_save sync signal fired (e.g. during ``update_last_login``
+        on every successful admin/API login), surfacing as a 500 to clients.
+        """
+        from django.contrib.auth.models import Group
+
+        import hmis.apps.core.sync_signals  # noqa: F401
+
+        SyncQueue.objects.all().delete()
+
+        user = User.objects.create_user(username="grouped_user", password="pass123")
+        group = Group.objects.create(name="Test Sync Group")
+        user.groups.add(group)
+
+        # This save mirrors what django.contrib.auth.update_last_login does.
+        from django.utils import timezone
+
+        user.last_login = timezone.now()
+        user.save(update_fields=["last_login"])  # must not raise
+
+        entry = SyncQueue.objects.filter(model_name="auth.User", record_id=user.pk).latest(
+            "created_at"
+        )
+        # Groups should be serialized as a list of PKs, not model instances.
+        assert entry.data.get("groups") == [group.pk]
+
     def test_materialize_user_from_cloud_with_password(self):
         """Cloud-created user with password hash should be usable locally."""
         user = User.objects.create_user(username="cloud_user", password="old-password")
