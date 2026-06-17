@@ -1,5 +1,5 @@
 # ============================================================================
-# Vitora HMIS — Facility Hub Windows Updater
+# Vitora HMIS -- Facility Hub Windows Updater
 #
 # Updates an existing hub installation to the latest (or specified) version.
 # Downloads from Azure CDN, stops service, extracts, migrates, restarts.
@@ -235,7 +235,7 @@ for ($attempt = 1; $attempt -le 3; $attempt++) {
     if ($migrateExit -eq 0) { break }
     $outStr = ($migrateOutput | Out-String)
     if ($outStr -match 'database is locked' -and $attempt -lt 3) {
-        Write-Info "Migrate hit 'database is locked' (attempt $attempt/3) — retrying in 5s..."
+        Write-Info "Migrate hit 'database is locked' (attempt $attempt/3) -- retrying in 5s..."
         Log "migrate attempt $attempt failed with database lock; retrying"
         Start-Sleep -Seconds 5
         continue
