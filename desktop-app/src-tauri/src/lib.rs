@@ -472,6 +472,21 @@ pub fn run() {
     let sidecar = SidecarState::new();
 
     tauri::Builder::default()
+        // Single-instance plugin MUST be registered first (before other plugins
+        // and before window creation) per Tauri docs. When a second instance
+        // launches (e.g. user double-clicks the desktop icon while the app is
+        // minimized to tray, or autostart fires alongside a manual launch),
+        // its main fn returns immediately and this callback runs in the
+        // already-running instance -- preventing duplicate tray icons,
+        // duplicate Node sidecars, and duplicate port allocations.
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            log::info!("Second instance launch intercepted; focusing main window");
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
