@@ -70,16 +70,30 @@ impl SidecarState {
         };
         let _ = stream.set_read_timeout(Some(Duration::from_millis(1500)));
         let _ = stream.set_write_timeout(Some(Duration::from_millis(500)));
-        // Use HEAD against a known-cheap path; Next.js answers any path early
-        // once the route handler is ready.
-        let req = b"HEAD / HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
+        // Probe a cheap API route that bypasses the dashboard/login render path.
+        // Any HTTP response from `/` is not enough: Next may return a redirect or
+        // a server error while still looking "ready" to a TCP-level probe.
+        let req = b"GET /api/desktop-health HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
         if stream.write_all(req).is_err() {
             return false;
         }
-        let mut buf = [0u8; 16];
+        let mut buf = [0u8; 32];
         match stream.read(&mut buf) {
-            Ok(n) if n >= 5 => buf[..5] == *b"HTTP/",
+            Ok(n) if n >= 12 => {
+                let status = String::from_utf8_lossy(&buf[..n]);
+                status.starts_with("HTTP/1.1 200") || status.starts_with("HTTP/1.0 200")
+            }
             _ => false,
+        }
+    }
+
+    /// Return the sidecar exit status if it has stopped.
+    pub fn exited_status(&self) -> Option<String> {
+        let child = self.child.lock().unwrap().clone()?;
+        match child.try_wait() {
+            Ok(Some(status)) => Some(format!("{:?}", status)),
+            Ok(None) => None,
+            Err(e) => Some(format!("try_wait failed: {}", e)),
         }
     }
 
@@ -594,11 +608,36 @@ pub fn run() {
                         match state.wait_for_ready(Duration::from_secs(60)) {
                             Ok(()) => {
                                 log::info!("Sidecar is ready on port {}", port);
-                                // Navigate main window to sidecar URL
+                                // Navigate main window to the desktop-aware login gate.
+                                // `/` redirects to `/dashboard`, which can skip the
+                                // desktop setup/activation checks and leave users with
+                                // a blank authenticated shell when no session exists.
                                 if let Some(main_window) = handle_clone.get_webview_window("main") {
-                                    let url = format!("http://127.0.0.1:{}", port);
+                                    let url = format!("http://127.0.0.1:{}/login", port);
                                     let _ = main_window.navigate(url.parse().unwrap());
                                 }
+
+                                // Keep watching for a late sidecar crash after the
+                                // initial health check. If Node exits after navigation,
+                                // surface a useful page instead of leaving a blank WebView.
+                                let monitor_handle = handle_clone.clone();
+                                std::thread::spawn(move || {
+                                    for _ in 0..120 {
+                                        std::thread::sleep(Duration::from_secs(1));
+                                        let state = monitor_handle.state::<SidecarState>();
+                                        if let Some(status) = state.exited_status() {
+                                            log::error!("Sidecar exited after navigation: {}", status);
+                                            if let Some(window) = monitor_handle.get_webview_window("main") {
+                                                let error_html = format!(
+                                                    "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Vitora stopped unexpectedly</h1><p style='color:%2394a3b8'>The local application server exited after startup.</p><p style='color:%23ef4444;font-size:12px'>Status: {}</p><p style='color:%2394a3b8;font-size:12px'>Check sidecar-stderr.log for details.</p></body></html>",
+                                                    status
+                                                );
+                                                let _ = window.navigate(error_html.parse().unwrap());
+                                            }
+                                            break;
+                                        }
+                                    }
+                                });
                             }
                             Err(e) => {
                                 log::error!("Sidecar failed to become ready: {}", e);
