@@ -532,6 +532,60 @@ class TestMFALoginFlow:
         assert "last_name" in response.data["user"]
         assert "permissions" in response.data["user"]
 
+    def test_cookie_mfa_verify_web_strips_body_tokens(self, api_client, test_user, db, settings):
+        """Web cookie MFA should set cookies and omit tokens from response body."""
+        settings.MFA_ENFORCEMENT = True
+        from hmis.apps.core.mfa.models import UserTOTPDevice
+
+        device = UserTOTPDevice.objects.create(user=test_user, name="Phone", confirmed=True)
+
+        login_response = api_client.post(
+            "/api/auth/login/",
+            {"username": "testuser", "password": "testpassword123"},
+        )
+        assert login_response.status_code == status.HTTP_200_OK
+        mfa_token = login_response.data["mfa_token"]
+
+        response = api_client.post(
+            "/api/auth/mfa-verify/",
+            {"mfa_token": mfa_token, "token": device.generate_token()},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "access" not in response.data
+        assert "refresh" not in response.data
+        assert "vitora_access" in response.cookies
+        assert "vitora_refresh" in response.cookies
+
+    def test_cookie_mfa_verify_desktop_returns_body_tokens(
+        self, api_client, test_user, db, settings
+    ):
+        """Desktop cookie-auth MFA must return tokens for Bearer auth."""
+        settings.MFA_ENFORCEMENT = True
+        from hmis.apps.core.mfa.models import UserTOTPDevice
+
+        device = UserTOTPDevice.objects.create(user=test_user, name="Phone", confirmed=True)
+
+        login_response = api_client.post(
+            "/api/auth/login/",
+            {"username": "testuser", "password": "testpassword123"},
+            HTTP_X_VITORA_CLIENT="desktop/0.1.0",
+        )
+        assert login_response.status_code == status.HTTP_200_OK
+        mfa_token = login_response.data["mfa_token"]
+
+        response = api_client.post(
+            "/api/auth/mfa-verify/",
+            {"mfa_token": mfa_token, "token": device.generate_token()},
+            HTTP_X_VITORA_CLIENT="desktop/0.1.0",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "access" in response.data
+        assert "refresh" in response.data
+        assert "vitora_access" not in response.cookies
+        assert "vitora_refresh" not in response.cookies
+
     def test_mfa_verify_with_backup_code(self, api_client, test_user, db, settings):
         """Should complete login with valid backup code."""
         settings.MFA_ENFORCEMENT = True

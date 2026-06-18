@@ -96,55 +96,25 @@ class CookieLoginView(APIView):
     authentication_classes = []  # No auth needed for login
 
     def post(self, request):
-        from hmis.apps.core.powersync_tokens import PowerSyncTokenObtainPairSerializer
-        from hmis.apps.core.views import _build_user_info
+        from hmis.apps.core.views import AuditedTokenObtainPairView
 
-        serializer = PowerSyncTokenObtainPairSerializer(data=request.data)
+        # Delegate to the canonical JWT login view so cookie login enforces the
+        # same password, organization activation, MFA, audit, and user payload
+        # behavior as /api/token/. Do not duplicate serializer logic here.
+        token_view = AuditedTokenObtainPairView.as_view()
+        token_response = token_view(request._request)
 
-        try:
-            serializer.is_valid(raise_exception=True)
-        except Exception:
-            return Response(
-                {"error": "Invalid credentials"},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
+        if token_response.status_code != status.HTTP_200_OK:
+            return token_response
 
-        data = serializer.validated_data
+        data = token_response.data
 
         # If MFA is required, don't set cookies yet
         if data.get("mfa_required"):
             return Response(data, status=status.HTTP_200_OK)
 
         # Build response — user profile without tokens
-        # The serializer only returns {access, refresh}, so we build user info
-        # from the authenticated user for the frontend to store in localStorage.
         user_data = {k: v for k, v in data.items() if k not in ("access", "refresh")}
-        user_data["user"] = _build_user_info(serializer.user)
-
-        # Include memberships at top level for frontend org-switching
-        from hmis.apps.core.models import OrgMembership
-
-        memberships = []
-        if hasattr(serializer.user, "staff_profile"):
-            try:
-                profile = serializer.user.staff_profile
-                for m in profile.memberships.filter(
-                    status=OrgMembership.MembershipStatus.ACTIVE
-                ).select_related("organization", "role", "department"):
-                    memberships.append(
-                        {
-                            "id": m.pk,
-                            "organization_id": m.organization_id,
-                            "organization_name": m.organization.name,
-                            "role_code": m.role.code,
-                            "role_name": m.role.name,
-                            "is_primary": m.is_primary,
-                            "facilities": list(m.facilities.values("id", "name", "mfl_code")),
-                        }
-                    )
-            except Exception:
-                logger.exception("Failed to build memberships for user %s", serializer.user.pk)
-        user_data["memberships"] = memberships
 
         response = Response(user_data, status=status.HTTP_200_OK)
 
@@ -196,6 +166,14 @@ class CookieMFAVerifyView(APIView):
         # Return user data without tokens
         user_data = {k: v for k, v in data.items() if k not in ("access", "refresh")}
         response = Response(user_data, status=status.HTTP_200_OK)
+
+        # Desktop clients can't use cross-origin httpOnly cookies. Normal
+        # desktop login returns body tokens; MFA completion must do the same or
+        # the next API request immediately 401s after a successful MFA verify.
+        if request.headers.get("X-Vitora-Client", "").startswith("desktop"):
+            user_data["access"] = access
+            user_data["refresh"] = refresh
+            return Response(user_data, status=status.HTTP_200_OK)
 
         return _set_auth_cookies(response, access, refresh)
 
