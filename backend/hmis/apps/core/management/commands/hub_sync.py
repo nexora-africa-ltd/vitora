@@ -14,6 +14,13 @@ from hmis.apps.core.models import SyncQueue
 class Command(BaseCommand):
     help = "Run one hub-to-cloud sync cycle and report queue status."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--retry-failed",
+            action="store_true",
+            help="Reset failed sync entries that are still below SYNC_MAX_RETRIES before syncing.",
+        )
+
     def handle(self, *args, **options):
         worker = HubCloudSyncWorker()
         if not worker.is_configured:
@@ -27,6 +34,10 @@ class Command(BaseCommand):
                 "LICENSE_TOKEN/HUB_LICENSE_TOKEN_PATH."
             )
 
+        reset_count = 0
+        if options["retry_failed"]:
+            reset_count = worker.reset_failed_for_retry()
+
         before_pending = SyncQueue.objects.filter(status="PENDING").count()
         before_failed = SyncQueue.objects.filter(status="FAILED").count()
         pushed, pulled = worker.sync_once()
@@ -39,5 +50,6 @@ class Command(BaseCommand):
                 f"pushed={pushed}, pulled={pulled}, "
                 f"pending={before_pending}->{after_pending}, "
                 f"failed={before_failed}->{after_failed}"
+                + (f", reset_failed={reset_count}" if options["retry_failed"] else "")
             )
         )

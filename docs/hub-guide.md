@@ -1,6 +1,6 @@
 # Vitora HMIS Facility Hub — Comprehensive Guide & Operations Runbook
 
-> **Current Version**: hub-v0.6.7
+> **Current Version**: hub-v0.6.8
 > **Platforms**: Linux (Debian/Ubuntu, Raspberry Pi), Windows 10/11+
 > **Delivery Modes**: Native (systemd/NSSM service), Container (Docker Compose)
 > **Last Updated**: June 2026
@@ -920,6 +920,15 @@ Older hub shell wrappers can split a single PowerShell argument into characters,
 ```powershell
 cd C:\VitoraHub
 .\venv\Scripts\python.exe manage.py hub_sync
+```
+
+**`hub_sync` reports `Cloud push returned 400` with `client_id` required:**
+
+Upgrade to hub-v0.6.8. Older hub sync payloads sent the hub id only at the batch level, while the cloud endpoint validates `client_id` on each change. If the failed run moved rows from `PENDING` to `FAILED`, retry them after updating:
+
+```powershell
+cd C:\VitoraHub
+.\hub-shell.ps1 hub_sync --retry-failed
 ```
 
 **"database disk image is malformed":**
