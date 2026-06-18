@@ -43,12 +43,37 @@ function Merge-DirectoryPreservingRuntimeData {
     New-Item -ItemType Directory -Path $DestinationDir -Force | Out-Null
     Get-ChildItem -Path $SourceDir -Force | ForEach-Object {
         $target = Join-Path $DestinationDir $_.Name
+        if ((Split-Path -Leaf $DestinationDir) -eq 'data' -and $_.Name -eq 'data') {
+            Write-Info "Skipping nested packaged data directory: $($_.FullName)"
+            Log "Skipped nested packaged data directory: $($_.FullName)"
+            return
+        }
+        if ($_.Name -in @('hub.sqlite3', 'hub.sqlite3-wal', 'hub.sqlite3-shm')) {
+            Write-Info "Preserving runtime database file: $($_.Name)"
+            Log "Skipped packaged runtime database file: $($_.Name)"
+            return
+        }
         if ($_.PSIsContainer) {
             Merge-DirectoryPreservingRuntimeData -SourceDir $_.FullName -DestinationDir $target
         } else {
             Copy-Item -Path $_.FullName -Destination $target -Force
         }
     }
+}
+
+function Remove-NestedPackagedDataCopy {
+    $nestedData = Join-Path $InstallDir "data\data"
+    if (-not (Test-Path $nestedData)) { return }
+
+    if (Test-Path (Join-Path $nestedData "hub.sqlite3")) {
+        Write-Info "Nested data directory contains hub.sqlite3; leaving it untouched for manual review: $nestedData"
+        Log "Nested data directory contains hub.sqlite3; not removing: $nestedData"
+        return
+    }
+
+    Write-Info "Removing nested packaged data directory: $nestedData"
+    Log "Removing nested packaged data directory: $nestedData"
+    Remove-Item -Path $nestedData -Recurse -Force
 }
 
 function Install-ExtractedHubItem {
@@ -254,6 +279,7 @@ if ($hadDatabaseBeforeUpdate -and -not (Test-Path $preUpdateDbPath)) {
     Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
     exit 1
 }
+Remove-NestedPackagedDataCopy
 Write-Ok "Extracted."
 Log "Extracted version $Version"
 

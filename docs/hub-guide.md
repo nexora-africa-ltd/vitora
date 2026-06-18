@@ -1,6 +1,6 @@
 # Vitora HMIS Facility Hub — Comprehensive Guide & Operations Runbook
 
-> **Current Version**: hub-v0.6.4
+> **Current Version**: hub-v0.6.5
 > **Platforms**: Linux (Debian/Ubuntu, Raspberry Pi), Windows 10/11+
 > **Delivery Modes**: Native (systemd/NSSM service), Container (Docker Compose)
 > **Last Updated**: June 2026
@@ -421,11 +421,11 @@ Start-Service VitoraHub
 ```bash
 # Linux
 cd /opt/vitora
-sudo -u vitora /opt/vitora/venv/bin/python manage.py migrate --no-input
+sudo ./hub-shell.sh migrate --no-input
 
 # Windows (run as Administrator)
 cd C:\VitoraHub
-.\venv\Scripts\python.exe manage.py migrate --no-input
+.\hub-shell.ps1 migrate --no-input
 ```
 
 #### Create Admin User
@@ -433,12 +433,14 @@ cd C:\VitoraHub
 ```bash
 # Linux
 cd /opt/vitora
-sudo -u vitora /opt/vitora/venv/bin/python manage.py createsuperuser
+sudo ./hub-shell.sh createsuperuser
 
 # Windows
 cd C:\VitoraHub
-.\venv\Scripts\python.exe manage.py createsuperuser
+.\hub-shell.ps1 createsuperuser
 ```
+
+The hub shell wrappers load `.env` before running Django commands so management commands use the same `HUB_DB_PATH` as the service. Newer hub builds also auto-load a sibling `.env` from `manage.py`, but the wrappers remain the recommended operator path.
 
 #### Check Database Size
 
@@ -881,6 +883,29 @@ sync_to_cloud.delay()
 5. **Test from client**: `curl http://<hub-ip>:9088/api/hub/health/`
 
 ### Database Issues
+
+**Users exist in `C:\VitoraHub\vitora.db` but cannot log in:**
+
+This means a management command was run without hub environment variables, so Django used the development fallback database instead of `C:\VitoraHub\data\hub.sqlite3`. Stop the service, back up both files, then copy the populated database into the canonical hub path only if `hub.sqlite3` is empty or disposable.
+
+```powershell
+Stop-Service VitoraHub
+Copy-Item C:\VitoraHub\vitora.db C:\VitoraHub\vitora.db.bak
+Copy-Item C:\VitoraHub\data\hub.sqlite3 C:\VitoraHub\data\hub.sqlite3.bak
+
+# Confirm which DB has users before replacing anything.
+.\hub-shell.ps1 shell -c "from django.conf import settings; print(settings.DATABASES['default']['NAME'])"
+
+# If vitora.db is the populated DB and data\hub.sqlite3 is empty:
+Copy-Item C:\VitoraHub\vitora.db C:\VitoraHub\data\hub.sqlite3 -Force
+Remove-Item C:\VitoraHub\data\hub.sqlite3-wal,C:\VitoraHub\data\hub.sqlite3-shm -ErrorAction SilentlyContinue
+Remove-Item C:\VitoraHub\data\data -Recurse -Force -ErrorAction SilentlyContinue
+.\hub-shell.ps1 migrate --no-input
+.\hub-shell.ps1 create_superuser --username admin --force
+Start-Service VitoraHub
+```
+
+After recovery, use `C:\VitoraHub\hub-shell.ps1` for management commands. Prefer Vitora's custom `create_superuser` command over Django's built-in `createsuperuser`; the custom command also creates or repairs the user's `StaffProfile` when an organization exists. If it says no organization was found, complete the hub setup/activation seed first, then rerun the command.
 
 **"database disk image is malformed":**
 ```bash
