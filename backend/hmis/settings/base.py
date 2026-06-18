@@ -202,6 +202,10 @@ MEDIA_ROOT = BASE_DIR / "media"
 FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50 MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50 MB
 DATA_UPLOAD_MAX_NUMBER_FILES = 50
+# Django admin user/group permission forms submit one field per permission.
+# Vitora has a large module catalogue, so the default limit of 1000 rejects
+# legitimate permission edits with SuspiciousOperation/Bad Request (400).
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
