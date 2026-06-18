@@ -367,6 +367,56 @@ $ErrorActionPreference = $prevEAP
 Pop-Location
 Write-Ok "Static files collected."
 
+# --- Step 8b: Refresh hub-shell wrapper ---
+Write-Step "8b" "Refreshing hub management wrapper..."
+$hubShellContent = @'
+<#
+.SYNOPSIS
+    Vitora Hub management shell -- loads .env and runs a Django manage.py command.
+
+.DESCRIPTION
+    Loads C:\VitoraHub\.env into the current process environment so the
+    correct settings module, database path, and secret key are used. Then
+    invokes `manage.py` with any arguments you pass.
+
+.EXAMPLE
+    .\hub-shell.ps1                          # Opens Django shell
+    .\hub-shell.ps1 create_superuser --force # Creates a hub-local superuser
+    .\hub-shell.ps1 changepassword admin     # Changes a user's password
+    .\hub-shell.ps1 migrate                  # Runs migrations
+#>
+
+$ErrorActionPreference = "Stop"
+$InstallDir = "C:\VitoraHub"
+
+# Load .env into the current process
+$envFile = Join-Path $InstallDir ".env"
+if (Test-Path $envFile) {
+    Get-Content $envFile | ForEach-Object {
+        if ($_ -match '^\s*([^#=][^=]*)=(.*)$') {
+            [Environment]::SetEnvironmentVariable($matches[1].Trim(), $matches[2].Trim(), 'Process')
+        }
+    }
+} else {
+    Write-Warning "No .env file at $envFile -- hub may not start correctly."
+}
+
+# Default to `shell` if no args. Always wrap incoming args as an array;
+# otherwise Windows PowerShell can treat a single string argument as an
+# enumerable and pass only/each character to manage.py (e.g. `c`).
+$pyArgs = if ($args.Count -eq 0) { @("shell") } else { @($args) }
+
+Push-Location $InstallDir
+try {
+    $ErrorActionPreference = "Continue"  # Prevent stderr warnings from terminating
+    & "$InstallDir\venv\Scripts\python.exe" "manage.py" @pyArgs
+} finally {
+    Pop-Location
+}
+'@
+Set-Content -Path "$InstallDir\hub-shell.ps1" -Value $hubShellContent
+Write-Ok "Hub management wrapper refreshed."
+
 # --- Step 9: Start service ---
 Write-Step 9 "Starting $ServiceName service..."
 Start-Service -Name $ServiceName
