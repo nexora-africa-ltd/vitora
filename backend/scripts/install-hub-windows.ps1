@@ -675,24 +675,31 @@ if (-not $NonInteractive) {
             $adminNames = ($cloudAdmins | ForEach-Object { $_.username }) -join ", "
             Write-Host ""
             Write-Host "  Cloud already has admin account(s): $adminNames" -ForegroundColor Yellow
-            Write-Host "  These will sync to this hub automatically." -ForegroundColor Gray
+            Write-Host "  Activation reserves these usernames locally, but passwords are not included." -ForegroundColor Gray
+            Write-Host "  Cloud credentials only work here after credential sync reaches the hub." -ForegroundColor Gray
             Write-Host ""
             $choice = Read-Host "  Create a local admin anyway? [y/N]"
             if ($choice -notmatch "^[Yy]$") {
                 $skipSuperuser = $true
-                Write-Info "Skipped local superuser creation. Use cloud credentials after first sync."
+                Write-Info "Skipped local superuser creation. Use cloud credentials only after sync materializes credentials on this hub."
             }
         }
     }
 
     if (-not $skipSuperuser) {
         Write-Info "Create an admin account for this hub:"
+        $defaultAdminUsername = if ($cloudAdmins -and $cloudAdmins.Count -gt 0) { "hub_admin" } else { "admin" }
+        $localAdminUsername = Read-Host "  Local admin username [$defaultAdminUsername]"
+        if (-not $localAdminUsername) { $localAdminUsername = $defaultAdminUsername }
+        $defaultAdminEmail = "$localAdminUsername@vitora.local"
+        $localAdminEmail = Read-Host "  Local admin email [$defaultAdminEmail]"
+        if (-not $localAdminEmail) { $localAdminEmail = $defaultAdminEmail }
         Push-Location $InstallDir
         $prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
         # Use our custom create_superuser (underscore) -- it creates a StaffProfile
         # linked to the hub's organization/facility and honours HUB_USER_PK_OFFSET.
         # Django's built-in createsuperuser does neither.
-        & $python manage.py create_superuser --force
+        & $python manage.py create_superuser --username=$localAdminUsername --email=$localAdminEmail --force --reset-password
         $ErrorActionPreference = $prevEAP
         Pop-Location
     }
