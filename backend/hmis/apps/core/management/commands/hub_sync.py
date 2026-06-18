@@ -20,6 +20,11 @@ class Command(BaseCommand):
             action="store_true",
             help="Reset failed sync entries that are still below SYNC_MAX_RETRIES before syncing.",
         )
+        parser.add_argument(
+            "--full-pull",
+            action="store_true",
+            help="Force the cloud pull step to request a full downward sync instead of using the saved cursor.",
+        )
 
     def handle(self, *args, **options):
         worker = HubCloudSyncWorker()
@@ -40,7 +45,7 @@ class Command(BaseCommand):
 
         before_pending = SyncQueue.objects.filter(status="PENDING").count()
         before_failed = SyncQueue.objects.filter(status="FAILED").count()
-        pushed, pulled = worker.sync_once()
+        pushed, pulled = worker.sync_once(force_full_pull=options["full_pull"])
         after_pending = SyncQueue.objects.filter(status="PENDING").count()
         after_failed = SyncQueue.objects.filter(status="FAILED").count()
 

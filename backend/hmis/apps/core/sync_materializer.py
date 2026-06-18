@@ -90,12 +90,12 @@ def apply_entry(
                         model.objects.filter(pk=existing.pk).update(**cleaned_data)
                     else:
                         cleaned_data.pop(model._meta.pk.name, None)
-                        model.objects.create(**cleaned_data)
+                        create_from_materializer(model, **cleaned_data)
                 elif record_id is not None:
                     cleaned_data.pop(model._meta.pk.name, None)
-                    model.objects.update_or_create(pk=record_id, defaults=cleaned_data)
+                    update_or_create_from_materializer(model, record_id, cleaned_data)
                 else:
-                    model.objects.create(**cleaned_data)
+                    create_from_materializer(model, **cleaned_data)
             elif operation == "UPDATE":
                 updated = model.objects.filter(pk=record_id).update(**cleaned_data)
                 if updated == 0:
@@ -111,6 +111,35 @@ def apply_entry(
         return {"success": False, "error": str(exc)}
 
     return {"success": True}
+
+
+def create_from_materializer(model, **cleaned_data):
+    """Create an instance without letting sync signals re-queue the pull."""
+    instance = model(**cleaned_data)
+    instance._from_sync_materializer = True
+    instance.save()
+    return instance
+
+
+def update_or_create_from_materializer(model, record_id: Any, cleaned_data: dict[str, Any]):
+    """Update/create by PK while marking the save as materializer-originated."""
+    pk_name = model._meta.pk.name
+    try:
+        instance = model.objects.get(pk=record_id)
+        for field_name, value in cleaned_data.items():
+            setattr(instance, field_name, value)
+        instance._from_sync_materializer = True
+        update_fields = list(cleaned_data.keys())
+        if update_fields:
+            instance.save(update_fields=update_fields)
+        else:
+            instance.save()
+        return instance, False
+    except model.DoesNotExist:
+        instance = model(**{pk_name: record_id, **cleaned_data})
+        instance._from_sync_materializer = True
+        instance.save()
+        return instance, True
 
 
 def find_pending_local_change(model_label: str, record_id: Any) -> SyncQueue | None:

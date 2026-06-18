@@ -680,6 +680,38 @@ class TestHubCloudSyncWorker:
         HUB_ID="hub-test",
         HUB_FACILITY_ID="1",
     )
+    def test_full_pull_ignores_saved_cursor(self, db):
+        """Forced full pull should request full=true even when state has a cursor."""
+        from datetime import datetime
+
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        worker = HubCloudSyncWorker()
+        worker._last_pull_timestamp = datetime.fromisoformat("2026-01-01T12:00:00+00:00")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "changes": [],
+            "server_timestamp": timezone.now().isoformat(),
+            "has_more": False,
+        }
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch("hmis.apps.core.hub_sync.requests.get", return_value=mock_response) as get,
+        ):
+            pulled = worker._pull_changes(force_full=True)
+
+        assert pulled == 0
+        assert get.call_args.kwargs["params"]["full"] == "true"
+        assert "since" not in get.call_args.kwargs["params"]
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
     def test_get_license_token_from_env(self, db):
         """Worker should read the activation/license token from LICENSE_TOKEN."""
         from hmis.apps.core.hub_sync import HubCloudSyncWorker
