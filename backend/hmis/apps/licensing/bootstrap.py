@@ -12,18 +12,38 @@ from django.conf import settings
 from django.core.management.base import CommandError
 
 
-def _activation_sync_url() -> str:
+def _sync_url_from_base(base_url: str) -> str:
+    """Build the sync endpoint URL from a public API base URL."""
+    return f"{base_url.rstrip('/')}/api/sync"
+
+
+def _is_local_url(url: str) -> bool:
+    """Return whether a URL points at a local development server."""
+    normalized = url.lower()
+    return "localhost" in normalized or "127.0.0.1" in normalized
+
+
+def _activation_sync_url(request: Any | None = None) -> str:
     """Return the cloud sync URL to embed in activation payloads."""
-    sync_url = getattr(settings, "SYNC_SERVER_URL", "") or "https://api.vitora.digital/api/sync"
-    if not getattr(settings, "DEBUG", False) and (
-        "localhost" in sync_url or "127.0.0.1" in sync_url
-    ):
-        return "https://api.vitora.digital/api/sync"
+    sync_url = (getattr(settings, "SYNC_SERVER_URL", "") or "").strip()
+    if sync_url and not _is_local_url(sync_url):
+        return sync_url
+
+    cloud_base_url = (getattr(settings, "CLOUD_API_BASE_URL", "") or "").strip()
+    if cloud_base_url:
+        return _sync_url_from_base(cloud_base_url)
+
+    if request and not getattr(settings, "DEBUG", False):
+        return _sync_url_from_base(request.build_absolute_uri("/"))
+
+    if sync_url:
+        return sync_url
+
     return sync_url
 
 
 def build_activation_bootstrap_payload(
-    installation, token: str, decoded: dict[str, Any]
+    installation, token: str, decoded: dict[str, Any], request: Any | None = None
 ) -> dict[str, Any]:
     """Build the activation response used by installers to seed a hub."""
     organization = installation.organization
@@ -37,7 +57,7 @@ def build_activation_bootstrap_payload(
         "features": decoded.get("features", {}),
         "expires_at": decoded.get("exp"),
         "check_in_by": decoded.get("check_in_by"),
-        "sync_url": _activation_sync_url(),
+        "sync_url": _activation_sync_url(request),
         "encryption_key": getattr(settings, "ENCRYPTION_KEY", ""),
         "pii_hmac_key": getattr(settings, "PII_HMAC_KEY", ""),
         "organization": serialize_organization(organization),

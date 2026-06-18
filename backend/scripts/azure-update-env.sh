@@ -37,6 +37,10 @@ if [[ -z "$FQDN" ]]; then
   exit 1
 fi
 
+PUBLIC_API_BASE_URL="${CLOUD_API_BASE_URL:-https://${FQDN}}"
+PUBLIC_API_BASE_URL="${PUBLIC_API_BASE_URL%/}"
+PUBLIC_SYNC_SERVER_URL="${SYNC_SERVER_URL:-${PUBLIC_API_BASE_URL}/api/sync}"
+
 echo "==> Updating container app: $APP_NAME (https://${FQDN})"
 
 # ─── Secrets ────────────────────────────────────────────────────────────────
@@ -122,6 +126,8 @@ az containerapp update \
     "CSRF_TRUSTED_ORIGINS=https://vitora-navy.vercel.app,https://staging.vitora.digital" \
     "FRONTEND_URL=https://vitora-navy.vercel.app" \
     "DOCUMENT_VERIFICATION_URL=https://vitora-navy.vercel.app/verify" \
+    "CLOUD_API_BASE_URL=${PUBLIC_API_BASE_URL}" \
+    "SYNC_SERVER_URL=${PUBLIC_SYNC_SERVER_URL}" \
     "DEFAULT_FROM_EMAIL=noreply@vitora.digital" \
     "SHA_ENABLED=${SHA_ENABLED:-true}" \
     "SHA_API_BASE_URL=${SHA_API_BASE_URL:-https://uat.dha.go.ke}" \

@@ -105,7 +105,7 @@ def activate_installation(request: Request) -> Response:
     decoded = pyjwt.decode(token, options={"verify_signature": False})
 
     return Response(
-        build_activation_bootstrap_payload(installation, token, decoded),
+        build_activation_bootstrap_payload(installation, token, decoded, request=request),
         status=status.HTTP_200_OK,
     )
 

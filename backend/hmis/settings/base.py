@@ -560,6 +560,7 @@ CELERY_TIMEZONE = TIME_ZONE
 # ---------------------------------------------------------------------------
 # Offline Sync (REST sync API for Tauri desktop / facility hub clients)
 # ---------------------------------------------------------------------------
+CLOUD_API_BASE_URL = os.getenv("CLOUD_API_BASE_URL", "").rstrip("/")
 SYNC_SERVER_URL = os.getenv("SYNC_SERVER_URL", "http://localhost:9088/api/sync")
 SYNC_ENABLED = os.getenv("SYNC_ENABLED", "false").lower() == "true"
 SYNC_BATCH_SIZE = int(os.getenv("SYNC_BATCH_SIZE", "100"))

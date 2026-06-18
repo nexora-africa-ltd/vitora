@@ -21,6 +21,7 @@ import jwt as pyjwt
 import pytest  # type: ignore
 from django.conf import settings
 from django.core.management import call_command
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
 
@@ -296,6 +297,51 @@ class TestActivation:
         assert "bootstrap" in response.data
         assert "departments" in response.data["bootstrap"]
         assert "roles" in response.data["bootstrap"]
+
+    @override_settings(
+        SYNC_SERVER_URL="http://localhost:9088/api/sync",
+        CLOUD_API_BASE_URL="https://vitora-api.example.test",
+    )
+    def test_activation_sync_url_uses_cloud_base_url(self, api_client, pending_installation):
+        """Activation should derive hub sync URL from configured cloud API base URL."""
+        response = api_client.post(
+            "/api/licensing/activate/",
+            {
+                "installation_id": str(uuid.uuid4()),
+                "activation_code": "TEST-ACTIVATION-CODE",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["sync_url"] == "https://vitora-api.example.test/api/sync"
+
+    @override_settings(
+        DEBUG=False,
+        ALLOWED_HOSTS=["vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io"],
+        SYNC_SERVER_URL="http://localhost:9088/api/sync",
+        CLOUD_API_BASE_URL="",
+    )
+    def test_activation_sync_url_falls_back_to_request_origin(
+        self, api_client, pending_installation
+    ):
+        """Activation should use the request host when no cloud base URL is configured."""
+        response = api_client.post(
+            "/api/licensing/activate/",
+            {
+                "installation_id": str(uuid.uuid4()),
+                "activation_code": "TEST-ACTIVATION-CODE",
+            },
+            format="json",
+            HTTP_HOST="vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io",
+            secure=True,
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert (
+            response.data["sync_url"]
+            == "https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io/api/sync"
+        )
 
     def test_invalid_activation_code_rejected(self, api_client):
         """Invalid code should return 400."""
