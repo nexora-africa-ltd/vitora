@@ -263,24 +263,76 @@ function Remove-PathWithRetry {
     }
 }
 
+function Remove-NestedPackagedDataCopy {
+    $nestedData = Join-Path $InstallDir "data\data"
+    if (-not (Test-Path $nestedData)) { return }
+
+    if (Test-Path (Join-Path $nestedData "hub.sqlite3")) {
+        Write-Warn "Nested data directory contains hub.sqlite3; leaving it untouched for manual review: $nestedData"
+        return
+    }
+
+    Write-Info "Removing nested packaged data directory: $nestedData"
+    Remove-PathWithRetry -Path $nestedData
+}
+
+function Merge-DirectoryPreservingRuntimeData {
+    param(
+        [Parameter(Mandatory=$true)][string]$SourceDir,
+        [Parameter(Mandatory=$true)][string]$DestinationDir
+    )
+
+    New-Item -ItemType Directory -Path $DestinationDir -Force | Out-Null
+    Get-ChildItem -Path $SourceDir -Force | ForEach-Object {
+        $target = Join-Path $DestinationDir $_.Name
+        if ((Split-Path -Leaf $DestinationDir) -eq 'data' -and $_.Name -eq 'data') {
+            Write-Info "Skipping nested packaged data directory: $($_.FullName)"
+            return
+        }
+        if ($_.Name -in @('hub.sqlite3', 'hub.sqlite3-wal', 'hub.sqlite3-shm')) {
+            Write-Info "Preserving runtime database file: $($_.Name)"
+            return
+        }
+        if ($_.PSIsContainer) {
+            Merge-DirectoryPreservingRuntimeData -SourceDir $_.FullName -DestinationDir $target
+        } else {
+            Copy-Item -Path $_.FullName -Destination $target -Force
+        }
+    }
+}
+
+function Install-ExtractedHubItem {
+    param(
+        [Parameter(Mandatory=$true)]$SourceItem,
+        [Parameter(Mandatory=$true)][string]$DestinationRoot
+    )
+
+    $dest = Join-Path $DestinationRoot $SourceItem.Name
+    if ($SourceItem.Name -eq 'data') {
+        Write-Info "Merging packaged reference data without deleting runtime data..."
+        Merge-DirectoryPreservingRuntimeData -SourceDir $SourceItem.FullName -DestinationDir $dest
+        return
+    }
+
+    if (Test-Path $dest) { Remove-PathWithRetry -Path $dest }
+    Move-Item -Path $SourceItem.FullName -Destination $dest
+}
+
 # Find the inner folder (e.g., vitora-hub-0.3.1/) and copy contents
 $innerDir = Get-ChildItem -Path $tempExtract -Directory | Select-Object -First 1
 if ($innerDir) {
     Get-ChildItem -Path $innerDir.FullName | ForEach-Object {
-        $dest = Join-Path $InstallDir $_.Name
-        if (Test-Path $dest) { Remove-PathWithRetry -Path $dest }
-        Move-Item -Path $_.FullName -Destination $dest
+        Install-ExtractedHubItem -SourceItem $_ -DestinationRoot $InstallDir
     }
 } else {
     # Flat zip -- move all contents
     Get-ChildItem -Path $tempExtract | ForEach-Object {
-        $dest = Join-Path $InstallDir $_.Name
-        if (Test-Path $dest) { Remove-PathWithRetry -Path $dest }
-        Move-Item -Path $_.FullName -Destination $dest
+        Install-ExtractedHubItem -SourceItem $_ -DestinationRoot $InstallDir
     }
 }
 Remove-Item -Path $tempArchive -Force -ErrorAction SilentlyContinue
 Remove-Item -Path $tempExtract -Recurse -Force -ErrorAction SilentlyContinue
+Remove-NestedPackagedDataCopy
 
 # Verify extraction
 if (-not (Test-Path "$InstallDir\manage.py")) {

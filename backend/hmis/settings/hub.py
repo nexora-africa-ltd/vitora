@@ -61,10 +61,14 @@ MIDDLEWARE.insert(  # noqa: F405
 # Database — SQLite with WAL mode (performant for <20 concurrent users)
 # ---------------------------------------------------------------------------
 
+HUB_DATA_DIR = os.getenv("HUB_DATA_DIR", os.path.join(str(BASE_DIR), "data"))  # noqa: F405
+HUB_DB_PATH = os.getenv("HUB_DB_PATH", os.path.join(HUB_DATA_DIR, "hub.sqlite3"))
+os.makedirs(HUB_DATA_DIR, exist_ok=True)
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.getenv("HUB_DB_PATH", BASE_DIR / "hub.sqlite3"),  # noqa: F405
+        "NAME": HUB_DB_PATH,
         "OPTIONS": {
             "timeout": 30,  # Wait up to 30s for locks
             "init_command": (
@@ -95,7 +99,7 @@ def _get_or_generate_secret_key() -> str:
     import secrets as _secrets  # stdlib — always available
 
     key_file = os.path.join(
-        os.getenv("HUB_DATA_DIR", str(BASE_DIR)),  # noqa: F405
+        HUB_DATA_DIR,
         ".hub_secret_key",
     )
     if os.path.exists(key_file):
@@ -206,7 +210,7 @@ STATIC_URL = "/static/"
 # Write static files to a writable data dir (NOT inside the install dir,
 # which on Windows lives under C:\Program Files\ and is read-only by default).
 # Falls back to BASE_DIR/staticfiles when HUB_DATA_DIR is not set (dev/test).
-_hub_data_dir = os.getenv("HUB_DATA_DIR", "").strip()
+_hub_data_dir = HUB_DATA_DIR.strip()
 if _hub_data_dir:
     STATIC_ROOT = os.path.join(_hub_data_dir, "staticfiles")
     os.makedirs(STATIC_ROOT, exist_ok=True)
@@ -305,7 +309,7 @@ MIDDLEWARE.append("hmis.apps.core.middleware.HubWatermarkMiddleware")  # noqa: F
 
 # Path to the cached license JWT file (written by installer / check-in task)
 HUB_LICENSE_TOKEN_PATH = os.path.join(
-    os.getenv("HUB_DATA_DIR", str(BASE_DIR)),  # noqa: F405
+    HUB_DATA_DIR,
     "license.jwt",
 )
 

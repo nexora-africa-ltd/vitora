@@ -140,7 +140,6 @@ jobs:
           mkdir -p "dist/${ARTIFACT}"
 
           cp -r backend/build/compiled/payload/* "dist/${ARTIFACT}/"
-          cp -r backend/data "dist/${ARTIFACT}/"
           cp backend/manage.py "dist/${ARTIFACT}/"
           cp backend/requirements-hub.txt "dist/${ARTIFACT}/"
           cp backend/pyproject.toml "dist/${ARTIFACT}/"
@@ -177,7 +176,6 @@ jobs:
           New-Item -ItemType Directory -Force -Path "dist\${ARTIFACT}"
 
           Copy-Item -Recurse "backend\build\compiled\payload\*" "dist\${ARTIFACT}\"
-          Copy-Item -Recurse "backend\data" "dist\${ARTIFACT}\data"
           Copy-Item "backend\manage.py" "dist\${ARTIFACT}\"
           Copy-Item "backend\requirements-hub.txt" "dist\${ARTIFACT}\"
           Copy-Item "backend\pyproject.toml" "dist\${ARTIFACT}\"
