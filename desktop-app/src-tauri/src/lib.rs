@@ -106,6 +106,12 @@ impl SidecarState {
 
         let standalone_dir = app_data_dir.join("standalone");
         let server_js = standalone_dir.join("server.js");
+        let version_marker = standalone_dir.join(".vitora-desktop-version");
+        let app_version = app
+            .config()
+            .version
+            .clone()
+            .unwrap_or_else(|| "unknown".to_string());
 
         // Find the archive in resources
         let resource_dir = app
@@ -121,31 +127,29 @@ impl SidecarState {
             ));
         }
 
-        // If already extracted, check if the bundled archive is newer than the
-        // extracted server.js. If so, the app was updated and we need to
-        // re-extract. Otherwise reuse the existing extraction.
+        // If already extracted, verify it belongs to the current desktop app
+        // version. Do not rely on installer/resource mtimes here: Windows
+        // installers can preserve or normalize timestamps, which lets an
+        // updated shell accidentally reuse an old extracted Next.js bundle.
         if server_js.exists() {
-            let archive_newer = std::fs::metadata(&archive_path)
-                .and_then(|m| m.modified())
-                .ok()
-                .and_then(|archive_mtime| {
-                    std::fs::metadata(&server_js)
-                        .and_then(|m| m.modified())
-                        .ok()
-                        .map(|server_mtime| archive_mtime > server_mtime)
-                })
-                .unwrap_or(false);
+            let extracted_version = std::fs::read_to_string(&version_marker)
+                .unwrap_or_default()
+                .trim()
+                .to_string();
 
-            if !archive_newer {
+            if extracted_version == app_version {
                 log::info!(
-                    "Standalone already extracted at: {}",
+                    "Standalone already extracted for v{} at: {}",
+                    app_version,
                     standalone_dir.display()
                 );
                 return Ok(standalone_dir);
             }
 
             log::info!(
-                "Bundled archive is newer than extracted standalone; re-extracting"
+                "Standalone version mismatch (extracted='{}', app='{}'); re-extracting",
+                extracted_version,
+                app_version
             );
             // Remove the stale extraction so the new bundle is clean.
             // On Windows the OS can briefly hold handles after a process exit
@@ -212,7 +216,10 @@ impl SidecarState {
             ));
         }
 
-        log::info!("Standalone bundle extracted successfully");
+        std::fs::write(&version_marker, &app_version)
+            .map_err(|e| format!("Failed to write standalone version marker: {}", e))?;
+
+        log::info!("Standalone bundle extracted successfully for v{}", app_version);
         Ok(standalone_dir)
     }
 
@@ -670,10 +677,13 @@ pub fn run() {
         .on_window_event(|window, event| {
             match event {
                 WindowEvent::CloseRequested { api, .. } if window.label() == "main" => {
-                    // Minimize to tray instead of closing
+                    // Quit on close. Hiding to tray made the app look closed to
+                    // users while the process and sidecar kept running, which
+                    // blocked uninstall/update and left stale AppData locks.
                     api.prevent_close();
-                    let _ = window.hide();
-                    log::info!("Main window hidden to tray");
+                    let state = window.state::<SidecarState>();
+                    state.kill();
+                    window.app_handle().exit(0);
                 }
                 WindowEvent::Destroyed => {
                     // Kill sidecar when the app is truly destroyed
