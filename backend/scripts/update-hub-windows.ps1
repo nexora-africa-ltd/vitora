@@ -476,6 +476,11 @@ $hubShellContent = @'
     .\hub-shell.ps1 migrate                  # Runs migrations
 #>
 
+param(
+    [Parameter(ValueFromRemainingArguments=$true)]
+    [string[]]$CommandArgs
+)
+
 $ErrorActionPreference = "Stop"
 $InstallDir = "C:\VitoraHub"
 
@@ -491,18 +496,20 @@ if (Test-Path $envFile) {
     Write-Warning "No .env file at $envFile -- hub may not start correctly."
 }
 
-# Default to `shell` if no args. Always wrap incoming args as an array;
-# otherwise Windows PowerShell can treat a single string argument as an
-# enumerable and pass only/each character to manage.py (e.g. `c`).
-$pyArgs = if ($args.Count -eq 0) { @("shell") } else { @($args) }
+# Default to `shell` if no args. ValueFromRemainingArguments keeps a single
+# command such as `hub_sync` as one argv item instead of splatting characters.
+$pyArgs = if (-not $CommandArgs -or $CommandArgs.Count -eq 0) { @("shell") } else { [string[]]$CommandArgs }
 
 Push-Location $InstallDir
+$exitCode = 0
 try {
     $ErrorActionPreference = "Continue"  # Prevent stderr warnings from terminating
     & "$InstallDir\venv\Scripts\python.exe" "manage.py" @pyArgs
+    $exitCode = $LASTEXITCODE
 } finally {
     Pop-Location
 }
+exit $exitCode
 '@
 Set-Content -Path "$InstallDir\hub-shell.ps1" -Value $hubShellContent
 Write-Ok "Hub management wrapper refreshed."

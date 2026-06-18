@@ -33,3 +33,16 @@ def test_windows_installer_cleans_nested_packaged_data_copy():
     assert "Merging packaged reference data without deleting runtime data" in script
     assert "hub.sqlite3-wal" in script
     assert "hub.sqlite3-shm" in script
+
+
+def test_hub_shell_wrapper_preserves_single_command_argument():
+    """hub-shell.ps1 must pass hub_sync as one argv item, not h/u/b/..."""
+    for script_name in ("install-hub-windows.ps1", "update-hub-windows.ps1"):
+        script = (REPO_ROOT / "backend" / "scripts" / script_name).read_text()
+        assert "ValueFromRemainingArguments" in script
+        assert "[string[]]$CommandArgs" in script
+        assert "@pyArgs" in script
+        assert "@($args)" not in script
+        assert script.index("param(") < script.index('$ErrorActionPreference = "Stop"')
+        assert "$exitCode = $LASTEXITCODE" in script
+        assert "exit $exitCode" in script
