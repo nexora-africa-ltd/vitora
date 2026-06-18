@@ -12,6 +12,16 @@ from django.conf import settings
 from django.core.management.base import CommandError
 
 
+def _activation_sync_url() -> str:
+    """Return the cloud sync URL to embed in activation payloads."""
+    sync_url = getattr(settings, "SYNC_SERVER_URL", "") or "https://api.vitora.digital/api/sync"
+    if not getattr(settings, "DEBUG", False) and (
+        "localhost" in sync_url or "127.0.0.1" in sync_url
+    ):
+        return "https://api.vitora.digital/api/sync"
+    return sync_url
+
+
 def build_activation_bootstrap_payload(
     installation, token: str, decoded: dict[str, Any]
 ) -> dict[str, Any]:
@@ -27,8 +37,9 @@ def build_activation_bootstrap_payload(
         "features": decoded.get("features", {}),
         "expires_at": decoded.get("exp"),
         "check_in_by": decoded.get("check_in_by"),
-        "sync_url": getattr(settings, "SYNC_SERVER_URL", "https://api.vitora.digital/api/sync"),
+        "sync_url": _activation_sync_url(),
         "encryption_key": getattr(settings, "ENCRYPTION_KEY", ""),
+        "pii_hmac_key": getattr(settings, "PII_HMAC_KEY", ""),
         "organization": serialize_organization(organization),
         "facility": serialize_facility(facility) if facility else None,
         "bootstrap": {
@@ -77,13 +88,13 @@ def serialize_departments(*, organization, facility) -> list[dict[str, Any]]:
 
     return [
         {
-            "id": department.id,
+            "id": department.pk,
             "code": department.code,
             "name": department.name,
             "department_type": department.department_type,
             "description": department.description,
-            "facility_id": department.facility_id,
-            "organization_id": department.organization_id,
+            "facility_id": getattr(department, "facility_id", None),
+            "organization_id": getattr(department, "organization_id", None),
             "is_active": department.is_active,
         }
         for department in queryset.order_by("name")
@@ -100,13 +111,13 @@ def serialize_roles(*, organization, facility) -> list[dict[str, Any]]:
 
     return [
         {
-            "id": role.id,
+            "id": role.pk,
             "code": role.code,
             "name": role.name,
             "category": role.category,
             "scope": role.scope,
-            "organization_id": role.organization_id,
-            "facility_id": role.facility_id,
+            "organization_id": getattr(role, "organization_id", None),
+            "facility_id": getattr(role, "facility_id", None),
             "permissions_matrix": role.permissions_matrix,
             "hierarchy_level": role.hierarchy_level,
             "requires_license": role.requires_license,

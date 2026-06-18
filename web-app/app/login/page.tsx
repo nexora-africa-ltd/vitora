@@ -142,6 +142,7 @@ export default function LoginPage() {
   }, []);
 
   const isDark = mounted && resolvedTheme === 'dark';
+  const showSignupLink = !(isDesktopMode && isOffline);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -476,15 +477,17 @@ export default function LoginPage() {
                 >
                   Forgot your password?
                 </Link>
-                <p className="text-sm text-muted-foreground">
-                  Don&apos;t have an account?{' '}
-                  <Link
-                    href="/signup"
-                    className="font-medium text-primary dark:text-brand-teal-400 hover:text-primary/80 dark:hover:text-brand-teal-300 transition-colors"
-                  >
-                    Sign up
-                  </Link>
-                </p>
+                {showSignupLink && (
+                  <p className="text-sm text-muted-foreground">
+                    Don&apos;t have an account?{' '}
+                    <Link
+                      href="/signup"
+                      className="font-medium text-primary dark:text-brand-teal-400 hover:text-primary/80 dark:hover:text-brand-teal-300 transition-colors"
+                    >
+                      Sign up
+                    </Link>
+                  </p>
+                )}
                 <p className="text-sm text-muted-foreground">
                   <Link
                     href="/verify"
