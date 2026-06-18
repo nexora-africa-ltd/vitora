@@ -449,7 +449,7 @@ $hubShellContent = @'
 
 .EXAMPLE
     .\hub-shell.ps1                          # Opens Django shell
-    .\hub-shell.ps1 createsuperuser          # Creates a superuser
+    .\hub-shell.ps1 create_superuser --force # Creates a hub-local superuser
     .\hub-shell.ps1 changepassword admin     # Changes a user's password
     .\hub-shell.ps1 migrate                  # Runs migrations
 #>
@@ -469,8 +469,10 @@ if (Test-Path $envFile) {
     Write-Warning "No .env file at $envFile -- hub may not start correctly."
 }
 
-# Default to `shell` if no args
-$pyArgs = if ($args.Count -eq 0) { @("shell") } else { $args }
+# Default to `shell` if no args. Always wrap incoming args as an array;
+# otherwise Windows PowerShell can treat a single string argument as an
+# enumerable and pass only/each character to manage.py (e.g. `c`).
+$pyArgs = if ($args.Count -eq 0) { @("shell") } else { @($args) }
 
 Push-Location $InstallDir
 try {
@@ -773,6 +775,6 @@ Write-Host "    $nssmExe edit $ServiceName"
 Write-Host ""
 Write-Host "  Django shell / commands (loads .env automatically):"
 Write-Host "    $InstallDir\hub-shell.ps1                       # Open Django shell"
-Write-Host "    $InstallDir\hub-shell.ps1 createsuperuser       # Create a superuser"
+Write-Host "    $InstallDir\hub-shell.ps1 create_superuser --force  # Create a hub-local superuser"
 Write-Host "    $InstallDir\hub-shell.ps1 changepassword admin  # Reset a password"
 Write-Host ""
