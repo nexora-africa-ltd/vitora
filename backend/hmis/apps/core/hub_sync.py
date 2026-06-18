@@ -111,14 +111,14 @@ class HubCloudSyncWorker:
             daemon=True,
         )
         self._thread.start()
-        logger.info("Hub→Cloud sync worker started (interval=%ds)", self.interval)
+        logger.info("Hub-to-cloud sync worker started (interval=%ds)", self.interval)
 
     def stop(self):
         """Signal the thread to stop and wait for it."""
         self._stop_event.set()
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=10)
-        logger.info("Hub→Cloud sync worker stopped.")
+        logger.info("Hub-to-cloud sync worker stopped.")
 
     def _run_loop(self):
         """Main loop: push then pull, then sleep."""
@@ -126,7 +126,7 @@ class HubCloudSyncWorker:
             try:
                 self._sync_cycle()
             except Exception:
-                logger.exception("Hub→Cloud sync cycle failed")
+                logger.exception("Hub-to-cloud sync cycle failed")
 
             self._stop_event.wait(timeout=self.interval)
 
@@ -141,7 +141,7 @@ class HubCloudSyncWorker:
         pushed = self._push_pending()
         pulled = self._pull_changes()
         if pushed or pulled:
-            logger.info("Hub→Cloud sync: pushed=%d, pulled=%d", pushed, pulled)
+            logger.info("Hub-to-cloud sync: pushed=%d, pulled=%d", pushed, pulled)
         return pushed, pulled
 
     def _sync_cycle(self):
