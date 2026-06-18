@@ -1,6 +1,6 @@
 # Vitora HMIS Facility Hub — Comprehensive Guide & Operations Runbook
 
-> **Current Version**: hub-v0.6.6
+> **Current Version**: hub-v0.6.7
 > **Platforms**: Linux (Debian/Ubuntu, Raspberry Pi), Windows 10/11+
 > **Delivery Modes**: Native (systemd/NSSM service), Container (Docker Compose)
 > **Last Updated**: June 2026
@@ -912,6 +912,15 @@ Start-Service VitoraHub
 ```
 
 After recovery, use `C:\VitoraHub\hub-shell.ps1` for management commands. Prefer Vitora's custom `create_superuser` command over Django's built-in `createsuperuser`; the custom command also creates or repairs the user's `StaffProfile` when an organization exists. If it says no organization was found, complete the hub setup/activation seed first, then rerun the command.
+
+**`hub-shell.ps1 hub_sync` says `Unknown command: 'h'`:**
+
+Older hub shell wrappers can split a single PowerShell argument into characters, so Django receives `h` instead of `hub_sync`. Upgrade to hub-v0.6.7 or refresh `C:\VitoraHub\hub-shell.ps1` by running the updater. Immediate workaround:
+
+```powershell
+cd C:\VitoraHub
+.\venv\Scripts\python.exe manage.py hub_sync
+```
 
 **"database disk image is malformed":**
 ```bash
