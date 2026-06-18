@@ -61,6 +61,11 @@ class Command(BaseCommand):
             action="store_true",
             help="Skip cloud-admin check and always create local superuser.",
         )
+        parser.add_argument(
+            "--reset-password",
+            action="store_true",
+            help="Reset the password if the superuser already exists.",
+        )
 
     def handle(self, *args, **options):
         username = options["username"]
@@ -69,6 +74,7 @@ class Command(BaseCommand):
         password_was_generated = options["password"] is None
         skip_profile = options.get("no_profile", False)
         force = options.get("force", False)
+        reset_password = options.get("reset_password", False)
 
         # Avoid duplicate-email rejection when using the default placeholder
         # and a user with that email already exists.
@@ -119,6 +125,34 @@ class Command(BaseCommand):
             if User.objects.filter(username=username).exists():
                 user = User.objects.get(username=username)
                 self.stdout.write(self.style.WARNING(f'Superuser "{username}" already exists'))
+                fields_to_update = []
+                if not user.is_superuser:
+                    user.is_superuser = True
+                    fields_to_update.append("is_superuser")
+                if not user.is_staff:
+                    user.is_staff = True
+                    fields_to_update.append("is_staff")
+                if not user.is_active:
+                    user.is_active = True
+                    fields_to_update.append("is_active")
+                if email and user.email != email:
+                    user.email = email
+                    fields_to_update.append("email")
+                if reset_password or options["password"] is not None:
+                    user.set_password(password)
+                    fields_to_update.append("password")
+                if fields_to_update:
+                    user.save(update_fields=fields_to_update)
+                    self.stdout.write(self.style.SUCCESS(f'  Updated superuser "{username}"'))
+                if reset_password and password_was_generated:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"  Generated password: {password}\n"
+                            "  Save this password -- it cannot be recovered."
+                        )
+                    )
+                elif reset_password or options["password"] is not None:
+                    self.stdout.write(self.style.WARNING("  Password reset for existing user."))
                 if not skip_profile:
                     self._ensure_staff_profile(user)
                 return

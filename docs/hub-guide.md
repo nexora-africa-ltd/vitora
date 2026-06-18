@@ -1,6 +1,6 @@
 # Vitora HMIS Facility Hub — Comprehensive Guide & Operations Runbook
 
-> **Current Version**: hub-v0.6.5
+> **Current Version**: hub-v0.6.6
 > **Platforms**: Linux (Debian/Ubuntu, Raspberry Pi), Windows 10/11+
 > **Delivery Modes**: Native (systemd/NSSM service), Container (Docker Compose)
 > **Last Updated**: June 2026
@@ -236,6 +236,12 @@ When running in hub mode, certain integrations route through the cloud:
 /admin/            — Django admin (local operations)
 /static/           — static files
 ```
+
+### Cloud Admin Accounts vs Local Django Admin
+
+During activation the cloud returns a lightweight user manifest so the hub can reserve cloud user IDs and warn about username conflicts. That manifest intentionally does **not** include password hashes. Cloud admin credentials therefore do not work in the hub's Django admin immediately after installation; they only become usable locally after credential sync materializes the real user record on the hub.
+
+For immediate local operations, create a hub-local admin with `C:\VitoraHub\hub-shell.ps1 create_superuser --force --reset-password` or use the installer prompt. The installer defaults to `hub_admin` when cloud admins already exist, avoiding username collisions with cloud accounts like `admin`.
 
 ---
 

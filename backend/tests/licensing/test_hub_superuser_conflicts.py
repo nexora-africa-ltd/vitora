@@ -382,6 +382,56 @@ class TestUsernameCollisionDetection:
         assert User.objects.filter(username="solo_admin").exists()
 
 
+class TestExistingSuperuserRepair:
+    """create_superuser can repair an existing placeholder/local admin."""
+
+    def test_existing_user_can_be_promoted_and_password_reset(self):
+        """Existing inactive placeholder becomes a usable local superuser."""
+        user = User.objects.create_user(username="hub_admin", email="old@example.test")
+        user.is_active = False
+        user.is_staff = False
+        user.is_superuser = False
+        user.set_unusable_password()
+        user.save()
+
+        out = StringIO()
+        call_command(
+            "create_superuser",
+            "--username=hub_admin",
+            "--email=hub_admin@vitora.local",
+            "--password=new-pass-123",
+            "--no-profile",
+            "--force",
+            "--reset-password",
+            stdout=out,
+        )
+
+        user.refresh_from_db()
+        assert user.is_active is True
+        assert user.is_staff is True
+        assert user.is_superuser is True
+        assert user.email == "hub_admin@vitora.local"
+        assert user.check_password("new-pass-123") is True
+        assert "Updated superuser" in out.getvalue()
+
+    def test_existing_user_without_reset_keeps_password(self):
+        """Existing users are not password-reset unless explicitly requested."""
+        user = User.objects.create_superuser(username="admin", password="old-pass-123")
+
+        out = StringIO()
+        call_command(
+            "create_superuser",
+            "--username=admin",
+            "--no-profile",
+            "--force",
+            stdout=out,
+        )
+
+        user.refresh_from_db()
+        assert user.check_password("old-pass-123") is True
+        assert "Password reset" not in out.getvalue()
+
+
 # ---------------------------------------------------------------------------
 # Sync materializer: PK conflict avoidance
 # ---------------------------------------------------------------------------
