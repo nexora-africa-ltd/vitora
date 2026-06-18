@@ -482,6 +482,14 @@ class TestSyncHubLicenseAuthentication:
 class TestHubCloudSyncWorker:
     """Tests for the HubCloudSyncWorker class."""
 
+    def test_runtime_log_messages_are_ascii_safe(self, db):
+        """Hub sync runtime logs should be safe for Windows cp1252 consoles."""
+        from pathlib import Path
+
+        source = Path("hmis/apps/core/hub_sync.py").read_text(encoding="utf-8")
+        assert "Hub\u2192Cloud" not in source
+        assert "Hub-to-cloud" in source
+
     @override_settings(
         SYNC_SERVER_URL="https://api.vitora.digital/api/sync",
         HUB_ID="hub-001",

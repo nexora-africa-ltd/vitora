@@ -1,6 +1,6 @@
 # Vitora HMIS Facility Hub — Comprehensive Guide & Operations Runbook
 
-> **Current Version**: hub-v0.6.8
+> **Current Version**: hub-v0.6.9
 > **Platforms**: Linux (Debian/Ubuntu, Raspberry Pi), Windows 10/11+
 > **Delivery Modes**: Native (systemd/NSSM service), Container (Docker Compose)
 > **Last Updated**: June 2026
@@ -930,6 +930,10 @@ Upgrade to hub-v0.6.8. Older hub sync payloads sent the hub id only at the batch
 cd C:\VitoraHub
 .\hub-shell.ps1 hub_sync --retry-failed
 ```
+
+**`hub_sync` succeeds but prints `UnicodeEncodeError` for `Hub→Cloud sync`:**
+
+The data sync has already completed if the command also says `Hub sync complete`. Upgrade to hub-v0.6.9 to remove the non-ASCII arrow from runtime log messages on Windows consoles.
 
 **"database disk image is malformed":**
 ```bash
