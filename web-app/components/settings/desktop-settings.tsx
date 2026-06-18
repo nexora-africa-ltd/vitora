@@ -1,7 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, Save, RotateCcw, Monitor, Wifi, HardDrive, Server } from 'lucide-react';
+import {
+  Activity,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  RefreshCw,
+  RotateCcw,
+  Save,
+  Monitor,
+  Wifi,
+  HardDrive,
+  Server,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
@@ -27,6 +40,7 @@ import {
   getInstallationId,
   clearCredentials,
 } from '@/lib/desktop';
+import { apiClient } from '@/lib/api/client';
 import { useToast } from '@/lib/hooks/use-toast';
 
 const DEPLOYMENT_MODES: Array<{ value: DeploymentMode; label: string; description: string }> = [
@@ -36,11 +50,75 @@ const DEPLOYMENT_MODES: Array<{ value: DeploymentMode; label: string; descriptio
   { value: 'web_only', label: 'Web Only', description: 'Connects directly to cloud (PowerSync)' },
 ];
 
+interface HubHealth {
+  status: 'healthy' | 'degraded' | 'unhealthy' | string;
+  hub_id: string;
+  facility_id: string;
+  organization_id: string;
+  uptime_seconds: number;
+  server_time: string;
+  version: string;
+  database?: { status: string; message?: string };
+  sync?: {
+    pending?: number;
+    failed?: number;
+    last_synced_at?: string | null;
+    status?: string;
+    message?: string;
+  };
+  license?: { present?: boolean };
+}
+
+interface HubSyncNowResult {
+  status: string;
+  pushed: number;
+  pulled: number;
+  pending_before: number;
+  pending_after: number;
+  failed_before: number;
+  failed_after: number;
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return 'Never';
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
+function formatUptime(seconds: number) {
+  if (!seconds) return '0m';
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
+function healthBadgeVariant(statusValue?: string) {
+  if (statusValue === 'healthy' || statusValue === 'ok') return 'default';
+  if (statusValue === 'degraded') return 'secondary';
+  return 'destructive';
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-2 rounded-md border px-3 py-2">
+      <span className="shrink-0 text-muted-foreground">{label}</span>
+      <span className="truncate font-mono text-xs">{value}</span>
+    </div>
+  );
+}
+
 export function DesktopSettingsTab() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [installationId, setInstallationId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [syncingNow, setSyncingNow] = useState(false);
+  const [hubHealth, setHubHealth] = useState<HubHealth | null>(null);
+  const [hubHealthError, setHubHealthError] = useState<string>('');
   const { toast } = useToast();
 
   // Form state
@@ -77,6 +155,29 @@ export function DesktopSettingsTab() {
     loadConfig();
   }, [loadConfig]);
 
+  const isHubMode = deploymentMode === 'lan_client' || deploymentMode === 'lan_hub';
+
+  const loadHubHealth = useCallback(async () => {
+    if (!isHubMode) return;
+    setHealthLoading(true);
+    setHubHealthError('');
+    try {
+      const response = await apiClient.get<HubHealth>('/api/hub/health/');
+      setHubHealth(response.data);
+    } catch {
+      setHubHealth(null);
+      setHubHealthError('Hub health is unavailable.');
+    } finally {
+      setHealthLoading(false);
+    }
+  }, [isHubMode]);
+
+  useEffect(() => {
+    if (!loading && isHubMode) {
+      loadHubHealth();
+    }
+  }, [loading, isHubMode, loadHubHealth]);
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -109,6 +210,27 @@ export function DesktopSettingsTab() {
   const handleClearCredentials = async () => {
     await clearCredentials();
     toast({ title: 'Credentials cleared', description: 'Saved login credentials have been removed.' });
+  };
+
+  const handleSyncNow = async () => {
+    setSyncingNow(true);
+    try {
+      const response = await apiClient.post<HubSyncNowResult>('/api/hub/sync-now/');
+      const result = response.data;
+      toast({
+        title: 'Sync complete',
+        description: `Pushed ${result.pushed}, pulled ${result.pulled}. Pending ${result.pending_before} -> ${result.pending_after}.`,
+      });
+      await loadHubHealth();
+    } catch {
+      toast({
+        title: 'Sync failed',
+        description: 'The hub could not run a sync cycle right now.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncingNow(false);
+    }
   };
 
   const hasChanges =
@@ -188,6 +310,94 @@ export function DesktopSettingsTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Hub Operations */}
+      {isHubMode && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base sm:text-lg">Hub Operations</CardTitle>
+                <HelpPopover content="Monitor the local hub queue and run an immediate hub-to-cloud sync cycle." />
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button variant="outline" size="sm" onClick={loadHubHealth} disabled={healthLoading || syncingNow}>
+                  {healthLoading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
+                  Refresh
+                </Button>
+                <Button size="sm" onClick={handleSyncNow} disabled={syncingNow || healthLoading}>
+                  {syncingNow ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Activity className="h-4 w-4 mr-1.5" />}
+                  Sync Now
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {hubHealthError && (
+              <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{hubHealthError}</span>
+              </div>
+            )}
+
+            {hubHealth ? (
+              <>
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  <div className="rounded-md border p-3">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Status
+                    </div>
+                    <Badge variant={healthBadgeVariant(hubHealth.status)} className="mt-2 w-fit capitalize">
+                      {hubHealth.status}
+                    </Badge>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <HardDrive className="h-3.5 w-3.5" />
+                      Queue
+                    </div>
+                    <p className="mt-2 text-sm font-medium">
+                      {hubHealth.sync?.pending ?? 0} pending
+                    </p>
+                    <p className="text-xs text-muted-foreground">{hubHealth.sync?.failed ?? 0} failed</p>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" />
+                      Last Sync
+                    </div>
+                    <p className="mt-2 text-sm font-medium">{formatDateTime(hubHealth.sync?.last_synced_at)}</p>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Server className="h-3.5 w-3.5" />
+                      License
+                    </div>
+                    <Badge variant={hubHealth.license?.present ? 'default' : 'destructive'} className="mt-2 w-fit">
+                      {hubHealth.license?.present ? 'Present' : 'Missing'}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                  <InfoRow label="Hub ID" value={hubHealth.hub_id || 'N/A'} />
+                  <InfoRow label="Facility ID" value={hubHealth.facility_id || 'N/A'} />
+                  <InfoRow label="Organization ID" value={hubHealth.organization_id || 'N/A'} />
+                  <InfoRow label="Uptime" value={formatUptime(hubHealth.uptime_seconds)} />
+                </div>
+              </>
+            ) : (
+              !hubHealthError && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading hub status...
+                </div>
+              )
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Sync & Backup Settings */}
       <Card>

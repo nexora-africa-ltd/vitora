@@ -121,6 +121,9 @@ SECRET_KEY = _get_or_generate_secret_key()
 # Session: use DB-backed sessions (no Redis required)
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 
+# MFA is enforced on hubs as well as staging/production.
+MFA_ENFORCEMENT = True
+
 # Encryption key for PII fields (must match cloud for data compatibility)
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "")
 

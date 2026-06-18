@@ -1,6 +1,6 @@
 # Vitora HMIS Facility Hub — Comprehensive Guide & Operations Runbook
 
-> **Current Version**: hub-v0.4.0
+> **Current Version**: hub-v0.6.4
 > **Platforms**: Linux (Debian/Ubuntu, Raspberry Pi), Windows 10/11+
 > **Delivery Modes**: Native (systemd/NSSM service), Container (Docker Compose)
 > **Last Updated**: June 2026
@@ -264,7 +264,8 @@ When running in hub mode, certain integrations route through the cloud:
 | `HUB_DATA_DIR` | No | `/var/lib/vitora` | Writable data directory |
 | `HUB_LOG_FILE` | No | `/var/log/vitora/hub.log` | Log file path |
 | `SYNC_SERVER_URL` | No | `https://api.vitora.digital/api/sync` | Cloud sync endpoint |
-| `LICENSE_TOKEN` | Yes | From activation | Initial license JWT |
+| `HUB_LICENSE_TOKEN_PATH` | No | `/var/lib/vitora-hub/license.jwt` | Cached activation/license JWT used for hub identity |
+| `LICENSE_TOKEN` | Yes | From activation | Initial license JWT; sync falls back to `HUB_LICENSE_TOKEN_PATH` when unset |
 | `ALLOWED_HOSTS` | No | `*` | Django allowed hosts |
 | `HUB_REDIS_URL` | No | Empty | Redis URL (enables Redis channel layer) |
 | `CELERY_BROKER_URL` | No | Empty | Celery broker (empty = thread-based sync) |
@@ -285,6 +286,7 @@ Key differences from cloud/production:
 | `AUTH_COOKIE_SECURE` | `False` (HTTP LAN) | `True` (HTTPS) |
 | `SESSION_ENGINE` | `db` | `db` or Redis |
 | `SETUP_WIZARD_ENABLED` | `True` | `False` |
+| `MFA_ENFORCEMENT` | `True` | `True` |
 
 ---
 
@@ -331,6 +333,30 @@ cd /opt/vitora && docker compose logs -f hub
 curl http://localhost:9088/api/hub/health/
 # Expected: {"status": "healthy", ...}
 ```
+
+The `sync` block reports local queue state. For example, `"pending": 7` means seven local `SyncQueue` entries are waiting to be pushed to the cloud. `"last_synced_at": null` means no entry has been marked `SYNCED` yet on this hub database.
+
+#### Force Cloud Sync
+
+Run one push/pull cycle when health shows pending items or after restoring connectivity.
+
+Hub cloud sync authenticates with the hub's activation/license identity. The worker sends the cached license JWT as a bearer token to `/api/sync/push/` and `/api/sync/pull/`; it does not use a staff username, password, service account, or MFA bypass.
+
+Admins can also use the desktop app: Settings -> Desktop -> Hub Operations -> Sync Now. The Desktop tab is visible only in Tauri and only to admin roles.
+
+**Linux:**
+```bash
+cd /opt/vitora
+sudo -u vitora /opt/vitora/venv/bin/python manage.py hub_sync
+```
+
+**Windows:**
+```powershell
+cd C:\VitoraHub
+.\hub-shell.ps1 hub_sync
+```
+
+The command reports `pushed`, `pulled`, and queue counts before/after the run. Missing sync settings or a missing license token exits with an error and leaves pending queue entries intact.
 
 #### Check License Status
 

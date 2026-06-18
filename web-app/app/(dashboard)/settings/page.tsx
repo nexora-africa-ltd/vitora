@@ -28,17 +28,26 @@ import { DesktopSettingsTab } from '@/components/settings/desktop-settings';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { isDesktop } from '@/lib/desktop';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 export default function SettingsPage() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'security';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [showDesktop, setShowDesktop] = useState(false);
+  const { isAdmin } = usePermissions();
+  const showDesktopSettings = showDesktop && isAdmin;
 
   // Detect desktop mode after mount (avoids hydration mismatch)
   useEffect(() => {
     setShowDesktop(isDesktop());
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'desktop' && !showDesktopSettings) {
+      setActiveTab('security');
+    }
+  }, [activeTab, showDesktopSettings]);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -80,7 +89,7 @@ export default function SettingsPage() {
             <span className="sm:hidden">Theme</span>
             <span className="hidden sm:inline">Appearance</span>
           </TabsTrigger>
-          {showDesktop && (
+          {showDesktopSettings && (
             <TabsTrigger value="desktop" className="gap-1.5 text-xs sm:text-sm">
               <Monitor className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="sm:hidden">Desktop</span>
@@ -133,7 +142,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* Desktop Settings (Tauri only) */}
-        {showDesktop && (
+        {showDesktopSettings && (
           <TabsContent value="desktop" className="space-y-4 mt-4">
             <DesktopSettingsTab />
           </TabsContent>
