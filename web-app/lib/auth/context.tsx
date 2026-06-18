@@ -400,11 +400,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const apiUrl = await getAuthApiUrl();
+      const { isDesktop } = await import('@/lib/desktop');
+      const desktop = isDesktop();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (desktop) {
+        headers['X-Vitora-Client'] = 'desktop/0.1.0';
+      }
       const response = await fetch(
         `${apiUrl}/api/auth/mfa-verify/`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           credentials: 'include',  // Receive httpOnly cookies
           body: JSON.stringify({
             mfa_token: mfaToken,
@@ -419,6 +425,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await response.json();
+
+      if (desktop && data.access && data.refresh) {
+        const { tokenStorage } = await import('@/lib/auth/storage');
+        tokenStorage.setTokens(data.access, data.refresh);
+      }
 
       // User info from response (tokens are in httpOnly cookies)
       const user: User = {
