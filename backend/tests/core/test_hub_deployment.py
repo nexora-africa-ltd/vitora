@@ -14,12 +14,49 @@ from unittest.mock import MagicMock, patch
 import pytest  # type: ignore
 from channels.db import database_sync_to_async
 from channels.testing import WebsocketCommunicator
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
 
 from hmis.apps.core.models import SyncQueue
 from hmis.apps.core.websockets.sync import SyncConsumer
+
+
+@pytest.fixture
+def license_keypair():
+    """Ensure license keypair is available for signing/verifying."""
+    from hmis.apps.licensing.tokens import get_private_key
+
+    try:
+        get_private_key()
+        return True
+    except RuntimeError:
+        pytest.skip("License keypair not available")
+
+
+@pytest.fixture
+def active_hub_installation(db, sample_organization, sample_facility):
+    """Active hub installation used for license-authenticated sync tests."""
+    from hmis.apps.licensing.models import Installation
+
+    return Installation.objects.create(
+        installation_id="sync-test-hub",
+        organization=sample_organization,
+        facility=sample_facility,
+        name="Sync Test Hub",
+        status=Installation.Status.ACTIVE,
+    )
+
+
+@pytest.fixture
+def hub_license_token(active_hub_installation, license_keypair):
+    """Valid license JWT for the active hub installation."""
+    from hmis.apps.licensing.tokens import build_license_payload, sign_license_token
+
+    return sign_license_token(build_license_payload(active_hub_installation))
+
 
 # ===========================================================================
 # Hub Health Endpoint Tests
@@ -369,6 +406,74 @@ class TestSyncPushBroadcast:
         assert response.json()["accepted"] == 1
 
 
+class TestSyncHubLicenseAuthentication:
+    """Tests for license-token authentication on sync endpoints."""
+
+    PUSH_URL = "/api/sync/push/"
+    PULL_URL = "/api/sync/pull/?full=true&direction=down"
+
+    def test_sync_push_accepts_active_hub_license(
+        self, api_client, hub_license_token, sample_facility, sample_organization
+    ):
+        """Hub license bearer tokens should be accepted and scoped to the installation."""
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {hub_license_token}")
+        response = api_client.post(
+            self.PUSH_URL,
+            {
+                "client_id": "sync-test-hub",
+                "changes": [
+                    {
+                        "table": "patients_patient",
+                        "operation": "CREATE",
+                        "record_id": "123",
+                        "data": {"first_name": "Hub"},
+                        "timestamp": timezone.now().isoformat(),
+                        "client_id": "sync-test-hub",
+                    }
+                ],
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["accepted"] == 1
+        entry = SyncQueue.objects.get(record_id=123)
+        assert entry.facility == sample_facility
+        assert entry.organization == sample_organization
+
+    def test_sync_pull_accepts_active_hub_license(
+        self, api_client, hub_license_token, sample_facility, sample_organization
+    ):
+        """Hub license bearer tokens should pull data scoped to the installation."""
+        SyncQueue.objects.create(
+            operation="CREATE",
+            model_name="core.Facility",
+            record_id=321,
+            data={"first_name": "Cloud"},
+            status="SYNCED",
+            synced_at=timezone.now(),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {hub_license_token}")
+        response = api_client.get(self.PULL_URL)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["changes"][0]["record_id"] == 321
+
+    def test_sync_push_rejects_invalid_hub_license(self, api_client, db):
+        """Invalid license JWTs should not pass sync authentication."""
+        api_client.credentials(HTTP_AUTHORIZATION="Bearer invalid.license.token")
+        response = api_client.post(
+            self.PUSH_URL,
+            {"client_id": "hub", "changes": []},
+            format="json",
+        )
+
+        assert response.status_code in {status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN}
+
+
 # ===========================================================================
 # Hub→Cloud Sync Worker Tests
 # ===========================================================================
@@ -421,19 +526,20 @@ class TestHubCloudSyncWorker:
             )
 
         worker = HubCloudSyncWorker()
-        worker._auth_token = "test-token"
 
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"accepted": 3}
 
-        with patch(
-            "hmis.apps.core.hub_sync.requests.post", return_value=mock_response
-        ) as mock_post:
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch("hmis.apps.core.hub_sync.requests.post", return_value=mock_response) as mock_post,
+        ):
             pushed = worker._push_pending()
 
         assert pushed == 3
         mock_post.assert_called_once()
+        assert mock_post.call_args.kwargs["headers"]["Authorization"] == "Bearer license-token-xyz"
 
         # Entries should now be SYNCED
         assert SyncQueue.objects.filter(status="SYNCED").count() == 3
@@ -481,7 +587,6 @@ class TestHubCloudSyncWorker:
         from hmis.apps.core.hub_sync import HubCloudSyncWorker
 
         worker = HubCloudSyncWorker()
-        worker._auth_token = "test-token"
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -499,6 +604,7 @@ class TestHubCloudSyncWorker:
         }
 
         with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
             patch("hmis.apps.core.hub_sync.requests.get", return_value=mock_response),
             patch(
                 "hmis.apps.core.hub_sync.materialize_entry",
@@ -518,41 +624,30 @@ class TestHubCloudSyncWorker:
         HUB_ID="hub-test",
         HUB_FACILITY_ID="1",
     )
-    def test_authenticate_success(self, db):
-        """authenticate() should store the access token on success."""
+    def test_get_license_token_from_env(self, db):
+        """Worker should read the activation/license token from LICENSE_TOKEN."""
         from hmis.apps.core.hub_sync import HubCloudSyncWorker
 
-        worker = HubCloudSyncWorker()
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"access": "jwt-token-xyz", "refresh": "ref-123"}
-
-        with patch("hmis.apps.core.hub_sync.requests.post", return_value=mock_response):
-            result = worker.authenticate("hub-user", "hub-pass")
-
-        assert result is True
-        assert worker._auth_token == "jwt-token-xyz"
+        with patch.dict("os.environ", {"LICENSE_TOKEN": "env-license-token"}):
+            worker = HubCloudSyncWorker()
+            assert worker._get_license_token() == "env-license-token"
 
     @override_settings(
         SYNC_SERVER_URL="https://cloud.example.com/api/sync",
         HUB_ID="hub-test",
         HUB_FACILITY_ID="1",
     )
-    def test_authenticate_failure(self, db):
-        """authenticate() should return False on 401."""
+    def test_get_license_token_from_file(self, db, tmp_path):
+        """Worker should read the activation/license token from HUB_LICENSE_TOKEN_PATH."""
         from hmis.apps.core.hub_sync import HubCloudSyncWorker
 
-        worker = HubCloudSyncWorker()
+        token_file = tmp_path / "license.jwt"
+        token_file.write_text("file-license-token\n")
 
-        mock_response = MagicMock()
-        mock_response.status_code = 401
-
-        with patch("hmis.apps.core.hub_sync.requests.post", return_value=mock_response):
-            result = worker.authenticate("bad-user", "bad-pass")
-
-        assert result is False
-        assert worker._auth_token == ""
+        with override_settings(HUB_LICENSE_TOKEN_PATH=str(token_file)):
+            with patch.dict("os.environ", {"LICENSE_TOKEN": ""}):
+                worker = HubCloudSyncWorker()
+                assert worker._get_license_token() == "file-license-token"
 
     @override_settings(
         SYNC_SERVER_URL="https://cloud.example.com/api/sync",
@@ -566,3 +661,76 @@ class TestHubCloudSyncWorker:
         worker = HubCloudSyncWorker()
         pushed = worker._push_pending()
         assert pushed == 0
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
+    def test_sync_once_without_license_skips_queue(
+        self, db, tmp_path, sample_facility, sample_organization
+    ):
+        """sync_once should not mark entries failed when the hub license is missing."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        SyncQueue.objects.create(
+            operation="CREATE",
+            model_name="patients_patient",
+            record_id=1,
+            data={"first_name": "Pending"},
+            status="PENDING",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        with (
+            override_settings(HUB_LICENSE_TOKEN_PATH=str(tmp_path / "missing.jwt")),
+            patch.dict("os.environ", {"LICENSE_TOKEN": ""}),
+            patch("hmis.apps.core.hub_sync.requests.post") as mock_post,
+            patch("hmis.apps.core.hub_sync.requests.get") as mock_get,
+        ):
+            worker = HubCloudSyncWorker()
+            pushed, pulled = worker.sync_once()
+
+        assert (pushed, pulled) == (0, 0)
+        assert SyncQueue.objects.filter(status="PENDING").count() == 1
+        mock_post.assert_not_called()
+        mock_get.assert_not_called()
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
+    def test_hub_sync_command_requires_license(self, db, tmp_path):
+        """Manual hub sync should require a license token before touching the queue."""
+        with override_settings(HUB_LICENSE_TOKEN_PATH=str(tmp_path / "missing.jwt")):
+            with patch.dict("os.environ", {"LICENSE_TOKEN": ""}):
+                with pytest.raises(CommandError):
+                    call_command("hub_sync")
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
+    def test_hub_sync_command_runs_single_cycle(self, db):
+        """Manual hub sync should use license identity and report pushed/pulled counts."""
+        with patch(
+            "hmis.apps.core.management.commands.hub_sync.HubCloudSyncWorker"
+        ) as mock_worker_cls:
+            worker = mock_worker_cls.return_value
+            worker.is_configured = True
+            worker.has_license_token = True
+            worker.sync_once.return_value = (2, 1)
+
+            call_command("hub_sync")
+
+        worker.sync_once.assert_called_once()
+
+    @override_settings(SYNC_SERVER_URL="", HUB_ID="hub-test", HUB_FACILITY_ID="1")
+    def test_hub_sync_command_requires_config(self, db):
+        """Manual hub sync should require sync server configuration."""
+        with patch.dict("os.environ", {"LICENSE_TOKEN": "license"}):
+            with pytest.raises(CommandError):
+                call_command("hub_sync")

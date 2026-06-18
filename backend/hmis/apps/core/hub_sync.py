@@ -14,8 +14,8 @@ The cloud server exposes the same /api/sync/push/ and /api/sync/pull/ endpoints.
 
 import json
 import logging
+import os
 import threading
-import time
 from datetime import datetime
 from pathlib import Path
 
@@ -27,9 +27,6 @@ from hmis.apps.core.models import SyncQueue
 from hmis.apps.core.sync_materializer import materialize_entry
 
 logger = logging.getLogger(__name__)
-
-# Token refresh buffer: refresh 60s before expiry
-TOKEN_REFRESH_BUFFER_SECS = 60
 
 # File where last pull timestamp is persisted across restarts
 SYNC_STATE_FILENAME = ".hub_sync_state.json"
@@ -56,11 +53,6 @@ class HubCloudSyncWorker:
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self._last_pull_timestamp: datetime | None = None
-        self._auth_token: str = ""
-        self._refresh_token: str = ""
-        self._token_expiry: float = 0  # unix timestamp when access token expires
-        self._auth_username: str = ""
-        self._auth_password: str = ""
 
         # Restore persisted sync state
         self._state_file = self._resolve_state_file()
@@ -138,12 +130,44 @@ class HubCloudSyncWorker:
 
             self._stop_event.wait(timeout=self.interval)
 
-    def _sync_cycle(self):
-        """One push+pull cycle."""
+    def sync_once(self) -> tuple[int, int]:
+        """Run one push+pull cycle and return (pushed, pulled)."""
+        if not self.has_license_token:
+            logger.warning(
+                "Hub cloud sync skipped: no license token. Run hub activation or configure "
+                "LICENSE_TOKEN/HUB_LICENSE_TOKEN_PATH."
+            )
+            return 0, 0
         pushed = self._push_pending()
         pulled = self._pull_changes()
         if pushed or pulled:
             logger.info("Hub→Cloud sync: pushed=%d, pulled=%d", pushed, pulled)
+        return pushed, pulled
+
+    def _sync_cycle(self):
+        """One push+pull cycle."""
+        self.sync_once()
+
+    @property
+    def has_license_token(self) -> bool:
+        """Return True when a hub license JWT is available for cloud auth."""
+        return bool(self._get_license_token())
+
+    def _get_license_token(self) -> str:
+        """Read the hub's cached license JWT from env or activation token file."""
+        token = os.getenv("LICENSE_TOKEN", "")
+        if token:
+            return token.strip()
+
+        token_path = getattr(
+            settings,
+            "HUB_LICENSE_TOKEN_PATH",
+            "/var/lib/vitora-hub/license.jwt",
+        )
+        try:
+            return Path(token_path).read_text().strip()
+        except (FileNotFoundError, PermissionError, OSError):
+            return ""
 
     def _push_pending(self) -> int:
         """Push PENDING entries to the cloud server. Returns count pushed."""
@@ -271,49 +295,11 @@ class HubCloudSyncWorker:
         )
 
     def _get_auth_headers(self) -> dict:
-        """Return authorization headers, refreshing the token if needed."""
-        self._ensure_valid_token()
-        if self._auth_token:
-            return {"Authorization": f"Bearer {self._auth_token}"}
+        """Return hub license authorization headers."""
+        license_token = self._get_license_token()
+        if license_token:
+            return {"Authorization": f"Bearer {license_token}"}
         return {}
-
-    def _ensure_valid_token(self):
-        """Refresh the access token if it's expired or about to expire."""
-        if not self._auth_token:
-            return
-
-        if time.time() < (self._token_expiry - TOKEN_REFRESH_BUFFER_SECS):
-            return  # Still valid
-
-        # Try refresh token first
-        if self._refresh_token and self._refresh_access_token():
-            return
-
-        # Refresh failed or no refresh token — re-authenticate
-        if self._auth_username and self._auth_password:
-            self.authenticate(self._auth_username, self._auth_password)
-
-    def _refresh_access_token(self) -> bool:
-        """Use the refresh token to get a new access token. Returns True on success."""
-        try:
-            base_url = self.server_url.rstrip("/").rsplit("/sync", 1)[0]
-            response = requests.post(
-                f"{base_url}/token/refresh/",
-                json={"refresh": self._refresh_token},
-                timeout=15,
-            )
-            if response.status_code == 200:
-                data = response.json()
-                self._auth_token = data.get("access", "")
-                # JWT access tokens default to 5 minutes in SimpleJWT
-                self._token_expiry = time.time() + 300
-                logger.debug("Hub access token refreshed via refresh token")
-                return True
-            logger.warning("Hub token refresh returned %d", response.status_code)
-            return False
-        except requests.RequestException as e:
-            logger.warning("Hub token refresh network error: %s", e)
-            return False
 
     def _post(self, url: str, **kwargs) -> requests.Response:
         """Make authenticated POST request to cloud."""
@@ -325,34 +311,6 @@ class HubCloudSyncWorker:
         """Make authenticated GET request to cloud."""
         headers = self._get_auth_headers()
         return requests.get(url, headers=headers, timeout=30, **kwargs)
-
-    def authenticate(self, username: str, password: str) -> bool:
-        """
-        Authenticate the hub with the cloud server.
-
-        Call this once at startup with hub service account credentials.
-        Stores refresh token for automatic re-authentication.
-        """
-        try:
-            response = requests.post(
-                f"{self.server_url.rstrip('/').rsplit('/sync', 1)[0]}/token/",
-                json={"username": username, "password": password},
-                timeout=15,
-            )
-            if response.status_code == 200:
-                data = response.json()
-                self._auth_token = data.get("access", "")
-                self._refresh_token = data.get("refresh", "")
-                # JWT access tokens default to 5 minutes in SimpleJWT
-                self._token_expiry = time.time() + 300
-                self._auth_username = username
-                self._auth_password = password
-                return True
-            logger.warning("Hub auth failed: %d", response.status_code)
-            return False
-        except requests.RequestException as e:
-            logger.warning("Hub auth network error: %s", e)
-            return False
 
 
 # Celery task (only used if Celery is configured)

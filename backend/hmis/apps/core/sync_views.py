@@ -19,7 +19,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -30,6 +30,7 @@ from hmis.apps.core.sync_serializers import (
     SyncConflictResolveSerializer,
     SyncPushRequestSerializer,
 )
+from hmis.apps.licensing.hub_auth import HubLicenseOrJWTAuthentication, IsAuthenticatedOrHubLicense
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,22 @@ def _resolve_organization(user):
     return None
 
 
+def _resolve_facility_from_request(request):
+    """Resolve facility from either hub license identity or authenticated user."""
+    installation = getattr(request, "_hub_installation", None)
+    if installation:
+        return installation.facility
+    return _resolve_facility(request.user)
+
+
+def _resolve_organization_from_request(request):
+    """Resolve organization from either hub license identity or authenticated user."""
+    installation = getattr(request, "_hub_installation", None)
+    if installation:
+        return installation.organization
+    return _resolve_organization(request.user)
+
+
 def _broadcast_sync_changes(facility_id: int, changes: list, client_id: str):
     """
     Broadcast accepted sync changes to all WebSocket clients in the facility group.
@@ -112,7 +129,8 @@ def _broadcast_sync_changes(facility_id: int, changes: list, client_id: str):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@authentication_classes([HubLicenseOrJWTAuthentication])
+@permission_classes([IsAuthenticatedOrHubLicense])
 def sync_push(request):
     """
     Accept a batch of changes from a client device.
@@ -126,8 +144,8 @@ def sync_push(request):
     changes = serializer.validated_data["changes"]
     client_id = serializer.validated_data["client_id"]
 
-    facility = _resolve_facility(request.user)
-    organization = _resolve_organization(request.user)
+    facility = _resolve_facility_from_request(request)
+    organization = _resolve_organization_from_request(request)
 
     accepted = 0
     rejections = []
@@ -233,7 +251,8 @@ def sync_push(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@authentication_classes([HubLicenseOrJWTAuthentication])
+@permission_classes([IsAuthenticatedOrHubLicense])
 def sync_pull(request):
     """
     Return changes since a given timestamp for the client's facility.
@@ -244,8 +263,8 @@ def sync_pull(request):
     - tables: Comma-separated list of tables to pull (optional, defaults to all)
     - limit: Max records to return (default 500)
     """
-    facility = _resolve_facility(request.user)
-    organization = _resolve_organization(request.user)
+    facility = _resolve_facility_from_request(request)
+    organization = _resolve_organization_from_request(request)
 
     since = request.query_params.get("since")
     full = request.query_params.get("full", "").lower() == "true"
@@ -319,11 +338,12 @@ def sync_pull(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@authentication_classes([HubLicenseOrJWTAuthentication])
+@permission_classes([IsAuthenticatedOrHubLicense])
 def sync_status(request):
     """Return sync health/status for the client's facility."""
-    facility = _resolve_facility(request.user)
-    organization = _resolve_organization(request.user)
+    facility = _resolve_facility_from_request(request)
+    organization = _resolve_organization_from_request(request)
 
     qs = SyncQueue.objects.all()
     if facility:

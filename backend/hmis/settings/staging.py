@@ -3,7 +3,7 @@
 Staging settings for Vitora HMIS.
 
 Used for stakeholder demos and workflow validation.
-Mimics production behavior but with relaxed security for demo purposes.
+Mimics production behavior, including MFA enforcement.
 """
 
 import os
@@ -120,9 +120,9 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # =============================================================================
-# MFA — Disabled for staging demos by default, enable via env var
+# MFA — enforced in staging to match production authentication behavior
 # =============================================================================
-MFA_ENFORCEMENT = os.getenv("MFA_ENFORCEMENT", "false").lower() == "true"
+MFA_ENFORCEMENT = True
 
 # =============================================================================
 # Onboarding — Disabled for staging by default so audit logging isn't blocked

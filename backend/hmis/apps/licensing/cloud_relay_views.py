@@ -17,57 +17,14 @@ from __future__ import annotations
 
 import logging
 
-from rest_framework import permissions, status
+from rest_framework import status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from hmis.apps.licensing.models import Installation
+from hmis.apps.licensing.hub_auth import HubLicenseAuthenticated
 
 logger = logging.getLogger(__name__)
-
-
-class HubLicenseAuthenticated(permissions.BasePermission):
-    """
-    Authenticate a hub request using the license JWT in the Authorization header.
-
-    Validates:
-    1. The token is a valid license JWT (RS256 signed by Nexora)
-    2. The installation_id in the token matches a known ACTIVE installation
-    3. The installation is not revoked or suspended
-    """
-
-    message = "Invalid or expired hub license token."
-
-    def has_permission(self, request: Request, _view) -> bool:
-        auth_header = request.META.get("HTTP_AUTHORIZATION", "")
-        if not auth_header.startswith("Bearer "):
-            return False
-
-        token = auth_header[7:]
-        try:
-            from hmis.apps.licensing.tokens import verify_license_token
-
-            payload = verify_license_token(token)
-        except Exception:
-            return False
-
-        installation_id = payload.get("installation_id")
-        if not installation_id:
-            return False
-
-        try:
-            installation = Installation.objects.select_related("organization", "facility").get(
-                installation_id=installation_id,
-                status=Installation.Status.ACTIVE,
-            )
-        except Installation.DoesNotExist:
-            return False
-
-        # Attach to request for downstream use
-        request._hub_installation = installation
-        request._hub_license_payload = payload
-        return True
 
 
 @api_view(["POST"])

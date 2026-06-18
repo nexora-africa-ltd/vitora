@@ -128,7 +128,9 @@ On first launch, the app detects `setup_completed: false` in config and redirect
 4. **Enter API/Hub URL** → connection test validates the endpoint
 5. **Save** → config persisted to disk, `setup_completed = true`
 6. **Login page** appears → enter credentials
-7. **Session persists** — cookies stored in WebView2 profile, survive restarts
+7. **Session persists** — web sessions use httpOnly cookies; desktop stores body tokens returned by the API for desktop MFA/login flows
+
+Desktop login uses the same backend credential path as the web app. `/api/auth/login/` delegates to the canonical `/api/token/` login flow, so username/email login, organization activation checks, password-change gates, MFA requirements, and audit logging are identical. When MFA is completed from the desktop app, `/api/auth/mfa-verify/` returns `access` and `refresh` tokens in the response body for the desktop client because cross-origin HTTP cookies are not reliable for the packaged local sidecar.
 
 ### Connection Test
 
@@ -165,6 +167,17 @@ The desktop app supports four operating modes configured during first-run:
 - Best for: Small facilities where one PC serves as both workstation and hub
 - The installer sets up Django as a local service
 - Desktop app connects to localhost
+
+### Admin Desktop Settings
+
+In the Tauri desktop app, Settings includes a **Desktop** tab only for admin roles (`ADMIN`, `ORG-ADMIN`, `OWNER`, platform staff, or superuser). Non-admin users cannot see the tab even if they deep link to `?tab=desktop`.
+
+For LAN Client and LAN Hub modes, the tab includes **Hub Operations**:
+- Hub health status, queue counts, last sync time, license-token presence, hub ID, facility ID, and uptime
+- **Refresh** to re-check `/api/hub/health/`
+- **Sync Now** to run one admin-gated `POST /api/hub/sync-now/` cycle
+
+Hub Sync Now uses the signed-in admin's normal session to authorize the action. The hub worker itself authenticates to the cloud with the hub activation/license JWT, not with a staff username or password.
 
 ---
 

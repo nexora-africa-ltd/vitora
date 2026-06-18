@@ -5,10 +5,9 @@ Covers:
 - Remote wipe endpoints (POST /api/hub/wipe/, GET /api/hub/wipe-check/)
 - Sync dashboard endpoint (GET /api/sync/dashboard/)
 - Sync queue pruning management command
-- Hub cloud sync worker JWT token refresh
+- Hub cloud sync worker license-token authentication
 """
 
-import time
 from datetime import timedelta
 from io import StringIO
 from unittest.mock import MagicMock, patch
@@ -361,88 +360,38 @@ class TestPruneSyncQueue:
 
 
 # ===========================================================================
-# Hub Cloud Sync Worker — Token Refresh Tests
+# Hub Cloud Sync Worker — License Token Auth Tests
 # ===========================================================================
 
 
-class TestHubCloudSyncTokenRefresh:
-    """Tests for JWT token refresh in HubCloudSyncWorker."""
+class TestHubCloudSyncLicenseAuth:
+    """Tests for license-token authentication in HubCloudSyncWorker."""
 
-    def test_authenticate_stores_refresh_token(self):
-        """authenticate() should store the refresh token and credentials."""
+    def test_get_auth_headers_uses_license_token_env(self):
+        """_get_auth_headers() should present the hub license token."""
         worker = HubCloudSyncWorker()
-        worker.server_url = "http://cloud.example.com/api/sync"
 
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "access": "access-token-123",
-            "refresh": "refresh-token-456",
-        }
+        with patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-123"}):
+            headers = worker._get_auth_headers()
 
-        with patch("hmis.apps.core.hub_sync.requests.post", return_value=mock_response):
-            result = worker.authenticate("hub-user", "hub-pass")
+        assert headers == {"Authorization": "Bearer license-token-123"}
 
-        assert result is True
-        assert worker._auth_token == "access-token-123"
-        assert worker._refresh_token == "refresh-token-456"
-        assert worker._auth_username == "hub-user"
-        assert worker._auth_password == "hub-pass"
-        assert worker._token_expiry > time.time()
-
-    def test_refresh_token_on_expiry(self):
-        """_ensure_valid_token() should refresh when token is near expiry."""
+    def test_get_auth_headers_uses_license_token_file(self, tmp_path):
+        """_get_auth_headers() should read the activation token file when env is empty."""
         worker = HubCloudSyncWorker()
-        worker.server_url = "http://cloud.example.com/api/sync"
-        worker._auth_token = "old-access"
-        worker._refresh_token = "valid-refresh"
-        worker._token_expiry = time.time() - 10  # Already expired
+        token_file = tmp_path / "license.jwt"
+        token_file.write_text("file-license-token")
 
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"access": "new-access-token"}
+        with override_settings(HUB_LICENSE_TOKEN_PATH=str(token_file)):
+            with patch.dict("os.environ", {"LICENSE_TOKEN": ""}):
+                headers = worker._get_auth_headers()
 
-        with patch("hmis.apps.core.hub_sync.requests.post", return_value=mock_response):
-            worker._ensure_valid_token()
+        assert headers == {"Authorization": "Bearer file-license-token"}
 
-        assert worker._auth_token == "new-access-token"
-
-    def test_re_authenticates_on_refresh_failure(self):
-        """Should fall back to full re-authentication if refresh fails."""
+    def test_no_auth_headers_without_license_token(self, tmp_path):
+        """Missing license token should produce no Authorization header."""
         worker = HubCloudSyncWorker()
-        worker.server_url = "http://cloud.example.com/api/sync"
-        worker._auth_token = "old-access"
-        worker._refresh_token = "expired-refresh"
-        worker._token_expiry = time.time() - 10
-        worker._auth_username = "hub-user"
-        worker._auth_password = "hub-pass"
 
-        # First call: refresh fails, second call: authenticate succeeds
-        refresh_fail = MagicMock()
-        refresh_fail.status_code = 401
-
-        auth_success = MagicMock()
-        auth_success.status_code = 200
-        auth_success.json.return_value = {
-            "access": "fresh-token",
-            "refresh": "fresh-refresh",
-        }
-
-        with patch(
-            "hmis.apps.core.hub_sync.requests.post",
-            side_effect=[refresh_fail, auth_success],
-        ):
-            worker._ensure_valid_token()
-
-        assert worker._auth_token == "fresh-token"
-        assert worker._refresh_token == "fresh-refresh"
-
-    def test_skips_refresh_when_token_valid(self):
-        """_ensure_valid_token() should not refresh when token is still valid."""
-        worker = HubCloudSyncWorker()
-        worker._auth_token = "valid-token"
-        worker._token_expiry = time.time() + 300  # 5 min from now
-
-        with patch("hmis.apps.core.hub_sync.requests.post") as mock_post:
-            worker._ensure_valid_token()
-            mock_post.assert_not_called()
+        with override_settings(HUB_LICENSE_TOKEN_PATH=str(tmp_path / "missing.jwt")):
+            with patch.dict("os.environ", {"LICENSE_TOKEN": ""}):
+                assert worker._get_auth_headers() == {}

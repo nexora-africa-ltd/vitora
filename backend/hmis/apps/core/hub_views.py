@@ -4,6 +4,7 @@ Hub health/status endpoint for monitoring and LAN client discovery.
 Remote wipe endpoint for lost/stolen hub devices.
 
 GET  /api/hub/health/     — Unauthenticated endpoint returning hub status.
+POST /api/hub/sync-now/   — Authenticated admin endpoint to run one cloud sync cycle.
 POST /api/hub/wipe/       — Authenticated admin endpoint to trigger remote wipe.
 GET  /api/hub/wipe-check/ — Client-side poll to check if wipe is requested.
 """
@@ -13,10 +14,12 @@ import time
 from django.conf import settings
 from django.db import connection
 from django.utils import timezone
+from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 
+from hmis.apps.core.hub_sync import HubCloudSyncWorker
 from hmis.apps.core.models import SyncQueue
 
 # Track when the hub process started
@@ -24,6 +27,22 @@ _START_TIME = time.time()
 
 # In-memory wipe flag (persisted via _sync_meta or settings in production)
 _wipe_requested: dict[str, str] = {}  # hub_id → requested_by
+
+
+class HubAdminPermission(permissions.BasePermission):
+    """Allow platform staff or tenant admin roles to run hub operations."""
+
+    ADMIN_ROLE_CODES = {"ADMIN", "ORG-ADMIN", "OWNER"}
+
+    def has_permission(self, request, _view) -> bool:
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_staff or user.is_superuser:
+            return True
+        profile = getattr(user, "staff_profile", None)
+        role = getattr(profile, "primary_role", None) if profile else None
+        return bool(role and getattr(role, "code", "") in self.ADMIN_ROLE_CODES)
 
 
 @api_view(["GET"])
@@ -77,6 +96,9 @@ def hub_health(request):  # noqa: ARG001
             "last_synced_at": last_synced.isoformat() if last_synced else None,
         }
 
+        worker = HubCloudSyncWorker()
+        health["license"] = {"present": worker.has_license_token}
+
         if failed_count > 10:
             health["status"] = "degraded"
 
@@ -85,6 +107,49 @@ def hub_health(request):  # noqa: ARG001
         health["status"] = "degraded"
 
     return Response(health)
+
+
+@api_view(["POST"])
+@permission_classes([HubAdminPermission])
+def sync_now(request):  # noqa: ARG001
+    """Run one hub-to-cloud sync cycle and return queue status."""
+    worker = HubCloudSyncWorker()
+    if not worker.is_configured:
+        return Response(
+            {
+                "detail": "Hub sync is not configured.",
+                "code": "hub_sync_not_configured",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not worker.has_license_token:
+        return Response(
+            {
+                "detail": "Hub license token is not available.",
+                "code": "hub_license_missing",
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    before_pending = SyncQueue.objects.filter(status="PENDING").count()
+    before_failed = SyncQueue.objects.filter(status="FAILED").count()
+    pushed, pulled = worker.sync_once()
+    after_pending = SyncQueue.objects.filter(status="PENDING").count()
+    after_failed = SyncQueue.objects.filter(status="FAILED").count()
+
+    return Response(
+        {
+            "status": "completed",
+            "pushed": pushed,
+            "pulled": pulled,
+            "pending_before": before_pending,
+            "pending_after": after_pending,
+            "failed_before": before_failed,
+            "failed_after": after_failed,
+            "server_timestamp": timezone.now().isoformat(),
+        }
+    )
 
 
 @api_view(["POST"])
