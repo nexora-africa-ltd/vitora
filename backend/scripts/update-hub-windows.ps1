@@ -34,6 +34,58 @@ function Write-Err   { param($msg) Write-Host "  [ERROR] $msg" -ForegroundColor 
 
 function Log { param($msg) Add-Content -Path $LogFile -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $msg" }
 
+function Merge-DirectoryPreservingRuntimeData {
+    param(
+        [Parameter(Mandatory=$true)][string]$SourceDir,
+        [Parameter(Mandatory=$true)][string]$DestinationDir
+    )
+
+    New-Item -ItemType Directory -Path $DestinationDir -Force | Out-Null
+    Get-ChildItem -Path $SourceDir -Force | ForEach-Object {
+        $target = Join-Path $DestinationDir $_.Name
+        if ($_.PSIsContainer) {
+            Merge-DirectoryPreservingRuntimeData -SourceDir $_.FullName -DestinationDir $target
+        } else {
+            Copy-Item -Path $_.FullName -Destination $target -Force
+        }
+    }
+}
+
+function Install-ExtractedHubItem {
+    param(
+        [Parameter(Mandatory=$true)]$SourceItem,
+        [Parameter(Mandatory=$true)][string]$DestinationRoot
+    )
+
+    $name = $SourceItem.Name
+    $dest = Join-Path $DestinationRoot $name
+
+    # Runtime-owned paths must never be replaced by an update archive. The hub
+    # SQLite database lives under data\hub.sqlite3, so deleting data during
+    # extraction creates a fresh empty DB and makes existing users unable to log in.
+    switch -Regex ($name) {
+        '^data$' {
+            Write-Info "Merging packaged reference data without deleting runtime data..."
+            Log "Merging data directory without deleting runtime files"
+            Merge-DirectoryPreservingRuntimeData -SourceDir $SourceItem.FullName -DestinationDir $dest
+            return
+        }
+        '^(venv|logs|backup|media|staticfiles)$' {
+            Write-Info "Preserving runtime directory: $name"
+            Log "Skipped runtime directory from archive: $name"
+            return
+        }
+        '^\.env$' {
+            Write-Info "Preserving installed .env"
+            Log "Skipped packaged .env"
+            return
+        }
+    }
+
+    if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+    Move-Item -Path $SourceItem.FullName -Destination $dest
+}
+
 # --- Pre-flight checks ---
 if (-not (Test-Path "$InstallDir\manage.py")) {
     Write-Err "Hub installation not found at $InstallDir"
@@ -121,7 +173,8 @@ $backupPath = "$BackupDir\pre-update-$CurrentVersion"
 if (Test-Path $backupPath) { Remove-Item -Recurse -Force $backupPath }
 New-Item -ItemType Directory -Path $backupPath -Force | Out-Null
 
-# Backup application code (not venv, data, or logs)
+# Backup application code and runtime data before touching the install tree.
+# `data` contains hub.sqlite3 and must be restorable if an update fails.
 $itemsToBackup = @("hmis", "data", "manage.py", "requirements-hub.txt", "VERSION", "scripts")
 foreach ($item in $itemsToBackup) {
     $src = Join-Path $InstallDir $item
@@ -140,6 +193,9 @@ Log "Backup created: $backupPath"
 # --- Step 5: Extract new version ---
 Write-Step 5 "Extracting new version..."
 
+$preUpdateDbPath = "$InstallDir\data\hub.sqlite3"
+$hadDatabaseBeforeUpdate = Test-Path $preUpdateDbPath
+
 # Remove old application code
 foreach ($item in @("hmis", "requirements-hub.txt")) {
     $target = Join-Path $InstallDir $item
@@ -156,15 +212,11 @@ Expand-Archive -Path $tempArchive -DestinationPath $tempExtract -Force
 $innerDir = Get-ChildItem -Path $tempExtract -Directory | Select-Object -First 1
 if ($innerDir) {
     Get-ChildItem -Path $innerDir.FullName | ForEach-Object {
-        $dest = Join-Path $InstallDir $_.Name
-        if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
-        Move-Item -Path $_.FullName -Destination $dest
+        Install-ExtractedHubItem -SourceItem $_ -DestinationRoot $InstallDir
     }
 } else {
     Get-ChildItem -Path $tempExtract | ForEach-Object {
-        $dest = Join-Path $InstallDir $_.Name
-        if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
-        Move-Item -Path $_.FullName -Destination $dest
+        Install-ExtractedHubItem -SourceItem $_ -DestinationRoot $InstallDir
     }
 }
 Remove-Item -Path $tempArchive -Force -ErrorAction SilentlyContinue
@@ -188,6 +240,18 @@ if (-not (Test-Path "$InstallDir\manage.py")) {
     Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
     Write-Err "Rolled back to $CurrentVersion"
     Log "ROLLBACK: extraction failed"
+    exit 1
+}
+
+if ($hadDatabaseBeforeUpdate -and -not (Test-Path $preUpdateDbPath)) {
+    Write-Err "Database disappeared during extraction; restoring runtime data backup."
+    Log "ERROR: hub.sqlite3 missing after extraction; restoring data backup"
+    $backupData = Join-Path $backupPath "data"
+    if (Test-Path $backupData) {
+        if (Test-Path "$InstallDir\data") { Remove-Item -Recurse -Force "$InstallDir\data" }
+        Copy-Item -Path $backupData -Destination "$InstallDir\data" -Recurse
+    }
+    Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
     exit 1
 }
 Write-Ok "Extracted."
