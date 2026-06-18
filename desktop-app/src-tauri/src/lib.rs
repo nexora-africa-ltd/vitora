@@ -1,5 +1,6 @@
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -21,8 +22,17 @@ pub mod config;
 pub mod updater;
 
 use commands::{list_printers, print_receipt};
+use config::{
+    clear_credentials, clear_license_token, get_api_url, get_app_config, get_credentials,
+    get_db_encryption_key, get_fernet_key, get_installation_id, get_license_token, is_first_run,
+    save_hub_config, set_api_url, set_backup_interval, set_deployment_mode, set_facility_id,
+    set_fernet_key, set_hub_url, set_organization_id, set_sync_interval, store_credentials,
+    store_license_token, AppConfig,
+};
 use updater::check_for_updates;
-use config::{get_api_url, get_app_config, get_db_encryption_key, get_fernet_key, get_installation_id, get_license_token, store_license_token, clear_license_token, store_credentials, get_credentials, clear_credentials, is_first_run, save_hub_config, set_api_url, set_backup_interval, set_deployment_mode, set_facility_id, set_fernet_key, set_hub_url, set_organization_id, set_sync_interval, AppConfig};
+
+const SIDECAR_READY_TIMEOUT: Duration = Duration::from_secs(120);
+const SIDECAR_READY_POLL_INTERVAL: Duration = Duration::from_millis(250);
 
 /// Manages the Node.js sidecar process lifecycle.
 pub struct SidecarState {
@@ -45,6 +55,50 @@ impl SidecarState {
             .local_addr()
             .expect("Failed to get local address")
             .port()
+    }
+
+    fn sidecar_log_paths(app: &AppHandle) -> Option<(PathBuf, PathBuf)> {
+        let log_dir = app
+            .path()
+            .app_log_dir()
+            .ok()
+            .or_else(|| app.path().app_data_dir().ok().map(|d| d.join("logs")))?;
+
+        Some((
+            log_dir.join("sidecar-stdout.log"),
+            log_dir.join("sidecar-stderr.log"),
+        ))
+    }
+
+    fn tail_log(path: &Path, max_chars: usize) -> Option<String> {
+        let contents = std::fs::read_to_string(path).ok()?;
+        let trimmed = contents.trim();
+        if trimmed.is_empty() {
+            return None;
+        }
+
+        let char_count = trimmed.chars().count();
+        let start = char_count.saturating_sub(max_chars);
+        Some(trimmed.chars().skip(start).collect())
+    }
+
+    fn stderr_hint(stderr_path: Option<&Path>) -> String {
+        match stderr_path {
+            Some(path) => match Self::tail_log(path, 2000) {
+                Some(tail) => format!("Check {}. Last stderr output:\n{}", path.display(), tail),
+                None => format!("Check {} for details.", path.display()),
+            },
+            None => "Check sidecar-stderr.log for details.".to_string(),
+        }
+    }
+
+    fn html_escape(value: &str) -> String {
+        value
+            .replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+            .replace('"', "&quot;")
+            .replace('\'', "&#39;")
     }
 
     /// Check if the sidecar HTTP server is actually serving requests.
@@ -73,7 +127,8 @@ impl SidecarState {
         // Probe a cheap API route that bypasses the dashboard/login render path.
         // Any HTTP response from `/` is not enough: Next may return a redirect or
         // a server error while still looking "ready" to a TCP-level probe.
-        let req = b"GET /api/desktop-health HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
+        let req =
+            b"GET /api/desktop-health HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
         if stream.write_all(req).is_err() {
             return false;
         }
@@ -158,8 +213,14 @@ impl SidecarState {
             let mut removed = false;
             for attempt in 1..=5 {
                 match std::fs::remove_dir_all(&standalone_dir) {
-                    Ok(()) => { removed = true; break; }
-                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => { removed = true; break; }
+                    Ok(()) => {
+                        removed = true;
+                        break;
+                    }
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                        removed = true;
+                        break;
+                    }
                     Err(e) => {
                         log::warn!(
                             "Failed to remove stale standalone dir {} (attempt {}/5): {}",
@@ -198,15 +259,24 @@ impl SidecarState {
 
         let start = Instant::now();
         let mut entry_count: u32 = 0;
-        for entry_result in archive.entries().map_err(|e| format!("Failed to read archive entries: {}", e))? {
+        for entry_result in archive
+            .entries()
+            .map_err(|e| format!("Failed to read archive entries: {}", e))?
+        {
             let mut entry = entry_result.map_err(|e| format!("Failed to read entry: {}", e))?;
-            entry.unpack_in(&standalone_dir).map_err(|e| format!("Failed to extract entry: {}", e))?;
+            entry
+                .unpack_in(&standalone_dir)
+                .map_err(|e| format!("Failed to extract entry: {}", e))?;
             entry_count += 1;
             if entry_count % 500 == 0 {
                 log::info!("Extracted {} files so far...", entry_count);
             }
         }
-        log::info!("Extracted {} files in {:.1}s", entry_count, start.elapsed().as_secs_f64());
+        log::info!(
+            "Extracted {} files in {:.1}s",
+            entry_count,
+            start.elapsed().as_secs_f64()
+        );
 
         // Verify extraction
         if !server_js.exists() {
@@ -219,7 +289,10 @@ impl SidecarState {
         std::fs::write(&version_marker, &app_version)
             .map_err(|e| format!("Failed to write standalone version marker: {}", e))?;
 
-        log::info!("Standalone bundle extracted successfully for v{}", app_version);
+        log::info!(
+            "Standalone bundle extracted successfully for v{}",
+            app_version
+        );
         Ok(standalone_dir)
     }
 
@@ -257,7 +330,11 @@ impl SidecarState {
                 if flat.exists() {
                     flat.to_string_lossy().to_string()
                 } else {
-                    log::warn!("Bundled node not found at {:?} or {:?}, falling back to system node", bundled, flat);
+                    log::warn!(
+                        "Bundled node not found at {:?} or {:?}, falling back to system node",
+                        bundled,
+                        flat
+                    );
                     "node".to_string()
                 }
             }
@@ -289,15 +366,13 @@ impl SidecarState {
         // actually diagnose blank-screen / startup failures in the field.
         // Previously these were piped to /dev/null, making post-update
         // crashes invisible.
-        let log_dir = app
-            .path()
-            .app_log_dir()
-            .ok()
-            .or_else(|| app.path().app_data_dir().ok().map(|d| d.join("logs")));
-        if let Some(ref dir) = log_dir {
-            let _ = std::fs::create_dir_all(dir);
+        let log_paths = Self::sidecar_log_paths(app);
+        if let Some((stdout_path, _)) = log_paths.as_ref() {
+            if let Some(dir) = stdout_path.parent() {
+                let _ = std::fs::create_dir_all(dir);
+            }
         }
-        match log_dir.as_ref().map(|d| (d.join("sidecar-stdout.log"), d.join("sidecar-stderr.log"))) {
+        match log_paths {
             Some((stdout_path, stderr_path)) => {
                 // Truncate on each spawn so old data doesn't accumulate forever
                 // and the most recent run is always at the top.
@@ -338,8 +413,7 @@ impl SidecarState {
             .map_err(|e| format!("Failed to spawn Node sidecar: {}", e))?;
 
         let shared = Arc::new(
-            SharedChild::new(child)
-                .map_err(|e| format!("Failed to create SharedChild: {}", e))?,
+            SharedChild::new(child).map_err(|e| format!("Failed to create SharedChild: {}", e))?,
         );
 
         *self.child.lock().unwrap() = Some(shared);
@@ -353,7 +427,11 @@ impl SidecarState {
     /// Detects early child death by checking `try_wait` so we fail fast with
     /// a useful error instead of waiting the full timeout when Node has
     /// already crashed.
-    pub fn wait_for_ready(&self, timeout: Duration) -> Result<(), String> {
+    pub fn wait_for_ready(
+        &self,
+        timeout: Duration,
+        stderr_path: Option<&Path>,
+    ) -> Result<(), String> {
         let port = *self.port.lock().unwrap();
         let start = Instant::now();
 
@@ -363,8 +441,9 @@ impl SidecarState {
                 match child.try_wait() {
                     Ok(Some(status)) => {
                         return Err(format!(
-                            "Sidecar exited prematurely with {:?}; check sidecar-stderr.log",
-                            status
+                            "Sidecar exited prematurely with {:?}. {}",
+                            status,
+                            Self::stderr_hint(stderr_path)
                         ));
                     }
                     Ok(None) => { /* still running */ }
@@ -374,14 +453,21 @@ impl SidecarState {
                 }
             }
             if Self::is_port_ready(port) {
+                log::info!(
+                    "Sidecar became ready on port {} after {:.1}s",
+                    port,
+                    start.elapsed().as_secs_f64()
+                );
                 return Ok(());
             }
-            std::thread::sleep(Duration::from_millis(250));
+            std::thread::sleep(SIDECAR_READY_POLL_INTERVAL);
         }
 
         Err(format!(
-            "Sidecar did not become ready within {:?}",
-            timeout
+            "Sidecar did not become ready on port {} within {:.0}s. {}",
+            port,
+            timeout.as_secs_f64(),
+            Self::stderr_hint(stderr_path)
         ))
     }
 
@@ -419,19 +505,27 @@ fn get_sidecar_port(state: State<SidecarState>) -> u16 {
 /// Tauri command: get the app version from tauri.conf.json (embedded at build time).
 #[tauri::command]
 fn get_app_version(app: AppHandle) -> String {
-    app.config().version.clone().unwrap_or_else(|| "unknown".to_string())
+    app.config()
+        .version
+        .clone()
+        .unwrap_or_else(|| "unknown".to_string())
 }
 
 /// Build the system tray with menu items.
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    let version = app.config().version.clone().unwrap_or_else(|| "unknown".to_string());
+    let version = app
+        .config()
+        .version
+        .clone()
+        .unwrap_or_else(|| "unknown".to_string());
     let version_label = format!("Vitora HMIS v{}", version);
 
     let version_item = MenuItemBuilder::with_id("version", &version_label)
         .enabled(false)
         .build(app)?;
     let show = MenuItemBuilder::with_id("show", "Show Vitora").build(app)?;
-    let check_updates = MenuItemBuilder::with_id("check-updates", "Check for Updates…").build(app)?;
+    let check_updates =
+        MenuItemBuilder::with_id("check-updates", "Check for Updates…").build(app)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
@@ -608,11 +702,13 @@ pub fn run() {
 
                         emit_status(&handle_clone, "Starting server...");
 
-                        // Wait for the sidecar to actually serve HTTP (max 60s).
+                        // Wait for the sidecar to actually serve HTTP.
                         // After an update the standalone is freshly re-extracted
                         // and Node's first-start (JIT compile, route table) on
-                        // slow Windows disks easily exceeds 20s.
-                        match state.wait_for_ready(Duration::from_secs(60)) {
+                        // slow Windows disks can take longer than a minute.
+                        let stderr_path = SidecarState::sidecar_log_paths(&handle_clone)
+                            .map(|(_, stderr_path)| stderr_path);
+                        match state.wait_for_ready(SIDECAR_READY_TIMEOUT, stderr_path.as_deref()) {
                             Ok(()) => {
                                 log::info!("Sidecar is ready on port {}", port);
                                 // Navigate main window to the desktop-aware login gate.
@@ -635,9 +731,10 @@ pub fn run() {
                                         if let Some(status) = state.exited_status() {
                                             log::error!("Sidecar exited after navigation: {}", status);
                                             if let Some(window) = monitor_handle.get_webview_window("main") {
+                                                let escaped_status = SidecarState::html_escape(&status);
                                                 let error_html = format!(
                                                     "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Vitora stopped unexpectedly</h1><p style='color:%2394a3b8'>The local application server exited after startup.</p><p style='color:%23ef4444;font-size:12px'>Status: {}</p><p style='color:%2394a3b8;font-size:12px'>Check sidecar-stderr.log for details.</p></body></html>",
-                                                    status
+                                                    escaped_status
                                                 );
                                                 let _ = window.navigate(error_html.parse().unwrap());
                                             }
@@ -650,9 +747,10 @@ pub fn run() {
                                 log::error!("Sidecar failed to become ready: {}", e);
                                 // Show error in main window
                                 if let Some(main_window) = handle_clone.get_webview_window("main") {
+                                    let escaped_error = SidecarState::html_escape(&e);
                                     let error_html = format!(
-                                        "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Failed to start Vitora</h1><p style='color:%2394a3b8'>The application server did not respond in time.</p><p style='color:%23ef4444;font-size:12px'>{}</p></body></html>",
-                                        e
+                                        "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Failed to start Vitora</h1><p style='color:%2394a3b8'>The application server did not respond in time.</p><pre style='color:%23ef4444;font-size:12px;white-space:pre-wrap'>{}</pre></body></html>",
+                                        escaped_error
                                     );
                                     let _ = main_window.navigate(error_html.parse().unwrap());
                                 }
@@ -662,9 +760,10 @@ pub fn run() {
                     Err(e) => {
                         log::error!("Failed to spawn sidecar: {}", e);
                         if let Some(main_window) = handle_clone.get_webview_window("main") {
+                            let escaped_error = SidecarState::html_escape(&e);
                             let error_html = format!(
-                                "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Failed to start Vitora</h1><p style='color:%2394a3b8'>Could not start the application server.</p><p style='color:%23ef4444;font-size:12px'>{}</p></body></html>",
-                                e
+                                "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Failed to start Vitora</h1><p style='color:%2394a3b8'>Could not start the application server.</p><pre style='color:%23ef4444;font-size:12px;white-space:pre-wrap'>{}</pre></body></html>",
+                                escaped_error
                             );
                             let _ = main_window.navigate(error_html.parse().unwrap());
                         }
