@@ -16,7 +16,13 @@ import uuid
 
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
-from rest_framework.decorators import action, api_view, authentication_classes, permission_classes
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+    throttle_classes,
+)
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -30,6 +36,7 @@ from .serializers import (
     InstallationListSerializer,
     RevokeSerializer,
 )
+from .throttles import LicenseActivationThrottle, LicenseCheckInThrottle
 from .tokens import (
     build_license_payload,
     is_check_in_overdue,
@@ -40,6 +47,7 @@ from .tokens import (
 
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
+@throttle_classes([LicenseActivationThrottle])
 def activate_installation(request: Request) -> Response:
     """
     Activate an installation using a one-time activation code.
@@ -104,6 +112,7 @@ def activate_installation(request: Request) -> Response:
 
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
+@throttle_classes([LicenseCheckInThrottle])
 def check_in(request: Request) -> Response:
     """
     Periodic check-in to refresh the license token (Phase 3 enhanced).

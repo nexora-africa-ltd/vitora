@@ -167,6 +167,7 @@ $SyncUrl = if ($activationResponse.sync_url) { $activationResponse.sync_url } el
 $OrgName = $activationResponse.organization.name
 $FacilityName = $activationResponse.facility.name
 $EncryptionKey = if ($activationResponse.encryption_key) { $activationResponse.encryption_key } else { "" }
+$PiiHmacKey = if ($activationResponse.pii_hmac_key) { $activationResponse.pii_hmac_key } else { "" }
 
 Write-Info "Activation successful!"
 Write-Host ""
@@ -406,7 +407,10 @@ if (Test-Path "$InstallDir\requirements-hub.txt") {
 
 # --- Generate Secret Key ---
 $secretKey = & $python -c "import secrets; print(secrets.token_urlsafe(50))"
-$piiHmacKey = & $python -c "import secrets; print(secrets.token_urlsafe(32))"
+if (-not $PiiHmacKey) {
+    Write-Warn "Activation response did not include pii_hmac_key; generating a local fallback. Cross-system PII exact-match lookup may differ."
+    $PiiHmacKey = & $python -c "import secrets; print(secrets.token_urlsafe(32))"
+}
 
 # --- Write Environment File ---
 Write-Step 5 "Writing configuration..."
@@ -414,7 +418,7 @@ $envContent = @"
 DJANGO_ENV=hub
 DJANGO_SECRET_KEY=$secretKey
 ENCRYPTION_KEY=$EncryptionKey
-PII_HMAC_KEY=$piiHmacKey
+PII_HMAC_KEY=$PiiHmacKey
 HUB_ID=$HubId
 HUB_FACILITY_ID=$FacilityId
 HUB_ORGANIZATION_ID=$OrgId
@@ -680,7 +684,7 @@ $envVars = @(
     "DJANGO_SETTINGS_MODULE=hmis.settings",
     "DJANGO_SECRET_KEY=$secretKey",
     "ENCRYPTION_KEY=$EncryptionKey",
-    "PII_HMAC_KEY=$piiHmacKey",
+    "PII_HMAC_KEY=$PiiHmacKey",
     "HUB_ID=$HubId",
     "HUB_FACILITY_ID=$FacilityId",
     "HUB_ORGANIZATION_ID=$OrgId",

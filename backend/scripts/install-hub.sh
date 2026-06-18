@@ -286,7 +286,13 @@ SYNC_URL=$(python3 -c "import json; d=json.load(open('$ACTIVATION_RESPONSE')); p
 ORG_NAME=$(python3 -c "import json; d=json.load(open('$ACTIVATION_RESPONSE')); print(d['organization']['name'])")
 FACILITY_NAME=$(python3 -c "import json; d=json.load(open('$ACTIVATION_RESPONSE')); print(d['facility']['name'])")
 ENCRYPTION_KEY=$(python3 -c "import json; d=json.load(open('$ACTIVATION_RESPONSE')); print(d.get('encryption_key', ''))")
+PII_HMAC_KEY=$(python3 -c "import json; d=json.load(open('$ACTIVATION_RESPONSE')); print(d.get('pii_hmac_key', ''))")
 HUB_ID="$INSTALLATION_ID"
+
+if [[ -z "$PII_HMAC_KEY" ]]; then
+    warn "Activation response did not include pii_hmac_key; generating a local fallback. Cross-system PII exact-match lookup may differ."
+    PII_HMAC_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+fi
 
 info "Activation successful!"
 echo ""
@@ -508,7 +514,7 @@ cat > "$APP_DIR/.env" <<EOF
 DJANGO_ENV=hub
 DJANGO_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(50))")
 ENCRYPTION_KEY=${ENCRYPTION_KEY}
-PII_HMAC_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+PII_HMAC_KEY=${PII_HMAC_KEY}
 HUB_ID=${HUB_ID}
 HUB_FACILITY_ID=${HUB_FACILITY_ID}
 HUB_ORGANIZATION_ID=${HUB_ORGANIZATION_ID}

@@ -245,6 +245,8 @@ REST_FRAMEWORK = {
         "login": "5/minute",  # Password login - 5 attempts per minute
         "mfa_verify": "5/minute",  # MFA verification - 5 attempts per minute
         "otp": "5/minute",  # OTP send/validate - 5 attempts per minute
+        "license_activation": "5/minute",  # Hub activation-code attempts
+        "license_check_in": "20/minute",  # Hub license check-ins/token refreshes
         "password_reset": "5/hour",  # Password reset requests
         "ai_proactive": "2/minute",  # Proactive insights - max 2 per minute per user
     },

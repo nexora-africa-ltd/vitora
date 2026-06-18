@@ -15,6 +15,7 @@ Covers:
 import datetime
 import json
 import uuid
+from typing import Any, cast
 
 import jwt as pyjwt
 import pytest  # type: ignore
@@ -272,6 +273,8 @@ class TestActivation:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["sync_url"] == settings.SYNC_SERVER_URL
+        assert response.data["encryption_key"] == settings.ENCRYPTION_KEY
+        assert response.data["pii_hmac_key"] == settings.PII_HMAC_KEY
         assert response.data["organization"] == {
             "id": pending_installation.organization.id,
             "name": pending_installation.organization.name,
@@ -743,8 +746,9 @@ class TestSeedBootstrapData:
 
         assert counts["roles"] == 1
         role = Role.objects.get(code="CUSTOM-ROLE")
-        assert role.organization_id == license_org.pk
-        assert role.facility_id == sample_facility.pk
+        role_with_fk_ids = cast(Any, role)
+        assert role_with_fk_ids.organization_id == license_org.pk
+        assert role_with_fk_ids.facility_id == sample_facility.pk
 
 
 # ---------------------------------------------------------------------------

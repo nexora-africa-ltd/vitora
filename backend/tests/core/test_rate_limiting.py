@@ -144,6 +144,47 @@ class TestMFAVerificationRateLimiting:
 
 
 # ============================================================================
+# License Activation Rate Limiting Tests
+# ============================================================================
+
+
+class TestLicenseRateLimiting:
+    """Tests for rate limiting on public licensing endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def clear_throttle_cache(self):
+        """Clear throttle cache before each test."""
+        cache.clear()
+        yield
+        cache.clear()
+
+    def test_activation_has_throttle_configured(self, api_client, db):
+        """Activation-code attempts should use the license activation throttle."""
+        from hmis.apps.licensing.throttles import LicenseActivationThrottle
+        from hmis.apps.licensing.views import activate_installation
+
+        assert activate_installation.cls.throttle_classes == [LicenseActivationThrottle]
+
+    def test_check_in_has_throttle_configured(self, api_client, db):
+        """License check-ins should use the license check-in throttle."""
+        from hmis.apps.licensing.throttles import LicenseCheckInThrottle
+        from hmis.apps.licensing.views import check_in
+
+        assert check_in.cls.throttle_classes == [LicenseCheckInThrottle]
+
+    @pytest.mark.parametrize(
+        ("scope", "expected_rate"),
+        [
+            ("license_activation", "5/minute"),
+            ("license_check_in", "20/minute"),
+        ],
+    )
+    def test_license_throttle_rates_configured(self, settings, scope, expected_rate):
+        """License throttle scopes should have explicit DRF rates."""
+        assert settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"][scope] == expected_rate
+
+
+# ============================================================================
 # MFA Token Failed Attempts Tests
 # ============================================================================
 
