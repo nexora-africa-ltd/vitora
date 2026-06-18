@@ -187,6 +187,7 @@ class HubCloudSyncWorker:
                     "record_id": str(entry.record_id) if entry.record_id else None,
                     "data": entry.data,
                     "timestamp": entry.created_at.isoformat(),
+                    "client_id": self.hub_id,
                 }
             )
             entry_ids.append(entry.pk)
@@ -293,6 +294,13 @@ class HubCloudSyncWorker:
             error_message=error,
             retry_count=F("retry_count") + 1,
         )
+
+    def reset_failed_for_retry(self) -> int:
+        """Reset failed entries that have not exceeded the retry cap."""
+        return SyncQueue.objects.filter(
+            status="FAILED",
+            retry_count__lt=self.max_retries,
+        ).update(status="PENDING")
 
     def _get_auth_headers(self) -> dict:
         """Return hub license authorization headers."""

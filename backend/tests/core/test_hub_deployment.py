@@ -540,9 +540,57 @@ class TestHubCloudSyncWorker:
         assert pushed == 3
         mock_post.assert_called_once()
         assert mock_post.call_args.kwargs["headers"]["Authorization"] == "Bearer license-token-xyz"
+        payload = mock_post.call_args.kwargs["json"]
+        assert payload["client_id"] == "hub-test"
+        assert [change["client_id"] for change in payload["changes"]] == [
+            "hub-test",
+            "hub-test",
+            "hub-test",
+        ]
 
         # Entries should now be SYNCED
         assert SyncQueue.objects.filter(status="SYNCED").count() == 3
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+        SYNC_MAX_RETRIES=3,
+    )
+    def test_reset_failed_for_retry_respects_retry_cap(
+        self, db, sample_facility, sample_organization
+    ):
+        """Operators should be able to retry failed hub sync rows below the retry cap."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        retryable = SyncQueue.objects.create(
+            operation="CREATE",
+            model_name="patients_patient",
+            record_id=1,
+            data={"first_name": "Retry"},
+            status="FAILED",
+            retry_count=1,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        exhausted = SyncQueue.objects.create(
+            operation="CREATE",
+            model_name="patients_patient",
+            record_id=2,
+            data={"first_name": "Exhausted"},
+            status="FAILED",
+            retry_count=3,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        reset_count = HubCloudSyncWorker().reset_failed_for_retry()
+
+        retryable.refresh_from_db()
+        exhausted.refresh_from_db()
+        assert reset_count == 1
+        assert retryable.status == "PENDING"
+        assert exhausted.status == "FAILED"
 
     @override_settings(
         SYNC_SERVER_URL="https://cloud.example.com/api/sync",
@@ -726,6 +774,27 @@ class TestHubCloudSyncWorker:
 
             call_command("hub_sync")
 
+        worker.sync_once.assert_called_once()
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
+    def test_hub_sync_command_can_retry_failed_entries(self, db):
+        """Manual hub sync should expose a safe recovery path for failed entries."""
+        with patch(
+            "hmis.apps.core.management.commands.hub_sync.HubCloudSyncWorker"
+        ) as mock_worker_cls:
+            worker = mock_worker_cls.return_value
+            worker.is_configured = True
+            worker.has_license_token = True
+            worker.reset_failed_for_retry.return_value = 4
+            worker.sync_once.return_value = (4, 0)
+
+            call_command("hub_sync", retry_failed=True)
+
+        worker.reset_failed_for_retry.assert_called_once()
         worker.sync_once.assert_called_once()
 
     @override_settings(SYNC_SERVER_URL="", HUB_ID="hub-test", HUB_FACILITY_ID="1")
