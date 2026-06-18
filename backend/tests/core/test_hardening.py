@@ -13,6 +13,8 @@ from io import StringIO
 from unittest.mock import MagicMock, patch
 
 import pytest  # type: ignore
+from django.conf import settings
+from django.contrib.auth.models import Permission
 from django.core.management import call_command
 from django.test import override_settings
 from django.utils import timezone
@@ -21,6 +23,15 @@ from rest_framework import status
 from hmis.apps.core.hub_sync import HubCloudSyncWorker
 from hmis.apps.core.hub_views import _wipe_requested
 from hmis.apps.core.models import SyncConflict, SyncQueue
+
+
+class TestUploadLimits:
+    """Tests for request upload limits used by admin/security-sensitive forms."""
+
+    def test_field_limit_allows_admin_permission_edits(self, db):
+        """Admin permission forms must fit the installed permission catalogue."""
+        assert settings.DATA_UPLOAD_MAX_NUMBER_FIELDS >= 5000
+        assert Permission.objects.count() < settings.DATA_UPLOAD_MAX_NUMBER_FIELDS
 
 
 @pytest.fixture()
