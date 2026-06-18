@@ -1006,6 +1006,31 @@ Backend (Django):  http://127.0.0.1:9088  (dev) or http://127.0.0.1:9088 (Electr
 Electron spawns backend on port 9088 when running via `npm run dev`
 ```
 
+### 8A. Tauri Desktop Update/Tray Guardrails
+
+The current desktop app is Tauri v2 + a bundled Next.js standalone Node sidecar. Preserve these guardrails; they fixed the post-update blank screen and duplicate tray icon incidents in desktop v0.1.14-v0.1.17.
+
+**Blank screen prevention:**
+- Pipe sidecar stdout/stderr to log files (`sidecar-stdout.log`, `sidecar-stderr.log`) before diagnosing startup failures. Never discard sidecar output during packaged builds.
+- Readiness must be a real HTTP health check, not just a bound-port check. Probe `GET /api/desktop-health` and require HTTP 200 before navigating the WebView.
+- Navigate the packaged desktop shell directly to `/login`, not `/`, so desktop setup, activation, and login gates run before dashboard routing.
+- Keep a short post-navigation sidecar monitor. If Node exits after the initial health check, show a visible error page pointing to `sidecar-stderr.log` instead of leaving a blank WebView.
+- Do not rely on archive/resource mtimes to decide whether to reuse the extracted standalone bundle. Keep a version marker in the extracted standalone directory and re-extract when it differs from the running app version.
+
+**Node/Next sidecar pitfalls:**
+- In desktop server-only modules, import Node built-ins as namespaces with the `node:` prefix (`import * as path from 'node:path'`, `import * as fs from 'node:fs'`). Turbopack CJS interop can break default imports (`e.default.join is not a function`).
+- `better-sqlite3` `db.backup(destPath)` is Promise-based. Do not call it from synchronous backup code without `await`; that causes `fs.statSync` ENOENT races and unhandled-rejection sidecar exits. For sync startup backups, use `db.pragma('wal_checkpoint(FULL)')` plus `fs.copyFileSync(getDbPath(), destPath)`.
+
+**Tray and shutdown:**
+- There must be exactly one tray source. Do not add a declarative `trayIcon` block in `tauri.conf.json` when Rust builds a programmatic tray via `TrayIconBuilder`; doing both creates duplicate Windows tray icons.
+- Register `tauri_plugin_single_instance` as the first plugin to prevent duplicate app processes, sidecars, ports, and tray icons.
+- The main window close button should truly quit and kill the sidecar unless product requirements explicitly choose minimize-to-tray. Hiding to tray makes Windows uninstall/update report that Vitora is still running.
+
+**Release validation checklist for desktop changes:**
+- Run `cd web-app && npx tsc --noEmit` and `cd desktop-app/src-tauri && cargo check --offline`.
+- Bump all desktop versions together: `desktop-app/package.json`, `desktop-app/src-tauri/Cargo.toml`, and `desktop-app/src-tauri/tauri.conf.json`, then refresh `package-lock.json` and `Cargo.lock`.
+- Tag desktop releases with `desktop-vX.Y.Z`; the CI workflow rebuilds `standalone.tar.gz` from `web-app/` on each desktop tag.
+
 ### 9. Serializer Naming — Avoid Duplicates
 
 Some models exist in multiple apps (e.g., `Ward` in both `core` and `inpatient`). Their serializers MUST have unique names to avoid OpenAPI schema conflicts:
