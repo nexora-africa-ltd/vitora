@@ -14,12 +14,12 @@ pytestmark = pytest.mark.django_db
 class TestHubSyncRegistry:
     """Tests for the declarative upward sync registry."""
 
-    def test_patient_is_registered_for_upward_sync(self):
-        """Patient should be part of the hub-to-cloud upward sync registry."""
+    def test_patient_is_registered_for_bidirectional_sync(self):
+        """Patients should sync hub-to-cloud and cloud-to-hub."""
         from hmis.apps.core.sync_registry import SYNC_REGISTRY, SyncDirection
 
         entry = SYNC_REGISTRY["patients.Patient"]
-        assert entry.direction == SyncDirection.UP
+        assert entry.direction == SyncDirection.BOTH
         assert entry.priority == 3
 
     def test_last_login_excluded_for_user_sync(self):
@@ -70,7 +70,7 @@ class TestHubSyncSignals:
         assert entry.data["organization"] == sample_organization.id
         assert entry.data["registered_at_facility"] == sample_facility.id
         assert entry.data["sync_meta"]["priority"] == 3
-        assert entry.data["sync_meta"]["direction"] == "up"
+        assert entry.data["sync_meta"]["direction"] == "both"
 
     @override_settings(ENVIRONMENT="test", SYNC_ENABLED=False)
     def test_patient_create_is_not_queued_outside_hub_mode(
@@ -115,7 +115,7 @@ class TestHubSyncSignals:
         assert entries[0].data["last_name"] == "Updated"
         assert entries[1].data == {
             "id": patient_id,
-            "sync_meta": {"priority": 3, "direction": "up"},
+            "sync_meta": {"priority": 3, "direction": "both"},
         }
 
     @override_settings(ENVIRONMENT="hub", SYNC_ENABLED=True)

@@ -50,8 +50,8 @@ SYNC_REGISTRY: dict[str, SyncRegistryEntry] = {
         exclude_fields=("last_login",),
     ),
     # Clinical data
-    "patients.Patient": SyncRegistryEntry(direction=SyncDirection.UP, priority=3),
-    "patients.EmergencyContact": SyncRegistryEntry(direction=SyncDirection.UP, priority=4),
+    "patients.Patient": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=3),
+    "patients.EmergencyContact": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
     "encounters.Encounter": SyncRegistryEntry(direction=SyncDirection.UP, priority=3),
     "encounters.Diagnosis": SyncRegistryEntry(direction=SyncDirection.UP, priority=4),
     "encounters.TreatmentPlan": SyncRegistryEntry(direction=SyncDirection.UP, priority=4),

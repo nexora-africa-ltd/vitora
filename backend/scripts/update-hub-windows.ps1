@@ -34,6 +34,56 @@ function Write-Err   { param($msg) Write-Host "  [ERROR] $msg" -ForegroundColor 
 
 function Log { param($msg) Add-Content -Path $LogFile -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $msg" }
 
+function Get-HubEnvValue {
+    param(
+        [Parameter(Mandatory=$true)][string]$Name,
+        [string]$Default = ""
+    )
+    $value = [System.Environment]::GetEnvironmentVariable($Name)
+    if ($value) { return $value }
+    return $Default
+}
+
+function Build-HubServiceEnvironment {
+    $defaultHubDbPath = Join-Path $InstallDir "data\hub.sqlite3"
+    $defaultHubDataDir = Join-Path $InstallDir "data"
+    $defaultHubLogFile = Join-Path $LogDir "hub.log"
+
+    return @(
+        "DJANGO_ENV=hub",
+        "DJANGO_SETTINGS_MODULE=$(Get-HubEnvValue 'DJANGO_SETTINGS_MODULE' 'hmis.settings')",
+        "DJANGO_SECRET_KEY=$(Get-HubEnvValue 'DJANGO_SECRET_KEY')",
+        "ENCRYPTION_KEY=$(Get-HubEnvValue 'ENCRYPTION_KEY')",
+        "PII_HMAC_KEY=$(Get-HubEnvValue 'PII_HMAC_KEY')",
+        "HUB_ID=$(Get-HubEnvValue 'HUB_ID')",
+        "HUB_FACILITY_ID=$(Get-HubEnvValue 'HUB_FACILITY_ID')",
+        "HUB_ORGANIZATION_ID=$(Get-HubEnvValue 'HUB_ORGANIZATION_ID')",
+        "HUB_DB_PATH=$(Get-HubEnvValue 'HUB_DB_PATH' $defaultHubDbPath)",
+        "HUB_DATA_DIR=$(Get-HubEnvValue 'HUB_DATA_DIR' $defaultHubDataDir)",
+        "HUB_LOG_FILE=$(Get-HubEnvValue 'HUB_LOG_FILE' $defaultHubLogFile)",
+        "SYNC_SERVER_URL=$(Get-HubEnvValue 'SYNC_SERVER_URL')",
+        "LICENSE_TOKEN=$(Get-HubEnvValue 'LICENSE_TOKEN')",
+        "ALLOWED_HOSTS=$(Get-HubEnvValue 'ALLOWED_HOSTS' '*')",
+        "HUB_CLOUD_AUTH_ENABLED=$(Get-HubEnvValue 'HUB_CLOUD_AUTH_ENABLED' 'true')",
+        "HUB_CLOUD_AUTH_URL=$(Get-HubEnvValue 'HUB_CLOUD_AUTH_URL')",
+        "TIBABOT_ENABLED=$(Get-HubEnvValue 'TIBABOT_ENABLED' 'false')",
+        "TIBABOT_API_URL=$(Get-HubEnvValue 'TIBABOT_API_URL')",
+        "TIBABOT_API_KEY=$(Get-HubEnvValue 'TIBABOT_API_KEY')",
+        "TIBABOT_TIMEOUT=$(Get-HubEnvValue 'TIBABOT_TIMEOUT' '30')",
+        "TIBABOT_JWT_PRIVATE_KEY=$(Get-HubEnvValue 'TIBABOT_JWT_PRIVATE_KEY')",
+        "TIBABOT_JWT_SECRET=$(Get-HubEnvValue 'TIBABOT_JWT_SECRET')",
+        "TIBABOT_JWT_ISSUER=$(Get-HubEnvValue 'TIBABOT_JWT_ISSUER' 'vitora-hmis')",
+        "TIBABOT_JWT_AUDIENCE=$(Get-HubEnvValue 'TIBABOT_JWT_AUDIENCE' 'tibabot')",
+        "TIBABOT_JWT_EXPIRY_SECONDS=$(Get-HubEnvValue 'TIBABOT_JWT_EXPIRY_SECONDS' '300')",
+        "TIBABOT_JWKS_URL=$(Get-HubEnvValue 'TIBABOT_JWKS_URL')",
+        "TIBABOT_ADMIN_KEY=$(Get-HubEnvValue 'TIBABOT_ADMIN_KEY')",
+        "TIBABOT_ENABLE_LAB_ASSIST=$(Get-HubEnvValue 'TIBABOT_ENABLE_LAB_ASSIST' 'true')",
+        "TIBABOT_ENABLE_DISCHARGE_ASSIST=$(Get-HubEnvValue 'TIBABOT_ENABLE_DISCHARGE_ASSIST' 'true')",
+        "TIBABOT_ENABLE_CARE_PLAN=$(Get-HubEnvValue 'TIBABOT_ENABLE_CARE_PLAN' 'true')",
+        "TIBABOT_ENABLE_CLERKING_ASSIST=$(Get-HubEnvValue 'TIBABOT_ENABLE_CLERKING_ASSIST' 'true')"
+    ) -join "`n"
+}
+
 function Merge-DirectoryPreservingRuntimeData {
     param(
         [Parameter(Mandatory=$true)][string]$SourceDir,
@@ -513,6 +563,18 @@ exit $exitCode
 '@
 Set-Content -Path "$InstallDir\hub-shell.ps1" -Value $hubShellContent
 Write-Ok "Hub management wrapper refreshed."
+
+# Refresh NSSM service environment from the preserved .env before restart.
+$nssmExe = "$InstallDir\nssm\nssm.exe"
+if (Test-Path $nssmExe) {
+    $envVars = Build-HubServiceEnvironment
+    & $nssmExe set $ServiceName AppEnvironmentExtra $envVars 2>&1 | Out-Null
+    Write-Ok "Service environment refreshed."
+    Log "Service environment refreshed"
+} else {
+    Write-Info "NSSM not found at $nssmExe; service environment was not refreshed."
+    Log "NSSM not found; service environment not refreshed"
+}
 
 # --- Step 9: Start service ---
 Write-Step 9 "Starting $ServiceName service..."

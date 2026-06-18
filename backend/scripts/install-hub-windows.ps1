@@ -55,6 +55,22 @@ function Write-Info  { param($msg) Write-Host "[INFO] $msg" -ForegroundColor Gre
 function Write-Warn  { param($msg) Write-Host "[WARN] $msg" -ForegroundColor Yellow }
 function Write-Err   { param($msg) Write-Host "[ERROR] $msg" -ForegroundColor Red }
 
+function Resolve-ConfigValue {
+    param(
+        [Parameter(Mandatory=$true)][string]$EnvName,
+        $ActivationValue,
+        [string]$Default = ""
+    )
+    if ($null -ne $ActivationValue -and "$ActivationValue" -ne "") {
+        $text = "$ActivationValue"
+        if ($text -eq "True" -or $text -eq "False") { return $text.ToLowerInvariant() }
+        return $text
+    }
+    $envValue = [System.Environment]::GetEnvironmentVariable($EnvName)
+    if ($envValue) { return $envValue }
+    return $Default
+}
+
 function Test-PythonVersion {
     # We require EXACTLY Python 3.12 because the hub ships pre-compiled .pyd
     # files tagged for the cp312 ABI. Other Python minor versions silently
@@ -168,6 +184,24 @@ $OrgName = $activationResponse.organization.name
 $FacilityName = $activationResponse.facility.name
 $EncryptionKey = if ($activationResponse.encryption_key) { $activationResponse.encryption_key } else { "" }
 $PiiHmacKey = if ($activationResponse.pii_hmac_key) { $activationResponse.pii_hmac_key } else { "" }
+$TibaBotConfig = $activationResponse.tibabot
+$TibaBotEnabled = Resolve-ConfigValue "TIBABOT_ENABLED" $TibaBotConfig.enabled "false"
+$TibaBotApiUrl = Resolve-ConfigValue "TIBABOT_API_URL" $TibaBotConfig.api_url ""
+$TibaBotApiKey = Resolve-ConfigValue "TIBABOT_API_KEY" $TibaBotConfig.api_key ""
+$TibaBotTimeout = Resolve-ConfigValue "TIBABOT_TIMEOUT" $TibaBotConfig.timeout "30"
+$TibaBotJwtPrivateKey = Resolve-ConfigValue "TIBABOT_JWT_PRIVATE_KEY" $TibaBotConfig.jwt_private_key ""
+$TibaBotJwtSecret = Resolve-ConfigValue "TIBABOT_JWT_SECRET" $TibaBotConfig.jwt_secret ""
+$TibaBotJwtIssuer = Resolve-ConfigValue "TIBABOT_JWT_ISSUER" $TibaBotConfig.jwt_issuer "vitora-hmis"
+$TibaBotJwtAudience = Resolve-ConfigValue "TIBABOT_JWT_AUDIENCE" $TibaBotConfig.jwt_audience "tibabot"
+$TibaBotJwtExpirySeconds = Resolve-ConfigValue "TIBABOT_JWT_EXPIRY_SECONDS" $TibaBotConfig.jwt_expiry_seconds "300"
+$TibaBotJwksUrl = Resolve-ConfigValue "TIBABOT_JWKS_URL" $TibaBotConfig.jwks_url ""
+$TibaBotAdminKey = Resolve-ConfigValue "TIBABOT_ADMIN_KEY" $TibaBotConfig.admin_key ""
+$TibaBotEnableLabAssist = Resolve-ConfigValue "TIBABOT_ENABLE_LAB_ASSIST" $TibaBotConfig.enable_lab_assist "true"
+$TibaBotEnableDischargeAssist = Resolve-ConfigValue "TIBABOT_ENABLE_DISCHARGE_ASSIST" $TibaBotConfig.enable_discharge_assist "true"
+$TibaBotEnableCarePlan = Resolve-ConfigValue "TIBABOT_ENABLE_CARE_PLAN" $TibaBotConfig.enable_care_plan "true"
+$TibaBotEnableClerkingAssist = Resolve-ConfigValue "TIBABOT_ENABLE_CLERKING_ASSIST" $TibaBotConfig.enable_clerking_assist "true"
+$HubCloudAuthEnabled = Resolve-ConfigValue "HUB_CLOUD_AUTH_ENABLED" $activationResponse.hub_cloud_auth_enabled "true"
+$HubCloudAuthUrl = Resolve-ConfigValue "HUB_CLOUD_AUTH_URL" $activationResponse.hub_cloud_auth_url "$CloudUrl/api/auth/login/"
 
 Write-Info "Activation successful!"
 Write-Host ""
@@ -482,6 +516,23 @@ SYNC_SERVER_URL=$SyncUrl
 LICENSE_TOKEN=$LicenseToken
 ALLOWED_HOSTS=*
 HUB_VERSION=$Version
+HUB_CLOUD_AUTH_ENABLED=$HubCloudAuthEnabled
+HUB_CLOUD_AUTH_URL=$HubCloudAuthUrl
+TIBABOT_ENABLED=$TibaBotEnabled
+TIBABOT_API_URL=$TibaBotApiUrl
+TIBABOT_API_KEY=$TibaBotApiKey
+TIBABOT_TIMEOUT=$TibaBotTimeout
+TIBABOT_JWT_PRIVATE_KEY=$TibaBotJwtPrivateKey
+TIBABOT_JWT_SECRET=$TibaBotJwtSecret
+TIBABOT_JWT_ISSUER=$TibaBotJwtIssuer
+TIBABOT_JWT_AUDIENCE=$TibaBotJwtAudience
+TIBABOT_JWT_EXPIRY_SECONDS=$TibaBotJwtExpirySeconds
+TIBABOT_JWKS_URL=$TibaBotJwksUrl
+TIBABOT_ADMIN_KEY=$TibaBotAdminKey
+TIBABOT_ENABLE_LAB_ASSIST=$TibaBotEnableLabAssist
+TIBABOT_ENABLE_DISCHARGE_ASSIST=$TibaBotEnableDischargeAssist
+TIBABOT_ENABLE_CARE_PLAN=$TibaBotEnableCarePlan
+TIBABOT_ENABLE_CLERKING_ASSIST=$TibaBotEnableClerkingAssist
 "@
 
 Set-Content -Path "$InstallDir\.env" -Value $envContent
@@ -759,7 +810,24 @@ $envVars = @(
     "HUB_LOG_FILE=$LogDir\hub.log",
     "SYNC_SERVER_URL=$SyncUrl",
     "LICENSE_TOKEN=$LicenseToken",
-    "ALLOWED_HOSTS=*"
+    "ALLOWED_HOSTS=*",
+    "HUB_CLOUD_AUTH_ENABLED=$HubCloudAuthEnabled",
+    "HUB_CLOUD_AUTH_URL=$HubCloudAuthUrl",
+    "TIBABOT_ENABLED=$TibaBotEnabled",
+    "TIBABOT_API_URL=$TibaBotApiUrl",
+    "TIBABOT_API_KEY=$TibaBotApiKey",
+    "TIBABOT_TIMEOUT=$TibaBotTimeout",
+    "TIBABOT_JWT_PRIVATE_KEY=$TibaBotJwtPrivateKey",
+    "TIBABOT_JWT_SECRET=$TibaBotJwtSecret",
+    "TIBABOT_JWT_ISSUER=$TibaBotJwtIssuer",
+    "TIBABOT_JWT_AUDIENCE=$TibaBotJwtAudience",
+    "TIBABOT_JWT_EXPIRY_SECONDS=$TibaBotJwtExpirySeconds",
+    "TIBABOT_JWKS_URL=$TibaBotJwksUrl",
+    "TIBABOT_ADMIN_KEY=$TibaBotAdminKey",
+    "TIBABOT_ENABLE_LAB_ASSIST=$TibaBotEnableLabAssist",
+    "TIBABOT_ENABLE_DISCHARGE_ASSIST=$TibaBotEnableDischargeAssist",
+    "TIBABOT_ENABLE_CARE_PLAN=$TibaBotEnableCarePlan",
+    "TIBABOT_ENABLE_CLERKING_ASSIST=$TibaBotEnableClerkingAssist"
 ) -join "`n"
 & $nssmExe set $ServiceName AppEnvironmentExtra $envVars
 

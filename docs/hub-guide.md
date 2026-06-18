@@ -1,6 +1,6 @@
 # Vitora HMIS Facility Hub — Comprehensive Guide & Operations Runbook
 
-> **Current Version**: hub-v0.6.9
+> **Current Version**: hub-v0.6.10
 > **Platforms**: Linux (Debian/Ubuntu, Raspberry Pi), Windows 10/11+
 > **Delivery Modes**: Native (systemd/NSSM service), Container (Docker Compose)
 > **Last Updated**: June 2026
@@ -239,7 +239,7 @@ When running in hub mode, certain integrations route through the cloud:
 
 ### Cloud Admin Accounts vs Local Django Admin
 
-During activation the cloud returns a lightweight user manifest so the hub can reserve cloud user IDs and warn about username conflicts. That manifest intentionally does **not** include password hashes. Cloud admin credentials therefore do not work in the hub's Django admin immediately after installation; they only become usable locally after credential sync materializes the real user record on the hub.
+During activation the cloud returns a lightweight user manifest so the hub can reserve cloud user IDs and warn about username conflicts. That manifest intentionally does **not** include password hashes. In hub builds that include online credential fallback, a cloud username/password can be validated against the configured cloud API when local auth fails; after a successful validation, the hub activates the local placeholder user and stores a local password hash so later offline login can work. This fallback requires network access to the cloud on the first successful login.
 
 For immediate local operations, create a hub-local admin with `C:\VitoraHub\hub-shell.ps1 create_superuser --force --reset-password` or use the installer prompt. The installer defaults to `hub_admin` when cloud admins already exist, avoiding username collisions with cloud accounts like `admin`.
 
@@ -363,6 +363,33 @@ cd C:\VitoraHub
 ```
 
 The command reports `pushed`, `pulled`, and queue counts before/after the run. Missing sync settings or a missing license token exits with an error and leaves pending queue entries intact.
+
+Use a full downward pull after upgrading a hub that previously showed fewer cloud/web patients than the desktop. This ignores the saved pull cursor for that run and asks the cloud for all downward-syncable records:
+
+```powershell
+cd C:\VitoraHub
+.\hub-shell.ps1 hub_sync --full-pull
+```
+
+If older failed pushes also exist, combine it with retry recovery:
+
+```powershell
+.\hub-shell.ps1 hub_sync --retry-failed --full-pull
+```
+
+Patients and emergency contacts are bidirectional sync models. Hubs older than the bidirectional patient-sync fix only uploaded local patient changes, so a normal incremental pull may not catch older cloud-created patient rows if the cursor had already advanced.
+
+#### TibaBot on Desktop/Hub
+
+The desktop app talks to TibaBot through the local hub backend. The packaged frontend flag only decides whether the UI asks `/api/ai/status/`; the hub service must also run with `TIBABOT_ENABLED=true` and the relevant `TIBABOT_*` endpoint/JWT/admin values in its Windows service environment. Current Windows installer/updater scripts write these values to `.env`/NSSM when provided by activation metadata or process environment.
+
+Check status from the hub:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:9088/api/ai/status/
+```
+
+If `enabled` is false after an update, confirm `C:\VitoraHub\.env` contains `TIBABOT_ENABLED=true`, rerun the updater to refresh `AppEnvironmentExtra`, then restart `VitoraHub`.
 
 #### Check License Status
 

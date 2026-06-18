@@ -25,8 +25,8 @@ class TestShouldQueueDownwardSync:
         assert should_queue_downward_sync("encounters.ICD10Code") is True
 
     @override_settings(SYNC_ENABLED=True, ENVIRONMENT="production")
-    def test_returns_false_for_up_only_model(self):
-        assert should_queue_downward_sync("patients.Patient") is False
+    def test_returns_true_for_bidirectional_patient_model(self):
+        assert should_queue_downward_sync("patients.Patient") is True
 
     @override_settings(SYNC_ENABLED=True, ENVIRONMENT="hub")
     def test_returns_false_on_hub(self):
@@ -136,18 +136,20 @@ class TestCloudDownwardSyncSignal:
         assert synced_entries.count() == 0
 
     @override_settings(SYNC_ENABLED=True, ENVIRONMENT="production")
-    def test_up_only_model_no_downward_entry(self, sample_patient):
-        """UP-only models should not create downward sync entries."""
+    def test_patient_save_creates_downward_entry(self, sample_patient):
+        """Cloud patient changes should be pullable by activated hubs."""
         SyncQueue.objects.all().delete()
 
         sample_patient.first_name = "CloudEdit"
         sample_patient.save()
 
-        synced_entries = SyncQueue.objects.filter(
+        entry = SyncQueue.objects.filter(
             model_name="patients.Patient",
             status="SYNCED",
-        )
-        assert synced_entries.count() == 0
+        ).last()
+        assert entry is not None
+        assert entry.operation == "UPDATE"
+        assert entry.data["first_name"] == "CloudEdit"
 
     @override_settings(SYNC_ENABLED=True, ENVIRONMENT="production")
     def test_from_sync_materializer_flag_prevents_loop(self, sample_organization):

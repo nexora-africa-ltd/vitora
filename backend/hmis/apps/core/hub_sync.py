@@ -130,7 +130,7 @@ class HubCloudSyncWorker:
 
             self._stop_event.wait(timeout=self.interval)
 
-    def sync_once(self) -> tuple[int, int]:
+    def sync_once(self, *, force_full_pull: bool = False) -> tuple[int, int]:
         """Run one push+pull cycle and return (pushed, pulled)."""
         if not self.has_license_token:
             logger.warning(
@@ -139,7 +139,7 @@ class HubCloudSyncWorker:
             )
             return 0, 0
         pushed = self._push_pending()
-        pulled = self._pull_changes()
+        pulled = self._pull_changes(force_full=force_full_pull)
         if pushed or pulled:
             logger.info("Hub-to-cloud sync: pushed=%d, pulled=%d", pushed, pulled)
         return pushed, pulled
@@ -226,11 +226,13 @@ class HubCloudSyncWorker:
             SyncQueue.objects.filter(pk__in=entry_ids).update(status="PENDING")
             return 0
 
-    def _pull_changes(self) -> int:
+    def _pull_changes(self, *, force_full: bool = False) -> int:
         """Pull changes from cloud since last pull. Returns count received."""
         params: dict = {"limit": str(self.batch_size), "direction": "down"}
 
-        if self._last_pull_timestamp:
+        if force_full:
+            params["full"] = "true"
+        elif self._last_pull_timestamp:
             params["since"] = self._last_pull_timestamp.isoformat()
         else:
             params["full"] = "true"
