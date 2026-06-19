@@ -1,5 +1,7 @@
 """Tests for applying pulled cloud sync entries on a hub."""
 
+from datetime import date
+
 import pytest  # type: ignore
 
 pytestmark = pytest.mark.django_db
@@ -71,6 +73,78 @@ class TestSyncMaterializer:
         target.refresh_from_db()
         assert target.email == "target@example.com"
         assert target.password == new_hash
+
+    def test_materialize_user_create_updates_existing_username(self):
+        """Cloud-created users should update a same-username local row instead of colliding."""
+        from django.contrib.auth import get_user_model
+
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        User = get_user_model()
+        local_user = User.objects.create_user(
+            username="cloud_admin",
+            email="local@example.com",
+            password="old-password",
+        )
+        result = materialize_entry(
+            {
+                "table": "auth.User",
+                "operation": "CREATE",
+                "record_id": local_user.pk + 100,
+                "data": {
+                    "id": local_user.pk + 100,
+                    "username": "cloud_admin",
+                    "email": "cloud@example.com",
+                    "first_name": "Cloud",
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        assert User.objects.filter(username="cloud_admin").count() == 1
+        local_user.refresh_from_db()
+        assert local_user.first_name == "Cloud"
+
+    def test_materialize_staff_profile_create_updates_existing_user_profile(
+        self, test_user, sample_organization, sample_facility, sample_department, sample_role
+    ):
+        """Cloud staff profiles should update an existing local profile for the same user."""
+        from hmis.apps.core.models import StaffProfile
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        local_profile = StaffProfile.objects.create(
+            user=test_user,
+            employee_id="LOCAL-001",
+            organization=sample_organization,
+            primary_facility=sample_facility,
+            primary_department=sample_department,
+            primary_role=sample_role,
+            date_joined=date(2026, 1, 1),
+        )
+        result = materialize_entry(
+            {
+                "table": "core.StaffProfile",
+                "operation": "CREATE",
+                "record_id": local_profile.pk + 100,
+                "data": {
+                    "id": local_profile.pk + 100,
+                    "user": test_user.pk,
+                    "employee_id": "CLOUD-001",
+                    "organization": sample_organization.pk,
+                    "primary_facility": sample_facility.pk,
+                    "primary_department": sample_department.pk,
+                    "primary_role": sample_role.pk,
+                    "date_joined": "2026-01-01",
+                    "employment_status": "ACTIVE",
+                    "employment_type": "PERMANENT",
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        assert StaffProfile.objects.filter(user=test_user).count() == 1
+        local_profile.refresh_from_db()
+        assert local_profile.employee_id == "CLOUD-001"
 
     def test_materialize_facility_update(self, sample_facility):
         """A downward Facility update should change the local hub copy."""

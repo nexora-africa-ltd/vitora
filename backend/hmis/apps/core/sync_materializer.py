@@ -22,6 +22,9 @@ def materialize_entry(entry: dict[str, Any]) -> dict[str, Any]:
     record_id = entry.get("record_id")
     data = entry.get("data") or {}
 
+    if not isinstance(operation, str):
+        return {"success": False, "error": "Missing operation"}
+
     if table not in SYNC_REGISTRY:
         return {"success": False, "error": f"Unknown table: {table}"}
 
@@ -137,10 +140,51 @@ def update_or_create_from_materializer(model, record_id: Any, cleaned_data: dict
             instance.save()
         return instance, False
     except model.DoesNotExist:
+        existing = find_existing_for_materialized_create(model, cleaned_data)
+        if existing:
+            for field_name, value in cleaned_data.items():
+                setattr(existing, field_name, value)
+            existing._from_sync_materializer = True
+            update_fields = list(cleaned_data.keys())
+            if update_fields:
+                existing.save(update_fields=update_fields)
+            else:
+                existing.save()
+            return existing, False
+
         instance = model(**{pk_name: record_id, **cleaned_data})
         instance._from_sync_materializer = True
         instance.save()
         return instance, True
+
+
+def find_existing_for_materialized_create(model, cleaned_data: dict[str, Any]):
+    """Find an existing local row by a stable natural key before creating by cloud PK."""
+    if model._meta.label == "auth.User":
+        username = cleaned_data.get("username")
+        if username:
+            existing = model.objects.filter(username=username).first()
+            if existing:
+                return existing
+        email = cleaned_data.get("email")
+        if email:
+            existing = model.objects.filter(email__iexact=email).first()
+            if existing:
+                return existing
+
+    if model._meta.label == "core.StaffProfile":
+        user_id = cleaned_data.get("user_id")
+        if user_id:
+            existing = model.objects.filter(user_id=user_id).first()
+            if existing:
+                return existing
+        employee_id = cleaned_data.get("employee_id")
+        if employee_id:
+            existing = model.objects.filter(employee_id=employee_id).first()
+            if existing:
+                return existing
+
+    return None
 
 
 def find_pending_local_change(model_label: str, record_id: Any) -> SyncQueue | None:

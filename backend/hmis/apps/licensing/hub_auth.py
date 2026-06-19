@@ -81,3 +81,7 @@ class HubLicenseOrJWTAuthentication(BaseAuthentication):
             return jwt_result
 
         return CookieJWTAuthentication().authenticate(request)
+
+    def authenticate_header(self, _request: Request) -> str:
+        """Advertise Bearer auth so unauthenticated requests return 401."""
+        return "Bearer"
