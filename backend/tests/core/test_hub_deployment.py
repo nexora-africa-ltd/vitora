@@ -14,6 +14,8 @@ from unittest.mock import MagicMock, patch
 import pytest  # type: ignore
 from channels.db import database_sync_to_async
 from channels.testing import WebsocketCommunicator
+from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import override_settings
@@ -410,7 +412,7 @@ class TestSyncHubLicenseAuthentication:
     """Tests for license-token authentication on sync endpoints."""
 
     PUSH_URL = "/api/sync/push/"
-    PULL_URL = "/api/sync/pull/?full=true&direction=down"
+    PULL_URL = "/api/sync/pull/?since=2026-01-01T00:00:00Z&direction=down"
 
     def test_sync_push_accepts_active_hub_license(
         self, api_client, hub_license_token, sample_facility, sample_organization
@@ -472,6 +474,141 @@ class TestSyncHubLicenseAuthentication:
         )
 
         assert response.status_code in {status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN}
+
+    def test_sync_push_hub_license_upserts_user_with_password_hash(
+        self, api_client, hub_license_token
+    ):
+        """Licensed hubs may provision non-privileged cloud users with synced password hashes."""
+        User = get_user_model()
+        password_hash = make_password("hub-pass-123")
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {hub_license_token}")
+
+        response = api_client.post(
+            self.PUSH_URL,
+            {
+                "client_id": "sync-test-hub",
+                "changes": [
+                    {
+                        "table": "auth.User",
+                        "operation": "CREATE",
+                        "record_id": "100123",
+                        "data": {
+                            "id": 100123,
+                            "username": "hub_doc",
+                            "email": "hub_doc@example.com",
+                            "first_name": "Hub",
+                            "last_name": "Doctor",
+                            "password": password_hash,
+                            "is_active": True,
+                        },
+                        "timestamp": timezone.now().isoformat(),
+                        "client_id": "sync-test-hub",
+                    }
+                ],
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["accepted"] == 1
+        user = User.objects.get(pk=100123)
+        assert user.username == "hub_doc"
+        assert user.check_password("hub-pass-123") is True
+        assert user.is_staff is False
+        assert user.is_superuser is False
+        assert not SyncQueue.objects.filter(model_name="auth.User", record_id=100123).exists()
+
+    def test_sync_push_hub_user_rejects_privilege_fields(self, api_client, hub_license_token):
+        """Hub user provisioning must not allow privilege escalation fields."""
+        User = get_user_model()
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {hub_license_token}")
+
+        response = api_client.post(
+            self.PUSH_URL,
+            {
+                "client_id": "sync-test-hub",
+                "changes": [
+                    {
+                        "table": "auth.User",
+                        "operation": "CREATE",
+                        "record_id": "100124",
+                        "data": {
+                            "username": "hub_admin_attempt",
+                            "password": make_password("hub-pass-123"),
+                            "is_superuser": True,
+                        },
+                        "timestamp": timezone.now().isoformat(),
+                        "client_id": "sync-test-hub",
+                    }
+                ],
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["accepted"] == 0
+        assert response.json()["rejected"] == 1
+        assert "not allowed" in response.json()["rejections"][0]["reason"]
+        assert not User.objects.filter(username="hub_admin_attempt").exists()
+
+    def test_sync_push_hub_license_maps_staff_profile_to_installation_scope(
+        self,
+        api_client,
+        hub_license_token,
+        sample_organization,
+        sample_facility,
+        sample_department,
+        sample_role,
+    ):
+        """Hub staff profile provisioning is forced into the licensed org/facility."""
+        from hmis.apps.core.models import StaffProfile
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            pk=100125,
+            username="hub_nurse",
+            email="hub_nurse@example.com",
+            password="hub-pass-123",
+        )
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {hub_license_token}")
+
+        response = api_client.post(
+            self.PUSH_URL,
+            {
+                "client_id": "sync-test-hub",
+                "changes": [
+                    {
+                        "table": "core.StaffProfile",
+                        "operation": "CREATE",
+                        "record_id": "200125",
+                        "data": {
+                            "id": 200125,
+                            "user": user.pk,
+                            "employee_id": "HUB-200125",
+                            "organization": 999999,
+                            "primary_facility": 999999,
+                            "primary_department": sample_department.pk,
+                            "primary_role": sample_role.pk,
+                            "date_joined": "2026-06-19",
+                            "employment_status": "ACTIVE",
+                            "employment_type": "PERMANENT",
+                        },
+                        "timestamp": timezone.now().isoformat(),
+                        "client_id": "sync-test-hub",
+                    }
+                ],
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["accepted"] == 1
+        profile = StaffProfile.objects.get(user=user)
+        assert profile.pk == 200125
+        assert profile.organization == sample_organization
+        assert profile.primary_facility == sample_facility
+        assert profile.primary_department == sample_department
+        assert profile.primary_role == sample_role
 
 
 # ===========================================================================
