@@ -238,6 +238,7 @@ class HubCloudSyncWorker:
             params["full"] = "true"
 
         total_applied = 0
+        deferred_changes = []
 
         while True:
             try:
@@ -259,15 +260,28 @@ class HubCloudSyncWorker:
                     self._last_pull_timestamp = datetime.fromisoformat(server_ts)
                     self._save_state()
 
+                page_deferred_changes = []
                 for change in changes:
                     result = materialize_entry(change)
                     if not result.get("success"):
-                        logger.warning(
-                            "Failed to apply pulled change %s:%s: %s",
-                            change.get("table"),
-                            change.get("record_id"),
-                            result.get("error"),
-                        )
+                        if self._is_deferred_materialization_error(result):
+                            page_deferred_changes.append(change)
+                            continue
+                        self._log_materialization_failure(change, result)
+                        continue
+
+                    self._record_pulled_change(change)
+                    total_applied += 1
+
+                retry_deferred_changes = [*deferred_changes, *page_deferred_changes]
+                deferred_changes = []
+                for change in retry_deferred_changes:
+                    result = materialize_entry(change)
+                    if not result.get("success"):
+                        if self._is_deferred_materialization_error(result):
+                            deferred_changes.append(change)
+                        else:
+                            self._log_materialization_failure(change, result)
                         continue
 
                     self._record_pulled_change(change)
@@ -275,6 +289,13 @@ class HubCloudSyncWorker:
 
                 next_cursor = data.get("next_cursor")
                 if not data.get("has_more") or not next_cursor:
+                    for change in deferred_changes:
+                        result = materialize_entry(change)
+                        if result.get("success"):
+                            self._record_pulled_change(change)
+                            total_applied += 1
+                        else:
+                            self._log_materialization_failure(change, result)
                     return total_applied
 
                 params["cursor"] = str(next_cursor)
@@ -282,6 +303,22 @@ class HubCloudSyncWorker:
             except requests.RequestException as e:
                 logger.warning("Cloud pull network error: %s", e)
                 return total_applied
+
+    @staticmethod
+    def _is_deferred_materialization_error(result: dict) -> bool:
+        """Return True for errors likely caused by parent rows arriving later."""
+        error = str(result.get("error") or "")
+        return "matching query does not exist" in error or "FOREIGN KEY constraint failed" in error
+
+    @staticmethod
+    def _log_materialization_failure(change: dict, result: dict):
+        """Log a pulled-change materialization failure consistently."""
+        logger.warning(
+            "Failed to apply pulled change %s:%s: %s",
+            change.get("table"),
+            change.get("record_id"),
+            result.get("error"),
+        )
 
     def _record_pulled_change(self, change: dict):
         """Record a pulled cloud change without assuming SyncQueue uniqueness."""
