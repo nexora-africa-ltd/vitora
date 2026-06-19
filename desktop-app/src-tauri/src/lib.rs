@@ -15,6 +15,10 @@ use tauri::{
     tray::TrayIconBuilder,
     AppHandle, Manager, State, WindowEvent,
 };
+#[cfg(not(debug_assertions))]
+use tauri::Emitter;
+#[cfg(not(debug_assertions))]
+use tauri_plugin_deep_link::DeepLinkExt;
 
 pub mod commands;
 pub mod config;
