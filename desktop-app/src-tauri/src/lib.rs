@@ -101,6 +101,14 @@ impl SidecarState {
             .replace('\'', "&#39;")
     }
 
+    fn js_escape(value: &str) -> String {
+        value
+            .replace('\\', "\\\\")
+            .replace('\'', "\\'")
+            .replace('\n', "\\n")
+            .replace('\r', "")
+    }
+
     /// Check if the sidecar HTTP server is actually serving requests.
     ///
     /// We deliberately do NOT use `TcpListener::bind` here: Next.js binds its
@@ -298,10 +306,17 @@ impl SidecarState {
 
     /// Spawn the Node.js sidecar with the standalone Next.js build.
     pub fn spawn_sidecar(&self, app: &AppHandle) -> Result<u16, String> {
+        let spawn_start = Instant::now();
         let port = Self::find_free_port();
+        log::info!("Startup phase: selected sidecar port {}", port);
 
         // Extract standalone archive to app data dir (first run) or reuse existing
+        let extract_start = Instant::now();
         let standalone_dir = Self::ensure_standalone_extracted(app)?;
+        log::info!(
+            "Startup phase: standalone bundle ready in {:.1}s",
+            extract_start.elapsed().as_secs_f64()
+        );
         let server_js = standalone_dir.join("server.js");
 
         // Resolve Node.js binary from resources
@@ -411,6 +426,11 @@ impl SidecarState {
         let child = child
             .spawn()
             .map_err(|e| format!("Failed to spawn Node sidecar: {}", e))?;
+
+        log::info!(
+            "Startup phase: Node sidecar process spawned in {:.1}s",
+            spawn_start.elapsed().as_secs_f64()
+        );
 
         let shared = Arc::new(
             SharedChild::new(child).map_err(|e| format!("Failed to create SharedChild: {}", e))?,
@@ -681,11 +701,14 @@ pub fn run() {
             let handle_clone = handle.clone();
 
             // Emit startup progress to the loading screen
-            fn emit_status(handle: &AppHandle, msg: &str) {
+            fn emit_status(handle: &AppHandle, msg: &str, detail: &str) {
                 if let Some(w) = handle.get_webview_window("main") {
+                    let msg = SidecarState::js_escape(msg);
+                    let detail = SidecarState::js_escape(detail);
                     let _ = w.eval(&format!(
-                        "try {{ document.getElementById('status').textContent = '{}'; }} catch(_) {{}}",
-                        msg
+                        "try {{ document.getElementById('status').textContent = '{}'; document.getElementById('startup-detail').textContent = '{}'; }} catch(_) {{}}",
+                        msg,
+                        detail
                     ));
                 }
             }
@@ -693,14 +716,27 @@ pub fn run() {
             // Spawn sidecar in a background thread to avoid blocking the event loop
             std::thread::spawn(move || {
                 let state = handle_clone.state::<SidecarState>();
+                let startup_start = Instant::now();
 
-                emit_status(&handle_clone, "Preparing application files...");
+                emit_status(
+                    &handle_clone,
+                    "Preparing application files...",
+                    "Checking whether the packaged server needs extraction.",
+                );
 
                 match state.spawn_sidecar(&handle_clone) {
                     Ok(port) => {
-                        log::info!("Sidecar spawned on port {}", port);
+                        log::info!(
+                            "Sidecar spawned on port {} after {:.1}s",
+                            port,
+                            startup_start.elapsed().as_secs_f64()
+                        );
 
-                        emit_status(&handle_clone, "Starting server...");
+                        emit_status(
+                            &handle_clone,
+                            "Starting server...",
+                            "Waiting for the local health check. Offline services will warm up after login loads.",
+                        );
 
                         // Wait for the sidecar to actually serve HTTP.
                         // After an update the standalone is freshly re-extracted
@@ -710,7 +746,16 @@ pub fn run() {
                             .map(|(_, stderr_path)| stderr_path);
                         match state.wait_for_ready(SIDECAR_READY_TIMEOUT, stderr_path.as_deref()) {
                             Ok(()) => {
-                                log::info!("Sidecar is ready on port {}", port);
+                                log::info!(
+                                    "Sidecar is ready on port {} after {:.1}s total startup",
+                                    port,
+                                    startup_start.elapsed().as_secs_f64()
+                                );
+                                emit_status(
+                                    &handle_clone,
+                                    "Opening Vitora...",
+                                    "Server is ready. Loading the sign-in screen.",
+                                );
                                 // Navigate main window to the desktop-aware login gate.
                                 // `/` redirects to `/dashboard`, which can skip the
                                 // desktop setup/activation checks and leave users with

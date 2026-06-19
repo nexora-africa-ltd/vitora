@@ -11,6 +11,8 @@ export async function POST() {
   }
 
   try {
+    const { startDesktopServices } = await import('@/lib/desktop/startup-services');
+    await startDesktopServices('backup-now');
     const { createBackup, getBackupStatus } = await import('@/lib/desktop/backup-service');
     const backup = createBackup('rolling');
 
