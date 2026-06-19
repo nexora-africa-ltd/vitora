@@ -19,8 +19,6 @@ export async function GET() {
   }
 
   try {
-    const { startDesktopServices } = await import('@/lib/desktop/startup-services');
-    await startDesktopServices('sync-status');
     const { getSyncStatus } = await import('@/lib/desktop/sync-engine');
     return NextResponse.json(getSyncStatus());
   } catch (error) {
@@ -40,8 +38,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { startDesktopServices } = await import('@/lib/desktop/startup-services');
-    await startDesktopServices('sync-now');
     const body = await request.json().catch(() => ({}));
     const { full } = body as { full?: boolean };
 

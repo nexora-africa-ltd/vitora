@@ -14,7 +14,19 @@ export async function register() {
       console.error("[Desktop] Uncaught exception (kept alive):", err);
     });
 
-    console.log("[Desktop] Sidecar instrumentation registered; offline services start after health check");
+    try {
+      const { initLocalDatabase } = await import("./lib/desktop/local-db");
+      const { startAutoSync } = await import("./lib/desktop/sync-engine");
+      const { startAutoBackups } = await import("./lib/desktop/backup-service");
+
+      initLocalDatabase();
+      startAutoBackups();
+      startAutoSync();
+
+      console.log("[Desktop] Local DB, sync, and backup services initialized");
+    } catch (e) {
+      console.warn("[Desktop] Failed to initialize offline services:", e);
+    }
     return;
   }
 

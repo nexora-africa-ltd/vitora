@@ -21,7 +21,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -40,8 +39,6 @@ import {
   setHubUrl,
   getInstallationId,
   clearCredentials,
-  getAutoStartEnabled,
-  setAutoStartEnabled,
 } from '@/lib/desktop';
 import { apiClient } from '@/lib/api/client';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -82,27 +79,6 @@ interface HubSyncNowResult {
   failed_after: number;
 }
 
-interface BackupInfo {
-  path: string;
-  timestamp: string;
-  sizeBytes: number;
-  type: 'rolling' | 'daily' | 'export';
-}
-
-interface BackupStatus {
-  available: boolean;
-  integrity: 'ok' | 'corrupted' | 'unavailable';
-  backupDir: string;
-  rolling: BackupInfo[];
-  daily: BackupInfo[];
-  latestBackup: BackupInfo | null;
-}
-
-interface BackupNowResult {
-  backup: BackupInfo;
-  status: BackupStatus;
-}
-
 function formatDateTime(value?: string | null) {
   if (!value) return 'Never';
   return new Intl.DateTimeFormat(undefined, {
@@ -117,13 +93,6 @@ function formatUptime(seconds: number) {
   const minutes = Math.floor((seconds % 3600) / 60);
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m`;
-}
-
-function formatBytes(bytes?: number) {
-  if (!bytes) return '0 B';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function healthBadgeVariant(statusValue?: string) {
@@ -150,12 +119,6 @@ export function DesktopSettingsTab() {
   const [syncingNow, setSyncingNow] = useState(false);
   const [hubHealth, setHubHealth] = useState<HubHealth | null>(null);
   const [hubHealthError, setHubHealthError] = useState<string>('');
-  const [backupStatus, setBackupStatus] = useState<BackupStatus | null>(null);
-  const [backupLoading, setBackupLoading] = useState(false);
-  const [backupNowLoading, setBackupNowLoading] = useState(false);
-  const [backupStatusError, setBackupStatusError] = useState<string>('');
-  const [autoStartEnabled, setAutoStartEnabledState] = useState(false);
-  const [savedAutoStartEnabled, setSavedAutoStartEnabled] = useState(false);
   const { toast } = useToast();
 
   // Form state
@@ -172,9 +135,6 @@ export function DesktopSettingsTab() {
         getAppConfig(),
         getInstallationId(),
       ]);
-      const launchAtSignIn = await getAutoStartEnabled();
-      setAutoStartEnabledState(launchAtSignIn);
-      setSavedAutoStartEnabled(launchAtSignIn);
       if (appConfig) {
         setConfig(appConfig);
         setApiUrlState(appConfig.api_url);
@@ -218,29 +178,6 @@ export function DesktopSettingsTab() {
     }
   }, [loading, isHubMode, loadHubHealth]);
 
-  const loadBackupStatus = useCallback(async () => {
-    setBackupLoading(true);
-    setBackupStatusError('');
-    try {
-      const response = await fetch('/api/desktop-backup/status/', { cache: 'no-store' });
-      if (!response.ok) {
-        throw new Error('Backup status unavailable');
-      }
-      setBackupStatus(await response.json() as BackupStatus);
-    } catch {
-      setBackupStatus(null);
-      setBackupStatusError('Backup status is unavailable.');
-    } finally {
-      setBackupLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!loading) {
-      loadBackupStatus();
-    }
-  }, [loading, loadBackupStatus]);
-
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -248,7 +185,6 @@ export function DesktopSettingsTab() {
       await setDeploymentMode(deploymentMode);
       await setSyncInterval(syncInterval);
       await setBackupInterval(backupInterval);
-      await setAutoStartEnabled(autoStartEnabled);
       if (deploymentMode === 'lan_client') {
         await setHubUrl(hubUrl);
       }
@@ -268,7 +204,6 @@ export function DesktopSettingsTab() {
       setSyncIntervalState(config.sync_interval_secs);
       setBackupIntervalState(config.backup_interval_mins);
       setHubUrlState(config.hub_url);
-      setAutoStartEnabledState(savedAutoStartEnabled);
     }
   };
 
@@ -298,39 +233,13 @@ export function DesktopSettingsTab() {
     }
   };
 
-  const handleBackupNow = async () => {
-    setBackupNowLoading(true);
-    try {
-      const response = await fetch('/api/desktop-backup/create/', { method: 'POST' });
-      if (!response.ok) {
-        throw new Error('Backup creation failed');
-      }
-      const result = await response.json() as BackupNowResult;
-      setBackupStatus(result.status);
-      toast({
-        title: 'Backup complete',
-        description: `Created ${formatBytes(result.backup.sizeBytes)} backup at ${formatDateTime(result.backup.timestamp)}.`,
-      });
-    } catch {
-      toast({
-        title: 'Backup failed',
-        description: 'The desktop backup could not be created right now.',
-        variant: 'destructive',
-      });
-      await loadBackupStatus();
-    } finally {
-      setBackupNowLoading(false);
-    }
-  };
-
   const hasChanges =
     config &&
     (apiUrl !== config.api_url ||
       deploymentMode !== config.deployment_mode ||
       syncInterval !== config.sync_interval_secs ||
       backupInterval !== config.backup_interval_mins ||
-      hubUrl !== config.hub_url ||
-      autoStartEnabled !== savedAutoStartEnabled);
+      hubUrl !== config.hub_url);
 
   if (loading) {
     return (
@@ -493,92 +402,12 @@ export function DesktopSettingsTab() {
       {/* Sync & Backup Settings */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-base sm:text-lg">Sync & Backup</CardTitle>
-              <HelpPopover content="Configure automatic data synchronization and backup intervals. Set to 0 to disable." />
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button variant="outline" size="sm" onClick={loadBackupStatus} disabled={backupLoading || backupNowLoading}>
-                {backupLoading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
-                Backup Status
-              </Button>
-              <Button size="sm" onClick={handleBackupNow} disabled={backupNowLoading || backupLoading}>
-                {backupNowLoading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <HardDrive className="h-4 w-4 mr-1.5" />}
-                Backup Now
-              </Button>
-            </div>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base sm:text-lg">Sync & Backup</CardTitle>
+            <HelpPopover content="Configure automatic data synchronization and backup intervals. Set to 0 to disable." />
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {backupStatusError && (
-            <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{backupStatusError}</span>
-            </div>
-          )}
-
-          {backupStatus && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-md border p-3">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Backup Health
-                </div>
-                <Badge variant={backupStatus.integrity === 'ok' ? 'default' : 'destructive'} className="mt-2 w-fit capitalize">
-                  {backupStatus.integrity}
-                </Badge>
-              </div>
-              <div className="rounded-md border p-3">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5" />
-                  Latest Backup
-                </div>
-                <p className="mt-2 text-sm font-medium">{formatDateTime(backupStatus.latestBackup?.timestamp)}</p>
-                <p className="text-xs text-muted-foreground">{backupStatus.latestBackup ? formatBytes(backupStatus.latestBackup.sizeBytes) : 'No backups yet'}</p>
-              </div>
-              <div className="rounded-md border p-3">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <HardDrive className="h-3.5 w-3.5" />
-                  Retention
-                </div>
-                <p className="mt-2 text-sm font-medium">{backupStatus.rolling.length} rolling</p>
-                <p className="text-xs text-muted-foreground">{backupStatus.daily.length} daily</p>
-              </div>
-              <div className="rounded-md border p-3">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Server className="h-3.5 w-3.5" />
-                  Local DB
-                </div>
-                <Badge variant={backupStatus.available ? 'default' : 'destructive'} className="mt-2 w-fit">
-                  {backupStatus.available ? 'Available' : 'Unavailable'}
-                </Badge>
-              </div>
-            </div>
-          )}
-
-          {backupStatus?.backupDir && (
-            <InfoRow label="Backup Path" value={backupStatus.backupDir} />
-          )}
-
-          <div className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="auto-start">Launch at Sign-in</Label>
-                <HelpPopover content="Start Vitora when the operating system signs in so the local server can warm up before staff open the app." />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {autoStartEnabled ? 'Prewarm desktop startup after sign-in.' : 'Start only when opened manually.'}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch id="auto-start" checked={autoStartEnabled} onCheckedChange={setAutoStartEnabledState} />
-              <span className="text-sm font-medium">
-                {autoStartEnabled ? 'Enabled' : 'Manual'}
-              </span>
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="sync-interval">Sync Interval (seconds)</Label>

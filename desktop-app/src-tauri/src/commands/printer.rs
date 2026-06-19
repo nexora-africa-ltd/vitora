@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-#[cfg(not(target_os = "windows"))]
 use std::io::Write;
 use std::process::Command;
 

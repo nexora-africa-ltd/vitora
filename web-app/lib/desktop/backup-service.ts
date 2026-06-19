@@ -20,15 +20,6 @@ interface BackupInfo {
   type: 'rolling' | 'daily' | 'export';
 }
 
-export interface BackupStatus {
-  available: boolean;
-  integrity: 'ok' | 'corrupted' | 'unavailable';
-  backupDir: string;
-  rolling: BackupInfo[];
-  daily: BackupInfo[];
-  latestBackup: BackupInfo | null;
-}
-
 // Singleton state
 let backupTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -154,26 +145,6 @@ export function listBackups(type: 'rolling' | 'daily'): BackupInfo[] {
         type,
       };
     });
-}
-
-/**
- * Return backup health and the most recent local backups.
- */
-export function getBackupStatus(): BackupStatus {
-  const rolling = listBackups('rolling');
-  const daily = listBackups('daily');
-  const latestBackup = [...rolling, ...daily].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  )[0] ?? null;
-
-  return {
-    available: isLocalDbAvailable(),
-    integrity: isLocalDbAvailable() ? checkIntegrity() : 'unavailable',
-    backupDir: getBackupDir(),
-    rolling,
-    daily,
-    latestBackup,
-  };
 }
 
 /**

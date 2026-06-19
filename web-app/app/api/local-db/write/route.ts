@@ -21,8 +21,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { startDesktopServices } = await import('@/lib/desktop/startup-services');
-    await startDesktopServices('local-db-write');
     const body = await request.json();
     const { table, operation, recordId, data } = body;
 
