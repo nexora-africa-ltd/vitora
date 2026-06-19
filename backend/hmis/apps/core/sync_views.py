@@ -22,7 +22,12 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import status
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.decorators import (
+    api_view,
+    authentication_classes,
+    permission_classes,
+    throttle_classes,
+)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -480,6 +485,7 @@ def _broadcast_sync_changes(facility_id: int, changes: list, client_id: str):
 @api_view(["POST"])
 @authentication_classes([HubLicenseOrJWTAuthentication])
 @permission_classes([IsAuthenticatedOrHubLicense])
+@throttle_classes([])
 def sync_push(request):
     """
     Accept a batch of changes from a client device.
@@ -625,6 +631,7 @@ def sync_push(request):
 @api_view(["GET"])
 @authentication_classes([HubLicenseOrJWTAuthentication])
 @permission_classes([IsAuthenticatedOrHubLicense])
+@throttle_classes([])
 def sync_pull(request):
     """
     Return changes since a given timestamp for the client's facility.
@@ -732,6 +739,7 @@ def sync_pull(request):
 @api_view(["GET"])
 @authentication_classes([HubLicenseOrJWTAuthentication])
 @permission_classes([IsAuthenticatedOrHubLicense])
+@throttle_classes([])
 def sync_status(request):
     """Return sync health/status for the client's facility."""
     facility = _resolve_facility_from_request(request)

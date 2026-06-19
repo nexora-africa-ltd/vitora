@@ -15,6 +15,7 @@ The cloud server exposes the same /api/sync/push/ and /api/sync/pull/ endpoints.
 import json
 import logging
 import os
+import re
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -212,9 +213,12 @@ class HubCloudSyncWorker:
                 )
                 return len(entry_ids)
             else:
+                retry_after = self._retry_after_hint(response)
+                retry_suffix = f" Retry after {retry_after}." if retry_after else ""
                 logger.warning(
-                    "Cloud push returned %d: %s",
+                    "Cloud push returned %d:%s %s",
                     response.status_code,
+                    retry_suffix,
                     response.text[:200],
                 )
                 self._mark_failed(entry_ids, f"HTTP {response.status_code}")
@@ -245,9 +249,12 @@ class HubCloudSyncWorker:
                 response = self._get(f"{self.server_url}/pull/", params=params.copy())
 
                 if response.status_code != 200:
+                    retry_after = self._retry_after_hint(response)
+                    retry_suffix = f" Retry after {retry_after}." if retry_after else ""
                     logger.warning(
-                        "Cloud pull returned %d: %s",
+                        "Cloud pull returned %d:%s %s",
                         response.status_code,
+                        retry_suffix,
                         response.text[:200],
                     )
                     return total_applied
@@ -319,6 +326,18 @@ class HubCloudSyncWorker:
             change.get("record_id"),
             result.get("error"),
         )
+
+    @staticmethod
+    def _retry_after_hint(response: requests.Response) -> str:
+        """Return a human-readable retry hint from a throttled cloud response."""
+        retry_after = response.headers.get("Retry-After")
+        if retry_after:
+            return f"{retry_after} seconds"
+
+        match = re.search(r"available in (\d+) seconds", response.text or "")
+        if match:
+            return f"{match.group(1)} seconds"
+        return ""
 
     def _record_pulled_change(self, change: dict):
         """Record a pulled cloud change without assuming SyncQueue uniqueness."""
