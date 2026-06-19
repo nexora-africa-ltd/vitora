@@ -67,13 +67,12 @@ SYNC_REGISTRY: dict[str, SyncRegistryEntry] = {
     "billing.Payment": SyncRegistryEntry(direction=SyncDirection.UP, priority=3),
     "scheduling.Shift": SyncRegistryEntry(direction=SyncDirection.UP, priority=4),
     "inpatient.Admission": SyncRegistryEntry(direction=SyncDirection.UP, priority=3),
-    "inpatient.BedAssignment": SyncRegistryEntry(direction=SyncDirection.UP, priority=4),
     "immunizations.ImmunizationRecord": SyncRegistryEntry(
         direction=SyncDirection.UP,
         priority=3,
     ),
     "imaging.ImagingOrder": SyncRegistryEntry(direction=SyncDirection.UP, priority=3),
-    "imaging.ImagingResult": SyncRegistryEntry(direction=SyncDirection.UP, priority=3),
+    "imaging.RadiologyReport": SyncRegistryEntry(direction=SyncDirection.UP, priority=3),
     # Reference data (downward only in this phase, not auto-queued from hub)
     "encounters.ICD10Code": SyncRegistryEntry(direction=SyncDirection.DOWN, priority=5),
     "pharmacy.Drug": SyncRegistryEntry(direction=SyncDirection.DOWN, priority=5),
@@ -81,7 +80,8 @@ SYNC_REGISTRY: dict[str, SyncRegistryEntry] = {
         direction=SyncDirection.DOWN,
         priority=5,
     ),
-    "billing.ServiceCatalog": SyncRegistryEntry(direction=SyncDirection.DOWN, priority=5),
+    "billing.ServiceCategory": SyncRegistryEntry(direction=SyncDirection.DOWN, priority=5),
+    "billing.Service": SyncRegistryEntry(direction=SyncDirection.DOWN, priority=5),
     "ai.TibaBotFacilityKey": SyncRegistryEntry(
         direction=SyncDirection.DOWN,
         priority=5,

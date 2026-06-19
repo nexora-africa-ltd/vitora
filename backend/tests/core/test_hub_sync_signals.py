@@ -14,6 +14,22 @@ pytestmark = pytest.mark.django_db
 class TestHubSyncRegistry:
     """Tests for the declarative upward sync registry."""
 
+    def test_all_registered_sync_models_resolve(self):
+        """Every registry label should resolve to a real Django model."""
+        from django.apps import apps
+
+        from hmis.apps.core.sync_registry import SYNC_REGISTRY
+
+        missing = []
+        for model_label in SYNC_REGISTRY:
+            app_label, model_name = model_label.split(".", 1)
+            try:
+                apps.get_model(app_label, model_name)
+            except LookupError:
+                missing.append(model_label)
+
+        assert missing == []
+
     def test_patient_is_registered_for_bidirectional_sync(self):
         """Patients should sync hub-to-cloud and cloud-to-hub."""
         from hmis.apps.core.sync_registry import SYNC_REGISTRY, SyncDirection
@@ -60,12 +76,12 @@ class TestHubSyncSignals:
             registered_at_facility=sample_facility,
         )
 
-        entry = SyncQueue.objects.get(model_name="patients.Patient", record_id=patient.id)
+        entry = SyncQueue.objects.get(model_name="patients.Patient", record_id=patient.pk)
         assert entry.operation == "CREATE"
         assert entry.status == "PENDING"
         assert entry.organization == sample_organization
         assert entry.facility == sample_facility
-        assert entry.data["id"] == patient.id
+        assert entry.data["id"] == patient.pk
         assert entry.data["first_name"] == "Mary"
         assert entry.data["organization"] == sample_organization.id
         assert entry.data["registered_at_facility"] == sample_facility.id
