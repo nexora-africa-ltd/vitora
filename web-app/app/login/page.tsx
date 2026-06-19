@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { Eye, EyeOff, Loader2, AlertCircle, WifiOff, Clock } from 'lucide-react';
 import { useAuth } from '@/lib/auth/context';
@@ -45,7 +45,6 @@ export default function LoginPage() {
   const [isDesktopMode, setIsDesktopMode] = useState(false);
   const { login, verifyMFA } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { resolvedTheme } = useTheme();
 
   // Prevent hydration mismatch for theme-dependent images
@@ -121,6 +120,7 @@ export default function LoginPage() {
 
   // Check for logout reason (e.g., idle timeout)
   useEffect(() => {
+    const searchParams = new URL(window.location.href).searchParams;
     const reason = searchParams.get('reason');
     if (reason === 'idle') {
       setLogoutReason('idle');
@@ -129,7 +129,7 @@ export default function LoginPage() {
       url.searchParams.delete('reason');
       window.history.replaceState({}, '', url.toString());
     }
-  }, [searchParams]);
+  }, []);
 
   // Security: Strip credentials from URL if someone navigates with them in query params
   useEffect(() => {
@@ -232,7 +232,7 @@ export default function LoginPage() {
       }
 
       // Redirect to the page the user was on before logout, or dashboard
-      const callbackUrl = searchParams.get('callbackUrl');
+      const callbackUrl = new URL(window.location.href).searchParams.get('callbackUrl');
       if (callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')) {
         router.push(callbackUrl);
       } else {
