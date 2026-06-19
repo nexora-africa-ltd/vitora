@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -39,6 +40,8 @@ import {
   setHubUrl,
   getInstallationId,
   clearCredentials,
+  getAutoStartEnabled,
+  setAutoStartEnabled,
 } from '@/lib/desktop';
 import { apiClient } from '@/lib/api/client';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -151,6 +154,8 @@ export function DesktopSettingsTab() {
   const [backupLoading, setBackupLoading] = useState(false);
   const [backupNowLoading, setBackupNowLoading] = useState(false);
   const [backupStatusError, setBackupStatusError] = useState<string>('');
+  const [autoStartEnabled, setAutoStartEnabledState] = useState(false);
+  const [savedAutoStartEnabled, setSavedAutoStartEnabled] = useState(false);
   const { toast } = useToast();
 
   // Form state
@@ -167,6 +172,9 @@ export function DesktopSettingsTab() {
         getAppConfig(),
         getInstallationId(),
       ]);
+      const launchAtSignIn = await getAutoStartEnabled();
+      setAutoStartEnabledState(launchAtSignIn);
+      setSavedAutoStartEnabled(launchAtSignIn);
       if (appConfig) {
         setConfig(appConfig);
         setApiUrlState(appConfig.api_url);
@@ -240,6 +248,7 @@ export function DesktopSettingsTab() {
       await setDeploymentMode(deploymentMode);
       await setSyncInterval(syncInterval);
       await setBackupInterval(backupInterval);
+      await setAutoStartEnabled(autoStartEnabled);
       if (deploymentMode === 'lan_client') {
         await setHubUrl(hubUrl);
       }
@@ -259,6 +268,7 @@ export function DesktopSettingsTab() {
       setSyncIntervalState(config.sync_interval_secs);
       setBackupIntervalState(config.backup_interval_mins);
       setHubUrlState(config.hub_url);
+      setAutoStartEnabledState(savedAutoStartEnabled);
     }
   };
 
@@ -319,7 +329,8 @@ export function DesktopSettingsTab() {
       deploymentMode !== config.deployment_mode ||
       syncInterval !== config.sync_interval_secs ||
       backupInterval !== config.backup_interval_mins ||
-      hubUrl !== config.hub_url);
+      hubUrl !== config.hub_url ||
+      autoStartEnabled !== savedAutoStartEnabled);
 
   if (loading) {
     return (
@@ -549,6 +560,24 @@ export function DesktopSettingsTab() {
           {backupStatus?.backupDir && (
             <InfoRow label="Backup Path" value={backupStatus.backupDir} />
           )}
+
+          <div className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="auto-start">Launch at Sign-in</Label>
+                <HelpPopover content="Start Vitora when the operating system signs in so the local server can warm up before staff open the app." />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {autoStartEnabled ? 'Prewarm desktop startup after sign-in.' : 'Start only when opened manually.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch id="auto-start" checked={autoStartEnabled} onCheckedChange={setAutoStartEnabledState} />
+              <span className="text-sm font-medium">
+                {autoStartEnabled ? 'Enabled' : 'Manual'}
+              </span>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">

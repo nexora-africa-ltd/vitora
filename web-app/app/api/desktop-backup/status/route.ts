@@ -11,6 +11,8 @@ export async function GET() {
   }
 
   try {
+    const { startDesktopServices } = await import('@/lib/desktop/startup-services');
+    await startDesktopServices('backup-status');
     const { getBackupStatus } = await import('@/lib/desktop/backup-service');
     return NextResponse.json(getBackupStatus());
   } catch (error) {

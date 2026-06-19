@@ -20,6 +20,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const { startDesktopServices } = await import('@/lib/desktop/startup-services');
+    await startDesktopServices('local-db-query');
     const body = await request.json();
     const { table, where, orderBy, limit, offset, search, searchColumns } = body;
 

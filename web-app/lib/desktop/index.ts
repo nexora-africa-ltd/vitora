@@ -268,6 +268,32 @@ export async function installUpdate(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Launch at Sign-in
+// ---------------------------------------------------------------------------
+
+/**
+ * Return whether the desktop app is configured to launch at OS sign-in.
+ */
+export async function getAutoStartEnabled(): Promise<boolean> {
+  const invoke = getInvoke();
+  if (!invoke) return false;
+  try {
+    return await invoke<boolean>('plugin:autostart|is_enabled');
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Enable or disable launch at OS sign-in.
+ */
+export async function setAutoStartEnabled(enabled: boolean): Promise<void> {
+  const invoke = getInvoke();
+  if (!invoke) return;
+  await invoke(enabled ? 'plugin:autostart|enable' : 'plugin:autostart|disable');
+}
+
+// ---------------------------------------------------------------------------
 // Deployment Mode & Sync Config
 // ---------------------------------------------------------------------------
 
