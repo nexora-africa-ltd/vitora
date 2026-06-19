@@ -237,45 +237,51 @@ class HubCloudSyncWorker:
         else:
             params["full"] = "true"
 
-        try:
-            response = self._get(f"{self.server_url}/pull/", params=params)
+        total_applied = 0
 
-            if response.status_code != 200:
-                logger.warning(
-                    "Cloud pull returned %d: %s",
-                    response.status_code,
-                    response.text[:200],
-                )
-                return 0
+        while True:
+            try:
+                response = self._get(f"{self.server_url}/pull/", params=params.copy())
 
-            data = response.json()
-            changes = data.get("entries") or data.get("changes", [])
-            server_ts = data.get("server_timestamp")
-
-            if server_ts:
-                self._last_pull_timestamp = datetime.fromisoformat(server_ts)
-                self._save_state()
-
-            applied = 0
-            for change in changes:
-                result = materialize_entry(change)
-                if not result.get("success"):
+                if response.status_code != 200:
                     logger.warning(
-                        "Failed to apply pulled change %s:%s: %s",
-                        change.get("table"),
-                        change.get("record_id"),
-                        result.get("error"),
+                        "Cloud pull returned %d: %s",
+                        response.status_code,
+                        response.text[:200],
                     )
-                    continue
+                    return total_applied
 
-                self._record_pulled_change(change)
-                applied += 1
+                data = response.json()
+                changes = data.get("entries") or data.get("changes", [])
+                server_ts = data.get("server_timestamp")
 
-            return applied
+                if server_ts:
+                    self._last_pull_timestamp = datetime.fromisoformat(server_ts)
+                    self._save_state()
 
-        except requests.RequestException as e:
-            logger.warning("Cloud pull network error: %s", e)
-            return 0
+                for change in changes:
+                    result = materialize_entry(change)
+                    if not result.get("success"):
+                        logger.warning(
+                            "Failed to apply pulled change %s:%s: %s",
+                            change.get("table"),
+                            change.get("record_id"),
+                            result.get("error"),
+                        )
+                        continue
+
+                    self._record_pulled_change(change)
+                    total_applied += 1
+
+                next_cursor = data.get("next_cursor")
+                if not data.get("has_more") or not next_cursor:
+                    return total_applied
+
+                params["cursor"] = str(next_cursor)
+
+            except requests.RequestException as e:
+                logger.warning("Cloud pull network error: %s", e)
+                return total_applied
 
     def _record_pulled_change(self, change: dict):
         """Record a pulled cloud change without assuming SyncQueue uniqueness."""

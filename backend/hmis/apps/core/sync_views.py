@@ -128,12 +128,28 @@ def _scope_snapshot_queryset(model_label: str, qs, *, facility, organization):
     return qs.none()
 
 
-def _build_downward_snapshot_changes(*, tables: set[str], facility, organization, limit: int):
+def _ordered_snapshot_tables(tables: set[str]) -> list[str]:
+    """Return snapshot tables in dependency order."""
+
+    def sort_key(model_label: str):
+        entry = get_registry_entry(model_label)
+        return (entry.priority if entry else 999, model_label)
+
+    return sorted(
+        tables,
+        key=sort_key,
+    )
+
+
+def _build_downward_snapshot_changes(
+    *, tables: set[str], facility, organization, limit: int, cursor: int = 0
+):
     """Build a current-state snapshot for full cloud-to-hub sync pulls."""
     items = []
     now = timezone.now()
+    skipped = 0
 
-    for model_label in sorted(tables):
+    for model_label in _ordered_snapshot_tables(tables):
         entry = get_registry_entry(model_label)
         if entry is None:
             continue
@@ -146,7 +162,11 @@ def _build_downward_snapshot_changes(*, tables: set[str], facility, organization
             organization=organization,
         ).order_by(pk_name)
 
-        for instance in qs[: limit + 1]:
+        for instance in qs:
+            if skipped < cursor:
+                skipped += 1
+                continue
+
             data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
             data = add_sync_meta(data, direction=entry.direction, priority=entry.priority)
             timestamp = (
@@ -161,7 +181,7 @@ def _build_downward_snapshot_changes(*, tables: set[str], facility, organization
                     "record_id": instance.pk,
                     "data": data,
                     "timestamp": timestamp,
-                    "server_sequence": len(items) + 1,
+                    "server_sequence": cursor + len(items) + 1,
                 }
             )
             if len(items) > limit:
@@ -345,6 +365,7 @@ def sync_pull(request):
     direction = request.query_params.get("direction", "").lower()
     tables_param = request.query_params.get("tables", "")
     limit = min(int(request.query_params.get("limit", "500")), 1000)
+    cursor = max(int(request.query_params.get("cursor", "0")), 0)
 
     if not since and not full:
         return Response(
@@ -363,6 +384,7 @@ def sync_pull(request):
             facility=facility,
             organization=organization,
             limit=limit,
+            cursor=cursor,
         )
         return Response(
             {
@@ -370,9 +392,7 @@ def sync_pull(request):
                 "entries": changes,
                 "server_timestamp": timezone.now(),
                 "has_more": has_more,
-                "next_cursor": str(changes[-1]["server_sequence"])
-                if has_more and changes
-                else None,
+                "next_cursor": str(cursor + len(changes)) if has_more and changes else None,
             },
             status=status.HTTP_200_OK,
         )

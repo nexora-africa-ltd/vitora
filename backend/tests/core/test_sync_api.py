@@ -421,6 +421,93 @@ class TestSyncPullEndpoint:
         assert entry["record_id"] == sample_patient.id
         assert entry["data"]["first_name"] == sample_patient.first_name
 
+    def test_full_downward_pull_cursor_returns_next_snapshot_page(
+        self,
+        authenticated_client,
+        sync_pull_url,
+        sample_patient,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+        sample_facility,
+    ):
+        """Full cloud-to-hub snapshots should support cursor pagination."""
+        from hmis.apps.core.models import SyncQueue
+        from hmis.apps.patients.models import Patient
+
+        second_patient = Patient.objects.create(
+            first_name="Second",
+            last_name="Patient",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_organization,
+            registered_at_facility=sample_facility,
+        )
+        SyncQueue.objects.all().delete()
+
+        first_response = authenticated_client.get(
+            sync_pull_url,
+            {
+                "full": "true",
+                "direction": "down",
+                "tables": "patients.Patient",
+                "limit": "1",
+            },
+        )
+        second_response = authenticated_client.get(
+            sync_pull_url,
+            {
+                "full": "true",
+                "direction": "down",
+                "tables": "patients.Patient",
+                "limit": "1",
+                "cursor": first_response.data["next_cursor"],
+            },
+        )
+
+        assert first_response.status_code == status.HTTP_200_OK
+        assert first_response.data["has_more"] is True
+        assert first_response.data["next_cursor"] == "1"
+        assert second_response.status_code == status.HTTP_200_OK
+        assert second_response.data["entries"][0]["record_id"] == second_patient.pk
+
+    def test_full_downward_pull_orders_parent_records_before_dependents(
+        self,
+        authenticated_client,
+        sync_pull_url,
+        sample_patient,
+        sample_organization,
+        sample_facility,
+    ):
+        """Full snapshots should order records so dependent rows materialize later."""
+        from hmis.apps.core.models import SyncQueue
+        from hmis.apps.patients.models import EmergencyContact
+
+        EmergencyContact.objects.create(
+            patient=sample_patient,
+            full_name="Relative",
+            relationship="parent",
+            phone_number="+254700000000",
+        )
+        SyncQueue.objects.all().delete()
+
+        response = authenticated_client.get(
+            sync_pull_url,
+            {
+                "full": "true",
+                "direction": "down",
+                "tables": "patients.EmergencyContact,patients.Patient",
+            },
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert [entry["table"] for entry in response.data["entries"]] == [
+            "patients.Patient",
+            "patients.EmergencyContact",
+        ]
+
     def test_full_downward_pull_snapshots_current_tibabot_facility_key_without_queue_entry(
         self, authenticated_client, sync_pull_url, sample_facility
     ):

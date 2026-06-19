@@ -779,6 +779,73 @@ class TestHubCloudSyncWorker:
         HUB_ID="hub-test",
         HUB_FACILITY_ID="1",
     )
+    def test_full_pull_follows_next_cursor_until_complete(self, db):
+        """Full pull should keep requesting pages while the cloud reports has_more."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        worker = HubCloudSyncWorker()
+        first_response = MagicMock()
+        first_response.status_code = 200
+        first_response.json.return_value = {
+            "changes": [
+                {
+                    "table": "patients.Patient",
+                    "operation": "CREATE",
+                    "record_id": "1",
+                    "data": {"first_name": "First"},
+                }
+            ],
+            "server_timestamp": timezone.now().isoformat(),
+            "has_more": True,
+            "next_cursor": "1",
+        }
+        second_response = MagicMock()
+        second_response.status_code = 200
+        second_response.json.return_value = {
+            "changes": [
+                {
+                    "table": "patients.Patient",
+                    "operation": "CREATE",
+                    "record_id": "2",
+                    "data": {"first_name": "Second"},
+                }
+            ],
+            "server_timestamp": timezone.now().isoformat(),
+            "has_more": False,
+        }
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch(
+                "hmis.apps.core.hub_sync.requests.get",
+                side_effect=[first_response, second_response],
+            ) as get,
+            patch(
+                "hmis.apps.core.hub_sync.materialize_entry",
+                return_value={"success": True},
+            ),
+        ):
+            pulled = worker._pull_changes(force_full=True)
+
+        assert pulled == 2
+        assert get.call_count == 2
+        assert get.call_args_list[0].kwargs["params"] == {
+            "limit": "100",
+            "direction": "down",
+            "full": "true",
+        }
+        assert get.call_args_list[1].kwargs["params"] == {
+            "limit": "100",
+            "direction": "down",
+            "full": "true",
+            "cursor": "1",
+        }
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
     def test_get_license_token_from_env(self, db):
         """Worker should read the activation/license token from LICENSE_TOKEN."""
         from hmis.apps.core.hub_sync import HubCloudSyncWorker

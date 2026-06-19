@@ -35,17 +35,27 @@ SYNC_REGISTRY: dict[str, SyncRegistryEntry] = {
     ),
     "core.Facility": SyncRegistryEntry(
         direction=SyncDirection.BOTH,
-        priority=1,
+        priority=2,
+        conflict_policy="REMOTE_WINS",
+    ),
+    "core.Role": SyncRegistryEntry(
+        direction=SyncDirection.DOWN,
+        priority=3,
+        conflict_policy="REMOTE_WINS",
+    ),
+    "core.Department": SyncRegistryEntry(
+        direction=SyncDirection.DOWN,
+        priority=3,
         conflict_policy="REMOTE_WINS",
     ),
     "core.StaffProfile": SyncRegistryEntry(
         direction=SyncDirection.BOTH,
-        priority=2,
+        priority=4,
         conflict_policy="LAST_WRITE_WINS",
     ),
     "auth.User": SyncRegistryEntry(
         direction=SyncDirection.BOTH,
-        priority=2,
+        priority=3,
         conflict_policy="LAST_WRITE_WINS",
         exclude_fields=("last_login",),
     ),
