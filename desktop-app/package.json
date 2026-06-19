@@ -1,6 +1,6 @@
 {
   "name": "vitora-desktop",
-  "version": "0.1.21",
+  "version": "0.1.22",
   "description": "Vitora HMIS Desktop Application (Tauri v2)",
   "private": true,
   "scripts": {

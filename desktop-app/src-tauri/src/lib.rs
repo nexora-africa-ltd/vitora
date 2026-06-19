@@ -13,9 +13,8 @@ use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Emitter, Manager, State, WindowEvent,
+    AppHandle, Manager, State, WindowEvent,
 };
-use tauri_plugin_deep_link::DeepLinkExt;
 
 pub mod commands;
 pub mod config;
@@ -118,35 +117,85 @@ impl SidecarState {
     ///
     /// Instead, open a TCP connection, send a minimal HTTP/1.1 GET, and
     /// confirm we read an HTTP response line back.
-    fn is_port_ready(port: u16) -> bool {
+    fn http_probe(port: u16, path: &str, max_bytes: usize) -> Result<(u16, String), String> {
         let addr = format!("127.0.0.1:{}", port);
         let mut stream = match TcpStream::connect_timeout(
             &match addr.parse() {
                 Ok(a) => a,
-                Err(_) => return false,
+                Err(e) => return Err(format!("invalid sidecar address: {}", e)),
             },
             Duration::from_millis(500),
         ) {
             Ok(s) => s,
-            Err(_) => return false,
+            Err(e) => return Err(format!("connect failed: {}", e)),
         };
         let _ = stream.set_read_timeout(Some(Duration::from_millis(1500)));
         let _ = stream.set_write_timeout(Some(Duration::from_millis(500)));
-        // Probe a cheap API route that bypasses the dashboard/login render path.
-        // Any HTTP response from `/` is not enough: Next may return a redirect or
-        // a server error while still looking "ready" to a TCP-level probe.
-        let req =
-            b"GET /api/desktop-health HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
-        if stream.write_all(req).is_err() {
-            return false;
-        }
-        let mut buf = [0u8; 32];
-        match stream.read(&mut buf) {
-            Ok(n) if n >= 12 => {
-                let status = String::from_utf8_lossy(&buf[..n]);
-                status.starts_with("HTTP/1.1 200") || status.starts_with("HTTP/1.0 200")
+
+        let req = format!(
+            "GET {} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n",
+            path
+        );
+        stream
+            .write_all(req.as_bytes())
+            .map_err(|e| format!("request write failed: {}", e))?;
+
+        let mut response = Vec::new();
+        let mut buf = [0u8; 1024];
+        while response.len() < max_bytes {
+            match stream.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => response.extend_from_slice(&buf[..n]),
+                Err(e)
+                    if e.kind() == std::io::ErrorKind::WouldBlock
+                        || e.kind() == std::io::ErrorKind::TimedOut =>
+                {
+                    break;
+                }
+                Err(e) => return Err(format!("response read failed: {}", e)),
             }
-            _ => false,
+        }
+
+        let response_text = String::from_utf8_lossy(&response).to_string();
+        let status_line = response_text.lines().next().unwrap_or_default();
+        let status_code = status_line
+            .split_whitespace()
+            .nth(1)
+            .and_then(|code| code.parse::<u16>().ok())
+            .ok_or_else(|| format!("missing HTTP status line for {}: {}", path, status_line))?;
+
+        Ok((status_code, response_text))
+    }
+
+    fn is_port_ready(port: u16) -> bool {
+        match Self::http_probe(port, "/api/desktop-health", 512) {
+            Ok((200, _)) => true,
+            Ok((status, _)) => {
+                log::warn!("Desktop health probe returned HTTP {}", status);
+                false
+            }
+            Err(e) => {
+                log::debug!("Desktop health probe failed: {}", e);
+                false
+            }
+        }
+    }
+
+    fn is_route_ready(port: u16, path: &str) -> Result<(), String> {
+        match Self::http_probe(port, path, 4096) {
+            Ok((200, body)) if body.contains("</html>") || body.contains("__next") => Ok(()),
+            Ok((200, body)) => Err(format!(
+                "{} returned HTTP 200 but did not look like a rendered Next page. First bytes:\n{}",
+                path,
+                body.chars().take(1000).collect::<String>()
+            )),
+            Ok((status, body)) => Err(format!(
+                "{} returned HTTP {}. First bytes:\n{}",
+                path,
+                status,
+                body.chars().take(1000).collect::<String>()
+            )),
+            Err(e) => Err(format!("{} probe failed: {}", path, e)),
         }
     }
 
@@ -754,6 +803,41 @@ pub fn run() {
                                 emit_status(
                                     &handle_clone,
                                     "Opening Vitora...",
+                                    "Checking that the sign-in screen can render.",
+                                );
+
+                                let login_start = Instant::now();
+                                let mut login_ready = false;
+                                let mut login_error = String::new();
+                                while login_start.elapsed() < Duration::from_secs(60) {
+                                    match SidecarState::is_route_ready(port, "/login") {
+                                        Ok(()) => {
+                                            login_ready = true;
+                                            break;
+                                        }
+                                        Err(e) => {
+                                            login_error = e;
+                                            std::thread::sleep(Duration::from_millis(500));
+                                        }
+                                    }
+                                }
+
+                                if !login_ready {
+                                    log::error!("Login route failed readiness check: {}", login_error);
+                                    if let Some(main_window) = handle_clone.get_webview_window("main") {
+                                        let escaped_error = SidecarState::html_escape(&login_error);
+                                        let error_html = format!(
+                                            "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Failed to load sign-in</h1><p style='color:%2394a3b8'>The local server started, but the sign-in page did not render successfully.</p><pre style='color:%23ef4444;font-size:12px;white-space:pre-wrap'>{}</pre><p style='color:%2394a3b8;font-size:12px'>Check sidecar-stderr.log for details.</p></body></html>",
+                                            escaped_error
+                                        );
+                                        let _ = main_window.navigate(error_html.parse().unwrap());
+                                    }
+                                    return;
+                                }
+
+                                emit_status(
+                                    &handle_clone,
+                                    "Opening Vitora...",
                                     "Server is ready. Loading the sign-in screen.",
                                 );
                                 // Navigate main window to the desktop-aware login gate.
@@ -762,8 +846,26 @@ pub fn run() {
                                 // a blank authenticated shell when no session exists.
                                 if let Some(main_window) = handle_clone.get_webview_window("main") {
                                     let url = format!("http://127.0.0.1:{}/login", port);
-                                    let _ = main_window.navigate(url.parse().unwrap());
+                                    if let Err(e) = main_window.navigate(url.parse().unwrap()) {
+                                        log::error!("Failed to navigate to /login: {}", e);
+                                        let escaped_error = SidecarState::html_escape(&e.to_string());
+                                        let error_html = format!(
+                                            "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Failed to open Vitora</h1><p style='color:%2394a3b8'>The sign-in page was ready, but the desktop WebView could not navigate to it.</p><pre style='color:%23ef4444;font-size:12px;white-space:pre-wrap'>{}</pre></body></html>",
+                                            escaped_error
+                                        );
+                                        let _ = main_window.navigate(error_html.parse().unwrap());
+                                    }
                                 }
+
+                                let blank_handle = handle_clone.clone();
+                                std::thread::spawn(move || {
+                                    std::thread::sleep(Duration::from_secs(8));
+                                    if let Some(window) = blank_handle.get_webview_window("main") {
+                                        let _ = window.eval(
+                                            "try { if (document.body && document.body.innerText.trim().length === 0) { document.body.innerHTML = '<div style=\"font-family:sans-serif;padding:40px;background:#0f172a;color:#f8fafc;min-height:100vh\"><h1>Vitora loaded a blank page</h1><p style=\"color:#94a3b8\">The local server is running, but the desktop WebView did not render visible content after navigation.</p><p style=\"color:#94a3b8;font-size:12px\">Please check sidecar-stderr.log and the desktop app log for details.</p><button onclick=\"location.reload()\" style=\"margin-top:16px;padding:8px 12px\">Reload</button></div>'; } } catch (_) {}"
+                                        );
+                                    }
+                                });
 
                                 // Keep watching for a late sidecar crash after the
                                 // initial health check. If Node exits after navigation,
