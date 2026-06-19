@@ -55,7 +55,7 @@ jsonschema-specifications==2025.9.1 ; python_version >= "3.12" and python_versio
 jsonschema==4.26.0 ; python_version >= "3.12" and python_version < "4.0"
 jwcrypto==1.5.7 ; python_version >= "3.12" and python_version < "4.0"
 kombu==5.6.2 ; python_version >= "3.12" and python_version < "4.0"
-msgpack==1.1.2 ; python_version >= "3.12" and python_version < "4.0"
+msgpack==1.2.1 ; python_version >= "3.12" and python_version < "4.0"
 naked==0.1.32 ; python_version >= "3.12" and python_version < "4.0"
 num2words==0.5.14 ; python_version >= "3.12" and python_version < "4.0"
 numpy==2.4.2 ; python_version >= "3.12" and python_version < "4.0"
