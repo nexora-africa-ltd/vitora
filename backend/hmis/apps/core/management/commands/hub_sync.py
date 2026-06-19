@@ -25,6 +25,11 @@ class Command(BaseCommand):
             action="store_true",
             help="Force the cloud pull step to request a full downward sync instead of using the saved cursor.",
         )
+        parser.add_argument(
+            "--pull-only",
+            action="store_true",
+            help="Skip pushing local pending changes and only pull from the cloud.",
+        )
 
     def handle(self, *args, **options):
         worker = HubCloudSyncWorker()
@@ -45,7 +50,10 @@ class Command(BaseCommand):
 
         before_pending = SyncQueue.objects.filter(status="PENDING").count()
         before_failed = SyncQueue.objects.filter(status="FAILED").count()
-        pushed, pulled = worker.sync_once(force_full_pull=options["full_pull"])
+        pushed, pulled = worker.sync_once(
+            force_full_pull=options["full_pull"],
+            skip_push=options["pull_only"],
+        )
         after_pending = SyncQueue.objects.filter(status="PENDING").count()
         after_failed = SyncQueue.objects.filter(status="FAILED").count()
 

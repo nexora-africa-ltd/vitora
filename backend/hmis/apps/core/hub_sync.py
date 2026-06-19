@@ -131,7 +131,9 @@ class HubCloudSyncWorker:
 
             self._stop_event.wait(timeout=self.interval)
 
-    def sync_once(self, *, force_full_pull: bool = False) -> tuple[int, int]:
+    def sync_once(
+        self, *, force_full_pull: bool = False, skip_push: bool = False
+    ) -> tuple[int, int]:
         """Run one push+pull cycle and return (pushed, pulled)."""
         if not self.has_license_token:
             logger.warning(
@@ -139,7 +141,9 @@ class HubCloudSyncWorker:
                 "LICENSE_TOKEN/HUB_LICENSE_TOKEN_PATH."
             )
             return 0, 0
-        pushed = self._push_pending()
+        pushed = 0 if skip_push else self._push_pending()
+        if skip_push:
+            logger.info("Hub sync push phase skipped by request.")
         pulled = self._pull_changes(force_full=force_full_pull)
         if pushed or pulled:
             logger.info("Hub-to-cloud sync: pushed=%d, pulled=%d", pushed, pulled)
@@ -193,6 +197,12 @@ class HubCloudSyncWorker:
             )
             entry_ids.append(entry.pk)
 
+        logger.info(
+            "Pushing %d pending sync entr%s to cloud.",
+            len(entry_ids),
+            "y" if len(entry_ids) == 1 else "ies",
+        )
+
         # Mark as SYNCING
         SyncQueue.objects.filter(pk__in=entry_ids).update(status="SYNCING")
 
@@ -206,6 +216,11 @@ class HubCloudSyncWorker:
             )
 
             if response.status_code == 200:
+                logger.info(
+                    "Cloud push accepted %d sync entr%s.",
+                    len(entry_ids),
+                    "y" if len(entry_ids) == 1 else "ies",
+                )
                 # Mark as SYNCED
                 SyncQueue.objects.filter(pk__in=entry_ids).update(
                     status="SYNCED",
@@ -243,9 +258,21 @@ class HubCloudSyncWorker:
 
         total_applied = 0
         deferred_changes = []
+        page_number = 1
+
+        logger.info(
+            "Starting %s cloud pull (limit=%s).",
+            "full" if params.get("full") == "true" else "incremental",
+            params["limit"],
+        )
 
         while True:
             try:
+                logger.info(
+                    "Requesting cloud pull page %d%s.",
+                    page_number,
+                    f" (cursor={params['cursor']})" if "cursor" in params else "",
+                )
                 response = self._get(f"{self.server_url}/pull/", params=params.copy())
 
                 if response.status_code != 200:
@@ -262,6 +289,13 @@ class HubCloudSyncWorker:
                 data = response.json()
                 changes = data.get("entries") or data.get("changes", [])
                 server_ts = data.get("server_timestamp")
+                logger.info(
+                    "Received cloud pull page %d with %d change%s (has_more=%s).",
+                    page_number,
+                    len(changes),
+                    "" if len(changes) == 1 else "s",
+                    bool(data.get("has_more")),
+                )
 
                 if server_ts:
                     self._last_pull_timestamp = datetime.fromisoformat(server_ts)
@@ -306,6 +340,7 @@ class HubCloudSyncWorker:
                     return total_applied
 
                 params["cursor"] = str(next_cursor)
+                page_number += 1
 
             except requests.RequestException as e:
                 logger.warning("Cloud pull network error: %s", e)
