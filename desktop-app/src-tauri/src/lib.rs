@@ -872,11 +872,28 @@ pub fn run() {
 
                                 let blank_handle = handle_clone.clone();
                                 std::thread::spawn(move || {
-                                    std::thread::sleep(Duration::from_secs(8));
+                                    std::thread::sleep(Duration::from_secs(25));
                                     if let Some(window) = blank_handle.get_webview_window("main") {
-                                        let _ = window.eval(
-                                            "try { if (document.body && document.body.innerText.trim().length === 0) { document.body.innerHTML = '<div style=\"font-family:sans-serif;padding:40px;background:#0f172a;color:#f8fafc;min-height:100vh\"><h1>Vitora loaded a blank page</h1><p style=\"color:#94a3b8\">The local server is running, but the desktop WebView did not render visible content after navigation.</p><p style=\"color:#94a3b8;font-size:12px\">Please check sidecar-stderr.log and the desktop app log for details.</p><button onclick=\"location.reload()\" style=\"margin-top:16px;padding:8px 12px\">Reload</button></div>'; } } catch (_) {}"
-                                        );
+                                        let blank_probe_js = r#"
+                                            try {
+                                                const text = (document.body && document.body.innerText || '').trim();
+                                                if (text.length === 0) {
+                                                    const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+                                                    const scripts = Array.from(document.scripts).map((script) => script.src || '[inline]').slice(-12).join('\n');
+                                                    const styles = Array.from(document.styleSheets).map((sheet) => sheet.href || '[inline]').slice(-12).join('\n');
+                                                    const snapshot = [
+                                                        `URL: ${location.href}`,
+                                                        `Ready state: ${document.readyState}`,
+                                                        `Title: ${document.title}`,
+                                                        `Body HTML: ${(document.body && document.body.innerHTML || '').slice(0, 1800)}`,
+                                                        `Scripts:\n${scripts}`,
+                                                        `Styles:\n${styles}`,
+                                                    ].join('\n\n');
+                                                    document.body.innerHTML = '<div style="font-family:sans-serif;padding:40px;background:#0f172a;color:#f8fafc;min-height:100vh"><h1>Vitora loaded a blank page</h1><p style="color:#94a3b8">The local server is running, but the desktop WebView did not render visible content after navigation.</p><pre style="margin-top:16px;padding:12px;background:#111827;color:#fca5a5;font-size:12px;white-space:pre-wrap;max-height:50vh;overflow:auto">' + escapeHtml(snapshot) + '</pre><p style="color:#94a3b8;font-size:12px">Please send this diagnostic text along with sidecar-stderr.log.</p><button onclick="location.reload()" style="margin-top:16px;padding:8px 12px">Reload</button></div>';
+                                                }
+                                            } catch (_) {}
+                                        "#;
+                                        let _ = window.eval(blank_probe_js);
                                     }
                                 });
 
