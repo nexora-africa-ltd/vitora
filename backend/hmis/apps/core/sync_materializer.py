@@ -69,6 +69,7 @@ def apply_entry(
     """Apply a non-conflicting entry to the database."""
     exclude = registry_entry.exclude_fields if registry_entry else ()
     cleaned_data = clean_model_data(model, data, exclude_fields=exclude)
+    cleaned_data = suppress_duplicate_user_email(model, record_id, cleaned_data)
 
     try:
         with transaction.atomic():
@@ -208,10 +209,32 @@ def clean_model_data(
         if field.name in exclude_fields or field.attname in exclude_fields:
             continue
         if field.name in data:
-            key = field.attname if getattr(field, "many_to_one", False) else field.name
+            key = (
+                field.attname
+                if getattr(field, "many_to_one", False) or getattr(field, "one_to_one", False)
+                else field.name
+            )
             cleaned[key] = data[field.name]
         elif field.attname in data:
             cleaned[field.attname] = data[field.attname]
 
     cleaned.pop(SYNC_META_KEY, None)
+    return cleaned
+
+
+def suppress_duplicate_user_email(
+    model, record_id: Any, cleaned_data: dict[str, Any]
+) -> dict[str, Any]:
+    """Drop auth.User email updates that would collide with another local row."""
+    if model._meta.label != "auth.User" or not cleaned_data.get("email"):
+        return cleaned_data
+
+    duplicate_qs = model.objects.filter(email__iexact=cleaned_data["email"])
+    if record_id is not None:
+        duplicate_qs = duplicate_qs.exclude(pk=record_id)
+    if not duplicate_qs.exists():
+        return cleaned_data
+
+    cleaned = cleaned_data.copy()
+    cleaned.pop("email", None)
     return cleaned
