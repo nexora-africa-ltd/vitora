@@ -464,6 +464,25 @@ class TestSyncHubLicenseAuthentication:
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["changes"][0]["record_id"] == 321
 
+    def test_sync_pull_hub_license_bypasses_anonymous_throttle(
+        self, api_client, hub_license_token, settings
+    ):
+        """Licensed hub machine sync should not consume the anonymous API throttle bucket."""
+        settings.REST_FRAMEWORK = {
+            **settings.REST_FRAMEWORK,
+            "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.AnonRateThrottle"],
+            "DEFAULT_THROTTLE_RATES": {"anon": "1/minute"},
+        }
+
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {hub_license_token}")
+        responses = [api_client.get(self.PULL_URL) for _ in range(3)]
+
+        assert [response.status_code for response in responses] == [
+            status.HTTP_200_OK,
+            status.HTTP_200_OK,
+            status.HTTP_200_OK,
+        ]
+
     def test_sync_push_rejects_invalid_hub_license(self, api_client, db):
         """Invalid license JWTs should not pass sync authentication."""
         api_client.credentials(HTTP_AUTHORIZATION="Bearer invalid.license.token")
@@ -811,6 +830,31 @@ class TestHubCloudSyncWorker:
         entry = SyncQueue.objects.get(model_name="patients.Patient", record_id=99)
         assert entry.status == "SYNCED"
         assert entry.data["first_name"] == "CloudPatient"
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
+    def test_pull_throttle_logs_retry_after_hint(self, db, caplog):
+        """429 responses should preserve the cloud retry hint in hub logs."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        worker = HubCloudSyncWorker()
+        mock_response = MagicMock()
+        mock_response.status_code = 429
+        mock_response.headers = {"Retry-After": "710"}
+        mock_response.text = '{"detail":"Request was throttled."}'
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch("hmis.apps.core.hub_sync.requests.get", return_value=mock_response),
+            caplog.at_level("WARNING", logger="hmis.apps.core.hub_sync"),
+        ):
+            pulled = worker._pull_changes(force_full=True)
+
+        assert pulled == 0
+        assert "Cloud pull returned 429: Retry after 710 seconds." in caplog.text
 
     @override_settings(
         SYNC_SERVER_URL="https://cloud.example.com/api/sync",
