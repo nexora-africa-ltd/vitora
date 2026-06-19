@@ -1221,6 +1221,46 @@ class TestHubCloudSyncWorker:
         HUB_ID="hub-test",
         HUB_FACILITY_ID="1",
     )
+    def test_sync_once_can_skip_push_for_recovery_pull(
+        self, db, sample_facility, sample_organization
+    ):
+        """Pull-only recovery runs should not POST pending local queue entries first."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        SyncQueue.objects.create(
+            operation="CREATE",
+            model_name="patients_patient",
+            record_id=1,
+            data={"first_name": "Pending"},
+            status="PENDING",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "changes": [],
+            "server_timestamp": timezone.now().isoformat(),
+            "has_more": False,
+        }
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch("hmis.apps.core.hub_sync.requests.post") as mock_post,
+            patch("hmis.apps.core.hub_sync.requests.get", return_value=mock_response) as mock_get,
+        ):
+            pushed, pulled = HubCloudSyncWorker().sync_once(skip_push=True)
+
+        assert (pushed, pulled) == (0, 0)
+        assert SyncQueue.objects.filter(status="PENDING").count() == 1
+        mock_post.assert_not_called()
+        mock_get.assert_called_once()
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
     def test_hub_sync_command_requires_license(self, db, tmp_path):
         """Manual hub sync should require a license token before touching the queue."""
         with override_settings(HUB_LICENSE_TOKEN_PATH=str(tmp_path / "missing.jwt")):
@@ -1267,6 +1307,25 @@ class TestHubCloudSyncWorker:
 
         worker.reset_failed_for_retry.assert_called_once()
         worker.sync_once.assert_called_once()
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
+    def test_hub_sync_command_can_run_pull_only_full_pull(self, db):
+        """Manual full-pull recovery can bypass the local push phase."""
+        with patch(
+            "hmis.apps.core.management.commands.hub_sync.HubCloudSyncWorker"
+        ) as mock_worker_cls:
+            worker = mock_worker_cls.return_value
+            worker.is_configured = True
+            worker.has_license_token = True
+            worker.sync_once.return_value = (0, 25)
+
+            call_command("hub_sync", full_pull=True, pull_only=True)
+
+        worker.sync_once.assert_called_once_with(force_full_pull=True, skip_push=True)
 
     @override_settings(SYNC_SERVER_URL="", HUB_ID="hub-test", HUB_FACILITY_ID="1")
     def test_hub_sync_command_requires_config(self, db):
