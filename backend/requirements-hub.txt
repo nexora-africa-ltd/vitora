@@ -84,7 +84,7 @@ pycloc==0.0.1a0
 pycparser==3.0
 pycryptodome==3.23.0
 pydantic-core==2.41.5
-pydantic-settings==2.13.1
+pydantic-settings==2.14.2
 pydantic==2.12.5
 pydicom==3.0.1
 pydotenv==0.0.7
