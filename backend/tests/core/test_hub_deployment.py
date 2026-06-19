@@ -817,6 +817,122 @@ class TestHubCloudSyncWorker:
         HUB_ID="hub-test",
         HUB_FACILITY_ID="1",
     )
+    def test_pull_retries_deferred_parent_child_changes(self, db):
+        """Transient FK failures should be retried after the rest of the response is applied."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        worker = HubCloudSyncWorker()
+        child_change = {
+            "table": "patients.EmergencyContact",
+            "operation": "CREATE",
+            "record_id": "10",
+            "data": {"patient": 99, "full_name": "Relative"},
+        }
+        parent_change = {
+            "table": "patients.Patient",
+            "operation": "CREATE",
+            "record_id": "99",
+            "data": {"first_name": "CloudPatient"},
+        }
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "changes": [child_change, parent_change],
+            "server_timestamp": timezone.now().isoformat(),
+            "has_more": False,
+        }
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch("hmis.apps.core.hub_sync.requests.get", return_value=mock_response),
+            patch(
+                "hmis.apps.core.hub_sync.materialize_entry",
+                side_effect=[
+                    {"success": False, "error": "Patient matching query does not exist."},
+                    {"success": True},
+                    {"success": True},
+                ],
+            ) as materialize,
+        ):
+            pulled = worker._pull_changes()
+
+        assert pulled == 2
+        assert materialize.call_args_list[0].args[0] == child_change
+        assert materialize.call_args_list[1].args[0] == parent_change
+        assert materialize.call_args_list[2].args[0] == child_change
+        assert SyncQueue.objects.filter(model_name="patients.Patient", record_id=99).exists()
+        assert SyncQueue.objects.filter(
+            model_name="patients.EmergencyContact", record_id=10
+        ).exists()
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
+    def test_pull_carries_deferred_changes_across_pages(self, db):
+        """Deferred child records should retry after later pages apply their parents."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        worker = HubCloudSyncWorker()
+        child_change = {
+            "table": "patients.EmergencyContact",
+            "operation": "CREATE",
+            "record_id": "10",
+            "data": {"patient": 99, "full_name": "Relative"},
+        }
+        parent_change = {
+            "table": "patients.Patient",
+            "operation": "CREATE",
+            "record_id": "99",
+            "data": {"first_name": "CloudPatient"},
+        }
+        first_response = MagicMock()
+        first_response.status_code = 200
+        first_response.json.return_value = {
+            "changes": [child_change],
+            "server_timestamp": timezone.now().isoformat(),
+            "has_more": True,
+            "next_cursor": "1",
+        }
+        second_response = MagicMock()
+        second_response.status_code = 200
+        second_response.json.return_value = {
+            "changes": [parent_change],
+            "server_timestamp": timezone.now().isoformat(),
+            "has_more": False,
+        }
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch(
+                "hmis.apps.core.hub_sync.requests.get",
+                side_effect=[first_response, second_response],
+            ),
+            patch(
+                "hmis.apps.core.hub_sync.materialize_entry",
+                side_effect=[
+                    {"success": False, "error": "Patient matching query does not exist."},
+                    {"success": False, "error": "Patient matching query does not exist."},
+                    {"success": True},
+                    {"success": True},
+                ],
+            ) as materialize,
+        ):
+            pulled = worker._pull_changes(force_full=True)
+
+        assert pulled == 2
+        assert materialize.call_args_list[0].args[0] == child_change
+        assert materialize.call_args_list[1].args[0] == child_change
+        assert materialize.call_args_list[2].args[0] == parent_change
+        assert materialize.call_args_list[3].args[0] == child_change
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
     def test_pull_change_updates_existing_sync_record_when_duplicates_exist(
         self, db, sample_facility, sample_organization
     ):

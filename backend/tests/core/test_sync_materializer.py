@@ -105,6 +105,74 @@ class TestSyncMaterializer:
         local_user.refresh_from_db()
         assert local_user.first_name == "Cloud"
 
+    def test_materialize_user_pk_collision_updates_existing_username(self):
+        """Cloud users should reconcile by username even when the cloud PK exists locally."""
+        from django.contrib.auth import get_user_model
+
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        User = get_user_model()
+        local_pk_owner = User.objects.create_user(
+            username="local_system",
+            email="system.local@example.com",
+            password="system-password",
+        )
+        local_cloud_user = User.objects.create_user(
+            username="cloud_admin",
+            email="admin.local@example.com",
+            password="old-password",
+        )
+
+        new_hash = "pbkdf2_sha256$600000$salt$cloudadminhash"
+        result = materialize_entry(
+            {
+                "table": "auth.User",
+                "operation": "CREATE",
+                "record_id": local_pk_owner.pk,
+                "data": {
+                    "id": local_pk_owner.pk,
+                    "username": "cloud_admin",
+                    "email": "admin@cloud.example.com",
+                    "first_name": "Cloud",
+                    "password": new_hash,
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        local_pk_owner.refresh_from_db()
+        local_cloud_user.refresh_from_db()
+        assert local_pk_owner.username == "local_system"
+        assert local_cloud_user.first_name == "Cloud"
+        assert local_cloud_user.password == new_hash
+
+    def test_materialize_update_creates_missing_user_from_full_payload(self):
+        """Cloud UPDATE payloads should upsert when the local row is missing."""
+        from django.contrib.auth import get_user_model
+
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        User = get_user_model()
+        result = materialize_entry(
+            {
+                "table": "auth.User",
+                "operation": "UPDATE",
+                "record_id": 9001,
+                "data": {
+                    "id": 9001,
+                    "username": "missing_cloud_user",
+                    "email": "missing@example.com",
+                    "password": "pbkdf2_sha256$600000$salt$missinghash",
+                    "is_active": True,
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        user = User.objects.get(pk=9001)
+        assert user.username == "missing_cloud_user"
+        assert user.email == "missing@example.com"
+
     def test_materialize_staff_profile_create_updates_existing_user_profile(
         self, test_user, sample_organization, sample_facility, sample_department, sample_role
     ):
@@ -145,6 +213,65 @@ class TestSyncMaterializer:
         assert StaffProfile.objects.filter(user=test_user).count() == 1
         local_profile.refresh_from_db()
         assert local_profile.employee_id == "CLOUD-001"
+
+    def test_materialize_staff_profile_pk_collision_updates_existing_user_profile(
+        self,
+        test_user,
+        another_user,
+        sample_organization,
+        sample_facility,
+        sample_department,
+        sample_role,
+    ):
+        """Cloud staff profiles should reconcile by user before updating a colliding PK."""
+        from hmis.apps.core.models import StaffProfile
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        local_pk_owner = StaffProfile.objects.create(
+            user=another_user,
+            employee_id="LOCAL-PK-OWNER",
+            organization=sample_organization,
+            primary_facility=sample_facility,
+            primary_department=sample_department,
+            primary_role=sample_role,
+            date_joined=date(2026, 1, 1),
+        )
+        local_cloud_profile = StaffProfile.objects.create(
+            user=test_user,
+            employee_id="LOCAL-CLOUD-USER",
+            organization=sample_organization,
+            primary_facility=sample_facility,
+            primary_department=sample_department,
+            primary_role=sample_role,
+            date_joined=date(2026, 1, 1),
+        )
+
+        result = materialize_entry(
+            {
+                "table": "core.StaffProfile",
+                "operation": "CREATE",
+                "record_id": local_pk_owner.pk,
+                "data": {
+                    "id": local_pk_owner.pk,
+                    "user": test_user.pk,
+                    "employee_id": "CLOUD-STAFF-001",
+                    "organization": sample_organization.pk,
+                    "primary_facility": sample_facility.pk,
+                    "primary_department": sample_department.pk,
+                    "primary_role": sample_role.pk,
+                    "date_joined": "2026-01-01",
+                    "employment_status": "ACTIVE",
+                    "employment_type": "PERMANENT",
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        local_pk_owner.refresh_from_db()
+        local_cloud_profile.refresh_from_db()
+        assert local_pk_owner.user == another_user
+        assert local_cloud_profile.employee_id == "CLOUD-STAFF-001"
+        assert StaffProfile.objects.filter(user=test_user).count() == 1
 
     def test_materialize_facility_update(self, sample_facility):
         """A downward Facility update should change the local hub copy."""

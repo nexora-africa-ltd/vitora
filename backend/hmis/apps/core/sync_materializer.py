@@ -101,12 +101,10 @@ def apply_entry(
                 else:
                     create_from_materializer(model, **cleaned_data)
             elif operation == "UPDATE":
-                updated = model.objects.filter(pk=record_id).update(**cleaned_data)
-                if updated == 0:
-                    return {
-                        "success": False,
-                        "error": f"Record not found: {model._meta.label}:{record_id}",
-                    }
+                instance = update_existing_from_materializer(model, record_id, cleaned_data)
+                if instance is None:
+                    cleaned_data.pop(model._meta.pk.name, None)
+                    update_or_create_from_materializer(model, record_id, cleaned_data)
             elif operation == "DELETE":
                 model.objects.filter(pk=record_id).delete()
             else:
@@ -128,8 +126,8 @@ def create_from_materializer(model, **cleaned_data):
 def update_or_create_from_materializer(model, record_id: Any, cleaned_data: dict[str, Any]):
     """Update/create by PK while marking the save as materializer-originated."""
     pk_name = model._meta.pk.name
-    try:
-        instance = model.objects.get(pk=record_id)
+    instance = resolve_materialization_target(model, record_id, cleaned_data)
+    if instance is not None:
         for field_name, value in cleaned_data.items():
             setattr(instance, field_name, value)
         instance._from_sync_materializer = True
@@ -139,23 +137,38 @@ def update_or_create_from_materializer(model, record_id: Any, cleaned_data: dict
         else:
             instance.save()
         return instance, False
-    except model.DoesNotExist:
-        existing = find_existing_for_materialized_create(model, cleaned_data)
-        if existing:
-            for field_name, value in cleaned_data.items():
-                setattr(existing, field_name, value)
-            existing._from_sync_materializer = True
-            update_fields = list(cleaned_data.keys())
-            if update_fields:
-                existing.save(update_fields=update_fields)
-            else:
-                existing.save()
-            return existing, False
 
-        instance = model(**{pk_name: record_id, **cleaned_data})
-        instance._from_sync_materializer = True
+    instance = model(**{pk_name: record_id, **cleaned_data})
+    instance._from_sync_materializer = True
+    instance.save()
+    return instance, True
+
+
+def update_existing_from_materializer(model, record_id: Any, cleaned_data: dict[str, Any]):
+    """Update an existing row, preferring natural-key matches over colliding PKs."""
+    instance = resolve_materialization_target(model, record_id, cleaned_data)
+    if instance is None:
+        return None
+
+    for field_name, value in cleaned_data.items():
+        setattr(instance, field_name, value)
+    instance._from_sync_materializer = True
+    update_fields = list(cleaned_data.keys())
+    if update_fields:
+        instance.save(update_fields=update_fields)
+    else:
         instance.save()
-        return instance, True
+    return instance
+
+
+def resolve_materialization_target(model, record_id: Any, cleaned_data: dict[str, Any]):
+    """Resolve the local row to update without violating natural unique keys."""
+    natural_match = find_existing_for_materialized_create(model, cleaned_data)
+    pk_match = model.objects.filter(pk=record_id).first() if record_id is not None else None
+
+    if natural_match is not None:
+        return natural_match
+    return pk_match
 
 
 def find_existing_for_materialized_create(model, cleaned_data: dict[str, Any]):
@@ -181,6 +194,18 @@ def find_existing_for_materialized_create(model, cleaned_data: dict[str, Any]):
         employee_id = cleaned_data.get("employee_id")
         if employee_id:
             existing = model.objects.filter(employee_id=employee_id).first()
+            if existing:
+                return existing
+
+    if model._meta.label == "patients.Patient":
+        mrn = cleaned_data.get("mrn")
+        if mrn:
+            existing = model.objects.filter(mrn=mrn).first()
+            if existing:
+                return existing
+        cr_number = cleaned_data.get("cr_number")
+        if cr_number:
+            existing = model.objects.filter(cr_number=cr_number).first()
             if existing:
                 return existing
 
