@@ -268,17 +268,7 @@ class HubCloudSyncWorker:
                     )
                     continue
 
-                # Queue pulled changes locally as SYNCED (they came from cloud)
-                SyncQueue.objects.update_or_create(
-                    model_name=change["table"],
-                    record_id=change.get("record_id"),
-                    defaults={
-                        "operation": change["operation"],
-                        "data": change.get("data", {}),
-                        "status": "SYNCED",
-                        "synced_at": timezone.now(),
-                    },
-                )
+                self._record_pulled_change(change)
                 applied += 1
 
             return applied
@@ -286,6 +276,35 @@ class HubCloudSyncWorker:
         except requests.RequestException as e:
             logger.warning("Cloud pull network error: %s", e)
             return 0
+
+    def _record_pulled_change(self, change: dict):
+        """Record a pulled cloud change without assuming SyncQueue uniqueness."""
+        record_id = change.get("record_id")
+        if isinstance(record_id, str) and record_id.isdigit():
+            record_id = int(record_id)
+
+        defaults = {
+            "operation": change["operation"],
+            "data": change.get("data", {}),
+            "status": "SYNCED",
+            "synced_at": timezone.now(),
+        }
+        existing = (
+            SyncQueue.objects.filter(model_name=change["table"], record_id=record_id)
+            .order_by("-synced_at", "-created_at", "-pk")
+            .first()
+        )
+        if existing:
+            for field, value in defaults.items():
+                setattr(existing, field, value)
+            existing.save(update_fields=[*defaults.keys()])
+            return existing
+
+        return SyncQueue.objects.create(
+            model_name=change["table"],
+            record_id=record_id,
+            **defaults,
+        )
 
     def _mark_failed(self, entry_ids: list, error: str):
         """Mark entries as FAILED and increment retry count."""

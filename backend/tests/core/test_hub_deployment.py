@@ -680,6 +680,73 @@ class TestHubCloudSyncWorker:
         HUB_ID="hub-test",
         HUB_FACILITY_ID="1",
     )
+    def test_pull_change_updates_existing_sync_record_when_duplicates_exist(
+        self, db, sample_facility, sample_organization
+    ):
+        """Pulled-change bookkeeping should tolerate historical duplicate SyncQueue rows."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        older = SyncQueue.objects.create(
+            operation="CREATE",
+            model_name="patients.Patient",
+            record_id=99,
+            data={"first_name": "Older"},
+            status="SYNCED",
+            synced_at=timezone.now() - timedelta(minutes=5),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        newer = SyncQueue.objects.create(
+            operation="UPDATE",
+            model_name="patients.Patient",
+            record_id=99,
+            data={"first_name": "Newer"},
+            status="SYNCED",
+            synced_at=timezone.now() - timedelta(minutes=1),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        worker = HubCloudSyncWorker()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "changes": [
+                {
+                    "table": "patients.Patient",
+                    "operation": "CREATE",
+                    "record_id": "99",
+                    "data": {"first_name": "CloudPatient"},
+                }
+            ],
+            "server_timestamp": timezone.now().isoformat(),
+            "has_more": False,
+        }
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch("hmis.apps.core.hub_sync.requests.get", return_value=mock_response),
+            patch(
+                "hmis.apps.core.hub_sync.materialize_entry",
+                return_value={"success": True},
+            ),
+        ):
+            pulled = worker._pull_changes()
+
+        assert pulled == 1
+        assert SyncQueue.objects.filter(model_name="patients.Patient", record_id=99).count() == 2
+        older.refresh_from_db()
+        newer.refresh_from_db()
+        assert older.data["first_name"] == "Older"
+        assert newer.operation == "CREATE"
+        assert newer.data["first_name"] == "CloudPatient"
+        assert newer.status == "SYNCED"
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
     def test_full_pull_ignores_saved_cursor(self, db):
         """Forced full pull should request full=true even when state has a cursor."""
         from datetime import datetime
