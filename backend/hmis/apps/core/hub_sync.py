@@ -17,6 +17,7 @@ import logging
 import os
 import re
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -42,6 +43,9 @@ class HubCloudSyncWorker:
         worker.start()   # non-blocking (thread mode)
         worker.stop()
     """
+
+    # Maximum seconds the hub will wait on a single 429 before giving up.
+    MAX_THROTTLE_WAIT: int = 900  # 15 minutes
 
     def __init__(self):
         self.server_url: str = getattr(settings, "SYNC_SERVER_URL", "")
@@ -275,6 +279,17 @@ class HubCloudSyncWorker:
                 )
                 response = self._get(f"{self.server_url}/pull/", params=params.copy())
 
+                if response.status_code == 429:
+                    wait = self._parse_retry_after_seconds(response)
+                    if wait and wait <= self.MAX_THROTTLE_WAIT:
+                        logger.warning(
+                            "Cloud pull throttled (page %d). Waiting %d seconds before retrying.",
+                            page_number,
+                            wait,
+                        )
+                        time.sleep(wait)
+                        continue  # retry same page/cursor
+
                 if response.status_code != 200:
                     retry_after = self._retry_after_hint(response)
                     retry_suffix = f" Retry after {retry_after}." if retry_after else ""
@@ -373,6 +388,17 @@ class HubCloudSyncWorker:
         if match:
             return f"{match.group(1)} seconds"
         return ""
+
+    @staticmethod
+    def _parse_retry_after_seconds(response: requests.Response) -> int | None:
+        """Extract integer seconds from a Retry-After header or DRF response body."""
+        header = response.headers.get("Retry-After", "")
+        if header.isdigit():
+            return int(header)
+        match = re.search(r"available in (\d+) seconds", response.text or "")
+        if match:
+            return int(match.group(1))
+        return None
 
     def _record_pulled_change(self, change: dict):
         """Record a pulled cloud change without assuming SyncQueue uniqueness."""

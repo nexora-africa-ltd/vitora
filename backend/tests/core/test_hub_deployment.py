@@ -836,15 +836,17 @@ class TestHubCloudSyncWorker:
         HUB_ID="hub-test",
         HUB_FACILITY_ID="1",
     )
-    def test_pull_throttle_logs_retry_after_hint(self, db, caplog):
-        """429 responses should preserve the cloud retry hint in hub logs."""
+    def test_pull_throttle_gives_up_when_retry_exceeds_max_wait(self, db, caplog):
+        """429 with Retry-After above MAX_THROTTLE_WAIT should abort instead of blocking."""
         from hmis.apps.core.hub_sync import HubCloudSyncWorker
 
         worker = HubCloudSyncWorker()
         mock_response = MagicMock()
         mock_response.status_code = 429
-        mock_response.headers = {"Retry-After": "710"}
-        mock_response.text = '{"detail":"Request was throttled."}'
+        mock_response.headers = {"Retry-After": "9999"}
+        mock_response.text = (
+            '{"detail":"Request was throttled. Expected available in 9999 seconds."}'
+        )
 
         with (
             patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
@@ -854,7 +856,59 @@ class TestHubCloudSyncWorker:
             pulled = worker._pull_changes(force_full=True)
 
         assert pulled == 0
-        assert "Cloud pull returned 429: Retry after 710 seconds." in caplog.text
+        assert "Cloud pull returned 429" in caplog.text
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
+    def test_pull_throttle_waits_and_resumes_on_429(self, db, caplog):
+        """429 within MAX_THROTTLE_WAIT should sleep then retry the same page."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        worker = HubCloudSyncWorker()
+
+        throttle_response = MagicMock()
+        throttle_response.status_code = 429
+        throttle_response.headers = {"Retry-After": "5"}
+        throttle_response.text = (
+            '{"detail":"Request was throttled. Expected available in 5 seconds."}'
+        )
+
+        ok_response = MagicMock()
+        ok_response.status_code = 200
+        ok_response.json.return_value = {
+            "changes": [
+                {
+                    "table": "patients.Patient",
+                    "operation": "CREATE",
+                    "record_id": "1",
+                    "data": {"first_name": "Resumed"},
+                }
+            ],
+            "server_timestamp": timezone.now().isoformat(),
+            "has_more": False,
+        }
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch(
+                "hmis.apps.core.hub_sync.requests.get",
+                side_effect=[throttle_response, ok_response],
+            ),
+            patch(
+                "hmis.apps.core.hub_sync.materialize_entry",
+                return_value={"success": True},
+            ),
+            patch("hmis.apps.core.hub_sync.time.sleep") as mock_sleep,
+            caplog.at_level("WARNING", logger="hmis.apps.core.hub_sync"),
+        ):
+            pulled = worker._pull_changes(force_full=True)
+
+        assert pulled == 1
+        mock_sleep.assert_called_once_with(5)
+        assert "Waiting 5 seconds before retrying" in caplog.text
 
     @override_settings(
         SYNC_SERVER_URL="https://cloud.example.com/api/sync",
