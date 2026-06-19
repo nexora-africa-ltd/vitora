@@ -13,11 +13,8 @@ use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Manager, State, WindowEvent,
+    AppHandle, Emitter, Manager, State, WindowEvent,
 };
-#[cfg(not(debug_assertions))]
-use tauri::Emitter;
-#[cfg(not(debug_assertions))]
 use tauri_plugin_deep_link::DeepLinkExt;
 
 pub mod commands;
@@ -34,7 +31,7 @@ use config::{
 };
 use updater::check_for_updates;
 
-const SIDECAR_READY_TIMEOUT: Duration = Duration::from_secs(600);
+const SIDECAR_READY_TIMEOUT: Duration = Duration::from_secs(120);
 const SIDECAR_READY_POLL_INTERVAL: Duration = Duration::from_millis(250);
 
 /// Manages the Node.js sidecar process lifecycle.
@@ -104,14 +101,6 @@ impl SidecarState {
             .replace('\'', "&#39;")
     }
 
-    fn js_escape(value: &str) -> String {
-        value
-            .replace('\\', "\\\\")
-            .replace('\'', "\\'")
-            .replace('\n', "\\n")
-            .replace('\r', "")
-    }
-
     /// Check if the sidecar HTTP server is actually serving requests.
     ///
     /// We deliberately do NOT use `TcpListener::bind` here: Next.js binds its
@@ -121,94 +110,35 @@ impl SidecarState {
     ///
     /// Instead, open a TCP connection, send a minimal HTTP/1.1 GET, and
     /// confirm we read an HTTP response line back.
-    fn http_probe(port: u16, path: &str, max_bytes: usize) -> Result<(u16, String), String> {
+    fn is_port_ready(port: u16) -> bool {
         let addr = format!("127.0.0.1:{}", port);
         let mut stream = match TcpStream::connect_timeout(
             &match addr.parse() {
                 Ok(a) => a,
-                Err(e) => return Err(format!("invalid sidecar address: {}", e)),
+                Err(_) => return false,
             },
             Duration::from_millis(500),
         ) {
             Ok(s) => s,
-            Err(e) => return Err(format!("connect failed: {}", e)),
+            Err(_) => return false,
         };
         let _ = stream.set_read_timeout(Some(Duration::from_millis(1500)));
         let _ = stream.set_write_timeout(Some(Duration::from_millis(500)));
-
-        let req = format!(
-            "GET {} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n",
-            path
-        );
-        stream
-            .write_all(req.as_bytes())
-            .map_err(|e| format!("request write failed: {}", e))?;
-
-        let mut response = Vec::new();
-        let mut buf = [0u8; 1024];
-        while response.len() < max_bytes {
-            match stream.read(&mut buf) {
-                Ok(0) => break,
-                Ok(n) => response.extend_from_slice(&buf[..n]),
-                Err(e)
-                    if e.kind() == std::io::ErrorKind::WouldBlock
-                        || e.kind() == std::io::ErrorKind::TimedOut =>
-                {
-                    break;
-                }
-                Err(e) => return Err(format!("response read failed: {}", e)),
-            }
+        // Probe a cheap API route that bypasses the dashboard/login render path.
+        // Any HTTP response from `/` is not enough: Next may return a redirect or
+        // a server error while still looking "ready" to a TCP-level probe.
+        let req =
+            b"GET /api/desktop-health HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
+        if stream.write_all(req).is_err() {
+            return false;
         }
-
-        let response_text = String::from_utf8_lossy(&response).to_string();
-        let status_line = response_text.lines().next().unwrap_or_default();
-        let status_code = status_line
-            .split_whitespace()
-            .nth(1)
-            .and_then(|code| code.parse::<u16>().ok())
-            .ok_or_else(|| format!("missing HTTP status line for {}: {}", path, status_line))?;
-
-        Ok((status_code, response_text))
-    }
-
-    fn is_port_ready(port: u16) -> bool {
-        match Self::http_probe(port, "/api/desktop-health", 512) {
-            Ok((200, _)) => true,
-            Ok((status, _)) => {
-                log::warn!("Desktop health probe returned HTTP {}", status);
-                false
+        let mut buf = [0u8; 32];
+        match stream.read(&mut buf) {
+            Ok(n) if n >= 12 => {
+                let status = String::from_utf8_lossy(&buf[..n]);
+                status.starts_with("HTTP/1.1 200") || status.starts_with("HTTP/1.0 200")
             }
-            Err(e) => {
-                log::debug!("Desktop health probe failed: {}", e);
-                false
-            }
-        }
-    }
-
-    fn is_route_ready(port: u16, path: &str) -> Result<(), String> {
-        match Self::http_probe(port, path, 4096) {
-            Ok((200, response)) => {
-                let lower_response = response.to_ascii_lowercase();
-                if lower_response.contains("content-type: text/html")
-                    || response.contains("</html>")
-                    || response.contains("__next")
-                {
-                    return Ok(());
-                }
-
-                Err(format!(
-                    "{} returned HTTP 200 but did not look like an HTML page. First bytes:\n{}",
-                    path,
-                    response.chars().take(1000).collect::<String>()
-                ))
-            }
-            Ok((status, response)) => Err(format!(
-                "{} returned HTTP {}. First bytes:\n{}",
-                path,
-                status,
-                response.chars().take(1000).collect::<String>()
-            )),
-            Err(e) => Err(format!("{} probe failed: {}", path, e)),
+            _ => false,
         }
     }
 
@@ -368,17 +298,10 @@ impl SidecarState {
 
     /// Spawn the Node.js sidecar with the standalone Next.js build.
     pub fn spawn_sidecar(&self, app: &AppHandle) -> Result<u16, String> {
-        let spawn_start = Instant::now();
         let port = Self::find_free_port();
-        log::info!("Startup phase: selected sidecar port {}", port);
 
         // Extract standalone archive to app data dir (first run) or reuse existing
-        let extract_start = Instant::now();
         let standalone_dir = Self::ensure_standalone_extracted(app)?;
-        log::info!(
-            "Startup phase: standalone bundle ready in {:.1}s",
-            extract_start.elapsed().as_secs_f64()
-        );
         let server_js = standalone_dir.join("server.js");
 
         // Resolve Node.js binary from resources
@@ -488,11 +411,6 @@ impl SidecarState {
         let child = child
             .spawn()
             .map_err(|e| format!("Failed to spawn Node sidecar: {}", e))?;
-
-        log::info!(
-            "Startup phase: Node sidecar process spawned in {:.1}s",
-            spawn_start.elapsed().as_secs_f64()
-        );
 
         let shared = Arc::new(
             SharedChild::new(child).map_err(|e| format!("Failed to create SharedChild: {}", e))?,
@@ -763,14 +681,11 @@ pub fn run() {
             let handle_clone = handle.clone();
 
             // Emit startup progress to the loading screen
-            fn emit_status(handle: &AppHandle, msg: &str, detail: &str) {
+            fn emit_status(handle: &AppHandle, msg: &str) {
                 if let Some(w) = handle.get_webview_window("main") {
-                    let msg = SidecarState::js_escape(msg);
-                    let detail = SidecarState::js_escape(detail);
                     let _ = w.eval(&format!(
-                        "try {{ document.getElementById('status').textContent = '{}'; document.getElementById('startup-detail').textContent = '{}'; }} catch(_) {{}}",
-                        msg,
-                        detail
+                        "try {{ document.getElementById('status').textContent = '{}'; }} catch(_) {{}}",
+                        msg
                     ));
                 }
             }
@@ -778,27 +693,14 @@ pub fn run() {
             // Spawn sidecar in a background thread to avoid blocking the event loop
             std::thread::spawn(move || {
                 let state = handle_clone.state::<SidecarState>();
-                let startup_start = Instant::now();
 
-                emit_status(
-                    &handle_clone,
-                    "Preparing application files...",
-                    "Checking whether the packaged server needs extraction.",
-                );
+                emit_status(&handle_clone, "Preparing application files...");
 
                 match state.spawn_sidecar(&handle_clone) {
                     Ok(port) => {
-                        log::info!(
-                            "Sidecar spawned on port {} after {:.1}s",
-                            port,
-                            startup_start.elapsed().as_secs_f64()
-                        );
+                        log::info!("Sidecar spawned on port {}", port);
 
-                        emit_status(
-                            &handle_clone,
-                            "Starting server...",
-                            "Waiting for the local health check before loading the sign-in screen.",
-                        );
+                        emit_status(&handle_clone, "Starting server...");
 
                         // Wait for the sidecar to actually serve HTTP.
                         // After an update the standalone is freshly re-extracted
@@ -808,94 +710,15 @@ pub fn run() {
                             .map(|(_, stderr_path)| stderr_path);
                         match state.wait_for_ready(SIDECAR_READY_TIMEOUT, stderr_path.as_deref()) {
                             Ok(()) => {
-                                log::info!(
-                                    "Sidecar is ready on port {} after {:.1}s total startup",
-                                    port,
-                                    startup_start.elapsed().as_secs_f64()
-                                );
-                                emit_status(
-                                    &handle_clone,
-                                    "Opening Vitora...",
-                                    "Checking that the sign-in screen can render.",
-                                );
-
-                                let login_start = Instant::now();
-                                let mut login_ready = false;
-                                let mut login_error = String::new();
-                                while login_start.elapsed() < Duration::from_secs(60) {
-                                    match SidecarState::is_route_ready(port, "/login") {
-                                        Ok(()) => {
-                                            login_ready = true;
-                                            break;
-                                        }
-                                        Err(e) => {
-                                            login_error = e;
-                                            std::thread::sleep(Duration::from_millis(500));
-                                        }
-                                    }
-                                }
-
-                                if !login_ready {
-                                    log::error!("Login route failed readiness check: {}", login_error);
-                                    if let Some(main_window) = handle_clone.get_webview_window("main") {
-                                        let escaped_error = SidecarState::html_escape(&login_error);
-                                        let error_html = format!(
-                                            "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Failed to load sign-in</h1><p style='color:%2394a3b8'>The local server started, but the sign-in page did not render successfully.</p><pre style='color:%23ef4444;font-size:12px;white-space:pre-wrap'>{}</pre><p style='color:%2394a3b8;font-size:12px'>Check sidecar-stderr.log for details.</p></body></html>",
-                                            escaped_error
-                                        );
-                                        let _ = main_window.navigate(error_html.parse().unwrap());
-                                    }
-                                    return;
-                                }
-
-                                emit_status(
-                                    &handle_clone,
-                                    "Opening Vitora...",
-                                    "Server is ready. Loading the sign-in screen.",
-                                );
+                                log::info!("Sidecar is ready on port {}", port);
                                 // Navigate main window to the desktop-aware login gate.
                                 // `/` redirects to `/dashboard`, which can skip the
                                 // desktop setup/activation checks and leave users with
                                 // a blank authenticated shell when no session exists.
                                 if let Some(main_window) = handle_clone.get_webview_window("main") {
                                     let url = format!("http://127.0.0.1:{}/login", port);
-                                    if let Err(e) = main_window.navigate(url.parse().unwrap()) {
-                                        log::error!("Failed to navigate to /login: {}", e);
-                                        let escaped_error = SidecarState::html_escape(&e.to_string());
-                                        let error_html = format!(
-                                            "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Failed to open Vitora</h1><p style='color:%2394a3b8'>The sign-in page was ready, but the desktop WebView could not navigate to it.</p><pre style='color:%23ef4444;font-size:12px;white-space:pre-wrap'>{}</pre></body></html>",
-                                            escaped_error
-                                        );
-                                        let _ = main_window.navigate(error_html.parse().unwrap());
-                                    }
+                                    let _ = main_window.navigate(url.parse().unwrap());
                                 }
-
-                                let blank_handle = handle_clone.clone();
-                                std::thread::spawn(move || {
-                                    std::thread::sleep(Duration::from_secs(25));
-                                    if let Some(window) = blank_handle.get_webview_window("main") {
-                                        let blank_probe_js = r#"
-                                            try {
-                                                const text = (document.body && document.body.innerText || '').trim();
-                                                if (text.length === 0) {
-                                                    const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-                                                    const scripts = Array.from(document.scripts).map((script) => script.src || '[inline]').slice(-12).join('\n');
-                                                    const styles = Array.from(document.styleSheets).map((sheet) => sheet.href || '[inline]').slice(-12).join('\n');
-                                                    const snapshot = [
-                                                        `URL: ${location.href}`,
-                                                        `Ready state: ${document.readyState}`,
-                                                        `Title: ${document.title}`,
-                                                        `Body HTML: ${(document.body && document.body.innerHTML || '').slice(0, 1800)}`,
-                                                        `Scripts:\n${scripts}`,
-                                                        `Styles:\n${styles}`,
-                                                    ].join('\n\n');
-                                                    document.body.innerHTML = '<div style="font-family:sans-serif;padding:40px;background:#0f172a;color:#f8fafc;min-height:100vh"><h1>Vitora loaded a blank page</h1><p style="color:#94a3b8">The local server is running, but the desktop WebView did not render visible content after navigation.</p><pre style="margin-top:16px;padding:12px;background:#111827;color:#fca5a5;font-size:12px;white-space:pre-wrap;max-height:50vh;overflow:auto">' + escapeHtml(snapshot) + '</pre><p style="color:#94a3b8;font-size:12px">Please send this diagnostic text along with sidecar-stderr.log.</p><button onclick="location.reload()" style="margin-top:16px;padding:8px 12px">Reload</button></div>';
-                                                }
-                                            } catch (_) {}
-                                        "#;
-                                        let _ = window.eval(blank_probe_js);
-                                    }
-                                });
 
                                 // Keep watching for a late sidecar crash after the
                                 // initial health check. If Node exits after navigation,
