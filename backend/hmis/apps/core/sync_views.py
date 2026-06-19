@@ -16,8 +16,11 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.apps import apps
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import identify_hasher
 from django.db import transaction
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from rest_framework import status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -52,6 +55,258 @@ SYNCABLE_TABLES = {
     "billing_invoice",
     "scheduling_shift",
 }
+
+HUB_IDENTITY_TABLES = {"auth.User", "core.StaffProfile"}
+HUB_USER_ALLOWED_FIELDS = {
+    "id",
+    "username",
+    "email",
+    "first_name",
+    "last_name",
+    "password",
+    "is_active",
+    "sync_meta",
+}
+HUB_STAFF_PROFILE_ALLOWED_FIELDS = {
+    "id",
+    "user",
+    "user_id",
+    "employee_id",
+    "title",
+    "middle_name",
+    "primary_role",
+    "primary_role_id",
+    "primary_department",
+    "primary_department_id",
+    "organization",
+    "organization_id",
+    "primary_facility",
+    "primary_facility_id",
+    "facility",
+    "facility_id",
+    "hwr_id",
+    "license_number",
+    "license_expiry",
+    "license_verified",
+    "licensing_body",
+    "specialization",
+    "employment_status",
+    "employment_type",
+    "date_joined",
+    "date_left",
+    "sync_meta",
+}
+
+
+def _record_id_to_int(record_id) -> int | None:
+    """Return an integer record id if one was supplied."""
+    if record_id in (None, ""):
+        return None
+    try:
+        return int(record_id)
+    except (TypeError, ValueError):
+        return None
+
+
+def _reject_identity(reason: str) -> dict:
+    """Build a common identity sync result for rejected changes."""
+    return {"success": False, "reason": reason}
+
+
+def _apply_hub_identity_change(*, table: str, operation: str, record_id, data: dict, installation):
+    """Apply tightly scoped hub identity changes directly on the cloud."""
+    if installation is None:
+        return _reject_identity("Identity sync requires an active hub license.")
+    if operation not in {"CREATE", "UPDATE"}:
+        return _reject_identity("Identity sync only supports CREATE and UPDATE operations.")
+    if table == "auth.User":
+        return _upsert_hub_user(record_id=record_id, data=data, installation=installation)
+    if table == "core.StaffProfile":
+        return _upsert_hub_staff_profile(record_id=record_id, data=data, installation=installation)
+    return _reject_identity(f"Unsupported identity table '{table}'.")
+
+
+def _upsert_hub_user(*, record_id, data: dict, installation):
+    """Create/update a non-privileged cloud user from a licensed hub."""
+    unexpected_fields = set(data) - HUB_USER_ALLOWED_FIELDS
+    if unexpected_fields:
+        return _reject_identity(
+            f"Field(s) not allowed for hub user sync: {', '.join(sorted(unexpected_fields))}."
+        )
+
+    record_pk = _record_id_to_int(record_id or data.get("id"))
+    if record_pk is None:
+        return _reject_identity("Hub user sync requires a numeric record_id.")
+
+    username = str(data.get("username") or "").strip()
+    if not username:
+        return _reject_identity("Hub user sync requires a username.")
+
+    password_hash = data.get("password")
+    if password_hash:
+        try:
+            identify_hasher(password_hash)
+        except ValueError:
+            return _reject_identity("Hub user sync requires an encoded Django password hash.")
+
+    User = get_user_model()
+    existing_by_pk = User.objects.filter(pk=record_pk).first()
+    existing_by_username = User.objects.filter(username=username).first()
+    email = str(data.get("email") or "").strip()
+    existing_by_email = User.objects.filter(email__iexact=email).first() if email else None
+
+    for existing in (existing_by_username, existing_by_email):
+        if existing and existing.pk != record_pk:
+            return _reject_identity("Hub user sync would collide with an existing cloud user.")
+
+    user = existing_by_pk or existing_by_username or existing_by_email
+    profile = getattr(user, "staff_profile", None) if user else None
+    if (
+        profile
+        and profile.organization_id
+        and profile.organization_id != installation.organization_id
+    ):
+        return _reject_identity("Hub user belongs to a different organization.")
+
+    creating = user is None
+    if creating and not password_hash:
+        return _reject_identity("Hub user creation requires a password hash.")
+    if creating:
+        user = User(pk=record_pk, username=username)
+
+    object.__setattr__(user, "_from_sync_materializer", True)
+    user.username = username
+    user.email = email
+    user.first_name = str(data.get("first_name") or "")
+    user.last_name = str(data.get("last_name") or "")
+    if "is_active" in data:
+        user.is_active = bool(data.get("is_active"))
+    elif creating:
+        user.is_active = True
+    if password_hash:
+        user.password = password_hash
+    if creating:
+        user.is_staff = False
+        user.is_superuser = False
+    user.save()
+    return {"success": True}
+
+
+def _get_scoped_role(role_id, installation):
+    """Return a role if it is global or scoped to the hub installation."""
+    from hmis.apps.core.models import Role
+
+    role = Role.objects.filter(pk=role_id).first()
+    if role is None:
+        return None
+    role_organization_id = getattr(role, "organization_id", None)
+    role_facility_id = getattr(role, "facility_id", None)
+    if role_organization_id and role_organization_id != installation.organization_id:
+        return None
+    if role_facility_id and role_facility_id != installation.facility_id:
+        return None
+    return role
+
+
+def _get_scoped_department(department_id, installation):
+    """Return a department only when it belongs to the hub installation."""
+    from hmis.apps.core.models import Department
+
+    return Department.objects.filter(
+        pk=department_id,
+        organization=installation.organization,
+        facility=installation.facility,
+    ).first()
+
+
+def _upsert_hub_staff_profile(*, record_id, data: dict, installation):
+    """Create/update a staff profile forced into the hub installation scope."""
+    if installation.facility is None:
+        return _reject_identity("Hub staff profile sync requires an installation facility.")
+
+    unexpected_fields = set(data) - HUB_STAFF_PROFILE_ALLOWED_FIELDS
+    if unexpected_fields:
+        return _reject_identity(
+            f"Field(s) not allowed for hub staff profile sync: {', '.join(sorted(unexpected_fields))}."
+        )
+
+    record_pk = _record_id_to_int(record_id or data.get("id"))
+    if record_pk is None:
+        return _reject_identity("Hub staff profile sync requires a numeric record_id.")
+
+    user_id = _record_id_to_int(data.get("user") or data.get("user_id"))
+    if user_id is None:
+        return _reject_identity("Hub staff profile sync requires a user id.")
+
+    User = get_user_model()
+    user = User.objects.filter(pk=user_id).first()
+    if user is None:
+        return _reject_identity("Hub staff profile user does not exist in the cloud.")
+
+    role_id = _record_id_to_int(data.get("primary_role") or data.get("primary_role_id"))
+    role = _get_scoped_role(role_id, installation) if role_id is not None else None
+    if role is None:
+        return _reject_identity("Hub staff profile primary role is not available to this hub.")
+
+    department_id = _record_id_to_int(
+        data.get("primary_department") or data.get("primary_department_id")
+    )
+    department = (
+        _get_scoped_department(department_id, installation) if department_id is not None else None
+    )
+    if department is None:
+        return _reject_identity(
+            "Hub staff profile primary department is not available to this hub."
+        )
+
+    date_joined = parse_date(str(data.get("date_joined") or ""))
+    if date_joined is None:
+        return _reject_identity("Hub staff profile sync requires date_joined in YYYY-MM-DD format.")
+
+    date_left = parse_date(str(data.get("date_left") or "")) if data.get("date_left") else None
+
+    from hmis.apps.core.models import StaffProfile
+
+    existing_by_pk = StaffProfile.objects.filter(pk=record_pk).first()
+    existing_by_user = StaffProfile.objects.filter(user=user).first()
+    employee_id = str(data.get("employee_id") or "").strip()
+    existing_by_employee = (
+        StaffProfile.objects.filter(employee_id=employee_id).first() if employee_id else None
+    )
+
+    candidates = [item for item in (existing_by_pk, existing_by_user, existing_by_employee) if item]
+    if candidates and len({item.pk for item in candidates}) > 1:
+        return _reject_identity("Hub staff profile sync would collide with an existing profile.")
+
+    profile = candidates[0] if candidates else None
+    if profile and getattr(profile, "organization_id", None) != installation.organization_id:
+        return _reject_identity("Hub staff profile belongs to a different organization.")
+
+    if profile is None:
+        profile = StaffProfile(pk=record_pk, user=user)
+
+    object.__setattr__(profile, "_from_sync_materializer", True)
+    profile.employee_id = employee_id
+    profile.title = str(data.get("title") or "")
+    profile.middle_name = str(data.get("middle_name") or "")
+    profile.primary_role = role
+    profile.primary_department = department
+    profile.organization = installation.organization
+    profile.primary_facility = installation.facility
+    profile.hwr_id = str(data.get("hwr_id") or "")
+    profile.license_number = str(data.get("license_number") or "")
+    profile.license_expiry = (
+        parse_date(str(data.get("license_expiry") or "")) if data.get("license_expiry") else None
+    )
+    profile.license_verified = bool(data.get("license_verified", False))
+    profile.licensing_body = str(data.get("licensing_body") or "")
+    profile.specialization = str(data.get("specialization") or "")
+    profile.employment_status = str(data.get("employment_status") or "ACTIVE")
+    profile.employment_type = str(data.get("employment_type") or "PERMANENT")
+    profile.date_joined = date_joined
+    profile.date_left = date_left
+    profile.save()
+    return {"success": True}
 
 
 def _get_model_for_table(table_name: str):
@@ -244,6 +499,7 @@ def sync_push(request):
     accepted = 0
     rejections = []
     conflicts = []
+    broadcast_changes = []
 
     batch_size = getattr(settings, "SYNC_BATCH_SIZE", 100)
     if len(changes) > batch_size:
@@ -259,6 +515,27 @@ def sync_push(request):
             record_id = change.get("record_id")
             data = change["data"]
             timestamp = change["timestamp"]
+
+            if table in HUB_IDENTITY_TABLES:
+                result = _apply_hub_identity_change(
+                    table=table,
+                    operation=operation,
+                    record_id=record_id,
+                    data=data,
+                    installation=getattr(request, "_hub_installation", None),
+                )
+                if result.get("success"):
+                    accepted += 1
+                else:
+                    rejections.append(
+                        {
+                            "index": idx,
+                            "table": table,
+                            "record_id": record_id,
+                            "reason": result.get("reason", "Identity sync failed."),
+                        }
+                    )
+                continue
 
             # Validate table is syncable
             if table not in SYNCABLE_TABLES:
@@ -325,12 +602,13 @@ def sync_push(request):
                 organization=organization,
             )
             accepted += 1
+            broadcast_changes.append(change)
 
     # Broadcast accepted changes to other LAN clients via WebSocket
-    if accepted > 0 and facility:
+    if broadcast_changes and facility:
         _broadcast_sync_changes(
             facility_id=facility.pk,
-            changes=changes,
+            changes=broadcast_changes,
             client_id=client_id,
         )
 
