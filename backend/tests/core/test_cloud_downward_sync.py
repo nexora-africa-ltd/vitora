@@ -28,6 +28,10 @@ class TestShouldQueueDownwardSync:
     def test_returns_true_for_bidirectional_patient_model(self):
         assert should_queue_downward_sync("patients.Patient") is True
 
+    @override_settings(SYNC_ENABLED=True, ENVIRONMENT="production")
+    def test_returns_true_for_tibabot_facility_key_model(self):
+        assert should_queue_downward_sync("ai.TibaBotFacilityKey") is True
+
     @override_settings(SYNC_ENABLED=True, ENVIRONMENT="hub")
     def test_returns_false_on_hub(self):
         assert should_queue_downward_sync("core.Organization") is False
@@ -150,6 +154,32 @@ class TestCloudDownwardSyncSignal:
         assert entry is not None
         assert entry.operation == "UPDATE"
         assert entry.data["first_name"] == "CloudEdit"
+
+    @override_settings(SYNC_ENABLED=True, ENVIRONMENT="production")
+    def test_tibabot_facility_key_save_creates_downward_entry(self, sample_facility):
+        """Cloud-provisioned TibaBot keys should be pullable by facility hubs."""
+        from hmis.apps.ai.models import TibaBotFacilityKey
+
+        SyncQueue.objects.all().delete()
+
+        key = TibaBotFacilityKey.objects.create(
+            facility=sample_facility,
+            api_key="tb_test_cloud_facility_key",
+            key_hash="abc123",
+            tibabot_facility_id="facility-001",
+            scopes=["chat", "clinical"],
+        )
+
+        entry = SyncQueue.objects.filter(
+            model_name="ai.TibaBotFacilityKey",
+            record_id=key.pk,
+            status="SYNCED",
+        ).last()
+        assert entry is not None
+        assert entry.operation == "CREATE"
+        assert entry.data["facility"] == sample_facility.pk
+        assert entry.data["api_key"] == "tb_test_cloud_facility_key"
+        assert entry.data["tibabot_facility_id"] == "facility-001"
 
     @override_settings(SYNC_ENABLED=True, ENVIRONMENT="production")
     def test_from_sync_materializer_flag_prevents_loop(self, sample_organization):

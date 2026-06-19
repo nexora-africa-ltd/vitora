@@ -421,6 +421,37 @@ class TestSyncPullEndpoint:
         assert entry["record_id"] == sample_patient.id
         assert entry["data"]["first_name"] == sample_patient.first_name
 
+    def test_full_downward_pull_snapshots_current_tibabot_facility_key_without_queue_entry(
+        self, authenticated_client, sync_pull_url, sample_facility
+    ):
+        """Full cloud-to-hub pulls should include existing TibaBot facility keys."""
+        from hmis.apps.ai.models import TibaBotFacilityKey
+        from hmis.apps.core.models import SyncQueue
+
+        key = TibaBotFacilityKey.objects.create(
+            facility=sample_facility,
+            api_key="tb_test_existing_key",
+            key_hash="hash123",
+            tibabot_facility_id="sample-facility",
+            scopes=["chat", "clinical"],
+        )
+        SyncQueue.objects.all().delete()
+
+        response = authenticated_client.get(
+            sync_pull_url,
+            {"full": "true", "direction": "down", "tables": "ai.TibaBotFacilityKey"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["has_more"] is False
+        assert len(response.data["entries"]) == 1
+        entry = response.data["entries"][0]
+        assert entry["table"] == "ai.TibaBotFacilityKey"
+        assert entry["operation"] == "CREATE"
+        assert entry["record_id"] == key.id
+        assert entry["data"]["facility"] == sample_facility.pk
+        assert entry["data"]["api_key"] == "tb_test_existing_key"
+
     def test_pull_no_results_for_future_since(
         self, authenticated_client, sync_pull_url, synced_queue_entries
     ):

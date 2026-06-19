@@ -117,16 +117,20 @@ export function WebSocketStatus({
         return 'Connecting...';
       case 'disconnected':
       case 'error':
-        return 'Polling';
+        return 'Online';
       default:
-        return 'Polling';
+        return 'Online';
     }
   };
 
   const tooltipContent = (
     <div className="text-xs">
       <div className="font-medium">
-        {!isOnline ? 'Backend unreachable' : statusText}
+        {!isOnline
+          ? 'Backend unreachable'
+          : connectionState === 'disconnected' || connectionState === 'error'
+            ? 'Online via HTTP refresh'
+            : statusText}
       </div>
       {isOnline && connectionState === 'reconnecting' && (
         <div className="text-muted-foreground mt-1">
@@ -140,7 +144,7 @@ export function WebSocketStatus({
       )}
       {isOnline && (connectionState === 'disconnected' || connectionState === 'error') && (
         <div className="text-muted-foreground mt-1">
-          WebSocket unavailable — using HTTP polling (updates every 15-30s)
+          Real-time WebSocket is unavailable; dashboard data is still refreshing over HTTP every 15-30s.
         </div>
       )}
     </div>

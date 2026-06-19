@@ -82,6 +82,11 @@ SYNC_REGISTRY: dict[str, SyncRegistryEntry] = {
         priority=5,
     ),
     "billing.ServiceCatalog": SyncRegistryEntry(direction=SyncDirection.DOWN, priority=5),
+    "ai.TibaBotFacilityKey": SyncRegistryEntry(
+        direction=SyncDirection.DOWN,
+        priority=5,
+        conflict_policy="REMOTE_WINS",
+    ),
     # Compliance/audit
     "core.AuditLog": SyncRegistryEntry(direction=SyncDirection.UP, priority=5, batch_size=500),
 }
