@@ -378,19 +378,9 @@ class TestSyncPullEndpoint:
     def test_pull_downward_direction_returns_entries_contract(
         self, authenticated_client, sync_pull_url, sample_facility, sample_organization
     ):
-        """Cloud-to-hub pulls should expose the Phase 3 entries response contract."""
-        from hmis.apps.core.models import SyncQueue
-
-        queue_entry = SyncQueue.objects.create(
-            operation="UPDATE",
-            model_name="core.Facility",
-            record_id=sample_facility.id,
-            data={"id": sample_facility.id, "has_laboratory": True},
-            status="SYNCED",
-            synced_at=timezone.now(),
-            facility=sample_facility,
-            organization=sample_organization,
-        )
+        """Cloud-to-hub full pulls should expose current-state snapshot entries."""
+        sample_facility.has_laboratory = True
+        sample_facility.save(update_fields=["has_laboratory"])
 
         response = authenticated_client.get(
             sync_pull_url,
@@ -404,10 +394,32 @@ class TestSyncPullEndpoint:
         assert response.data["entries"] == response.data["changes"]
         entry = response.data["entries"][0]
         assert entry["table"] == "core.Facility"
-        assert entry["operation"] == "UPDATE"
+        assert entry["operation"] == "CREATE"
         assert entry["record_id"] == sample_facility.id
         assert entry["data"]["has_laboratory"] is True
-        assert entry["server_sequence"] == queue_entry.id
+        assert entry["server_sequence"] == 1
+
+    def test_full_downward_pull_snapshots_current_patient_without_queue_entry(
+        self, authenticated_client, sync_pull_url, sample_patient
+    ):
+        """Full cloud-to-hub pulls should not depend on historical SyncQueue rows."""
+        from hmis.apps.core.models import SyncQueue
+
+        SyncQueue.objects.all().delete()
+
+        response = authenticated_client.get(
+            sync_pull_url,
+            {"full": "true", "direction": "down", "tables": "patients.Patient"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["has_more"] is False
+        assert len(response.data["entries"]) == 1
+        entry = response.data["entries"][0]
+        assert entry["table"] == "patients.Patient"
+        assert entry["operation"] == "CREATE"
+        assert entry["record_id"] == sample_patient.id
+        assert entry["data"]["first_name"] == sample_patient.first_name
 
     def test_pull_no_results_for_future_since(
         self, authenticated_client, sync_pull_url, synced_queue_entries
