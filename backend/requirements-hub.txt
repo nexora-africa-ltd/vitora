@@ -121,7 +121,7 @@ typing-inspection==0.4.2
 tzdata==2025.3
 tzlocal==5.3.1
 u-msgpack-python==2.8.0
-ujson==5.11.0
+ujson==5.13.0
 uritemplate==4.2.0
 urllib3==2.6.3
 vine==5.1.0
