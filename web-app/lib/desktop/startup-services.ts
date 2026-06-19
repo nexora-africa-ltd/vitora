@@ -80,30 +80,28 @@ export function startDesktopServices(trigger = 'manual'): Promise<DesktopStartup
 
       status.services.backups = 'starting';
       const backupStart = Date.now();
-      const { startAutoBackups } = await import('./backup-service');
       setTimeout(() => {
-        try {
+        import('./backup-service').then(({ startAutoBackups }) => {
           startAutoBackups();
           status.services.backups = 'ready';
           console.log(`[DesktopStartup] Backup service ready in ${Date.now() - backupStart}ms`);
-        } catch (error) {
+        }).catch((error) => {
           status.services.backups = 'failed';
           console.warn('[DesktopStartup] Backup service failed:', error);
-        }
+        });
       }, 10_000);
 
       status.services.sync = 'starting';
       const syncStart = Date.now();
-      const { startAutoSync } = await import('./sync-engine');
       setTimeout(() => {
-        try {
+        import('./sync-engine').then(({ startAutoSync }) => {
           startAutoSync();
           status.services.sync = 'ready';
           console.log(`[DesktopStartup] Sync service ready in ${Date.now() - syncStart}ms`);
-        } catch (error) {
+        }).catch((error) => {
           status.services.sync = 'failed';
           console.warn('[DesktopStartup] Sync service failed:', error);
-        }
+        });
       }, 15_000);
 
       status.stage = 'ready';
