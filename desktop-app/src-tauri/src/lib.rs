@@ -187,17 +187,26 @@ impl SidecarState {
 
     fn is_route_ready(port: u16, path: &str) -> Result<(), String> {
         match Self::http_probe(port, path, 4096) {
-            Ok((200, body)) if body.contains("</html>") || body.contains("__next") => Ok(()),
-            Ok((200, body)) => Err(format!(
-                "{} returned HTTP 200 but did not look like a rendered Next page. First bytes:\n{}",
-                path,
-                body.chars().take(1000).collect::<String>()
-            )),
-            Ok((status, body)) => Err(format!(
+            Ok((200, response)) => {
+                let lower_response = response.to_ascii_lowercase();
+                if lower_response.contains("content-type: text/html")
+                    || response.contains("</html>")
+                    || response.contains("__next")
+                {
+                    return Ok(());
+                }
+
+                Err(format!(
+                    "{} returned HTTP 200 but did not look like an HTML page. First bytes:\n{}",
+                    path,
+                    response.chars().take(1000).collect::<String>()
+                ))
+            }
+            Ok((status, response)) => Err(format!(
                 "{} returned HTTP {}. First bytes:\n{}",
                 path,
                 status,
-                body.chars().take(1000).collect::<String>()
+                response.chars().take(1000).collect::<String>()
             )),
             Err(e) => Err(format!("{} probe failed: {}", path, e)),
         }
