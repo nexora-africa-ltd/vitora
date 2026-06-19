@@ -735,7 +735,7 @@ pub fn run() {
                         emit_status(
                             &handle_clone,
                             "Starting server...",
-                            "Waiting for the local health check. Offline services will warm up after login loads.",
+                            "Waiting for the local health check before loading the sign-in screen.",
                         );
 
                         // Wait for the sidecar to actually serve HTTP.
