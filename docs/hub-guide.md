@@ -1,6 +1,6 @@
 # Vitora HMIS Facility Hub — Comprehensive Guide & Operations Runbook
 
-> **Current Version**: hub-v0.6.10
+> **Current Version**: hub-v0.6.11
 > **Platforms**: Linux (Debian/Ubuntu, Raspberry Pi), Windows 10/11+
 > **Delivery Modes**: Native (systemd/NSSM service), Container (Docker Compose)
 > **Last Updated**: June 2026
@@ -364,7 +364,7 @@ cd C:\VitoraHub
 
 The command reports `pushed`, `pulled`, and queue counts before/after the run. Missing sync settings or a missing license token exits with an error and leaves pending queue entries intact.
 
-Use a full downward pull after upgrading a hub that previously showed fewer cloud/web patients than the desktop. This ignores the saved pull cursor for that run and asks the cloud for all downward-syncable records:
+Use a full downward pull after upgrading a hub that previously showed fewer cloud/web patients than the desktop. In hub-v0.6.11 and newer this ignores the saved pull cursor for that run and asks the cloud for a current snapshot of all downward-syncable records, including existing cloud patients that were never written to the historical sync queue:
 
 ```powershell
 cd C:\VitoraHub
@@ -377,7 +377,7 @@ If older failed pushes also exist, combine it with retry recovery:
 .\hub-shell.ps1 hub_sync --retry-failed --full-pull
 ```
 
-Patients and emergency contacts are bidirectional sync models. Hubs older than the bidirectional patient-sync fix only uploaded local patient changes, so a normal incremental pull may not catch older cloud-created patient rows if the cursor had already advanced.
+Patients and emergency contacts are bidirectional sync models. Hubs older than the bidirectional patient-sync fix only uploaded local patient changes. Hub-v0.6.10 made the models bidirectional, but `--full-pull` still depended on cloud `SyncQueue` history; if old cloud patients had no queue rows, it could report `pulled=0`. Hub-v0.6.11 changes full downward pull to build a current cloud snapshot instead of relying only on historical queue rows.
 
 #### TibaBot on Desktop/Hub
 

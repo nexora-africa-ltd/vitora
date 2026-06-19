@@ -24,12 +24,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.models import SyncConflict, SyncQueue
-from hmis.apps.core.sync_registry import downward_sync_models
+from hmis.apps.core.sync_registry import downward_sync_models, get_registry_entry
 from hmis.apps.core.sync_serializers import (
     SyncConflictDetailSerializer,
     SyncConflictResolveSerializer,
     SyncPushRequestSerializer,
 )
+from hmis.apps.core.sync_signals import add_sync_meta, serialize_instance_for_sync
 from hmis.apps.licensing.hub_auth import HubLicenseOrJWTAuthentication, IsAuthenticatedOrHubLicense
 
 logger = logging.getLogger(__name__)
@@ -94,6 +95,79 @@ def _resolve_organization_from_request(request):
     if installation:
         return installation.organization
     return _resolve_organization(request.user)
+
+
+def _model_label_to_model(model_label: str):
+    """Resolve a registry label like patients.Patient to a model class."""
+    app_label, model_name = model_label.split(".", 1)
+    return apps.get_model(app_label, model_name)
+
+
+def _scope_snapshot_queryset(model_label: str, qs, *, facility, organization):
+    """Scope a full cloud-to-hub snapshot query to the hub tenant."""
+    if model_label == "core.Organization":
+        return qs.filter(pk=organization.pk) if organization else qs.none()
+    if model_label == "core.Facility":
+        return qs.filter(organization=organization) if organization else qs.none()
+    if model_label == "auth.User":
+        if organization:
+            return qs.filter(staff_profile__organization=organization)
+        return qs.none()
+    if model_label == "patients.EmergencyContact":
+        if organization:
+            return qs.filter(patient__organization=organization)
+        return qs.none()
+
+    model = qs.model
+    if hasattr(model, "organization") and organization:
+        return qs.filter(organization=organization)
+    if hasattr(model, "facility") and facility:
+        return qs.filter(facility=facility)
+    if hasattr(model, "registered_at_facility") and organization:
+        return qs.filter(organization=organization)
+    return qs.none()
+
+
+def _build_downward_snapshot_changes(*, tables: set[str], facility, organization, limit: int):
+    """Build a current-state snapshot for full cloud-to-hub sync pulls."""
+    items = []
+    now = timezone.now()
+
+    for model_label in sorted(tables):
+        entry = get_registry_entry(model_label)
+        if entry is None:
+            continue
+        model = _model_label_to_model(model_label)
+        pk_name = model._meta.pk.name if model._meta.pk is not None else "pk"
+        qs = _scope_snapshot_queryset(
+            model_label,
+            model.objects.all(),
+            facility=facility,
+            organization=organization,
+        ).order_by(pk_name)
+
+        for instance in qs[: limit + 1]:
+            data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
+            data = add_sync_meta(data, direction=entry.direction, priority=entry.priority)
+            timestamp = (
+                getattr(instance, "updated_at", None)
+                or getattr(instance, "created_at", None)
+                or now
+            )
+            items.append(
+                {
+                    "table": model_label,
+                    "operation": "CREATE",
+                    "record_id": instance.pk,
+                    "data": data,
+                    "timestamp": timestamp,
+                    "server_sequence": len(items) + 1,
+                }
+            )
+            if len(items) > limit:
+                return items[:limit], True
+
+    return items[:limit], len(items) > limit
 
 
 def _broadcast_sync_changes(facility_id: int, changes: list, client_id: str):
@@ -282,6 +356,26 @@ def sync_pull(request):
     allowed_tables = downward_sync_models() if direction == "down" else SYNCABLE_TABLES
     requested_tables = {table.strip() for table in tables_param.split(",") if table.strip()}
     tables = requested_tables & allowed_tables if requested_tables else allowed_tables
+
+    if direction == "down" and full:
+        changes, has_more = _build_downward_snapshot_changes(
+            tables=tables,
+            facility=facility,
+            organization=organization,
+            limit=limit,
+        )
+        return Response(
+            {
+                "changes": changes,
+                "entries": changes,
+                "server_timestamp": timezone.now(),
+                "has_more": has_more,
+                "next_cursor": str(changes[-1]["server_sequence"])
+                if has_more and changes
+                else None,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     # Build queryset
     qs = SyncQueue.objects.filter(
