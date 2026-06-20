@@ -719,6 +719,95 @@ class TestHubCloudSyncWorker:
         SYNC_SERVER_URL="https://cloud.example.com/api/sync",
         HUB_ID="hub-test",
         HUB_FACILITY_ID="1",
+        SYNC_BATCH_SIZE=250,
+    )
+    def test_push_pending_chunks_large_batches(self, db, sample_facility, sample_organization):
+        """Push should chunk large batches to respect the cloud's per-request limit."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        # Create 250 pending entries (PUSH_CHUNK_SIZE is 100, so expect 3 chunks)
+        for i in range(250):
+            SyncQueue.objects.create(
+                operation="CREATE",
+                model_name="patients_patient",
+                record_id=i + 1,
+                data={"first_name": f"P{i}"},
+                status="PENDING",
+                facility=sample_facility,
+                organization=sample_organization,
+            )
+
+        worker = HubCloudSyncWorker()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"accepted": 100}
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch("hmis.apps.core.hub_sync.requests.post", return_value=mock_response) as mock_post,
+            patch("hmis.apps.core.hub_sync.time.sleep"),
+        ):
+            pushed = worker._push_pending()
+
+        assert pushed == 250
+        assert mock_post.call_count == 3  # 100 + 100 + 50
+        # Each chunk should be ≤100
+        for call in mock_post.call_args_list:
+            assert len(call.kwargs["json"]["changes"]) <= 100
+        assert SyncQueue.objects.filter(status="SYNCED").count() == 250
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+        SYNC_BATCH_SIZE=200,
+    )
+    def test_push_chunk_429_stops_remaining_chunks(self, db, sample_facility, sample_organization):
+        """A 429 on one push chunk should revert that chunk and stop further pushes."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        for i in range(200):
+            SyncQueue.objects.create(
+                operation="CREATE",
+                model_name="patients_patient",
+                record_id=i + 1,
+                data={"first_name": f"P{i}"},
+                status="PENDING",
+                facility=sample_facility,
+                organization=sample_organization,
+            )
+
+        worker = HubCloudSyncWorker()
+
+        ok_response = MagicMock()
+        ok_response.status_code = 200
+        ok_response.json.return_value = {"accepted": 100}
+
+        throttle_response = MagicMock()
+        throttle_response.status_code = 429
+        throttle_response.headers = {"Retry-After": "60"}
+        throttle_response.text = '{"detail":"throttled"}'
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch(
+                "hmis.apps.core.hub_sync.requests.post",
+                side_effect=[ok_response, throttle_response],
+            ),
+            patch("hmis.apps.core.hub_sync.time.sleep"),
+        ):
+            pushed = worker._push_pending()
+
+        # Only first chunk pushed; second reverted to PENDING
+        assert pushed == 100
+        assert SyncQueue.objects.filter(status="SYNCED").count() == 100
+        assert SyncQueue.objects.filter(status="PENDING").count() == 100
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
         SYNC_MAX_RETRIES=3,
     )
     def test_reset_failed_for_retry_respects_retry_cap(
