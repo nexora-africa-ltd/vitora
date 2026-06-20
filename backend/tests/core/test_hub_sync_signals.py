@@ -135,6 +135,50 @@ class TestHubSyncSignals:
         }
 
     @override_settings(ENVIRONMENT="hub", SYNC_ENABLED=True)
+    def test_materialized_patient_update_does_not_queue_pending_entry(self, sample_patient):
+        """Pulled cloud changes must not be re-queued as hub-originated changes."""
+        import hmis.apps.core.sync_signals  # noqa: F401
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        SyncQueue.objects.all().delete()
+
+        result = materialize_entry(
+            {
+                "table": "patients.Patient",
+                "operation": "UPDATE",
+                "record_id": sample_patient.id,
+                "data": {"id": sample_patient.id, "last_name": "CloudUpdated"},
+            }
+        )
+
+        assert result == {"success": True}
+        sample_patient.refresh_from_db()
+        assert sample_patient.last_name == "CloudUpdated"
+        assert SyncQueue.objects.filter(status="PENDING").count() == 0
+
+    @override_settings(ENVIRONMENT="hub", SYNC_ENABLED=True)
+    def test_materialized_patient_delete_does_not_queue_pending_entry(self, sample_patient):
+        """Pulled cloud deletes must not be pushed back to cloud as local deletes."""
+        import hmis.apps.core.sync_signals  # noqa: F401
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        patient_id = sample_patient.id
+        SyncQueue.objects.all().delete()
+
+        result = materialize_entry(
+            {
+                "table": "patients.Patient",
+                "operation": "DELETE",
+                "record_id": patient_id,
+                "data": {"id": patient_id},
+            }
+        )
+
+        assert result == {"success": True}
+        assert Patient.objects.filter(id=patient_id).exists() is False
+        assert SyncQueue.objects.filter(status="PENDING").count() == 0
+
+    @override_settings(ENVIRONMENT="hub", SYNC_ENABLED=True)
     def test_organization_with_imagefield_serializes_without_typeerror(self, sample_organization):
         """Saving a model with an ImageField/FileField must not break the sync signal.
 

@@ -413,7 +413,11 @@ class HubCloudSyncWorker:
             "synced_at": timezone.now(),
         }
         existing = (
-            SyncQueue.objects.filter(model_name=change["table"], record_id=record_id)
+            SyncQueue.objects.filter(
+                model_name=change["table"],
+                record_id=record_id,
+                status="SYNCED",
+            )
             .order_by("-synced_at", "-created_at", "-pk")
             .first()
         )

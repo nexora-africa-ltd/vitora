@@ -21,6 +21,7 @@ from django.forms.models import model_to_dict
 from django.utils import timezone
 
 from hmis.apps.core.models import SyncQueue
+from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.core.sync_registry import (
     SyncDirection,
     get_registry_entry,
@@ -108,6 +109,9 @@ def auto_queue_for_sync(sender, instance, created, raw=False, **kwargs):  # noqa
     if raw:
         return
 
+    if _is_from_sync_materializer(instance):
+        return
+
     model_label = get_model_label(instance)
     if not should_queue_upward_sync(model_label):
         return
@@ -134,6 +138,9 @@ def auto_queue_for_sync(sender, instance, created, raw=False, **kwargs):  # noqa
 @receiver(post_delete, dispatch_uid="hub_auto_queue_delete_for_sync")
 def auto_queue_delete_for_sync(sender, instance, **kwargs):  # noqa: ARG001
     """Automatically queue registered model deletes for hub-to-cloud sync."""
+    if _is_from_sync_materializer(instance):
+        return
+
     model_label = get_model_label(instance)
     if not should_queue_upward_sync(model_label):
         return
@@ -159,14 +166,19 @@ def auto_queue_delete_for_sync(sender, instance, **kwargs):  # noqa: ARG001
 # ---------------------------------------------------------------------------
 
 
-def _is_from_hub_push(instance) -> bool:
-    """Detect if this save was triggered by materializing a hub push.
+def _is_from_sync_materializer(instance) -> bool:
+    """Detect if this signal was triggered by sync materialization.
 
-    When the cloud materializes a hub push (sync_materializer.py), it sets a
-    transient attribute on the instance to prevent re-queueing the same change
-    back as a downward entry (which would cause infinite sync loops).
+    Materialized writes already came from the opposite side of the sync link.
+    Re-queueing them would turn pulled cloud changes into hub PENDING entries,
+    or pushed hub changes into cloud pull entries.
     """
-    return getattr(instance, "_from_sync_materializer", False)
+    return is_sync_materialization_active() or getattr(instance, "_from_sync_materializer", False)
+
+
+def _is_from_hub_push(instance) -> bool:
+    """Backward-compatible alias for materializer-originated writes."""
+    return _is_from_sync_materializer(instance)
 
 
 @receiver(post_save, dispatch_uid="cloud_auto_queue_downward_sync")

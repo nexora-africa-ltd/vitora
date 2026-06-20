@@ -10,6 +10,7 @@ from django.db import transaction
 from django.utils.dateparse import parse_datetime
 
 from hmis.apps.core.models import SyncConflict, SyncQueue
+from hmis.apps.core.sync_context import sync_materialization_context
 from hmis.apps.core.sync_registry import SYNC_REGISTRY, SyncDirection, SyncRegistryEntry
 
 SYNC_META_KEY = "sync_meta"
@@ -75,7 +76,7 @@ def apply_entry(
     cleaned_data = suppress_duplicate_user_email(model, record_id, cleaned_data)
 
     try:
-        with transaction.atomic():
+        with transaction.atomic(), sync_materialization_context():
             if operation == "CREATE":
                 # Origin-based dedup: if record carries origin_hub_id + origin_local_id,
                 # check if we already have it (prevents PK collision on re-sync).
