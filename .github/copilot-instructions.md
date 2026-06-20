@@ -1008,7 +1008,7 @@ Electron spawns backend on port 9088 when running via `npm run dev`
 
 ### 8A. Tauri Desktop Update/Tray Guardrails
 
-The current desktop app is Tauri v2 + a bundled Next.js standalone Node sidecar. Preserve these guardrails; they fixed the post-update blank screen and duplicate tray icon incidents in desktop v0.1.14-v0.1.17.
+The current desktop app is Tauri v2 + a bundled Next.js standalone Node sidecar. Preserve these guardrails; they fixed the post-update blank screen and duplicate tray icon incidents in desktop v0.1.14-v0.1.31.
 
 **Blank screen prevention:**
 - Pipe sidecar stdout/stderr to log files (`sidecar-stdout.log`, `sidecar-stderr.log`) before diagnosing startup failures. Never discard sidecar output during packaged builds.
@@ -1016,6 +1016,10 @@ The current desktop app is Tauri v2 + a bundled Next.js standalone Node sidecar.
 - Navigate the packaged desktop shell directly to `/login`, not `/`, so desktop setup, activation, and login gates run before dashboard routing.
 - Keep a short post-navigation sidecar monitor. If Node exits after the initial health check, show a visible error page pointing to `sidecar-stderr.log` instead of leaving a blank WebView.
 - Do not rely on archive/resource mtimes to decide whether to reuse the extracted standalone bundle. Keep a version marker in the extracted standalone directory and re-extract when it differs from the running app version.
+- Stale WebView2 service workers/caches are a proven blank-screen cause. Desktop builds before v0.1.28 registered the web PWA service worker (`/sw.js`) inside WebView2's persistent user-data folder. That registration survives app upgrades and can intercept Next.js hash chunk requests with stale cached responses, silently breaking React hydration and leaving the user on the SSR `Loading...` fallback.
+- Native WebView cleanup must run before navigating from the splash page to the localhost sidecar. Use `WebviewWindow::clear_all_browsing_data()` in the Tauri startup path as a one-time-per-version purge before `window.navigate(...)`. Do not rely only on React/Next cleanup code; if hydration is already broken, web-layer cleanup may never execute.
+- Keep the web-layer service-worker kill switch as defense in depth: desktop mode should actively unregister legacy service workers, clear Cache API entries, and reload once. This helps browser/dev reproductions, but the native pre-navigation purge is the primary packaged-desktop fix.
+- Desktop standalone builds must exclude COOP/COEP/HSTS headers. `Cross-Origin-Opener-Policy: same-origin` can trigger a browsing context group switch when WebView2 moves from `tauri://localhost` to `http://127.0.0.1:{port}`, which can destroy Tauri IPC injection. Next.js `headers()` is baked at build time, so set `VITORA_DESKTOP=1` during `npm run build` in both local desktop scripts and CI.
 
 **Node/Next sidecar pitfalls:**
 - In desktop server-only modules, import Node built-ins as namespaces with the `node:` prefix (`import * as path from 'node:path'`, `import * as fs from 'node:fs'`). Turbopack CJS interop can break default imports (`e.default.join is not a function`).
