@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
+import { isDesktop } from '@/lib/desktop';
 
 export function PWARegister() {
   useEffect(() => {
-    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+    if (typeof window === 'undefined' || isDesktop() || !('serviceWorker' in navigator)) {
       return;
     }
 
