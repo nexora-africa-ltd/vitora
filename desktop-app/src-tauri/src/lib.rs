@@ -101,6 +101,55 @@ impl SidecarState {
             .replace('\'', "&#39;")
     }
 
+    fn archive_fingerprint(path: &Path) -> Result<String, String> {
+        let mut file = std::fs::File::open(path)
+            .map_err(|e| format!("Failed to open archive for fingerprinting: {}", e))?;
+        let mut hash: u64 = 0xcbf29ce484222325;
+        let mut buffer = [0u8; 64 * 1024];
+
+        loop {
+            let bytes_read = file
+                .read(&mut buffer)
+                .map_err(|e| format!("Failed to read archive for fingerprinting: {}", e))?;
+            if bytes_read == 0 {
+                break;
+            }
+            for byte in &buffer[..bytes_read] {
+                hash ^= u64::from(*byte);
+                hash = hash.wrapping_mul(0x100000001b3);
+            }
+        }
+
+        Ok(format!("{:016x}", hash))
+    }
+
+    fn standalone_marker(app_version: &str, archive_fingerprint: &str) -> String {
+        format!(
+            "version={}\narchive_fnv1a={}",
+            app_version, archive_fingerprint
+        )
+    }
+
+    fn validate_standalone_dir(standalone_dir: &Path) -> Result<(), String> {
+        let required_paths = [
+            standalone_dir.join("server.js"),
+            standalone_dir.join("node_modules").join("next"),
+            standalone_dir.join(".next").join("static").join("chunks"),
+            standalone_dir.join(".next").join("static").join("media"),
+        ];
+
+        for path in required_paths {
+            if !path.exists() {
+                return Err(format!(
+                    "Required standalone path missing: {}",
+                    path.display()
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
     /// Check if the sidecar HTTP server is actually serving requests.
     ///
     /// We deliberately do NOT use `TcpListener::bind` here: Next.js binds its
@@ -182,6 +231,9 @@ impl SidecarState {
             ));
         }
 
+        let archive_fingerprint = Self::archive_fingerprint(&archive_path)?;
+        let expected_marker = Self::standalone_marker(&app_version, &archive_fingerprint);
+
         // If already extracted, verify it belongs to the current desktop app
         // version. Do not rely on installer/resource mtimes here: Windows
         // installers can preserve or normalize timestamps, which lets an
@@ -192,19 +244,30 @@ impl SidecarState {
                 .trim()
                 .to_string();
 
-            if extracted_version == app_version {
-                log::info!(
-                    "Standalone already extracted for v{} at: {}",
-                    app_version,
-                    standalone_dir.display()
-                );
-                return Ok(standalone_dir);
+            if extracted_version == expected_marker {
+                match Self::validate_standalone_dir(&standalone_dir) {
+                    Ok(()) => {
+                        log::info!(
+                            "Standalone already extracted for v{} ({}) at: {}",
+                            app_version,
+                            archive_fingerprint,
+                            standalone_dir.display()
+                        );
+                        return Ok(standalone_dir);
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "Standalone marker matched but extracted bundle is incomplete: {}; re-extracting",
+                            e
+                        );
+                    }
+                }
             }
 
             log::info!(
-                "Standalone version mismatch (extracted='{}', app='{}'); re-extracting",
+                "Standalone marker mismatch (extracted='{}', expected='{}'); re-extracting",
                 extracted_version,
-                app_version
+                expected_marker
             );
             // Remove the stale extraction so the new bundle is clean.
             // On Windows the OS can briefly hold handles after a process exit
@@ -278,20 +341,15 @@ impl SidecarState {
             start.elapsed().as_secs_f64()
         );
 
-        // Verify extraction
-        if !server_js.exists() {
-            return Err(format!(
-                "Extraction succeeded but server.js not found at: {}",
-                server_js.display()
-            ));
-        }
+        Self::validate_standalone_dir(&standalone_dir)?;
 
-        std::fs::write(&version_marker, &app_version)
+        std::fs::write(&version_marker, format!("{}\n", expected_marker))
             .map_err(|e| format!("Failed to write standalone version marker: {}", e))?;
 
         log::info!(
-            "Standalone bundle extracted successfully for v{}",
-            app_version
+            "Standalone bundle extracted successfully for v{} ({})",
+            app_version,
+            archive_fingerprint
         );
         Ok(standalone_dir)
     }

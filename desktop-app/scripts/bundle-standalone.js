@@ -142,6 +142,10 @@ const criticalPaths = [
   'server.js',
   'node_modules/next/package.json',
   'node_modules/next/dist/server/next.js',
+  '.next/static/chunks',
+  '.next/static/media',
+  '.next/server/app/api/desktop-health/route.js',
+  '.next/server/app-paths-manifest.json',
   '.next',
 ];
 let missing = false;
