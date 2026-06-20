@@ -119,6 +119,32 @@ def get_tenant_context(instance) -> tuple[object | None, object | None]:
     facility = getattr(instance, "facility", None)
     if facility is None:
         facility = getattr(instance, "registered_at_facility", None)
+    for related_name in (
+        "clinic",
+        "session",
+        "resource",
+        "room",
+        "staff_resource",
+        "schedule",
+        "encounter",
+        "prescription",
+        "invoice",
+        "lab_order",
+        "order",
+        "order_item",
+        "lab_result",
+        "imaging_order",
+        "admission",
+    ):
+        related = getattr(instance, related_name, None)
+        if related is not None:
+            related_organization, related_facility = get_tenant_context(related)
+            if organization is None:
+                organization = related_organization
+            if facility is None:
+                facility = related_facility
+            if organization is not None and facility is not None:
+                break
     if organization is None and facility is not None:
         organization = getattr(facility, "organization", None)
     patient = getattr(instance, "patient", None)
