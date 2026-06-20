@@ -85,10 +85,6 @@ const nextConfig = {
           },
           // Security headers
           {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=31536000; includeSubDomains; preload',
-          },
-          {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
           },
@@ -100,19 +96,32 @@ const nextConfig = {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin',
           },
-          // PowerSync (wa-sqlite) requires SharedArrayBuffer,
-          // which in turn requires cross-origin isolation headers.
-          {
-            key: 'Cross-Origin-Opener-Policy',
-            value: 'same-origin',
-          },
-          {
-            key: 'Cross-Origin-Embedder-Policy',
-            value: 'credentialless',
-            // 'credentialless' is less restrictive than 'require-corp'
-            // and still enables SharedArrayBuffer in modern browsers.
-            // It allows loading cross-origin images/fonts without CORS.
-          },
+          // COOP/COEP/HSTS are only needed for web deployments.
+          // In Tauri desktop mode the sidecar serves on localhost and:
+          //   - COOP: same-origin triggers a browsing context group switch
+          //     when the WebView navigates from tauri:// to http://127.0.0.1,
+          //     which can break Tauri's injected IPC bridge → blank screen.
+          //   - COEP: not needed — desktop uses native better-sqlite3, not
+          //     wa-sqlite/SharedArrayBuffer.
+          //   - HSTS: can cause localhost to be upgraded to https in the
+          //     WebView2 cache, breaking subsequent requests.
+          ...(process.env.VITORA_DESKTOP !== '1' ? [
+            {
+              key: 'Strict-Transport-Security',
+              value: 'max-age=31536000; includeSubDomains; preload',
+            },
+            {
+              key: 'Cross-Origin-Opener-Policy',
+              value: 'same-origin',
+            },
+            {
+              key: 'Cross-Origin-Embedder-Policy',
+              value: 'credentialless',
+              // 'credentialless' is less restrictive than 'require-corp'
+              // and still enables SharedArrayBuffer in modern browsers.
+              // It allows loading cross-origin images/fonts without CORS.
+            },
+          ] : []),
         ],
       },
       {
