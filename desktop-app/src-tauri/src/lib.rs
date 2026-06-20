@@ -139,6 +139,50 @@ impl SidecarState {
         )
     }
 
+    fn purge_webview_data_once(app: &AppHandle) {
+        let app_version = app
+            .config()
+            .version
+            .clone()
+            .unwrap_or_else(|| "unknown".to_string());
+
+        let marker_path = match app.path().app_data_dir() {
+            Ok(dir) => dir.join(format!(".webview-data-purged-{}", app_version)),
+            Err(e) => {
+                log::warn!("Could not resolve app data dir for WebView purge marker: {}", e);
+                return;
+            }
+        };
+
+        if marker_path.exists() {
+            log::info!("WebView browsing data already purged for v{}", app_version);
+            return;
+        }
+
+        if let Some(window) = app.get_webview_window("main") {
+            match window.clear_all_browsing_data() {
+                Ok(()) => {
+                    log::info!("Cleared WebView browsing data for v{}", app_version);
+                }
+                Err(e) => {
+                    log::warn!("Failed to clear WebView browsing data for v{}: {}", app_version, e);
+                }
+            }
+        } else {
+            log::warn!("Main window not available for WebView browsing data purge");
+        }
+
+        if let Some(parent) = marker_path.parent() {
+            if let Err(e) = std::fs::create_dir_all(parent) {
+                log::warn!("Failed to create WebView purge marker dir: {}", e);
+                return;
+            }
+        }
+        if let Err(e) = std::fs::write(&marker_path, app_version.as_bytes()) {
+            log::warn!("Failed to write WebView purge marker {}: {}", marker_path.display(), e);
+        }
+    }
+
     fn validate_standalone_dir(standalone_dir: &Path) -> Result<(), String> {
         let required_paths = [
             standalone_dir.join("server.js"),
@@ -712,6 +756,13 @@ pub fn run() {
         ])
         .setup(|app| {
             let handle = app.handle().clone();
+
+            // Purge stale WebView2 service workers/caches before any sidecar
+            // navigation. Older desktop builds registered the web PWA service
+            // worker in the persistent WebView data folder, which can survive
+            // upgrades and serve stale Next.js chunks before web cleanup code
+            // has a chance to run.
+            SidecarState::purge_webview_data_once(&handle);
 
             // --- System tray ---
             setup_tray(app)?;
