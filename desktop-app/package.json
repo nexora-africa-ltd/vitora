@@ -1,6 +1,6 @@
 {
   "name": "vitora-desktop",
-  "version": "0.1.28",
+  "version": "0.1.29",
   "description": "Vitora HMIS Desktop Application (Tauri v2)",
   "private": true,
   "scripts": {
@@ -8,7 +8,7 @@
     "dev:web": "cd ../web-app && npm run dev",
     "dev:tauri": "cd src-tauri && cargo tauri dev",
     "build": "npm run build:web && npm run bundle-standalone && npm run build:tauri",
-    "build:web": "cd ../web-app && npm run build",
+    "build:web": "cd ../web-app && VITORA_DESKTOP=1 npm run build",
     "build:tauri": "cd src-tauri && cargo tauri build",
     "build:check": "cd src-tauri && cargo check --release",
     "bundle-standalone": "node scripts/bundle-standalone.js",

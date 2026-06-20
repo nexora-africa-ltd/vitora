@@ -136,6 +136,7 @@ jobs:
           NODE_OPTIONS: "--max-old-space-size=4096"
           NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io' }}
           NEXT_PUBLIC_POWERSYNC_URL: ""
+          VITORA_DESKTOP: "1"
 
       # --- Bundle standalone Next.js server into Tauri resources ---
       # `bundle-standalone` creates standalone.tar.gz containing server.js,
