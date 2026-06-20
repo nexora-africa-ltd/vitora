@@ -42,6 +42,47 @@ def _activation_sync_url(request: Any | None = None) -> str:
     return sync_url
 
 
+def _build_tibabot_config(facility) -> dict[str, Any]:
+    """Build TibaBot configuration block for the activation response.
+
+    Passes through the cloud's TibaBot settings so the hub installer can
+    write them to the hub's .env file.
+    """
+    enabled = getattr(settings, "TIBABOT_ENABLED", False)
+    config: dict[str, Any] = {
+        "enabled": "true" if enabled else "false",
+        "api_url": getattr(settings, "TIBABOT_API_URL", ""),
+        "timeout": str(getattr(settings, "TIBABOT_TIMEOUT", 30)),
+        "jwt_issuer": getattr(settings, "TIBABOT_JWT_ISSUER", "vitora-hmis"),
+        "jwt_audience": getattr(settings, "TIBABOT_JWT_AUDIENCE", "tibabot"),
+        "jwt_expiry_seconds": str(getattr(settings, "TIBABOT_JWT_EXPIRY_SECONDS", 300)),
+        "jwks_url": getattr(settings, "TIBABOT_JWKS_URL", ""),
+        "enable_lab_assist": "true"
+        if getattr(settings, "TIBABOT_ENABLE_LAB_ASSIST", True)
+        else "false",
+        "enable_discharge_assist": "true"
+        if getattr(settings, "TIBABOT_ENABLE_DISCHARGE_READINESS", True)
+        else "false",
+        "enable_care_plan": "true"
+        if getattr(settings, "TIBABOT_ENABLE_CARE_PLAN", True)
+        else "false",
+        "enable_clerking_assist": "true"
+        if getattr(settings, "TIBABOT_ENABLE_CLERKING_ASSIST", True)
+        else "false",
+    }
+
+    # Include per-facility API key if one exists
+    if facility:
+        try:
+            fk = getattr(facility, "tibabot_key", None)
+            if fk and fk.is_active and fk.api_key:
+                config["api_key"] = fk.api_key
+        except Exception:  # noqa: S110
+            pass
+
+    return config
+
+
 def build_activation_bootstrap_payload(
     installation, token: str, decoded: dict[str, Any], request: Any | None = None
 ) -> dict[str, Any]:
@@ -67,6 +108,7 @@ def build_activation_bootstrap_payload(
             "roles": serialize_roles(organization=organization, facility=facility),
             "users": serialize_users_summary(organization=organization),
         },
+        "tibabot": _build_tibabot_config(facility),
     }
     return payload
 
