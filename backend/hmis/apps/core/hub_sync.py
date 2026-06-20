@@ -251,6 +251,17 @@ class HubCloudSyncWorker:
                     synced_at=timezone.now(),
                 )
                 return len(entry_ids)
+            elif response.status_code == 429:
+                # Throttled — revert to PENDING for automatic retry next cycle.
+                retry_after = self._retry_after_hint(response)
+                retry_suffix = f" Retry after {retry_after}." if retry_after else ""
+                logger.warning(
+                    "Cloud push returned 429:%s %s",
+                    retry_suffix,
+                    response.text[:200],
+                )
+                SyncQueue.objects.filter(pk__in=entry_ids).update(status="PENDING")
+                return 0
             else:
                 retry_after = self._retry_after_hint(response)
                 retry_suffix = f" Retry after {retry_after}." if retry_after else ""
