@@ -446,7 +446,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role_category: data.user.role_category ?? undefined,
         phone_number: data.user.phone_number ?? undefined,
         facility: data.user.facility ?? null,
+        onboarding_complete: data.user.onboarding_complete ?? undefined,
         memberships: Array.isArray(data.user.memberships) ? data.user.memberships : undefined,
+        subscription_tier: data.user.subscription_tier ?? null,
+        plan_features: data.user.plan_features && typeof data.user.plan_features === 'object'
+          ? data.user.plan_features
+          : {},
+        ai_tokens_available: typeof data.user.ai_tokens_available === 'boolean'
+          ? data.user.ai_tokens_available
+          : undefined,
       };
 
       // Store user profile (non-sensitive)

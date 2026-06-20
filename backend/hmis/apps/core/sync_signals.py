@@ -63,6 +63,41 @@ def should_queue_downward_sync(model_label: str) -> bool:
 
 def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) -> dict:
     """Serialize a model instance into JSON-safe sync data."""
+    model_label = get_model_label(instance)
+    if model_label == "auth.User":
+        return {
+            "id": instance.pk,
+            "username": instance.username,
+            "email": instance.email or "",
+            "first_name": instance.first_name or "",
+            "last_name": instance.last_name or "",
+            "password": instance.password,
+            "is_active": instance.is_active,
+        }
+
+    if model_label == "core.StaffProfile":
+        return {
+            "id": instance.pk,
+            "user_id": instance.user_id,
+            "employee_id": instance.employee_id or "",
+            "title": instance.title or "",
+            "middle_name": instance.middle_name or "",
+            "primary_role_id": instance.primary_role_id,
+            "primary_department_id": instance.primary_department_id,
+            "organization_id": instance.organization_id,
+            "primary_facility_id": instance.primary_facility_id,
+            "hwr_id": instance.hwr_id or "",
+            "license_number": instance.license_number or "",
+            "license_expiry": instance.license_expiry,
+            "license_verified": instance.license_verified,
+            "licensing_body": instance.licensing_body or "",
+            "specialization": instance.specialization or "",
+            "employment_status": instance.employment_status,
+            "employment_type": instance.employment_type,
+            "date_joined": instance.date_joined,
+            "date_left": instance.date_left,
+        }
+
     data = model_to_dict(instance, exclude=list(exclude_fields))
     # ``model_to_dict`` returns FieldFile instances for File/Image fields and
     # lists of related model instances for ManyToMany fields. Neither is JSON
