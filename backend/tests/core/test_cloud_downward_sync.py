@@ -1,16 +1,27 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Tests for cloud-side downward sync signal (cloud → hub queueing)."""
 
+from datetime import time
+
 import pytest  # type: ignore
+from django.apps import apps
 from django.test import override_settings
 from django.utils import timezone
 
 from hmis.apps.core.models import SyncQueue
+from hmis.apps.core.sync_registry import SYNC_REGISTRY, downward_sync_models
 from hmis.apps.core.sync_signals import _CLOUD_ENVIRONMENTS, should_queue_downward_sync
+from hmis.apps.core.sync_views import _build_downward_snapshot_changes
 
 
 class TestShouldQueueDownwardSync:
     """Unit tests for the should_queue_downward_sync helper."""
+
+    def test_all_registry_labels_resolve_to_installed_models(self):
+        """Registered sync labels should not drift from Django app/model labels."""
+        for model_label in SYNC_REGISTRY:
+            app_label, model_name = model_label.split(".", 1)
+            assert apps.get_model(app_label, model_name) is not None
 
     @override_settings(SYNC_ENABLED=True, ENVIRONMENT="production")
     def test_returns_true_for_both_model_on_production(self):
@@ -27,6 +38,33 @@ class TestShouldQueueDownwardSync:
     @override_settings(SYNC_ENABLED=True, ENVIRONMENT="production")
     def test_returns_true_for_bidirectional_patient_model(self):
         assert should_queue_downward_sync("patients.Patient") is True
+
+    @override_settings(SYNC_ENABLED=True, ENVIRONMENT="production")
+    def test_returns_true_for_cloud_created_clinical_and_schedule_models(self):
+        """Cloud-created clinical and operational rows should be pullable by hubs."""
+        for model_label in (
+            "encounters.Encounter",
+            "triage.TriageAssessment",
+            "pharmacy.Prescription",
+            "clinics.ClinicSession",
+            "clinics.ClinicSchedule",
+            "scheduling.Resource",
+            "scheduling.Schedule",
+            "scheduling.Shift",
+        ):
+            assert should_queue_downward_sync(model_label) is True
+
+    def test_downward_registry_includes_cloud_hub_clinical_switching_models(self):
+        """Full down pulls should allow clinical and scheduling tables, not only references."""
+        models = downward_sync_models()
+
+        assert "encounters.Encounter" in models
+        assert "triage.TriageAssessment" in models
+        assert "pharmacy.Prescription" in models
+        assert "clinics.ClinicSession" in models
+        assert "clinics.ClinicSchedule" in models
+        assert "scheduling.Schedule" in models
+        assert "scheduling.Shift" in models
 
     @override_settings(SYNC_ENABLED=True, ENVIRONMENT="production")
     def test_returns_true_for_tibabot_facility_key_model(self):
@@ -154,6 +192,72 @@ class TestCloudDownwardSyncSignal:
         assert entry is not None
         assert entry.operation == "UPDATE"
         assert entry.data["first_name"] == "CloudEdit"
+
+    @override_settings(SYNC_ENABLED=True, ENVIRONMENT="production")
+    def test_parent_scoped_clinic_schedule_save_creates_scoped_downward_entry(
+        self, sample_facility
+    ):
+        """Cloud clinic schedules should queue with facility scope via their clinic."""
+        from hmis.apps.clinics.models import Clinic, ClinicSchedule
+
+        clinic = Clinic.objects.create(
+            facility=sample_facility,
+            organization=sample_facility.organization,
+            name="Cloud OPD",
+            clinic_type="GENERAL_OPD",
+            code="CLOUD-OPD",
+            status="ACTIVE",
+        )
+        SyncQueue.objects.all().delete()
+
+        schedule = ClinicSchedule.objects.create(
+            clinic=clinic,
+            day_of_week=0,
+            start_time=time(8, 0),
+            end_time=time(17, 0),
+        )
+
+        entry = SyncQueue.objects.filter(
+            model_name="clinics.ClinicSchedule",
+            record_id=schedule.pk,
+            status="SYNCED",
+        ).last()
+        assert entry is not None
+        assert entry.facility == sample_facility
+        assert entry.organization == sample_facility.organization
+        assert entry.data["clinic"] == clinic.pk
+
+    def test_full_downward_snapshot_includes_parent_scoped_clinic_schedule(self, sample_facility):
+        """Full hub pulls should include clinic schedule rows scoped through Clinic."""
+        from hmis.apps.clinics.models import Clinic, ClinicSchedule
+
+        clinic = Clinic.objects.create(
+            facility=sample_facility,
+            organization=sample_facility.organization,
+            name="Snapshot OPD",
+            clinic_type="GENERAL_OPD",
+            code="SNAP-OPD",
+            status="ACTIVE",
+        )
+        schedule = ClinicSchedule.objects.create(
+            clinic=clinic,
+            day_of_week=1,
+            start_time=time(8, 0),
+            end_time=time(17, 0),
+        )
+
+        changes, has_more = _build_downward_snapshot_changes(
+            tables={"clinics.ClinicSchedule"},
+            facility=sample_facility,
+            organization=sample_facility.organization,
+            limit=10,
+        )
+
+        assert has_more is False
+        assert any(
+            change["table"] == "clinics.ClinicSchedule" and change["record_id"] == schedule.pk
+            for change in changes
+        )
 
     @override_settings(SYNC_ENABLED=True, ENVIRONMENT="production")
     def test_tibabot_facility_key_save_creates_downward_entry(self, sample_facility):
