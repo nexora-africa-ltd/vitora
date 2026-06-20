@@ -58,6 +58,7 @@ class HubCloudSyncWorker:
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self._last_pull_timestamp: datetime | None = None
+        self._full_pull_cursor: int | None = None  # Resumable full-pull cursor
 
         # Restore persisted sync state
         self._state_file = self._resolve_state_file()
@@ -71,7 +72,7 @@ class HubCloudSyncWorker:
         return Path(settings.BASE_DIR) / SYNC_STATE_FILENAME
 
     def _load_state(self):
-        """Load persisted last_pull_timestamp from disk."""
+        """Load persisted last_pull_timestamp and full_pull_cursor from disk."""
         if self._state_file.exists():
             try:
                 state = json.loads(self._state_file.read_text())
@@ -79,15 +80,20 @@ class HubCloudSyncWorker:
                 if ts:
                     self._last_pull_timestamp = datetime.fromisoformat(ts)
                     logger.info("Restored last_pull_timestamp: %s", ts)
+                cursor = state.get("full_pull_cursor")
+                if cursor is not None:
+                    self._full_pull_cursor = int(cursor)
+                    logger.info("Restored full_pull_cursor: %d", self._full_pull_cursor)
             except (json.JSONDecodeError, ValueError, OSError) as exc:
                 logger.warning("Could not load sync state: %s", exc)
 
     def _save_state(self):
-        """Persist last_pull_timestamp to disk."""
+        """Persist last_pull_timestamp and full_pull_cursor to disk."""
         state = {
             "last_pull_timestamp": (
                 self._last_pull_timestamp.isoformat() if self._last_pull_timestamp else None
             ),
+            "full_pull_cursor": self._full_pull_cursor,
         }
         try:
             self._state_file.write_text(json.dumps(state))
@@ -253,12 +259,21 @@ class HubCloudSyncWorker:
         """Pull changes from cloud since last pull. Returns count received."""
         params: dict = {"limit": str(self.batch_size), "direction": "down"}
 
-        if force_full:
+        # Determine pull mode: resume interrupted full pull, start new full, or incremental.
+        is_full_pull = False
+        if self._full_pull_cursor is not None:
+            # Resume an interrupted full pull from persisted cursor.
             params["full"] = "true"
+            params["cursor"] = str(self._full_pull_cursor)
+            is_full_pull = True
+        elif force_full:
+            params["full"] = "true"
+            is_full_pull = True
         elif self._last_pull_timestamp:
             params["since"] = self._last_pull_timestamp.isoformat()
         else:
             params["full"] = "true"
+            is_full_pull = True
 
         total_applied = 0
         deferred_changes = []
@@ -312,7 +327,9 @@ class HubCloudSyncWorker:
                     bool(data.get("has_more")),
                 )
 
-                if server_ts:
+                if server_ts and not is_full_pull:
+                    # Only advance the pull timestamp on incremental pulls.
+                    # Full pulls must complete before we consider the hub up-to-date.
                     self._last_pull_timestamp = datetime.fromisoformat(server_ts)
                     self._save_state()
 
@@ -345,6 +362,7 @@ class HubCloudSyncWorker:
 
                 next_cursor = data.get("next_cursor")
                 if not data.get("has_more") or not next_cursor:
+                    # Pull completed naturally — apply remaining deferred changes.
                     for change in deferred_changes:
                         result = materialize_entry(change)
                         if result.get("success"):
@@ -352,7 +370,18 @@ class HubCloudSyncWorker:
                             total_applied += 1
                         else:
                             self._log_materialization_failure(change, result)
+
+                    # Full pull finished: advance timestamp and clear cursor.
+                    if is_full_pull and server_ts:
+                        self._last_pull_timestamp = datetime.fromisoformat(server_ts)
+                    self._full_pull_cursor = None
+                    self._save_state()
                     return total_applied
+
+                # Persist cursor so an interrupted full pull can resume.
+                if is_full_pull:
+                    self._full_pull_cursor = int(next_cursor)
+                    self._save_state()
 
                 params["cursor"] = str(next_cursor)
                 page_number += 1

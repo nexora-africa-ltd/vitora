@@ -1445,3 +1445,180 @@ class TestHubCloudSyncWorker:
         with patch.dict("os.environ", {"LICENSE_TOKEN": "license"}):
             with pytest.raises(CommandError):
                 call_command("hub_sync")
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
+    def test_full_pull_interrupted_by_429_persists_cursor_for_resumption(self, db, tmp_path):
+        """When a full pull is interrupted by 429 (Retry-After > MAX_THROTTLE_WAIT),
+        the cursor should be persisted so the next cycle resumes from where it left off,
+        and _last_pull_timestamp should NOT be advanced."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        worker = HubCloudSyncWorker()
+        worker._state_file = tmp_path / "sync_state.json"
+        worker._last_pull_timestamp = None
+        worker._full_pull_cursor = None
+
+        # Page 1 succeeds with next_cursor=100
+        page1_response = MagicMock()
+        page1_response.status_code = 200
+        page1_response.json.return_value = {
+            "changes": [
+                {
+                    "table": "patients.Patient",
+                    "operation": "CREATE",
+                    "record_id": "1",
+                    "data": {"first_name": "Page1"},
+                }
+            ],
+            "server_timestamp": "2026-05-01T12:00:00+00:00",
+            "has_more": True,
+            "next_cursor": "100",
+        }
+
+        # Page 2 gets 429 with Retry-After exceeding MAX_THROTTLE_WAIT
+        page2_response = MagicMock()
+        page2_response.status_code = 429
+        page2_response.headers = {"Retry-After": "9999"}
+        page2_response.text = '{"detail":"Request was throttled."}'
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch(
+                "hmis.apps.core.hub_sync.requests.get",
+                side_effect=[page1_response, page2_response],
+            ),
+            patch(
+                "hmis.apps.core.hub_sync.materialize_entry",
+                return_value={"success": True},
+            ),
+        ):
+            pulled = worker._pull_changes()
+
+        # Page 1 changes were applied
+        assert pulled == 1
+        # _last_pull_timestamp should NOT have been advanced (full pull incomplete)
+        assert worker._last_pull_timestamp is None
+        # Cursor should be persisted for resumption
+        assert worker._full_pull_cursor == 100
+
+        # Verify state file has the cursor
+        import json
+
+        state = json.loads(worker._state_file.read_text())
+        assert state["full_pull_cursor"] == 100
+        assert state["last_pull_timestamp"] is None
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
+    def test_full_pull_resumes_from_persisted_cursor(self, db, tmp_path):
+        """Next sync cycle should resume an interrupted full pull from the persisted cursor."""
+        import json
+
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        # Pre-seed state file with an interrupted full pull cursor
+        state_file = tmp_path / "sync_state.json"
+        state_file.write_text(json.dumps({"last_pull_timestamp": None, "full_pull_cursor": 100}))
+
+        worker = HubCloudSyncWorker()
+        worker._state_file = state_file
+        worker._last_pull_timestamp = None
+        worker._full_pull_cursor = None
+        worker._load_state()
+
+        assert worker._full_pull_cursor == 100
+        assert worker._last_pull_timestamp is None
+
+        # Cloud returns remaining pages from cursor 100 and completes
+        resume_response = MagicMock()
+        resume_response.status_code = 200
+        resume_response.json.return_value = {
+            "changes": [
+                {
+                    "table": "patients.Patient",
+                    "operation": "CREATE",
+                    "record_id": "101",
+                    "data": {"first_name": "Resumed"},
+                }
+            ],
+            "server_timestamp": "2026-05-01T13:00:00+00:00",
+            "has_more": False,
+        }
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch(
+                "hmis.apps.core.hub_sync.requests.get",
+                return_value=resume_response,
+            ) as mock_get,
+            patch(
+                "hmis.apps.core.hub_sync.materialize_entry",
+                return_value={"success": True},
+            ),
+        ):
+            pulled = worker._pull_changes()
+
+        assert pulled == 1
+        # Should have requested with cursor=100 and full=true
+        params = mock_get.call_args.kwargs["params"]
+        assert params["full"] == "true"
+        assert params["cursor"] == "100"
+        assert "since" not in params
+        # After completion, timestamp should be set and cursor cleared
+        assert worker._last_pull_timestamp is not None
+        assert worker._full_pull_cursor is None
+        # State file should reflect completion
+        state = json.loads(state_file.read_text())
+        assert state["last_pull_timestamp"] is not None
+        assert state["full_pull_cursor"] is None
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
+    def test_full_pull_completion_advances_timestamp(self, db, tmp_path):
+        """A full pull that completes naturally should set _last_pull_timestamp."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        worker = HubCloudSyncWorker()
+        worker._state_file = tmp_path / "sync_state.json"
+        worker._last_pull_timestamp = None
+        worker._full_pull_cursor = None
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "changes": [
+                {
+                    "table": "patients.Patient",
+                    "operation": "CREATE",
+                    "record_id": "1",
+                    "data": {"first_name": "Complete"},
+                }
+            ],
+            "server_timestamp": "2026-05-01T14:00:00+00:00",
+            "has_more": False,
+        }
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch("hmis.apps.core.hub_sync.requests.get", return_value=mock_response),
+            patch(
+                "hmis.apps.core.hub_sync.materialize_entry",
+                return_value={"success": True},
+            ),
+        ):
+            pulled = worker._pull_changes(force_full=True)
+
+        assert pulled == 1
+        assert worker._last_pull_timestamp is not None
+        assert worker._last_pull_timestamp.isoformat() == "2026-05-01T14:00:00+00:00"
+        assert worker._full_pull_cursor is None

@@ -184,6 +184,7 @@ class TestEncryptionKeyInActivation:
             ),
             patch("hmis.apps.licensing.bootstrap.serialize_departments", return_value=[]),
             patch("hmis.apps.licensing.bootstrap.serialize_roles", return_value=[]),
+            patch("hmis.apps.licensing.bootstrap.serialize_users_summary", return_value=[]),
         ):
             payload = build_activation_bootstrap_payload(installation, "token123", decoded)
 
