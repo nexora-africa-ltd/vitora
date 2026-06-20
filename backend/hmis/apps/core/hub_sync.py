@@ -47,6 +47,9 @@ class HubCloudSyncWorker:
     # Maximum seconds the hub will wait on a single 429 before giving up.
     MAX_THROTTLE_WAIT: int = 900  # 15 minutes
 
+    # Cloud push endpoint rejects batches larger than this.
+    PUSH_CHUNK_SIZE: int = 100
+
     def __init__(self):
         self.server_url: str = getattr(settings, "SYNC_SERVER_URL", "")
         self.batch_size: int = getattr(settings, "SYNC_BATCH_SIZE", 100)
@@ -55,6 +58,9 @@ class HubCloudSyncWorker:
         # Small pause between consecutive pull pages to be friendly to
         # upstream rate limiters (Azure Front Door / WAF). 0 disables.
         self.pull_page_delay: float = float(getattr(settings, "SYNC_PULL_PAGE_DELAY", 0.5))
+        self.push_chunk_delay: float = float(
+            getattr(settings, "SYNC_PUSH_CHUNK_DELAY", self.pull_page_delay)
+        )
         self.hub_id: str = getattr(settings, "HUB_ID", "")
         self.facility_id: str = getattr(settings, "HUB_FACILITY_ID", "")
 
@@ -199,37 +205,64 @@ class HubCloudSyncWorker:
             return ""
 
     def _push_pending(self) -> int:
-        """Push PENDING entries to the cloud server. Returns count pushed."""
-        pending = SyncQueue.objects.filter(status="PENDING").order_by(
-            "data__sync_meta__priority", "created_at"
-        )[: self.batch_size]
+        """Push PENDING entries to the cloud server in chunks. Returns count pushed."""
+        pending = list(
+            SyncQueue.objects.filter(status="PENDING").order_by(
+                "data__sync_meta__priority", "created_at"
+            )[: self.batch_size]
+        )
         if not pending:
             return 0
 
-        changes = []
-        entry_ids = []
+        # Build (change_payload, entry_pk) pairs.
+        items = []
         for entry in pending:
-            changes.append(
-                {
-                    "table": entry.model_name,
-                    "operation": entry.operation,
-                    "record_id": str(entry.record_id) if entry.record_id else None,
-                    "data": entry.data,
-                    "timestamp": entry.created_at.isoformat(),
-                    "client_id": self.hub_id,
-                }
+            items.append(
+                (
+                    {
+                        "table": entry.model_name,
+                        "operation": entry.operation,
+                        "record_id": str(entry.record_id) if entry.record_id else None,
+                        "data": entry.data,
+                        "timestamp": entry.created_at.isoformat(),
+                        "client_id": self.hub_id,
+                    },
+                    entry.pk,
+                )
             )
-            entry_ids.append(entry.pk)
 
         logger.info(
-            "Pushing %d pending sync entr%s to cloud.",
-            len(entry_ids),
-            "y" if len(entry_ids) == 1 else "ies",
+            "Pushing %d pending sync entr%s to cloud (chunk size %d).",
+            len(items),
+            "y" if len(items) == 1 else "ies",
+            self.PUSH_CHUNK_SIZE,
         )
 
-        # Mark as SYNCING
-        SyncQueue.objects.filter(pk__in=entry_ids).update(status="SYNCING")
+        total_pushed = 0
+        offsets = range(0, len(items), self.PUSH_CHUNK_SIZE)
+        for chunk_num, offset in enumerate(offsets, start=1):
+            chunk = items[offset : offset + self.PUSH_CHUNK_SIZE]
+            chunk_changes = [c for c, _ in chunk]
+            chunk_ids = [pk for _, pk in chunk]
 
+            # Mark chunk as SYNCING
+            SyncQueue.objects.filter(pk__in=chunk_ids).update(status="SYNCING")
+
+            pushed = self._push_chunk(chunk_changes, chunk_ids, chunk_num)
+            if pushed == 0:
+                # Chunk failed (429 or error) — stop pushing further chunks this
+                # cycle to let the rate-limiter cool down.
+                break
+            total_pushed += pushed
+
+            # Brief pause between chunks to avoid tripping upstream rate limits.
+            if offset + self.PUSH_CHUNK_SIZE < len(items) and self.push_chunk_delay > 0:
+                time.sleep(self.push_chunk_delay)
+
+        return total_pushed
+
+    def _push_chunk(self, changes: list[dict], entry_ids: list[int], chunk_num: int) -> int:
+        """Push a single chunk of changes. Returns count pushed (0 on failure)."""
         try:
             response = self._post(
                 f"{self.server_url}/push/",
@@ -241,22 +274,22 @@ class HubCloudSyncWorker:
 
             if response.status_code == 200:
                 logger.info(
-                    "Cloud push accepted %d sync entr%s.",
+                    "Cloud push chunk %d accepted %d entr%s.",
+                    chunk_num,
                     len(entry_ids),
                     "y" if len(entry_ids) == 1 else "ies",
                 )
-                # Mark as SYNCED
                 SyncQueue.objects.filter(pk__in=entry_ids).update(
                     status="SYNCED",
                     synced_at=timezone.now(),
                 )
                 return len(entry_ids)
             elif response.status_code == 429:
-                # Throttled — revert to PENDING for automatic retry next cycle.
                 retry_after = self._retry_after_hint(response)
                 retry_suffix = f" Retry after {retry_after}." if retry_after else ""
                 logger.warning(
-                    "Cloud push returned 429:%s %s",
+                    "Cloud push chunk %d returned 429:%s %s",
+                    chunk_num,
                     retry_suffix,
                     response.text[:200],
                 )
@@ -266,7 +299,8 @@ class HubCloudSyncWorker:
                 retry_after = self._retry_after_hint(response)
                 retry_suffix = f" Retry after {retry_after}." if retry_after else ""
                 logger.warning(
-                    "Cloud push returned %d:%s %s",
+                    "Cloud push chunk %d returned %d:%s %s",
+                    chunk_num,
                     response.status_code,
                     retry_suffix,
                     response.text[:200],
@@ -275,8 +309,7 @@ class HubCloudSyncWorker:
                 return 0
 
         except requests.RequestException as e:
-            logger.warning("Cloud push network error: %s", e)
-            # Revert to PENDING for retry
+            logger.warning("Cloud push chunk %d network error: %s", chunk_num, e)
             SyncQueue.objects.filter(pk__in=entry_ids).update(status="PENDING")
             return 0
 
