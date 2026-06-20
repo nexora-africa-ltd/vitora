@@ -101,6 +101,15 @@ impl SidecarState {
             .replace('\'', "&#39;")
     }
 
+    fn js_string(value: &str) -> String {
+        value
+            .replace('\\', "\\\\")
+            .replace('\n', "\\n")
+            .replace('\r', "\\r")
+            .replace('"', "\\\"")
+            .replace('\'', "\\'")
+    }
+
     fn archive_fingerprint(path: &Path) -> Result<String, String> {
         let mut file = std::fs::File::open(path)
             .map_err(|e| format!("Failed to open archive for fingerprinting: {}", e))?;
@@ -774,8 +783,46 @@ pub fn run() {
                                 // desktop setup/activation checks and leave users with
                                 // a blank authenticated shell when no session exists.
                                 if let Some(main_window) = handle_clone.get_webview_window("main") {
-                                    let url = format!("http://127.0.0.1:{}/login", port);
-                                    let _ = main_window.navigate(url.parse().unwrap());
+                                    let app_version = handle_clone
+                                        .config()
+                                        .version
+                                        .clone()
+                                        .unwrap_or_else(|| "unknown".to_string());
+                                    let url = format!(
+                                        "http://127.0.0.1:{}/login?desktop=1&v={}",
+                                        port, app_version
+                                    );
+                                    if let Err(e) = main_window.navigate(url.parse().unwrap()) {
+                                        log::error!("Failed to navigate to desktop login: {}", e);
+                                    }
+
+                                    // WebView2 can occasionally remain on Next's initial
+                                    // loading fallback after the first navigation even though
+                                    // the sidecar is healthy and assets are present. Detect that
+                                    // state once and force a cache-busted reload instead of
+                                    // leaving the user with a blank/loading screen.
+                                    let watchdog_window = main_window.clone();
+                                    let watchdog_url = url.clone();
+                                    std::thread::spawn(move || {
+                                        std::thread::sleep(Duration::from_secs(8));
+                                        let escaped_url = SidecarState::js_string(&watchdog_url);
+                                        let script = format!(
+                                            "try {{
+                                                const bodyText = (document.body && document.body.innerText || '').trim();
+                                                const hasLoginForm = bodyText.includes('Username or Email') || document.querySelector('input[name=\"username\"]');
+                                                const stuckLoading = !hasLoginForm && (!bodyText || bodyText === 'Loading...' || bodyText.includes('Loading...'));
+                                                if (stuckLoading && !location.search.includes('desktop_retry=1')) {{
+                                                    location.replace('{}&desktop_retry=1');
+                                                }}
+                                            }} catch (error) {{
+                                                location.replace('{}&desktop_retry=1');
+                                            }}",
+                                            escaped_url, escaped_url
+                                        );
+                                        if let Err(e) = watchdog_window.eval(&script) {
+                                            log::warn!("Desktop login watchdog eval failed: {}", e);
+                                        }
+                                    });
                                 }
 
                                 // Keep watching for a late sidecar crash after the
