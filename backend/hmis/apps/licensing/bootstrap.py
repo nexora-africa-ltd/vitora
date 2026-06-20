@@ -115,12 +115,26 @@ def build_activation_bootstrap_payload(
 
 def serialize_organization(organization) -> dict[str, Any]:
     """Serialize an organization for local hub seeding."""
+    plan = organization.subscription_plan
     return {
         "id": organization.id,
         "name": organization.name,
         "slug": organization.slug,
         "contact_email": organization.contact_email,
         "contact_phone": organization.contact_phone,
+        "subscription_tier": organization.subscription_tier,
+        "subscription_status": organization.subscription_status,
+        "subscription_plan": {
+            "code": plan.code,
+            "name": plan.name,
+            "features": plan.features,
+            "max_facilities": plan.max_facilities,
+            "max_users": plan.max_users,
+            "max_patients": plan.max_patients,
+            "monthly_ai_tokens": plan.monthly_ai_tokens,
+        }
+        if plan
+        else None,
     }
 
 
@@ -363,7 +377,7 @@ def load_activation_response(response_file: str) -> dict[str, Any]:
 
 def seed_from_activation_payload(payload: dict[str, Any]) -> tuple[Any, Any]:
     """Create/update local Organization and Facility records from activation data."""
-    from hmis.apps.core.models import County, Facility, Organization, SubCounty
+    from hmis.apps.core.models import County, Facility, Organization, SubCounty, SubscriptionPlan
 
     org_data = payload.get("organization") or {}
     facility_data = payload.get("facility") or {}
@@ -372,6 +386,38 @@ def seed_from_activation_payload(payload: dict[str, Any]) -> tuple[Any, Any]:
     if not facility_data:
         raise CommandError("Activation payload is missing facility data.")
 
+    subscription_plan_data = org_data.get("subscription_plan") or {}
+    subscription_features = subscription_plan_data.get("features") or payload.get("features") or {}
+    subscription_tier = (
+        subscription_plan_data.get("code")
+        or org_data.get("subscription_tier")
+        or payload.get("tier")
+        or "FREE"
+    )
+    plan = None
+    if subscription_tier:
+        plan_defaults = {
+            "name": subscription_plan_data.get("name") or f"{subscription_tier.title()} Plan",
+            "features": subscription_features,
+            "max_facilities": subscription_plan_data.get("max_facilities")
+            if "max_facilities" in subscription_plan_data
+            else payload.get("max_facilities"),
+            "max_users": subscription_plan_data.get("max_users")
+            if "max_users" in subscription_plan_data
+            else payload.get("max_staff"),
+            "max_patients": subscription_plan_data.get("max_patients")
+            if "max_patients" in subscription_plan_data
+            else payload.get("max_patients"),
+            "monthly_ai_tokens": subscription_plan_data.get("monthly_ai_tokens"),
+            "is_active": True,
+        }
+        if plan_defaults["monthly_ai_tokens"] is None and subscription_features.get("ai_assistant"):
+            plan_defaults["monthly_ai_tokens"] = None
+        plan, _ = SubscriptionPlan.objects.update_or_create(
+            code=subscription_tier,
+            defaults=plan_defaults,
+        )
+
     org, _ = Organization.objects.update_or_create(
         id=org_data["id"],
         defaults={
@@ -379,6 +425,11 @@ def seed_from_activation_payload(payload: dict[str, Any]) -> tuple[Any, Any]:
             "slug": org_data["slug"],
             "is_active": True,
             "is_verified": True,
+            "subscription_plan": plan,
+            "subscription_status": org_data.get(
+                "subscription_status",
+                payload.get("subscription_status", Organization.SubscriptionStatus.ACTIVE),
+            ),
         },
     )
     org.contact_email = org_data.get("contact_email", "")

@@ -399,6 +399,11 @@ class TestSeedFromActivationCommand:
         payload = {
             "installation_id": "hub-test-001",
             "status": "ACTIVE",
+            "tier": "PROFESSIONAL",
+            "features": {"outpatient": True, "ai_assistant": True},
+            "max_staff": 25,
+            "max_facilities": 2,
+            "max_patients": 5000,
             "sync_url": "https://api.vitora.digital/api/sync",
             "organization": {
                 "id": 4242,
@@ -441,6 +446,11 @@ class TestSeedFromActivationCommand:
         assert org.contact_phone == "+254700000000"
         assert org.is_active is True
         assert org.is_verified is True
+        assert org.subscription_plan is not None
+        assert org.subscription_tier == "PROFESSIONAL"
+        assert org.subscription_plan.features["ai_assistant"] is True
+        assert org.has_feature("ai_assistant") is True
+        assert org.can_use_ai_tokens() is True
         assert facility.organization == org
         assert facility.name == "Demo Health Facility"
         assert facility.mfl_code == "MFL-9090"
