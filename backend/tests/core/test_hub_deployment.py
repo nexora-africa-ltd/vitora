@@ -8,7 +8,7 @@ Covers:
 - Hub→Cloud sync worker
 """
 
-from datetime import timedelta
+from datetime import UTC, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest  # type: ignore
@@ -836,6 +836,59 @@ class TestHubCloudSyncWorker:
         HUB_ID="hub-test",
         HUB_FACILITY_ID="1",
     )
+    def test_pull_changes_with_tables_scopes_request_and_preserves_state(self, db):
+        """A scoped pull should set ?tables, force full, and not persist sync state."""
+        from datetime import datetime
+        from datetime import timezone as dt_timezone
+
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        worker = HubCloudSyncWorker()
+        # Baseline state that scoped pulls must NOT rewind.
+        baseline_ts = datetime(2025, 1, 1, 0, 0, 0, tzinfo=UTC)
+        worker._last_pull_timestamp = baseline_ts
+        worker._full_pull_cursor = None
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "changes": [
+                {
+                    "table": "patients.Patient",
+                    "operation": "CREATE",
+                    "record_id": "501",
+                    "data": {"first_name": "ScopedOnly"},
+                }
+            ],
+            "server_timestamp": timezone.now().isoformat(),
+            "has_more": False,
+        }
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch("hmis.apps.core.hub_sync.requests.get", return_value=mock_response) as mock_get,
+            patch(
+                "hmis.apps.core.hub_sync.materialize_entry",
+                return_value={"success": True},
+            ),
+        ):
+            pulled = worker._pull_changes(tables=["patients.Patient"])
+
+        assert pulled == 1
+        # Pull request must carry the table filter and request a full snapshot.
+        called_params = mock_get.call_args.kwargs["params"]
+        assert called_params["tables"] == "patients.Patient"
+        assert called_params["full"] == "true"
+        assert called_params["direction"] == "down"
+        # Scoped pulls must not touch the persisted incremental-sync baseline.
+        assert worker._last_pull_timestamp == baseline_ts
+        assert worker._full_pull_cursor is None
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
     def test_pull_throttle_gives_up_when_retry_exceeds_max_wait(self, db, caplog):
         """429 with Retry-After above MAX_THROTTLE_WAIT should abort instead of blocking."""
         from hmis.apps.core.hub_sync import HubCloudSyncWorker
@@ -1437,7 +1490,33 @@ class TestHubCloudSyncWorker:
 
             call_command("hub_sync", full_pull=True, pull_only=True)
 
-        worker.sync_once.assert_called_once_with(force_full_pull=True, skip_push=True)
+        worker.sync_once.assert_called_once_with(force_full_pull=True, skip_push=True, tables=None)
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
+    def test_hub_sync_command_tables_flag_scopes_pull(self, db):
+        """--tables should forward the parsed list and force pull-only."""
+        with patch(
+            "hmis.apps.core.management.commands.hub_sync.HubCloudSyncWorker"
+        ) as mock_worker_cls:
+            worker = mock_worker_cls.return_value
+            worker.is_configured = True
+            worker.has_license_token = True
+            worker.sync_once.return_value = (0, 12)
+
+            call_command(
+                "hub_sync",
+                tables="patients.Patient, patients.EmergencyContact",
+            )
+
+        worker.sync_once.assert_called_once_with(
+            force_full_pull=False,
+            skip_push=True,
+            tables=["patients.Patient", "patients.EmergencyContact"],
+        )
 
     @override_settings(SYNC_SERVER_URL="", HUB_ID="hub-test", HUB_FACILITY_ID="1")
     def test_hub_sync_command_requires_config(self, db):

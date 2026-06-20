@@ -145,9 +145,20 @@ class HubCloudSyncWorker:
             self._stop_event.wait(timeout=self.interval)
 
     def sync_once(
-        self, *, force_full_pull: bool = False, skip_push: bool = False
+        self,
+        *,
+        force_full_pull: bool = False,
+        skip_push: bool = False,
+        tables: list[str] | None = None,
     ) -> tuple[int, int]:
-        """Run one push+pull cycle and return (pushed, pulled)."""
+        """Run one push+pull cycle and return (pushed, pulled).
+
+        ``tables`` restricts the pull phase to the given model labels
+        (e.g. ``["patients.Patient"]``). When set, ``force_full_pull`` is
+        implied and the persisted full-pull cursor / last-pull timestamp are
+        left untouched so the targeted pull does not affect the regular
+        incremental sync.
+        """
         if not self.has_license_token:
             logger.warning(
                 "Hub cloud sync skipped: no license token. Run hub activation or configure "
@@ -157,7 +168,7 @@ class HubCloudSyncWorker:
         pushed = 0 if skip_push else self._push_pending()
         if skip_push:
             logger.info("Hub sync push phase skipped by request.")
-        pulled = self._pull_changes(force_full=force_full_pull)
+        pulled = self._pull_changes(force_full=force_full_pull, tables=tables)
         if pushed or pulled:
             logger.info("Hub-to-cloud sync: pushed=%d, pulled=%d", pushed, pulled)
         return pushed, pulled
@@ -258,13 +269,22 @@ class HubCloudSyncWorker:
             SyncQueue.objects.filter(pk__in=entry_ids).update(status="PENDING")
             return 0
 
-    def _pull_changes(self, *, force_full: bool = False) -> int:
-        """Pull changes from cloud since last pull. Returns count received."""
+    def _pull_changes(self, *, force_full: bool = False, tables: list[str] | None = None) -> int:
+        """Pull changes from cloud since last pull. Returns count received.
+
+        When ``tables`` is provided the pull is scoped to just those model
+        labels and a full snapshot of each is requested. The cursor and
+        last-pull timestamp are intentionally **not** persisted so a targeted
+        pull cannot rewind the regular incremental sync.
+        """
         params: dict = {"limit": str(self.batch_size), "direction": "down"}
 
-        # Determine pull mode: resume interrupted full pull, start new full, or incremental.
-        is_full_pull = False
-        if self._full_pull_cursor is not None:
+        scoped = bool(tables)
+        if scoped:
+            params["tables"] = ",".join(tables)
+            params["full"] = "true"
+            is_full_pull = True
+        elif self._full_pull_cursor is not None:
             # Resume an interrupted full pull from persisted cursor.
             params["full"] = "true"
             params["cursor"] = str(self._full_pull_cursor)
@@ -274,6 +294,7 @@ class HubCloudSyncWorker:
             is_full_pull = True
         elif self._last_pull_timestamp:
             params["since"] = self._last_pull_timestamp.isoformat()
+            is_full_pull = False
         else:
             params["full"] = "true"
             is_full_pull = True
@@ -283,9 +304,10 @@ class HubCloudSyncWorker:
         page_number = 1
 
         logger.info(
-            "Starting %s cloud pull (limit=%s).",
+            "Starting %s cloud pull (limit=%s%s).",
             "full" if params.get("full") == "true" else "incremental",
             params["limit"],
+            f", tables={params['tables']}" if scoped else "",
         )
 
         while True:
@@ -375,14 +397,18 @@ class HubCloudSyncWorker:
                             self._log_materialization_failure(change, result)
 
                     # Full pull finished: advance timestamp and clear cursor.
-                    if is_full_pull and server_ts:
-                        self._last_pull_timestamp = datetime.fromisoformat(server_ts)
-                    self._full_pull_cursor = None
-                    self._save_state()
+                    # Skip state persistence for scoped/targeted pulls so they
+                    # don't disturb the regular incremental sync baseline.
+                    if not scoped:
+                        if is_full_pull and server_ts:
+                            self._last_pull_timestamp = datetime.fromisoformat(server_ts)
+                        self._full_pull_cursor = None
+                        self._save_state()
                     return total_applied
 
                 # Persist cursor so an interrupted full pull can resume.
-                if is_full_pull:
+                # Scoped pulls don't share state with the regular sync.
+                if is_full_pull and not scoped:
                     self._full_pull_cursor = int(next_cursor)
                     self._save_state()
 

@@ -30,6 +30,17 @@ class Command(BaseCommand):
             action="store_true",
             help="Skip pushing local pending changes and only pull from the cloud.",
         )
+        parser.add_argument(
+            "--tables",
+            default="",
+            help=(
+                "Comma-separated model labels to pull (e.g. "
+                "'patients.Patient,patients.EmergencyContact'). When set, the "
+                "pull is scoped to those tables, a full snapshot of each is "
+                "requested, and the regular incremental-sync state is left "
+                "untouched. Implies --pull-only."
+            ),
+        )
 
     def handle(self, *args, **options):
         worker = HubCloudSyncWorker()
@@ -44,6 +55,9 @@ class Command(BaseCommand):
                 "LICENSE_TOKEN/HUB_LICENSE_TOKEN_PATH."
             )
 
+        tables_raw = (options.get("tables") or "").strip()
+        tables = [t.strip() for t in tables_raw.split(",") if t.strip()] or None
+
         reset_count = 0
         if options["retry_failed"]:
             reset_count = worker.reset_failed_for_retry()
@@ -52,11 +66,13 @@ class Command(BaseCommand):
         before_failed = SyncQueue.objects.filter(status="FAILED").count()
         pushed, pulled = worker.sync_once(
             force_full_pull=options["full_pull"],
-            skip_push=options["pull_only"],
+            skip_push=options["pull_only"] or bool(tables),
+            tables=tables,
         )
         after_pending = SyncQueue.objects.filter(status="PENDING").count()
         after_failed = SyncQueue.objects.filter(status="FAILED").count()
 
+        scope_suffix = f", tables={','.join(tables)}" if tables else ""
         self.stdout.write(
             self.style.SUCCESS(
                 "Hub sync complete: "
@@ -64,5 +80,6 @@ class Command(BaseCommand):
                 f"pending={before_pending}->{after_pending}, "
                 f"failed={before_failed}->{after_failed}"
                 + (f", reset_failed={reset_count}" if options["retry_failed"] else "")
+                + scope_suffix
             )
         )
