@@ -581,15 +581,18 @@ if (Test-Path $envFile) {
     Write-Warning "No .env file at $envFile -- hub may not start correctly."
 }
 
-# Default to `shell` if no args. ValueFromRemainingArguments keeps a single
-# command such as `hub_sync` as one argv item instead of splatting characters.
-$pyArgs = if (-not $CommandArgs -or $CommandArgs.Count -eq 0) { @("shell") } else { [string[]]$CommandArgs }
-
+# Splat $CommandArgs directly. Assigning to an intermediate variable would
+# cause PowerShell to unwrap a single-element array into a bare string, and
+# `@stringVar` then splats it as a char array (turning `hub_sync` into `h`).
 Push-Location $InstallDir
 $exitCode = 0
 try {
     $ErrorActionPreference = "Continue"  # Prevent stderr warnings from terminating
-    & "$InstallDir\venv\Scripts\python.exe" "manage.py" @pyArgs
+    if (-not $CommandArgs -or $CommandArgs.Count -eq 0) {
+        & "$InstallDir\venv\Scripts\python.exe" "manage.py" "shell"
+    } else {
+        & "$InstallDir\venv\Scripts\python.exe" "manage.py" @CommandArgs
+    }
     $exitCode = $LASTEXITCODE
 } finally {
     Pop-Location

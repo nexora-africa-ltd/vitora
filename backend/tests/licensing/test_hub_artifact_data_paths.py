@@ -36,12 +36,21 @@ def test_windows_installer_cleans_nested_packaged_data_copy():
 
 
 def test_hub_shell_wrapper_preserves_single_command_argument():
-    """hub-shell.ps1 must pass hub_sync as one argv item, not h/u/b/..."""
+    """hub-shell.ps1 must pass hub_sync as one argv item, not h/u/b/...
+
+    PowerShell unwraps a single-element array on assignment to a new variable,
+    which then makes `@var` splat the string as individual characters. The
+    wrapper must splat $CommandArgs directly (no intermediate $pyArgs) so a
+    one-element $CommandArgs array stays an array at the splat site.
+    """
     for script_name in ("install-hub-windows.ps1", "update-hub-windows.ps1"):
         script = (REPO_ROOT / "backend" / "scripts" / script_name).read_text()
         assert "ValueFromRemainingArguments" in script
         assert "[string[]]$CommandArgs" in script
-        assert "@pyArgs" in script
+        assert "@CommandArgs" in script
+        # Buggy intermediate-variable patterns must not return.
+        assert "@pyArgs" not in script
+        assert "$pyArgs = if" not in script
         assert "@($args)" not in script
         assert script.index("param(") < script.index('$ErrorActionPreference = "Stop"')
         assert "$exitCode = $LASTEXITCODE" in script
