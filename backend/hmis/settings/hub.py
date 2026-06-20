@@ -162,8 +162,12 @@ else:
 # Hub syncs to the cloud server
 SYNC_ENABLED = True
 SYNC_SERVER_URL = os.getenv("SYNC_SERVER_URL", "https://api.vitora.digital/api/sync")
-SYNC_BATCH_SIZE = int(os.getenv("SYNC_BATCH_SIZE", "100"))
+SYNC_BATCH_SIZE = int(os.getenv("SYNC_BATCH_SIZE", "500"))
 SYNC_MAX_RETRIES = int(os.getenv("SYNC_MAX_RETRIES", "5"))
+
+# Seconds to wait between consecutive pull pages during a full-pull. Reduces
+# the chance of tripping upstream rate limiters (Azure Front Door / WAF).
+SYNC_PULL_PAGE_DELAY = float(os.getenv("SYNC_PULL_PAGE_DELAY", "0.5"))
 
 # How often the hub pushes changes to cloud (seconds)
 HUB_CLOUD_SYNC_INTERVAL = int(os.getenv("HUB_CLOUD_SYNC_INTERVAL", "30"))

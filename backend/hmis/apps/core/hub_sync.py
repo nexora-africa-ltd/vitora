@@ -52,6 +52,9 @@ class HubCloudSyncWorker:
         self.batch_size: int = getattr(settings, "SYNC_BATCH_SIZE", 100)
         self.max_retries: int = getattr(settings, "SYNC_MAX_RETRIES", 5)
         self.interval: int = getattr(settings, "HUB_CLOUD_SYNC_INTERVAL", 30)
+        # Small pause between consecutive pull pages to be friendly to
+        # upstream rate limiters (Azure Front Door / WAF). 0 disables.
+        self.pull_page_delay: float = float(getattr(settings, "SYNC_PULL_PAGE_DELAY", 0.5))
         self.hub_id: str = getattr(settings, "HUB_ID", "")
         self.facility_id: str = getattr(settings, "HUB_FACILITY_ID", "")
 
@@ -385,6 +388,11 @@ class HubCloudSyncWorker:
 
                 params["cursor"] = str(next_cursor)
                 page_number += 1
+
+                # Brief inter-page pause to avoid tripping upstream rate limits
+                # (Azure Front Door / WAF) when full-pulling thousands of rows.
+                if self.pull_page_delay > 0:
+                    time.sleep(self.pull_page_delay)
 
             except requests.RequestException as e:
                 logger.warning("Cloud pull network error: %s", e)
