@@ -144,6 +144,7 @@ jobs:
             TIBABOT_ENABLE_CLERKING_ASSIST=true
             TIBABOT_ENABLE_SURGICAL_ASSISTANT=true
             SETUP_WIZARD_ENABLED=true
+            ADMIN_SESSION_TIMEOUT_SECONDS=${{ vars.ADMIN_SESSION_TIMEOUT_SECONDS || '900' }}
             DJANGO_LOG_LEVEL=INFO
             SMS_BACKEND=hmis.apps.core.sms.backends.MockSMSBackend
             SMS_SENDER_ID=VitoraHMIS
