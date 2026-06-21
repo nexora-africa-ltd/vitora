@@ -33,6 +33,7 @@ use updater::check_for_updates;
 
 const SIDECAR_READY_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 const SIDECAR_READY_POLL_INTERVAL: Duration = Duration::from_millis(250);
+const PREFERRED_SIDECAR_PORT: u16 = 50872;
 
 /// Manages the Node.js sidecar process lifecycle.
 pub struct SidecarState {
@@ -55,6 +56,20 @@ impl SidecarState {
             .local_addr()
             .expect("Failed to get local address")
             .port()
+    }
+
+    fn select_sidecar_port() -> u16 {
+        if TcpListener::bind(("127.0.0.1", PREFERRED_SIDECAR_PORT)).is_ok() {
+            return PREFERRED_SIDECAR_PORT;
+        }
+
+        let fallback = Self::find_free_port();
+        log::warn!(
+            "Preferred sidecar port {} is unavailable; using fallback port {}",
+            PREFERRED_SIDECAR_PORT,
+            fallback
+        );
+        fallback
     }
 
     fn sidecar_log_paths(app: &AppHandle) -> Option<(PathBuf, PathBuf)> {
@@ -172,12 +187,7 @@ impl SidecarState {
         let default_profile = webview_dir.join("Default");
         let cache_dirs = [
             default_profile.join("Service Worker"),
-            default_profile.join("Cache"),
-            default_profile.join("Code Cache"),
-            default_profile.join("GPUCache"),
-            default_profile.join("DawnCache"),
-            webview_dir.join("ShaderCache"),
-            webview_dir.join("GrShaderCache"),
+            default_profile.join("CacheStorage"),
         ];
 
         for cache_dir in cache_dirs {
@@ -211,20 +221,12 @@ impl SidecarState {
             }
         };
 
-        Self::purge_webview_disk_caches(app);
-
-        if let Some(window) = app.get_webview_window("main") {
-            match window.clear_all_browsing_data() {
-                Ok(()) => {
-                    log::info!("Cleared WebView browsing data for v{}", app_version);
-                }
-                Err(e) => {
-                    log::warn!("Failed to clear WebView browsing data for v{}: {}", app_version, e);
-                }
-            }
-        } else {
-            log::warn!("Main window not available for WebView browsing data purge");
+        if marker_path.exists() {
+            log::info!("WebView service worker data already purged for v{}", app_version);
+            return;
         }
+
+        Self::purge_webview_disk_caches(app);
 
         if let Some(parent) = marker_path.parent() {
             if let Err(e) = std::fs::create_dir_all(parent) {
@@ -468,7 +470,7 @@ impl SidecarState {
 
     /// Spawn the Node.js sidecar with the standalone Next.js build.
     pub fn spawn_sidecar(&self, app: &AppHandle) -> Result<u16, String> {
-        let port = Self::find_free_port();
+        let port = Self::select_sidecar_port();
 
         // Extract standalone archive to app data dir (first run) or reuse existing
         let standalone_dir = Self::ensure_standalone_extracted(app)?;
