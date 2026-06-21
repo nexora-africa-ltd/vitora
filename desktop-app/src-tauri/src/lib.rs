@@ -139,7 +139,64 @@ impl SidecarState {
         )
     }
 
-    fn purge_webview_data_once(app: &AppHandle) {
+    fn remove_dir_with_retries(path: &Path) -> Result<(), String> {
+        if !path.exists() {
+            return Ok(());
+        }
+
+        let mut last_error = None;
+        for attempt in 1..=3 {
+            match std::fs::remove_dir_all(path) {
+                Ok(()) => return Ok(()),
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+                Err(e) => {
+                    last_error = Some(e.to_string());
+                    std::thread::sleep(Duration::from_millis(150 * attempt));
+                }
+            }
+        }
+
+        Err(last_error.unwrap_or_else(|| "unknown error".to_string()))
+    }
+
+    fn purge_webview_disk_caches(app: &AppHandle) {
+        let local_data_dir = match app.path().app_local_data_dir() {
+            Ok(dir) => dir,
+            Err(e) => {
+                log::warn!("Could not resolve local app data dir for WebView cache purge: {}", e);
+                return;
+            }
+        };
+
+        let webview_dir = local_data_dir.join("EBWebView");
+        let default_profile = webview_dir.join("Default");
+        let cache_dirs = [
+            default_profile.join("Service Worker"),
+            default_profile.join("Cache"),
+            default_profile.join("Code Cache"),
+            default_profile.join("GPUCache"),
+            default_profile.join("DawnCache"),
+            webview_dir.join("ShaderCache"),
+            webview_dir.join("GrShaderCache"),
+        ];
+
+        for cache_dir in cache_dirs {
+            if !cache_dir.exists() {
+                continue;
+            }
+
+            match Self::remove_dir_with_retries(&cache_dir) {
+                Ok(()) => log::info!("Removed WebView cache dir {}", cache_dir.display()),
+                Err(e) => log::warn!(
+                    "Failed to remove WebView cache dir {}: {}",
+                    cache_dir.display(),
+                    e
+                ),
+            }
+        }
+    }
+
+    fn purge_webview_data(app: &AppHandle) {
         let app_version = app
             .config()
             .version
@@ -154,10 +211,7 @@ impl SidecarState {
             }
         };
 
-        if marker_path.exists() {
-            log::info!("WebView browsing data already purged for v{}", app_version);
-            return;
-        }
+        Self::purge_webview_disk_caches(app);
 
         if let Some(window) = app.get_webview_window("main") {
             match window.clear_all_browsing_data() {
@@ -178,7 +232,12 @@ impl SidecarState {
                 return;
             }
         }
-        if let Err(e) = std::fs::write(&marker_path, app_version.as_bytes()) {
+        let marker = format!(
+            "version={}\npurged_at={:?}\n",
+            app_version,
+            std::time::SystemTime::now()
+        );
+        if let Err(e) = std::fs::write(&marker_path, marker.as_bytes()) {
             log::warn!("Failed to write WebView purge marker {}: {}", marker_path.display(), e);
         }
     }
@@ -762,7 +821,7 @@ pub fn run() {
             // worker in the persistent WebView data folder, which can survive
             // upgrades and serve stale Next.js chunks before web cleanup code
             // has a chance to run.
-            SidecarState::purge_webview_data_once(&handle);
+            SidecarState::purge_webview_data(&handle);
 
             // --- System tray ---
             setup_tray(app)?;

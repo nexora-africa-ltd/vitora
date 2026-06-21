@@ -3,6 +3,11 @@
 import { useEffect } from 'react';
 import { isDesktop } from '@/lib/desktop';
 
+function isDesktopNavigation(): boolean {
+  if (isDesktop()) return true;
+  return typeof window !== 'undefined' && window.location.search.includes('desktop=1');
+}
+
 export function PWARegister() {
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
@@ -17,7 +22,7 @@ export function PWARegister() {
     // hydration and leaves the WebView on the "Loading..." fallback forever.
     // Simply skipping registration on new builds is not enough — the existing
     // registration persists in WebView2's user data folder across upgrades.
-    if (isDesktop()) {
+    if (isDesktopNavigation()) {
       const cleanup = async () => {
         try {
           const registrations = await navigator.serviceWorker.getRegistrations();
