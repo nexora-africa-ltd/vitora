@@ -142,6 +142,39 @@ class TestSyncPushEndpoint:
         assert response.data["accepted"] == 3
         assert response.data["rejected"] == 0
 
+    def test_push_accepts_registry_model_labels_from_hub_auto_queue(
+        self, authenticated_client, sync_push_url
+    ):
+        """Hub auto-queued changes use registry labels rather than legacy DB table names."""
+        now = timezone.now().isoformat()
+        payload = {
+            "client_id": "hub-001",
+            "changes": [
+                {
+                    "table": "clinics.ClinicSchedule",
+                    "operation": "CREATE",
+                    "record_id": "10",
+                    "data": {"clinic": 1, "day_of_week": 1},
+                    "timestamp": now,
+                    "client_id": "hub-001",
+                },
+                {
+                    "table": "scheduling.Schedule",
+                    "operation": "UPDATE",
+                    "record_id": "20",
+                    "data": {"resource": 1, "schedule_type": "RECURRING"},
+                    "timestamp": now,
+                    "client_id": "hub-001",
+                },
+            ],
+        }
+
+        response = authenticated_client.post(sync_push_url, payload, format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["accepted"] == 2
+        assert response.data["rejected"] == 0
+
     def test_push_invalid_table_rejected(self, authenticated_client, sync_push_url):
         """Changes to non-syncable tables should be rejected."""
         payload = {

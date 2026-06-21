@@ -32,7 +32,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.models import SyncConflict, SyncQueue
-from hmis.apps.core.sync_registry import downward_sync_models, get_registry_entry
+from hmis.apps.core.sync_registry import (
+    downward_sync_models,
+    get_registry_entry,
+    is_upward_sync_model,
+)
 from hmis.apps.core.sync_serializers import (
     SyncConflictDetailSerializer,
     SyncConflictResolveSerializer,
@@ -377,6 +381,29 @@ def _scope_snapshot_queryset(model_label: str, qs, *, facility, organization):
         if organization:
             return qs.filter(patient__organization=organization)
         return qs.none()
+    parent_filters = {
+        "encounters.Diagnosis": "encounter__facility",
+        "encounters.TreatmentPlan": "encounter__facility",
+        "encounters.Medication": "encounter__facility",
+        "triage.TriageAssessment": "encounter__facility",
+        "clinics.ClinicRoom": "clinic__facility",
+        "clinics.ClinicSchedule": "clinic__facility",
+        "clinics.ClinicStaff": "clinic__facility",
+        "clinics.ClinicEnrollment": "clinic__facility",
+        "scheduling.Schedule": "resource__facility",
+        "scheduling.ScheduleBreak": "schedule__resource__facility",
+        "scheduling.StaffConstraint": "staff_resource__facility",
+        "pharmacy.PrescriptionItem": "prescription__facility",
+        "laboratory.LabOrderItem": "lab_order__facility",
+        "laboratory.LabResult": "order_item__lab_order__facility",
+        "billing.InvoiceItem": "invoice__facility",
+        "billing.Payment": "invoice__facility",
+        "imaging.ImagingOrder": "encounter__facility",
+        "imaging.RadiologyReport": "imaging_order__encounter__facility",
+    }
+    parent_filter = parent_filters.get(model_label)
+    if parent_filter and facility:
+        return qs.filter(**{parent_filter: facility})
 
     model = qs.model
     if hasattr(model, "organization") and organization:
@@ -544,7 +571,7 @@ def sync_push(request):
                 continue
 
             # Validate table is syncable
-            if table not in SYNCABLE_TABLES:
+            if table not in SYNCABLE_TABLES and not is_upward_sync_model(table):
                 rejections.append(
                     {
                         "index": idx,
