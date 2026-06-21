@@ -253,6 +253,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
           }
         } else {
+          document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
           setState((prev) => ({ ...prev, isLoading: false }));
         }
       } catch {
