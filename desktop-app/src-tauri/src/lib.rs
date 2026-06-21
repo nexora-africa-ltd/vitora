@@ -31,7 +31,7 @@ use config::{
 };
 use updater::check_for_updates;
 
-const SIDECAR_READY_TIMEOUT: Duration = Duration::from_secs(120);
+const SIDECAR_READY_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 const SIDECAR_READY_POLL_INTERVAL: Duration = Duration::from_millis(250);
 
 /// Manages the Node.js sidecar process lifecycle.

@@ -75,6 +75,8 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")  # Trust Render's 
 
 # MFA enforcement — always on in production (DHA compliance)
 MFA_ENFORCEMENT = True
+ADMIN_MFA_REQUIRED = True
+ADMIN_SESSION_TIMEOUT_SECONDS = int(os.getenv("ADMIN_SESSION_TIMEOUT_SECONDS", "900"))
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 

@@ -157,7 +157,7 @@ class TestAdminAccessMiddleware:
         request.user = superuser
         response = _make_admin_mw()(request)
         assert response.status_code == 302
-        assert response.url == "/admin/mfa-verify/"
+        assert response["Location"] == "/admin/mfa-verify/"
 
     def test_superuser_with_mfa_verified_allowed(self, rf, superuser, mocker):
         """Superuser with MFA enabled and verified in session → allowed."""
@@ -179,6 +179,37 @@ class TestAdminAccessMiddleware:
         request = self._add_session(rf.get("/admin/core/staffprofile/"))
         request.user = superuser
         assert _make_admin_mw()(request).status_code == 200
+
+    def test_required_admin_mfa_blocks_superuser_without_device(
+        self, rf, superuser, settings, mocker
+    ):
+        """Staging/prod admin MFA enforcement blocks superusers until MFA is configured."""
+        settings.ADMIN_MFA_REQUIRED = True
+        settings.MFA_ENFORCEMENT = True
+        mocker.patch(
+            "hmis.apps.core.mfa.utils.is_mfa_enabled",
+            return_value=False,
+        )
+        request = self._add_session(rf.get("/admin/core/staffprofile/"))
+        request.user = superuser
+        response = _make_admin_mw()(request)
+        assert response.status_code == 403
+
+    def test_admin_session_expires_after_idle_timeout(self, rf, superuser, settings, mocker):
+        """Idle admin sessions should be logged out and sent back to admin login."""
+        settings.ADMIN_SESSION_TIMEOUT_SECONDS = 900
+        mocker.patch(
+            "hmis.apps.core.mfa.utils.is_mfa_enabled",
+            return_value=False,
+        )
+        request = self._add_session(rf.get("/admin/core/staffprofile/"))
+        request.user = superuser
+        request.session["admin_last_activity_at"] = (
+            timezone.now() - timedelta(seconds=901)
+        ).timestamp()
+        response = _make_admin_mw()(request)
+        assert response.status_code == 302
+        assert response["Location"] == "/admin/login/?next=/admin/core/staffprofile/"
 
 
 # ===========================================================================

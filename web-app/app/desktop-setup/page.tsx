@@ -122,7 +122,7 @@ export default function DesktopSetupPage() {
 
     // Save hub-specific config for LAN client mode
     if (mode === 'lan_client' && hubInfo) {
-      await saveHubConfig(trimmed, hubInfo.facilityId, hubInfo.facilityName);
+      await saveHubConfig(trimmed, hubInfo.facilityId, hubInfo.organizationId);
     }
 
     // Hub mode: redirect to hub setup wizard for installation

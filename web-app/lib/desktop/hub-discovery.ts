@@ -14,6 +14,7 @@
 export interface HubInfo {
   url: string;
   facilityId: string;
+  organizationId: string;
   facilityName: string;
   hubId: string;
   version: string;
@@ -38,7 +39,8 @@ export async function probeHub(url: string, timeoutMs = 5000): Promise<HubInfo |
     return {
       url: cleanUrl,
       facilityId: data.facility_id || '',
-      facilityName: data.organization_id || '',
+      organizationId: data.organization_id || '',
+      facilityName: data.facility_name || '',
       hubId: data.hub_id,
       version: data.version || 'unknown',
     };

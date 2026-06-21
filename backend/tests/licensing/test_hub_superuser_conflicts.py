@@ -17,10 +17,13 @@ from pathlib import Path
 
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import identify_hasher
 from django.core.management import call_command
 from django.test import override_settings
 
 from hmis.apps.core.models import Role, StaffProfile
+from hmis.apps.core.sync_registry import get_registry_entry
+from hmis.apps.core.sync_signals import serialize_instance_for_sync
 from hmis.apps.licensing.bootstrap import seed_cloud_users, serialize_users_summary
 
 User = get_user_model()
@@ -183,6 +186,67 @@ class TestSeedCloudUsers:
         )
         assert counts["created"] == 0
         assert counts["skipped"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Hub identity sync serialization
+# ---------------------------------------------------------------------------
+
+
+class TestHubIdentitySyncSerialization:
+    """Hub-created staff credentials serialize in the cloud identity allow-list shape."""
+
+    def test_user_payload_includes_password_hash_without_privileged_fields(self):
+        """auth.User sync payload should be accepted by the cloud identity receiver."""
+        user = User.objects.create_user(
+            username="hub_nurse",
+            email="hub.nurse@example.test",
+            password="hub-pass-123",
+            first_name="Hub",
+            last_name="Nurse",
+        )
+        user.is_staff = True
+        user.is_superuser = True
+        user.save(update_fields=["is_staff", "is_superuser"])
+
+        entry = get_registry_entry("auth.User")
+        assert entry is not None
+        payload = serialize_instance_for_sync(user, exclude_fields=entry.exclude_fields)
+
+        identify_hasher(payload["password"])
+        assert "hub-pass-123" not in payload["password"]
+        assert payload["username"] == "hub_nurse"
+        assert "is_staff" not in payload
+        assert "is_superuser" not in payload
+        assert "groups" not in payload
+        assert "user_permissions" not in payload
+
+    def test_staff_profile_payload_omits_m2m_and_encrypted_contact_fields(
+        self, sample_organization, sample_facility, sample_role, sample_department
+    ):
+        """core.StaffProfile sync payload should not contain fields rejected by cloud sync."""
+        user = User.objects.create_user(username="hub_doc", password="hub-pass-123")
+        profile = StaffProfile.objects.create(
+            user=user,
+            employee_id="HUB-001",
+            organization=sample_organization,
+            primary_facility=sample_facility,
+            primary_role=sample_role,
+            primary_department=sample_department,
+            date_joined=date.today(),
+        )
+
+        payload = serialize_instance_for_sync(profile, exclude_fields=())
+
+        assert payload["user_id"] == user.pk
+        assert payload["primary_role_id"] == sample_role.pk
+        assert payload["primary_department_id"] == sample_department.pk
+        assert payload["organization_id"] == sample_organization.pk
+        assert payload["primary_facility_id"] == sample_facility.pk
+        assert "secondary_roles" not in payload
+        assert "secondary_departments" not in payload
+        assert "phone_number_encrypted" not in payload
+        assert "hwr_national_id_encrypted" not in payload
 
 
 # ---------------------------------------------------------------------------
@@ -416,7 +480,9 @@ class TestExistingSuperuserRepair:
 
     def test_existing_user_without_reset_keeps_password(self):
         """Existing users are not password-reset unless explicitly requested."""
-        user = User.objects.create_superuser(username="admin", password="old-pass-123")
+        user = User.objects.create_superuser(
+            username="admin", email="admin@example.test", password="old-pass-123"
+        )
 
         out = StringIO()
         call_command(

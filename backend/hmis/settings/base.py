@@ -261,6 +261,12 @@ REST_FRAMEWORK = {
 # Override to False in development/test/staging settings.
 MFA_ENFORCEMENT = True
 
+# Django admin security hardening. Admin MFA is separate from API MFA grace:
+# Nexora superusers must have MFA configured before entering /admin/ in
+# staging/production, and idle admin sessions are re-authenticated.
+ADMIN_MFA_REQUIRED = True
+ADMIN_SESSION_TIMEOUT_SECONDS = 15 * 60
+
 # Grace period (hours) for new users to set up MFA before it becomes mandatory.
 # Set to 0 to require immediate MFA setup (no grace period).
 MFA_GRACE_PERIOD_HOURS = 72

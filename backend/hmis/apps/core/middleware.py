@@ -10,6 +10,7 @@ multi-tenant request scoping.
 
 import logging
 from datetime import timedelta
+from urllib.parse import quote
 
 from django.conf import settings
 from django.utils import timezone
@@ -183,6 +184,33 @@ class AdminAccessMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
+    def _logout_admin_session(self, request):
+        from django.contrib.auth import logout as django_logout
+
+        try:
+            django_logout(request)
+        except AttributeError:
+            request.session.clear()
+
+    def _admin_session_expired(self, request) -> bool:
+        timeout_seconds = int(getattr(settings, "ADMIN_SESSION_TIMEOUT_SECONDS", 0) or 0)
+        if timeout_seconds <= 0:
+            return False
+
+        last_activity = request.session.get("admin_last_activity_at")
+        if not last_activity:
+            return False
+
+        try:
+            elapsed = timezone.now().timestamp() - float(last_activity)
+        except (TypeError, ValueError):
+            return True
+
+        return elapsed > timeout_seconds
+
+    def _mark_admin_activity(self, request) -> None:
+        request.session["admin_last_activity_at"] = timezone.now().timestamp()
+
     def __call__(self, request):
         from django.http import HttpResponseForbidden
         from django.shortcuts import redirect
@@ -204,13 +232,26 @@ class AdminAccessMiddleware:
                 "Access denied. Django admin is restricted to Nexora platform administrators."
             )
 
-        # MFA verification check
-        from hmis.apps.core.mfa.utils import is_mfa_enabled
+        if self._admin_session_expired(request):
+            self._logout_admin_session(request)
+            return redirect(f"/admin/login/?next={quote(request.get_full_path())}")
 
-        if is_mfa_enabled(user):
+        # MFA verification check
+        from hmis.apps.core.mfa.utils import is_mfa_enabled, is_mfa_required
+
+        mfa_enabled = is_mfa_enabled(user)
+        admin_mfa_required = bool(getattr(settings, "ADMIN_MFA_REQUIRED", False))
+
+        if admin_mfa_required and is_mfa_required(user) and not mfa_enabled:
+            return HttpResponseForbidden(
+                "Multi-factor authentication must be configured before accessing Django admin."
+            )
+
+        if admin_mfa_required or mfa_enabled:
             if not request.session.get("admin_mfa_verified"):
                 return redirect("/admin/mfa-verify/")
 
+        self._mark_admin_activity(request)
         return self.get_response(request)
 
 
