@@ -123,6 +123,8 @@ CSRF_TRUSTED_ORIGINS = [
 # MFA — enforced in staging to match production authentication behavior
 # =============================================================================
 MFA_ENFORCEMENT = True
+ADMIN_MFA_REQUIRED = True
+ADMIN_SESSION_TIMEOUT_SECONDS = int(os.getenv("ADMIN_SESSION_TIMEOUT_SECONDS", "900"))
 
 # =============================================================================
 # Onboarding — Disabled for staging by default so audit logging isn't blocked

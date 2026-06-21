@@ -22,6 +22,8 @@ TESTING = True
 
 # MFA enforcement — disabled in tests by default
 MFA_ENFORCEMENT = os.getenv("MFA_ENFORCEMENT", "false").lower() == "true"
+ADMIN_MFA_REQUIRED = MFA_ENFORCEMENT
+ADMIN_SESSION_TIMEOUT_SECONDS = 0
 
 # Onboarding enforcement — disabled in tests by default
 ONBOARDING_ENFORCEMENT = os.getenv("ONBOARDING_ENFORCEMENT", "false").lower() == "true"

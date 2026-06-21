@@ -128,6 +128,7 @@ def admin_mfa_verify(request):
         )
         if device and device.verify_token(totp_code):
             request.session["admin_mfa_verified"] = True
+            request.session["admin_last_activity_at"] = tz.now().timestamp()
             device.last_used_at = tz.now()
             device.save(update_fields=["last_used_at"])
             return redirect("/admin/")
