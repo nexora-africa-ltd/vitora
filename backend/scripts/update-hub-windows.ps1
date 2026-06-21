@@ -230,7 +230,7 @@ if ($svc -and $svc.Status -eq 'Running') {
     while ((Get-Date) -lt $deadline) {
         $svc.Refresh()
         $pythonStillRunning = Get-Process -Name "python" -ErrorAction SilentlyContinue |
-            Where-Object { $_.Path -and $_.Path.StartsWith($InstallDir) }
+            Where-Object { if ($_.Path) { $_.Path.StartsWith($InstallDir) } else { $false } }
         if ($svc.Status -eq 'Stopped' -and -not $pythonStillRunning) { break }
         Start-Sleep -Milliseconds 500
     }
