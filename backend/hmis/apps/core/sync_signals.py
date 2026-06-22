@@ -15,7 +15,7 @@ import json
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models.fields.files import FieldFile
-from django.db.models.signals import post_delete, post_save
+from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
 from django.forms.models import model_to_dict
 from django.utils import timezone
@@ -76,9 +76,15 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
         }
 
     if model_label == "core.StaffProfile":
+        # `username` is denormalized here so the cloud can resolve the linked
+        # user even if the hub's local PK collides with an existing cloud
+        # user's PK (see `_upsert_hub_user` soft-link logic).
+        user = getattr(instance, "user", None)
+        username = getattr(user, "username", "") if user is not None else ""
         return {
             "id": instance.pk,
             "user_id": instance.user_id,
+            "username": username,
             "employee_id": instance.employee_id or "",
             "title": instance.title or "",
             "middle_name": instance.middle_name or "",
@@ -96,6 +102,53 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
             "employment_type": instance.employment_type,
             "date_joined": instance.date_joined,
             "date_left": instance.date_left,
+        }
+
+    if model_label == "core.Role":
+        return {
+            "id": instance.pk,
+            "code": instance.code or "",
+            "name": instance.name or "",
+            "category": instance.category or "",
+            "description": instance.description or "",
+            "scope": instance.scope or "ORG",
+            "organization_id": instance.organization_id,
+            "facility_id": instance.facility_id,
+            "permissions_matrix": instance.permissions_matrix or {},
+            "hierarchy_level": instance.hierarchy_level,
+            "parent_role_id": instance.parent_role_id,
+            "is_active": getattr(instance, "is_active", True),
+        }
+
+    if model_label == "core.Department":
+        return {
+            "id": instance.pk,
+            "code": instance.code or "",
+            "name": instance.name or "",
+            "description": instance.description or "",
+            "department_type": instance.department_type or "",
+            "organization_id": instance.organization_id,
+            "facility_id": instance.facility_id,
+            "parent_id": instance.parent_id,
+            "head_id": instance.head_id,
+            "is_active": instance.is_active,
+        }
+
+    if model_label == "core.OrgMembership":
+        return {
+            "id": instance.pk,
+            "staff_profile_id": instance.staff_profile_id,
+            "organization_id": instance.organization_id,
+            "role_id": instance.role_id,
+            "department_id": instance.department_id,
+            # M2M: list of facility PKs the member can access in this org.
+            "facility_ids": list(instance.facilities.values_list("pk", flat=True))
+            if instance.pk
+            else [],
+            "is_primary": instance.is_primary,
+            "status": instance.status,
+            "joined_at": instance.joined_at,
+            "invited_by_id": instance.invited_by_id,
         }
 
     data = model_to_dict(instance, exclude=list(exclude_fields))
@@ -119,6 +172,16 @@ def get_tenant_context(instance) -> tuple[object | None, object | None]:
     facility = getattr(instance, "facility", None)
     if facility is None:
         facility = getattr(instance, "registered_at_facility", None)
+    # ``auth.User`` carries no direct tenant FKs — its assignment lives on
+    # ``core.StaffProfile``. Without this hop, every User SyncQueue row gets
+    # written with organization=NULL/facility=NULL, which makes hub→cloud
+    # debugging harder and breaks any future tenant-scoped filtering of the
+    # outbound queue.
+    if organization is None and facility is None:
+        staff_profile = getattr(instance, "staff_profile", None)
+        if staff_profile is not None:
+            organization = getattr(staff_profile, "organization", None)
+            facility = getattr(staff_profile, "primary_facility", None)
     for related_name in (
         "clinic",
         "session",
@@ -218,6 +281,51 @@ def auto_queue_delete_for_sync(sender, instance, **kwargs):  # noqa: ARG001
         model_name=model_label,
         record_id=instance.pk,
         data=add_sync_meta({"id": instance.pk}, direction=entry.direction, priority=entry.priority),
+        status="PENDING",
+    )
+
+
+@receiver(m2m_changed, dispatch_uid="hub_requeue_org_membership_on_facility_m2m")
+def requeue_org_membership_on_facility_m2m(sender, instance, action, **kwargs):  # noqa: ARG001
+    """Re-queue OrgMembership for upward sync when its facilities M2M changes.
+
+    ``post_save`` only fires when the OrgMembership row itself is written.
+    Code paths like ``membership.facilities.add(facility)`` mutate the join
+    table only and would otherwise leave a stale (empty) ``facility_ids``
+    payload in the SyncQueue. We listen for ``m2m_changed`` and synthesize a
+    fresh UPDATE entry so the cloud receives the current facility set.
+    """
+    # Only react once both sides exist, only for OrgMembership.facilities,
+    # and only for the actions that change the membership set.
+    if action not in {"post_add", "post_remove", "post_clear"}:
+        return
+    if instance is None or getattr(instance, "pk", None) is None:
+        return
+    # Lazy import to avoid app-loading cycles.
+    from hmis.apps.core.models import OrgMembership
+
+    if not isinstance(instance, OrgMembership):
+        return
+    if _is_from_sync_materializer(instance):
+        return
+
+    model_label = "core.OrgMembership"
+    if not should_queue_upward_sync(model_label):
+        return
+    entry = get_registry_entry(model_label)
+    if entry is None:
+        return
+
+    data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
+    data = add_sync_meta(data, direction=entry.direction, priority=entry.priority)
+    organization, facility = get_tenant_context(instance)
+    SyncQueue.objects.create(
+        operation="UPDATE",
+        organization=organization,
+        facility=facility,
+        model_name=model_label,
+        record_id=instance.pk,
+        data=data,
         status="PENDING",
     )
 

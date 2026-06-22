@@ -602,14 +602,74 @@ export function buildPrintDocument(
 </html>`;
 }
 
+function isTauriWebView(): boolean {
+  return typeof window !== 'undefined' && (
+    '__TAURI__' in window || '__TAURI_INTERNALS__' in window
+  );
+}
+
+function openIframePrintSurface(html: string): Window | null {
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.style.opacity = '0';
+  iframe.style.pointerEvents = 'none';
+
+  document.body.appendChild(iframe);
+
+  const printWindow = iframe.contentWindow;
+  const printDocument = iframe.contentDocument || printWindow?.document;
+  if (!printWindow || !printDocument) {
+    iframe.remove();
+    console.error('Failed to create print surface.');
+    return null;
+  }
+
+  const cleanup = () => {
+    setTimeout(() => iframe.remove(), 1000);
+  };
+
+  printWindow.addEventListener('afterprint', cleanup, { once: true });
+  printDocument.open();
+  printDocument.write(html);
+  printDocument.close();
+
+  setTimeout(() => {
+    try {
+      printWindow.focus();
+      printWindow.print();
+      setTimeout(cleanup, 60_000);
+    } catch (error) {
+      cleanup();
+      console.error('Failed to print document:', error);
+    }
+  }, 250);
+
+  return printWindow;
+}
+
 /**
- * Open a print window with the rendered document
+ * Open a print surface with the rendered document.
+ *
+ * Browser tabs can print from a popup window, but Tauri/WebView2 often blocks
+ * popup creation or never wires the new popup to the native print dialog. A
+ * same-document iframe keeps the print call inside the main WebView process and
+ * works reliably for desktop document printing.
  */
 export function openPrintWindow(html: string): Window | null {
+  if (isTauriWebView()) {
+    return openIframePrintSurface(html);
+  }
+
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     console.error('Failed to open print window. Check popup blocker settings.');
-    return null;
+    return openIframePrintSurface(html);
   }
 
   printWindow.document.write(html);
