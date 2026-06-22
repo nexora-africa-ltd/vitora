@@ -18,7 +18,7 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import identify_hasher
-from django.db import transaction
+from django.db import models, transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import status
@@ -255,6 +255,19 @@ def _upsert_hub_staff_profile(*, record_id, data: dict, installation):
     role_id = _record_id_to_int(data.get("primary_role") or data.get("primary_role_id"))
     role = _get_scoped_role(role_id, installation) if role_id is not None else None
     if role is None:
+        # Fallback: use any active role within the organization scope
+        from hmis.apps.core.models import Role
+
+        role = (
+            Role.objects.filter(is_active=True)
+            .filter(
+                models.Q(organization=installation.organization)
+                | models.Q(organization__isnull=True)
+            )
+            .order_by("hierarchy_level")
+            .first()
+        )
+    if role is None:
         return _reject_identity("Hub staff profile primary role is not available to this hub.")
 
     department_id = _record_id_to_int(
@@ -263,6 +276,15 @@ def _upsert_hub_staff_profile(*, record_id, data: dict, installation):
     department = (
         _get_scoped_department(department_id, installation) if department_id is not None else None
     )
+    if department is None:
+        # Fallback: use any active department within the installation scope
+        from hmis.apps.core.models import Department
+
+        department = Department.objects.filter(
+            is_active=True,
+            organization=installation.organization,
+            facility=installation.facility,
+        ).first()
     if department is None:
         return _reject_identity(
             "Hub staff profile primary department is not available to this hub."
