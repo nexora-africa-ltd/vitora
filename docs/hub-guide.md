@@ -1,6 +1,6 @@
 # Vitora HMIS Facility Hub — Comprehensive Guide & Operations Runbook
 
-> **Current Version**: hub-v0.6.11
+> **Current Version**: hub-v0.6.33
 > **Platforms**: Linux (Debian/Ubuntu, Raspberry Pi), Windows 10/11+
 > **Delivery Modes**: Native (systemd/NSSM service), Container (Docker Compose)
 > **Last Updated**: June 2026
@@ -1111,6 +1111,7 @@ The compiled build is signed with cosign for integrity verification.
 
 | Tag | Date | Highlights |
 |-----|------|-----------|
+| `hub-v0.6.33` | Jun 2026 | Hub full-pull identity remapping for staff, roles, departments, memberships; doctor start-triage RBAC fix |
 | `hub-v0.4.0` | Jun 2026 | Code protection gaps, container lifecycle, ACL hardening |
 | `hub-v0.3.0` | May 2026 | License guard middleware, cloud proxy routing |
 | `hub-v0.2.0` | Apr 2026 | Activation-driven installer, Windows support |

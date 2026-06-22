@@ -533,6 +533,8 @@ class StaffProfileAdmin(admin.ModelAdmin):
     @admin.display(description="License Valid", boolean=True)
     def is_license_valid_display(self, obj):
         """Display license validity status."""
+        if obj is None or not getattr(obj, "primary_role_id", None):
+            return None
         if not obj.primary_role.requires_license:
             return None  # N/A
         return obj.is_license_valid()

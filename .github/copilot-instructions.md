@@ -1183,6 +1183,22 @@ class MyViewSet(viewsets.ModelViewSet):
 
 The mixin re-queries the instance through `get_queryset()` (honouring `select_related`/`prefetch_related`) and re-serializes with the read serializer.
 
+### 12A. Hub Full-Pull Identity Sync Must Use Natural-Key Remapping
+
+Hub activation seeds local mirror rows for identity/config data, and hub-local PKs can differ from cloud PKs. Full cloud-to-hub pulls must therefore reconcile identity dependencies by stable natural keys before saving:
+
+| Model / FK | Natural key to include and remap |
+|------------|----------------------------------|
+| `auth.User` | `username` (and email as secondary match) |
+| `core.Organization` | `slug` |
+| `core.Facility` | `mfl_code` |
+| `core.Role` | `code` |
+| `core.Department` | `facility.mfl_code` + `code` |
+| `core.StaffProfile` | `username`, `employee_id`, role code, department code, facility MFL code, org slug |
+| `core.OrgMembership` | staff username/employee ID, role code, department code, org slug, facility MFL codes |
+
+When adding downward-sync payloads in `sync_signals.serialize_instance_for_sync()`, include natural-key hints for every FK that may point at activation-seeded hub rows. When materializing in `sync_materializer.py`, remap cloud FK IDs to local rows using those hints before saving. Otherwise `python manage.py hub_sync --full-pull` can receive valid cloud rows but silently log local FK/unique failures and leave the hub SQLite DB missing staff/role/membership data.
+
 ### 13. Domain Event Wiring Is MANDATORY for New Models with State Transitions
 
 > ⚠️ **CRITICAL**: Every new model that has state transitions (status fields, clinically significant creation, workflow actions) **MUST** publish domain events via `publish_event()` in `signals.py`. Failure to wire events means WebSocket consumers, read-model projections, and the EventStore audit trail will be blind to those changes.

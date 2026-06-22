@@ -273,6 +273,122 @@ class TestSyncMaterializer:
         assert local_cloud_profile.employee_id == "CLOUD-STAFF-001"
         assert StaffProfile.objects.filter(user=test_user).count() == 1
 
+    def test_materialize_staff_profile_remaps_cloud_identity_dependencies_by_natural_keys(
+        self,
+        test_user,
+        sample_organization,
+        sample_facility,
+        sample_department,
+        sample_role,
+    ):
+        """Full pulls should use local Role/Department PKs when cloud IDs differ."""
+        from hmis.apps.core.models import StaffProfile
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        cloud_role_id = sample_role.pk + 1000
+        cloud_department_id = sample_department.pk + 1000
+
+        result = materialize_entry(
+            {
+                "table": "core.StaffProfile",
+                "operation": "CREATE",
+                "record_id": 88001,
+                "data": {
+                    "id": 88001,
+                    "user_id": test_user.pk,
+                    "username": test_user.username,
+                    "employee_id": "CLOUD-NATURAL-001",
+                    "organization_id": sample_organization.pk,
+                    "organization_slug": sample_organization.slug,
+                    "primary_facility_id": sample_facility.pk,
+                    "primary_facility_mfl_code": sample_facility.mfl_code,
+                    "primary_department_id": cloud_department_id,
+                    "primary_department_code": sample_department.code,
+                    "primary_role_id": cloud_role_id,
+                    "primary_role_code": sample_role.code,
+                    "date_joined": "2026-01-01",
+                    "employment_status": "ACTIVE",
+                    "employment_type": "PERMANENT",
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        profile = StaffProfile.objects.get(employee_id="CLOUD-NATURAL-001")
+        assert profile.primary_role_id == sample_role.pk
+        assert profile.primary_department_id == sample_department.pk
+        assert profile.primary_facility_id == sample_facility.pk
+
+    def test_materialize_role_create_reconciles_by_code(self, sample_role):
+        """Cloud roles should update same-code local roles instead of failing uniqueness."""
+        from hmis.apps.core.models import Role
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        result = materialize_entry(
+            {
+                "table": "core.Role",
+                "operation": "CREATE",
+                "record_id": sample_role.pk + 1000,
+                "data": {
+                    "id": sample_role.pk + 1000,
+                    "code": sample_role.code,
+                    "name": "Cloud Doctor",
+                    "category": sample_role.category,
+                    "scope": sample_role.scope,
+                    "hierarchy_level": sample_role.hierarchy_level,
+                    "is_active": True,
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        assert Role.objects.filter(code=sample_role.code).count() == 1
+        sample_role.refresh_from_db()
+        assert sample_role.name == "Cloud Doctor"
+
+    def test_materialize_org_membership_remaps_identity_dependencies_by_natural_keys(
+        self,
+        test_staff_profile,
+        sample_organization,
+        sample_facility,
+        sample_department,
+        sample_role,
+    ):
+        """Org memberships should resolve cloud FK IDs to local identity rows."""
+        from hmis.apps.core.models import OrgMembership
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        result = materialize_entry(
+            {
+                "table": "core.OrgMembership",
+                "operation": "CREATE",
+                "record_id": 99001,
+                "data": {
+                    "id": 99001,
+                    "staff_profile_id": test_staff_profile.pk + 1000,
+                    "staff_username": test_staff_profile.user.username,
+                    "staff_profile_employee_id": test_staff_profile.employee_id,
+                    "organization_id": sample_organization.pk + 1000,
+                    "organization_slug": sample_organization.slug,
+                    "role_id": sample_role.pk + 1000,
+                    "role_code": sample_role.code,
+                    "department_id": sample_department.pk + 1000,
+                    "department_code": sample_department.code,
+                    "facility_ids": [sample_facility.pk + 1000],
+                    "facility_mfl_codes": [sample_facility.mfl_code],
+                    "is_primary": True,
+                    "status": "ACTIVE",
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        membership = OrgMembership.objects.get(staff_profile=test_staff_profile)
+        assert membership.organization_id == sample_organization.pk
+        assert membership.role_id == sample_role.pk
+        assert membership.department_id == sample_department.pk
+        assert list(membership.facilities.values_list("pk", flat=True)) == [sample_facility.pk]
+
     def test_materialize_facility_update(self, sample_facility):
         """A downward Facility update should change the local hub copy."""
         from hmis.apps.core.sync_materializer import materialize_entry
