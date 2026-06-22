@@ -296,15 +296,30 @@ class HubCloudSyncWorker:
                             synced_at=timezone.now(),
                         )
                     if rejected_ids:
-                        # Mark individually as FAILED with their specific reason
-                        rejection_reasons = {
-                            r["index"]: r.get("reason", "Rejected by cloud")
-                            for r in rejections
-                            if "index" in r
+                        # Mark individually as FAILED with their specific reason,
+                        # except for SOFT failures (e.g. waiting on a parent
+                        # identity row) which we keep PENDING so they retry on
+                        # the next push cycle.
+                        rejection_meta = {
+                            r["index"]: r for r in rejections if "index" in r
                         }
+                        soft_failure_codes = {"DEPENDENCY_MISSING"}
                         for idx, eid in enumerate(entry_ids):
-                            if idx in rejected_indices:
-                                reason = rejection_reasons.get(idx, "Rejected by cloud")
+                            if idx not in rejected_indices:
+                                continue
+                            meta = rejection_meta.get(idx, {})
+                            reason = meta.get("reason", "Rejected by cloud")
+                            code = meta.get("code")
+                            if code in soft_failure_codes:
+                                logger.info(
+                                    "Cloud push chunk %d: entry %d deferred (%s) — %s",
+                                    chunk_num,
+                                    eid,
+                                    code,
+                                    reason,
+                                )
+                                SyncQueue.objects.filter(pk=eid).update(status="PENDING")
+                            else:
                                 logger.warning(
                                     "Cloud push chunk %d: entry %d rejected — %s",
                                     chunk_num,

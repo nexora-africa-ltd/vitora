@@ -65,7 +65,13 @@ SYNCABLE_TABLES = {
     "scheduling_shift",
 }
 
-HUB_IDENTITY_TABLES = {"auth.User", "core.StaffProfile"}
+HUB_IDENTITY_TABLES = {
+    "auth.User",
+    "core.StaffProfile",
+    "core.Role",
+    "core.Department",
+    "core.OrgMembership",
+}
 HUB_USER_ALLOWED_FIELDS = {
     "id",
     "username",
@@ -80,6 +86,7 @@ HUB_STAFF_PROFILE_ALLOWED_FIELDS = {
     "id",
     "user",
     "user_id",
+    "username",
     "employee_id",
     "title",
     "middle_name",
@@ -105,6 +112,65 @@ HUB_STAFF_PROFILE_ALLOWED_FIELDS = {
     "date_left",
     "sync_meta",
 }
+HUB_ROLE_ALLOWED_FIELDS = {
+    "id",
+    "code",
+    "name",
+    "category",
+    "description",
+    "scope",
+    "organization",
+    "organization_id",
+    "facility",
+    "facility_id",
+    "permissions_matrix",
+    "hierarchy_level",
+    "parent_role",
+    "parent_role_id",
+    "is_active",
+    "sync_meta",
+}
+HUB_DEPARTMENT_ALLOWED_FIELDS = {
+    "id",
+    "code",
+    "name",
+    "description",
+    "department_type",
+    "organization",
+    "organization_id",
+    "facility",
+    "facility_id",
+    "parent",
+    "parent_id",
+    "head",
+    "head_id",
+    "is_active",
+    "sync_meta",
+}
+HUB_ORG_MEMBERSHIP_ALLOWED_FIELDS = {
+    "id",
+    "staff_profile",
+    "staff_profile_id",
+    "organization",
+    "organization_id",
+    "role",
+    "role_id",
+    "department",
+    "department_id",
+    "facility_ids",
+    "is_primary",
+    "status",
+    "joined_at",
+    "invited_by",
+    "invited_by_id",
+    "sync_meta",
+}
+
+# Soft-failure codes returned by `_apply_hub_identity_change`. The hub keeps
+# entries with these reasons in PENDING state instead of marking them FAILED
+# so they can be retried on a subsequent push cycle (e.g. after a dependency
+# row finally arrives).
+SOFT_FAILURE_DEPENDENCY_MISSING = "DEPENDENCY_MISSING"
 
 
 def _record_id_to_int(record_id) -> int | None:
@@ -117,21 +183,42 @@ def _record_id_to_int(record_id) -> int | None:
         return None
 
 
-def _reject_identity(reason: str) -> dict:
-    """Build a common identity sync result for rejected changes."""
-    return {"success": False, "reason": reason}
+def _reject_identity(reason: str, *, code: str | None = None) -> dict:
+    """Build a common identity sync result for rejected changes.
+
+    Pass ``code=SOFT_FAILURE_DEPENDENCY_MISSING`` for rejections that the hub
+    should retry on the next push cycle (e.g. waiting for a related row).
+    """
+    result: dict = {"success": False, "reason": reason}
+    if code:
+        result["code"] = code
+    return result
 
 
 def _apply_hub_identity_change(*, table: str, operation: str, record_id, data: dict, installation):
     """Apply tightly scoped hub identity changes directly on the cloud."""
     if installation is None:
         return _reject_identity("Identity sync requires an active hub license.")
+    if operation == "DELETE":
+        # Identity tables are never deleted via sync — staff records are
+        # soft-archived via employment_status/date_left fields instead.
+        return _reject_identity(
+            f"Identity sync only supports CREATE and UPDATE operations for '{table}'."
+        )
     if operation not in {"CREATE", "UPDATE"}:
         return _reject_identity("Identity sync only supports CREATE and UPDATE operations.")
     if table == "auth.User":
         return _upsert_hub_user(record_id=record_id, data=data, installation=installation)
     if table == "core.StaffProfile":
         return _upsert_hub_staff_profile(record_id=record_id, data=data, installation=installation)
+    if table == "core.Role":
+        return _upsert_hub_role(record_id=record_id, data=data, installation=installation)
+    if table == "core.Department":
+        return _upsert_hub_department(record_id=record_id, data=data, installation=installation)
+    if table == "core.OrgMembership":
+        return _upsert_hub_org_membership(
+            record_id=record_id, data=data, installation=installation
+        )
     return _reject_identity(f"Unsupported identity table '{table}'.")
 
 
@@ -164,11 +251,33 @@ def _upsert_hub_user(*, record_id, data: dict, installation):
     email = str(data.get("email") or "").strip()
     existing_by_email = User.objects.filter(email__iexact=email).first() if email else None
 
-    for existing in (existing_by_username, existing_by_email):
-        if existing and existing.pk != record_pk:
-            return _reject_identity("Hub user sync would collide with an existing cloud user.")
+    # Soft-link colliding hub users: when the hub's local PK differs from the
+    # cloud PK but username/email match the same canonical user, we treat the
+    # push as success and update the canonical user in place. This prevents a
+    # cascade where the StaffProfile push would otherwise fail forever with
+    # "user does not exist in the cloud" because the hub keeps quoting its
+    # hub-local user_id. ``_upsert_hub_staff_profile`` resolves user_id by
+    # username when the PK lookup misses, completing the link.
+    user = existing_by_pk
+    collision_link = False
+    if user is None and existing_by_username is not None:
+        # Username already taken on cloud → treat as the canonical record.
+        user = existing_by_username
+        collision_link = True
+    if user is None and existing_by_email is not None:
+        user = existing_by_email
+        collision_link = True
+    # Cross-check: if username and email resolved to different cloud users,
+    # the push is genuinely ambiguous and we must reject.
+    if (
+        existing_by_username is not None
+        and existing_by_email is not None
+        and existing_by_username.pk != existing_by_email.pk
+    ):
+        return _reject_identity(
+            "Hub user sync would collide with two different cloud users (username vs email)."
+        )
 
-    user = existing_by_pk or existing_by_username or existing_by_email
     profile = getattr(user, "staff_profile", None) if user else None
     if (
         profile
@@ -176,6 +285,14 @@ def _upsert_hub_user(*, record_id, data: dict, installation):
         and profile.organization_id != installation.organization_id
     ):
         return _reject_identity("Hub user belongs to a different organization.")
+
+    if collision_link:
+        logger.warning(
+            "Hub user sync soft-linked hub PK %s to cloud PK %s (username=%s).",
+            record_pk,
+            user.pk,
+            username,
+        )
 
     creating = user is None
     if creating and not password_hash:
@@ -250,7 +367,18 @@ def _upsert_hub_staff_profile(*, record_id, data: dict, installation):
     User = get_user_model()
     user = User.objects.filter(pk=user_id).first()
     if user is None:
-        return _reject_identity("Hub staff profile user does not exist in the cloud.")
+        # Fall back to username — the cloud may have a different PK for the
+        # same canonical user (see ``_upsert_hub_user`` soft-link logic).
+        username = str(data.get("username") or "").strip()
+        if username:
+            user = User.objects.filter(username=username).first()
+        if user is None:
+            # Soft failure so the hub keeps the entry PENDING and retries
+            # after the auth.User push (priority 3) lands in a later cycle.
+            return _reject_identity(
+                "Hub staff profile user does not exist in the cloud.",
+                code=SOFT_FAILURE_DEPENDENCY_MISSING,
+            )
 
     role_id = _record_id_to_int(data.get("primary_role") or data.get("primary_role_id"))
     role = _get_scoped_role(role_id, installation) if role_id is not None else None
@@ -337,6 +465,281 @@ def _upsert_hub_staff_profile(*, record_id, data: dict, installation):
     profile.date_joined = date_joined
     profile.date_left = date_left
     profile.save()
+    return {"success": True}
+
+
+def _upsert_hub_role(*, record_id, data: dict, installation):
+    """Create/update a hub-originated Role, forced into the installation scope.
+
+    Roles are dedup'd by ``code`` (which is unique on the model). The hub's
+    PK is preserved when the cloud has no other record at that PK; otherwise
+    the existing cloud row matched by code wins and the hub's PK is ignored.
+    """
+    if installation.facility is None:
+        return _reject_identity("Hub role sync requires an installation facility.")
+
+    unexpected_fields = set(data) - HUB_ROLE_ALLOWED_FIELDS
+    if unexpected_fields:
+        return _reject_identity(
+            f"Field(s) not allowed for hub role sync: {', '.join(sorted(unexpected_fields))}."
+        )
+
+    record_pk = _record_id_to_int(record_id or data.get("id"))
+    if record_pk is None:
+        return _reject_identity("Hub role sync requires a numeric record_id.")
+
+    code = str(data.get("code") or "").strip()
+    if not code:
+        return _reject_identity("Hub role sync requires a code.")
+
+    name = str(data.get("name") or "").strip()
+    if not name:
+        return _reject_identity("Hub role sync requires a name.")
+
+    scope = str(data.get("scope") or "ORG").upper()
+    if scope not in {"ORG", "FACILITY"}:
+        return _reject_identity(f"Hub role sync got invalid scope '{scope}'.")
+
+    from hmis.apps.core.models import Role
+
+    existing_by_pk = Role.objects.filter(pk=record_pk).first()
+    existing_by_code = Role.objects.filter(code=code).first()
+
+    candidates = [item for item in (existing_by_pk, existing_by_code) if item]
+    if candidates and len({item.pk for item in candidates}) > 1:
+        return _reject_identity(
+            "Hub role sync would collide with two different existing cloud roles."
+        )
+
+    role = candidates[0] if candidates else None
+    # Guard against PK collisions: an existing cloud row at the hub's PK that
+    # represents a different role (different ``code``) must NOT be overwritten.
+    if (
+        existing_by_pk is not None
+        and existing_by_code is None
+        and existing_by_pk.code != code
+    ):
+        return _reject_identity(
+            "Hub role sync hub-PK collides with a different cloud role at the same PK."
+        )
+    # Roles with org=NULL are system-wide and managed centrally on cloud; hubs
+    # may not overwrite them.
+    if role is not None and role.organization_id is None:
+        return _reject_identity("Hub role sync cannot modify a system-wide role.")
+    if (
+        role is not None
+        and role.organization_id is not None
+        and role.organization_id != installation.organization_id
+    ):
+        return _reject_identity("Hub role belongs to a different organization.")
+
+    if role is None:
+        role = Role(pk=record_pk, code=code)
+
+    object.__setattr__(role, "_from_sync_materializer", True)
+    role.code = code
+    role.name = name
+    role.category = str(data.get("category") or "ADMINISTRATIVE")
+    role.description = str(data.get("description") or "")
+    role.scope = scope
+    role.organization = installation.organization
+    role.facility = installation.facility if scope == "FACILITY" else None
+    role.permissions_matrix = data.get("permissions_matrix") or {}
+    role.hierarchy_level = int(data.get("hierarchy_level") or 0)
+    if hasattr(role, "is_active"):
+        role.is_active = bool(data.get("is_active", True))
+    role.save()
+    return {"success": True}
+
+
+def _upsert_hub_department(*, record_id, data: dict, installation):
+    """Create/update a hub-originated Department, forced into installation scope.
+
+    Departments are dedup'd by ``(facility, code)`` (the model's unique
+    constraint). The cloud rewrites ``organization``/``facility`` so a hub can
+    never assign a department to a foreign facility.
+    """
+    if installation.facility is None:
+        return _reject_identity("Hub department sync requires an installation facility.")
+
+    unexpected_fields = set(data) - HUB_DEPARTMENT_ALLOWED_FIELDS
+    if unexpected_fields:
+        return _reject_identity(
+            "Field(s) not allowed for hub department sync: "
+            f"{', '.join(sorted(unexpected_fields))}."
+        )
+
+    record_pk = _record_id_to_int(record_id or data.get("id"))
+    if record_pk is None:
+        return _reject_identity("Hub department sync requires a numeric record_id.")
+
+    code = str(data.get("code") or "").strip()
+    if not code:
+        return _reject_identity("Hub department sync requires a code.")
+
+    name = str(data.get("name") or "").strip()
+    if not name:
+        return _reject_identity("Hub department sync requires a name.")
+
+    from hmis.apps.core.models import Department
+
+    existing_by_pk = Department.objects.filter(pk=record_pk).first()
+    existing_by_code = Department.objects.filter(
+        facility=installation.facility, code=code
+    ).first()
+
+    candidates = [item for item in (existing_by_pk, existing_by_code) if item]
+    if candidates and len({item.pk for item in candidates}) > 1:
+        return _reject_identity(
+            "Hub department sync would collide with two different existing cloud departments."
+        )
+
+    department = candidates[0] if candidates else None
+    # Guard against PK collisions: an existing cloud row at the hub's PK that
+    # represents a different department (different ``code``/``facility``) must
+    # NOT be overwritten.
+    if (
+        existing_by_pk is not None
+        and existing_by_code is None
+        and (
+            existing_by_pk.code != code
+            or existing_by_pk.facility_id != installation.facility_id
+        )
+    ):
+        return _reject_identity(
+            "Hub department sync hub-PK collides with a different cloud department at the same PK."
+        )
+    if (
+        department is not None
+        and department.organization_id != installation.organization_id
+    ):
+        return _reject_identity("Hub department belongs to a different organization.")
+    if (
+        department is not None
+        and department.facility_id != installation.facility_id
+    ):
+        return _reject_identity("Hub department belongs to a different facility.")
+
+    if department is None:
+        department = Department(pk=record_pk, code=code)
+
+    object.__setattr__(department, "_from_sync_materializer", True)
+    department.code = code
+    department.name = name
+    department.description = str(data.get("description") or "")
+    department.department_type = str(data.get("department_type") or "ADMINISTRATIVE")
+    department.organization = installation.organization
+    department.facility = installation.facility
+    department.is_active = bool(data.get("is_active", True))
+    # Parent/head FKs are intentionally not propagated from the hub: parent
+    # hierarchy and head assignments should be configured on the cloud to
+    # avoid PK-collision and cyclic-update issues. The hub keeps its own
+    # parent/head locally; cloud admins can re-assign on cloud.
+    department.save()
+    return {"success": True}
+
+
+def _upsert_hub_org_membership(*, record_id, data: dict, installation):
+    """Create/update a hub-originated OrgMembership.
+
+    Memberships are dedup'd by ``(staff_profile, organization)`` (the model's
+    unique constraint). The organization is forced to ``installation.organization``
+    so a hub can only manage memberships within its own org. The ``facilities``
+    M2M is rewritten to the (filtered) list the hub sent.
+    """
+    if installation.facility is None:
+        return _reject_identity("Hub membership sync requires an installation facility.")
+
+    unexpected_fields = set(data) - HUB_ORG_MEMBERSHIP_ALLOWED_FIELDS
+    if unexpected_fields:
+        return _reject_identity(
+            "Field(s) not allowed for hub membership sync: "
+            f"{', '.join(sorted(unexpected_fields))}."
+        )
+
+    record_pk = _record_id_to_int(record_id or data.get("id"))
+    if record_pk is None:
+        return _reject_identity("Hub membership sync requires a numeric record_id.")
+
+    staff_profile_id = _record_id_to_int(
+        data.get("staff_profile") or data.get("staff_profile_id")
+    )
+    if staff_profile_id is None:
+        return _reject_identity("Hub membership sync requires a staff_profile id.")
+
+    from hmis.apps.core.models import OrgMembership, StaffProfile
+
+    staff_profile = StaffProfile.objects.filter(pk=staff_profile_id).first()
+    if staff_profile is None:
+        # Soft failure so the hub retries after the StaffProfile push lands.
+        return _reject_identity(
+            "Hub membership staff_profile does not exist in the cloud.",
+            code=SOFT_FAILURE_DEPENDENCY_MISSING,
+        )
+    if (
+        staff_profile.organization_id
+        and staff_profile.organization_id != installation.organization_id
+    ):
+        return _reject_identity("Hub membership staff_profile belongs to a different org.")
+
+    role_id = _record_id_to_int(data.get("role") or data.get("role_id"))
+    role = _get_scoped_role(role_id, installation) if role_id is not None else None
+    if role is None:
+        # Reuse the StaffProfile's primary role as a safe fallback.
+        role = staff_profile.primary_role
+    if role is None:
+        return _reject_identity("Hub membership role is not available to this hub.")
+
+    department_id = _record_id_to_int(data.get("department") or data.get("department_id"))
+    department = (
+        _get_scoped_department(department_id, installation)
+        if department_id is not None
+        else None
+    )
+
+    existing_by_pk = OrgMembership.objects.filter(pk=record_pk).first()
+    existing_by_unique = OrgMembership.objects.filter(
+        staff_profile=staff_profile, organization=installation.organization
+    ).first()
+    candidates = [item for item in (existing_by_pk, existing_by_unique) if item]
+    if candidates and len({item.pk for item in candidates}) > 1:
+        return _reject_identity(
+            "Hub membership sync would collide with two different existing memberships."
+        )
+
+    membership = candidates[0] if candidates else None
+    if membership is None:
+        membership = OrgMembership(pk=record_pk, staff_profile=staff_profile)
+
+    object.__setattr__(membership, "_from_sync_materializer", True)
+    membership.staff_profile = staff_profile
+    membership.organization = installation.organization
+    membership.role = role
+    membership.department = department
+    membership.is_primary = bool(data.get("is_primary", False))
+    membership.status = str(data.get("status") or "ACTIVE")
+    membership.save()
+
+    # Rewrite facilities M2M: keep only facilities that belong to the hub's
+    # installation. We never let a hub assign a member to a facility outside
+    # its own scope.
+    from hmis.apps.core.models import Facility
+
+    requested_facility_ids = data.get("facility_ids") or []
+    allowed_ids: list[int] = []
+    for fid in requested_facility_ids:
+        fid_int = _record_id_to_int(fid)
+        if fid_int is None:
+            continue
+        if Facility.objects.filter(
+            pk=fid_int, organization=installation.organization
+        ).exists():
+            allowed_ids.append(fid_int)
+    if installation.facility_id and installation.facility_id not in allowed_ids:
+        # Always include the installation's own facility for primary memberships.
+        if membership.is_primary:
+            allowed_ids.append(installation.facility_id)
+    membership.facilities.set(allowed_ids)
     return {"success": True}
 
 
@@ -582,14 +985,17 @@ def sync_push(request):
                 if result.get("success"):
                     accepted += 1
                 else:
-                    rejections.append(
-                        {
-                            "index": idx,
-                            "table": table,
-                            "record_id": record_id,
-                            "reason": result.get("reason", "Identity sync failed."),
-                        }
-                    )
+                    rejection = {
+                        "index": idx,
+                        "table": table,
+                        "record_id": record_id,
+                        "reason": result.get("reason", "Identity sync failed."),
+                    }
+                    # Propagate soft-failure code so the hub keeps the entry
+                    # PENDING and retries on the next push cycle.
+                    if result.get("code"):
+                        rejection["code"] = result["code"]
+                    rejections.append(rejection)
                 continue
 
             # Validate table is syncable

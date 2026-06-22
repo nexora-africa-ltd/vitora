@@ -320,8 +320,16 @@ class PrescriptionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return PrescriptionSerializer
 
     def perform_create(self, serializer):
-        """Set prescribed_by to current user when creating prescription."""
-        serializer.save(prescribed_by=self.request.user)
+        """Set prescribed_by and auto-stamp tenant FKs from request context.
+
+        Without ``get_tenant_save_kwargs()`` the prescription is saved with
+        ``facility=NULL`` / ``organization=NULL`` and is then immediately
+        invisible to the list view (which scopes by ``request.facility``).
+        """
+        serializer.save(
+            prescribed_by=self.request.user,
+            **self.get_tenant_save_kwargs(),
+        )
 
     def create(self, request, *args, **kwargs):
         """Create prescription and return with full details."""

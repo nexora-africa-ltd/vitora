@@ -1075,7 +1075,13 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-        staff_profile = serializer.save()
+        # Auto-attach the current request's tenant (organization/facility) so
+        # the StaffProfile is properly scoped. Without this the row would be
+        # saved with organization=NULL, which then leaves the hub→cloud sync
+        # SyncQueue entry without tenant context and the cloud's
+        # `_upsert_hub_staff_profile` falls through to its (less reliable)
+        # role/department fallbacks.
+        staff_profile = serializer.save(**self.get_tenant_save_kwargs())
 
         AuditLog.log(
             action="staff_created",

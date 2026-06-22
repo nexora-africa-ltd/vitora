@@ -39,18 +39,23 @@ SYNC_REGISTRY: dict[str, SyncRegistryEntry] = {
         conflict_policy="REMOTE_WINS",
     ),
     "core.Role": SyncRegistryEntry(
-        direction=SyncDirection.DOWN,
+        direction=SyncDirection.BOTH,
         priority=3,
         conflict_policy="REMOTE_WINS",
     ),
     "core.Department": SyncRegistryEntry(
-        direction=SyncDirection.DOWN,
+        direction=SyncDirection.BOTH,
         priority=3,
         conflict_policy="REMOTE_WINS",
     ),
     "core.StaffProfile": SyncRegistryEntry(
         direction=SyncDirection.BOTH,
         priority=4,
+        conflict_policy="LAST_WRITE_WINS",
+    ),
+    "core.OrgMembership": SyncRegistryEntry(
+        direction=SyncDirection.BOTH,
+        priority=5,
         conflict_policy="LAST_WRITE_WINS",
     ),
     "auth.User": SyncRegistryEntry(
