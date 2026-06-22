@@ -202,6 +202,74 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
             "invited_by_id": instance.invited_by_id,
         }
 
+    if model_label == "scheduling.Resource":
+        organization = getattr(instance, "organization", None)
+        facility = getattr(instance, "facility", None)
+        department = getattr(instance, "department", None)
+        staff_profile = getattr(instance, "staff_profile", None)
+        staff_user = getattr(staff_profile, "user", None) if staff_profile is not None else None
+        return {
+            "id": instance.pk,
+            "name": instance.name,
+            "resource_type": instance.resource_type,
+            "code": instance.code,
+            "is_active": instance.is_active,
+            "capacity": instance.capacity,
+            "staff_profile_id": instance.staff_profile_id,
+            "staff_username": getattr(staff_user, "username", "") if staff_user is not None else "",
+            "metadata": instance.metadata or {},
+            "description": instance.description or "",
+            "department_id": instance.department_id,
+            "department_code": getattr(department, "code", "") if department is not None else "",
+            "organization_id": instance.organization_id,
+            "organization_slug": getattr(organization, "slug", "")
+            if organization is not None
+            else "",
+            "facility_id": instance.facility_id,
+            "facility_mfl_code": getattr(facility, "mfl_code", "") if facility is not None else "",
+        }
+
+    if model_label == "clinics.Clinic":
+        organization = getattr(instance, "organization", None)
+        facility = getattr(instance, "facility", None)
+        department = getattr(instance, "department", None)
+        scheduling_resource = getattr(instance, "scheduling_resource", None)
+        return {
+            "id": instance.pk,
+            "name": instance.name,
+            "clinic_type": instance.clinic_type,
+            "code": instance.code,
+            "description": instance.description or "",
+            "location": instance.location or "",
+            "floor": instance.floor or "",
+            "capacity": instance.capacity,
+            "department_id": instance.department_id,
+            "department_code": getattr(department, "code", "") if department is not None else "",
+            "status": instance.status,
+            "requires_appointment": instance.requires_appointment,
+            "requires_referral": instance.requires_referral,
+            "accepts_walk_ins": instance.accepts_walk_ins,
+            "triage_required": instance.triage_required,
+            "eligibility_rules": instance.eligibility_rules,
+            "default_service_fee": instance.default_service_fee,
+            "sha_service_code": instance.sha_service_code or "",
+            "dhis2_org_unit_id": instance.dhis2_org_unit_id or "",
+            "moh_code": instance.moh_code or "",
+            "default_clinical_template_id": instance.default_clinical_template_id,
+            "is_sensitive": instance.is_sensitive,
+            "required_permission": instance.required_permission or "",
+            "scheduling_resource_id": instance.scheduling_resource_id,
+            "scheduling_resource_code": (
+                getattr(scheduling_resource, "code", "") if scheduling_resource is not None else ""
+            ),
+            "organization_id": instance.organization_id,
+            "organization_slug": getattr(organization, "slug", "")
+            if organization is not None
+            else "",
+            "facility_id": instance.facility_id,
+            "facility_mfl_code": getattr(facility, "mfl_code", "") if facility is not None else "",
+        }
+
     data = model_to_dict(instance, exclude=list(exclude_fields))
     # ``model_to_dict`` returns FieldFile instances for File/Image fields and
     # lists of related model instances for ManyToMany fields. Neither is JSON
