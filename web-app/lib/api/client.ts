@@ -162,8 +162,9 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 403) {
       const data = error.response.data as Record<string, unknown> | undefined;
       if (data && data.code === 'mfa_setup_required') {
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/settings')) {
-          window.location.href = '/settings?tab=security&reason=mfa_required';
+        if (typeof window !== 'undefined') {
+          // Dispatch event so MFAEnforcementOverlay can block all access
+          window.dispatchEvent(new CustomEvent('vitora:mfa-enforcement'));
         }
         return Promise.reject(error);
       }
