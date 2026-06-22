@@ -273,17 +273,65 @@ class HubCloudSyncWorker:
             )
 
             if response.status_code == 200:
-                logger.info(
-                    "Cloud push chunk %d accepted %d entr%s.",
-                    chunk_num,
-                    len(entry_ids),
-                    "y" if len(entry_ids) == 1 else "ies",
-                )
-                SyncQueue.objects.filter(pk__in=entry_ids).update(
-                    status="SYNCED",
-                    synced_at=timezone.now(),
-                )
-                return len(entry_ids)
+                try:
+                    body = response.json()
+                except (ValueError, AttributeError, TypeError):
+                    body = {}
+
+                rejections = body.get("rejections") or []
+                rejected_indices = {r["index"] for r in rejections if "index" in r}
+
+                if rejected_indices:
+                    # Separate accepted vs rejected entry IDs
+                    accepted_ids = [
+                        eid for idx, eid in enumerate(entry_ids) if idx not in rejected_indices
+                    ]
+                    rejected_ids = [
+                        eid for idx, eid in enumerate(entry_ids) if idx in rejected_indices
+                    ]
+
+                    if accepted_ids:
+                        SyncQueue.objects.filter(pk__in=accepted_ids).update(
+                            status="SYNCED",
+                            synced_at=timezone.now(),
+                        )
+                    if rejected_ids:
+                        # Mark individually as FAILED with their specific reason
+                        rejection_reasons = {
+                            r["index"]: r.get("reason", "Rejected by cloud")
+                            for r in rejections
+                            if "index" in r
+                        }
+                        for idx, eid in enumerate(entry_ids):
+                            if idx in rejected_indices:
+                                reason = rejection_reasons.get(idx, "Rejected by cloud")
+                                logger.warning(
+                                    "Cloud push chunk %d: entry %d rejected — %s",
+                                    chunk_num,
+                                    eid,
+                                    reason,
+                                )
+                                self._mark_failed([eid], reason[:500])
+
+                    logger.info(
+                        "Cloud push chunk %d: %d accepted, %d rejected.",
+                        chunk_num,
+                        len(accepted_ids),
+                        len(rejected_ids),
+                    )
+                    return len(accepted_ids)
+                else:
+                    logger.info(
+                        "Cloud push chunk %d accepted %d entr%s.",
+                        chunk_num,
+                        len(entry_ids),
+                        "y" if len(entry_ids) == 1 else "ies",
+                    )
+                    SyncQueue.objects.filter(pk__in=entry_ids).update(
+                        status="SYNCED",
+                        synced_at=timezone.now(),
+                    )
+                    return len(entry_ids)
             elif response.status_code == 429:
                 retry_after = self._retry_after_hint(response)
                 retry_suffix = f" Retry after {retry_after}." if retry_after else ""

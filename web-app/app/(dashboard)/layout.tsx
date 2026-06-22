@@ -12,6 +12,7 @@ import { Header } from '@/components/layout/header';
 import { CommandMenu } from '@/components/layout/command-menu';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { MFAGraceBanner } from '@/components/auth/mfa-grace-banner';
+import { MFAEnforcementOverlay } from '@/components/auth/mfa-enforcement-overlay';
 import { OnboardingBanner } from '@/components/auth/onboarding-banner';
 import { OfflineBanner } from '@/components/shared/offline-banner';
 import { LicenseBanner } from '@/components/shared/license-banner';
@@ -122,6 +123,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <AIPageContextSync />
               {/* Push notification prompt (shows once per session) */}
               <PushNotificationPrompt />
+              {/* MFA enforcement overlay (blocks all access when grace period expired) */}
+              <MFAEnforcementOverlay />
             </div>
             </LicenseGuard>
           </IdleTimerProvider>
