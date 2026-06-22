@@ -181,6 +181,36 @@ class TestWaitingQueueViewSetActions:
         waiting_queue_entry.refresh_from_db()
         assert waiting_queue_entry.status == "IN_TRIAGE"
 
+    def test_doctor_can_start_triage_with_perform_triage_permission(
+        self, authenticated_client, waiting_queue_entry, test_staff_profile
+    ):
+        """start_triage should honor TriageAssessment.perform_triage, not WaitingQueue.create."""
+        role = test_staff_profile.primary_role
+        role.permissions_matrix = {
+            "TriageAssessment": {
+                "read": True,
+                "create": True,
+                "update": True,
+                "perform_triage": True,
+                "view_triage_queue": True,
+            },
+            "WaitingQueue": {
+                "read": True,
+                "create": False,
+                "update": False,
+                "delete": False,
+            },
+        }
+        role.save(update_fields=["permissions_matrix"])
+
+        response = authenticated_client.post(
+            f"/api/triage/waiting/{waiting_queue_entry.id}/start-triage/",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        waiting_queue_entry.refresh_from_db()
+        assert waiting_queue_entry.status == "IN_TRIAGE"
+
     def test_cancel_entry_action(self, authenticated_client, waiting_queue_entry):
         """cancel action should change status to CANCELLED."""
         data = {"reason": "Patient left without being seen"}

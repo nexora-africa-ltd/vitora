@@ -702,6 +702,12 @@ class WriteRequiresRolePermission(permissions.BasePermission):
         "DELETE": "delete",
     }
 
+    CUSTOM_ACTION_PERMISSIONS = {
+        # Starting triage is a clinical triage action, not permission to create
+        # arbitrary WaitingQueue entries.
+        "start_triage": ("perform_triage", "TriageAssessment"),
+    }
+
     def has_permission(self, request, view):
         # Allow all safe methods (reads)
         if request.method in permissions.SAFE_METHODS:
@@ -722,14 +728,11 @@ class WriteRequiresRolePermission(permissions.BasePermission):
             if role and getattr(role, "code", "") in self.ADMIN_ROLE_CODES:
                 return True
 
-        # Resolve resource name from view
-        resource = self._get_resource_name(view)
+        action, resource = self._get_action_and_resource(request, view)
 
         # If resource cannot be determined, fail-open (don't block)
         if not resource or resource == "Unknown":
             return True
-
-        action = self.ACTION_MAP.get(request.method, "create")
 
         # Check StaffProfile permissions
         if profile:
@@ -744,6 +747,16 @@ class WriteRequiresRolePermission(permissions.BasePermission):
         # No staff profile — allow through (in production all users have profiles;
         # profileless users are typically test fixtures or system accounts).
         return True
+
+    def _get_action_and_resource(self, request, view) -> tuple[str, str]:
+        """Return the RBAC action/resource pair for a request."""
+        view_action = getattr(view, "action", "")
+        action_resource = getattr(view, "role_action_permissions", {}).get(view_action)
+        if action_resource is None:
+            action_resource = self.CUSTOM_ACTION_PERMISSIONS.get(view_action)
+        if action_resource is not None:
+            return action_resource
+        return self.ACTION_MAP.get(request.method, "create"), self._get_resource_name(view)
 
     def _get_resource_name(self, view):
         """Get model name from view's queryset or serializer."""

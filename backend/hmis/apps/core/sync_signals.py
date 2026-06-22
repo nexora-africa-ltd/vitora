@@ -81,6 +81,10 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
         # user's PK (see `_upsert_hub_user` soft-link logic).
         user = getattr(instance, "user", None)
         username = getattr(user, "username", "") if user is not None else ""
+        role = getattr(instance, "primary_role", None)
+        department = getattr(instance, "primary_department", None)
+        organization = getattr(instance, "organization", None)
+        facility = getattr(instance, "primary_facility", None)
         return {
             "id": instance.pk,
             "user_id": instance.user_id,
@@ -89,9 +93,19 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
             "title": instance.title or "",
             "middle_name": instance.middle_name or "",
             "primary_role_id": instance.primary_role_id,
+            "primary_role_code": getattr(role, "code", "") if role is not None else "",
             "primary_department_id": instance.primary_department_id,
+            "primary_department_code": (
+                getattr(department, "code", "") if department is not None else ""
+            ),
             "organization_id": instance.organization_id,
+            "organization_slug": getattr(organization, "slug", "")
+            if organization is not None
+            else "",
             "primary_facility_id": instance.primary_facility_id,
+            "primary_facility_mfl_code": (
+                getattr(facility, "mfl_code", "") if facility is not None else ""
+            ),
             "hwr_id": instance.hwr_id or "",
             "license_number": instance.license_number or "",
             "license_expiry": instance.license_expiry,
@@ -105,6 +119,9 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
         }
 
     if model_label == "core.Role":
+        organization = getattr(instance, "organization", None)
+        facility = getattr(instance, "facility", None)
+        parent_role = getattr(instance, "parent_role", None)
         return {
             "id": instance.pk,
             "code": instance.code or "",
@@ -113,14 +130,24 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
             "description": instance.description or "",
             "scope": instance.scope or "ORG",
             "organization_id": instance.organization_id,
+            "organization_slug": getattr(organization, "slug", "")
+            if organization is not None
+            else "",
             "facility_id": instance.facility_id,
+            "facility_mfl_code": getattr(facility, "mfl_code", "") if facility is not None else "",
             "permissions_matrix": instance.permissions_matrix or {},
             "hierarchy_level": instance.hierarchy_level,
             "parent_role_id": instance.parent_role_id,
+            "parent_role_code": getattr(parent_role, "code", "") if parent_role is not None else "",
             "is_active": getattr(instance, "is_active", True),
         }
 
     if model_label == "core.Department":
+        organization = getattr(instance, "organization", None)
+        facility = getattr(instance, "facility", None)
+        parent = getattr(instance, "parent", None)
+        head = getattr(instance, "head", None)
+        head_user = getattr(head, "user", None) if head is not None else None
         return {
             "id": instance.pk,
             "code": instance.code or "",
@@ -128,23 +155,47 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
             "description": instance.description or "",
             "department_type": instance.department_type or "",
             "organization_id": instance.organization_id,
+            "organization_slug": getattr(organization, "slug", "")
+            if organization is not None
+            else "",
             "facility_id": instance.facility_id,
+            "facility_mfl_code": getattr(facility, "mfl_code", "") if facility is not None else "",
             "parent_id": instance.parent_id,
+            "parent_code": getattr(parent, "code", "") if parent is not None else "",
             "head_id": instance.head_id,
+            "head_username": getattr(head_user, "username", "") if head_user is not None else "",
             "is_active": instance.is_active,
         }
 
     if model_label == "core.OrgMembership":
+        staff_profile = getattr(instance, "staff_profile", None)
+        staff_user = getattr(staff_profile, "user", None) if staff_profile is not None else None
+        organization = getattr(instance, "organization", None)
+        role = getattr(instance, "role", None)
+        department = getattr(instance, "department", None)
+        facility_mfl_codes = (
+            list(instance.facilities.values_list("mfl_code", flat=True)) if instance.pk else []
+        )
         return {
             "id": instance.pk,
             "staff_profile_id": instance.staff_profile_id,
+            "staff_profile_employee_id": (
+                getattr(staff_profile, "employee_id", "") if staff_profile is not None else ""
+            ),
+            "staff_username": getattr(staff_user, "username", "") if staff_user is not None else "",
             "organization_id": instance.organization_id,
+            "organization_slug": getattr(organization, "slug", "")
+            if organization is not None
+            else "",
             "role_id": instance.role_id,
+            "role_code": getattr(role, "code", "") if role is not None else "",
             "department_id": instance.department_id,
+            "department_code": getattr(department, "code", "") if department is not None else "",
             # M2M: list of facility PKs the member can access in this org.
             "facility_ids": list(instance.facilities.values_list("pk", flat=True))
             if instance.pk
             else [],
+            "facility_mfl_codes": facility_mfl_codes,
             "is_primary": instance.is_primary,
             "status": instance.status,
             "joined_at": instance.joined_at,
