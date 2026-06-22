@@ -197,8 +197,9 @@ export default function LoginPage() {
       }
 
       // MFA setup required and grace period already expired — force setup
+      // The MFAEnforcementOverlay in the dashboard layout will block all access
       if (result.mfaGraceExpired) {
-        router.push('/settings?tab=security');
+        router.push('/dashboard');
         return;
       }
 
