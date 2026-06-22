@@ -1196,6 +1196,8 @@ Hub activation seeds local mirror rows for identity/config data, and hub-local P
 | `core.Department` | `facility.mfl_code` + `code` |
 | `core.StaffProfile` | `username`, `employee_id`, role code, department code, facility MFL code, org slug |
 | `core.OrgMembership` | staff username/employee ID, role code, department code, org slug, facility MFL codes |
+| `scheduling.Resource` | `facility.mfl_code` + `code`, department code, staff username |
+| `clinics.Clinic` | `code`, facility MFL code, scheduling resource code, department code |
 
 When adding downward-sync payloads in `sync_signals.serialize_instance_for_sync()`, include natural-key hints for every FK that may point at activation-seeded hub rows. When materializing in `sync_materializer.py`, remap cloud FK IDs to local rows using those hints before saving. Otherwise `python manage.py hub_sync --full-pull` can receive valid cloud rows but silently log local FK/unique failures and leave the hub SQLite DB missing staff/role/membership data.
 

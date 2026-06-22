@@ -389,6 +389,117 @@ class TestSyncMaterializer:
         assert membership.department_id == sample_department.pk
         assert list(membership.facilities.values_list("pk", flat=True)) == [sample_facility.pk]
 
+    def test_materialize_resource_reconciles_by_facility_and_code(self, sample_facility):
+        """Cloud resources should update same-code local resources when PKs differ."""
+        from hmis.apps.core.sync_materializer import materialize_entry
+        from hmis.apps.scheduling.models import Resource
+
+        local_resource = Resource.objects.create(
+            name="General OPD",
+            resource_type="PLACE",
+            code="CLINIC-GOPD-001",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+
+        result = materialize_entry(
+            {
+                "table": "scheduling.Resource",
+                "operation": "CREATE",
+                "record_id": local_resource.pk + 1000,
+                "data": {
+                    "id": local_resource.pk + 1000,
+                    "name": "General OPD Updated",
+                    "resource_type": "PLACE",
+                    "code": local_resource.code,
+                    "facility_id": sample_facility.pk + 1000,
+                    "facility_mfl_code": sample_facility.mfl_code,
+                    "organization_id": sample_facility.organization_id + 1000,
+                    "organization_slug": sample_facility.organization.slug,
+                    "is_active": True,
+                    "capacity": 2,
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        assert (
+            Resource.objects.filter(code="CLINIC-GOPD-001", facility=sample_facility).count() == 1
+        )
+        local_resource.refresh_from_db()
+        assert local_resource.name == "General OPD Updated"
+        assert local_resource.capacity == 2
+
+    def test_materialize_clinic_remaps_scheduling_resource_by_code(self, sample_facility):
+        """Full pulls should not assign a clinic to another clinic's resource by cloud PK."""
+        from hmis.apps.clinics.models import Clinic
+        from hmis.apps.core.sync_materializer import materialize_entry
+        from hmis.apps.scheduling.models import Resource
+
+        other_resource = Resource.objects.create(
+            name="Dental Clinic",
+            resource_type="PLACE",
+            code="CLINIC-DENTAL-001",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+        Clinic.objects.create(
+            name="Dental Clinic",
+            clinic_type="DENTAL",
+            code="DENTAL-001",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+            scheduling_resource=other_resource,
+        )
+        target_resource = Resource.objects.create(
+            name="General OPD",
+            resource_type="PLACE",
+            code="CLINIC-GOPD-001",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+        target_clinic = Clinic.objects.create(
+            name="General OPD",
+            clinic_type="GENERAL_OPD",
+            code="GOPD-001",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+            scheduling_resource=target_resource,
+        )
+
+        result = materialize_entry(
+            {
+                "table": "clinics.Clinic",
+                "operation": "CREATE",
+                "record_id": target_clinic.pk + 1000,
+                "data": {
+                    "id": target_clinic.pk + 1000,
+                    "name": "General OPD Cloud",
+                    "clinic_type": "GENERAL_OPD",
+                    "code": target_clinic.code,
+                    "facility_id": sample_facility.pk + 1000,
+                    "facility_mfl_code": sample_facility.mfl_code,
+                    "organization_id": sample_facility.organization_id + 1000,
+                    "organization_slug": sample_facility.organization.slug,
+                    "scheduling_resource_id": other_resource.pk,
+                    "scheduling_resource_code": target_resource.code,
+                    "status": "ACTIVE",
+                    "accepts_walk_ins": True,
+                    "triage_required": True,
+                    "requires_appointment": False,
+                    "requires_referral": False,
+                    "capacity": 1,
+                    "is_sensitive": False,
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        target_clinic.refresh_from_db()
+        assert target_clinic.name == "General OPD Cloud"
+        assert target_clinic.scheduling_resource_id == target_resource.pk
+        assert Clinic.objects.get(code="DENTAL-001").scheduling_resource_id == other_resource.pk
+
     def test_materialize_facility_update(self, sample_facility):
         """A downward Facility update should change the local hub copy."""
         from hmis.apps.core.sync_materializer import materialize_entry

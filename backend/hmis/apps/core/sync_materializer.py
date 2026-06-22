@@ -217,6 +217,21 @@ def find_existing_for_materialized_create(model, cleaned_data: dict[str, Any]):
             if existing:
                 return existing
 
+    if model._meta.label == "scheduling.Resource":
+        code = cleaned_data.get("code")
+        facility_id = cleaned_data.get("facility_id")
+        if code and facility_id:
+            existing = model.objects.filter(code=code, facility_id=facility_id).first()
+            if existing:
+                return existing
+
+    if model._meta.label == "clinics.Clinic":
+        code = cleaned_data.get("code")
+        if code:
+            existing = model.objects.filter(code=code).first()
+            if existing:
+                return existing
+
     if model._meta.label == "auth.User":
         username = cleaned_data.get("username")
         if username:
@@ -268,6 +283,10 @@ def remap_materialized_foreign_keys(
         return remap_department_foreign_keys(cleaned_data, raw_data)
     if model._meta.label == "core.OrgMembership":
         return remap_org_membership_foreign_keys(cleaned_data, raw_data)
+    if model._meta.label == "scheduling.Resource":
+        return remap_resource_foreign_keys(cleaned_data, raw_data)
+    if model._meta.label == "clinics.Clinic":
+        return remap_clinic_foreign_keys(cleaned_data, raw_data)
     return remap_common_tenant_foreign_keys(cleaned_data, raw_data)
 
 
@@ -406,6 +425,64 @@ def remap_org_membership_foreign_keys(
         ).first()
         if department:
             cleaned["department_id"] = department.pk
+
+    return cleaned
+
+
+def remap_resource_foreign_keys(
+    cleaned_data: dict[str, Any], raw_data: dict[str, Any]
+) -> dict[str, Any]:
+    """Remap Resource tenant, department, and staff FKs by natural-key hints."""
+    cleaned = remap_common_tenant_foreign_keys(cleaned_data, raw_data)
+
+    staff_username = str(raw_data.get("staff_username") or "").strip()
+    if staff_username and "staff_profile_id" in cleaned:
+        from hmis.apps.core.models import StaffProfile
+
+        staff_profile = StaffProfile.objects.filter(user__username=staff_username).first()
+        if staff_profile:
+            cleaned["staff_profile_id"] = staff_profile.pk
+
+    department_code = str(raw_data.get("department_code") or "").strip()
+    facility_id = cleaned.get("facility_id")
+    if department_code and facility_id and "department_id" in cleaned:
+        from hmis.apps.core.models import Department
+
+        department = Department.objects.filter(
+            code=department_code, facility_id=facility_id
+        ).first()
+        if department:
+            cleaned["department_id"] = department.pk
+
+    return cleaned
+
+
+def remap_clinic_foreign_keys(
+    cleaned_data: dict[str, Any], raw_data: dict[str, Any]
+) -> dict[str, Any]:
+    """Remap Clinic tenant and scheduling-resource FKs by natural-key hints."""
+    cleaned = remap_common_tenant_foreign_keys(cleaned_data, raw_data)
+
+    department_code = str(raw_data.get("department_code") or "").strip()
+    facility_id = cleaned.get("facility_id")
+    if department_code and facility_id and "department_id" in cleaned:
+        from hmis.apps.core.models import Department
+
+        department = Department.objects.filter(
+            code=department_code, facility_id=facility_id
+        ).first()
+        if department:
+            cleaned["department_id"] = department.pk
+
+    scheduling_resource_code = str(raw_data.get("scheduling_resource_code") or "").strip()
+    if scheduling_resource_code and facility_id and "scheduling_resource_id" in cleaned:
+        from hmis.apps.scheduling.models import Resource
+
+        resource = Resource.objects.filter(
+            code=scheduling_resource_code, facility_id=facility_id
+        ).first()
+        if resource:
+            cleaned["scheduling_resource_id"] = resource.pk
 
     return cleaned
 
