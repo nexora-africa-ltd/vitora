@@ -1345,6 +1345,10 @@ def remap_staff_profile_foreign_keys(
             organization_id = getattr(facility, "organization_id", None)
             if organization_id:
                 cleaned["organization_id"] = organization_id
+    else:
+        # Cloud profile has no facility — preserve local hub assignment
+        # to prevent full-pull from wiping a manually assigned facility.
+        cleaned.pop("primary_facility_id", None)
 
     role_code = str(raw_data.get("primary_role_code") or "").strip()
     if role_code:
