@@ -19,6 +19,7 @@ from django.utils import timezone
 
 from hmis.apps.core.events import publish_event
 from hmis.apps.core.events.types import AIEvents
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import (
     AIAdvisoryOrderLink,
@@ -236,6 +237,8 @@ def auto_match_lab_order_item(sender, instance, created, **kwargs):
     """When a LabOrderItem is created, try to auto-match to advisory suggestions."""
     if not created:
         return
+    if is_sync_materialization_active():
+        return
     _attempt_auto_match_lab_item(instance)
 
 
@@ -244,6 +247,8 @@ def auto_match_imaging_order_item(sender, instance, created, **kwargs):
     """When an ImagingOrderItem is created, try to auto-match to advisory suggestions."""
     if not created:
         return
+    if is_sync_materialization_active():
+        return
     _attempt_auto_match_imaging_item(instance)
 
 
@@ -251,5 +256,7 @@ def auto_match_imaging_order_item(sender, instance, created, **kwargs):
 def auto_match_prescription_item(sender, instance, created, **kwargs):
     """When a PrescriptionItem is created, try to auto-match to advisory suggestions."""
     if not created:
+        return
+    if is_sync_materialization_active():
         return
     _attempt_auto_match_prescription_item(instance)
