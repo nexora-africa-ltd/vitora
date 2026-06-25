@@ -1572,6 +1572,11 @@ class Encounter(HistoryMixin, FacilityScopedModel):
         if not self.patient or not self.patient.date_of_birth:
             return 0
         encounter_date = self.encounter_date or date.today()
+        if isinstance(encounter_date, str):
+            try:
+                encounter_date = date.fromisoformat(encounter_date)
+            except ValueError:
+                return 0
 
         dob = self.patient.date_of_birth
         if isinstance(dob, str):
