@@ -216,9 +216,7 @@ def _apply_hub_identity_change(*, table: str, operation: str, record_id, data: d
     if table == "core.Department":
         return _upsert_hub_department(record_id=record_id, data=data, installation=installation)
     if table == "core.OrgMembership":
-        return _upsert_hub_org_membership(
-            record_id=record_id, data=data, installation=installation
-        )
+        return _upsert_hub_org_membership(record_id=record_id, data=data, installation=installation)
     return _reject_identity(f"Unsupported identity table '{table}'.")
 
 
@@ -514,11 +512,7 @@ def _upsert_hub_role(*, record_id, data: dict, installation):
     role = candidates[0] if candidates else None
     # Guard against PK collisions: an existing cloud row at the hub's PK that
     # represents a different role (different ``code``) must NOT be overwritten.
-    if (
-        existing_by_pk is not None
-        and existing_by_code is None
-        and existing_by_pk.code != code
-    ):
+    if existing_by_pk is not None and existing_by_code is None and existing_by_pk.code != code:
         return _reject_identity(
             "Hub role sync hub-PK collides with a different cloud role at the same PK."
         )
@@ -565,8 +559,7 @@ def _upsert_hub_department(*, record_id, data: dict, installation):
     unexpected_fields = set(data) - HUB_DEPARTMENT_ALLOWED_FIELDS
     if unexpected_fields:
         return _reject_identity(
-            "Field(s) not allowed for hub department sync: "
-            f"{', '.join(sorted(unexpected_fields))}."
+            f"Field(s) not allowed for hub department sync: {', '.join(sorted(unexpected_fields))}."
         )
 
     record_pk = _record_id_to_int(record_id or data.get("id"))
@@ -584,9 +577,7 @@ def _upsert_hub_department(*, record_id, data: dict, installation):
     from hmis.apps.core.models import Department
 
     existing_by_pk = Department.objects.filter(pk=record_pk).first()
-    existing_by_code = Department.objects.filter(
-        facility=installation.facility, code=code
-    ).first()
+    existing_by_code = Department.objects.filter(facility=installation.facility, code=code).first()
 
     candidates = [item for item in (existing_by_pk, existing_by_code) if item]
     if candidates and len({item.pk for item in candidates}) > 1:
@@ -601,23 +592,14 @@ def _upsert_hub_department(*, record_id, data: dict, installation):
     if (
         existing_by_pk is not None
         and existing_by_code is None
-        and (
-            existing_by_pk.code != code
-            or existing_by_pk.facility_id != installation.facility_id
-        )
+        and (existing_by_pk.code != code or existing_by_pk.facility_id != installation.facility_id)
     ):
         return _reject_identity(
             "Hub department sync hub-PK collides with a different cloud department at the same PK."
         )
-    if (
-        department is not None
-        and department.organization_id != installation.organization_id
-    ):
+    if department is not None and department.organization_id != installation.organization_id:
         return _reject_identity("Hub department belongs to a different organization.")
-    if (
-        department is not None
-        and department.facility_id != installation.facility_id
-    ):
+    if department is not None and department.facility_id != installation.facility_id:
         return _reject_identity("Hub department belongs to a different facility.")
 
     if department is None:
@@ -653,17 +635,14 @@ def _upsert_hub_org_membership(*, record_id, data: dict, installation):
     unexpected_fields = set(data) - HUB_ORG_MEMBERSHIP_ALLOWED_FIELDS
     if unexpected_fields:
         return _reject_identity(
-            "Field(s) not allowed for hub membership sync: "
-            f"{', '.join(sorted(unexpected_fields))}."
+            f"Field(s) not allowed for hub membership sync: {', '.join(sorted(unexpected_fields))}."
         )
 
     record_pk = _record_id_to_int(record_id or data.get("id"))
     if record_pk is None:
         return _reject_identity("Hub membership sync requires a numeric record_id.")
 
-    staff_profile_id = _record_id_to_int(
-        data.get("staff_profile") or data.get("staff_profile_id")
-    )
+    staff_profile_id = _record_id_to_int(data.get("staff_profile") or data.get("staff_profile_id"))
     if staff_profile_id is None:
         return _reject_identity("Hub membership sync requires a staff_profile id.")
 
@@ -692,9 +671,7 @@ def _upsert_hub_org_membership(*, record_id, data: dict, installation):
 
     department_id = _record_id_to_int(data.get("department") or data.get("department_id"))
     department = (
-        _get_scoped_department(department_id, installation)
-        if department_id is not None
-        else None
+        _get_scoped_department(department_id, installation) if department_id is not None else None
     )
 
     existing_by_pk = OrgMembership.objects.filter(pk=record_pk).first()
@@ -731,14 +708,15 @@ def _upsert_hub_org_membership(*, record_id, data: dict, installation):
         fid_int = _record_id_to_int(fid)
         if fid_int is None:
             continue
-        if Facility.objects.filter(
-            pk=fid_int, organization=installation.organization
-        ).exists():
+        if Facility.objects.filter(pk=fid_int, organization=installation.organization).exists():
             allowed_ids.append(fid_int)
-    if installation.facility_id and installation.facility_id not in allowed_ids:
+    if (
+        installation.facility_id
+        and installation.facility_id not in allowed_ids
+        and membership.is_primary
+    ):
         # Always include the installation's own facility for primary memberships.
-        if membership.is_primary:
-            allowed_ids.append(installation.facility_id)
+        allowed_ids.append(installation.facility_id)
     membership.facilities.set(allowed_ids)
     return {"success": True}
 
@@ -865,22 +843,61 @@ def _build_downward_snapshot_changes(
         entry = get_registry_entry(model_label)
         if entry is None:
             continue
-        model = _model_label_to_model(model_label)
-        pk_name = model._meta.pk.name if model._meta.pk is not None else "pk"
-        qs = _scope_snapshot_queryset(
-            model_label,
-            model.objects.all(),
-            facility=facility,
-            organization=organization,
-        ).order_by(pk_name)
 
-        for instance in qs:
+        try:
+            model = _model_label_to_model(model_label)
+        except LookupError:
+            logger.warning("Skipping unresolvable sync model %s.", model_label)
+            continue
+
+        pk_name = model._meta.pk.name if model._meta.pk is not None else "pk"
+
+        try:
+            qs = _scope_snapshot_queryset(
+                model_label,
+                model.objects.all(),
+                facility=facility,
+                organization=organization,
+            ).order_by(pk_name)
+
+            # Eagerly load FK relations used by serialize_instance_for_sync /
+            # _with_relation_hints so we avoid N+1 lazy-loading queries.
+            fk_fields = [
+                f.name
+                for f in model._meta.concrete_fields
+                if getattr(f, "many_to_one", False) or getattr(f, "one_to_one", False)
+            ]
+            if fk_fields:
+                qs = qs.select_related(*fk_fields)
+        except Exception:
+            logger.exception("Failed to build queryset for %s; skipping model.", model_label)
+            continue
+
+        try:
+            instance_iter = iter(qs)
+        except Exception:
+            logger.exception(
+                "Failed to query %s for downward snapshot; skipping model.",
+                model_label,
+            )
+            continue
+
+        for instance in instance_iter:
             if skipped < cursor:
                 skipped += 1
                 continue
 
-            data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
-            data = add_sync_meta(data, direction=entry.direction, priority=entry.priority)
+            try:
+                data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
+                data = add_sync_meta(data, direction=entry.direction, priority=entry.priority)
+            except Exception:
+                logger.exception(
+                    "Failed to serialize %s pk=%s for downward snapshot; skipping.",
+                    model_label,
+                    instance.pk,
+                )
+                continue
+
             timestamp = (
                 getattr(instance, "updated_at", None)
                 or getattr(instance, "created_at", None)
