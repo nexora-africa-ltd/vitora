@@ -125,7 +125,7 @@ az containerapp update \
     "CORS_ALLOWED_ORIGINS=https://vitora-navy.vercel.app,https://staging.vitora.digital,http://localhost:3009" \
     "CSRF_TRUSTED_ORIGINS=https://vitora-navy.vercel.app,https://staging.vitora.digital" \
     "FRONTEND_URL=https://vitora-navy.vercel.app" \
-    "DOCUMENT_VERIFICATION_URL=https://vitora-navy.vercel.app/verify" \
+    "DOCUMENT_VERIFICATION_URL=https://staging.vitora.digital/verify" \
     "CLOUD_API_BASE_URL=${PUBLIC_API_BASE_URL}" \
     "SYNC_SERVER_URL=${PUBLIC_SYNC_SERVER_URL}" \
     "DEFAULT_FROM_EMAIL=noreply@vitora.digital" \
@@ -203,8 +203,8 @@ az containerapp update \
     "SMS_SENDER_ID=${SMS_SENDER_ID:-VitoraHMIS}" \
     "AT_API_KEY=secretref:at-api-key" \
     "AT_USERNAME=${AT_USERNAME:-sandbox}" \
-    "WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID:-vitora-navy.vercel.app,staging.vitora.digital}" \
-    "WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN:-https://vitora-navy.vercel.app,https://staging.vitora.digital}" \
+    "WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID:-staging.vitora.digital}" \
+    "WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN:-https://staging.vitora.digital}" \
     "METABASE_SITE_URL=${METABASE_SITE_URL:-https://vitora-metabase.agreeabledune-6cc420cc.eastus.azurecontainerapps.io}" \
     "METABASE_API_URL=${METABASE_API_URL:-http://vitora-metabase}" \
     "METABASE_EMBEDDING_SECRET=secretref:metabase-embedding-secret" \
