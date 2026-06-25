@@ -18,6 +18,7 @@ from django.dispatch import receiver
 
 from hmis.apps.billing.models import Invoice, InvoiceItem
 from hmis.apps.core.events import PharmacyEvents, publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import Dispensing, Prescription, PrescriptionItem, StockBatch
 
@@ -36,6 +37,11 @@ def create_invoice_item_for_prescription(sender, instance, created, **kwargs):
     4. Skip if prescription has no encounter (walk-in pharmacy)
     """
     if not created:
+        return
+
+    # Cloud already created the invoice item; the synced copy is mirrored
+    # separately via billing.InvoiceItem entries.
+    if is_sync_materialization_active():
         return
 
     prescription = instance.prescription
@@ -178,6 +184,10 @@ def handle_dispensing_billing(sender, instance, created, **kwargs):
     3. Only process new dispensing records (not updates)
     """
     if not created:
+        return
+
+    # Cloud already handled billing linkage; mirrored via synced rows.
+    if is_sync_materialization_active():
         return
 
     drug = instance.drug
@@ -464,6 +474,11 @@ def sync_ward_stock_on_batch_receive(sender, instance, created, **kwargs):
     (aggregate level tracking).
     """
     if not created:
+        return
+
+    # Cloud-originated batches already had their ward stock derived; the
+    # WardStock rows themselves are synced separately.
+    if is_sync_materialization_active():
         return
 
     store_location = instance.store_location

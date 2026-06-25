@@ -1621,22 +1621,42 @@ def get_model_for_label(model_label: str):
 def clean_model_data(
     model, data: dict[str, Any], *, exclude_fields: tuple[str, ...] = ()
 ) -> dict[str, Any]:
-    """Keep only concrete model fields and map FK values to *_id fields."""
+    """Keep only concrete model fields and map FK values to *_id fields.
+
+    Field values are coerced through ``field.to_python()`` so date/time/datetime
+    columns arrive as native Python objects on the hub. Without this, signals
+    that call ``shift_date.strftime()`` or ``datetime.combine(shift_date, ...)``
+    crash because JSON deserialization leaves them as plain strings.
+    """
+    import contextlib
+
+    from django.core.exceptions import ValidationError
+
     cleaned: dict[str, Any] = {}
     for field in model._meta.concrete_fields:
         if field.primary_key:
             continue
         if field.name in exclude_fields or field.attname in exclude_fields:
             continue
+
+        is_relation = getattr(field, "many_to_one", False) or getattr(field, "one_to_one", False)
+
         if field.name in data:
-            key = (
-                field.attname
-                if getattr(field, "many_to_one", False) or getattr(field, "one_to_one", False)
-                else field.name
-            )
-            cleaned[key] = data[field.name]
+            key = field.attname if is_relation else field.name
+            value = data[field.name]
         elif field.attname in data:
-            cleaned[field.attname] = data[field.attname]
+            key = field.attname
+            value = data[field.attname]
+        else:
+            continue
+
+        if value is not None and not is_relation:
+            # Leave value as-is on failure; downstream validation will surface
+            # a clearer error if the field truly can't accept it.
+            with contextlib.suppress(ValidationError, TypeError, ValueError):
+                value = field.to_python(value)
+
+        cleaned[key] = value
 
     cleaned.pop(SYNC_META_KEY, None)
     return cleaned
