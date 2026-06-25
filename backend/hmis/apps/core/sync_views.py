@@ -48,6 +48,8 @@ from hmis.apps.licensing.hub_auth import HubLicenseOrJWTAuthentication, IsAuthen
 
 logger = logging.getLogger(__name__)
 
+DOWNWARD_FULL_PULL_PAGE_LIMIT = 100
+
 # Tables allowed for sync (prevent arbitrary model writes)
 SYNCABLE_TABLES = {
     "patients_patient",
@@ -1180,7 +1182,11 @@ def sync_pull(request):
     direction = request.query_params.get("direction", "").lower()
     tables_param = request.query_params.get("tables", "")
     requested_limit = min(int(request.query_params.get("limit", "500")), 1000)
-    limit = min(requested_limit, 250) if direction == "down" and full else requested_limit
+    limit = (
+        min(requested_limit, DOWNWARD_FULL_PULL_PAGE_LIMIT)
+        if direction == "down" and full
+        else requested_limit
+    )
     cursor = max(int(request.query_params.get("cursor", "0")), 0)
 
     if not since and not full:
