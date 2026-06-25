@@ -790,7 +790,9 @@ def _scope_snapshot_queryset(model_label: str, qs, *, facility, organization):
     parent_filters = {
         "encounters.Diagnosis": "encounter__facility",
         "encounters.TreatmentPlan": "encounter__facility",
-        "encounters.Medication": "encounter__facility",
+        # Medication's parent is TreatmentPlan (no direct ``encounter`` FK), so
+        # the scope hop is treatment_plan -> encounter -> facility.
+        "encounters.Medication": "treatment_plan__encounter__facility",
         "triage.TriageAssessment": "encounter__facility",
         "clinics.ClinicRoom": "clinic__facility",
         "clinics.ClinicSchedule": "clinic__facility",
