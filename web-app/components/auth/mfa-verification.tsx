@@ -144,10 +144,18 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
       const credential = await startAuthentication({ optionsJSON: options });
       // Complete authentication with backend
       const result = await mfaApi.webauthnAuthenticateComplete(mfaToken, credential);
-      // Store tokens and user
+
+      // Store tokens (for desktop/JWT mode)
       localStorage.setItem('vitora_access_token', result.access);
       localStorage.setItem('vitora_refresh_token', result.refresh);
       localStorage.setItem('vitora_user', JSON.stringify(result.user));
+
+      // Set the auth cookie that Next.js middleware requires for route protection
+      document.cookie = `vitora_authenticated=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+
+      // Reset idle timer
+      localStorage.setItem('vitora_last_activity', Date.now().toString());
+
       mfaToast.success();
       await new Promise(resolve => setTimeout(resolve, 100));
       router.replace('/');
