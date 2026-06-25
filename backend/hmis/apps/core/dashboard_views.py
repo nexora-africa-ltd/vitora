@@ -353,17 +353,22 @@ def _get_billing_stats(today, facility=None, organization=None) -> dict:
 
         # Revenue today (from completed payments)
         revenue_today = Payment.objects.filter(
-            payment_date__date=today, status="COMPLETED", **scope
+            payment_date__date=today, status=Payment.Status.COMPLETED, **scope
         ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
 
         # Pending payments (unpaid invoices)
         pending_payments = Invoice.objects.filter(
-            status__in=["PENDING", "PARTIALLY_PAID"], **scope
+            status__in=[Invoice.Status.PENDING, Invoice.Status.PARTIAL], **scope
         ).aggregate(total=Sum("balance_due"))["total"] or Decimal("0")
 
         # SHA claims pending
         sha_claims_pending = SHAClaim.objects.filter(
-            status__in=["PENDING", "SUBMITTED", "UNDER_REVIEW"], **scope
+            status__in=[
+                SHAClaim.ClaimStatus.PENDING_SUBMISSION,
+                SHAClaim.ClaimStatus.SUBMITTED,
+                SHAClaim.ClaimStatus.UNDER_REVIEW,
+            ],
+            **scope,
         ).count()
 
         return {
