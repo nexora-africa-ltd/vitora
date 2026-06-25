@@ -271,7 +271,7 @@ def _sync_clinic_schedule_to_scheduling(clinic_schedule):
         )
 
     logger.info(
-        f"Synced ClinicSchedule {clinic_schedule.pk} → scheduling.Schedule "
+        f"Synced ClinicSchedule {clinic_schedule.pk} -> scheduling.Schedule "
         f"for {clinic.name} ({clinic_schedule.get_day_of_week_display()})"
     )
 
