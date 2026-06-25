@@ -13,6 +13,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import LaboratoryEvents, publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import LabOrder, LabOrderItem, LabQueue, LabResult, Specimen
 
@@ -27,6 +28,10 @@ def create_lab_queue_entry(sender, instance, created, **kwargs):
     Only creates queue entries for in-house orders (not external lab referrals).
     Queue entry is created when order status is ORDERED or when initially created.
     """
+    # Cloud already created the LabQueue mirror; it is synced separately.
+    if is_sync_materialization_active():
+        return
+
     # Only process for in-house orders
     if instance.order_type != "IN_HOUSE":
         return
@@ -75,6 +80,9 @@ def create_lab_queue_on_item_add(sender, instance, created, **kwargs):
     if not created:
         return
 
+    if is_sync_materialization_active():
+        return
+
     lab_order = instance.lab_order
 
     # Only process for in-house orders
@@ -113,6 +121,9 @@ def sync_lab_queue_priority(sender, instance, created, **kwargs):
     if created:
         return
 
+    if is_sync_materialization_active():
+        return
+
     try:
         queue_entry = LabQueue.objects.filter(lab_order=instance).first()
         if queue_entry and queue_entry.priority != instance.priority:
@@ -129,6 +140,9 @@ def create_specimen_for_queue(sender, instance, created, **kwargs):
     Auto-create a Specimen when a LabQueue entry is created.
     """
     if not created or instance.specimen_id:
+        return
+
+    if is_sync_materialization_active():
         return
 
     try:
@@ -171,6 +185,10 @@ def update_order_status_on_result(sender, instance, created, **kwargs):
     - All results entered: Order -> COMPLETED, Queue -> REVIEW
     """
     if not created:
+        return
+
+    # Cloud already advanced parent statuses; mirrored via synced rows.
+    if is_sync_materialization_active():
         return
 
     try:
@@ -322,6 +340,10 @@ def handle_lab_order_billing(sender, instance, **kwargs):
     if instance.status != "ORDERED":
         return
 
+    # Cloud already created the invoice items; they sync separately.
+    if is_sync_materialization_active():
+        return
+
     if not instance.bill_patient:
         logger.info(
             "Billing agent: skipping billing for lab order %s (bill_patient=False)",
@@ -397,6 +419,10 @@ def auto_trigger_egfr_on_creatinine(sender, instance, created, **kwargs):
     - The lab order must be linked to a patient with DOB and gender
     """
     if not created:
+        return
+
+    # Cloud already derived eGFR; skip to avoid duplicate auto-LabResult rows.
+    if is_sync_materialization_active():
         return
 
     # Only process numeric creatinine results
