@@ -15,6 +15,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import InpatientEvents, publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.inpatient.models import Admission, Ward
 from hmis.apps.inpatient.tasks import notify_supervisors_critical_violation
 from hmis.apps.inpatient.websockets import (
@@ -29,6 +30,9 @@ logger = logging.getLogger(__name__)
 def close_source_opd_encounter_on_admission(sender, instance, created, **kwargs):
     """Close the source OPD encounter once a real admission handoff exists."""
     if not created or not instance.opd_encounter_id:
+        return
+
+    if is_sync_materialization_active():
         return
 
     encounter = instance.opd_encounter

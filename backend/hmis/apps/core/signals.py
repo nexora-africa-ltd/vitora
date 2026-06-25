@@ -13,6 +13,7 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import ClinicalEvents, CoreEvents, OrganizationEvents, publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +190,11 @@ def enforce_unique_email(sender, instance, **kwargs):
 @receiver(post_save, sender="patients.Patient")
 def patient_activity_signal(sender, instance, created, **kwargs):
     """Create activity feed entry when a patient is created."""
-    if created:
+    if not created:
+        return
+    if is_sync_materialization_active():
+        return
+    if True:
         from .models import ActivityFeed
 
         ActivityFeed.log_activity(
@@ -220,7 +225,11 @@ def patient_activity_signal(sender, instance, created, **kwargs):
 @receiver(post_save, sender="encounters.Encounter")
 def encounter_activity_signal(sender, instance, created, **kwargs):
     """Create activity feed entry when an encounter is created."""
-    if created:
+    if not created:
+        return
+    if is_sync_materialization_active():
+        return
+    if True:
         from .models import ActivityFeed
 
         patient_name = (
@@ -259,6 +268,8 @@ def encounter_activity_signal(sender, instance, created, **kwargs):
 @receiver(post_save, sender="triage.TriageAssessment")
 def triage_activity_signal(sender, instance, created, **kwargs):
     """Create activity feed entry when triage assessment is completed."""
+    if is_sync_materialization_active():
+        return
     # Only log when triage is completed (not on creation)
     if getattr(instance, "status", None) == "COMPLETED":
         from .models import ActivityFeed
@@ -297,7 +308,11 @@ def triage_activity_signal(sender, instance, created, **kwargs):
 @receiver(post_save, sender="laboratory.LabOrder")
 def lab_order_activity_signal(sender, instance, created, **kwargs):
     """Create activity feed entry when lab order is created."""
-    if created:
+    if not created:
+        return
+    if is_sync_materialization_active():
+        return
+    if True:
         from .models import ActivityFeed
 
         patient_name = "Unknown"
@@ -319,7 +334,11 @@ def lab_order_activity_signal(sender, instance, created, **kwargs):
 @receiver(post_save, sender="pharmacy.Prescription")
 def prescription_activity_signal(sender, instance, created, **kwargs):
     """Create activity feed entry when prescription is created."""
-    if created:
+    if not created:
+        return
+    if is_sync_materialization_active():
+        return
+    if True:
         from .models import ActivityFeed
 
         patient_name = "Unknown"
@@ -341,7 +360,11 @@ def prescription_activity_signal(sender, instance, created, **kwargs):
 @receiver(post_save, sender="billing.Payment")
 def payment_activity_signal(sender, instance, created, **kwargs):
     """Create activity feed entry when payment is received."""
-    if created and getattr(instance, "status", None) == "COMPLETED":
+    if not created:
+        return
+    if is_sync_materialization_active():
+        return
+    if getattr(instance, "status", None) == "COMPLETED":
         from .models import ActivityFeed
 
         ActivityFeed.log_activity(
@@ -362,7 +385,11 @@ def payment_activity_signal(sender, instance, created, **kwargs):
 @receiver(post_save, sender="billing.Invoice")
 def invoice_activity_signal(sender, instance, created, **kwargs):
     """Create activity feed entry when invoice is created."""
-    if created:
+    if not created:
+        return
+    if is_sync_materialization_active():
+        return
+    if True:
         from .models import ActivityFeed
 
         patient_name = "Unknown"

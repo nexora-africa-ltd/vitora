@@ -15,6 +15,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import SchedulingEvents, publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.scheduling.models import (
     Appointment,
     AssignmentDecision,
@@ -77,6 +78,8 @@ def publish_appointment_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Schedule)
 def publish_schedule_event(sender, instance, created, **kwargs):
     """Publish domain event when a schedule (timetable entry) is created or updated."""
+    if is_sync_materialization_active():
+        return
     event_type = SchedulingEvents.SCHEDULE_CREATED if created else SchedulingEvents.SCHEDULE_UPDATED
     publish_event(
         event_type=event_type,
@@ -189,6 +192,8 @@ _SHIFT_STATUS_EVENT_MAP = {
 @receiver(post_save, sender=Shift)
 def publish_shift_event(sender, instance, created, **kwargs):
     """Publish domain event when a shift is created or changes status."""
+    if is_sync_materialization_active():
+        return
     if created:
         if instance.is_emergency:
             event_type = SchedulingEvents.SHIFT_EMERGENCY_CREATED
@@ -428,6 +433,8 @@ def auto_create_clinic_resource(sender, instance, created, **kwargs):
     """
     if not created:
         return
+    if is_sync_materialization_active():
+        return
     if getattr(instance, "_skip_resource_sync", False):
         return
     try:
@@ -448,6 +455,8 @@ def auto_create_clinic_resource(sender, instance, created, **kwargs):
 def auto_create_ward_resource(sender, instance, created, **kwargs):
     """Auto-create a PLACE resource when a Ward is created."""
     if not created:
+        return
+    if is_sync_materialization_active():
         return
     try:
         _auto_create_place_resource(
