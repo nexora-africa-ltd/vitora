@@ -294,6 +294,14 @@ if [[ -z "$PII_HMAC_KEY" ]]; then
     PII_HMAC_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
 fi
 
+# WebAuthn defaults to localhost-scoped values because that is the only
+# combination that works without TLS. Hubs reached over LAN by hostname/IP
+# must override these via env or by configuring the cloud facility settings.
+WEBAUTHN_RP_ID=$(python3 -c "import json; d=json.load(open('$ACTIVATION_RESPONSE')); print(d.get('webauthn_rp_id', ''))")
+WEBAUTHN_ORIGIN=$(python3 -c "import json; d=json.load(open('$ACTIVATION_RESPONSE')); print(d.get('webauthn_origin', ''))")
+WEBAUTHN_RP_ID="${WEBAUTHN_RP_ID:-${WEBAUTHN_RP_ID_OVERRIDE:-localhost}}"
+WEBAUTHN_ORIGIN="${WEBAUTHN_ORIGIN:-${WEBAUTHN_ORIGIN_OVERRIDE:-http://localhost:${HUB_PORT}}}"
+
 info "Activation successful!"
 echo ""
 echo "  Organization:  $ORG_NAME (ID: $HUB_ORGANIZATION_ID)"
@@ -526,6 +534,8 @@ SYNC_SERVER_URL=${SYNC_URL}
 LICENSE_TOKEN=${LICENSE_TOKEN}
 ALLOWED_HOSTS=*
 HUB_VERSION=${VERSION}
+WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID}
+WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN}
 EOF
 
 chmod 600 "$APP_DIR/.env"

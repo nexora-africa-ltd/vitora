@@ -203,6 +203,12 @@ $TibaBotEnableClerkingAssist = Resolve-ConfigValue "TIBABOT_ENABLE_CLERKING_ASSI
 $HubCloudAuthEnabled = Resolve-ConfigValue "HUB_CLOUD_AUTH_ENABLED" $activationResponse.hub_cloud_auth_enabled "true"
 $HubCloudAuthUrl = Resolve-ConfigValue "HUB_CLOUD_AUTH_URL" $activationResponse.hub_cloud_auth_url "$CloudUrl/api/auth/login/"
 
+# WebAuthn defaults to localhost-scoped values because that is the only
+# combination that works without TLS. Hubs reached over LAN by hostname/IP
+# must override these via -env or by configuring the cloud facility settings.
+$WebauthnRpId = Resolve-ConfigValue "WEBAUTHN_RP_ID" $activationResponse.webauthn_rp_id "localhost"
+$WebauthnOrigin = Resolve-ConfigValue "WEBAUTHN_ORIGIN" $activationResponse.webauthn_origin "http://localhost:$HubPort"
+
 Write-Info "Activation successful!"
 Write-Host ""
 Write-Host "  Organization:  $OrgName (ID: $OrgId)"
@@ -533,6 +539,8 @@ TIBABOT_ENABLE_LAB_ASSIST=$TibaBotEnableLabAssist
 TIBABOT_ENABLE_DISCHARGE_ASSIST=$TibaBotEnableDischargeAssist
 TIBABOT_ENABLE_CARE_PLAN=$TibaBotEnableCarePlan
 TIBABOT_ENABLE_CLERKING_ASSIST=$TibaBotEnableClerkingAssist
+WEBAUTHN_RP_ID=$WebauthnRpId
+WEBAUTHN_ORIGIN=$WebauthnOrigin
 "@
 
 Set-Content -Path "$InstallDir\.env" -Value $envContent
@@ -814,6 +822,8 @@ $envVars = @(
     "SYNC_SERVER_URL=$SyncUrl",
     "LICENSE_TOKEN=$LicenseToken",
     "ALLOWED_HOSTS=*",
+    "WEBAUTHN_RP_ID=$WebauthnRpId",
+    "WEBAUTHN_ORIGIN=$WebauthnOrigin",
     "HUB_CLOUD_AUTH_ENABLED=$HubCloudAuthEnabled",
     "HUB_CLOUD_AUTH_URL=$HubCloudAuthUrl",
     "TIBABOT_ENABLED=$TibaBotEnabled",

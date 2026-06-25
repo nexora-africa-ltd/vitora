@@ -101,6 +101,11 @@ def build_activation_bootstrap_payload(
         "sync_url": _activation_sync_url(request),
         "encryption_key": getattr(settings, "ENCRYPTION_KEY", ""),
         "pii_hmac_key": getattr(settings, "PII_HMAC_KEY", ""),
+        # WebAuthn config so installers can seed sensible defaults. Leaving
+        # these blank lets the installer fall back to localhost-scoped values
+        # (which is the only WebAuthn config that works over HTTP).
+        "webauthn_rp_id": getattr(settings, "WEBAUTHN_RP_ID", ""),
+        "webauthn_origin": getattr(settings, "WEBAUTHN_ORIGIN", ""),
         "organization": serialize_organization(organization),
         "facility": serialize_facility(facility) if facility else None,
         "bootstrap": {
