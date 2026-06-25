@@ -1024,13 +1024,28 @@ class WebAuthnAuthenticateCompleteView(APIView):
 
         from hmis.apps.core.views import _build_user_info
 
-        return Response(
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+
+        response = Response(
             {
-                "access": str(refresh.access_token),
-                "refresh": str(refresh),
+                "access": access_token,
+                "refresh": refresh_token,
                 "user": _build_user_info(user),
             }
         )
+
+        # Set httpOnly auth cookies for web clients so that subsequent API
+        # calls (which rely on cookie-based auth in web mode) succeed
+        # immediately after passkey verification. Desktop clients keep
+        # using the tokens returned in the response body.
+        is_desktop = request.headers.get("X-Vitora-Client", "").startswith("desktop")
+        if not is_desktop:
+            from hmis.apps.core.cookie_auth import _set_auth_cookies
+
+            response = _set_auth_cookies(response, access_token, refresh_token)
+
+        return response
 
 
 class MFAAwareTokenRefreshView(APIView):

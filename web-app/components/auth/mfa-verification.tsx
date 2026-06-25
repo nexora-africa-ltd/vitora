@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Shield, Key, Loader2, Smartphone, Archive, AlertTriangle, Fingerprint } from 'lucide-react';
 import { useAuth } from '@/lib/auth/context';
 import { mfaApi } from '@/lib/api/mfa';
@@ -34,9 +34,22 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
   const [isExpired, setIsExpired] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(MFA_TOKEN_LIFETIME_SECONDS);
   const [webAuthnError, setWebAuthnError] = useState<string | null>(null);
-  const { verifyMFA } = useAuth();
+  const { verifyMFA, verifyMFAWithWebAuthn } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const expiresAtRef = useRef(Date.now() + MFA_TOKEN_LIFETIME_SECONDS * 1000);
+
+  // Resolve where to send the user after a successful MFA verification.
+  // Honour ?callbackUrl=... (e.g. set by the proxy after an idle logout) when
+  // it's a safe same-origin path; otherwise fall back to '/' (middleware will
+  // route to /dashboard or /setup).
+  const resolvePostLoginPath = useCallback(() => {
+    const callbackUrl = searchParams.get('callbackUrl');
+    if (callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')) {
+      return callbackUrl;
+    }
+    return '/';
+  }, [searchParams]);
 
   // Wall-clock countdown — works correctly even when tab is backgrounded.
   // setInterval is throttled to ~1/min in background tabs, so we also
@@ -101,8 +114,9 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
       // Small delay to ensure localStorage writes are committed before navigation
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Use replace to prevent going back to login page
-      router.replace('/');
+      // Use replace to prevent going back to login page. Preserve callbackUrl
+      // when the user was bounced here from a protected route (e.g. idle logout).
+      router.replace(resolvePostLoginPath());
     } catch (err) {
       mfaToast.error(err);
     } finally {
@@ -142,23 +156,15 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
       const options = JSON.parse(optionsJSON);
       // Trigger browser passkey/biometric prompt
       const credential = await startAuthentication({ optionsJSON: options });
-      // Complete authentication with backend
-      const result = await mfaApi.webauthnAuthenticateComplete(mfaToken, credential);
 
-      // Store tokens (for desktop/JWT mode)
-      localStorage.setItem('vitora_access_token', result.access);
-      localStorage.setItem('vitora_refresh_token', result.refresh);
-      localStorage.setItem('vitora_user', JSON.stringify(result.user));
-
-      // Set the auth cookie that Next.js middleware requires for route protection
-      document.cookie = `vitora_authenticated=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-
-      // Reset idle timer
-      localStorage.setItem('vitora_last_activity', Date.now().toString());
+      // Complete authentication via the auth context so AuthGuard sees us as
+      // authenticated (the backend additionally sets httpOnly cookies for web
+      // clients so subsequent API calls do not 401).
+      await verifyMFAWithWebAuthn(mfaToken, credential);
 
       mfaToast.success();
       await new Promise(resolve => setTimeout(resolve, 100));
-      router.replace('/');
+      router.replace(resolvePostLoginPath());
     } catch (err) {
       if (err instanceof Error && err.name === 'NotAllowedError') {
         setWebAuthnError('Authentication was cancelled or timed out.');

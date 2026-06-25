@@ -93,6 +93,7 @@ export interface AuthContextValue extends AuthState {
   logout: () => void;
   refreshToken: () => Promise<void>;
   verifyMFA: (mfaToken: string, options: { token?: string; backupCode?: string }) => Promise<void>;
+  verifyMFAWithWebAuthn: (mfaToken: string, credential: unknown) => Promise<void>;
   updateUserFacility: (facility: UserFacility | null) => void;
 }
 
@@ -479,6 +480,89 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // MFA verification via WebAuthn / passkey — uses the same response shape
+  // as /api/auth/mfa-verify/ (the backend sets httpOnly cookies for web
+  // clients and returns body tokens for desktop). Updating auth state here
+  // is critical so AuthGuard does not bounce the user back to /login.
+  const verifyMFAWithWebAuthn = useCallback(async (
+    mfaToken: string,
+    credential: unknown,
+  ) => {
+    setState((prev) => ({ ...prev, isLoading: true }));
+
+    try {
+      const apiUrl = await getAuthApiUrl();
+      const { isDesktop } = await import('@/lib/desktop');
+      const desktop = isDesktop();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (desktop) {
+        headers['X-Vitora-Client'] = 'desktop/0.1.0';
+      }
+      const response = await fetch(
+        `${apiUrl}/api/mfa/webauthn/authenticate/complete/`,
+        {
+          method: 'POST',
+          headers,
+          credentials: 'include',  // Receive httpOnly cookies (web mode)
+          body: JSON.stringify({
+            mfa_token: mfaToken,
+            credential,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Passkey verification failed.'));
+      }
+
+      const data = await response.json();
+
+      if (desktop && data.access && data.refresh) {
+        const { tokenStorage } = await import('@/lib/auth/storage');
+        tokenStorage.setTokens(data.access, data.refresh);
+      }
+
+      const user: User = {
+        id: data.user.id,
+        username: data.user.username,
+        email: data.user.email,
+        first_name: data.user.first_name,
+        last_name: data.user.last_name,
+        is_staff: data.user.is_staff,
+        is_superuser: data.user.is_superuser,
+        permissions: data.user.permissions,
+        role: data.user.role ?? undefined,
+        role_display: data.user.role_display ?? undefined,
+        role_category: data.user.role_category ?? undefined,
+        phone_number: data.user.phone_number ?? undefined,
+        facility: data.user.facility ?? null,
+        onboarding_complete: data.user.onboarding_complete ?? undefined,
+        memberships: Array.isArray(data.user.memberships) ? data.user.memberships : undefined,
+        subscription_tier: data.user.subscription_tier ?? null,
+        plan_features: data.user.plan_features && typeof data.user.plan_features === 'object'
+          ? data.user.plan_features
+          : {},
+        ai_tokens_available: typeof data.user.ai_tokens_available === 'boolean'
+          ? data.user.ai_tokens_available
+          : undefined,
+      };
+
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      localStorage.setItem(IDLE_ACTIVITY_KEY, Date.now().toString());
+      document.cookie = `${AUTH_COOKIE_NAME}=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+
+      setState({
+        user,
+        tokens: null,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } catch (error) {
+      setState((prev) => ({ ...prev, isLoading: false }));
+      throw error;
+    }
+  }, []);
+
   // Logout function — clears httpOnly cookies via backend + local state
   const logout = useCallback(() => {
     // Clear httpOnly cookies server-side (fire-and-forget)
@@ -548,6 +632,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         refreshToken,
         verifyMFA,
+        verifyMFAWithWebAuthn,
         updateUserFacility,
       }}
     >
