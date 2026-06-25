@@ -859,6 +859,18 @@ def _build_downward_snapshot_changes(
                 facility=facility,
                 organization=organization,
             ).order_by(pk_name)
+
+            # Eagerly load FK relations used by serialize_instance_for_sync /
+            # _with_relation_hints. Without this, serializing 1000 rows can
+            # trigger thousands of individual SELECTs (N+1) and easily
+            # exceed the hub's HTTP read timeout.
+            fk_fields = [
+                f.name
+                for f in model._meta.concrete_fields
+                if getattr(f, "many_to_one", False) or getattr(f, "one_to_one", False)
+            ]
+            if fk_fields:
+                qs = qs.select_related(*fk_fields)
         except Exception:
             logger.exception("Failed to build queryset for %s; skipping model.", model_label)
             continue
