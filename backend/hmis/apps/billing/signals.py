@@ -20,6 +20,7 @@ from django.dispatch import receiver
 
 from hmis.apps.billing.models import Invoice, Payment, SupplierBill, SupplierPayment
 from hmis.apps.core.events import BillingEvents, publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.encounters.models import Encounter
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,9 @@ def create_invoice_for_encounter(sender, instance, created, **kwargs):
     3. Link the invoice to the encounter
     """
     if not created:
+        return
+
+    if is_sync_materialization_active():
         return
 
     # Check if patient already has a draft invoice from today
@@ -202,6 +206,9 @@ def handle_discharge_billing(sender, instance, created, **kwargs):
     if not created:
         return
 
+    if is_sync_materialization_active():
+        return
+
     try:
         from hmis.apps.billing.agent import BillingAgentService
 
@@ -221,6 +228,9 @@ def handle_discharge_billing(sender, instance, created, **kwargs):
 def handle_admission_billing(sender, instance, created, **kwargs):
     """Auto-bill admission fee and first bed night on admission."""
     if not created:
+        return
+
+    if is_sync_materialization_active():
         return
 
     try:
@@ -243,6 +253,9 @@ def handle_immunization_billing(sender, instance, created, **kwargs):
     """Auto-bill vaccine administration when ImmunizationRecord.status is ADMINISTERED."""
     # Trigger on both create (direct ADMINISTERED) and update (SCHEDULED → ADMINISTERED)
     if instance.status != "ADMINISTERED":
+        return
+
+    if is_sync_materialization_active():
         return
 
     try:

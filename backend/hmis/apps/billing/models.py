@@ -1201,7 +1201,9 @@ class Payment(models.Model):
         """Override save to generate payment reference and validate."""
         if not self.payment_reference:
             self.payment_reference = self.generate_reference()
-        self.full_clean()
+        # Skip validation during sync materialization — cloud already validated
+        if not getattr(self, "_from_sync_materializer", False):
+            self.full_clean()
         super().save(*args, **kwargs)
 
     def clean(self):
