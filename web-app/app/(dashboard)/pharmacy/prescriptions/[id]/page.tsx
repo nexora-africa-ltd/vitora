@@ -54,6 +54,8 @@ import { PrescriptionStatus } from '@/lib/types/pharmacy';
 import { useState } from 'react';
 import { useToast } from '@/lib/hooks/use-toast';
 import { PrescriptionPrintButton } from '@/components/pharmacy';
+import { useFacility } from '@/lib/context/facility-context';
+import type { FacilityInfo } from '@/lib/documents';
 import { useAuth } from '@/lib/auth/context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { CommentThread } from '@/components/comments';
@@ -87,6 +89,7 @@ export default function PrescriptionDetailPage() {
   const { data: prescription, isLoading, error } = usePrescription(prescriptionId);
   const cancelMutation = useCancelPrescription();
   const { user } = useAuth();
+  const { facility, facilityDetail } = useFacility();
   const { isAdmin } = usePermissions();
   const commentCount = useCommentCount('prescription', prescriptionId);
 
@@ -164,6 +167,23 @@ export default function PrescriptionDetailPage() {
   const canCancel = prescription.status === 'PENDING' || prescription.status === 'PARTIAL';
   const canDispense = prescription.status === 'PENDING' || prescription.status === 'PARTIAL';
   const isExpired = !prescription.is_valid && prescription.status !== 'CANCELLED';
+  const facilityInfo: FacilityInfo | undefined = facilityDetail
+    ? {
+        name: facilityDetail.name,
+        address: [facilityDetail.ward_name, facilityDetail.sub_county_name, facilityDetail.county_name]
+          .filter(Boolean)
+          .join(', '),
+        phone: facilityDetail.dha_facility_phone || undefined,
+        email: facilityDetail.dha_facility_email || undefined,
+        license: facilityDetail.dha_license_number || facilityDetail.mfl_code,
+        logo_url: facilityDetail.effective_logo_url || undefined,
+      }
+    : facility
+      ? {
+          name: facility.name,
+          license: facility.mfl_code,
+        }
+      : undefined;
 
   return (
     <div className="space-y-6" data-testid="prescription-detail">
@@ -206,6 +226,7 @@ export default function PrescriptionDetailPage() {
           )}
           <PrescriptionPrintButton
             prescription={prescription}
+            facility={facilityInfo}
             showOptions={true}
           />
         </div>

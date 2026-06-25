@@ -346,6 +346,8 @@ export default function PharmacyPage() {
             isLoading={rxLoading}
             error={rxError as Error | null}
             page={rxPage}
+            pageSize={rxPageSize}
+            totalCount={rxData?.count ?? 0}
             totalPages={rxTotalPages}
             onPageChange={setRxPage}
             onStatusFilter={(status) => {

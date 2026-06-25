@@ -65,15 +65,18 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
     """Serialize a model instance into JSON-safe sync data."""
     model_label = get_model_label(instance)
     if model_label == "auth.User":
-        return {
-            "id": instance.pk,
-            "username": instance.username,
-            "email": instance.email or "",
-            "first_name": instance.first_name or "",
-            "last_name": instance.last_name or "",
-            "password": instance.password,
-            "is_active": instance.is_active,
-        }
+        return _with_relation_hints(
+            {
+                "id": instance.pk,
+                "username": instance.username,
+                "email": instance.email or "",
+                "first_name": instance.first_name or "",
+                "last_name": instance.last_name or "",
+                "password": instance.password,
+                "is_active": instance.is_active,
+            },
+            instance,
+        )
 
     if model_label == "core.StaffProfile":
         # `username` is denormalized here so the cloud can resolve the linked
@@ -85,62 +88,72 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
         department = getattr(instance, "primary_department", None)
         organization = getattr(instance, "organization", None)
         facility = getattr(instance, "primary_facility", None)
-        return {
-            "id": instance.pk,
-            "user_id": instance.user_id,
-            "username": username,
-            "employee_id": instance.employee_id or "",
-            "title": instance.title or "",
-            "middle_name": instance.middle_name or "",
-            "primary_role_id": instance.primary_role_id,
-            "primary_role_code": getattr(role, "code", "") if role is not None else "",
-            "primary_department_id": instance.primary_department_id,
-            "primary_department_code": (
-                getattr(department, "code", "") if department is not None else ""
-            ),
-            "organization_id": instance.organization_id,
-            "organization_slug": getattr(organization, "slug", "")
-            if organization is not None
-            else "",
-            "primary_facility_id": instance.primary_facility_id,
-            "primary_facility_mfl_code": (
-                getattr(facility, "mfl_code", "") if facility is not None else ""
-            ),
-            "hwr_id": instance.hwr_id or "",
-            "license_number": instance.license_number or "",
-            "license_expiry": instance.license_expiry,
-            "license_verified": instance.license_verified,
-            "licensing_body": instance.licensing_body or "",
-            "specialization": instance.specialization or "",
-            "employment_status": instance.employment_status,
-            "employment_type": instance.employment_type,
-            "date_joined": instance.date_joined,
-            "date_left": instance.date_left,
-        }
+        return _with_relation_hints(
+            {
+                "id": instance.pk,
+                "user_id": instance.user_id,
+                "username": username,
+                "employee_id": instance.employee_id or "",
+                "title": instance.title or "",
+                "middle_name": instance.middle_name or "",
+                "primary_role_id": instance.primary_role_id,
+                "primary_role_code": getattr(role, "code", "") if role is not None else "",
+                "primary_department_id": instance.primary_department_id,
+                "primary_department_code": (
+                    getattr(department, "code", "") if department is not None else ""
+                ),
+                "organization_id": instance.organization_id,
+                "organization_slug": getattr(organization, "slug", "")
+                if organization is not None
+                else "",
+                "primary_facility_id": instance.primary_facility_id,
+                "primary_facility_mfl_code": (
+                    getattr(facility, "mfl_code", "") if facility is not None else ""
+                ),
+                "hwr_id": instance.hwr_id or "",
+                "license_number": instance.license_number or "",
+                "license_expiry": instance.license_expiry,
+                "license_verified": instance.license_verified,
+                "licensing_body": instance.licensing_body or "",
+                "specialization": instance.specialization or "",
+                "employment_status": instance.employment_status,
+                "employment_type": instance.employment_type,
+                "date_joined": instance.date_joined,
+                "date_left": instance.date_left,
+            },
+            instance,
+        )
 
     if model_label == "core.Role":
         organization = getattr(instance, "organization", None)
         facility = getattr(instance, "facility", None)
         parent_role = getattr(instance, "parent_role", None)
-        return {
-            "id": instance.pk,
-            "code": instance.code or "",
-            "name": instance.name or "",
-            "category": instance.category or "",
-            "description": instance.description or "",
-            "scope": instance.scope or "ORG",
-            "organization_id": instance.organization_id,
-            "organization_slug": getattr(organization, "slug", "")
-            if organization is not None
-            else "",
-            "facility_id": instance.facility_id,
-            "facility_mfl_code": getattr(facility, "mfl_code", "") if facility is not None else "",
-            "permissions_matrix": instance.permissions_matrix or {},
-            "hierarchy_level": instance.hierarchy_level,
-            "parent_role_id": instance.parent_role_id,
-            "parent_role_code": getattr(parent_role, "code", "") if parent_role is not None else "",
-            "is_active": getattr(instance, "is_active", True),
-        }
+        return _with_relation_hints(
+            {
+                "id": instance.pk,
+                "code": instance.code or "",
+                "name": instance.name or "",
+                "category": instance.category or "",
+                "description": instance.description or "",
+                "scope": instance.scope or "ORG",
+                "organization_id": instance.organization_id,
+                "organization_slug": getattr(organization, "slug", "")
+                if organization is not None
+                else "",
+                "facility_id": instance.facility_id,
+                "facility_mfl_code": getattr(facility, "mfl_code", "")
+                if facility is not None
+                else "",
+                "permissions_matrix": instance.permissions_matrix or {},
+                "hierarchy_level": instance.hierarchy_level,
+                "parent_role_id": instance.parent_role_id,
+                "parent_role_code": getattr(parent_role, "code", "")
+                if parent_role is not None
+                else "",
+                "is_active": getattr(instance, "is_active", True),
+            },
+            instance,
+        )
 
     if model_label == "core.Department":
         organization = getattr(instance, "organization", None)
@@ -148,24 +161,31 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
         parent = getattr(instance, "parent", None)
         head = getattr(instance, "head", None)
         head_user = getattr(head, "user", None) if head is not None else None
-        return {
-            "id": instance.pk,
-            "code": instance.code or "",
-            "name": instance.name or "",
-            "description": instance.description or "",
-            "department_type": instance.department_type or "",
-            "organization_id": instance.organization_id,
-            "organization_slug": getattr(organization, "slug", "")
-            if organization is not None
-            else "",
-            "facility_id": instance.facility_id,
-            "facility_mfl_code": getattr(facility, "mfl_code", "") if facility is not None else "",
-            "parent_id": instance.parent_id,
-            "parent_code": getattr(parent, "code", "") if parent is not None else "",
-            "head_id": instance.head_id,
-            "head_username": getattr(head_user, "username", "") if head_user is not None else "",
-            "is_active": instance.is_active,
-        }
+        return _with_relation_hints(
+            {
+                "id": instance.pk,
+                "code": instance.code or "",
+                "name": instance.name or "",
+                "description": instance.description or "",
+                "department_type": instance.department_type or "",
+                "organization_id": instance.organization_id,
+                "organization_slug": getattr(organization, "slug", "")
+                if organization is not None
+                else "",
+                "facility_id": instance.facility_id,
+                "facility_mfl_code": getattr(facility, "mfl_code", "")
+                if facility is not None
+                else "",
+                "parent_id": instance.parent_id,
+                "parent_code": getattr(parent, "code", "") if parent is not None else "",
+                "head_id": instance.head_id,
+                "head_username": getattr(head_user, "username", "")
+                if head_user is not None
+                else "",
+                "is_active": instance.is_active,
+            },
+            instance,
+        )
 
     if model_label == "core.OrgMembership":
         staff_profile = getattr(instance, "staff_profile", None)
@@ -176,31 +196,38 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
         facility_mfl_codes = (
             list(instance.facilities.values_list("mfl_code", flat=True)) if instance.pk else []
         )
-        return {
-            "id": instance.pk,
-            "staff_profile_id": instance.staff_profile_id,
-            "staff_profile_employee_id": (
-                getattr(staff_profile, "employee_id", "") if staff_profile is not None else ""
-            ),
-            "staff_username": getattr(staff_user, "username", "") if staff_user is not None else "",
-            "organization_id": instance.organization_id,
-            "organization_slug": getattr(organization, "slug", "")
-            if organization is not None
-            else "",
-            "role_id": instance.role_id,
-            "role_code": getattr(role, "code", "") if role is not None else "",
-            "department_id": instance.department_id,
-            "department_code": getattr(department, "code", "") if department is not None else "",
-            # M2M: list of facility PKs the member can access in this org.
-            "facility_ids": list(instance.facilities.values_list("pk", flat=True))
-            if instance.pk
-            else [],
-            "facility_mfl_codes": facility_mfl_codes,
-            "is_primary": instance.is_primary,
-            "status": instance.status,
-            "joined_at": instance.joined_at,
-            "invited_by_id": instance.invited_by_id,
-        }
+        return _with_relation_hints(
+            {
+                "id": instance.pk,
+                "staff_profile_id": instance.staff_profile_id,
+                "staff_profile_employee_id": (
+                    getattr(staff_profile, "employee_id", "") if staff_profile is not None else ""
+                ),
+                "staff_username": getattr(staff_user, "username", "")
+                if staff_user is not None
+                else "",
+                "organization_id": instance.organization_id,
+                "organization_slug": getattr(organization, "slug", "")
+                if organization is not None
+                else "",
+                "role_id": instance.role_id,
+                "role_code": getattr(role, "code", "") if role is not None else "",
+                "department_id": instance.department_id,
+                "department_code": getattr(department, "code", "")
+                if department is not None
+                else "",
+                # M2M: list of facility PKs the member can access in this org.
+                "facility_ids": list(instance.facilities.values_list("pk", flat=True))
+                if instance.pk
+                else [],
+                "facility_mfl_codes": facility_mfl_codes,
+                "is_primary": instance.is_primary,
+                "status": instance.status,
+                "joined_at": instance.joined_at,
+                "invited_by_id": instance.invited_by_id,
+            },
+            instance,
+        )
 
     if model_label == "scheduling.Resource":
         organization = getattr(instance, "organization", None)
@@ -208,67 +235,85 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
         department = getattr(instance, "department", None)
         staff_profile = getattr(instance, "staff_profile", None)
         staff_user = getattr(staff_profile, "user", None) if staff_profile is not None else None
-        return {
-            "id": instance.pk,
-            "name": instance.name,
-            "resource_type": instance.resource_type,
-            "code": instance.code,
-            "is_active": instance.is_active,
-            "capacity": instance.capacity,
-            "staff_profile_id": instance.staff_profile_id,
-            "staff_username": getattr(staff_user, "username", "") if staff_user is not None else "",
-            "metadata": instance.metadata or {},
-            "description": instance.description or "",
-            "department_id": instance.department_id,
-            "department_code": getattr(department, "code", "") if department is not None else "",
-            "organization_id": instance.organization_id,
-            "organization_slug": getattr(organization, "slug", "")
-            if organization is not None
-            else "",
-            "facility_id": instance.facility_id,
-            "facility_mfl_code": getattr(facility, "mfl_code", "") if facility is not None else "",
-        }
+        return _with_relation_hints(
+            {
+                "id": instance.pk,
+                "name": instance.name,
+                "resource_type": instance.resource_type,
+                "code": instance.code,
+                "is_active": instance.is_active,
+                "capacity": instance.capacity,
+                "staff_profile_id": instance.staff_profile_id,
+                "staff_username": getattr(staff_user, "username", "")
+                if staff_user is not None
+                else "",
+                "metadata": instance.metadata or {},
+                "description": instance.description or "",
+                "department_id": instance.department_id,
+                "department_code": getattr(department, "code", "")
+                if department is not None
+                else "",
+                "organization_id": instance.organization_id,
+                "organization_slug": getattr(organization, "slug", "")
+                if organization is not None
+                else "",
+                "facility_id": instance.facility_id,
+                "facility_mfl_code": getattr(facility, "mfl_code", "")
+                if facility is not None
+                else "",
+            },
+            instance,
+        )
 
     if model_label == "clinics.Clinic":
         organization = getattr(instance, "organization", None)
         facility = getattr(instance, "facility", None)
         department = getattr(instance, "department", None)
         scheduling_resource = getattr(instance, "scheduling_resource", None)
-        return {
-            "id": instance.pk,
-            "name": instance.name,
-            "clinic_type": instance.clinic_type,
-            "code": instance.code,
-            "description": instance.description or "",
-            "location": instance.location or "",
-            "floor": instance.floor or "",
-            "capacity": instance.capacity,
-            "department_id": instance.department_id,
-            "department_code": getattr(department, "code", "") if department is not None else "",
-            "status": instance.status,
-            "requires_appointment": instance.requires_appointment,
-            "requires_referral": instance.requires_referral,
-            "accepts_walk_ins": instance.accepts_walk_ins,
-            "triage_required": instance.triage_required,
-            "eligibility_rules": instance.eligibility_rules,
-            "default_service_fee": instance.default_service_fee,
-            "sha_service_code": instance.sha_service_code or "",
-            "dhis2_org_unit_id": instance.dhis2_org_unit_id or "",
-            "moh_code": instance.moh_code or "",
-            "default_clinical_template_id": instance.default_clinical_template_id,
-            "is_sensitive": instance.is_sensitive,
-            "required_permission": instance.required_permission or "",
-            "scheduling_resource_id": instance.scheduling_resource_id,
-            "scheduling_resource_code": (
-                getattr(scheduling_resource, "code", "") if scheduling_resource is not None else ""
-            ),
-            "organization_id": instance.organization_id,
-            "organization_slug": getattr(organization, "slug", "")
-            if organization is not None
-            else "",
-            "facility_id": instance.facility_id,
-            "facility_mfl_code": getattr(facility, "mfl_code", "") if facility is not None else "",
-        }
+        return _with_relation_hints(
+            {
+                "id": instance.pk,
+                "name": instance.name,
+                "clinic_type": instance.clinic_type,
+                "code": instance.code,
+                "description": instance.description or "",
+                "location": instance.location or "",
+                "floor": instance.floor or "",
+                "capacity": instance.capacity,
+                "department_id": instance.department_id,
+                "department_code": getattr(department, "code", "")
+                if department is not None
+                else "",
+                "status": instance.status,
+                "requires_appointment": instance.requires_appointment,
+                "requires_referral": instance.requires_referral,
+                "accepts_walk_ins": instance.accepts_walk_ins,
+                "triage_required": instance.triage_required,
+                "eligibility_rules": instance.eligibility_rules,
+                "default_service_fee": instance.default_service_fee,
+                "sha_service_code": instance.sha_service_code or "",
+                "dhis2_org_unit_id": instance.dhis2_org_unit_id or "",
+                "moh_code": instance.moh_code or "",
+                "default_clinical_template_id": instance.default_clinical_template_id,
+                "is_sensitive": instance.is_sensitive,
+                "required_permission": instance.required_permission or "",
+                "scheduling_resource_id": instance.scheduling_resource_id,
+                "scheduling_resource_code": (
+                    getattr(scheduling_resource, "code", "")
+                    if scheduling_resource is not None
+                    else ""
+                ),
+                "organization_id": instance.organization_id,
+                "organization_slug": getattr(organization, "slug", "")
+                if organization is not None
+                else "",
+                "facility_id": instance.facility_id,
+                "facility_mfl_code": getattr(facility, "mfl_code", "")
+                if facility is not None
+                else "",
+            },
+            instance,
+        )
 
     data = model_to_dict(instance, exclude=list(exclude_fields))
     # ``model_to_dict`` returns FieldFile instances for File/Image fields and
@@ -282,7 +327,218 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
             data[key] = [item.pk for item in value]
     data["id"] = instance.pk
     json_safe = json.loads(json.dumps(data, cls=DjangoJSONEncoder))
-    return json_safe
+    return _with_relation_hints(json_safe, instance)
+
+
+def _with_relation_hints(data: dict, instance) -> dict:
+    """Add stable natural-key hints for common FK targets in sync payloads."""
+    hints = data.copy()
+
+    for field in instance._meta.concrete_fields:
+        if not (getattr(field, "many_to_one", False) or getattr(field, "one_to_one", False)):
+            continue
+        related = getattr(instance, field.name, None)
+        if related is None:
+            continue
+
+        prefix = field.name
+        related_label = related._meta.label
+
+        if related_label == "auth.User":
+            hints[f"{prefix}_username"] = getattr(related, "username", "") or ""
+        elif related_label == "patients.Patient":
+            hints[f"{prefix}_mrn"] = getattr(related, "mrn", "") or ""
+            hints[f"{prefix}_cr_number"] = getattr(related, "cr_number", "") or ""
+        elif related_label == "core.County":
+            hints[f"{prefix}_code"] = getattr(related, "code", "") or ""
+            hints[f"{prefix}_name"] = getattr(related, "name", "") or ""
+        elif related_label == "core.SubCounty":
+            county = getattr(related, "county", None)
+            hints[f"{prefix}_name"] = getattr(related, "name", "") or ""
+            hints[f"{prefix}_county_code"] = getattr(county, "code", "") if county else ""
+        elif related_label == "core.Ward":
+            sub_county = getattr(related, "sub_county", None)
+            county = getattr(sub_county, "county", None) if sub_county is not None else None
+            hints[f"{prefix}_name"] = getattr(related, "name", "") or ""
+            hints[f"{prefix}_sub_county_name"] = (
+                getattr(sub_county, "name", "") if sub_county is not None else ""
+            )
+            hints[f"{prefix}_county_code"] = getattr(county, "code", "") if county else ""
+        elif related_label == "core.Role":
+            hints[f"{prefix}_code"] = getattr(related, "code", "") or ""
+        elif related_label == "core.Department":
+            facility = getattr(related, "facility", None)
+            hints[f"{prefix}_code"] = getattr(related, "code", "") or ""
+            hints[f"{prefix}_facility_mfl_code"] = (
+                getattr(facility, "mfl_code", "") if facility is not None else ""
+            )
+        elif related_label == "core.StaffProfile":
+            user = getattr(related, "user", None)
+            hints[f"{prefix}_employee_id"] = getattr(related, "employee_id", "") or ""
+            hints[f"{prefix}_username"] = getattr(user, "username", "") if user else ""
+        elif related_label == "encounters.Encounter":
+            patient = getattr(related, "patient", None)
+            facility = getattr(related, "facility", None)
+            hints[f"{prefix}_patient_mrn"] = getattr(patient, "mrn", "") if patient else ""
+            hints[f"{prefix}_encounter_date"] = related.encounter_date
+            hints[f"{prefix}_encounter_type"] = related.encounter_type or ""
+            hints[f"{prefix}_facility_mfl_code"] = (
+                getattr(facility, "mfl_code", "") if facility is not None else ""
+            )
+            hints[f"{prefix}_chief_complaint"] = (related.chief_complaint or "")[:200]
+        elif related_label == "encounters.ICD10Code":
+            hints[f"{prefix}_code"] = getattr(related, "code", "") or ""
+        elif related_label == "encounters.TreatmentPlan":
+            encounter = getattr(related, "encounter", None)
+            if encounter is not None:
+                hints.update(_encounter_hints(prefix, encounter))
+        elif related_label == "encounters.TreatmentPlanTemplate":
+            hints[f"{prefix}_name"] = getattr(related, "name", "") or ""
+        elif related_label == "clinical_templates.ClinicalTemplate":
+            hints[f"{prefix}_name"] = getattr(related, "name", "") or ""
+            hints[f"{prefix}_template_type"] = getattr(related, "template_type", "") or ""
+            hints[f"{prefix}_specialty"] = getattr(related, "specialty", "") or ""
+        elif related_label == "clinics.Clinic":
+            hints[f"{prefix}_code"] = getattr(related, "code", "") or ""
+        elif related_label == "clinics.ClinicSession":
+            clinic = getattr(related, "clinic", None)
+            hints[f"{prefix}_clinic_code"] = getattr(clinic, "code", "") if clinic else ""
+            hints[f"{prefix}_session_date"] = related.session_date
+        elif related_label == "clinics.ClinicVisit":
+            session = getattr(related, "session", None)
+            clinic = getattr(session, "clinic", None) if session is not None else None
+            encounter = getattr(related, "encounter", None)
+            hints[f"{prefix}_clinic_code"] = getattr(clinic, "code", "") if clinic else ""
+            hints[f"{prefix}_session_date"] = getattr(session, "session_date", None)
+            hints[f"{prefix}_queue_number"] = getattr(related, "queue_number", None)
+            if encounter is not None:
+                hints.update(_encounter_hints(prefix, encounter))
+        elif related_label == "triage.TriageAssessment":
+            encounter = getattr(related, "encounter", None)
+            if encounter is not None:
+                hints.update(_encounter_hints(prefix, encounter))
+        elif related_label == "scheduling.Resource":
+            facility = getattr(related, "facility", None)
+            hints[f"{prefix}_code"] = getattr(related, "code", "") or ""
+            hints[f"{prefix}_facility_mfl_code"] = (
+                getattr(facility, "mfl_code", "") if facility is not None else ""
+            )
+        elif related_label == "scheduling.Appointment":
+            hints[f"{prefix}_appointment_number"] = getattr(related, "appointment_number", "") or ""
+        elif related_label == "scheduling.Schedule":
+            resource = getattr(related, "resource", None)
+            facility = getattr(resource, "facility", None) if resource is not None else None
+            hints[f"{prefix}_code"] = getattr(resource, "code", "") if resource else ""
+            hints[f"{prefix}_facility_mfl_code"] = (
+                getattr(facility, "mfl_code", "") if facility is not None else ""
+            )
+            hints[f"{prefix}_schedule_type"] = related.schedule_type
+            hints[f"{prefix}_day_of_week"] = related.day_of_week
+            hints[f"{prefix}_specific_date"] = related.specific_date
+            hints[f"{prefix}_start_time"] = related.start_time
+            hints[f"{prefix}_end_time"] = related.end_time
+            hints[f"{prefix}_effective_from"] = related.effective_from
+        elif related_label == "billing.Invoice":
+            hints[f"{prefix}_invoice_number"] = getattr(related, "invoice_number", "") or ""
+        elif related_label == "billing.InvoiceItem":
+            invoice = getattr(related, "invoice", None)
+            service = getattr(related, "service", None)
+            drug = getattr(related, "drug", None)
+            lab_order = getattr(related, "lab_order", None)
+            imaging_order = getattr(related, "imaging_order", None)
+            hints[f"{prefix}_invoice_number"] = (
+                getattr(invoice, "invoice_number", "") if invoice is not None else ""
+            )
+            hints[f"{prefix}_item_type"] = related.item_type
+            hints[f"{prefix}_description"] = related.description
+            hints[f"{prefix}_code"] = getattr(service, "code", "") if service else ""
+            hints[f"{prefix}_drug_code"] = getattr(drug, "code", "") if drug else ""
+            hints[f"{prefix}_lab_order_number"] = (
+                getattr(lab_order, "order_number", "") if lab_order is not None else ""
+            )
+            hints[f"{prefix}_imaging_order_number"] = (
+                getattr(imaging_order, "order_number", "") if imaging_order is not None else ""
+            )
+        elif related_label == "billing.Payment":
+            hints[f"{prefix}_payment_reference"] = getattr(related, "payment_reference", "") or ""
+        elif related_label == "billing.PaymentPoint":
+            facility = getattr(related, "facility", None)
+            hints[f"{prefix}_code"] = getattr(related, "code", "") or ""
+            hints[f"{prefix}_facility_mfl_code"] = (
+                getattr(facility, "mfl_code", "") if facility is not None else ""
+            )
+        elif related_label == "pharmacy.Prescription":
+            hints[f"{prefix}_prescription_number"] = (
+                getattr(related, "prescription_number", "") or ""
+            )
+        elif related_label == "pharmacy.PrescriptionItem":
+            prescription = getattr(related, "prescription", None)
+            drug = getattr(related, "drug", None)
+            hints[f"{prefix}_prescription_number"] = (
+                getattr(prescription, "prescription_number", "") if prescription is not None else ""
+            )
+            hints[f"{prefix}_code"] = getattr(drug, "code", "") if drug else ""
+            hints[f"{prefix}_dosage"] = related.dosage
+        elif related_label == "laboratory.LabOrder":
+            hints[f"{prefix}_order_number"] = getattr(related, "order_number", "") or ""
+        elif related_label == "laboratory.TestCatalog":
+            facility = getattr(related, "facility", None)
+            hints[f"{prefix}_code"] = getattr(related, "code", "") or ""
+            hints[f"{prefix}_facility_mfl_code"] = (
+                getattr(facility, "mfl_code", "") if facility is not None else ""
+            )
+        elif related_label == "laboratory.LabOrderItem":
+            lab_order = getattr(related, "lab_order", None)
+            test = getattr(related, "test", None)
+            facility = getattr(test, "facility", None) if test is not None else None
+            hints[f"{prefix}_order_number"] = (
+                getattr(lab_order, "order_number", "") if lab_order is not None else ""
+            )
+            hints[f"{prefix}_code"] = getattr(test, "code", "") if test else ""
+            hints[f"{prefix}_facility_mfl_code"] = (
+                getattr(facility, "mfl_code", "") if facility is not None else ""
+            )
+        elif related_label == "laboratory.Specimen":
+            hints[f"{prefix}_barcode"] = getattr(related, "barcode", "") or ""
+        elif related_label == "imaging.ImagingOrder":
+            hints[f"{prefix}_order_number"] = getattr(related, "order_number", "") or ""
+        elif related_label == "imaging.RadiologyReport":
+            hints[f"{prefix}_report_number"] = getattr(related, "report_number", "") or ""
+        elif related_label == "inpatient.Admission":
+            hints[f"{prefix}_admission_number"] = getattr(related, "admission_number", "") or ""
+        elif related_label == "inpatient.Ward":
+            hints[f"{prefix}_code"] = getattr(related, "code", "") or ""
+        elif related_label == "inpatient.Bed":
+            ward = getattr(related, "ward", None)
+            hints[f"{prefix}_code"] = getattr(ward, "code", "") if ward else ""
+            hints[f"{prefix}_bed_number"] = getattr(related, "bed_number", "") or ""
+        elif related_label == "immunizations.VaccineDefinition":
+            hints[f"{prefix}_code"] = getattr(related, "code", "") or ""
+        elif related_label == "immunizations.ImmunizationRecord":
+            patient = getattr(related, "patient", None)
+            vaccine = getattr(related, "vaccine", None)
+            hints[f"{prefix}_mrn"] = getattr(patient, "mrn", "") if patient else ""
+            hints[f"{prefix}_code"] = getattr(vaccine, "code", "") if vaccine else ""
+            hints[f"{prefix}_dose_number"] = related.dose_number
+        elif related_label in {"billing.Service", "billing.ServiceCategory", "pharmacy.Drug"}:
+            hints[f"{prefix}_code"] = getattr(related, "code", "") or ""
+
+    return hints
+
+
+def _encounter_hints(prefix: str, encounter) -> dict:
+    """Return the stable encounter signature used by hub full-pull remapping."""
+    patient = getattr(encounter, "patient", None)
+    facility = getattr(encounter, "facility", None)
+    return {
+        f"{prefix}_patient_mrn": getattr(patient, "mrn", "") if patient else "",
+        f"{prefix}_encounter_date": encounter.encounter_date,
+        f"{prefix}_encounter_type": encounter.encounter_type or "",
+        f"{prefix}_facility_mfl_code": getattr(facility, "mfl_code", "")
+        if facility is not None
+        else "",
+        f"{prefix}_chief_complaint": (encounter.chief_complaint or "")[:200],
+    }
 
 
 def get_tenant_context(instance) -> tuple[object | None, object | None]:

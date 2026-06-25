@@ -500,6 +500,461 @@ class TestSyncMaterializer:
         assert target_clinic.scheduling_resource_id == target_resource.pk
         assert Clinic.objects.get(code="DENTAL-001").scheduling_resource_id == other_resource.pk
 
+    def test_materialize_encounter_remaps_patient_facility_and_user_hints(
+        self, sample_patient, sample_facility, test_user
+    ):
+        """Encounter full pulls should not depend on cloud Patient/User/Facility PKs."""
+        from hmis.apps.core.sync_materializer import materialize_entry
+        from hmis.apps.encounters.models import Encounter
+
+        result = materialize_entry(
+            {
+                "table": "encounters.Encounter",
+                "operation": "CREATE",
+                "record_id": 77001,
+                "data": {
+                    "id": 77001,
+                    "patient_id": sample_patient.pk + 1000,
+                    "patient_mrn": sample_patient.mrn,
+                    "facility_id": sample_facility.pk + 1000,
+                    "facility_mfl_code": sample_facility.mfl_code,
+                    "organization_id": sample_facility.organization_id + 1000,
+                    "organization_slug": sample_facility.organization.slug,
+                    "created_by_id": test_user.pk + 1000,
+                    "created_by_username": test_user.username,
+                    "encounter_type": "OPD",
+                    "encounter_date": "2026-06-22",
+                    "chief_complaint": "Cloud headache",
+                    "status": "CREATED",
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        encounter = Encounter.objects.get(pk=77001)
+        assert encounter.patient_id == sample_patient.pk
+        assert encounter.facility_id == sample_facility.pk
+        assert encounter.created_by_id == test_user.pk
+
+    def test_materialize_invoice_remaps_created_by_and_encounter_by_natural_keys(
+        self, sample_patient, sample_encounter, sample_facility, test_user
+    ):
+        """Invoices should remap cloud User and Encounter IDs before full_clean()."""
+        from hmis.apps.billing.models import Invoice
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        result = materialize_entry(
+            {
+                "table": "billing.Invoice",
+                "operation": "CREATE",
+                "record_id": 43001,
+                "data": {
+                    "id": 43001,
+                    "invoice_number": "INV-CLOUD-00043",
+                    "patient_id": sample_patient.pk + 1000,
+                    "patient_mrn": sample_patient.mrn,
+                    "encounter_id": sample_encounter.pk + 1000,
+                    "encounter_patient_mrn": sample_patient.mrn,
+                    "encounter_facility_mfl_code": sample_facility.mfl_code,
+                    "encounter_date": sample_encounter.encounter_date.isoformat(),
+                    "encounter_type": sample_encounter.encounter_type,
+                    "encounter_chief_complaint": sample_encounter.chief_complaint,
+                    "created_by_id": test_user.pk + 1000,
+                    "created_by_username": test_user.username,
+                    "facility_id": sample_facility.pk + 1000,
+                    "facility_mfl_code": sample_facility.mfl_code,
+                    "organization_id": sample_facility.organization_id + 1000,
+                    "organization_slug": sample_facility.organization.slug,
+                    "status": "draft",
+                    "payment_type": "cash",
+                    "invoice_date": "2026-06-22",
+                    "due_date": "2026-06-22",
+                    "subtotal": "100.00",
+                    "tax_amount": "0.00",
+                    "discount_amount": "0.00",
+                    "total_amount": "100.00",
+                    "amount_paid": "0.00",
+                    "balance_due": "100.00",
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        invoice = Invoice.objects.get(invoice_number="INV-CLOUD-00043")
+        assert invoice.patient_id == sample_patient.pk
+        assert invoice.encounter_id == sample_encounter.pk
+        assert invoice.created_by_id == test_user.pk
+        assert invoice.facility_id == sample_facility.pk
+
+    def test_materialize_invoice_item_remaps_invoice_and_service_by_codes(
+        self, sample_patient, sample_facility, test_user
+    ):
+        """Invoice items should remap parent invoice and service catalog IDs by natural keys."""
+        from hmis.apps.billing.models import Invoice, InvoiceItem, Service, ServiceCategory
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        invoice = Invoice.objects.create(
+            invoice_number="INV-CLOUD-ITEM-001",
+            patient=sample_patient,
+            facility=sample_facility,
+            organization=sample_facility.organization,
+            created_by=test_user,
+            invoice_date=date(2026, 6, 22),
+            due_date=date(2026, 6, 22),
+            total_amount="100.00",
+            balance_due="100.00",
+        )
+        category = ServiceCategory.objects.create(name="Consultation", code="CONS")
+        service = Service.objects.create(
+            category=category,
+            code="CONS-001",
+            name="Consultation",
+            unit_price="100.00",
+            created_by=test_user,
+        )
+
+        result = materialize_entry(
+            {
+                "table": "billing.InvoiceItem",
+                "operation": "CREATE",
+                "record_id": 44001,
+                "data": {
+                    "id": 44001,
+                    "invoice_id": invoice.pk + 1000,
+                    "invoice_invoice_number": invoice.invoice_number,
+                    "service_id": service.pk + 1000,
+                    "service_code": service.code,
+                    "item_type": "service",
+                    "description": "Consultation",
+                    "quantity": "1.00",
+                    "unit_price": "100.00",
+                    "line_total": "100.00",
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        item = InvoiceItem.objects.get(pk=44001)
+        assert item.invoice_id == invoice.pk
+        assert item.service_id == service.pk
+
+    def test_materialize_payment_remaps_invoice_user_and_payment_point(
+        self, sample_patient, sample_facility, test_user
+    ):
+        """Payments should remap invoice, cashier, and payment point natural keys."""
+        from hmis.apps.billing.models import Invoice, Payment, PaymentPoint
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        invoice = Invoice.objects.create(
+            invoice_number="INV-CLOUD-PAY-001",
+            patient=sample_patient,
+            facility=sample_facility,
+            organization=sample_facility.organization,
+            created_by=test_user,
+            invoice_date=date(2026, 6, 22),
+            due_date=date(2026, 6, 22),
+            total_amount="100.00",
+            balance_due="100.00",
+        )
+        payment_point = PaymentPoint.objects.create(
+            name="Cashier 1",
+            code="CASH-01",
+            method="cash",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+            created_by=test_user,
+        )
+
+        result = materialize_entry(
+            {
+                "table": "billing.Payment",
+                "operation": "CREATE",
+                "record_id": 45001,
+                "data": {
+                    "id": 45001,
+                    "payment_reference": "PAY-CLOUD-0001",
+                    "invoice_id": invoice.pk + 1000,
+                    "invoice_invoice_number": invoice.invoice_number,
+                    "payment_point_id": payment_point.pk + 1000,
+                    "payment_point_code": payment_point.code,
+                    "payment_point_facility_mfl_code": sample_facility.mfl_code,
+                    "received_by_id": test_user.pk + 1000,
+                    "received_by_username": test_user.username,
+                    "method": "cash",
+                    "amount": "50.00",
+                    "currency": "KES",
+                    "status": "pending",
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        payment = Payment.objects.get(payment_reference="PAY-CLOUD-0001")
+        assert payment.invoice_id == invoice.pk
+        assert payment.payment_point_id == payment_point.pk
+        assert payment.received_by_id == test_user.pk
+
+    def test_materialize_patient_remaps_location_hierarchy(
+        self, sample_county, sample_sub_county, sample_ward, test_user
+    ):
+        """Patients should remap Kenya location IDs by stable county/sub-county/ward keys."""
+        from hmis.apps.core.sync_materializer import materialize_entry
+        from hmis.apps.patients.models import Patient
+
+        result = materialize_entry(
+            {
+                "table": "patients.Patient",
+                "operation": "CREATE",
+                "record_id": 56001,
+                "data": {
+                    "id": 56001,
+                    "first_name": "Cloud",
+                    "last_name": "Patient",
+                    "date_of_birth": "1990-01-01",
+                    "gender": "F",
+                    "county_id": sample_county.pk + 1000,
+                    "county_code": sample_county.code,
+                    "sub_county_id": sample_sub_county.pk + 1000,
+                    "sub_county_name": sample_sub_county.name,
+                    "sub_county_county_code": sample_county.code,
+                    "ward_id": sample_ward.pk + 1000,
+                    "ward_name": sample_ward.name,
+                    "ward_sub_county_name": sample_sub_county.name,
+                    "ward_county_code": sample_county.code,
+                    "registered_by_id": test_user.pk + 1000,
+                    "registered_by_username": test_user.username,
+                    "consent_given": True,
+                    "referral_source": "self",
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        patient = Patient.objects.get(pk=56001)
+        assert patient.county_id == sample_county.pk
+        assert patient.sub_county_id == sample_sub_county.pk
+        assert patient.ward_id == sample_ward.pk
+        assert patient.registered_by_id == test_user.pk
+
+    def test_materialize_diagnosis_remaps_encounter_and_icd10(
+        self, sample_patient, sample_encounter, sample_facility
+    ):
+        """Diagnosis rows should remap parent encounter and ICD code by natural keys."""
+        from hmis.apps.core.sync_materializer import materialize_entry
+        from hmis.apps.encounters.models import Diagnosis, ICD10Code
+
+        code = ICD10Code.objects.create(
+            code="A00",
+            description="Cholera",
+            category="Certain infectious and parasitic diseases",
+            chapter=1,
+        )
+        result = materialize_entry(
+            {
+                "table": "encounters.Diagnosis",
+                "operation": "CREATE",
+                "record_id": 57001,
+                "data": {
+                    "id": 57001,
+                    "encounter_id": sample_encounter.pk + 1000,
+                    "encounter_patient_mrn": sample_patient.mrn,
+                    "encounter_facility_mfl_code": sample_facility.mfl_code,
+                    "encounter_date": sample_encounter.encounter_date.isoformat(),
+                    "encounter_type": sample_encounter.encounter_type,
+                    "encounter_chief_complaint": sample_encounter.chief_complaint,
+                    "icd10_code_id": code.pk + 1000,
+                    "icd10_code_code": code.code,
+                    "diagnosis_type": "PRIMARY",
+                    "certainty": "confirmed",
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        diagnosis = Diagnosis.objects.get(pk=57001)
+        assert diagnosis.encounter_id == sample_encounter.pk
+        assert diagnosis.icd10_code_id == code.pk
+
+    def test_materialize_clinic_visit_remaps_session_encounter_and_staff(
+        self, sample_patient, sample_encounter, sample_facility, test_user
+    ):
+        """Clinic visits should remap session, encounter, and staff references by hints."""
+        from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        clinic = Clinic.objects.create(
+            name="General OPD Sync",
+            code="GOPD-SYNC",
+            clinic_type="GENERAL_OPD",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+        session = ClinicSession.objects.create(
+            clinic=clinic,
+            session_date=date(2026, 6, 22),
+            opened_by=test_user,
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+
+        result = materialize_entry(
+            {
+                "table": "clinics.ClinicVisit",
+                "operation": "CREATE",
+                "record_id": 58001,
+                "data": {
+                    "id": 58001,
+                    "patient_id": sample_patient.pk + 1000,
+                    "patient_mrn": sample_patient.mrn,
+                    "session_id": session.pk + 1000,
+                    "session_clinic_code": clinic.code,
+                    "session_session_date": "2026-06-22",
+                    "encounter_id": sample_encounter.pk + 1000,
+                    "encounter_patient_mrn": sample_patient.mrn,
+                    "encounter_facility_mfl_code": sample_facility.mfl_code,
+                    "encounter_date": sample_encounter.encounter_date.isoformat(),
+                    "encounter_type": sample_encounter.encounter_type,
+                    "encounter_chief_complaint": sample_encounter.chief_complaint,
+                    "registered_by_id": test_user.pk + 1000,
+                    "registered_by_username": test_user.username,
+                    "queue_number": 7,
+                    "visit_type": "WALK_IN",
+                    "status": "WAITING",
+                    "facility_id": sample_facility.pk + 1000,
+                    "facility_mfl_code": sample_facility.mfl_code,
+                    "organization_id": sample_facility.organization_id + 1000,
+                    "organization_slug": sample_facility.organization.slug,
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        visit = ClinicVisit.objects.get(pk=58001)
+        assert visit.session_id == session.pk
+        assert visit.encounter_id == sample_encounter.pk
+        assert visit.registered_by_id == test_user.pk
+
+    def test_materialize_prescription_item_remaps_parent_and_drug(
+        self, sample_patient, sample_encounter, sample_facility, test_user
+    ):
+        """Prescription items should remap prescription and drug catalog IDs by hints."""
+        from hmis.apps.core.sync_materializer import materialize_entry
+        from hmis.apps.pharmacy.models import Drug, Prescription, PrescriptionItem
+
+        drug = Drug.objects.create(
+            code="AMOX-500",
+            generic_name="Amoxicillin",
+            form="CAPSULE",
+            strength="500mg",
+            unit="capsule",
+            categories=["ANTIBIOTIC"],
+        )
+        prescription = Prescription.objects.create(
+            prescription_number="RX-SYNC-001",
+            patient=sample_patient,
+            encounter=sample_encounter,
+            prescribed_by=test_user,
+            valid_until=date(2026, 7, 22),
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+
+        result = materialize_entry(
+            {
+                "table": "pharmacy.PrescriptionItem",
+                "operation": "CREATE",
+                "record_id": 59001,
+                "data": {
+                    "id": 59001,
+                    "prescription_id": prescription.pk + 1000,
+                    "prescription_prescription_number": prescription.prescription_number,
+                    "drug_id": drug.pk + 1000,
+                    "drug_code": drug.code,
+                    "dosage": "500mg",
+                    "frequency": "TDS",
+                    "duration": "5 days",
+                    "quantity": 15,
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        item = PrescriptionItem.objects.get(pk=59001)
+        assert item.prescription_id == prescription.pk
+        assert item.drug_id == drug.pk
+
+    def test_lab_result_resolvers_remap_order_item_and_specimen(
+        self, sample_patient, sample_encounter, sample_facility, test_user
+    ):
+        """Lab result dependencies should be resolvable by order/test/barcode hints."""
+        from hmis.apps.core.sync_materializer import (
+            resolve_lab_order_item_id_from_sync_data,
+            resolve_specimen_id_from_sync_data,
+        )
+        from hmis.apps.laboratory.models import LabOrder, LabOrderItem, Specimen, TestCatalog
+
+        test = TestCatalog.objects.create(
+            code="CBC",
+            name="Complete Blood Count",
+            short_name="CBC",
+            category="HEMATOLOGY",
+            specimen_type="BLOOD",
+            result_type="TEXT",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+        lab_order = LabOrder.objects.create(
+            order_number="LAB-SYNC-001",
+            patient=sample_patient,
+            encounter=sample_encounter,
+            ordered_by=test_user,
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+        order_item = LabOrderItem.objects.create(lab_order=lab_order, test=test, unit_cost="50.00")
+        specimen = Specimen.objects.create(
+            barcode="SPEC-SYNC-001",
+            specimen_type="BLOOD",
+            lab_order=lab_order,
+        )
+
+        raw_data = {
+            "order_item_order_number": lab_order.order_number,
+            "order_item_code": test.code,
+            "order_item_facility_mfl_code": sample_facility.mfl_code,
+            "specimen_barcode": specimen.barcode,
+        }
+
+        assert resolve_lab_order_item_id_from_sync_data(raw_data, "order_item") == order_item.pk
+        assert resolve_specimen_id_from_sync_data(raw_data, "specimen") == specimen.pk
+
+    def test_admission_resolvers_remap_ward_and_bed(self, sample_facility):
+        """Admission dependencies should resolve local ward and bed IDs by ward/bed codes."""
+        from hmis.apps.core.sync_materializer import (
+            resolve_bed_id_from_sync_data,
+            resolve_inpatient_ward_id_from_sync_data,
+        )
+        from hmis.apps.inpatient.models import Ward
+
+        ward = Ward.objects.create(
+            name="Medical Ward Sync",
+            code="MED-SYNC",
+            ward_type="MEDICAL",
+            capacity=1,
+            daily_rate="1000.00",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+        bed = ward.beds.get(bed_number="B-001")
+        raw_data = {
+            "ward_code": ward.code,
+            "bed_code": ward.code,
+            "bed_bed_number": bed.bed_number,
+        }
+
+        assert resolve_inpatient_ward_id_from_sync_data(raw_data, "ward") == ward.pk
+        assert resolve_bed_id_from_sync_data(raw_data, "bed") == bed.pk
+
     def test_materialize_facility_update(self, sample_facility):
         """A downward Facility update should change the local hub copy."""
         from hmis.apps.core.sync_materializer import materialize_entry

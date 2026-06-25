@@ -55,6 +55,8 @@ interface PrescriptionsTableProps {
   isLoading: boolean;
   error: Error | null;
   page: number;
+  pageSize: number;
+  totalCount: number;
   totalPages: number;
   onPageChange: (page: number) => void;
   onStatusFilter: (status: PrescriptionStatus | '') => void;
@@ -84,6 +86,8 @@ export function PrescriptionsTable({
   isLoading,
   error,
   page,
+  pageSize,
+  totalCount,
   totalPages,
   onPageChange,
   onStatusFilter,
@@ -586,9 +590,15 @@ export function PrescriptionsTable({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground text-center sm:text-left">
-            Page {page} of {totalPages}
-          </p>
+          <div className="text-center text-sm text-muted-foreground sm:text-left">
+            <p>Page {page} of {totalPages}</p>
+            {totalCount > 0 && (
+              <p>
+                Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalCount)} of{' '}
+                {totalCount} prescriptions
+              </p>
+            )}
+          </div>
           <div className="flex items-center justify-center gap-2">
             <Button
               variant="outline"

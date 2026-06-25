@@ -300,9 +300,7 @@ class HubCloudSyncWorker:
                         # except for SOFT failures (e.g. waiting on a parent
                         # identity row) which we keep PENDING so they retry on
                         # the next push cycle.
-                        rejection_meta = {
-                            r["index"]: r for r in rejections if "index" in r
-                        }
+                        rejection_meta = {r["index"]: r for r in rejections if "index" in r}
                         soft_failure_codes = {"DEPENDENCY_MISSING"}
                         for idx, eid in enumerate(entry_ids):
                             if idx not in rejected_indices:
@@ -534,8 +532,16 @@ class HubCloudSyncWorker:
     @staticmethod
     def _is_deferred_materialization_error(result: dict) -> bool:
         """Return True for errors likely caused by parent rows arriving later."""
-        error = str(result.get("error") or "")
-        return "matching query does not exist" in error or "FOREIGN KEY constraint failed" in error
+        error = str(result.get("error") or "").lower()
+        return any(
+            marker in error
+            for marker in (
+                "matching query does not exist",
+                "foreign key constraint failed",
+                "is not a valid choice",
+                "instance with id",
+            )
+        )
 
     @staticmethod
     def _log_materialization_failure(change: dict, result: dict):
