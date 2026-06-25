@@ -637,12 +637,18 @@ class HubCloudSyncWorker:
         """Make authenticated POST request to cloud."""
         headers = self._get_auth_headers()
         headers["Content-Type"] = "application/json"
-        return requests.post(url, headers=headers, timeout=30, **kwargs)
+        # 120s read timeout: full-pull pages over heavy snapshot tables
+        # (e.g. billing.Invoice with FK-heavy serialization) can comfortably
+        # exceed 30s. Anything below this and the hub kills perfectly healthy
+        # cloud responses mid-flight.
+        timeout = kwargs.pop("timeout", 120)
+        return requests.post(url, headers=headers, timeout=timeout, **kwargs)
 
     def _get(self, url: str, **kwargs) -> requests.Response:
         """Make authenticated GET request to cloud."""
         headers = self._get_auth_headers()
-        return requests.get(url, headers=headers, timeout=30, **kwargs)
+        timeout = kwargs.pop("timeout", 120)
+        return requests.get(url, headers=headers, timeout=timeout, **kwargs)
 
 
 # Celery task (only used if Celery is configured)

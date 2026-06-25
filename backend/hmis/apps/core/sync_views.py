@@ -48,7 +48,7 @@ from hmis.apps.licensing.hub_auth import HubLicenseOrJWTAuthentication, IsAuthen
 
 logger = logging.getLogger(__name__)
 
-DOWNWARD_FULL_PULL_PAGE_LIMIT = 100
+DOWNWARD_FULL_PULL_PAGE_LIMIT = 250
 
 # Tables allowed for sync (prevent arbitrary model writes)
 SYNCABLE_TABLES = {
