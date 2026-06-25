@@ -11,6 +11,7 @@ Endpoints:
 """
 
 import logging
+import time
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -839,7 +840,15 @@ def _build_downward_snapshot_changes(
     now = timezone.now()
     skipped = 0
 
+    logger.info(
+        "Building downward full-pull snapshot (cursor=%s, limit=%s, tables=%s).",
+        cursor,
+        limit,
+        len(tables),
+    )
+
     for model_label in _ordered_snapshot_tables(tables):
+        model_started_at = time.perf_counter()
         entry = get_registry_entry(model_label)
         if entry is None:
             continue
@@ -887,6 +896,14 @@ def _build_downward_snapshot_changes(
                 model_label,
             )
             continue
+
+        logger.info(
+            "Full-pull snapshot table %s count=%s skipped=%s cursor=%s.",
+            model_label,
+            table_count,
+            skipped,
+            cursor,
+        )
 
         if skipped + table_count <= cursor:
             # Entire table lies before the cursor; advance and move on.
@@ -942,7 +959,20 @@ def _build_downward_snapshot_changes(
                 }
             )
             if len(items) > limit:
+                logger.info(
+                    "Full-pull snapshot page filled at %s after %.2fs (items=%s).",
+                    model_label,
+                    time.perf_counter() - model_started_at,
+                    len(items),
+                )
                 return items[:limit], True
+
+        logger.info(
+            "Full-pull snapshot table %s processed in %.2fs (items=%s).",
+            model_label,
+            time.perf_counter() - model_started_at,
+            len(items),
+        )
 
     return items[:limit], len(items) > limit
 
@@ -1149,7 +1179,8 @@ def sync_pull(request):
     full = request.query_params.get("full", "").lower() == "true"
     direction = request.query_params.get("direction", "").lower()
     tables_param = request.query_params.get("tables", "")
-    limit = min(int(request.query_params.get("limit", "500")), 1000)
+    requested_limit = min(int(request.query_params.get("limit", "500")), 1000)
+    limit = min(requested_limit, 250) if direction == "down" and full else requested_limit
     cursor = max(int(request.query_params.get("cursor", "0")), 0)
 
     if not since and not full:
