@@ -10,18 +10,24 @@ import { MFAVerification } from '@/components/auth/mfa-verification';
 // Mock useRouter
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
+const mockSearchParamsGet = jest.fn().mockReturnValue(null);
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     replace: mockReplace,
   }),
+  useSearchParams: () => ({
+    get: mockSearchParamsGet,
+  }),
 }));
 
 // Mock useAuth
 const mockVerifyMFA = jest.fn();
+const mockVerifyMFAWithWebAuthn = jest.fn();
 jest.mock('@/lib/auth/context', () => ({
   useAuth: () => ({
     verifyMFA: mockVerifyMFA,
+    verifyMFAWithWebAuthn: mockVerifyMFAWithWebAuthn,
   }),
 }));
 
@@ -105,6 +111,8 @@ describe('MFAVerification', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockVerifyMFA.mockResolvedValue(undefined);
+    mockVerifyMFAWithWebAuthn.mockResolvedValue(undefined);
+    mockSearchParamsGet.mockReturnValue(null);
     mockPush.mockClear();
     mockReplace.mockClear();
   });
