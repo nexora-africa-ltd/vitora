@@ -17,7 +17,6 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models.fields.files import FieldFile
 from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
-from django.forms.models import model_to_dict
 from django.utils import timezone
 
 from hmis.apps.core.models import SyncQueue
@@ -315,19 +314,52 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
             instance,
         )
 
-    data = model_to_dict(instance, exclude=list(exclude_fields))
-    # ``model_to_dict`` returns FieldFile instances for File/Image fields and
-    # lists of related model instances for ManyToMany fields. Neither is JSON
-    # serializable by DjangoJSONEncoder, so coerce them to safe primitives
-    # (stored path / list of PKs) before dumping.
-    for key, value in list(data.items()):
-        if isinstance(value, FieldFile):
-            data[key] = value.name or None
-        elif isinstance(value, list) and value and hasattr(value[0], "pk"):
-            data[key] = [item.pk for item in value]
+    data = _serialize_all_concrete_fields(instance, exclude_fields)
+    # Preserve M2M relations as PK lists (model_to_dict used to do this for us).
+    for m2m_field in instance._meta.many_to_many:
+        if m2m_field.name in exclude_fields:
+            continue
+        try:
+            data[m2m_field.name] = list(
+                getattr(instance, m2m_field.name).values_list("pk", flat=True)
+            )
+        except Exception:  # noqa: BLE001 — unsaved instances, etc.
+            data[m2m_field.name] = []
     data["id"] = instance.pk
     json_safe = json.loads(json.dumps(data, cls=DjangoJSONEncoder))
     return _with_relation_hints(json_safe, instance)
+
+
+def _serialize_all_concrete_fields(instance, exclude_fields: tuple[str, ...]) -> dict:
+    """Serialize every concrete model field, including ``editable=False`` ones.
+
+    Django's ``model_to_dict`` skips ``editable=False`` fields, which silently
+    drops natural-key identifiers like ``order_number``, ``claim_number``,
+    ``prescription_number`` and ``unit_number`` from the sync payload. That
+    leaves the hub materializer creating rows with empty values for those
+    columns and triggers UNIQUE constraint violations on the second insert.
+    Walking ``_meta.concrete_fields`` ourselves keeps them in the payload so
+    the hub can both natural-key-match existing rows and preserve identity
+    information for brand-new ones.
+    """
+    data: dict = {}
+    for field in instance._meta.concrete_fields:
+        if field.primary_key:
+            continue
+        if field.name in exclude_fields or field.attname in exclude_fields:
+            continue
+        if getattr(field, "many_to_one", False) or getattr(field, "one_to_one", False):
+            # Match ``model_to_dict``'s contract: store FKs under ``field.name``
+            # (e.g. "clinic") with the related row's PK as the value. The
+            # materializer + downstream consumers (tests, projections) all
+            # expect this shape, not ``field.attname`` ("clinic_id").
+            data[field.name] = getattr(instance, field.attname)
+        else:
+            value = getattr(instance, field.name)
+            if isinstance(value, FieldFile):
+                value = value.name or None
+            data[field.name] = value
+    return data
 
 
 def _with_relation_hints(data: dict, instance) -> dict:
