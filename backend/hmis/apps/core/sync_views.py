@@ -859,33 +859,49 @@ def _build_downward_snapshot_changes(
                 facility=facility,
                 organization=organization,
             ).order_by(pk_name)
-
-            # Eagerly load FK relations used by serialize_instance_for_sync /
-            # _with_relation_hints so we avoid N+1 lazy-loading queries.
-            fk_fields = [
-                f.name
-                for f in model._meta.concrete_fields
-                if getattr(f, "many_to_one", False) or getattr(f, "one_to_one", False)
-            ]
-            if fk_fields:
-                qs = qs.select_related(*fk_fields)
         except Exception:
             logger.exception("Failed to build queryset for %s; skipping model.", model_label)
             continue
 
+        # Cheaply count the rows for this model so we can skip entire tables
+        # without fetching their rows from the database. This is critical for
+        # cursor-based resumption — without it, a request at cursor=10000
+        # would refetch and deserialize 10000 rows just to discard them.
         try:
-            instance_iter = iter(qs)
+            table_count = qs.count()
         except Exception:
             logger.exception(
-                "Failed to query %s for downward snapshot; skipping model.",
+                "Failed to count %s for downward snapshot; skipping model.",
                 model_label,
             )
             continue
 
-        for instance in instance_iter:
-            if skipped < cursor:
-                skipped += 1
-                continue
+        if skipped + table_count <= cursor:
+            # Entire table lies before the cursor; advance and move on.
+            skipped += table_count
+            continue
+
+        # Slice past any prefix of this table that the cursor has already
+        # consumed. After this, every row we touch should be emitted.
+        offset_in_table = max(0, cursor - skipped)
+        skipped = max(skipped, cursor)
+        qs_to_emit = qs[offset_in_table:] if offset_in_table else qs
+
+        # Iterate defensively: a single corrupt row (bad JSONField, invalid
+        # DateField, missing FK target) raised here would otherwise crash the
+        # entire /api/sync/pull/ endpoint with a 500.
+        iterator = iter(qs_to_emit)
+        while True:
+            try:
+                instance = next(iterator)
+            except StopIteration:
+                break
+            except Exception:
+                logger.exception(
+                    "Failed to fetch next %s row for downward snapshot; aborting model.",
+                    model_label,
+                )
+                break
 
             try:
                 data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
@@ -894,7 +910,7 @@ def _build_downward_snapshot_changes(
                 logger.exception(
                     "Failed to serialize %s pk=%s for downward snapshot; skipping.",
                     model_label,
-                    instance.pk,
+                    getattr(instance, "pk", None),
                 )
                 continue
 
