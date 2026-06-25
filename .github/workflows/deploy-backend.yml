@@ -148,8 +148,8 @@ jobs:
             DJANGO_LOG_LEVEL=INFO
             SMS_BACKEND=hmis.apps.core.sms.backends.MockSMSBackend
             SMS_SENDER_ID=VitoraHMIS
-            WEBAUTHN_RP_ID=${{ vars.WEBAUTHN_RP_ID || 'vitora-navy.vercel.app,staging.vitora.digital' }}
-            WEBAUTHN_ORIGIN=${{ vars.WEBAUTHN_ORIGIN || 'https://vitora-navy.vercel.app,https://staging.vitora.digital' }}
+            WEBAUTHN_RP_ID=${{ vars.WEBAUTHN_RP_ID || 'staging.vitora.digital' }}
+            WEBAUTHN_ORIGIN=${{ vars.WEBAUTHN_ORIGIN || 'https://staging.vitora.digital' }}
             METABASE_SITE_URL=${{ vars.METABASE_SITE_URL || 'https://vitora-metabase.agreeabledune-6cc420cc.eastus.azurecontainerapps.io' }}
             METABASE_API_URL=${{ vars.METABASE_API_URL || 'http://vitora-metabase' }}
             METABASE_EMBEDDING_SECRET=secretref:metabase-embedding-secret
