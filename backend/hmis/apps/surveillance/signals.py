@@ -12,6 +12,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import SurveillanceEvents, publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,9 @@ def check_diagnosis_for_surveillance(sender, instance, created, **kwargs):
     When a diagnosis is created or updated with an ICD-10 code that
     matches a notifiable disease, automatically create a NotifiableCase.
     """
+    if is_sync_materialization_active():
+        return
+
     from .services import SurveillanceService
 
     # Only check confirmed diagnoses with ICD-10 codes

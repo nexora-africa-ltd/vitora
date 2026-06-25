@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from hmis.apps.core.events import ClinicalEvents, publish_event
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 
 @receiver(post_save, sender="triage.TriageAssessment")
@@ -32,6 +33,9 @@ def update_encounter_triage_status(sender, instance, created, **kwargs):
         created: Boolean indicating if this is a new record
         **kwargs: Additional keyword arguments
     """
+    if is_sync_materialization_active():
+        return
+
     if not instance.encounter:
         return
 

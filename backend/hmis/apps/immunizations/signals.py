@@ -7,6 +7,8 @@
 
 import logging
 
+from hmis.apps.core.sync_context import is_sync_materialization_active
+
 logger = logging.getLogger(__name__)
 
 
@@ -18,6 +20,9 @@ def handle_appointment_status_sync(sender, instance, **kwargs):
 
     Connected in ImmunizationsConfig.ready().
     """
+    if is_sync_materialization_active():
+        return
+
     if instance.appointment_type != "VACCINATION":
         return
 
@@ -67,6 +72,9 @@ def handle_aefi_surveillance_alert(sender, instance, created, **kwargs):
     Only triggers on creation (not updates) of severe/death AEFIs.
     """
     if not created:
+        return
+
+    if is_sync_materialization_active():
         return
 
     if not instance.is_severe_or_death:

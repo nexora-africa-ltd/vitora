@@ -18,6 +18,7 @@ from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import ClinicalEvents, publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import Clinic, ClinicSchedule, ClinicSession, ClinicVisit
 from .websockets import (
@@ -205,6 +206,8 @@ def sync_clinic_resource_on_update(sender, instance, created, **kwargs):
     """
     if created or not instance.scheduling_resource_id:
         return
+    if is_sync_materialization_active():
+        return
 
     resource = instance.scheduling_resource
     changed = False
@@ -280,6 +283,8 @@ def _sync_clinic_schedule_to_scheduling(clinic_schedule):
 def sync_clinic_schedule_on_save(sender, instance, **kwargs):
     """Sync ClinicSchedule to scheduling.Schedule on create/update."""
     if getattr(instance, "_skip_schedule_sync", False):
+        return
+    if is_sync_materialization_active():
         return
     try:
         _sync_clinic_schedule_to_scheduling(instance)
