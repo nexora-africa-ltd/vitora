@@ -1106,6 +1106,17 @@ class TestHubCloudSyncWorker:
             model_name="patients.EmergencyContact", record_id=10
         ).exists()
 
+    def test_validation_fk_errors_are_deferred(self, db):
+        """full_clean FK validation errors should retry like database FK failures."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        result = {
+            "success": False,
+            "error": "{'created_by': ['user instance with id 14 is not a valid choice.']}",
+        }
+
+        assert HubCloudSyncWorker._is_deferred_materialization_error(result) is True
+
     @override_settings(
         SYNC_SERVER_URL="https://cloud.example.com/api/sync",
         HUB_ID="hub-test",

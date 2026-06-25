@@ -31,6 +31,8 @@ export default function PrescriptionsPage() {
   const [status, setStatus] = useState<PrescriptionStatus | ''>('');
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
   const debouncedSearch = useDebounce(search, 300);
+  const patientParam = searchParams.get('patient');
+  const patientId = patientParam ? Number(patientParam) : undefined;
   const pageSize = 20;
 
   // Data fetching
@@ -41,6 +43,7 @@ export default function PrescriptionsPage() {
   } = usePrescriptions({
     page,
     page_size: pageSize,
+    patient: Number.isFinite(patientId) ? patientId : undefined,
     status: status || undefined,
     search: debouncedSearch || undefined,
   });
@@ -81,6 +84,8 @@ export default function PrescriptionsPage() {
           isLoading={isLoading}
           error={error}
           page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
           totalPages={totalPages}
           onPageChange={setPage}
           onStatusFilter={(s) => { setStatus(s); setPage(1); }}
