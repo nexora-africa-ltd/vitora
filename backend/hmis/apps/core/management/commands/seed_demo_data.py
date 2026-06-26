@@ -2688,7 +2688,6 @@ class Command(BaseCommand):
         patients = list(
             Patient.objects.filter(
                 identification_type="temporary_id",
-                identification_number__startswith="DEMO-PT-",
             )[:10]
         )
         if not patients:
