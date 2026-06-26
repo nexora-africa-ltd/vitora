@@ -1018,6 +1018,9 @@ TIBABOT_ENABLE_SURGICAL_ASSISTANT = (
 TIBABOT_ENABLE_PROACTIVE_INSIGHTS = (
     os.getenv("TIBABOT_ENABLE_PROACTIVE_INSIGHTS", "true").lower() == "true"
 )
+TIBABOT_ENABLE_ECG_INTERPRETER = (
+    os.getenv("TIBABOT_ENABLE_ECG_INTERPRETER", "true").lower() == "true"
+)
 
 # ============================================================================
 # SMART on FHIR OAuth2 Configuration (Phase 5)
