@@ -12,7 +12,7 @@ export const ECGFindingSchema = z.object({
   component: z.string(),
   value: z.string(),
   interpretation: z.string(),
-  severity: z.enum(['normal', 'borderline', 'abnormal']),
+  severity: z.enum(['normal', 'borderline', 'abnormal', 'critical']),
 });
 
 export const ECGDifferentialSchema = z.object({

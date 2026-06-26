@@ -1043,8 +1043,13 @@ class TibaBotClient:
 
         try:
             files = {"file": (filename, io.BytesIO(file_data), content_type)}
+            # Override session's default Content-Type (application/json) with None
+            # so requests can set the correct multipart/form-data boundary.
+            # Also override Accept so TibaBot sees the request as multipart.
+            upload_headers = dict(headers)
+            upload_headers["Content-Type"] = None  # type: ignore[assignment]
             response = self.session.post(
-                url, files=files, timeout=self.timeout * 2, headers=headers
+                url, files=files, timeout=self.timeout * 2, headers=upload_headers
             )
             response.raise_for_status()
             return response.json()  # type: ignore[no-any-return]
@@ -1054,11 +1059,24 @@ class TibaBotClient:
             raise TibaBotUnavailableError("TibaBot AI service request timed out.") from e
         except requests.exceptions.HTTPError as e:
             status_code = e.response.status_code if e.response is not None else None
+            response_body = ""
+            if e.response is not None:
+                try:
+                    response_body = e.response.text[:500]
+                except Exception:
+                    pass
             if status_code and status_code >= 500:
+                logger.warning(
+                    "TibaBot ECG upload server error: %s — %s", status_code, response_body
+                )
                 raise TibaBotUnavailableError(
                     "TibaBot AI service returned a server error.", status_code=status_code
                 ) from e
-            raise TibaBotError(f"TibaBot API error: {e}", status_code=status_code) from e
+            logger.error("TibaBot ECG upload error: %s — response: %s", status_code, response_body)
+            raise TibaBotError(
+                f"TibaBot ECG upload error (HTTP {status_code}): {response_body or e}",
+                status_code=status_code,
+            ) from e
 
     def ecg_report(self, payload: dict[str, Any]) -> bytes:
         """

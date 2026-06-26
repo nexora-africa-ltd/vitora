@@ -109,7 +109,7 @@ function InterpretTab() {
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="max-w-3xl mx-auto space-y-4">
       {/* Input form */}
       <Card>
         <CardHeader>
@@ -244,23 +244,21 @@ function InterpretTab() {
       </Card>
 
       {/* Results */}
-      <div className="space-y-4">
-        {error && (
-          <Card className="border-destructive">
-            <CardContent className="pt-4">
-              <p className="text-sm text-destructive">{(error as Error).message}</p>
-            </CardContent>
-          </Card>
-        )}
+      {error && (
+        <Card className="border-destructive">
+          <CardContent className="pt-4">
+            <p className="text-sm text-destructive">{(error as Error).message}</p>
+          </CardContent>
+        </Card>
+      )}
 
-        {data && <InterpretResult result={data} onDownloadPDF={() => {
-          reportMutation.mutate({
-            interpretation: data,
-            facility_name: undefined,
-            provider_name: undefined,
-          });
-        }} />}
-      </div>
+      {data && <InterpretResult result={data} onDownloadPDF={() => {
+        reportMutation.mutate({
+          interpretation: data,
+          facility_name: undefined,
+          provider_name: undefined,
+        });
+      }} />}
     </div>
   );
 }
@@ -337,7 +335,7 @@ function InterpretResult({ result, onDownloadPDF }: { result: ECGInterpretRespon
                 <div key={i} className="text-sm border-b pb-2 last:border-0">
                   <div className="flex justify-between">
                     <span className="font-medium capitalize">{f.component}</span>
-                    <Badge variant="outline" className={`text-xs ${f.severity === 'abnormal' ? 'text-red-600' : f.severity === 'borderline' ? 'text-amber-600' : ''}`}>
+                    <Badge variant="outline" className={`text-xs ${f.severity === 'critical' ? 'border-red-600 bg-red-50 text-red-700 dark:bg-red-950/30' : f.severity === 'abnormal' ? 'text-red-600' : f.severity === 'borderline' ? 'text-amber-600' : ''}`}>
                       {f.severity}
                     </Badge>
                   </div>
@@ -370,7 +368,7 @@ function UploadTab() {
   const [file, setFile] = useState<File | null>(null);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="max-w-3xl mx-auto space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -396,38 +394,36 @@ function UploadTab() {
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
-        {error && (
-          <Card className="border-destructive">
-            <CardContent className="pt-4">
-              <p className="text-sm text-destructive">{(error as Error).message}</p>
-            </CardContent>
-          </Card>
-        )}
-        {data && (
-          <div className="space-y-3">
-            {data.quality_score != null && (
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex justify-between text-sm">
-                    <span>Image Quality</span>
-                    <span className="font-medium">{Math.round(data.quality_score * 100)}%</span>
+      {error && (
+        <Card className="border-destructive">
+          <CardContent className="pt-4">
+            <p className="text-sm text-destructive">{(error as Error).message}</p>
+          </CardContent>
+        </Card>
+      )}
+      {data && (
+        <div className="space-y-3">
+          {data.quality_score != null && (
+            <Card>
+              <CardContent className="pt-4">
+                <div className="flex justify-between text-sm">
+                  <span>Image Quality</span>
+                  <span className="font-medium">{Math.round(data.quality_score * 100)}%</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Format: {data.source_format}</p>
+                {data.warnings.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {data.warnings.map((w, i) => (
+                      <p key={i} className="text-xs text-amber-600">{w}</p>
+                    ))}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Format: {data.source_format}</p>
-                  {data.warnings.length > 0 && (
-                    <div className="mt-2 space-y-1">
-                      {data.warnings.map((w, i) => (
-                        <p key={i} className="text-xs text-amber-600">{w}</p>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-            <InterpretResult result={data.interpretation} onDownloadPDF={() => {}} />
-          </div>
-        )}
-      </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+          <InterpretResult result={data.interpretation} onDownloadPDF={() => {}} />
+        </div>
+      )}
     </div>
   );
 }
@@ -465,7 +461,7 @@ function CompareTab() {
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="max-w-3xl mx-auto space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -500,10 +496,8 @@ function CompareTab() {
         </CardContent>
       </Card>
 
-      <div className="space-y-3">
-        {error && <Card className="border-destructive"><CardContent className="pt-4"><p className="text-sm text-destructive">{(error as Error).message}</p></CardContent></Card>}
-        {data && <CompareResult result={data} />}
-      </div>
+      {error && <Card className="border-destructive"><CardContent className="pt-4"><p className="text-sm text-destructive">{(error as Error).message}</p></CardContent></Card>}
+      {data && <CompareResult result={data} />}
     </div>
   );
 }
@@ -590,7 +584,7 @@ function ScoresTab() {
   const [alcohol, setAlcohol] = useState(false);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="max-w-5xl mx-auto grid gap-4 lg:grid-cols-2">
       {/* CHA2DS2-VASc */}
       <Card>
         <CardHeader>
