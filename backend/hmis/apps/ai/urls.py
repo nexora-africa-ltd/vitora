@@ -55,6 +55,15 @@ from .views import (
     SurgicalProcedureDetailView,
     SurgicalProcedureListView,
 )
+from .views_ecg import (
+    ECGCompareView,
+    ECGInterpretView,
+    ECGPatternsView,
+    ECGReportView,
+    ECGScoreCHA2DS2VAScView,
+    ECGScoreHASBLEDView,
+    ECGUploadView,
+)
 from .views_formulary import FormularySearchView, FormularySmpcDetailView, FormularyStatsView
 
 app_name = "ai"
@@ -262,4 +271,20 @@ urlpatterns = [
         FormularyStatsView.as_view(),
         name="formulary-stats",
     ),
+    # ── ECG Interpreter ───────────────────────────────────────────────
+    path("ecg/interpret/", ECGInterpretView.as_view(), name="ecg-interpret"),
+    path("ecg/compare/", ECGCompareView.as_view(), name="ecg-compare"),
+    path("ecg/upload/", ECGUploadView.as_view(), name="ecg-upload"),
+    path("ecg/report/", ECGReportView.as_view(), name="ecg-report"),
+    path(
+        "ecg/scores/cha2ds2-vasc/",
+        ECGScoreCHA2DS2VAScView.as_view(),
+        name="ecg-score-cha2ds2-vasc",
+    ),
+    path(
+        "ecg/scores/has-bled/",
+        ECGScoreHASBLEDView.as_view(),
+        name="ecg-score-has-bled",
+    ),
+    path("ecg/patterns/", ECGPatternsView.as_view(), name="ecg-patterns"),
 ]

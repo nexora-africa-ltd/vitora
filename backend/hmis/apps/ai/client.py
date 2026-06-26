@@ -971,6 +971,148 @@ class TibaBotClient:
             data=payload,
         )
 
+    # ── ECG Interpreter ───────────────────────────────────────────────────
+
+    def ecg_interpret(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Interpret ECG findings (structured or free-text).
+
+        Args:
+            payload: Dict with heart_rate, rhythm, axis, pr_interval,
+                     qrs_duration, qtc_interval, p_wave, st_segment,
+                     t_wave, q_waves, bundle_branch, raw_findings,
+                     clinical_context, medications[], age, sex,
+                     include_fhir, verbosity, provider_role, facility_level.
+
+        Returns:
+            Dict with interpretation, rhythm_diagnosis, rate_category,
+            findings[], differentials[], urgency, action_required[],
+            icd10_codes[], confidence, disclaimer.
+        """
+        return self._request(
+            method="POST",
+            endpoint="/clinical/ecg/interpret",
+            data=payload,
+        )
+
+    def ecg_compare(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Compare two ECGs for serial change detection.
+
+        Args:
+            payload: Dict with baseline{}, current{}, interval_hours,
+                     clinical_context.
+
+        Returns:
+            Dict with changes[], clinical_significance, progression,
+            action_required[].
+        """
+        return self._request(
+            method="POST",
+            endpoint="/clinical/ecg/compare",
+            data=payload,
+        )
+
+    def ecg_upload(self, file_data: bytes, filename: str, content_type: str) -> dict[str, Any]:
+        """
+        Upload ECG image/file for auto-interpretation.
+
+        Uses multipart/form-data — bypasses the JSON _request helper.
+
+        Args:
+            file_data: Raw file bytes.
+            filename: Original filename.
+            content_type: MIME type of the file.
+
+        Returns:
+            Dict with interpretation{}, source_format, extracted_parameters{},
+            quality_score, warnings[].
+        """
+        import io
+
+        url = f"{self.base_url.rstrip('/')}/clinical/ecg/upload"
+        headers: dict[str, str] = {}
+        user = _get_current_user()
+        if user is not None:
+            token = mint_tibabot_jwt(user)
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+            facility_key = _resolve_facility_api_key(user)
+            if facility_key:
+                headers["X-API-Key"] = facility_key
+
+        try:
+            files = {"file": (filename, io.BytesIO(file_data), content_type)}
+            response = self.session.post(
+                url, files=files, timeout=self.timeout * 2, headers=headers
+            )
+            response.raise_for_status()
+            return response.json()  # type: ignore[no-any-return]
+        except requests.exceptions.ConnectionError as e:
+            raise TibaBotUnavailableError("TibaBot AI service is currently unavailable.") from e
+        except requests.exceptions.Timeout as e:
+            raise TibaBotUnavailableError("TibaBot AI service request timed out.") from e
+        except requests.exceptions.HTTPError as e:
+            status_code = e.response.status_code if e.response is not None else None
+            if status_code and status_code >= 500:
+                raise TibaBotUnavailableError(
+                    "TibaBot AI service returned a server error.", status_code=status_code
+                ) from e
+            raise TibaBotError(f"TibaBot API error: {e}", status_code=status_code) from e
+
+    def ecg_report(self, payload: dict[str, Any]) -> bytes:
+        """
+        Generate downloadable PDF report from ECG interpretation.
+
+        Returns raw PDF bytes.
+        """
+        url = f"{self.base_url.rstrip('/')}/clinical/ecg/report"
+        headers: dict[str, str] = {"Content-Type": "application/json", "Accept": "application/pdf"}
+        user = _get_current_user()
+        if user is not None:
+            token = mint_tibabot_jwt(user)
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+            facility_key = _resolve_facility_api_key(user)
+            if facility_key:
+                headers["X-API-Key"] = facility_key
+
+        try:
+            response = self.session.post(url, json=payload, timeout=self.timeout, headers=headers)
+            response.raise_for_status()
+            return response.content
+        except requests.exceptions.ConnectionError as e:
+            raise TibaBotUnavailableError("TibaBot AI service is currently unavailable.") from e
+        except requests.exceptions.Timeout as e:
+            raise TibaBotUnavailableError("TibaBot AI service request timed out.") from e
+        except requests.exceptions.HTTPError as e:
+            status_code = e.response.status_code if e.response is not None else None
+            if status_code and status_code >= 500:
+                raise TibaBotUnavailableError(
+                    "TibaBot AI service returned a server error.", status_code=status_code
+                ) from e
+            raise TibaBotError(f"TibaBot API error: {e}", status_code=status_code) from e
+
+    def ecg_score_cha2ds2_vasc(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Calculate CHA₂DS₂-VASc stroke risk score."""
+        return self._request(
+            method="POST",
+            endpoint="/clinical/ecg/scores/cha2ds2-vasc",
+            data=payload,
+        )
+
+    def ecg_score_has_bled(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Calculate HAS-BLED bleeding risk score."""
+        return self._request(
+            method="POST",
+            endpoint="/clinical/ecg/scores/has-bled",
+            data=payload,
+        )
+
+    def ecg_patterns(self) -> list[dict[str, Any]]:
+        """List all supported ECG patterns/diagnoses."""
+        return self._request(method="GET", endpoint="/clinical/ecg/patterns")  # type: ignore[return-value]
+
 
 # Module-level singleton (created on first import — lazy via function)
 _client: TibaBotClient | None = None
