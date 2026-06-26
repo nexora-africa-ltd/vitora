@@ -382,8 +382,81 @@ init-pki:
 	@echo "Initializing PKI Certificate Authority..."
 	poetry run python manage.py init_pki_ca
 
-# Import all data - run after fresh database setup
-import-all: migrate import-locations import-icd10 import-loinc import-drugs load-roles load-templates load-lab-ranges create-lab-queues seed-diseases seed-kepi init-pki
+seed-subscription-plans:
+	@echo "Seeding subscription plans..."
+	poetry run python manage.py seed_subscription_plans
+
+seed-feature-flags:
+	@echo "Seeding feature flags..."
+	poetry run python manage.py seed_feature_flags
+
+seed-service-catalog:
+	@echo "Seeding billing service catalog..."
+	poetry run python manage.py seed_service_catalog
+
+seed-cds-rules:
+	@echo "Seeding CDS rules..."
+	poetry run python manage.py seed_cds_rules
+
+seed-snomed:
+	@echo "Seeding common SNOMED CT concepts..."
+	poetry run python manage.py seed_snomed_common
+
+seed-imaging-catalog:
+	@echo "Seeding imaging procedure catalog..."
+	poetry run python manage.py seed_imaging_catalog
+
+seed-procedure-catalog:
+	@echo "Seeding procedure catalog..."
+	poetry run python manage.py seed_procedure_catalog
+
+seed-surgical-procedures:
+	@echo "Seeding surgical procedures..."
+	poetry run python manage.py seed_surgical_procedures
+
+seed-theatre-roles:
+	@echo "Seeding theatre roles..."
+	poetry run python manage.py seed_theatre_roles
+
+seed-er-beds:
+	@echo "Seeding ER beds..."
+	poetry run python manage.py seed_er_beds
+
+seed-quality-measures:
+	@echo "Seeding quality measures..."
+	poetry run python manage.py seed_quality_measures
+
+seed-analyzer-templates:
+	@echo "Seeding laboratory analyzer templates..."
+	poetry run python manage.py seed_analyzer_templates
+
+seed-vaccines:
+	@echo "Seeding vaccine definitions..."
+	poetry run python manage.py seed_vaccines
+
+seed-autoverify-defaults:
+	@echo "Seeding lab auto-verification defaults..."
+	poetry run python manage.py seed_autoverify_defaults
+
+seed-bed-assignment-rules:
+	@echo "Seeding inpatient bed assignment rules..."
+	poetry run python manage.py seed_bed_assignment_rules
+
+seed-discharge-templates:
+	@echo "Seeding discharge summary templates..."
+	poetry run python manage.py seed_discharge_templates
+
+seed-outbreak-thresholds:
+	@echo "Seeding surveillance outbreak thresholds..."
+	poetry run python manage.py seed_outbreak_thresholds
+
+seed-kenhdd:
+	@echo "Seeding Kenya HDD data elements..."
+	poetry run python manage.py seed_kenhdd_elements
+
+# Import all reference data - run after fresh database setup
+# Includes everything needed for a functional production/staging instance
+import-all: migrate import-locations import-icd10 import-loinc import-drugs load-roles load-templates load-lab-ranges create-lab-queues seed-diseases seed-kepi init-pki seed-subscription-plans seed-feature-flags seed-service-catalog seed-cds-rules seed-snomed seed-imaging-catalog seed-procedure-catalog seed-surgical-procedures seed-theatre-roles seed-er-beds seed-quality-measures seed-analyzer-templates seed-vaccines seed-autoverify-defaults seed-bed-assignment-rules seed-discharge-templates seed-outbreak-thresholds seed-kenhdd
 	@echo "All data imports complete!"
 
 # Setup fresh database with all data
@@ -394,20 +467,21 @@ setup-db: migrate import-all createsuperuser
 setup-db-quick: migrate import-all create-test-user
 	@echo "Database setup complete with test user (admin/voXOQkM4Tn6qCNQTy)!"
 
+# Seed demo/staging data (org, users, patients, encounters, billing, etc.)
+# Run AFTER import-all; creates a full demo environment
+seed-demo:
+	@echo "Seeding comprehensive demo data..."
+	poetry run python manage.py seed_demo_data --force
+	@echo "Demo data seeded! See output for credentials."
+
+# Full demo environment setup (reference data + demo data + test user)
+setup-demo: migrate import-all create-test-user seed-demo
+	@echo "Full demo environment ready!"
+
 # Seed surveillance demo data with optional clearing and regeneration
 seed-surveillance-demo:
 	@echo "Seeding surveillance demo data for DHIS2 testing..."
 	poetry run python manage.py seed_surveillance_demo $(if $(clear),--clear) $(if $(regenerate),--regenerate)
-
-# Seed quality measures
-seed-quality-measures:
-	@echo "Seeding quality measures..."
-	poetry run python manage.py seed_quality_measures
-
-# Seed CDS rules
-seed-cds-rules:
-	@echo "Seeding CDS rules..."
-	poetry run python manage.py seed_cds_rules
 
 
 # ============================================================================
