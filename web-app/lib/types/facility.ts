@@ -12,7 +12,7 @@ export type FacilityOperatingMode =
 export interface FacilityListItem {
   id: number;
   organization: number | null;
-  organization_name: string | null;
+  organization_name?: string | null;
   mfl_code: string;
   name: string;
   level: string;

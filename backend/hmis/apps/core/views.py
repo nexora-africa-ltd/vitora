@@ -2356,7 +2356,21 @@ class FacilityViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """Create facility and return the full detail representation."""
-        serializer = self.get_serializer(data=request.data)
+        # Auto-assign the user's organization if not provided.  Without this,
+        # facilities created by tenant admins (e.g. via the onboarding wizard)
+        # would have organization=NULL and become invisible to org-scoped
+        # queries (myFacilities, list filters, etc.).
+        if not request.user.is_superuser and "organization" not in request.data:
+            profile = getattr(request.user, "staff_profile", None)
+            if profile and profile.organization_id:
+                # request.data may be immutable (e.g. QueryDict); copy first.
+                data = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+                data["organization"] = profile.organization_id
+                serializer = self.get_serializer(data=data)
+            else:
+                serializer = self.get_serializer(data=request.data)
+        else:
+            serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         # Enforce subscription limit

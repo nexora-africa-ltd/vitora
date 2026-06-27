@@ -471,9 +471,13 @@ export const clinicsApi = {
   /**
    * Seed default Kenyan healthcare clinics for the current facility.
    * Skips clinics that already exist.
+   * @param facilityId - Optional explicit facility ID (for onboarding before tenant context is set)
    */
-  seedDefaults: async (): Promise<{ created: { code: string; name: string }[]; skipped: number; total: number }> => {
-    const response = await apiClient.post<{ created: { code: string; name: string }[]; skipped: number; total: number }>('/api/clinics/seed-defaults/');
+  seedDefaults: async (facilityId?: number): Promise<{ created: { code: string; name: string }[]; skipped: number; total: number }> => {
+    const response = await apiClient.post<{ created: { code: string; name: string }[]; skipped: number; total: number }>(
+      '/api/clinics/seed-defaults/',
+      facilityId ? { facility_id: facilityId } : undefined,
+    );
     return response.data;
   },
 };

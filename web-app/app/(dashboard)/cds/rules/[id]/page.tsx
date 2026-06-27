@@ -52,6 +52,218 @@ const EVIDENCE_LABELS: Record<string, string> = {
   D: 'Level D — Expert consensus',
 };
 
+// ────────────────────────────────────────────────────────────────────────────
+// Human-readable condition display
+// ────────────────────────────────────────────────────────────────────────────
+
+function ConditionDisplay({ condition }: { condition: Record<string, unknown> | null }) {
+  if (!condition || typeof condition !== 'object') {
+    return <p className="text-sm text-muted-foreground italic">No trigger conditions defined.</p>;
+  }
+
+  const type = condition.type as string;
+
+  switch (type) {
+    case 'vital_range': {
+      const vital = (condition.vital as string) || 'unknown';
+      const min = condition.min as number | undefined;
+      const max = condition.max as number | undefined;
+      const minLabel = condition.min_label as string | undefined;
+      const maxLabel = condition.max_label as string | undefined;
+      return (
+        <div className="space-y-2">
+          <Badge variant="secondary">Vital Sign Range</Badge>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="rounded border p-2">
+              <span className="text-xs text-muted-foreground">Vital Sign</span>
+              <p className="text-sm font-medium capitalize">{vital.replace(/_/g, ' ')}</p>
+            </div>
+            {min != null && (
+              <div className="rounded border p-2">
+                <span className="text-xs text-muted-foreground">Minimum Threshold</span>
+                <p className="text-sm font-medium">
+                  &lt; {min} {minLabel && <span className="text-muted-foreground">({minLabel})</span>}
+                </p>
+              </div>
+            )}
+            {max != null && (
+              <div className="rounded border p-2">
+                <span className="text-xs text-muted-foreground">Maximum Threshold</span>
+                <p className="text-sm font-medium">
+                  &gt; {max} {maxLabel && <span className="text-muted-foreground">({maxLabel})</span>}
+                </p>
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Triggers when {vital.replace(/_/g, ' ')} is
+            {min != null && max != null ? ` below ${min} or above ${max}` : min != null ? ` below ${min}` : ` above ${max}`}.
+          </p>
+        </div>
+      );
+    }
+
+    case 'drug_allergy': {
+      const checkMode = condition.check_mode as string | undefined;
+      const substance = condition.substance as string | undefined;
+      const crossReactive = condition.cross_reactive as string[] | undefined;
+      return (
+        <div className="space-y-2">
+          <Badge variant="secondary">Drug-Allergy Interaction</Badge>
+          {checkMode === 'prescribing' ? (
+            <p className="text-sm">
+              Triggers when prescribing a drug that matches any of the patient&apos;s recorded allergies.
+            </p>
+          ) : substance ? (
+            <div className="space-y-2">
+              <div className="rounded border p-2">
+                <span className="text-xs text-muted-foreground">Substance</span>
+                <p className="text-sm font-medium capitalize">{substance}</p>
+              </div>
+              {crossReactive && crossReactive.length > 0 && (
+                <div className="rounded border p-2">
+                  <span className="text-xs text-muted-foreground">Cross-reactive drugs</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {crossReactive.map((drug) => (
+                      <Badge key={drug} variant="outline" className="text-xs capitalize">{drug}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Triggers when patient has allergy to {substance} and is prescribed {substance} or cross-reactive drugs.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground italic">Generic drug-allergy check.</p>
+          )}
+        </div>
+      );
+    }
+
+    case 'drug_drug': {
+      const drugs = condition.drugs as string[] | undefined;
+      const interaction = condition.interaction as string | undefined;
+      return (
+        <div className="space-y-2">
+          <Badge variant="secondary">Drug-Drug Interaction</Badge>
+          {drugs && drugs.length > 0 && (
+            <div className="rounded border p-2">
+              <span className="text-xs text-muted-foreground">Interacting Drugs</span>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {drugs.map((drug) => (
+                  <Badge key={drug} variant="outline" className="text-xs capitalize">{drug}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {interaction && (
+            <div className="rounded border p-2">
+              <span className="text-xs text-muted-foreground">Interaction Type</span>
+              <p className="text-sm font-medium">{interaction}</p>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Triggers when patient is taking or being prescribed interacting drug combinations.
+          </p>
+        </div>
+      );
+    }
+
+    case 'lab_range': {
+      const testName = condition.test_name as string | undefined;
+      const min = condition.min as number | undefined;
+      const max = condition.max as number | undefined;
+      const unit = condition.unit as string | undefined;
+      return (
+        <div className="space-y-2">
+          <Badge variant="secondary">Lab Value Range</Badge>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {testName && (
+              <div className="rounded border p-2">
+                <span className="text-xs text-muted-foreground">Lab Test</span>
+                <p className="text-sm font-medium">{testName}</p>
+              </div>
+            )}
+            {min != null && (
+              <div className="rounded border p-2">
+                <span className="text-xs text-muted-foreground">Low Threshold</span>
+                <p className="text-sm font-medium">&lt; {min} {unit || ''}</p>
+              </div>
+            )}
+            {max != null && (
+              <div className="rounded border p-2">
+                <span className="text-xs text-muted-foreground">High Threshold</span>
+                <p className="text-sm font-medium">&gt; {max} {unit || ''}</p>
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Triggers when {testName || 'lab value'} is outside the defined range.
+          </p>
+        </div>
+      );
+    }
+
+    case 'custom': {
+      const expression = condition.expression as string | undefined;
+      return (
+        <div className="space-y-2">
+          <Badge variant="secondary">Custom Rule</Badge>
+          {expression && (
+            <div className="rounded border p-2">
+              <span className="text-xs text-muted-foreground">Expression</span>
+              <p className="text-sm font-mono text-xs">{expression}</p>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Custom rule evaluated against encounter context.
+          </p>
+        </div>
+      );
+    }
+
+    case 'ml_model': {
+      const model = condition.model as string | undefined;
+      const threshold = condition.threshold as number | undefined;
+      return (
+        <div className="space-y-2">
+          <Badge variant="secondary">ML Model</Badge>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {model && (
+              <div className="rounded border p-2">
+                <span className="text-xs text-muted-foreground">Model</span>
+                <p className="text-sm font-medium">{model}</p>
+              </div>
+            )}
+            {threshold != null && (
+              <div className="rounded border p-2">
+                <span className="text-xs text-muted-foreground">Threshold</span>
+                <p className="text-sm font-medium">{threshold}</p>
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Triggers when ML model prediction exceeds threshold.
+          </p>
+        </div>
+      );
+    }
+
+    default:
+      return (
+        <div className="space-y-2">
+          <Badge variant="outline">Unknown Type: {type || 'none'}</Badge>
+          <p className="text-sm text-muted-foreground italic">
+            Condition type not recognized. See raw JSON below for details.
+          </p>
+        </div>
+      );
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 export default function CDSRuleDetailPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -195,12 +407,22 @@ export default function CDSRuleDetailPage() {
               <p className="text-sm">{rule.suggestion}</p>
             </div>
           )}
-          <div>
-            <span className="text-xs text-muted-foreground">Condition (JSON)</span>
-            <pre className="text-xs bg-muted/50 p-2 rounded overflow-x-auto">
+        </CardContent>
+      </Card>
+
+      {/* Trigger Conditions */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">Trigger Conditions</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <ConditionDisplay condition={rule.condition} />
+          <details className="text-xs">
+            <summary className="text-muted-foreground cursor-pointer hover:text-foreground">
+              View raw condition JSON
+            </summary>
+            <pre className="mt-2 bg-muted/50 p-2 rounded overflow-x-auto">
               {JSON.stringify(rule.condition, null, 2)}
             </pre>
-          </div>
+          </details>
         </CardContent>
       </Card>
 

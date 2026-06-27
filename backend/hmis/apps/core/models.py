@@ -2981,7 +2981,7 @@ class Organization(TimeStampedModel):
                 "label": "Invite team members",
                 "description": "Add doctors, nurses, and other staff to the system.",
                 "done": has_invited_staff,
-                "required": True,
+                "required": False,
             },
         ]
 

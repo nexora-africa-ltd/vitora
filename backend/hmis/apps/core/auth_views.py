@@ -1299,9 +1299,16 @@ def onboarding_status(request):
     steps = org.get_onboarding_checklist()
     all_required_done = all(s["done"] for s in steps if s["required"])
     if not all_required_done:
-        incomplete = [s["label"] for s in steps if s["required"] and not s["done"]]
+        incomplete = [
+            {"key": s["key"], "label": s["label"]} for s in steps if s["required"] and not s["done"]
+        ]
+        labels = ", ".join(s["label"] for s in incomplete)
         return Response(
-            {"detail": f"Required steps not complete: {', '.join(incomplete)}"},
+            {
+                "detail": f"Required steps not complete: {labels}",
+                "incomplete_steps": incomplete,
+                "steps": steps,
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
