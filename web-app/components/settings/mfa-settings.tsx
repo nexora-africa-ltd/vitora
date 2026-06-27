@@ -542,7 +542,7 @@ export function MFASettingsTab() {
 
       {/* Add Passkey Dialog */}
       <Dialog open={showAddPasskeyDialog} onOpenChange={(open) => { setShowAddPasskeyDialog(open); setActionError(null); }}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Fingerprint className="h-5 w-5" />
@@ -599,7 +599,7 @@ export function MFASettingsTab() {
 
       {/* Delete Passkey Dialog */}
       <Dialog open={showDeletePasskeyDialog !== null} onOpenChange={() => { setShowDeletePasskeyDialog(null); setActionError(null); setDeletePassword(''); }}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete Passkey</DialogTitle>
             <DialogDescription>

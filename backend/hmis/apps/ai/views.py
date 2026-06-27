@@ -2557,22 +2557,23 @@ class StoredInvestigationSuggestListView(AIFeatureGatedMixin, APIView):
     GET /api/ai/results/investigation-suggestions/?encounter_id=X
 
     Returns saved investigation suggestion results.
+    When no filter is provided, returns the 20 most recent results (facility-scoped).
     """
 
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request: Request) -> Response:
+        qs = AIInvestigationSuggestResult.objects.select_related("created_by").order_by(
+            "-created_at"
+        )
         encounter_id = request.query_params.get("encounter_id")
-        if not encounter_id:
-            return Response([])
+        if encounter_id:
+            qs = qs.filter(encounter_id=encounter_id)
         resolve_request_tenant(request)
         facility = getattr(request, "facility", None)
-        qs = AIInvestigationSuggestResult.objects.select_related("created_by").filter(
-            encounter_id=encounter_id,
-        )
         if facility:
             qs = qs.filter(facility=facility)
-        return Response(StoredInvestigationSuggestSerializer(qs[:10], many=True).data)
+        return Response(StoredInvestigationSuggestSerializer(qs[:20], many=True).data)
 
 
 # =============================================================================
@@ -2585,25 +2586,24 @@ class StoredCarePlanListView(AIFeatureGatedMixin, APIView):
     GET /api/ai/results/care-plans/?encounter_id=X or ?admission_id=X
 
     Returns saved care plan results (most recent first).
+    When no filter is provided, returns the 20 most recent results (facility-scoped).
     """
 
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        qs = AICarePlanResult.objects.select_related("created_by")
+        qs = AICarePlanResult.objects.select_related("created_by").order_by("-created_at")
         encounter_id = request.query_params.get("encounter_id")
         admission_id = request.query_params.get("admission_id")
         if encounter_id:
             qs = qs.filter(encounter_id=encounter_id)
         elif admission_id:
             qs = qs.filter(admission_id=admission_id)
-        else:
-            return Response([])
         resolve_request_tenant(request)
         facility = getattr(request, "facility", None)
         if facility:
             qs = qs.filter(facility=facility)
-        results = qs[:10]
+        results = qs[:20]
         return Response(StoredCarePlanSerializer(results, many=True).data)
 
 
@@ -2638,22 +2638,21 @@ class StoredCDSResultListView(AIFeatureGatedMixin, APIView):
     GET /api/ai/results/cds/?encounter_id=X
 
     Returns saved CDS evaluation results.
+    When no filter is provided, returns the 20 most recent results (facility-scoped).
     """
 
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request: Request) -> Response:
+        qs = AICDSResult.objects.select_related("created_by").order_by("-created_at")
         encounter_id = request.query_params.get("encounter_id")
-        if not encounter_id:
-            return Response([])
+        if encounter_id:
+            qs = qs.filter(encounter_id=encounter_id)
         resolve_request_tenant(request)
         facility = getattr(request, "facility", None)
-        qs = AICDSResult.objects.select_related("created_by").filter(
-            encounter_id=encounter_id,
-        )
         if facility:
             qs = qs.filter(facility=facility)
-        return Response(StoredCDSResultSerializer(qs[:10], many=True).data)
+        return Response(StoredCDSResultSerializer(qs[:20], many=True).data)
 
 
 class StoredLabInterpretListView(AIFeatureGatedMixin, APIView):
@@ -2661,25 +2660,24 @@ class StoredLabInterpretListView(AIFeatureGatedMixin, APIView):
     GET /api/ai/results/lab-interpretations/?lab_result_id=X or ?encounter_id=X
 
     Returns saved lab interpretation results.
+    When no filter is provided, returns the 20 most recent results (facility-scoped).
     """
 
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        qs = AILabInterpretResult.objects.select_related("created_by")
+        qs = AILabInterpretResult.objects.select_related("created_by").order_by("-created_at")
         lab_result_id = request.query_params.get("lab_result_id")
         encounter_id = request.query_params.get("encounter_id")
         if lab_result_id:
             qs = qs.filter(lab_result_id=lab_result_id)
         elif encounter_id:
             qs = qs.filter(encounter_id=encounter_id)
-        else:
-            return Response([])
         resolve_request_tenant(request)
         facility = getattr(request, "facility", None)
         if facility:
             qs = qs.filter(facility=facility)
-        return Response(StoredLabInterpretSerializer(qs[:10], many=True).data)
+        return Response(StoredLabInterpretSerializer(qs[:20], many=True).data)
 
 
 class StoredDischargeResultListView(AIFeatureGatedMixin, APIView):
@@ -2687,22 +2685,21 @@ class StoredDischargeResultListView(AIFeatureGatedMixin, APIView):
     GET /api/ai/results/discharge/?admission_id=X
 
     Returns saved discharge readiness assessments.
+    When no filter is provided, returns the 20 most recent results (facility-scoped).
     """
 
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request: Request) -> Response:
+        qs = AIDischargeResult.objects.select_related("created_by").order_by("-created_at")
         admission_id = request.query_params.get("admission_id")
-        if not admission_id:
-            return Response([])
+        if admission_id:
+            qs = qs.filter(admission_id=admission_id)
         resolve_request_tenant(request)
         facility = getattr(request, "facility", None)
-        qs = AIDischargeResult.objects.select_related("created_by").filter(
-            admission_id=admission_id,
-        )
         if facility:
             qs = qs.filter(facility=facility)
-        return Response(StoredDischargeResultSerializer(qs[:10], many=True).data)
+        return Response(StoredDischargeResultSerializer(qs[:20], many=True).data)
 
 
 class StoredICURiskResultListView(AIFeatureGatedMixin, APIView):
@@ -2710,22 +2707,21 @@ class StoredICURiskResultListView(AIFeatureGatedMixin, APIView):
     GET /api/ai/results/icu-risk/?admission_id=X
 
     Returns saved ICU risk results.
+    When no filter is provided, returns the 20 most recent results (facility-scoped).
     """
 
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request: Request) -> Response:
+        qs = AIICURiskResult.objects.select_related("created_by").order_by("-created_at")
         admission_id = request.query_params.get("admission_id")
-        if not admission_id:
-            return Response([])
+        if admission_id:
+            qs = qs.filter(admission_id=admission_id)
         resolve_request_tenant(request)
         facility = getattr(request, "facility", None)
-        qs = AIICURiskResult.objects.select_related("created_by").filter(
-            admission_id=admission_id,
-        )
         if facility:
             qs = qs.filter(facility=facility)
-        return Response(StoredICURiskResultSerializer(qs[:10], many=True).data)
+        return Response(StoredICURiskResultSerializer(qs[:20], many=True).data)
 
 
 # =============================================================================

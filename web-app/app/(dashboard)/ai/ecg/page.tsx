@@ -364,11 +364,73 @@ function InterpretResult({ result, onDownloadPDF }: { result: ECGInterpretRespon
 // =============================================================================
 
 function UploadTab() {
-  const { mutate, data, isPending, error } = useECGUpload();
+  const { mutate: upload, data: uploadData, isPending: isUploading, error: uploadError } = useECGUpload();
+  const { mutate: reinterpret, data: reinterpretData, isPending: isReinterpreting, error: reinterpretError } = useECGInterpret();
   const [file, setFile] = useState<File | null>(null);
+
+  // Patient context (sent with re-interpret)
+  const [age, setAge] = useState('');
+  const [sex, setSex] = useState('');
+  const [clinicalContext, setClinicalContext] = useState('');
+  const [medications, setMedications] = useState('');
+
+  // Editable extracted parameters (populated after upload)
+  const [editedParams, setEditedParams] = useState<Record<string, string>>({});
+  const [showEditor, setShowEditor] = useState(false);
+
+  // Populate editor when upload completes
+  const data = reinterpretData ?? uploadData?.interpretation;
+  const extractedParams = uploadData?.extracted_parameters ?? {};
+
+  const handleUploadComplete = () => {
+    if (!file) return;
+    upload(file, {
+      onSuccess: (result) => {
+        // Pre-fill editable params from extracted parameters
+        const params: Record<string, string> = {};
+        const ep = result.extracted_parameters || {};
+        if (ep.heart_rate) params.heart_rate = String(ep.heart_rate);
+        if (ep.rhythm) params.rhythm = String(ep.rhythm);
+        if (ep.axis) params.axis = String(ep.axis);
+        if (ep.pr_interval) params.pr_interval = String(ep.pr_interval);
+        if (ep.qrs_duration) params.qrs_duration = String(ep.qrs_duration);
+        if (ep.qtc_interval) params.qtc_interval = String(ep.qtc_interval);
+        if (ep.st_segment) params.st_segment = String(ep.st_segment);
+        if (ep.t_wave) params.t_wave = String(ep.t_wave);
+        if (ep.bundle_branch) params.bundle_branch = String(ep.bundle_branch);
+        setEditedParams(params);
+      },
+    });
+  };
+
+  const handleReinterpret = () => {
+    const payload: ECGInterpretRequest = {
+      heart_rate: editedParams.heart_rate ? Number(editedParams.heart_rate) : undefined,
+      rhythm: editedParams.rhythm || undefined,
+      axis: editedParams.axis || undefined,
+      pr_interval: editedParams.pr_interval ? Number(editedParams.pr_interval) : undefined,
+      qrs_duration: editedParams.qrs_duration ? Number(editedParams.qrs_duration) : undefined,
+      qtc_interval: editedParams.qtc_interval ? Number(editedParams.qtc_interval) : undefined,
+      st_segment: editedParams.st_segment || undefined,
+      t_wave: editedParams.t_wave || undefined,
+      bundle_branch: editedParams.bundle_branch || undefined,
+      clinical_context: clinicalContext || undefined,
+      age: age ? Number(age) : undefined,
+      sex: (sex as 'male' | 'female') || undefined,
+      medications: medications ? medications.split(',').map((m) => m.trim()).filter(Boolean) : undefined,
+    };
+    reinterpret(payload);
+  };
+
+  const updateParam = (key: string, value: string) => {
+    setEditedParams((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const error = uploadError || reinterpretError;
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
+      {/* Upload form */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -388,8 +450,47 @@ function UploadTab() {
               Supported: JPEG, PNG, TIFF, BMP, DICOM, GE MUSE XML, HL7 aECG, SCP-ECG. Max 10 MB.
             </p>
           </div>
-          <Button onClick={() => file && mutate(file)} disabled={!file || isPending} className="w-full">
-            {isPending ? 'Processing...' : 'Upload & Interpret'}
+
+          {/* Patient context (collapsible) */}
+          <div className="space-y-2 border-t pt-3">
+            <Label className="text-xs font-medium">Patient Context (optional — improves accuracy)</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Age</Label>
+                <Input type="number" value={age} onChange={(e) => setAge(e.target.value)} placeholder="Years" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Sex</Label>
+                <Select value={sex} onValueChange={setSex}>
+                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Clinical Context</Label>
+              <Textarea
+                value={clinicalContext}
+                onChange={(e) => setClinicalContext(e.target.value)}
+                placeholder="e.g. 68yo female, chest pain, hypertension, post-PCI"
+                rows={2}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Medications (comma-separated)</Label>
+              <Input
+                value={medications}
+                onChange={(e) => setMedications(e.target.value)}
+                placeholder="e.g. Metoprolol, Digoxin, Amiodarone"
+              />
+            </div>
+          </div>
+
+          <Button onClick={handleUploadComplete} disabled={!file || isUploading} className="w-full">
+            {isUploading ? 'Processing...' : 'Upload & Interpret'}
           </Button>
         </CardContent>
       </Card>
@@ -401,19 +502,21 @@ function UploadTab() {
           </CardContent>
         </Card>
       )}
-      {data && (
+
+      {/* Upload results with editable parameters */}
+      {uploadData && (
         <div className="space-y-3">
-          {data.quality_score != null && (
+          {uploadData.quality_score != null && (
             <Card>
               <CardContent className="pt-4">
                 <div className="flex justify-between text-sm">
                   <span>Image Quality</span>
-                  <span className="font-medium">{Math.round(data.quality_score * 100)}%</span>
+                  <span className="font-medium">{Math.round(uploadData.quality_score * 100)}%</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Format: {data.source_format}</p>
-                {data.warnings.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">Format: {uploadData.source_format}</p>
+                {uploadData.warnings.length > 0 && (
                   <div className="mt-2 space-y-1">
-                    {data.warnings.map((w, i) => (
+                    {uploadData.warnings.map((w, i) => (
                       <p key={i} className="text-xs text-amber-600">{w}</p>
                     ))}
                   </div>
@@ -421,7 +524,86 @@ function UploadTab() {
               </CardContent>
             </Card>
           )}
-          <InterpretResult result={data.interpretation} onDownloadPDF={() => {}} />
+
+          {/* Editable extracted parameters */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm">Extracted Parameters</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowEditor(!showEditor)}
+                  className="text-xs"
+                >
+                  {showEditor ? 'Hide Editor' : 'Edit & Re-interpret'}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Review machine-extracted values. Edit if incorrect and re-interpret for better results.
+              </p>
+            </CardHeader>
+            {showEditor && (
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Heart Rate</Label>
+                    <Input type="number" value={editedParams.heart_rate || ''} onChange={(e) => updateParam('heart_rate', e.target.value)} placeholder="bpm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Rhythm</Label>
+                    <Input value={editedParams.rhythm || ''} onChange={(e) => updateParam('rhythm', e.target.value)} placeholder="e.g. regular" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Axis</Label>
+                    <Input value={editedParams.axis || ''} onChange={(e) => updateParam('axis', e.target.value)} placeholder="e.g. normal" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">PR (ms)</Label>
+                    <Input type="number" value={editedParams.pr_interval || ''} onChange={(e) => updateParam('pr_interval', e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">QRS (ms)</Label>
+                    <Input type="number" value={editedParams.qrs_duration || ''} onChange={(e) => updateParam('qrs_duration', e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">QTc (ms)</Label>
+                    <Input type="number" value={editedParams.qtc_interval || ''} onChange={(e) => updateParam('qtc_interval', e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">ST Segment</Label>
+                    <Input value={editedParams.st_segment || ''} onChange={(e) => updateParam('st_segment', e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">T-Wave</Label>
+                    <Input value={editedParams.t_wave || ''} onChange={(e) => updateParam('t_wave', e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Bundle Branch</Label>
+                    <Input value={editedParams.bundle_branch || ''} onChange={(e) => updateParam('bundle_branch', e.target.value)} />
+                  </div>
+                </div>
+                <Button onClick={handleReinterpret} disabled={isReinterpreting} className="w-full" variant="secondary">
+                  {isReinterpreting ? 'Re-interpreting...' : 'Re-interpret with corrections'}
+                </Button>
+              </CardContent>
+            )}
+            {!showEditor && Object.keys(extractedParams).length > 0 && (
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-xs">
+                  {Object.entries(extractedParams).map(([k, v]) => (
+                    <div key={k} className="flex justify-between">
+                      <span className="text-muted-foreground capitalize">{k.replace(/_/g, ' ')}</span>
+                      <span className="font-medium">{String(v)}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            )}
+          </Card>
+
+          {/* Interpretation result */}
+          {data && <InterpretResult result={data} onDownloadPDF={() => {}} />}
         </div>
       )}
     </div>

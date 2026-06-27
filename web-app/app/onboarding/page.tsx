@@ -142,6 +142,10 @@ export default function OnboardingPage() {
   // Clinic state
   const [isSeeding, setIsSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<{ created: { code: string; name: string }[]; total: number } | null>(null);
+  const [manualClinicName, setManualClinicName] = useState('');
+  const [manualClinicCode, setManualClinicCode] = useState('');
+  const [isCreatingClinic, setIsCreatingClinic] = useState(false);
+  const [createdClinics, setCreatedClinics] = useState<{ code: string; name: string }[]>([]);
 
   // Invite state
   const [inviteEmail, setInviteEmail] = useState('');
@@ -301,13 +305,51 @@ export default function OnboardingPage() {
     setIsSeeding(true);
     setError(null);
     try {
-      const result = await clinicsApi.seedDefaults();
+      const result = await clinicsApi.seedDefaults(createdFacility?.id);
       setSeedResult(result);
-      setStepsStatus((prev) => ({ ...prev, clinic: true }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create default clinics');
+      if (result.created.length > 0) {
+        setStepsStatus((prev) => ({ ...prev, clinic: true }));
+      }
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : (err instanceof Error ? err.message : 'Failed to seed clinics'));
     } finally {
       setIsSeeding(false);
+    }
+  };
+
+  const handleCreateClinic = async () => {
+    if (!manualClinicName.trim() || !createdFacility) return;
+    setIsCreatingClinic(true);
+    setError(null);
+    try {
+      const code = manualClinicCode.trim() || manualClinicName.trim().toUpperCase().replace(/\s+/g, '-').slice(0, 20);
+      await clinicsApi.create({
+        name: manualClinicName.trim(),
+        code,
+        clinic_type: 'GENERAL_OPD',
+        facility: createdFacility.id,
+        organization: createdFacility.organization ?? undefined,
+        status: 'ACTIVE',
+        accepts_walk_ins: true,
+        triage_required: true,
+      } as any);
+      setCreatedClinics((prev) => [...prev, { code, name: manualClinicName.trim() }]);
+      setManualClinicName('');
+      setManualClinicCode('');
+      setStepsStatus((prev) => ({ ...prev, clinic: true }));
+    } catch (err: any) {
+      const detail = err?.response?.data;
+      if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+        const messages = Object.entries(detail)
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+          .join('; ');
+        setError(messages);
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to create clinic');
+      }
+    } finally {
+      setIsCreatingClinic(false);
     }
   };
 
@@ -353,8 +395,15 @@ export default function OnboardingPage() {
       } catch { /* best-effort */ }
       sessionStorage.removeItem('vitora_onboarding_banner_dismissed');
       window.location.href = '/dashboard';
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to complete onboarding');
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      if (typeof detail === 'string') {
+        setError(detail);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to complete onboarding');
+      }
     } finally {
       setIsCompleting(false);
     }
@@ -660,49 +709,85 @@ export default function OnboardingPage() {
               </div>
               <p className="text-sm text-muted-foreground">
                 Clinics are service points within your facility (e.g. General OPD, MCH, Dental).
-                Seed standard Kenya healthcare clinics or create them manually later.
+                Seed standard Kenya healthcare clinics or add them manually.
               </p>
 
-              {seedResult ? (
+              {/* Show created clinics (seeded or manual) */}
+              {(seedResult && seedResult.created.length > 0 || createdClinics.length > 0) && (
                 <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                    <span className="font-medium">{seedResult.created.length} clinics created</span>
+                    <span className="font-medium">
+                      {(seedResult?.created.length ?? 0) + createdClinics.length} clinic(s) created
+                    </span>
                   </div>
                   <ul className="mt-2 space-y-0.5 text-sm text-muted-foreground">
-                    {seedResult.created.slice(0, 5).map((c) => (
+                    {[...(seedResult?.created ?? []), ...createdClinics].slice(0, 5).map((c) => (
                       <li key={c.code}>&bull; {c.name}</li>
                     ))}
-                    {seedResult.created.length > 5 && (
-                      <li>&hellip;and {seedResult.created.length - 5} more</li>
+                    {(seedResult?.created.length ?? 0) + createdClinics.length > 5 && (
+                      <li>&hellip;and {(seedResult?.created.length ?? 0) + createdClinics.length - 5} more</li>
                     )}
                   </ul>
-                  <Button variant="outline" size="sm" className="mt-3" onClick={goForward}>
-                    Continue <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button
-                    className="flex-1"
-                    disabled={isSeeding}
-                    onClick={handleSeedClinics}
-                  >
-                    {isSeeding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Seed standard clinics
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => {
-                      setStepsStatus((prev) => ({ ...prev, clinic: true }));
-                      goForward();
-                    }}
-                  >
-                    Skip &mdash; I&apos;ll add later
-                  </Button>
                 </div>
               )}
+
+              {/* Seed standard clinics button */}
+              {!seedResult && (
+                <Button
+                  className="w-full"
+                  disabled={isSeeding}
+                  onClick={handleSeedClinics}
+                >
+                  {isSeeding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Seed standard Kenya clinics
+                </Button>
+              )}
+
+              {/* Manual clinic creation */}
+              <div className="rounded-lg border p-4 space-y-3">
+                <p className="text-sm font-medium">Or add a clinic manually</p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <div className="flex-1">
+                    <Label htmlFor="clinic-name" className="text-xs">Clinic name *</Label>
+                    <Input
+                      id="clinic-name"
+                      placeholder="e.g. General OPD"
+                      value={manualClinicName}
+                      onChange={(e) => setManualClinicName(e.target.value)}
+                    />
+                  </div>
+                  <div className="w-full sm:w-36">
+                    <Label htmlFor="clinic-code" className="text-xs">Code (optional)</Label>
+                    <Input
+                      id="clinic-code"
+                      placeholder="e.g. OPD-001"
+                      value={manualClinicCode}
+                      onChange={(e) => setManualClinicCode(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!manualClinicName.trim() || isCreatingClinic}
+                  onClick={handleCreateClinic}
+                >
+                  {isCreatingClinic && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Add Clinic
+                </Button>
+              </div>
+
+              {/* Navigation */}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  className="flex-1"
+                  disabled={!stepsStatus.clinic}
+                  onClick={goForward}
+                >
+                  Continue <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}

@@ -403,12 +403,48 @@ class ClinicViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         ANC, etc.) scoped to the user's active facility.  Clinics that already
         exist (matched by code) are skipped.
 
+        Accepts an optional ``facility_id`` in the request body to target a
+        specific facility (useful during onboarding when X-Facility-Id may
+        not be set yet).
+
         Returns:
             201 with { created: [...], skipped: int }
         """
+        from hmis.apps.core.models import Facility as FacilityModel
+
         self._resolve_tenant_context()
         facility = getattr(request, "facility", None)
         organization = getattr(request, "organization", None)
+
+        # Fall back to explicit facility_id from body (onboarding support)
+        if not facility:
+            body_facility_id = request.data.get("facility_id")
+            if body_facility_id:
+                try:
+                    facility = FacilityModel.objects.select_related("organization").get(
+                        pk=int(body_facility_id), is_active=True
+                    )
+                    organization = facility.organization
+                    # Verify caller belongs to this org (non-superuser)
+                    if not request.user.is_superuser:
+                        profile = getattr(request.user, "staff_profile", None)
+                        if not profile:
+                            return Response(
+                                {"detail": "You do not have access to this facility."},
+                                status=status.HTTP_403_FORBIDDEN,
+                            )
+                        # Allow if facility belongs to user's org OR has no org yet
+                        # (org-less facilities are typically just-created during onboarding)
+                        if organization and profile.organization_id != organization.pk:
+                            return Response(
+                                {"detail": "You do not have access to this facility."},
+                                status=status.HTTP_403_FORBIDDEN,
+                            )
+                        # If facility has no org, adopt it from the user's profile
+                        if not organization and profile.organization_id:
+                            organization = profile.organization
+                except (FacilityModel.DoesNotExist, ValueError, TypeError):
+                    pass
 
         if not facility:
             return Response(

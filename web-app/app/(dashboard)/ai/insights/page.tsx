@@ -238,12 +238,12 @@ export default function AIInsightsPage() {
               <CardContent>
                 <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                   {[
-                    { label: 'Care Plans', value: insights.stored_results.care_plans, href: '/encounters' },
-                    { label: 'CDS Evaluations', value: insights.stored_results.cds_evaluations, href: '/cds/alerts' },
-                    { label: 'Lab Interpretations', value: insights.stored_results.lab_interpretations, href: '/laboratory' },
-                    { label: 'Discharge Assessments', value: insights.stored_results.discharge_assessments, href: '/inpatient/admissions' },
-                    { label: 'ICU Risk Predictions', value: insights.stored_results.icu_risk_predictions, href: '/inpatient/admissions' },
-                    { label: 'Investigation Suggestions', value: insights.stored_results.investigation_suggestions, href: '/encounters' },
+                    { label: 'Care Plans', value: insights.stored_results.care_plans, href: '/ai/insights/stored-results/care-plans' },
+                    { label: 'CDS Evaluations', value: insights.stored_results.cds_evaluations, href: '/ai/insights/stored-results/cds-evaluations' },
+                    { label: 'Lab Interpretations', value: insights.stored_results.lab_interpretations, href: '/ai/insights/stored-results/lab-interpretations' },
+                    { label: 'Discharge Assessments', value: insights.stored_results.discharge_assessments, href: '/ai/insights/stored-results/discharge-assessments' },
+                    { label: 'ICU Risk Predictions', value: insights.stored_results.icu_risk_predictions, href: '/ai/insights/stored-results/icu-risk-predictions' },
+                    { label: 'Investigation Suggestions', value: insights.stored_results.investigation_suggestions, href: '/ai/insights/stored-results/investigation-suggestions' },
                     { label: 'Surgical Pre-Op', value: insights.stored_results.surgical_pre_op, href: '/theatre' },
                     { label: 'Surgical Checklists', value: insights.stored_results.surgical_checklists, href: '/theatre' },
                     { label: 'Surgical Post-Op', value: insights.stored_results.surgical_post_op, href: '/theatre' },

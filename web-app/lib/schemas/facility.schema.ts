@@ -33,7 +33,7 @@ export const FacilityModulesSchema = z.object({
 export const FacilityListItemSchema = z.object({
   id: z.number(),
   organization: z.number().nullable(),
-  organization_name: z.string().nullable(),
+  organization_name: z.string().nullable().optional(),
   mfl_code: z.string(),
   name: z.string(),
   level: z.string(),
