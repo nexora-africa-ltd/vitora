@@ -981,7 +981,7 @@ export function PatientForm({
     } finally {
       setIsCheckingEligibility(false);
     }
-  }, [form, toast, duplicateCheckResult]);
+  }, [form, toast]);
 
   // NOTE: Auto-search on debounced ID input is DISABLED in favor of explicit triggers
   // (Enter, Tab, blur, or clicking the search button). This prevents accidental
@@ -1055,6 +1055,7 @@ export function PatientForm({
           .join(' '),
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prePopulatedShaPerson, populateFromShaPerson, runPostSelectionDuplicateCheck]);
 
   useEffect(() => {

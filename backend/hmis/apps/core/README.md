@@ -9,11 +9,17 @@ Kenya location hierarchy, RBAC (Role-Based Access Control), and notification sys
 This module provides functionality for:
 
 - **Audit Logging** - Kenya DPA 2019 compliant audit trails
+
 - **Offline Sync** - Queue-based sync with conflict resolution
+
 - **Kenya Locations** - 47 Counties → 289 Sub-Counties → 1,448 Wards
+
 - **RBAC** - Roles, departments, and staff profiles
+
 - **Notifications** - In-app notification system
+
 - **Activity Feed** - Real-time dashboard activity stream
+
 - **Idempotency** - Duplicate request prevention
 
 ## Models
@@ -37,10 +43,15 @@ Kenya Data Protection Act 2019 compliant audit trail.
 **Action Types:**
 
 - Authentication: `login_success`, `login_failed`, `logout`, `token_refresh`
+
 - Patient: `patient_create`, `patient_view`, `patient_update`, `patient_delete`, `patient_list`
+
 - Sensitive: `view_sensitive_patient`, `sensitive_access_denied`
+
 - Encounter: `encounter_create`, `encounter_view`, `encounter_update`, `encounter_delete`
+
 - System: `system_error`, `data_export`
+
 - Clinic: `overdue_appointment_alert`, `appointment_reminder`
 
 **Usage:**
@@ -58,7 +69,7 @@ AuditLog.log(
     patient_id=patient.id,
 )
 
-```
+```text
 
 ### FrontendEvent
 
@@ -138,7 +149,7 @@ entry.mark_synced()       # Set status to SYNCED, update synced_at
 entry.mark_failed(error)  # Set status to FAILED, increment retry_count
 entry.mark_conflict()     # Set status to CONFLICT
 
-```
+```text
 
 ### SyncConflict
 
@@ -269,7 +280,7 @@ Role with hierarchical permissions.
     "Prescription": {"create": true, "read": true, "update": false, "delete": false}
 }
 
-```
+```text
 
 **Methods:**
 
@@ -320,7 +331,7 @@ staff.is_license_valid()                  # Check license expiry
 staff.is_external                         # True if LOCUM employment type
 staff.get_supervisees()                   # Direct reports
 
-```
+```text
 
 ---
 
@@ -375,7 +386,7 @@ Prevent duplicate API requests.
 IdempotencyKey.get_or_none(key, user)  # Get existing key
 IdempotencyKey.cleanup_old_keys(24)    # Delete keys older than 24 hours
 
-```
+```text
 
 ---
 
@@ -390,7 +401,7 @@ GET  /api/auditlogs/?user={id}          # Filter by user
 GET  /api/auditlogs/?action=patient_view  # Filter by action
 GET  /api/auditlogs/?patient_id={id}    # Filter by patient
 
-```
+```text
 
 ### Kenya Locations
 
@@ -400,7 +411,7 @@ GET  /api/locations/counties/                        # List all 47 counties
 GET  /api/locations/sub-counties/?county={id}        # Sub-counties for county
 GET  /api/locations/wards/?sub_county={id}           # Wards for sub-county
 
-```
+```text
 
 ### Staff & Roles
 
@@ -415,7 +426,7 @@ GET   /api/staff/me/                    # Get current user's profile
 GET   /api/roles/                       # List roles
 GET   /api/departments/                 # List departments
 
-```
+```text
 
 ### Notifications
 
@@ -426,7 +437,7 @@ GET   /api/notifications/unread/        # List unread notifications
 POST  /api/notifications/{id}/read/     # Mark as read
 POST  /api/notifications/read-all/      # Mark all as read
 
-```
+```text
 
 ### Sync Status
 
@@ -438,7 +449,7 @@ POST  /api/sync/trigger/                # Trigger manual sync
 GET   /api/sync/conflicts/              # List conflicts
 POST  /api/sync/conflicts/{id}/resolve/ # Resolve conflict
 
-```
+```text
 
 ### Activity Feed
 
@@ -448,7 +459,7 @@ GET  /api/activity/                     # Get activity feed
 GET  /api/activity/?type=patient        # Filter by type
 GET  /api/activity/?limit=20            # Limit results
 
-```
+```text
 
 ### Frontend Events
 
@@ -457,7 +468,7 @@ GET  /api/activity/?limit=20            # Limit results
 POST /api/events/                       # Log frontend event
 POST /api/events/batch/                 # Log batch of events (offline sync)
 
-```
+```text
 
 ---
 
@@ -490,7 +501,7 @@ from hmis.apps.core.tasks import (
 
 result = generate_defaulter_list.delay(clinic_id=1)
 
-```
+```text
 
 ### Cleanup Tasks
 
@@ -515,7 +526,7 @@ class MyModel(TimeStampedModel):
     name = models.CharField(max_length=100)
     # created_at and updated_at are automatically added
 
-```
+```text
 
 ### SyncableModel
 
@@ -547,7 +558,7 @@ from hmis.apps.core.permissions import (
     RoleBasedPermission,        # Check role permissions
 )
 
-```
+```text
 
 ---
 
@@ -596,19 +607,26 @@ poetry run pytest tests/test_sync*.py -v
 
 poetry run pytest tests/test_rbac*.py -v
 
-```
+```text
 
 ---
 
 ## Integration Points
 
 - **All Modules** - AuditLog is called from all ViewSets for compliance
+
 - **Patient Module** - Uses Kenya location hierarchy, sensitive access logging
+
 - **Encounters Module** - Activity feed integration
+
 - **Laboratory Module** - Notification system for lab results
+
 - **Pharmacy Module** - Notification system for prescriptions
+
 - **Clinics Module** - Alert tasks for chronic care follow-up
+
 - **Billing Module** - Activity feed for billing events
+
 - **Frontend** - WebSocket notifications, event logging
 
 ---
@@ -666,4 +684,4 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
-```
+```text

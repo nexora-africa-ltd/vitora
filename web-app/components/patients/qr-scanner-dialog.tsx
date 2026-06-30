@@ -109,7 +109,7 @@ export function QRScannerDialog({ onScan, label, raw, trigger }: QRScannerDialog
         setError('Failed to start camera. Please try again.');
       }
     }
-  }, [onScan, stopScanner]);
+  }, [onScan, stopScanner, raw]);
 
   // Start scanner when dialog opens, stop when it closes
   useEffect(() => {

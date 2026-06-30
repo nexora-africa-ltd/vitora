@@ -162,5 +162,5 @@ export function useClaimFlow(
       preauthType,
       interventionRequiresPreauth,
     };
-  }, [claim?.claim_flow, claim?.claim_interventions]);
+  }, [claim]);
 }

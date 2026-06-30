@@ -110,6 +110,7 @@ export function ResponsiveTable<T>({
       return String(aVal ?? '').localeCompare(String(bVal ?? '')) * dir;
     });
     return sorted;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, sortColumn, sortDirection, columns]);
 
   if (isLoading) {

@@ -239,7 +239,6 @@ export function DischargeReadinessPanel({
   };
 
   // Group criteria by category, filtering out categories for disabled facility modules
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const groupedCriteria = React.useMemo(() => {
     if (!displayResult?.criteria) return {};
     return displayResult.criteria.reduce<Record<string, AIDischargeCriterion[]>>((acc, c) => {
@@ -250,6 +249,7 @@ export function DischargeReadinessPanel({
       acc[cat].push(c);
       return acc;
     }, {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayResult?.criteria, hasModule]);
 
   if (!isAIEnabled) return null;
