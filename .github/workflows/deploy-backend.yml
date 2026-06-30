@@ -83,17 +83,16 @@ jobs:
             DEMO_MODE=${{ env.DEPLOY_ENV == 'staging' && 'true' || 'false' }}
             ACTIVE_SHIFT_ENFORCEMENT=${{ env.DEPLOY_ENV == 'production' && 'true' || 'false' }}
             ONBOARDING_ENFORCEMENT=${{ env.DEPLOY_ENV == 'production' && 'true' || 'false' }}
-            ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS || 'staging.vitora.digital,vitora-navy.vercel.app,localhost' }}
+            ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS || (env.DEPLOY_ENV == 'production' && 'vitora-api-prod.agreeabledune-6cc420cc.eastus.azurecontainerapps.io,api.vitora.digital,app.vitora.digital' || 'vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io,staging.vitora.digital,vitora-navy.vercel.app,localhost') }}
             SECURE_SSL_REDIRECT=true
-            CORS_ALLOWED_ORIGINS=${{ vars.CORS_ALLOWED_ORIGINS || 'https://staging.vitora.digital,https://vitora-navy.vercel.app,http://localhost:3009' }}
-            CSRF_TRUSTED_ORIGINS=${{ vars.CSRF_TRUSTED_ORIGINS || 'https://staging.vitora.digital,https://vitora-navy.vercel.app' }}
-            FRONTEND_URL=${{ vars.FRONTEND_URL || 'https://staging.vitora.digital' }}
-            DOCUMENT_VERIFICATION_URL=${{ vars.DOCUMENT_VERIFICATION_URL || 'https://staging.vitora.digital/verify' }}
+            CORS_ALLOWED_ORIGINS=${{ vars.CORS_ALLOWED_ORIGINS || (env.DEPLOY_ENV == 'production' && 'https://app.vitora.digital,https://api.vitora.digital' || 'https://staging.vitora.digital,https://vitora-navy.vercel.app,http://localhost:3009') }}
+            CSRF_TRUSTED_ORIGINS=${{ vars.CSRF_TRUSTED_ORIGINS || (env.DEPLOY_ENV == 'production' && 'https://app.vitora.digital,https://api.vitora.digital' || 'https://staging.vitora.digital,https://vitora-navy.vercel.app') }}
+            FRONTEND_URL=${{ vars.FRONTEND_URL || (env.DEPLOY_ENV == 'production' && 'https://app.vitora.digital' || 'https://staging.vitora.digital') }}
+            DOCUMENT_VERIFICATION_URL=${{ vars.DOCUMENT_VERIFICATION_URL || (env.DEPLOY_ENV == 'production' && 'https://app.vitora.digital/verify' || 'https://staging.vitora.digital/verify') }}
             CLOUD_API_BASE_URL=${{ vars.CLOUD_API_BASE_URL }}
             SYNC_SERVER_URL=${{ vars.SYNC_SERVER_URL }}
             DEFAULT_FROM_EMAIL=noreply@vitora.digital
-            DEMO_MODE=true
-            CELERY_TASK_ALWAYS_EAGER=true
+            CELERY_TASK_ALWAYS_EAGER=${{ env.DEPLOY_ENV == 'staging' && 'true' || 'false' }}
             SHA_ENABLED=true
             SHA_API_BASE_URL=https://uat.dha.go.ke
             SHA_AUTH_MODE=${{ vars.SHA_AUTH_MODE || 'ilm' }}
@@ -129,7 +128,7 @@ jobs:
             HAPI_FHIR_ENABLED=true
             HAPI_FHIR_BASE_URL=http://vitora-hapi-fhir.internal.agreeabledune-6cc420cc.eastus.azurecontainerapps.io/fhir
             HAPI_FHIR_TIMEOUT=10
-            SYNC_ENABLED=false
+            SYNC_ENABLED=${{ env.DEPLOY_ENV == 'production' && 'true' || 'false' }}
             HL7_INTEGRATION_ENABLED=true
             HL7_SENDING_APPLICATION=VITORA_HMIS
             HL7_SENDING_FACILITY=DEMO_FACILITY
@@ -165,7 +164,7 @@ jobs:
             SETUP_WIZARD_ENABLED=true
             ADMIN_SESSION_TIMEOUT_SECONDS=${{ vars.ADMIN_SESSION_TIMEOUT_SECONDS || '900' }}
             DJANGO_LOG_LEVEL=INFO
-            SMS_BACKEND=hmis.apps.core.sms.backends.MockSMSBackend
+            SMS_BACKEND=${{ env.DEPLOY_ENV == 'production' && 'hmis.apps.core.sms.backends.AfricasTalkingSMSBackend' || 'hmis.apps.core.sms.backends.MockSMSBackend' }}
             SMS_SENDER_ID=VitoraHMIS
             WEBAUTHN_RP_ID=${{ vars.WEBAUTHN_RP_ID || 'staging.vitora.digital' }}
             WEBAUTHN_ORIGIN=${{ vars.WEBAUTHN_ORIGIN || 'https://staging.vitora.digital' }}
