@@ -435,7 +435,7 @@ class ECGPatternsView(AIFeatureGatedMixin, APIView):
     permission_classes = [permissions.AllowAny]
     ai_feature_flag = "TIBABOT_ENABLE_ECG_INTERPRETER"
 
-    def get(self, request: Request) -> Response:
+    def get(self, request: Request) -> Response:  # noqa: ARG002
         try:
             client = get_tibabot_client()
             result = client.ecg_patterns()
