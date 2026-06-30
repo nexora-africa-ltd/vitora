@@ -18,7 +18,7 @@ scrape_configs:
     tls_config:
       insecure_skip_verify: true  # See SECURITY NOTE above
     static_configs:
-      - targets: ["vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io"]
+      - targets: ["vitora-api-prod.agreeabledune-6cc420cc.eastus.azurecontainerapps.io"]
         labels:
           environment: "staging"
           service: "vitora-api"

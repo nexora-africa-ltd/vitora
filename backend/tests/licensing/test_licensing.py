@@ -318,7 +318,7 @@ class TestActivation:
 
     @override_settings(
         DEBUG=False,
-        ALLOWED_HOSTS=["vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io"],
+        ALLOWED_HOSTS=["api.vitora.digital"],
         SYNC_SERVER_URL="http://localhost:9088/api/sync",
         CLOUD_API_BASE_URL="",
     )
@@ -333,15 +333,12 @@ class TestActivation:
                 "activation_code": "TEST-ACTIVATION-CODE",
             },
             format="json",
-            HTTP_HOST="vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io",
+            HTTP_HOST="api.vitora.digital",
             secure=True,
         )
 
         assert response.status_code == status.HTTP_200_OK
-        assert (
-            response.data["sync_url"]
-            == "https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io/api/sync"
-        )
+        assert response.data["sync_url"] == "https://api.vitora.digital/api/sync"
 
     def test_invalid_activation_code_rejected(self, api_client):
         """Invalid code should return 400."""

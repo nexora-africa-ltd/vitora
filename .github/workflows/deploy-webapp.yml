@@ -3,25 +3,37 @@ name: Deploy Web App to Azure Container Apps
 on:
   push:
     tags:
-      - 'production'
+      - 'webapp-*'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
 
 env:
   AZURE_RESOURCE_GROUP: vitora-rg
   AZURE_LOCATION: eastus
-  CONTAINER_APP_NAME: vitora-webapp-staging
   CONTAINER_APP_ENV: vitora-env
   REGISTRY_NAME: vitoraacr
   IMAGE_NAME: vitora-webapp
 
 jobs:
   build-and-deploy:
-    name: Build & Deploy Web App
+    name: Build & Deploy Web App (${{ github.event.inputs.environment || (github.ref_name == 'main' && 'production') || 'staging' }})
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ github.event.inputs.environment || (github.ref_name == 'main' && 'production') || 'staging' }}
     permissions:
       id-token: write
       contents: read
+
+    env:
+      DEPLOY_ENV: ${{ github.event.inputs.environment || (github.ref_name == 'main' && 'production') || 'staging' }}
+      CONTAINER_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-webapp-prod' || 'vitora-webapp-staging' }}
 
     steps:
       - name: Checkout code
@@ -44,13 +56,13 @@ jobs:
         working-directory: web-app
         run: |
           IMAGE_TAG="${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          IMAGE_LATEST="${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest"
+          IMAGE_LATEST="${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.DEPLOY_ENV }}-latest"
 
           docker build \
-            --build-arg NEXT_PUBLIC_API_URL="${{ vars.API_URL || 'https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io' }}" \
+            --build-arg NEXT_PUBLIC_API_URL="${{ vars.API_URL }}" \
             --build-arg NEXT_PUBLIC_APP_NAME="Vitora HMIS" \
-            --build-arg NEXT_PUBLIC_ENV=production \
-            --build-arg NEXT_PUBLIC_DEMO_MODE=false \
+            --build-arg NEXT_PUBLIC_ENV=${{ env.DEPLOY_ENV }} \
+            --build-arg NEXT_PUBLIC_DEMO_MODE=${{ env.DEPLOY_ENV == 'staging' && 'true' || 'false' }} \
             --build-arg NEXT_PUBLIC_ENABLE_BILLING=true \
             --build-arg NEXT_PUBLIC_ENABLE_LAB=true \
             --build-arg NEXT_PUBLIC_ENABLE_PHARMACY=true \
@@ -78,4 +90,9 @@ jobs:
           ingress: external
 
       - name: Output deployment URL
-        run: echo "🚀 Deployed to https://staging.vitora.digital"
+        run: |
+          if [ "${{ env.DEPLOY_ENV }}" = "production" ]; then
+            echo "🚀 Deployed to https://app.vitora.digital"
+          else
+            echo "🚀 Deployed to https://staging.vitora.digital"
+          fi
