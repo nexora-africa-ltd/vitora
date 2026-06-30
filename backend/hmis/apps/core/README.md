@@ -57,6 +57,7 @@ AuditLog.log(
     details={"purpose": "clinical consultation"},
     patient_id=patient.id,
 )
+
 ```
 
 ### FrontendEvent
@@ -106,6 +107,7 @@ ActivityFeed.log_activity(
     user=request.user,
     metadata={"mrn": patient.mrn, "name": patient.get_full_name()},
 )
+
 ```
 
 ---
@@ -135,9 +137,11 @@ entry.mark_syncing()      # Set status to SYNCING
 entry.mark_synced()       # Set status to SYNCED, update synced_at
 entry.mark_failed(error)  # Set status to FAILED, increment retry_count
 entry.mark_conflict()     # Set status to CONFLICT
+
 ```
 
 ### SyncConflict
+
 Record of sync conflicts for resolution.
 
 | Field | Description |
@@ -155,6 +159,7 @@ Record of sync conflicts for resolution.
 | `resolved_by` | User who resolved (if manual) |
 
 ### NetworkStatus
+
 Track network connectivity over time.
 
 | Field | Description |
@@ -165,6 +170,7 @@ Track network connectivity over time.
 | `server_url` | Server URL that was checked |
 
 ### SyncMetrics
+
 Track sync task performance metrics.
 
 | Field | Description |
@@ -185,6 +191,7 @@ Track sync task performance metrics.
 ## Kenya Location Hierarchy
 
 ### County
+
 Kenya's 47 counties (first administrative level).
 
 | Field | Description |
@@ -193,6 +200,7 @@ Kenya's 47 counties (first administrative level).
 | `name` | County name (e.g., "Nairobi") |
 
 ### SubCounty
+
 289 sub-counties (second administrative level).
 
 | Field | Description |
@@ -201,6 +209,7 @@ Kenya's 47 counties (first administrative level).
 | `name` | Sub-county name |
 
 ### Ward
+
 1,448 wards (third administrative level).
 
 | Field | Description |
@@ -213,6 +222,7 @@ Kenya's 47 counties (first administrative level).
 ## RBAC Models
 
 ### Department
+
 Hospital department for staff organization.
 
 | Field | Description |
@@ -225,13 +235,16 @@ Hospital department for staff organization.
 | `is_active` | Whether department is active |
 
 **Methods:**
+
 ```python
 department.get_staff_count()     # Count of active staff
 department.get_hierarchy()       # Full parent chain from root
 department.get_subdepartments()  # Child departments
+
 ```
 
 ### Role
+
 Role with hierarchical permissions.
 
 | Field | Description |
@@ -248,22 +261,27 @@ Role with hierarchical permissions.
 | `license_body` | Licensing body (KMPDB, NCK, etc.) |
 
 **Permission Matrix Example:**
+
 ```json
 {
     "Patient": {"create": true, "read": true, "update": true, "delete": false},
     "Encounter": {"create": true, "read": true, "update": true, "delete": false},
     "Prescription": {"create": true, "read": true, "update": false, "delete": false}
 }
+
 ```
 
 **Methods:**
+
 ```python
 role.has_permission("read", "Patient")  # Check specific permission
 role.get_all_permissions()               # Include inherited permissions
 role.can_access_department(department)   # Check department access
+
 ```
 
 ### StaffProfile
+
 Extended profile for hospital staff.
 
 | Field | Description |
@@ -292,6 +310,7 @@ Extended profile for hospital staff.
 | `supervisor` | Direct supervisor (StaffProfile) |
 
 **Methods:**
+
 ```python
 staff.get_full_name()                     # Title + full name
 staff.get_all_roles()                     # Primary + secondary roles
@@ -300,6 +319,7 @@ staff.has_permission("create", "Patient") # Check permission from all roles
 staff.is_license_valid()                  # Check license expiry
 staff.is_external                         # True if LOCUM employment type
 staff.get_supervisees()                   # Direct reports
+
 ```
 
 ---
@@ -307,6 +327,7 @@ staff.get_supervisees()                   # Direct reports
 ## Notification Model
 
 ### Notification
+
 In-app notifications for users.
 
 | Field | Description |
@@ -324,8 +345,10 @@ In-app notifications for users.
 | `created_at` | When created |
 
 **Methods:**
+
 ```python
 notification.mark_as_read()  # Mark as read with timestamp
+
 ```
 
 ---
@@ -333,6 +356,7 @@ notification.mark_as_read()  # Mark as read with timestamp
 ## Idempotency Model
 
 ### IdempotencyKey
+
 Prevent duplicate API requests.
 
 | Field | Description |
@@ -346,9 +370,11 @@ Prevent duplicate API requests.
 | `created_at` | When key was created |
 
 **Class Methods:**
+
 ```python
 IdempotencyKey.get_or_none(key, user)  # Get existing key
 IdempotencyKey.cleanup_old_keys(24)    # Delete keys older than 24 hours
+
 ```
 
 ---
@@ -356,22 +382,30 @@ IdempotencyKey.cleanup_old_keys(24)    # Delete keys older than 24 hours
 ## API Endpoints
 
 ### Audit Logs
+
 ```
+
 GET  /api/auditlogs/                    # List audit logs (admin only)
 GET  /api/auditlogs/?user={id}          # Filter by user
 GET  /api/auditlogs/?action=patient_view  # Filter by action
 GET  /api/auditlogs/?patient_id={id}    # Filter by patient
+
 ```
 
 ### Kenya Locations
+
 ```
+
 GET  /api/locations/counties/                        # List all 47 counties
 GET  /api/locations/sub-counties/?county={id}        # Sub-counties for county
 GET  /api/locations/wards/?sub_county={id}           # Wards for sub-county
+
 ```
 
 ### Staff & Roles
+
 ```
+
 GET   /api/staff/                       # List staff profiles
 POST  /api/staff/                       # Create staff profile
 GET   /api/staff/{id}/                  # Get staff profile
@@ -380,36 +414,49 @@ GET   /api/staff/me/                    # Get current user's profile
 
 GET   /api/roles/                       # List roles
 GET   /api/departments/                 # List departments
+
 ```
 
 ### Notifications
+
 ```
+
 GET   /api/notifications/               # List user's notifications
 GET   /api/notifications/unread/        # List unread notifications
 POST  /api/notifications/{id}/read/     # Mark as read
 POST  /api/notifications/read-all/      # Mark all as read
+
 ```
 
 ### Sync Status
+
 ```
+
 GET   /api/sync/status/                 # Get sync status
 GET   /api/sync/queue/                  # View sync queue
 POST  /api/sync/trigger/                # Trigger manual sync
 GET   /api/sync/conflicts/              # List conflicts
 POST  /api/sync/conflicts/{id}/resolve/ # Resolve conflict
+
 ```
 
 ### Activity Feed
+
 ```
+
 GET  /api/activity/                     # Get activity feed
 GET  /api/activity/?type=patient        # Filter by type
 GET  /api/activity/?limit=20            # Limit results
+
 ```
 
 ### Frontend Events
+
 ```
+
 POST /api/events/                       # Log frontend event
 POST /api/events/batch/                 # Log batch of events (offline sync)
+
 ```
 
 ---
@@ -417,6 +464,7 @@ POST /api/events/batch/                 # Log batch of events (offline sync)
 ## Celery Tasks
 
 ### Sync Tasks
+
 ```python
 from hmis.apps.core.tasks import (
     process_sync_queue,       # Process pending sync entries
@@ -424,10 +472,13 @@ from hmis.apps.core.tasks import (
 )
 
 # Trigger sync manually
+
 process_sync_queue.delay(batch_size=50, max_retries=3)
+
 ```
 
 ### Alert Tasks
+
 ```python
 from hmis.apps.core.tasks import (
     send_overdue_appointment_alerts,      # Daily overdue alerts
@@ -436,13 +487,17 @@ from hmis.apps.core.tasks import (
 )
 
 # Generate defaulter list for specific clinic
+
 result = generate_defaulter_list.delay(clinic_id=1)
+
 ```
 
 ### Cleanup Tasks
+
 ```python
 from hmis.apps.core.tasks import cleanup_idempotency_keys
 cleanup_idempotency_keys.delay(hours=24)  # Clean up old keys
+
 ```
 
 ---
@@ -450,6 +505,7 @@ cleanup_idempotency_keys.delay(hours=24)  # Clean up old keys
 ## Abstract Base Models
 
 ### TimeStampedModel
+
 Abstract model with `created_at` and `updated_at` timestamps.
 
 ```python
@@ -458,9 +514,11 @@ from hmis.apps.core.models import TimeStampedModel
 class MyModel(TimeStampedModel):
     name = models.CharField(max_length=100)
     # created_at and updated_at are automatically added
+
 ```
 
 ### SyncableModel
+
 Abstract model for offline sync support.
 
 ```python
@@ -473,6 +531,7 @@ class MyModel(SyncableModel):
     def save(self, *args, **kwargs):
         self.increment_version()
         super().save(*args, **kwargs)
+
 ```
 
 ---
@@ -487,6 +546,7 @@ from hmis.apps.core.permissions import (
     StaffOnlyPermission,        # Require staff profile
     RoleBasedPermission,        # Check role permissions
 )
+
 ```
 
 ---
@@ -494,20 +554,27 @@ from hmis.apps.core.permissions import (
 ## Management Commands
 
 ```bash
+
 # Import Kenya location hierarchy from CSV
+
 python manage.py import_kenya_locations
 
 # Load default roles from fixture
+
 python manage.py load_default_roles
 
 # Sync role permissions with Django groups
+
 python manage.py sync_role_permissions
 
 # Create test user with staff profile
+
 python manage.py create_test_user --username testuser --role DOCTOR
 
 # Seed demo data
+
 python manage.py seed_demo_data
+
 ```
 
 ---
@@ -515,15 +582,20 @@ python manage.py seed_demo_data
 ## Testing
 
 ```bash
+
 # Run core module tests
+
 cd backend
 poetry run pytest tests/test_core*.py -v
 
 # Run sync tests
+
 poetry run pytest tests/test_sync*.py -v
 
 # Run RBAC tests
+
 poetry run pytest tests/test_rbac*.py -v
+
 ```
 
 ---
@@ -544,23 +616,31 @@ poetry run pytest tests/test_rbac*.py -v
 ## Configuration
 
 ### Settings
+
 ```python
+
 # settings/base.py
 
 # Audit log retention (Kenya DPA requires 7 years)
+
 AUDIT_LOG_RETENTION_YEARS = 7
 
 # Sync configuration
+
 SYNC_BATCH_SIZE = 50
 SYNC_MAX_RETRIES = 3
 SYNC_RETRY_DELAY_BASE = 60  # seconds
 
 # Idempotency key TTL
+
 IDEMPOTENCY_KEY_TTL_HOURS = 24
+
 ```
 
 ### Celery Beat Schedule
+
 ```python
+
 # celery.py
 
 CELERY_BEAT_SCHEDULE = {
@@ -585,4 +665,5 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(minute=0, hour=1, day_of_month=1),  # 1st of month at 01:00
     },
 }
+
 ```

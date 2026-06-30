@@ -134,6 +134,7 @@ export function SeriesPanel({
                   {/* Thumbnail */}
                   <div className="w-12 h-12 rounded bg-black flex-shrink-0 overflow-hidden flex items-center justify-center">
                     {thumbnailUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={thumbnailUrl}
                         alt={`Series ${s.series_number}`}

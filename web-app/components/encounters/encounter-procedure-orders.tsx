@@ -10,7 +10,7 @@
  */
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { Plus, Syringe, ExternalLink, Clock, CheckCircle2, AlertCircle, XCircle, PlayCircle } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -53,10 +53,13 @@ export function EncounterProcedureOrders({
   const queryClient = useQueryClient();
 
   // Build filter params
-  const filterParams: Record<string, string> = {};
-  if (encounterId) filterParams.encounter = String(encounterId);
-  if (clinicVisitId) filterParams.clinic_visit = String(clinicVisitId);
-  if (admissionId) filterParams.admission = String(admissionId);
+  const filterParams = useMemo(() => {
+    const params: Record<string, string> = {};
+    if (encounterId) params.encounter = String(encounterId);
+    if (clinicVisitId) params.clinic_visit = String(clinicVisitId);
+    if (admissionId) params.admission = String(admissionId);
+    return params;
+  }, [encounterId, clinicVisitId, admissionId]);
 
   const {
     data: ordersData,
@@ -224,10 +227,13 @@ export function EncounterProcedureOrdersContent({
 }: EncounterProcedureOrdersProps) {
   const queryClient = useQueryClient();
 
-  const filterParams: Record<string, string> = {};
-  if (encounterId) filterParams.encounter = String(encounterId);
-  if (clinicVisitId) filterParams.clinic_visit = String(clinicVisitId);
-  if (admissionId) filterParams.admission = String(admissionId);
+  const filterParams = useMemo(() => {
+    const params: Record<string, string> = {};
+    if (encounterId) params.encounter = String(encounterId);
+    if (clinicVisitId) params.clinic_visit = String(clinicVisitId);
+    if (admissionId) params.admission = String(admissionId);
+    return params;
+  }, [encounterId, clinicVisitId, admissionId]);
 
   const { data: ordersData, isLoading, error } = useQuery({
     queryKey: ['procedure-orders-content', filterParams],

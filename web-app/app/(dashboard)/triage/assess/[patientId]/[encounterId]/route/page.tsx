@@ -328,6 +328,7 @@ export default function TriageRoutePage() {
       completeAssessment,
       setRouting,
       clearSession,
+      markSectionComplete,
     ]
   );
 

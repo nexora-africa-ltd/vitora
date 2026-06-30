@@ -100,6 +100,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
 
                   {setupData.qr_code && (
                     <div className="flex justify-center mb-4">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={`data:image/png;base64,${setupData.qr_code}`}
                         alt="QR Code for MFA setup"
