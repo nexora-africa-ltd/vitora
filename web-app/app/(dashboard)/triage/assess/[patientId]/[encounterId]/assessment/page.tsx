@@ -384,7 +384,7 @@ export default function TriageAssessmentPage() {
     } catch (error) {
       console.error('Failed to calculate triage category:', error);
     }
-  }, [watch, calculateCategoryMutation, currentVitals, setValue, hasOverridden]);
+  }, [watch, calculateCategoryMutation, currentVitals, setValue, hasOverridden, patientAge]);
 
   // Auto-calculate on initial load and when relevant fields change
   useEffect(() => {

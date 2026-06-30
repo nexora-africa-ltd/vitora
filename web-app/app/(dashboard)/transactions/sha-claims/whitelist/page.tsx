@@ -85,7 +85,7 @@ export default function WhitelistRequestsPage() {
     queryFn: () => shaApi.listLocalOtpWhitelists(statusFilter ? { status: statusFilter } : {}),
   });
 
-  const rows = data?.results ?? [];
+  const rows = useMemo(() => data?.results ?? [], [data?.results]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return rows;

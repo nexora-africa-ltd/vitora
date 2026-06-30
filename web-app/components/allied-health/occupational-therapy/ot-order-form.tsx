@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -162,7 +162,7 @@ export function OTOrderForm({
   const createMutation = useCreateOTOrder();
   const updateMutation = useUpdateOTOrder();
 
-  const treatmentTypes = typesData?.results || [];
+  const treatmentTypes = useMemo(() => typesData?.results || [], [typesData?.results]);
   const patients = patientsData?.results || [];
   const selectedType = treatmentTypes.find(t => t.id === selectedTypeId);
 
