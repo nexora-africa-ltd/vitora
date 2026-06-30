@@ -62,9 +62,9 @@ export default function SchedulingDashboardPage() {
     queryFn: () => resourcesApi.list({ page_size: 500, is_active: true }),
   });
 
-  const todayAppts = todayData?.results || [];
-  const upcomingAppts = upcomingData?.results || [];
-  const allResources = resourcesData?.results || [];
+  const todayAppts = useMemo(() => todayData?.results || [], [todayData]);
+  const upcomingAppts = useMemo(() => upcomingData?.results || [], [upcomingData]);
+  const allResources = useMemo(() => resourcesData?.results || [], [resourcesData]);
 
   const apptStats = {
     total: todayAppts.length,

@@ -24,6 +24,31 @@ export default function ResultsEntryPage({ params }: ResultsEntryPageProps) {
   const { data: order, isLoading, error, refetch, isFetching } = useLabOrder(orderNumber);
   const { refresh, isRefreshing } = usePageRefresh();
 
+  // Handler when a result is successfully added
+  const handleResultAdded = async () => {
+    await refetch();
+  };
+
+  // Determine if we should use grid mode (numeric-only panel items)
+  const { gridItems, formItems, useGrid } = useMemo(() => {
+    if (!order) return { gridItems: [], formItems: [], useGrid: false };
+    const hasChildren = (item: LabOrderItem) =>
+      order.items.some((child: LabOrderItem) => child.panel_parent === item.id);
+    const resultable = order.items.filter((item: LabOrderItem) => !(item.is_panel && hasChildren(item)));
+    const pending = resultable.filter((item: LabOrderItem) => !item.has_result);
+
+    // Use grid if: all pending items are numeric type AND there are 3+ pending items
+    const allNumeric = pending.length >= 3 && pending.every(
+      (item: LabOrderItem) => item.result_type === 'NUMERIC'
+    );
+
+    return {
+      gridItems: allNumeric ? resultable : [],
+      formItems: allNumeric ? [] : order.items,
+      useGrid: allNumeric,
+    };
+  }, [order]);
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -52,30 +77,6 @@ export default function ResultsEntryPage({ params }: ResultsEntryPageProps) {
       </div>
     );
   }
-
-  // Handler when a result is successfully added
-  const handleResultAdded = async () => {
-    await refetch();
-  };
-
-  // Determine if we should use grid mode (numeric-only panel items)
-  const { gridItems, formItems, useGrid } = useMemo(() => {
-    const hasChildren = (item: LabOrderItem) =>
-      order.items.some((child: LabOrderItem) => child.panel_parent === item.id);
-    const resultable = order.items.filter((item: LabOrderItem) => !(item.is_panel && hasChildren(item)));
-    const pending = resultable.filter((item: LabOrderItem) => !item.has_result);
-
-    // Use grid if: all pending items are numeric type AND there are 3+ pending items
-    const allNumeric = pending.length >= 3 && pending.every(
-      (item: LabOrderItem) => item.result_type === 'NUMERIC'
-    );
-
-    return {
-      gridItems: allNumeric ? resultable : [],
-      formItems: allNumeric ? [] : order.items,
-      useGrid: allNumeric,
-    };
-  }, [order.items]);
 
   return (
     <PullToRefresh

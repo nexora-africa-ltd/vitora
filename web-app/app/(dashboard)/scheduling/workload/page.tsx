@@ -44,7 +44,7 @@ export default function StaffWorkloadPage() {
       }),
   });
 
-  const staffList = workload || [];
+  const staffList = useMemo(() => workload || [], [workload]);
 
   // Summary stats
   const summary = useMemo(() => {

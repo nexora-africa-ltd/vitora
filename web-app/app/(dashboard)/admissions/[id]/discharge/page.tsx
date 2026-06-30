@@ -499,7 +499,7 @@ export default function DischargePage() {
     if (patientInstructions) dedicatedContent['discharge_instructions'] = patientInstructions;
 
     return buildTemplateAlignedContent(defaultTemplate.sections, sections, dedicatedContent, true);
-  }, [sections, defaultTemplate, diagnoses, medications, admissionPrescriptions, selectedRxIds, orders, followUpDate, followUpInstructions, patientInstructions, admission]);
+  }, [sections, defaultTemplate, diagnoses, medications, admissionPrescriptions, selectedRxIds, orders, followUpDate, followUpInstructions, patientInstructions, admission, ipdEncounter?.chief_complaint, sourceEncounter?.chief_complaint]);
 
   // Calculate length of stay
   const lengthOfStay = useMemo(() => {
