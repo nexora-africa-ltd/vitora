@@ -325,8 +325,9 @@ class TestLoginResponseMemberships:
         )
         assert response.status_code == status.HTTP_200_OK
         data = response.data
-        assert "memberships" in data, f"Keys: {list(data.keys())}"
-        memberships = data["memberships"]
+        assert "user" in data, f"Keys: {list(data.keys())}"
+        assert "memberships" in data["user"], f"Keys: {list(data['user'].keys())}"
+        memberships = data["user"]["memberships"]
         assert len(memberships) == 2
 
         # Find by org
@@ -363,7 +364,7 @@ class TestLoginResponseMemberships:
             format="json",
         )
         assert response.status_code == status.HTTP_200_OK
-        assert response.data.get("memberships") == []
+        assert response.data.get("user", {}).get("memberships") == []
 
 
 # ============================================================================

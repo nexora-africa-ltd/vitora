@@ -32,12 +32,13 @@ class TestDHAPractitionerSearchAPI:
         assert "identification_number" in response.data["error"]
 
     def test_not_found_returns_404_with_null_message(self, authenticated_client, monkeypatch):
-        from hmis.apps.billing.services.dha_search import DHASearchService
+        from hmis.apps.billing.services.dha_errors import DHANotFoundError
+        from hmis.apps.billing.services.ilm_registries_service import IlmRegistriesService
 
-        def _fake_search_practitioner(self, **kwargs):  # noqa: ANN001
-            return None
+        def _fake_search_professional(self, **kwargs):  # noqa: ANN001
+            raise DHANotFoundError("No practitioner found")
 
-        monkeypatch.setattr(DHASearchService, "search_practitioner", _fake_search_practitioner)
+        monkeypatch.setattr(IlmRegistriesService, "search_professional", _fake_search_professional)
 
         response = authenticated_client.get(
             f"{self.ENDPOINT}?identification_type=National%20ID&identification_number=12345678"
