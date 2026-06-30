@@ -279,7 +279,7 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
                 "location": instance.location or "",
                 "floor": instance.floor or "",
                 "capacity": instance.capacity,
-                "department_id": instance.department_id,
+                "department_id": getattr(instance, "department_id", None),
                 "department_code": getattr(department, "code", "")
                 if department is not None
                 else "",
@@ -779,7 +779,11 @@ def auto_queue_downward_sync(sender, instance, created, raw=False, **kwargs):  #
     if entry is None:
         return
 
-    data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
+    try:
+        data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
+    except (AttributeError, TypeError):
+        # During migrations, model fields may not yet exist — skip sync queueing.
+        return
     data = add_sync_meta(data, direction=entry.direction, priority=entry.priority)
     organization, facility = get_tenant_context(instance)
 
