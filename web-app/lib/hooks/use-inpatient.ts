@@ -80,6 +80,7 @@ export const inpatientQueryKeys = {
     [...inpatientQueryKeys.all, 'admission-recommendations', params] as const,
   recommendation: (id: number) =>
     [...inpatientQueryKeys.all, 'admission-recommendations', id] as const,
+  pendingAdmissions: () => [...inpatientQueryKeys.all, 'pending-admissions'] as const,
   admissions: (params?: AdmissionListParams) =>
     [...inpatientQueryKeys.all, 'admissions', params] as const,
   admission: (id: number) => [...inpatientQueryKeys.all, 'admissions', id] as const,
@@ -186,6 +187,19 @@ export function useGenerateWardBeds() {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.ward(wardId) });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wardBeds(wardId) });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.beds() });
+    },
+  });
+}
+
+/**
+ * Seed default wards for the current facility.
+ */
+export function useSeedDefaultWards() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => inpatientApi.seedDefaultWards(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wards() });
     },
   });
 }
@@ -330,6 +344,13 @@ export function useAdmissionRecommendations(params?: AdmissionRecommendationList
   return useQuery({
     queryKey: inpatientQueryKeys.recommendations(params),
     queryFn: () => inpatientApi.listAdmissionRecommendations(params),
+  });
+}
+
+export function usePendingAdmissions() {
+  return useQuery({
+    queryKey: inpatientQueryKeys.pendingAdmissions(),
+    queryFn: () => inpatientApi.listPendingAdmissions(),
   });
 }
 

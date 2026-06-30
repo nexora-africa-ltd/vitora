@@ -34,7 +34,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from hmis.apps.cds.models import CDSAlert, CDSRule
-from hmis.apps.core.models import County, SubCounty
+from hmis.apps.core.models import County, Facility, SubCounty
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.imaging.models import (
     ImagingOrder,
@@ -5509,10 +5509,35 @@ class Command(BaseCommand):
             action="store_true",
             help="Preview what would be created without writing to the database",
         )
+        parser.add_argument(
+            "--facility",
+            type=int,
+            default=None,
+            help="Facility ID to scope seeded data to (default: first facility).",
+        )
 
     def handle(self, *args, **options):
         clear = options["clear"]
         dry_run = options["dry_run"]
+
+        # Resolve facility
+        facility_id = options.get("facility")
+        if facility_id:
+            try:
+                self.facility = Facility.objects.get(pk=facility_id)
+            except Facility.DoesNotExist:
+                self.stderr.write(self.style.ERROR(f"Facility with ID '{facility_id}' not found."))
+                return
+        else:
+            self.facility = Facility.objects.first()
+            if not self.facility:
+                self.stderr.write(
+                    self.style.ERROR("No facilities exist. Create one first or pass --facility.")
+                )
+                return
+        self.stdout.write(
+            self.style.SUCCESS(f"Using facility: {self.facility.name} (ID={self.facility.pk})")
+        )
 
         if dry_run:
             self.stdout.write(self.style.NOTICE("DRY RUN — no data will be written\n"))
@@ -5572,9 +5597,11 @@ class Command(BaseCommand):
                     f"  Scenario {i + 1}/{len(SCENARIOS)}: {scenario['dx_text'][:50]}..."
                 )
 
-                # Idempotency: skip if this scenario's patient already exists
+                # Idempotency: skip if this scenario's patient already exists for this org
                 demo_tag = f"demo-ipd-{i:04d}"
-                if Patient.objects.filter(middle_name=demo_tag).exists():
+                org = self.facility.organization if self.facility else None
+                existing = Patient.objects.filter(middle_name=demo_tag, organization=org)
+                if existing.exists():
                     self.stdout.write(self.style.NOTICE("    Already seeded, skipping"))
                     continue
 
@@ -5622,6 +5649,7 @@ class Command(BaseCommand):
                     chief_complaint=scenario["complaint"],
                     status="IN_PROGRESS" if scenario["status"] == "ACTIVE" else "CLOSED",
                     created_by=user,
+                    facility=self.facility,
                     # Vitals
                     temperature=ev.get("temperature"),
                     pulse=ev.get("pulse"),
@@ -5667,6 +5695,7 @@ class Command(BaseCommand):
                     bed=bed,
                     admission_status=scenario["status"],
                     payer_type=scenario["payer"],
+                    facility=self.facility,
                 )
                 admission.save()
                 created["admissions"] += 1
@@ -6546,17 +6575,19 @@ class Command(BaseCommand):
         ]
         wards = {}
         for wtype, name, code, rate, cap in ward_defs:
-            ward = Ward.objects.filter(name=name).first()
+            # Unique per facility now — look up within this facility
+            ward = Ward.objects.filter(code=code, facility=self.facility).first()
             if not ward:
-                # Prefer ANY-gender wards with available beds
                 ward = (
-                    Ward.objects.filter(ward_type=wtype, gender_restriction="ANY")
+                    Ward.objects.filter(
+                        ward_type=wtype, gender_restriction="ANY", facility=self.facility
+                    )
                     .filter(beds__status="AVAILABLE")
                     .distinct()
                     .first()
                 )
             if not ward:
-                ward = Ward.objects.filter(ward_type=wtype).first()
+                ward = Ward.objects.filter(ward_type=wtype, facility=self.facility).first()
             if not ward:
                 ward = Ward.objects.create(
                     name=name,
@@ -6565,6 +6596,7 @@ class Command(BaseCommand):
                     capacity=cap,
                     daily_rate=rate,
                     is_active=True,
+                    facility=self.facility,
                 )
             wards[wtype] = ward
         return wards
@@ -6594,4 +6626,5 @@ class Command(BaseCommand):
             sub_county=sub_county,
             middle_name=scenario["_demo_tag"],
             phone_number=scenario["_demo_tag"],
+            organization=self.facility.organization if self.facility else None,
         )

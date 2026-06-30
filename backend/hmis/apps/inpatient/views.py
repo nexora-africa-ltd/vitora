@@ -406,6 +406,50 @@ class WardViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             }
         )
 
+    @action(detail=False, methods=["post"], url_path="seed-defaults")
+    def seed_defaults(self, request):
+        """
+        Seed default wards for the user's facility.
+
+        Creates a standard set of 6 hospital wards (Medical, Surgical,
+        Paediatric, Maternity, ICU, Isolation) with beds auto-generated.
+        Skips wards that already exist (by code) for the facility.
+        """
+        from hmis.apps.inpatient.management.commands.seed_default_wards import DEFAULT_WARDS
+
+        facility = getattr(request, "facility", None)
+        if not facility and hasattr(request.user, "staff_profile"):
+            profile = getattr(request.user, "staff_profile", None)
+            if profile and hasattr(profile, "primary_facility"):
+                facility = profile.primary_facility
+
+        if not facility:
+            return Response(
+                {"error": "No facility context available."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        created_wards = []
+        for ward_def in DEFAULT_WARDS:
+            code = ward_def["code"]
+            if Ward.objects.filter(code=code, facility=facility).exists():
+                continue
+            ward = Ward.objects.create(facility=facility, is_active=True, **ward_def)
+            created_wards.append(
+                {"id": ward.id, "name": ward.name, "code": ward.code, "beds": ward.beds.count()}
+            )
+
+        return Response(
+            {
+                "created": len(created_wards),
+                "wards": created_wards,
+                "message": f"Created {len(created_wards)} default ward(s)"
+                if created_wards
+                else "All default wards already exist",
+            },
+            status=status.HTTP_201_CREATED if created_wards else status.HTTP_200_OK,
+        )
+
     @extend_schema(
         summary="Recommend bed using rules-based assignment",
         description=(
@@ -1308,6 +1352,46 @@ class AdmissionRecommendationViewSet(NestedTenantScopeMixin, viewsets.ModelViewS
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["get"], url_path="pending-admissions")
+    def pending_admissions(self, request):
+        """
+        List IPD encounters that don't yet have an admission record.
+
+        These are encounters with encounter_type='IPD' and status='IN_PROGRESS'
+        that have no linked Admission, representing patients pending admission
+        processing (e.g., created directly as IPD without going through the
+        recommendation workflow).
+        """
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.encounters.serializers import EncounterListSerializer
+
+        qs = (
+            Encounter.objects.filter(
+                encounter_type="IPD",
+                status="IN_PROGRESS",
+                admission__isnull=True,
+            )
+            .select_related("patient", "facility", "organization")
+            .order_by("-encounter_date", "-created_at")
+        )
+
+        # Apply facility scoping if available
+        facility = getattr(request, "facility", None)
+        if facility:
+            qs = qs.filter(facility=facility)
+        elif hasattr(request.user, "staff_profile"):
+            profile = request.user.staff_profile
+            if hasattr(profile, "primary_facility") and profile.primary_facility:
+                qs = qs.filter(facility=profile.primary_facility)
+
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = EncounterListSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = EncounterListSerializer(qs, many=True)
+        return Response(serializer.data)
 
 
 class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):

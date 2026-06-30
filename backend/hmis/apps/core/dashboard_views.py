@@ -441,9 +441,8 @@ def _get_inpatient_stats(today, facility=None, organization=None) -> dict:
 
         total_beds = Bed.objects.filter(**bed_scope).count()
         available_beds = Bed.objects.filter(status="AVAILABLE", **bed_scope).count()
-        occupancy_rate = round(
-            ((total_beds - available_beds) / total_beds * 100) if total_beds > 0 else 0, 1
-        )
+        occupied_beds = Bed.objects.filter(status="OCCUPIED", **bed_scope).count()
+        occupancy_rate = round((occupied_beds / total_beds * 100) if total_beds > 0 else 0, 1)
 
         discharged_today = Admission.objects.filter(
             admission_status="DISCHARGED", discharge_date__date=today, **scope

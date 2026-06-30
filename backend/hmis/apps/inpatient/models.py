@@ -129,13 +129,11 @@ class Ward(FacilityScopedModel, TimeStampedModel):
 
     name = models.CharField(
         max_length=100,
-        unique=True,
-        help_text="Unique ward name (e.g., 'Medical Ward 1')",
+        help_text="Ward name (e.g., 'Medical Ward 1'), unique per facility",
     )
     code = models.CharField(
         max_length=20,
-        unique=True,
-        help_text="Unique ward code (e.g., 'MED-01')",
+        help_text="Ward code (e.g., 'MED-01'), unique per facility",
     )
     ward_type = models.CharField(
         max_length=20,
@@ -230,6 +228,16 @@ class Ward(FacilityScopedModel, TimeStampedModel):
         ordering = ["name"]
         verbose_name = "Ward"
         verbose_name_plural = "Wards"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["code", "facility"],
+                name="unique_ward_code_per_facility",
+            ),
+            models.UniqueConstraint(
+                fields=["name", "facility"],
+                name="unique_ward_name_per_facility",
+            ),
+        ]
 
     def __str__(self):
         """Return string representation."""

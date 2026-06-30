@@ -9,7 +9,8 @@ import {
   AlertCircle,
   Plus,
   Search,
-  Filter
+  Filter,
+  Wand2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -27,15 +28,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useToast } from '@/lib/hooks/use-toast';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import {
   useInpatientWards,
   useAdmissions,
-  useWardBeds
+  useWardBeds,
+  useGenerateWardBeds,
+  useSeedDefaultWards,
 } from '@/lib/hooks/use-inpatient';
 
 export default function WardsPage() {
   const { refresh, isRefreshing } = usePageRefresh();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedWard, setSelectedWard] = useState<string>('all');
 
@@ -44,6 +49,7 @@ export default function WardsPage() {
     admission_status: 'ACTIVE',
     page_size: 100
   });
+  const seedDefaultWards = useSeedDefaultWards();
 
   const wardsList = useMemo(() => {
     return ((wards as any)?.results ?? wards ?? []);
@@ -207,7 +213,43 @@ export default function WardsPage() {
 
       {/* Ward Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredWards.length === 0 ? (
+        {wardsList.length === 0 ? (
+          <Card className="col-span-full">
+            <CardContent className="py-12 text-center space-y-4">
+              <Building2 className="h-12 w-12 mx-auto text-muted-foreground" />
+              <div>
+                <p className="text-lg font-medium">No wards configured</p>
+                <p className="text-muted-foreground mt-1">
+                  Create default wards to get started with inpatient management.
+                </p>
+              </div>
+              <Button
+                className="gap-2"
+                onClick={() => {
+                  seedDefaultWards.mutate(undefined, {
+                    onSuccess: (data) => {
+                      toast({
+                        title: 'Default Wards Created',
+                        description: data.message,
+                      });
+                    },
+                    onError: () => {
+                      toast({
+                        title: 'Error',
+                        description: 'Failed to seed default wards. Please try again.',
+                        variant: 'destructive',
+                      });
+                    },
+                  });
+                }}
+                disabled={seedDefaultWards.isPending}
+              >
+                <Wand2 className="h-4 w-4" />
+                {seedDefaultWards.isPending ? 'Creating...' : 'Create Default Wards'}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : filteredWards.length === 0 ? (
           <Card className="col-span-full">
             <CardContent className="py-8 text-center">
               <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -227,6 +269,8 @@ export default function WardsPage() {
 
 function WardCard({ ward }: { ward: any }) {
   const { data: beds } = useWardBeds(ward.id);
+  const generateBeds = useGenerateWardBeds();
+  const { toast } = useToast();
 
   const totalBeds = ward.total_beds || 0;
   const occupiedBeds = ward.occupied_beds || 0;
@@ -308,6 +352,38 @@ function WardCard({ ward }: { ward: any }) {
             </div>
           )}
         </div>
+
+        {/* Generate Beds Button — shown when ward has capacity but no beds */}
+        {totalBeds === 0 && ward.capacity > 0 && (
+          <div className="pt-2 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2"
+              onClick={() => {
+                generateBeds.mutate(ward.id, {
+                  onSuccess: (data) => {
+                    toast({
+                      title: 'Beds Generated',
+                      description: `Created ${data.created} bed(s) for ${ward.name}.`,
+                    });
+                  },
+                  onError: () => {
+                    toast({
+                      title: 'Error',
+                      description: 'Failed to generate beds. Please try again.',
+                      variant: 'destructive',
+                    });
+                  },
+                });
+              }}
+              disabled={generateBeds.isPending}
+            >
+              <Wand2 className="h-4 w-4" />
+              {generateBeds.isPending ? 'Generating...' : `Generate ${ward.capacity} Beds`}
+            </Button>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex flex-col gap-2 pt-2 sm:flex-row">

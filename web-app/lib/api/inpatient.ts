@@ -197,6 +197,19 @@ export const inpatientApi = {
     return response.data;
   },
 
+  /**
+   * Seed default wards for the current facility.
+   * Creates Medical, Surgical, Paediatric, Maternity, ICU, Isolation wards with beds.
+   */
+  async seedDefaultWards(): Promise<{
+    created: number;
+    wards: Array<{ id: number; name: string; code: string; beds: number }>;
+    message: string;
+  }> {
+    const response = await apiClient.post('/api/inpatient/wards/seed-defaults/');
+    return response.data;
+  },
+
   async listWardBeds(
     wardId: number,
     params?: Omit<BedListParams, 'ward'> & { page?: number; page_size?: number }
@@ -278,6 +291,14 @@ export const inpatientApi = {
       { user: userId, reason }
     );
     return parseResponse(AdmissionRecommendationSchema, response.data, { context: 'inpatientApi.declineAdmissionRecommendation' });
+  },
+
+  async listPendingAdmissions(params?: Record<string, string | number | undefined>) {
+    const response = await apiClient.get(
+      '/api/inpatient/admission-recommendations/pending-admissions/',
+      { params }
+    );
+    return response.data;
   },
 
   // ============================================================================
