@@ -750,6 +750,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "normal_range_female",
                 "normal_range_male",
                 "organization",
+                "origin_hub_id",
+                "origin_local_id",
                 "panel_components",
                 "requires_clinical_signoff",
                 "requires_fasting",
