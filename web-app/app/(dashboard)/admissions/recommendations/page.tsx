@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, Clock, AlertTriangle, User, X } from 'lucide-react';
+import { Check, Clock, AlertTriangle, User, X, BedDouble } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +24,7 @@ import { useMyStaffProfile } from '@/lib/hooks/use-rbac';
 import {
   useAdmissionRecommendations,
   useDeclineAdmissionRecommendation,
+  usePendingAdmissions,
 } from '@/lib/hooks/use-inpatient';
 
 const URGENCY_COLORS: Record<string, string> = {
@@ -51,6 +52,8 @@ export default function AdmissionRecommendationsPage() {
     status: 'PENDING',
     ordering: '-created_at',
   });
+
+  const { data: pendingAdmissionsData, isLoading: isPendingLoading } = usePendingAdmissions();
 
   const declineRecommendation = useDeclineAdmissionRecommendation();
 
@@ -92,8 +95,9 @@ export default function AdmissionRecommendationsPage() {
   };
 
   const recommendationsList = recommendations?.results ?? [];
+  const pendingAdmissionsList = pendingAdmissionsData?.results ?? [];
 
-  if (isLoading) {
+  if (isLoading && isPendingLoading) {
     return (
       <div className="container mx-auto py-6 space-y-6">
         <Skeleton className="h-10 w-64" />
@@ -110,7 +114,7 @@ export default function AdmissionRecommendationsPage() {
     <div className="container mx-auto py-6 space-y-6">
       <PageHeader
         title="Admission Recommendations"
-        helpContent="Review and approve pending admission recommendations from OPD encounters."
+        helpContent="Review and approve pending admission recommendations from OPD encounters, and process IPD encounters awaiting admission."
       />
 
       {/* Stats */}
@@ -122,16 +126,73 @@ export default function AdmissionRecommendationsPage() {
                 <Clock className="h-5 w-5 text-yellow-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Pending</p>
+                <p className="text-sm text-muted-foreground">Recommendations</p>
                 <p className="text-2xl font-bold">{recommendationsList.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-100">
+                <BedDouble className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Pending IPD</p>
+                <p className="text-2xl font-bold">{pendingAdmissionsList.length}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recommendations List */}
+      {/* Pending IPD Encounters */}
+      {pendingAdmissionsList.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Pending IPD Encounters</h2>
+          <p className="text-sm text-muted-foreground">
+            IPD encounters awaiting admission processing (no admission record yet).
+          </p>
+          {pendingAdmissionsList.map((enc: any) => (
+            <Card key={enc.id} className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-blue-50">
+                      <BedDouble className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">{enc.patient_name || 'Unknown Patient'}</CardTitle>
+                      <CardDescription>
+                        {enc.patient_mrn} • {new Date(enc.encounter_date).toLocaleDateString()}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Badge className="bg-blue-100 text-blue-800">IPD</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Chief Complaint</p>
+                  <p className="text-sm">{enc.chief_complaint || '—'}</p>
+                </div>
+                <div className="flex justify-end pt-2 border-t">
+                  <Button size="sm" asChild>
+                    <Link href={`/admissions/new?encounter=${enc.id}&patient=${enc.patient}`}>
+                      Admit Patient
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Clinician Recommendations List */}
       <div className="space-y-4">
+        <h2 className="text-lg font-semibold">Clinician Recommendations</h2>
         {recommendationsList.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">

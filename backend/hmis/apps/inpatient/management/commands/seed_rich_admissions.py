@@ -2734,7 +2734,7 @@ class Command(BaseCommand):
         incoming_nurse = self._get_or_create_incoming_nurse()
         facility = self._get_facility(options.get("facility"))
         organization = facility.organization if facility else None
-        wards = self._ensure_wards()
+        wards = self._ensure_wards(facility)
         test_catalog = self._ensure_test_catalog()
         drugs = self._ensure_drugs()
         imaging_procedures = self._ensure_imaging_procedures()
@@ -3267,7 +3267,7 @@ class Command(BaseCommand):
             return Facility.objects.get(pk=facility_id)
         return Facility.objects.first()
 
-    def _ensure_wards(self) -> dict:
+    def _ensure_wards(self, facility=None) -> dict:
         ward_defs = [
             ("MEDICAL", "Medical Ward", "MED-01", Decimal("1500.00"), 20),
             ("SURGICAL", "Surgical Ward", "SUR-01", Decimal("2000.00"), 15),
@@ -3275,8 +3275,11 @@ class Command(BaseCommand):
             ("ICU", "Intensive Care Unit", "ICU-01", Decimal("8000.00"), 6),
         ]
         wards = {}
+        scope = {"facility": facility} if facility else {}
         for wtype, name, code, rate, cap in ward_defs:
-            ward = Ward.objects.filter(ward_type=wtype).first()
+            ward = Ward.objects.filter(code=code, **scope).first()
+            if not ward:
+                ward = Ward.objects.filter(ward_type=wtype, **scope).first()
             if not ward:
                 ward = Ward.objects.create(
                     name=name,
@@ -3285,6 +3288,7 @@ class Command(BaseCommand):
                     capacity=cap,
                     daily_rate=rate,
                     is_active=True,
+                    **scope,
                 )
             wards[wtype] = ward
         return wards

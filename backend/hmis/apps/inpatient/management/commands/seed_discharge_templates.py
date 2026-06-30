@@ -16,7 +16,7 @@ The first template matching the facility's KEPH level is marked as default.
 Usage:
     python manage.py seed_discharge_templates
     python manage.py seed_discharge_templates --force      # overwrite existing
-    python manage.py seed_discharge_templates --facility 12345  # specific MFL code
+    python manage.py seed_discharge_templates --facility 1  # specific facility ID
 """
 
 from django.core.management.base import BaseCommand
@@ -33,9 +33,9 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--facility",
-            type=str,
+            type=int,
             default=None,
-            help="Only seed for a specific facility (by MFL code)",
+            help="Only seed for a specific facility (by ID)",
         )
 
     def handle(self, *args, **options):
@@ -45,11 +45,11 @@ class Command(BaseCommand):
         from hmis.apps.inpatient.models import DischargeTemplate
 
         force = options["force"]
-        mfl_code = options.get("facility")
+        facility_id = options.get("facility")
 
         facilities = Facility.objects.filter(is_active=True)
-        if mfl_code:
-            facilities = facilities.filter(mfl_code=mfl_code)
+        if facility_id:
+            facilities = facilities.filter(pk=facility_id)
 
         if not facilities.exists():
             self.stderr.write(self.style.WARNING("No matching active facilities found."))
