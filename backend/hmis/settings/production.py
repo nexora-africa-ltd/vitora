@@ -61,6 +61,15 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 SYNC_ENABLED = True
 ENVIRONMENT = "production"
 
+# Demo mode — MUST be disabled in production (real patient data)
+DEMO_MODE = False
+
+# Onboarding enforcement — enabled in production
+ONBOARDING_ENFORCEMENT = True
+
+# Active shift enforcement — enabled in production
+ACTIVE_SHIFT_ENFORCEMENT = True
+
 # PowerSync integration — env vars for the PowerSync service (self-hosted)
 # These are read by powersync/powersync.yaml, not by Django directly.
 # Listed here for documentation and .env template purposes.
@@ -168,3 +177,41 @@ if REDIS_URL:
             },
         },
     }
+
+    # Use the same Redis for Celery broker in production
+    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", REDIS_URL)
+    CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", REDIS_URL)
+
+# =============================================================================
+# Encryption — MUST be set via environment (no defaults in production)
+# =============================================================================
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "")
+FIELD_ENCRYPTION_KEY = ENCRYPTION_KEY
+PII_HMAC_KEY = os.getenv("PII_HMAC_KEY", "")
+
+if not ENCRYPTION_KEY:
+    import warnings
+
+    warnings.warn(
+        "ENCRYPTION_KEY is not set. PII encryption will fail. "
+        "Set ENCRYPTION_KEY in your environment.",
+        stacklevel=1,
+    )
+
+# =============================================================================
+# SMS Backend — Use real provider in production
+# =============================================================================
+SMS_BACKEND = os.getenv("SMS_BACKEND", "hmis.apps.core.sms.backends.AfricasTalkingSMSBackend")
+SMS_SENDER_ID = os.getenv("SMS_SENDER_ID", "VitoraHMIS")
+
+# =============================================================================
+# WebAuthn / Passkeys
+# =============================================================================
+WEBAUTHN_RP_ID = os.getenv("WEBAUTHN_RP_ID", "")
+WEBAUTHN_ORIGIN = os.getenv("WEBAUTHN_ORIGIN", "")
+
+# =============================================================================
+# Frontend URL (for email links, password resets, etc.)
+# =============================================================================
+FRONTEND_URL = os.getenv("FRONTEND_URL", "")
+DOCUMENT_VERIFICATION_URL = os.getenv("DOCUMENT_VERIFICATION_URL", "")

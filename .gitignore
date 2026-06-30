@@ -209,3 +209,4 @@ backend/sha.pem
 mobile/*.apk
 
 !*.tmp/todo.md
+web-app/.env.vercel

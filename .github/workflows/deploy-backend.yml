@@ -2,26 +2,42 @@ name: Deploy Backend to Azure Container Apps
 
 on:
   push:
-    tags:
-      - 'production'
+    branches:
+      - main
+      - develop
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
 
 env:
   AZURE_RESOURCE_GROUP: vitora-rg
   AZURE_LOCATION: eastus
-  CONTAINER_APP_NAME: vitora-api
   CONTAINER_APP_ENV: vitora-env
   REGISTRY_NAME: vitoraacr
   IMAGE_NAME: vitora-api
 
 jobs:
   build-and-deploy:
-    name: Build & Deploy to ACA
+    name: Build & Deploy to ACA (${{ github.event.inputs.environment || (github.ref_name == 'main' && 'production') || 'staging' }})
     runs-on: ubuntu-latest
-    environment: staging
+    environment: ${{ github.event.inputs.environment || (github.ref_name == 'main' && 'production') || 'staging' }}
     permissions:
       id-token: write
       contents: read
+
+    env:
+      DEPLOY_ENV: ${{ github.event.inputs.environment || (github.ref_name == 'main' && 'production') || 'staging' }}
+      CONTAINER_APP_NAME: ${{ (github.event.inputs.environment == 'production' || github.ref_name == 'main') && 'vitora-api-prod' || 'vitora-api' }}
 
     steps:
       - name: Checkout code
@@ -56,14 +72,17 @@ jobs:
           targetPort: 8000
           ingress: external
           environmentVariables: >-
-            DJANGO_ENV=staging
-            DJANGO_SETTINGS_MODULE=hmis.settings.staging
+            DJANGO_ENV=${{ env.DEPLOY_ENV }}
+            DJANGO_SETTINGS_MODULE=hmis.settings.${{ env.DEPLOY_ENV }}
             DATABASE_URL=secretref:database-url
             ENCRYPTION_KEY=secretref:encryption-key
             PII_HMAC_KEY=secretref:pii-hmac-key
             DJANGO_SECRET_KEY=secretref:django-secret-key
             DEBUG=false
             PORT=8000
+            DEMO_MODE=${{ env.DEPLOY_ENV == 'staging' && 'true' || 'false' }}
+            ACTIVE_SHIFT_ENFORCEMENT=${{ env.DEPLOY_ENV == 'production' && 'true' || 'false' }}
+            ONBOARDING_ENFORCEMENT=${{ env.DEPLOY_ENV == 'production' && 'true' || 'false' }}
             ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS || 'staging.vitora.digital,vitora-navy.vercel.app,localhost' }}
             SECURE_SSL_REDIRECT=true
             CORS_ALLOWED_ORIGINS=${{ vars.CORS_ALLOWED_ORIGINS || 'https://staging.vitora.digital,https://vitora-navy.vercel.app,http://localhost:3009' }}

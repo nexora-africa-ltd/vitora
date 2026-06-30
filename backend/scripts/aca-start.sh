@@ -25,8 +25,8 @@ python manage.py create_missing_lab_queues
 
 # One-time seed (remove after first successful deploy)
 if [ "${RUN_SEED:-false}" = "true" ]; then
-  echo "==> Running data seed..."
-  bash scripts/seed.sh
+  echo "==> Running production data seed..."
+  bash scripts/seed-production.sh
 fi
 
 echo "==> Starting Daphne (ASGI) on port ${PORT:-8000}..."

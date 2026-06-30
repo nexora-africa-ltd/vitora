@@ -1,7 +1,8 @@
 .PHONY: help install test lint format type-check security clean \
 	staging-status staging-logs staging-logs-100 staging-exec staging-seed \
 	staging-migrate staging-shell staging-restart staging-env staging-secrets \
-	staging-deploy staging-login-test check-ilm
+	staging-deploy staging-login-test check-ilm \
+	prod-deploy prod-env prod-logs prod-status prod-restart
 
 help:
 	@echo "Vitora HMIS Backend - Make Commands"
@@ -606,11 +607,11 @@ m2m:
 # Staging (Azure Container Apps) Commands
 # ============================================================================
 
-ACA_NAME     := vitora-api
+ACA_NAME     := vitora-api-prod
 ACA_RG       := vitora-rg
 ACR_NAME     := vitoraacr
 ACR_IMAGE    := vitora-api
-ACA_API_URL  := https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io
+ACA_API_URL  := https://api.vitora.digital
 
 # Show container health, active revision, replica count, and env var count
 staging-status:
@@ -693,3 +694,41 @@ staging-login-test:
 		| python3 -c "import sys,json; d=json.load(sys.stdin); \
 			print('✅ Login OK — user:', d.get('user',{}).get('username','?')) if 'access' in d \
 			else print('❌ Login failed:', d)" 2>/dev/null || echo "❌ API unreachable"
+
+# =============================================================================
+# Production Deployment
+# =============================================================================
+ACA_PROD_NAME ?= vitora-api-prod
+
+prod-deploy:
+	@echo "=== Building and deploying to PRODUCTION ACA ==="
+	@echo "⚠️  WARNING: This deploys to the PRODUCTION environment."
+	@read -p "Continue? [y/N] " confirm; \
+	if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then echo "Aborted."; exit 1; fi
+	@TAG=$$(git rev-parse --short HEAD); \
+	echo "Image tag: $$TAG"; \
+	docker build -t $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG -t $(ACR_NAME).azurecr.io/$(ACR_IMAGE):prod-latest . && \
+	az acr login --name $(ACR_NAME) && \
+	docker push $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG && \
+	docker push $(ACR_NAME).azurecr.io/$(ACR_IMAGE):prod-latest && \
+	az containerapp update -n $(ACA_PROD_NAME) -g $(ACA_RG) \
+		--image $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG \
+		--output none && \
+	echo "=== Syncing production environment variables ===" && \
+	bash scripts/azure-update-env-production.sh && \
+	echo "✅ Deployed $$TAG to PRODUCTION. Wait ~60s for rollout."
+
+prod-env:
+	bash scripts/azure-update-env-production.sh
+
+prod-logs:
+	az containerapp logs show -n $(ACA_PROD_NAME) -g $(ACA_RG) --follow
+
+prod-status:
+	@az containerapp show -n $(ACA_PROD_NAME) -g $(ACA_RG) \
+		--query "{name:name, status:properties.runningStatus, fqdn:properties.configuration.ingress.fqdn, replicas:properties.template.scale}" \
+		-o table 2>/dev/null || echo "❌ Production app not found"
+
+prod-restart:
+	az containerapp revision restart -n $(ACA_PROD_NAME) -g $(ACA_RG) \
+		--revision $$(az containerapp revision list -n $(ACA_PROD_NAME) -g $(ACA_RG) --query "[0].name" -o tsv)

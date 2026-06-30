@@ -4,8 +4,8 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
 const CONFIG_FILE: &str = "config.json";
-const DEFAULT_API_URL: &str = "https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io";
-const LEGACY_API_URL: &str = "https://api.vitora.digital";
+const DEFAULT_API_URL: &str = "https://api.vitora.digital";
+const LEGACY_API_URL: &str = "https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io";
 
 /// Deployment mode for the Tauri client.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

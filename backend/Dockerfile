@@ -12,7 +12,7 @@ FROM docker.io/library/python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DJANGO_SETTINGS_MODULE=hmis.settings.staging \
+    DJANGO_SETTINGS_MODULE=hmis.settings.production \
     PORT=8000
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
