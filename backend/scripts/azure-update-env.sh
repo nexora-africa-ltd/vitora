@@ -120,6 +120,9 @@ az containerapp update \
     "PII_HMAC_KEY=secretref:pii-hmac-key" \
     "DEBUG=false" \
     "PORT=8000" \
+    "DEMO_MODE=${DEMO_MODE:-true}" \
+    "ACTIVE_SHIFT_ENFORCEMENT=${ACTIVE_SHIFT_ENFORCEMENT:-false}" \
+    "ONBOARDING_ENFORCEMENT=${ONBOARDING_ENFORCEMENT:-false}" \
     "ALLOWED_HOSTS=${FQDN},staging.vitora.digital,vitora-navy.vercel.app,localhost" \
     "SECURE_SSL_REDIRECT=true" \
     "CORS_ALLOWED_ORIGINS=https://vitora-navy.vercel.app,https://staging.vitora.digital,http://localhost:3009" \

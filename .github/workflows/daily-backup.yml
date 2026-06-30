@@ -1,0 +1,101 @@
+name: Daily Database Backup
+
+on:
+  schedule:
+    # Run daily at 02:00 UTC (05:00 EAT)
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  AZURE_RESOURCE_GROUP: vitora-rg
+  STORAGE_ACCOUNT: vitorabackups
+  STORAGE_CONTAINER: db-backups
+
+jobs:
+  backup:
+    name: Backup ${{ github.event.inputs.environment || 'production' }} database
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      CONTAINER_APP_NAME: ${{ (github.event.inputs.environment == 'staging') && 'vitora-api' || 'vitora-api-prod' }}
+
+    steps:
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Ensure storage container exists
+        run: |
+          az storage container create \
+            --account-name ${{ env.STORAGE_ACCOUNT }} \
+            --name ${{ env.STORAGE_CONTAINER }} \
+            --auth-mode login \
+            --public-access off 2>/dev/null || true
+
+      - name: Generate SAS token (24h write)
+        id: sas
+        run: |
+          EXPIRY=$(date -u -d "+24 hours" +"%Y-%m-%dT%H:%MZ")
+          SAS=$(az storage container generate-sas \
+            --account-name ${{ env.STORAGE_ACCOUNT }} \
+            --name ${{ env.STORAGE_CONTAINER }} \
+            --permissions rcwdl \
+            --expiry "$EXPIRY" \
+            --auth-mode login \
+            --as-user \
+            -o tsv)
+          echo "::add-mask::$SAS"
+          echo "token=$SAS" >> "$GITHUB_OUTPUT"
+
+      - name: Run backup in container
+        run: |
+          az containerapp exec \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --command "bash -c 'export AZURE_STORAGE_ACCOUNT=${{ env.STORAGE_ACCOUNT }} AZURE_STORAGE_CONTAINER=${{ env.STORAGE_CONTAINER }} AZURE_STORAGE_SAS_TOKEN=\"${{ steps.sas.outputs.token }}\" && bash scripts/backup-db.sh'"
+
+      - name: Prune old backups (30-day retention)
+        run: |
+          CUTOFF=$(date -u -d "-30 days" +"%Y-%m-%dT%H:%M:%SZ")
+          OLD_BLOBS=$(az storage blob list \
+            --account-name ${{ env.STORAGE_ACCOUNT }} \
+            --container-name ${{ env.STORAGE_CONTAINER }} \
+            --auth-mode login \
+            --query "[?properties.creationTime < '${CUTOFF}'].name" \
+            -o tsv 2>/dev/null || true)
+
+          DELETED=0
+          for blob in $OLD_BLOBS; do
+            az storage blob delete \
+              --account-name ${{ env.STORAGE_ACCOUNT }} \
+              --container-name ${{ env.STORAGE_CONTAINER }} \
+              --name "$blob" \
+              --auth-mode login && ((DELETED++)) || true
+          done
+          echo "Pruned ${DELETED} backup(s) older than 30 days"
+
+      - name: Verify latest backup
+        run: |
+          LATEST=$(az storage blob list \
+            --account-name ${{ env.STORAGE_ACCOUNT }} \
+            --container-name ${{ env.STORAGE_CONTAINER }} \
+            --auth-mode login \
+            --query "sort_by([].{name:name, size:properties.contentLength, created:properties.creationTime}, &created) | [-1]" \
+            -o table)
+          echo "$LATEST"
