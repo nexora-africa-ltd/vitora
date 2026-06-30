@@ -710,6 +710,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     sections,
     buildAIContext,
     clinicalDocument,
+    templateFields,
     toast,
     generationMode,
     followUpInstructions,
@@ -800,7 +801,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     } finally {
       setGeneratingSectionId(null);
     }
-  }, [admission, sections, buildAIContext, clinicalDocument, toast, generationMode, setSections, setGeneratingSectionId]);
+  }, [admission, sections, buildAIContext, clinicalDocument, templateFields, toast, generationMode, setSections, setGeneratingSectionId]);
 
   // Generate follow-up instructions
   const handleGenerateFollowUp = useCallback(async () => {

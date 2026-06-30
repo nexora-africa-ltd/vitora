@@ -226,7 +226,7 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
       setLoading(false);
       setRefreshing(false);
     }
-  }, [arrivalForm, dischargeForm, documentationForm, surgeryCase.case_number, surgeryCase.requesting_doctor]);
+  }, [arrivalForm, dischargeForm, documentationForm, surgeryCase.id, surgeryCase.case_number, surgeryCase.requesting_doctor]);
 
   useEffect(() => {
     void loadRecord(true);

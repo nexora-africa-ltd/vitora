@@ -132,6 +132,7 @@ export function BiometricsConsentDialog({
       setError(getApiErrorMessage(err));
       setStatus('failed');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shaMemberId, workstationId, agentNationalId]);
 
   // Start biometric auth when dialog opens

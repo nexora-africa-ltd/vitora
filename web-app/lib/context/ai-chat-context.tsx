@@ -377,6 +377,7 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       triggerPanelAction,
       clearPanelAction,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       widgetState,
       openWidget,

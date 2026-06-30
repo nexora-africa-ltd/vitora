@@ -63,7 +63,7 @@ export function QuickCheckinDialog({
   const { data: clinicsData } = useClinics({});
   const { data: lookupData } = usePatientLookup(patientMrn, { enabled: open });
 
-  const clinics = clinicsData?.results ?? [];
+  const clinics = useMemo(() => clinicsData?.results ?? [], [clinicsData?.results]);
 
   // Use suggested values from lookup if available
   const suggestedReason = lookupData?.suggested_visit_reason;

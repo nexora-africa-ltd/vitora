@@ -511,6 +511,7 @@ export function FacilitySettingsTab() {
           <div className="flex items-center gap-4">
             {logoPreview ? (
               <div className="relative h-16 w-16 shrink-0 rounded-lg border overflow-hidden bg-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={logoPreview.startsWith('http') ? logoPreview : `${API_BASE_URL}${logoPreview}`}
                   alt="Facility logo"
