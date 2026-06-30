@@ -84,6 +84,13 @@ from hmis.apps.ai.serializers import (
     LabInterpretResponseSerializer,
     LabPatternSerializer,
     LabResultItemSerializer,
+    ProactiveInsightEncounterContextSerializer,
+    ProactiveInsightItemSerializer,
+    ProactiveInsightPatientContextSerializer,
+    ProactiveInsightsRequestSerializer,
+    ProactiveInsightsResponseSerializer,
+    ProactiveInsightTierCountsSerializer,
+    ProactiveInsightVitalsSerializer,
     SOFAScoreBreakdownSerializer,
     StoredAIResultSerializer,
     StoredCarePlanSerializer,
@@ -1097,6 +1104,90 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "timestamp",
                 "unit",
                 "value",
+            }
+        ),
+    ),
+    (
+        ProactiveInsightEncounterContextSerializer,
+        frozenset(
+            {
+                "chief_complaint",
+                "clinical_notes",
+                "diagnoses",
+                "vitals",
+            }
+        ),
+    ),
+    (
+        ProactiveInsightItemSerializer,
+        frozenset(
+            {
+                "category",
+                "confidence",
+                "id",
+                "message",
+                "references",
+                "severity",
+                "source",
+                "tier",
+                "title",
+            }
+        ),
+    ),
+    (
+        ProactiveInsightPatientContextSerializer,
+        frozenset(
+            {
+                "allergies",
+                "comorbidities",
+                "current_medications",
+                "patient_age",
+                "patient_sex",
+            }
+        ),
+    ),
+    (
+        ProactiveInsightTierCountsSerializer,
+        frozenset(
+            {
+                "tier1",
+                "tier2",
+                "tier3",
+            }
+        ),
+    ),
+    (
+        ProactiveInsightVitalsSerializer,
+        frozenset(
+            {
+                "diastolic_bp",
+                "pulse",
+                "respiratory_rate",
+                "spo2",
+                "systolic_bp",
+                "temperature",
+            }
+        ),
+    ),
+    (
+        ProactiveInsightsRequestSerializer,
+        frozenset(
+            {
+                "context_hash",
+                "encounter_context",
+                "include_llm",
+                "patient_context",
+            }
+        ),
+    ),
+    (
+        ProactiveInsightsResponseSerializer,
+        frozenset(
+            {
+                "context_hash",
+                "insights",
+                "tier_counts",
+                "total",
             }
         ),
     ),
