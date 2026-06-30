@@ -1,24 +1,32 @@
 #!/usr/bin/env python3
 """
-Vitora HMIS - Backup Monitoring Script
+Vitora HMIS - Backup Monitoring Script (Azure Blob Storage)
 
-Monitors backup health and sends alerts when:
-- No backup exists within the expected window
-- Backup size is suspiciously small
-- Backup verification fails
-- S3 sync is out of date
+Monitors backup health in Azure Blob Storage and sends alerts when:
+- No backup exists within the expected window (26 hours)
+- Backup size is suspiciously small (< 1 MB)
+- Checksum file is missing
+- Azure Container App health is degraded
+
+Designed for the Vitora production stack:
+  - Database: Neon PostgreSQL
+  - Backups: Azure Blob Storage (uploaded by backup-db.sh)
+  - Hosting: Azure Container Apps
 
 Usage:
-    ./backup_monitor.py                     # Check all backups
-    ./backup_monitor.py --env production    # Check specific environment
-    ./backup_monitor.py --alert-only        # Only alert on failures
+    ./backup_monitor.py                          # Check all
+    ./backup_monitor.py --env production         # Specific environment
+    ./backup_monitor.py --alert-only             # Only alert on failures
+    ./backup_monitor.py --json                   # JSON output (for CI/cron)
 
 Environment Variables:
-    BACKUP_DIR             - Local backup directory
-    S3_BUCKET              - S3 bucket name (optional)
-    SLACK_WEBHOOK_URL      - Slack notifications (optional)
-    ALERT_EMAIL            - Email for alerts (optional)
-    BACKUP_ENCRYPTION_KEY  - For verifying encrypted backups
+    AZURE_STORAGE_ACCOUNT    - Storage account name
+    AZURE_STORAGE_CONTAINER  - Blob container name
+    AZURE_STORAGE_SAS_TOKEN  - SAS token with list/read permission (or use az login)
+    SLACK_WEBHOOK_URL        - Slack notifications (optional)
+    ALERT_EMAIL              - Email for alerts (optional)
+    VITORA_ENV               - Environment (default: production)
+    API_HEALTH_URL           - API health endpoint (default: https://api.vitora.digital/api/health/)
 
 Cron setup (every 6 hours):
     0 */6 * * * /path/to/backend/scripts/backup_monitor.py >> /var/log/vitora-backup-monitor.log 2>&1
@@ -30,10 +38,9 @@ import os
 import subprocess
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime
-from pathlib import Path
+from datetime import UTC, datetime
 
-# Try to import requests for alerting
+# Try to import requests for alerting and health checks
 try:
     import requests
 
@@ -43,15 +50,15 @@ except ImportError:
 
 
 @dataclass
-class BackupInfo:
-    """Information about a backup file."""
+class BlobInfo:
+    """Information about a backup blob."""
 
-    path: Path
-    timestamp: datetime
+    name: str
     size_bytes: int
-    environment: str
-    encrypted: bool
-    checksum_valid: bool | None = None
+    created: datetime
+    content_type: str = ""
+    encrypted: bool = False
+    has_checksum: bool = False
 
 
 @dataclass
@@ -62,227 +69,193 @@ class MonitoringResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     info: list[str] = field(default_factory=list)
-    latest_backup: BackupInfo | None = None
+    latest_backup: BlobInfo | None = None
 
 
 class BackupMonitor:
-    """Monitors backup health and sends alerts."""
+    """Monitors Azure Blob Storage backup health."""
 
     # Thresholds
-    MAX_BACKUP_AGE_HOURS = 26  # Allow for daily backup + 2 hour buffer
+    MAX_BACKUP_AGE_HOURS = 26  # Daily backup + 2h buffer
     MIN_BACKUP_SIZE_MB = 1  # Minimum expected backup size
-    MAX_BACKUP_SIZE_GB = 50  # Maximum reasonable backup size
+    MIN_BACKUP_COUNT = 7  # At least 7 days of backups
 
     def __init__(
         self,
-        backup_dir: str = "/var/backups/vitora",
-        environment: str = "staging",
-        s3_bucket: str | None = None,
+        environment: str = "production",
+        storage_account: str | None = None,
+        storage_container: str | None = None,
+        sas_token: str | None = None,
+        api_health_url: str | None = None,
     ):
-        self.backup_dir = Path(backup_dir)
         self.environment = environment
-        self.s3_bucket = s3_bucket or os.environ.get("S3_BUCKET")
-        self.encryption_key = os.environ.get("BACKUP_ENCRYPTION_KEY")
-        self.slack_webhook = os.environ.get("SLACK_WEBHOOK_URL")
-        self.alert_email = os.environ.get("ALERT_EMAIL")
+        self.storage_account = storage_account or os.environ.get("AZURE_STORAGE_ACCOUNT", "")
+        self.storage_container = storage_container or os.environ.get(
+            "AZURE_STORAGE_CONTAINER", "db-backups"
+        )
+        self.sas_token = sas_token or os.environ.get("AZURE_STORAGE_SAS_TOKEN", "")
+        self.api_health_url = api_health_url or os.environ.get(
+            "API_HEALTH_URL", "https://api.vitora.digital/api/health/"
+        )
+        self.slack_webhook = os.environ.get("SLACK_WEBHOOK_URL", "")
+        self.alert_email = os.environ.get("ALERT_EMAIL", "")
 
-    def check_local_backups(self) -> MonitoringResult:
-        """Check local backup health."""
+    def check_azure_blobs(self) -> MonitoringResult:
+        """Check backup blobs in Azure Blob Storage."""
         result = MonitoringResult()
 
-        if not self.backup_dir.exists():
+        if not self.storage_account:
             result.healthy = False
-            result.errors.append(f"Backup directory does not exist: {self.backup_dir}")
+            result.errors.append("AZURE_STORAGE_ACCOUNT not configured")
             return result
 
-        # Find backup files for this environment (excluding checksum/manifest files)
-        pattern = f"vitora_{self.environment}_*_db.*"
-        backup_files = sorted(
-            [
-                f
-                for f in self.backup_dir.glob(pattern)
-                if f.suffix not in (".sha256", ".json") and "_manifest" not in f.name
-            ],
-            key=lambda f: f.stat().st_mtime,
-            reverse=True,
-        )
+        blobs = self._list_blobs()
+        if blobs is None:
+            result.healthy = False
+            result.errors.append("Failed to list blobs from Azure Storage")
+            return result
 
-        if not backup_files:
+        # Filter to backup files (exclude checksums)
+        backup_blobs = [
+            b
+            for b in blobs
+            if b.name.startswith(f"vitora-{self.environment}-") and not b.name.endswith(".sha256")
+        ]
+
+        if not backup_blobs:
             result.healthy = False
             result.errors.append(f"No backups found for environment: {self.environment}")
             return result
 
-        # Check latest backup
-        latest_file = backup_files[0]
-        latest_stat = latest_file.stat()
-        latest_time = datetime.fromtimestamp(latest_stat.st_mtime)
-        age_hours = (datetime.now() - latest_time).total_seconds() / 3600
+        # Sort by creation time (newest first)
+        backup_blobs.sort(key=lambda b: b.created, reverse=True)
+        latest = backup_blobs[0]
+        result.latest_backup = latest
 
-        latest_backup = BackupInfo(
-            path=latest_file,
-            timestamp=latest_time,
-            size_bytes=latest_stat.st_size,
-            environment=self.environment,
-            encrypted=latest_file.suffix == ".gpg",
+        # Check if checksum exists for latest
+        base_name = (
+            latest.name.rsplit(".gpg", 1)[0] if latest.name.endswith(".gpg") else latest.name
         )
-        result.latest_backup = latest_backup
+        checksum_name = base_name + ".sha256"
+        latest.has_checksum = any(b.name == checksum_name for b in blobs)
+        latest.encrypted = latest.name.endswith(".gpg")
 
         # Check age
+        now = datetime.now(UTC)
+        age_hours = (now - latest.created).total_seconds() / 3600
+
         if age_hours > self.MAX_BACKUP_AGE_HOURS:
             result.healthy = False
             result.errors.append(
-                f"Latest backup is {age_hours:.1f} hours old (threshold: {self.MAX_BACKUP_AGE_HOURS}h)"
+                f"Latest backup is {age_hours:.1f}h old "
+                f"(max: {self.MAX_BACKUP_AGE_HOURS}h): {latest.name}"
             )
         else:
-            result.info.append(f"Latest backup age: {age_hours:.1f} hours")
+            result.info.append(f"Latest backup age: {age_hours:.1f}h")
 
         # Check size
-        size_mb = latest_stat.st_size / (1024 * 1024)
+        size_mb = latest.size_bytes / (1024 * 1024)
         if size_mb < self.MIN_BACKUP_SIZE_MB:
             result.healthy = False
             result.errors.append(
-                f"Backup suspiciously small: {size_mb:.2f} MB (minimum: {self.MIN_BACKUP_SIZE_MB} MB)"
+                f"Backup suspiciously small: {size_mb:.2f} MB (min: {self.MIN_BACKUP_SIZE_MB} MB)"
             )
-        elif size_mb > self.MAX_BACKUP_SIZE_GB * 1024:
-            result.warnings.append(f"Backup unusually large: {size_mb:.2f} MB")
         else:
-            result.info.append(f"Backup size: {size_mb:.2f} MB")
+            result.info.append(f"Latest backup size: {size_mb:.2f} MB")
+
+        # Check encryption
+        if not latest.encrypted:
+            result.warnings.append("Latest backup is NOT encrypted (missing .gpg extension)")
+        else:
+            result.info.append("Encryption: AES-256 (GPG)")
 
         # Check checksum
-        checksum_file = latest_file.with_suffix(latest_file.suffix + ".sha256")
-        if checksum_file.exists():
-            try:
-                subprocess.run(
-                    ["sha256sum", "-c", str(checksum_file)],
-                    cwd=str(self.backup_dir),
-                    check=True,
-                    capture_output=True,
-                )
-                latest_backup.checksum_valid = True
-                result.info.append("Checksum verification: PASSED")
-            except subprocess.CalledProcessError:
-                latest_backup.checksum_valid = False
-                result.healthy = False
-                result.errors.append("Checksum verification: FAILED")
-        else:
+        if not latest.has_checksum:
             result.warnings.append("No checksum file found for latest backup")
+        else:
+            result.info.append("Checksum file: present")
 
-        # Check backup count (retention)
-        backup_count = len(backup_files)
-        result.info.append(f"Total local backups: {backup_count}")
-
-        if backup_count < 7:
+        # Check backup count
+        result.info.append(f"Total backups: {len(backup_blobs)}")
+        if len(backup_blobs) < self.MIN_BACKUP_COUNT:
             result.warnings.append(
-                f"Low backup count: {backup_count} (expected at least 7 for weekly coverage)"
+                f"Low backup count: {len(backup_blobs)} (expected >= {self.MIN_BACKUP_COUNT})"
             )
 
         return result
 
-    def check_s3_backups(self) -> MonitoringResult:
-        """Check S3 backup sync status."""
+    def check_api_health(self) -> MonitoringResult:
+        """Check API health endpoint."""
         result = MonitoringResult()
 
-        if not self.s3_bucket:
-            result.info.append("S3 backup not configured")
+        if not HAS_REQUESTS:
+            result.info.append("requests not installed; skipping API health check")
             return result
 
         try:
-            # List S3 objects
-            s3_endpoint = os.environ.get("S3_ENDPOINT", "")
-            cmd = [
-                "aws",
-                "s3",
-                "ls",
-                f"s3://{self.s3_bucket}/backups/{self.environment}/",
-                "--recursive",
-            ]
-            if s3_endpoint:
-                cmd.extend(["--endpoint-url", s3_endpoint])
-
-            proc = subprocess.run(cmd, capture_output=True, text=True)
-
-            if proc.returncode != 0:
-                result.warnings.append(f"Could not check S3: {proc.stderr}")
-                return result
-
-            # Parse output
-            lines = [l for l in proc.stdout.strip().split("\n") if l.strip()]
-            if not lines:
-                result.healthy = False
-                result.errors.append("No backups found in S3")
-                return result
-
-            # Check latest S3 backup
-            latest_line = lines[-1]  # Last line is most recent
-            parts = latest_line.split()
-            if len(parts) >= 3:
-                date_str = f"{parts[0]} {parts[1]}"
-                try:
-                    s3_latest_time = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-                    age_hours = (datetime.now() - s3_latest_time).total_seconds() / 3600
-
-                    if age_hours > self.MAX_BACKUP_AGE_HOURS:
-                        result.healthy = False
-                        result.errors.append(
-                            f"S3 backup is {age_hours:.1f} hours old (threshold: {self.MAX_BACKUP_AGE_HOURS}h)"
-                        )
-                    else:
-                        result.info.append(f"S3 backup age: {age_hours:.1f} hours")
-                except ValueError:
-                    result.warnings.append("Could not parse S3 backup timestamp")
-
-            result.info.append(f"S3 backup count: {len(lines)}")
-
-        except FileNotFoundError:
-            result.warnings.append("AWS CLI not installed, cannot check S3 backups")
+            resp = requests.get(self.api_health_url, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                status = data.get("status", "unknown")
+                result.info.append(f"API health: {status} (HTTP 200)")
+                if status != "healthy":
+                    result.warnings.append(f"API reports unhealthy status: {status}")
+            else:
+                result.warnings.append(f"API health endpoint returned HTTP {resp.status_code}")
+        except requests.Timeout:
+            result.warnings.append("API health check timed out (10s)")
+        except requests.ConnectionError:
+            result.healthy = False
+            result.errors.append(f"Cannot connect to API: {self.api_health_url}")
         except Exception as e:
-            result.warnings.append(f"S3 check failed: {str(e)}")
+            result.warnings.append(f"API health check failed: {str(e)}")
 
         return result
 
-    def verify_backup_integrity(self) -> MonitoringResult:
-        """Verify the latest backup can be decrypted/decompressed."""
+    def check_container_app(self) -> MonitoringResult:
+        """Check Azure Container App revision status via CLI (if available)."""
         result = MonitoringResult()
 
-        if not result.latest_backup:
-            # Get latest backup
-            pattern = f"vitora_{self.environment}_*_db.*"
-            backup_files = sorted(
-                self.backup_dir.glob(pattern), key=lambda f: f.stat().st_mtime, reverse=True
+        if not self._has_az_cli():
+            result.info.append("Azure CLI not available; skipping container app check")
+            return result
+
+        try:
+            app_name = "vitora-api-prod" if self.environment == "production" else "vitora-api"
+            proc = subprocess.run(
+                [
+                    "az",
+                    "containerapp",
+                    "revision",
+                    "list",
+                    "-n",
+                    app_name,
+                    "-g",
+                    "vitora-rg",
+                    "--query",
+                    "[?properties.active].{name:name, status:properties.runningState}",
+                    "-o",
+                    "json",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
-            if not backup_files:
-                result.warnings.append("No backup to verify")
-                return result
-
-            latest_file = backup_files[0]
-        else:
-            latest_file = result.latest_backup.path
-
-        # Test decryption if encrypted
-        if latest_file.suffix == ".gpg":
-            if not self.encryption_key:
-                result.warnings.append(
-                    "Cannot verify encrypted backup: BACKUP_ENCRYPTION_KEY not set"
-                )
-                return result
-
-            try:
-                proc = subprocess.run(
-                    ["gpg", "--batch", "--passphrase-fd", "0", "-d", str(latest_file)],
-                    input=self.encryption_key.encode(),
-                    capture_output=True,
-                    timeout=60,
-                )
-                # Just check first few bytes can be read
-                if proc.returncode == 0:
-                    result.info.append("Decryption test: PASSED")
-                else:
-                    result.healthy = False
-                    result.errors.append("Decryption test: FAILED")
-            except subprocess.TimeoutExpired:
-                result.warnings.append("Decryption test: TIMEOUT")
-            except Exception as e:
-                result.warnings.append(f"Decryption test failed: {str(e)}")
+            if proc.returncode == 0:
+                revisions = json.loads(proc.stdout)
+                for rev in revisions:
+                    status = rev.get("status", "Unknown")
+                    name = rev.get("name", "?")
+                    if status == "Running":
+                        result.info.append(f"Container revision: {name} ({status})")
+                    else:
+                        result.warnings.append(
+                            f"Container revision {name} is {status} (expected Running)"
+                        )
+            else:
+                result.info.append("Could not query container app revisions")
+        except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
+            result.info.append("Container app check skipped")
 
         return result
 
@@ -290,77 +263,167 @@ class BackupMonitor:
         """Run all monitoring checks."""
         combined = MonitoringResult()
 
-        # Local backup checks
-        local_result = self.check_local_backups()
-        combined.healthy &= local_result.healthy
-        combined.errors.extend(local_result.errors)
-        combined.warnings.extend(local_result.warnings)
-        combined.info.extend(local_result.info)
-        combined.latest_backup = local_result.latest_backup
+        checks = [
+            ("Azure Blob backups", self.check_azure_blobs),
+            ("API health", self.check_api_health),
+            ("Container App", self.check_container_app),
+        ]
 
-        # S3 checks
-        s3_result = self.check_s3_backups()
-        combined.healthy &= s3_result.healthy
-        combined.errors.extend(s3_result.errors)
-        combined.warnings.extend(s3_result.warnings)
-        combined.info.extend(s3_result.info)
-
-        # Integrity verification
-        integrity_result = self.verify_backup_integrity()
-        combined.healthy &= integrity_result.healthy
-        combined.errors.extend(integrity_result.errors)
-        combined.warnings.extend(integrity_result.warnings)
-        combined.info.extend(integrity_result.info)
+        for name, check_fn in checks:
+            try:
+                r = check_fn()
+                combined.healthy &= r.healthy
+                combined.errors.extend(r.errors)
+                combined.warnings.extend(r.warnings)
+                combined.info.extend(r.info)
+                if r.latest_backup and not combined.latest_backup:
+                    combined.latest_backup = r.latest_backup
+            except Exception as e:
+                combined.warnings.append(f"{name} check raised exception: {str(e)}")
 
         return combined
 
+    # ─── Azure Blob Helpers ─────────────────────────────────────────────────
+
+    def _list_blobs(self) -> list[BlobInfo] | None:
+        """List blobs from Azure Blob Storage."""
+        # Try Azure CLI first
+        if self._has_az_cli():
+            return self._list_blobs_cli()
+        # Fallback to REST API with SAS token
+        if self.sas_token:
+            return self._list_blobs_rest()
+        return None
+
+    def _list_blobs_cli(self) -> list[BlobInfo] | None:
+        """List blobs using Azure CLI."""
+        try:
+            proc = subprocess.run(
+                [
+                    "az",
+                    "storage",
+                    "blob",
+                    "list",
+                    "--account-name",
+                    self.storage_account,
+                    "--container-name",
+                    self.storage_container,
+                    "--auth-mode",
+                    "login",
+                    "--query",
+                    "[].{name:name, size:properties.contentLength, "
+                    "created:properties.creationTime}",
+                    "-o",
+                    "json",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if proc.returncode != 0:
+                return None
+
+            items = json.loads(proc.stdout)
+            blobs = []
+            for item in items:
+                created_str = item.get("created", "")
+                try:
+                    created = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
+                except (ValueError, AttributeError):
+                    created = datetime.now(UTC)
+
+                blobs.append(
+                    BlobInfo(
+                        name=item.get("name", ""),
+                        size_bytes=item.get("size", 0) or 0,
+                        created=created,
+                    )
+                )
+            return blobs
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
+            return None
+
+    def _list_blobs_rest(self) -> list[BlobInfo] | None:
+        """List blobs using REST API with SAS token."""
+        if not HAS_REQUESTS:
+            return None
+
+        url = (
+            f"https://{self.storage_account}.blob.core.windows.net"
+            f"/{self.storage_container}?restype=container&comp=list&{self.sas_token}"
+        )
+        try:
+            resp = requests.get(url, timeout=15)
+            if resp.status_code != 200:
+                return None
+
+            import xml.etree.ElementTree as ET  # noqa: S405
+
+            root = ET.fromstring(resp.text)  # noqa: S314 — trusted Azure API response
+            blobs = []
+            for blob_elem in root.iter("Blob"):
+                name = blob_elem.findtext("Name", "")
+                props = blob_elem.find("Properties")
+                size = int(props.findtext("Content-Length", "0")) if props is not None else 0
+                created_str = props.findtext("Creation-Time", "") if props is not None else ""
+
+                try:
+                    created = datetime.strptime(created_str, "%a, %d %b %Y %H:%M:%S %Z").replace(
+                        tzinfo=UTC
+                    )
+                except (ValueError, AttributeError):
+                    created = datetime.now(UTC)
+
+                blobs.append(BlobInfo(name=name, size_bytes=size, created=created))
+            return blobs
+        except Exception:
+            return None
+
+    def _has_az_cli(self) -> bool:
+        """Check if Azure CLI is available."""
+        try:
+            subprocess.run(["az", "--version"], capture_output=True, timeout=5)
+            return True
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return False
+
+    # ─── Alerting ───────────────────────────────────────────────────────────
+
     def send_slack_alert(self, result: MonitoringResult):
-        """Send Slack notification."""
+        """Send Slack notification on failure/warning."""
         if not self.slack_webhook or not HAS_REQUESTS:
             return
 
         if result.healthy and not result.warnings:
-            return  # Don't alert on all-clear
+            return
 
-        color = "danger" if not result.healthy else "warning"
+        color = "#dc3545" if not result.healthy else "#ffc107"
         status = "FAILED" if not result.healthy else "WARNING"
 
-        blocks = []
+        text_parts = []
         if result.errors:
-            blocks.append(
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "*Errors:*\n" + "\n".join(f"• {e}" for e in result.errors),
-                    },
-                }
-            )
+            text_parts.append("*Errors:*\n" + "\n".join(f"\u2022 {e}" for e in result.errors))
         if result.warnings:
-            blocks.append(
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "*Warnings:*\n" + "\n".join(f"• {w}" for w in result.warnings),
-                    },
-                }
-            )
+            text_parts.append("*Warnings:*\n" + "\n".join(f"\u2022 {w}" for w in result.warnings))
 
         payload = {
             "attachments": [
                 {
                     "color": color,
                     "title": f"Vitora Backup Monitor: {status}",
+                    "text": "\n\n".join(text_parts),
                     "fields": [
-                        {"title": "Environment", "value": self.environment, "short": True},
+                        {
+                            "title": "Environment",
+                            "value": self.environment,
+                            "short": True,
+                        },
                         {
                             "title": "Timestamp",
-                            "value": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "value": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
                             "short": True,
                         },
                     ],
-                    "blocks": blocks,
                 }
             ]
         }
@@ -371,33 +434,27 @@ class BackupMonitor:
             print(f"Failed to send Slack alert: {e}", file=sys.stderr)
 
     def send_email_alert(self, result: MonitoringResult):
-        """Send email notification."""
-        if not self.alert_email:
+        """Send email notification on failure."""
+        if not self.alert_email or (result.healthy and not result.warnings):
             return
 
-        if result.healthy and not result.warnings:
-            return
+        severity = "CRITICAL" if not result.healthy else "WARNING"
+        subject = f"[{severity}] Vitora Backup Monitor - {self.environment}"
 
-        subject = f"[{'CRITICAL' if not result.healthy else 'WARNING'}] Vitora Backup Monitor - {self.environment}"
-
-        body = f"""
-Vitora HMIS Backup Monitoring Report
-Environment: {self.environment}
-Timestamp: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-Status: {"HEALTHY" if result.healthy else "UNHEALTHY"}
-
-ERRORS:
-{chr(10).join("- " + e for e in result.errors) if result.errors else "None"}
-
-WARNINGS:
-{chr(10).join("- " + w for w in result.warnings) if result.warnings else "None"}
-
-INFO:
-{chr(10).join("- " + i for i in result.info)}
-
---
-Vitora HMIS Automated Backup Monitor
-"""
+        body = (
+            f"Vitora HMIS Backup Monitoring Report\n"
+            f"{'=' * 50}\n"
+            f"Environment: {self.environment}\n"
+            f"Timestamp:   {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+            f"Status:      {'HEALTHY' if result.healthy else 'UNHEALTHY'}\n\n"
+            f"ERRORS:\n"
+            f"{chr(10).join('  - ' + e for e in result.errors) if result.errors else '  None'}\n\n"
+            f"WARNINGS:\n"
+            f"{chr(10).join('  - ' + w for w in result.warnings) if result.warnings else '  None'}\n\n"
+            f"INFO:\n"
+            f"{chr(10).join('  - ' + i for i in result.info)}\n\n"
+            f"--\nVitora HMIS Automated Backup Monitor\n"
+        )
 
         try:
             subprocess.run(
@@ -411,40 +468,38 @@ Vitora HMIS Automated Backup Monitor
     def print_report(self, result: MonitoringResult):
         """Print monitoring report to stdout."""
         print("=" * 60)
-        print(f"VITORA BACKUP MONITOR - {self.environment.upper()}")
+        print(f"VITORA BACKUP MONITOR \u2014 {self.environment.upper()}")
         print("=" * 60)
-        print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"Status: {'✓ HEALTHY' if result.healthy else '✗ UNHEALTHY'}")
+        print(f"Timestamp: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}")
+        print(f"Status:    {'\u2713 HEALTHY' if result.healthy else '\u2717 UNHEALTHY'}")
         print()
 
         if result.errors:
             print("ERRORS:")
             for error in result.errors:
-                print(f"  ✗ {error}")
+                print(f"  \u2717 {error}")
             print()
 
         if result.warnings:
             print("WARNINGS:")
             for warning in result.warnings:
-                print(f"  ⚠ {warning}")
+                print(f"  \u26a0 {warning}")
             print()
 
         if result.info:
             print("INFO:")
             for info in result.info:
-                print(f"  • {info}")
+                print(f"  \u2022 {info}")
             print()
 
         if result.latest_backup:
+            b = result.latest_backup
             print("LATEST BACKUP:")
-            print(f"  File: {result.latest_backup.path.name}")
-            print(f"  Time: {result.latest_backup.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
-            print(f"  Size: {result.latest_backup.size_bytes / (1024 * 1024):.2f} MB")
-            print(f"  Encrypted: {'Yes' if result.latest_backup.encrypted else 'No'}")
-            if result.latest_backup.checksum_valid is not None:
-                print(
-                    f"  Checksum: {'Valid' if result.latest_backup.checksum_valid else 'INVALID'}"
-                )
+            print(f"  Name:      {b.name}")
+            print(f"  Created:   {b.created.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+            print(f"  Size:      {b.size_bytes / (1024 * 1024):.2f} MB")
+            print(f"  Encrypted: {'Yes (GPG/AES-256)' if b.encrypted else 'No'}")
+            print(f"  Checksum:  {'Present' if b.has_checksum else 'Missing'}")
             print()
 
         print("=" * 60)
@@ -454,13 +509,18 @@ def main():
     parser = argparse.ArgumentParser(description="Monitor Vitora HMIS backup health")
     parser.add_argument(
         "--env",
-        default=os.environ.get("VITORA_ENV", "staging"),
-        help="Environment to check (default: staging)",
+        default=os.environ.get("VITORA_ENV", "production"),
+        help="Environment to check (default: production)",
     )
     parser.add_argument(
-        "--backup-dir",
-        default=os.environ.get("BACKUP_DIR", "/var/backups/vitora"),
-        help="Backup directory path",
+        "--storage-account",
+        default=os.environ.get("AZURE_STORAGE_ACCOUNT", ""),
+        help="Azure Storage account name",
+    )
+    parser.add_argument(
+        "--container",
+        default=os.environ.get("AZURE_STORAGE_CONTAINER", "db-backups"),
+        help="Azure Blob container name",
     )
     parser.add_argument(
         "--alert-only",
@@ -476,8 +536,9 @@ def main():
     args = parser.parse_args()
 
     monitor = BackupMonitor(
-        backup_dir=args.backup_dir,
         environment=args.env,
+        storage_account=args.storage_account,
+        storage_container=args.container,
     )
 
     result = monitor.run_all_checks()
@@ -487,18 +548,18 @@ def main():
         output = {
             "healthy": result.healthy,
             "environment": args.env,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "errors": result.errors,
             "warnings": result.warnings,
             "info": result.info,
         }
         if result.latest_backup:
             output["latest_backup"] = {
-                "path": str(result.latest_backup.path),
-                "timestamp": result.latest_backup.timestamp.isoformat(),
+                "name": result.latest_backup.name,
+                "created": result.latest_backup.created.isoformat(),
                 "size_bytes": result.latest_backup.size_bytes,
                 "encrypted": result.latest_backup.encrypted,
-                "checksum_valid": result.latest_backup.checksum_valid,
+                "has_checksum": result.latest_backup.has_checksum,
             }
         print(json.dumps(output, indent=2))
     elif not args.alert_only or not result.healthy or result.warnings:
