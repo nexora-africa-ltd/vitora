@@ -1,10 +1,13 @@
 # Core Module
 
-The Core module provides foundational services, models, and utilities shared across all Vitora HMIS modules. It includes audit logging, offline sync infrastructure, Kenya location hierarchy, RBAC (Role-Based Access Control), and notification systems.
+The Core module provides foundational services, models, and utilities shared across all
+Vitora HMIS modules. It includes audit logging, offline sync infrastructure,
+Kenya location hierarchy, RBAC (Role-Based Access Control), and notification systems.
 
 ## Overview
 
 This module provides functionality for:
+
 - **Audit Logging** - Kenya DPA 2019 compliant audit trails
 - **Offline Sync** - Queue-based sync with conflict resolution
 - **Kenya Locations** - 47 Counties → 289 Sub-Counties → 1,448 Wards
@@ -16,6 +19,7 @@ This module provides functionality for:
 ## Models
 
 ### AuditLog
+
 Kenya Data Protection Act 2019 compliant audit trail.
 
 | Field | Description |
@@ -31,6 +35,7 @@ Kenya Data Protection Act 2019 compliant audit trail.
 | `patient_id` | Denormalized patient ID for sensitive access tracking |
 
 **Action Types:**
+
 - Authentication: `login_success`, `login_failed`, `logout`, `token_refresh`
 - Patient: `patient_create`, `patient_view`, `patient_update`, `patient_delete`, `patient_list`
 - Sensitive: `view_sensitive_patient`, `sensitive_access_denied`
@@ -39,6 +44,7 @@ Kenya Data Protection Act 2019 compliant audit trail.
 - Clinic: `overdue_appointment_alert`, `appointment_reminder`
 
 **Usage:**
+
 ```python
 from hmis.apps.core.models import AuditLog
 
@@ -54,6 +60,7 @@ AuditLog.log(
 ```
 
 ### FrontendEvent
+
 Track frontend user interactions for UX analytics.
 
 | Field | Description |
@@ -70,6 +77,7 @@ Track frontend user interactions for UX analytics.
 | `was_offline` | Whether event occurred offline |
 
 ### ActivityFeed
+
 Dashboard activity stream for user-facing notifications.
 
 | Field | Description |
@@ -85,6 +93,7 @@ Dashboard activity stream for user-facing notifications.
 | `metadata` | JSON field for structured data (MRN, patient name, etc.) |
 
 **Usage:**
+
 ```python
 from hmis.apps.core.models import ActivityFeed
 
@@ -104,6 +113,7 @@ ActivityFeed.log_activity(
 ## Offline Sync Models
 
 ### SyncQueue
+
 Queue for tracking local changes that need synchronization.
 
 | Field | Description |
@@ -119,6 +129,7 @@ Queue for tracking local changes that need synchronization.
 | `synced_at` | When entry was synced |
 
 **Methods:**
+
 ```python
 entry.mark_syncing()      # Set status to SYNCING
 entry.mark_synced()       # Set status to SYNCED, update synced_at

@@ -133,7 +133,7 @@ export default function TheatreEquipmentPage() {
     queryFn: () => theatreApi.listEquipmentTypes({ page_size: 200 }),
   });
 
-  const allEquipment = equipmentQuery.data?.results ?? [];
+  const allEquipment = useMemo(() => equipmentQuery.data?.results ?? [], [equipmentQuery.data]);
 
   const filteredEquipment = useMemo(() => {
     return allEquipment.filter((eq) => {

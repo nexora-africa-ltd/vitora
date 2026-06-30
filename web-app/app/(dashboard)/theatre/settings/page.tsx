@@ -86,7 +86,7 @@ export default function TheatreSettingsPage() {
     queryFn: () => theatreApi.listTheatres({ page_size: 200 }),
   });
 
-  const theatres = theatresQuery.data?.results ?? [];
+  const theatres = useMemo(() => theatresQuery.data?.results ?? [], [theatresQuery.data]);
 
   const filteredTheatres = useMemo(() => {
     return theatres.filter((theatre) => {

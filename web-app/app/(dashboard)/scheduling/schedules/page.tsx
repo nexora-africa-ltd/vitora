@@ -390,7 +390,7 @@ export default function SchedulesPage() {
     queryKey: ['scheduling-resources-all'],
     queryFn: () => resourcesApi.list({ is_active: true, page_size: 200, ordering: 'resource_type,name' }),
   });
-  const resources = resourceData?.results || [];
+  const resources = useMemo(() => resourceData?.results || [], [resourceData]);
 
   // Schedules
   const { data: scheduleData, isLoading } = useQuery({
@@ -468,7 +468,7 @@ export default function SchedulesPage() {
       ordering: 'shift_date,start_time',
     }),
   });
-  const weekShifts = shiftsData?.results || [];
+  const weekShifts = useMemo(() => shiftsData?.results || [], [shiftsData]);
 
   // Group shifts by staff name
   const groupedShifts = useMemo(() => {

@@ -103,7 +103,7 @@ export default function PreauthsListPage() {
     queryFn: () => shaApi.listLocalPreauths({}),
   });
 
-  const preauths: SHAPreauth[] = data?.results || [];
+  const preauths = useMemo<SHAPreauth[]>(() => data?.results || [], [data]);
 
   const filtered = useMemo(() => {
     let result = preauths;
