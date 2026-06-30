@@ -32,7 +32,7 @@
   - SSL enforced
   - Connection pooling enabled (PgBouncer or Neon pooler)
 - [ ] **Backup schedule** configured (daily automated + point-in-time recovery)
-- [ ] `DATABASE_URL` secret set in Azure Container App
+- [x] `DATABASE_URL` secret set in Azure Container App
 - [ ] Migrations tested against production schema: `python manage.py migrate --plan`
 - [ ] PowerSync publication created on production DB:
   ```sql

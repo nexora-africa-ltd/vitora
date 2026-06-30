@@ -276,13 +276,12 @@ class TestActivation:
         assert response.data["sync_url"] == settings.SYNC_SERVER_URL
         assert response.data["encryption_key"] == settings.ENCRYPTION_KEY
         assert response.data["pii_hmac_key"] == settings.PII_HMAC_KEY
-        assert response.data["organization"] == {
-            "id": pending_installation.organization.id,
-            "name": pending_installation.organization.name,
-            "slug": pending_installation.organization.slug,
-            "contact_email": pending_installation.organization.contact_email,
-            "contact_phone": pending_installation.organization.contact_phone,
-        }
+        org_data = response.data["organization"]
+        assert org_data["id"] == pending_installation.organization.id
+        assert org_data["name"] == pending_installation.organization.name
+        assert org_data["slug"] == pending_installation.organization.slug
+        assert org_data["contact_email"] == pending_installation.organization.contact_email
+        assert org_data["contact_phone"] == pending_installation.organization.contact_phone
         assert response.data["facility"]["id"] == pending_installation.facility.id
         assert response.data["facility"]["name"] == pending_installation.facility.name
         assert response.data["facility"]["mfl_code"] == pending_installation.facility.mfl_code

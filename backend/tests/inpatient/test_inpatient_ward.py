@@ -67,14 +67,15 @@ class TestWardCreation:
             assert ward.ward_type == ward_type
             ward.delete()  # Clean up for next iteration
 
-    def test_unique_name_constraint(self):
-        """Should enforce unique ward names."""
+    def test_unique_name_constraint(self, sample_facility):
+        """Should enforce unique ward names per facility."""
         Ward.objects.create(
             name="Unique Ward",
             code="UW-01",
             ward_type="MEDICAL",
             capacity=10,
             daily_rate=Decimal("500.00"),
+            facility=sample_facility,
         )
 
         with pytest.raises(IntegrityError):
@@ -84,16 +85,18 @@ class TestWardCreation:
                 ward_type="SURGICAL",
                 capacity=15,
                 daily_rate=Decimal("600.00"),
+                facility=sample_facility,
             )
 
-    def test_unique_code_constraint(self):
-        """Should enforce unique ward codes."""
+    def test_unique_code_constraint(self, sample_facility):
+        """Should enforce unique ward codes per facility."""
         Ward.objects.create(
             name="Ward One",
             code="UC-01",
             ward_type="MEDICAL",
             capacity=10,
             daily_rate=Decimal("500.00"),
+            facility=sample_facility,
         )
 
         with pytest.raises(IntegrityError):
@@ -103,6 +106,7 @@ class TestWardCreation:
                 ward_type="SURGICAL",
                 capacity=15,
                 daily_rate=Decimal("600.00"),
+                facility=sample_facility,
             )
 
     def test_capacity_positive_integer(self):
