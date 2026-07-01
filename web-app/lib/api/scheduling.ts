@@ -31,6 +31,9 @@ import {
   ShiftSwapListItemSchema,
   PaginatedShiftSwapListSchema,
   OnDutyResponseSchema,
+  ShiftTypeConfigSchema,
+  PaginatedShiftTypeConfigSchema,
+  ShiftTypeConfigBulkUpsertResultSchema,
 } from '@/lib/schemas/scheduling.schema';
 import type {
   Resource,
@@ -79,6 +82,10 @@ import type {
   ShiftSwapRejectData,
   ShiftSwapApproveData,
   OnDutyResponse,
+  ShiftTypeConfig,
+  ShiftTypeConfigCreateData,
+  ShiftTypeConfigDefaults,
+  ShiftTypeConfigBulkUpsertResult,
 } from '@/lib/types/scheduling';
 
 const BASE_URL = '/api/scheduling';
@@ -673,6 +680,67 @@ export const shiftSwapsApi = {
     const response = await apiClient.get(`${BASE_URL}/shift-swaps/my-requests/`);
     return parseResponse(z.array(ShiftSwapListItemSchema), response.data, {
       context: 'shiftSwapsApi.myRequests',
+    });
+  },
+};
+
+// =============================================================================
+// Shift Type Configurations API
+// =============================================================================
+
+export const shiftTypeConfigsApi = {
+  /** List all shift type configs for the facility. */
+  list: async (): Promise<{ count: number; results: ShiftTypeConfig[] }> => {
+    const response = await apiClient.get(`${BASE_URL}/shift-type-configs/`, {
+      params: { page_size: 50 },
+    });
+    return parseResponse(PaginatedShiftTypeConfigSchema, response.data, {
+      context: 'shiftTypeConfigsApi.list',
+    });
+  },
+
+  /** Get a single shift type config. */
+  get: async (id: number): Promise<ShiftTypeConfig> => {
+    const response = await apiClient.get(`${BASE_URL}/shift-type-configs/${id}/`);
+    return parseResponse(ShiftTypeConfigSchema, response.data, {
+      context: 'shiftTypeConfigsApi.get',
+    });
+  },
+
+  /** Create a shift type config. */
+  create: async (data: ShiftTypeConfigCreateData): Promise<ShiftTypeConfig> => {
+    const response = await apiClient.post(`${BASE_URL}/shift-type-configs/`, data);
+    return parseResponse(ShiftTypeConfigSchema, response.data, {
+      context: 'shiftTypeConfigsApi.create',
+    });
+  },
+
+  /** Update a shift type config. */
+  update: async (id: number, data: Partial<ShiftTypeConfigCreateData>): Promise<ShiftTypeConfig> => {
+    const response = await apiClient.patch(`${BASE_URL}/shift-type-configs/${id}/`, data);
+    return parseResponse(ShiftTypeConfigSchema, response.data, {
+      context: 'shiftTypeConfigsApi.update',
+    });
+  },
+
+  /** Delete a shift type config. */
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`${BASE_URL}/shift-type-configs/${id}/`);
+  },
+
+  /** Get the defaults mapping for all active configs (shift_type -> times). */
+  defaults: async (): Promise<ShiftTypeConfigDefaults> => {
+    const response = await apiClient.get(`${BASE_URL}/shift-type-configs/defaults/`);
+    return response.data;
+  },
+
+  /** Bulk create or update multiple configs at once. */
+  bulkUpsert: async (
+    items: ShiftTypeConfigCreateData[],
+  ): Promise<ShiftTypeConfigBulkUpsertResult> => {
+    const response = await apiClient.post(`${BASE_URL}/shift-type-configs/bulk_upsert/`, items);
+    return parseResponse(ShiftTypeConfigBulkUpsertResultSchema, response.data, {
+      context: 'shiftTypeConfigsApi.bulkUpsert',
     });
   },
 };

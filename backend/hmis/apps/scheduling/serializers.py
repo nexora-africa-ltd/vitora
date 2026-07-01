@@ -950,7 +950,14 @@ class ShiftSerializer(serializers.ModelSerializer):
 
 
 class ShiftCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating shifts."""
+    """Serializer for creating shifts.
+
+    start_time and end_time are optional — when omitted, they are
+    auto-populated from the facility's ShiftTypeConfig for the given shift_type.
+    """
+
+    start_time = serializers.TimeField(required=False, allow_null=True)
+    end_time = serializers.TimeField(required=False, allow_null=True)
 
     class Meta:
         """Meta options for ShiftCreateSerializer."""
@@ -972,10 +979,38 @@ class ShiftCreateSerializer(serializers.ModelSerializer):
     OVERNIGHT_TYPES = {"NIGHT", "NIGHT_OFF"}
 
     def validate(self, attrs):
-        """Validate shift data."""
+        """Validate shift data, auto-filling times from facility config if not provided."""
         start_time = attrs.get("start_time")
         end_time = attrs.get("end_time")
         shift_type = attrs.get("shift_type", "")
+
+        # Auto-fill from facility ShiftTypeConfig if times not provided
+        if (not start_time or not end_time) and shift_type:
+            from hmis.apps.scheduling.models import ShiftTypeConfig
+
+            request = self.context.get("request")
+            facility = getattr(request, "facility", None) if request else None
+            if facility:
+                config = ShiftTypeConfig.objects.filter(
+                    facility=facility, shift_type=shift_type, is_active=True
+                ).first()
+                if config:
+                    if not start_time:
+                        attrs["start_time"] = config.start_time
+                        start_time = config.start_time
+                    if not end_time:
+                        attrs["end_time"] = config.end_time
+                        end_time = config.end_time
+
+        # After auto-fill, times are still required
+        if not attrs.get("start_time"):
+            raise serializers.ValidationError(
+                {"start_time": "This field is required (no facility default configured)."}
+            )
+        if not attrs.get("end_time"):
+            raise serializers.ValidationError(
+                {"end_time": "This field is required (no facility default configured)."}
+            )
 
         if start_time and end_time and end_time <= start_time:
             # Allow overnight shifts where end_time is next-day
@@ -1220,6 +1255,72 @@ class SchedulingSettingsSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class ShiftTypeConfigSerializer(serializers.ModelSerializer):
+    """Serializer for per-facility shift type time configuration."""
+
+    shift_type_display = serializers.CharField(source="get_shift_type_display", read_only=True)
+    display_label = serializers.CharField(read_only=True)
+
+    class Meta:
+        from hmis.apps.scheduling.models import ShiftTypeConfig
+
+        model = ShiftTypeConfig
+        fields = [
+            "id",
+            "shift_type",
+            "shift_type_display",
+            "label",
+            "display_label",
+            "start_time",
+            "end_time",
+            "color",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    # Shift types where end_time < start_time is valid (crosses midnight)
+    OVERNIGHT_TYPES = {"NIGHT", "NIGHT_OFF"}
+
+    def validate(self, attrs):
+        """Validate that non-overnight shift types have end_time > start_time."""
+        start_time = attrs.get("start_time")
+        end_time = attrs.get("end_time")
+        shift_type = attrs.get("shift_type", "")
+
+        # On partial update, fill from instance
+        if self.instance:
+            start_time = start_time or self.instance.start_time
+            end_time = end_time or self.instance.end_time
+            shift_type = shift_type or self.instance.shift_type
+
+        if start_time and end_time and end_time <= start_time:
+            if shift_type not in self.OVERNIGHT_TYPES:
+                raise serializers.ValidationError(
+                    {"end_time": "End time must be after start time for non-overnight shift types."}
+                )
+
+        # Check uniqueness on create
+        if not self.instance and shift_type:
+            from hmis.apps.scheduling.models import ShiftTypeConfig
+
+            request = self.context.get("request")
+            facility = getattr(request, "facility", None) if request else None
+            if (
+                facility
+                and ShiftTypeConfig.objects.filter(
+                    facility=facility, shift_type=shift_type
+                ).exists()
+            ):
+                raise serializers.ValidationError(
+                    {
+                        "shift_type": f"A configuration for '{shift_type}' already exists at this facility."
+                    }
+                )
+        return attrs
 
 
 class StaffConstraintSerializer(serializers.ModelSerializer):

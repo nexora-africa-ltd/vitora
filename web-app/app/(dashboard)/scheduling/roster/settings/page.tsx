@@ -16,6 +16,8 @@ import {
   Moon,
   ShieldAlert,
   Timer,
+  Palette,
+  Pencil,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -47,8 +49,8 @@ import {
 import { HelpPopover } from '@/components/shared/help-popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { schedulingSettingsApi, staffConstraintsApi, resourcesApi } from '@/lib/api/scheduling';
-import type { SchedulingSettings, StaffConstraint, StaffConstraintCreateData, ConstraintType } from '@/lib/types/scheduling';
+import { schedulingSettingsApi, staffConstraintsApi, resourcesApi, shiftTypeConfigsApi } from '@/lib/api/scheduling';
+import type { SchedulingSettings, StaffConstraint, StaffConstraintCreateData, ConstraintType, ShiftTypeConfig, ShiftTypeConfigCreateData, ShiftType } from '@/lib/types/scheduling';
 
 // =============================================================================
 // Constants
@@ -72,6 +74,23 @@ const WORKING_SHIFT_TYPES: { value: string; label: string }[] = [
   { value: 'AFTERNOON', label: 'Afternoon' },
   { value: 'ON_CALL', label: 'On-Call' },
   { value: 'OVERTIME', label: 'Overtime' },
+];
+
+/** All shift types for the time configuration panel. */
+const ALL_SHIFT_TYPES: { value: ShiftType; label: string }[] = [
+  { value: 'DAY', label: 'Day Shift' },
+  { value: 'NIGHT', label: 'Night Shift' },
+  { value: 'MORNING', label: 'Morning Shift' },
+  { value: 'AFTERNOON', label: 'Afternoon Shift' },
+  { value: 'ON_CALL', label: 'On-Call' },
+  { value: 'OVERTIME', label: 'Overtime' },
+  { value: 'DAY_OFF', label: 'Day Off' },
+  { value: 'NIGHT_OFF', label: 'Night Off' },
+  { value: 'OFF', label: 'Off (Full Day)' },
+  { value: 'AFTERNOON_OFF', label: 'Afternoon Off' },
+  { value: 'LEAVE', label: 'Leave' },
+  { value: 'SICK_LEAVE', label: 'Sick Leave' },
+  { value: 'REST', label: 'Rest Day' },
 ];
 
 // =============================================================================
@@ -169,10 +188,93 @@ export default function RosterSettingsPage() {
   });
 
   // ---------------------------------------------------------------------------
+  // Shift Type Configurations
+  // ---------------------------------------------------------------------------
+
+  const { data: shiftTypeConfigsData, isLoading: configsLoading } = useQuery({
+    queryKey: ['shift-type-configs'],
+    queryFn: () => shiftTypeConfigsApi.list(),
+  });
+  const shiftTypeConfigs = shiftTypeConfigsData?.results ?? [];
+
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [editingConfig, setEditingConfig] = useState<ShiftTypeConfig | null>(null);
+  const [configForm, setConfigForm] = useState<ShiftTypeConfigCreateData>({
+    shift_type: 'DAY',
+    label: '',
+    start_time: '08:00',
+    end_time: '16:00',
+    color: '',
+    is_active: true,
+  });
+
+  const openAddConfig = () => {
+    setEditingConfig(null);
+    setConfigForm({ shift_type: 'DAY', label: '', start_time: '08:00', end_time: '16:00', color: '', is_active: true });
+    setShowConfigDialog(true);
+  };
+
+  const openEditConfig = (cfg: ShiftTypeConfig) => {
+    setEditingConfig(cfg);
+    setConfigForm({
+      shift_type: cfg.shift_type,
+      label: cfg.label,
+      start_time: cfg.start_time.slice(0, 5), // HH:MM
+      end_time: cfg.end_time.slice(0, 5),
+      color: cfg.color,
+      is_active: cfg.is_active,
+    });
+    setShowConfigDialog(true);
+  };
+
+  const configuredTypes = shiftTypeConfigs.map((c) => c.shift_type);
+  const availableTypes = ALL_SHIFT_TYPES.filter(
+    (t) => !configuredTypes.includes(t.value) || editingConfig?.shift_type === t.value
+  );
+
+  const createConfigMutation = useMutation({
+    mutationFn: (data: ShiftTypeConfigCreateData) => shiftTypeConfigsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shift-type-configs'] });
+      setShowConfigDialog(false);
+      toast.success('Shift time saved');
+    },
+    onError: () => toast.error('Failed to save shift time configuration'),
+  });
+
+  const updateConfigMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<ShiftTypeConfigCreateData> }) =>
+      shiftTypeConfigsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shift-type-configs'] });
+      setShowConfigDialog(false);
+      toast.success('Shift time updated');
+    },
+    onError: () => toast.error('Failed to update shift time configuration'),
+  });
+
+  const deleteConfigMutation = useMutation({
+    mutationFn: (id: number) => shiftTypeConfigsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shift-type-configs'] });
+      toast.success('Shift time removed');
+    },
+    onError: () => toast.error('Failed to remove shift time configuration'),
+  });
+
+  const handleSaveConfig = () => {
+    if (editingConfig) {
+      updateConfigMutation.mutate({ id: editingConfig.id, data: configForm });
+    } else {
+      createConfigMutation.mutate(configForm);
+    }
+  };
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
-  const isLoading = settingsLoading || constraintsLoading;
+  const isLoading = settingsLoading || constraintsLoading || configsLoading;
 
   return (
     <div className="space-y-6">
@@ -452,6 +554,83 @@ export default function RosterSettingsPage() {
             </CardContent>
           </Card>
 
+          {/* Shift Type Time Configuration */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-base">Shift Times</CardTitle>
+                  <HelpPopover content="Configure default start and end times for each shift type at this facility. When creating shifts on the roster, times will auto-populate based on these settings." />
+                  <Badge variant="secondary" className="text-xs">{shiftTypeConfigs.length}</Badge>
+                </div>
+                <Button size="sm" onClick={openAddConfig}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Add Shift Time</span>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {shiftTypeConfigs.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm font-medium">No shift times configured</p>
+                  <p className="text-xs mt-1">Add shift type times so the roster auto-populates start/end times.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {shiftTypeConfigs.map((cfg) => (
+                    <div
+                      key={cfg.id}
+                      className={`relative flex items-center justify-between gap-2 p-3 rounded-lg border transition-colors ${
+                        cfg.is_active ? 'bg-card' : 'bg-muted/50 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {cfg.color && (
+                          <div
+                            className="w-3 h-3 rounded-full shrink-0"
+                            style={{ backgroundColor: cfg.color }}
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-medium truncate">{cfg.display_label}</span>
+                            {!cfg.is_active && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0">Off</Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {cfg.start_time.slice(0, 5)} – {cfg.end_time.slice(0, 5)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={() => openEditConfig(cfg)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-destructive/60 hover:text-destructive"
+                          onClick={() => deleteConfigMutation.mutate(cfg.id)}
+                          disabled={deleteConfigMutation.isPending}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Staff Constraints */}
           <Card>
             <CardHeader>
@@ -621,6 +800,133 @@ export default function RosterSettingsPage() {
             >
               {createMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
               Add Constraint
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add/Edit Shift Time Configuration Dialog */}
+      <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingConfig ? 'Edit Shift Time' : 'Add Shift Time'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-sm">Shift Type</Label>
+              <Select
+                value={configForm.shift_type}
+                onValueChange={(v) => setConfigForm((p) => ({ ...p, shift_type: v as ShiftType }))}
+                disabled={!!editingConfig}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableTypes.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm">Custom Label (optional)</Label>
+              <Input
+                placeholder="e.g. Early Morning, Night Duty"
+                value={configForm.label || ''}
+                onChange={(e) => setConfigForm((p) => ({ ...p, label: e.target.value }))}
+                className="h-9"
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave empty to use the default name.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-sm">Start Time</Label>
+                <Input
+                  type="time"
+                  value={configForm.start_time}
+                  onChange={(e) => setConfigForm((p) => ({ ...p, start_time: e.target.value }))}
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">End Time</Label>
+                <Input
+                  type="time"
+                  value={configForm.end_time}
+                  onChange={(e) => setConfigForm((p) => ({ ...p, end_time: e.target.value }))}
+                  className="h-9"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm flex items-center gap-1.5">
+                <Palette className="h-3.5 w-3.5" />
+                Color (optional)
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="color"
+                  value={configForm.color || '#3b82f6'}
+                  onChange={(e) => setConfigForm((p) => ({ ...p, color: e.target.value }))}
+                  className="h-9 w-12 p-1 cursor-pointer"
+                />
+                <Input
+                  placeholder="#3b82f6"
+                  value={configForm.color || ''}
+                  onChange={(e) => setConfigForm((p) => ({ ...p, color: e.target.value }))}
+                  className="h-9 flex-1"
+                />
+                {configForm.color && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-9 text-xs"
+                    onClick={() => setConfigForm((p) => ({ ...p, color: '' }))}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 w-fit cursor-default">
+                    <Switch
+                      checked={configForm.is_active ?? true}
+                      onCheckedChange={(v) => setConfigForm((p) => ({ ...p, is_active: v }))}
+                    />
+                    <span className="text-sm font-medium">
+                      {configForm.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Switch to {configForm.is_active ? 'deactivate' : 'activate'} this shift type</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfigDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveConfig}
+              disabled={!configForm.start_time || !configForm.end_time || createConfigMutation.isPending || updateConfigMutation.isPending}
+            >
+              {(createConfigMutation.isPending || updateConfigMutation.isPending) && (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              )}
+              {editingConfig ? 'Update' : 'Add'}
             </Button>
           </DialogFooter>
         </DialogContent>

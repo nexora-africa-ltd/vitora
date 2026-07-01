@@ -1991,6 +1991,67 @@ class SchedulingSettings(FacilityScopedModel, TimeStampedModel):
         return f"Scheduling Settings ({fac})" if fac else "Scheduling Settings"
 
 
+class ShiftTypeConfig(FacilityScopedModel, TimeStampedModel):
+    """
+    Per-facility configuration for shift type start/end times.
+
+    Each facility can define custom times for each shift type they use.
+    For example, Facility A may run DAY shifts from 07:00–19:00 while
+    Facility B runs them from 08:00–16:00.
+
+    When creating shifts, the system looks up the configured times for
+    the facility + shift_type combination to pre-populate start/end times.
+    """
+
+    shift_type = models.CharField(
+        max_length=30,
+        choices=Shift.SHIFT_TYPE_CHOICES,
+        help_text="The shift type this configuration applies to",
+    )
+    label = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Optional custom display label (e.g. 'Early Morning' instead of 'Morning Shift')",
+    )
+    start_time = models.TimeField(
+        help_text="Default start time for this shift type at this facility",
+    )
+    end_time = models.TimeField(
+        help_text="Default end time for this shift type at this facility",
+    )
+    color = models.CharField(
+        max_length=7,
+        blank=True,
+        default="",
+        help_text="Optional hex color code for roster display (e.g. '#4CAF50')",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this shift type is currently in use at this facility",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        verbose_name = "Shift Type Configuration"
+        verbose_name_plural = "Shift Type Configurations"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "shift_type"],
+                name="unique_shift_type_per_facility",
+            ),
+        ]
+        ordering = ["shift_type"]
+
+    def __str__(self) -> str:
+        label = self.label or self.get_shift_type_display()
+        return f"{label} ({self.start_time:%H:%M}–{self.end_time:%H:%M})"
+
+    @property
+    def display_label(self) -> str:
+        """Return custom label if set, otherwise the shift type display name."""
+        return self.label or self.get_shift_type_display()
+
+
 class StaffConstraint(FacilityScopedModel, TimeStampedModel):
     """
     Per-staff scheduling constraints / restrictions.

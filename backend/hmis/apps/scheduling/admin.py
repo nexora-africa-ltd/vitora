@@ -20,6 +20,7 @@ from hmis.apps.scheduling.models import (
     SchedulingSettings,
     Shift,
     ShiftSwapRequest,
+    ShiftTypeConfig,
     StaffConstraint,
     TimeSlot,
 )
@@ -307,6 +308,24 @@ class SchedulingSettingsAdmin(admin.ModelAdmin):
         "enforce_constraints",
     ]
     list_filter = ["enforce_constraints", "facility"]
+    readonly_fields = ["created_at", "updated_at"]
+    raw_id_fields = ["facility", "organization"]
+
+
+@admin.register(ShiftTypeConfig)
+class ShiftTypeConfigAdmin(admin.ModelAdmin):
+    """Admin for per-facility shift type time configurations."""
+
+    list_display = [
+        "shift_type",
+        "label",
+        "start_time",
+        "end_time",
+        "is_active",
+        "facility",
+    ]
+    list_filter = ["shift_type", "is_active", "facility"]
+    search_fields = ["label"]
     readonly_fields = ["created_at", "updated_at"]
     raw_id_fields = ["facility", "organization"]
 
