@@ -292,6 +292,28 @@ export default function WeeklyRosterPage() {
     return set;
   }, [constraintsData]);
 
+  // Filter shift types: if facility has ShiftTypeConfigs, only show those marked active.
+  // Off/leave types are always available (they don't need facility config).
+  const availableShiftTypes = useMemo(() => {
+    if (!shiftTypeDefaults || Object.keys(shiftTypeDefaults).length === 0) {
+      return SHIFT_TYPES; // No configs yet — show all
+    }
+    return SHIFT_TYPES.filter(
+      (st) => st.isOff || st.value in shiftTypeDefaults
+    );
+  }, [shiftTypeDefaults]);
+
+  // Build a map of shift_type → custom hex color for cell rendering
+  const customShiftColors = useMemo(() => {
+    const map = new Map<string, string>();
+    if (shiftTypeDefaults) {
+      for (const [type, cfg] of Object.entries(shiftTypeDefaults)) {
+        if (cfg.color) map.set(type, cfg.color);
+      }
+    }
+    return map;
+  }, [shiftTypeDefaults]);
+
   // Build a lookup: cellKey → ShiftListItem
   const existingShifts = useMemo(() => {
     const map = new Map<CellKey, ShiftListItem>();
@@ -396,6 +418,12 @@ export default function WeeklyRosterPage() {
           }
           continue;
         }
+        // Type change: delete the old shift before creating a new one
+        const existing = existingShifts.get(key);
+        if (existing && existing.shift_type !== shiftType) {
+          deleteIds.push(existing.id);
+        }
+
         const [resourceId, date] = [Number(key.split('-')[0]), key.substring(key.indexOf('-') + 1)];
         // Skip past dates
         if (date < today) continue;
@@ -442,6 +470,8 @@ export default function WeeklyRosterPage() {
       setDraft(new Map());
       queryClient.invalidateQueries({ queryKey: ['roster-shifts'] });
       queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['my-shift-today'] });
+      queryClient.invalidateQueries({ queryKey: ['my-shift-upcoming'] });
 
       const parts: string[] = [];
       if (result.created > 0) parts.push(`${result.created} created`);
@@ -516,11 +546,14 @@ export default function WeeklyRosterPage() {
     // Determine which shift types the facility wants to cover each day.
     // If active_shift_types is configured, distribute staff across ALL of them.
     // Otherwise fall back to the old pattern/paint behaviour.
+    // Filter by available shift types (exclude inactive configs)
+    const availableWorking = new Set(availableShiftTypes.filter((st) => !st.isOff).map((st) => st.value));
+
     const activeTypes: ShiftType[] =
       schedulingSettings?.active_shift_types?.length
-        ? (schedulingSettings.active_shift_types as ShiftType[])
+        ? (schedulingSettings.active_shift_types as ShiftType[]).filter((t) => availableWorking.has(t))
         : schedulingSettings?.default_shift_pattern?.length
-          ? (schedulingSettings.default_shift_pattern as ShiftType[])
+          ? (schedulingSettings.default_shift_pattern as ShiftType[]).filter((t) => availableWorking.has(t))
           : [paintType];
 
     const useMultiType = (schedulingSettings?.active_shift_types?.length ?? 0) > 0;
@@ -652,7 +685,10 @@ export default function WeeklyRosterPage() {
             shiftCount++;
             if (t === 'NIGHT') nightCount++;
           } else {
-            emptyDays.push(i);
+            // Only include future/today dates for auto-fill
+            if (weekDates[i]! >= today) {
+              emptyDays.push(i);
+            }
           }
         }
         return { shiftCount, nightCount, emptyDays };
@@ -668,6 +704,8 @@ export default function WeeklyRosterPage() {
         const slots: WorkSlot[] = [];
 
         for (let dayIdx = 0; dayIdx < weekDates.length; dayIdx++) {
+          // Skip past dates
+          if (weekDates[dayIdx]! < today) continue;
           for (const st of activeTypes) {
             const current = dayCoverage[dayIdx]!.get(st) ?? 0;
             if (current === 0) {
@@ -809,6 +847,8 @@ export default function WeeklyRosterPage() {
           for (let i = 0; i < weekDates.length; i++) {
             if (assignedDays.has(i)) continue;
             const date = weekDates[i]!;
+            // Skip past dates
+            if (date < today) continue;
             const key = cellKey(id, date);
             // If already has something saved, skip
             const saved = existingShifts.get(key);
@@ -904,7 +944,7 @@ export default function WeeklyRosterPage() {
       });
       return next;
     });
-  }, [paintType, staffList, weekDates, existingShifts, maxDaysPerStaff, blockedTypes, noWeekendStaff, schedulingSettings]);
+  }, [paintType, staffList, weekDates, existingShifts, maxDaysPerStaff, blockedTypes, noWeekendStaff, schedulingSettings, today, availableShiftTypes]);
 
   // ==========================================================================
   // Print
@@ -1165,17 +1205,17 @@ export default function WeeklyRosterPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Working</div>
-                    {SHIFT_TYPES.filter((st) => !st.isOff).map((st) => (
+                    {availableShiftTypes.filter((st) => !st.isOff).map((st) => (
                       <SelectItem key={st.value} value={st.value}>
                         <span className="flex items-center gap-2">
                           {st.icon}
-                          <span>{st.label}</span>
-                          <span className="text-muted-foreground ml-auto">({st.start}–{st.end})</span>
+                          <span>{shiftTypeDefaults?.[st.value]?.label || st.label}</span>
+                          <span className="text-muted-foreground ml-auto">({shiftTypeDefaults?.[st.value]?.start_time ?? st.start}–{shiftTypeDefaults?.[st.value]?.end_time ?? st.end})</span>
                         </span>
                       </SelectItem>
                     ))}
                     <div className="px-2 py-1 mt-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-t">Off / Leave</div>
-                    {SHIFT_TYPES.filter((st) => st.isOff).map((st) => (
+                    {availableShiftTypes.filter((st) => st.isOff).map((st) => (
                       <SelectItem key={st.value} value={st.value}>
                         <span className="flex items-center gap-2">
                           {st.icon}
@@ -1409,8 +1449,12 @@ export default function WeeklyRosterPage() {
                                 {cell.type && shiftInfo ? (
                                   <div
                                     className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium border ${
-                                      shiftInfo.color
+                                      customShiftColors.has(cell.type) ? 'text-foreground' : shiftInfo.color
                                     } ${cell.isDraft ? 'border-dashed border-2 border-primary/50' : ''}`}
+                                    style={customShiftColors.has(cell.type) ? {
+                                      backgroundColor: `${customShiftColors.get(cell.type)}20`,
+                                      borderColor: `${customShiftColors.get(cell.type)}80`,
+                                    } : undefined}
                                   >
                                     {shiftInfo.icon}
                                     <span>{shiftInfo.short}</span>
@@ -1566,8 +1610,12 @@ export default function WeeklyRosterPage() {
                         {cell.type && shiftInfo ? (
                           <div
                             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border ${
-                              shiftInfo.color
+                              customShiftColors.has(cell.type) ? 'text-foreground' : shiftInfo.color
                             } ${cell.isDraft ? 'border-dashed border-2 border-primary/50' : ''}`}
+                            style={customShiftColors.has(cell.type) ? {
+                              backgroundColor: `${customShiftColors.get(cell.type)}20`,
+                              borderColor: `${customShiftColors.get(cell.type)}80`,
+                            } : undefined}
                           >
                             {shiftInfo.icon}
                             <span>{shiftInfo.label}</span>
@@ -1608,20 +1656,24 @@ export default function WeeklyRosterPage() {
                 <div className="sticky bottom-0 z-10 -mx-4 px-4 py-2 bg-background/95 backdrop-blur-sm border-t mt-3">
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                     <span className="text-[10px] text-muted-foreground shrink-0 mr-1">Paint:</span>
-                    {SHIFT_TYPES.filter((st) => !st.isOff).map((st) => (
+                    {availableShiftTypes.filter((st) => !st.isOff).map((st) => (
                       <button
                         key={st.value}
                         onClick={() => setPaintType(st.value)}
                         className={`shrink-0 inline-flex items-center gap-1 px-2 py-1.5 rounded-full text-[11px] font-medium border transition-all ${
-                          st.color
+                          customShiftColors.has(st.value) ? 'text-foreground' : st.color
                         } ${paintType === st.value ? 'ring-2 ring-primary ring-offset-1 scale-105' : 'opacity-70'}`}
+                        style={customShiftColors.has(st.value) ? {
+                          backgroundColor: `${customShiftColors.get(st.value)}20`,
+                          borderColor: `${customShiftColors.get(st.value)}80`,
+                        } : undefined}
                       >
                         {st.icon}
                         <span>{st.short}</span>
                       </button>
                     ))}
                     <div className="w-px h-5 bg-border shrink-0 mx-0.5" />
-                    {SHIFT_TYPES.filter((st) => st.isOff).map((st) => (
+                    {availableShiftTypes.filter((st) => st.isOff).map((st) => (
                       <button
                         key={st.value}
                         onClick={() => setPaintType(st.value)}

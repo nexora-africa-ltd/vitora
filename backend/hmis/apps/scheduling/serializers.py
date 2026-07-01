@@ -980,9 +980,18 @@ class ShiftCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         """Validate shift data, auto-filling times from facility config if not provided."""
+        from datetime import date as date_type
+
         start_time = attrs.get("start_time")
         end_time = attrs.get("end_time")
         shift_type = attrs.get("shift_type", "")
+        shift_date = attrs.get("shift_date")
+
+        # Prevent creating shifts in the past
+        if shift_date and shift_date < date_type.today():
+            raise serializers.ValidationError(
+                {"shift_date": "Cannot create shifts for past dates."}
+            )
 
         # Auto-fill from facility ShiftTypeConfig if times not provided
         if (not start_time or not end_time) and shift_type:
