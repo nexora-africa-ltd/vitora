@@ -458,3 +458,34 @@ export const ShiftSwapListItemSchema = z.object({
 });
 
 export const PaginatedShiftSwapListSchema = createPaginatedSchema(ShiftSwapListItemSchema);
+
+// =============================================================================
+// Shift Type Configuration (per-facility shift times)
+// =============================================================================
+
+export const ShiftTypeConfigSchema = z.object({
+  id: z.number(),
+  shift_type: ShiftTypeSchema,
+  shift_type_display: z.string(),
+  label: z.string(),
+  display_label: z.string(),
+  start_time: z.string(),
+  end_time: z.string(),
+  color: z.string(),
+  is_active: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedShiftTypeConfigSchema = createPaginatedSchema(ShiftTypeConfigSchema);
+
+export const ShiftTypeConfigBulkUpsertResultSchema = z.object({
+  created_or_updated: z.number(),
+  results: z.array(ShiftTypeConfigSchema),
+  errors: z.array(z.object({
+    index: z.number(),
+    shift_type: z.string().optional(),
+    error: z.string().optional(),
+    errors: z.record(z.array(z.string())).optional(),
+  })).optional(),
+});

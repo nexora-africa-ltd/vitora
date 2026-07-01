@@ -73,6 +73,7 @@ from hmis.apps.scheduling.serializers import (
     ShiftSwapRejectSerializer,
     ShiftSwapRequestListSerializer,
     ShiftSwapRequestSerializer,
+    ShiftTypeConfigSerializer,
     SlotCheckQuerySerializer,
     StaffConstraintSerializer,
     StaffWorkloadSerializer,
@@ -2828,6 +2829,126 @@ class SchedulingSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(settings_obj)
         return Response(serializer.data)
+
+
+class ShiftTypeConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """
+    CRUD for per-facility shift type time configurations.
+
+    GET    /api/scheduling/shift-type-configs/              → list configs for facility
+    POST   /api/scheduling/shift-type-configs/              → create config
+    GET    /api/scheduling/shift-type-configs/{id}/         → retrieve
+    PATCH  /api/scheduling/shift-type-configs/{id}/         → update
+    DELETE /api/scheduling/shift-type-configs/{id}/         → delete
+    GET    /api/scheduling/shift-type-configs/defaults/     → get all active configs (for shift creation)
+    POST   /api/scheduling/shift-type-configs/bulk_upsert/  → create/update multiple configs at once
+    """
+
+    from hmis.apps.scheduling.models import ShiftTypeConfig
+
+    queryset = ShiftTypeConfig.objects.all()
+    serializer_class = ShiftTypeConfigSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    tenant_scope = "facility"
+
+    def create(self, request, *args, **kwargs):
+        """Create with tenant resolution before validation (for uniqueness check)."""
+        self._resolve_tenant_context()
+        return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    @action(detail=False, methods=["get"], url_path="defaults")
+    def defaults(self, request):
+        """
+        Return a mapping of shift_type → {start_time, end_time, label, color}
+        for all active configs at this facility.
+
+        Used by the roster grid to auto-populate times when assigning shift types.
+        """
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response(
+                {"error": "No facility context available"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from hmis.apps.scheduling.models import ShiftTypeConfig
+
+        configs = ShiftTypeConfig.objects.filter(facility=facility, is_active=True)
+        result = {}
+        for cfg in configs:
+            result[cfg.shift_type] = {
+                "start_time": cfg.start_time.strftime("%H:%M"),
+                "end_time": cfg.end_time.strftime("%H:%M"),
+                "label": cfg.display_label,
+                "color": cfg.color,
+            }
+        return Response(result)
+
+    @action(detail=False, methods=["post"], url_path="bulk_upsert")
+    def bulk_upsert(self, request):
+        """
+        Create or update multiple shift type configs at once.
+
+        Accepts a list of objects: [{shift_type, start_time, end_time, label?, color?, is_active?}]
+        Updates existing configs (matched by facility + shift_type) or creates new ones.
+        """
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response(
+                {"error": "No facility context available"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        items = request.data
+        if not isinstance(items, list):
+            return Response(
+                {"error": "Expected a list of shift type configurations."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(items) > 20:
+            return Response(
+                {"error": "Maximum 20 configurations per request."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from hmis.apps.scheduling.models import ShiftTypeConfig
+
+        results = []
+        errors = []
+        for idx, item in enumerate(items):
+            shift_type = item.get("shift_type")
+            if not shift_type:
+                errors.append({"index": idx, "error": "shift_type is required"})
+                continue
+
+            existing = ShiftTypeConfig.objects.filter(
+                facility=facility, shift_type=shift_type
+            ).first()
+
+            serializer = self.get_serializer(instance=existing, data=item, partial=bool(existing))
+            if serializer.is_valid():
+                if existing:
+                    serializer.save()
+                else:
+                    serializer.save(
+                        facility=facility,
+                        organization=getattr(facility, "organization", None),
+                    )
+                results.append(serializer.data)
+            else:
+                errors.append({"index": idx, "shift_type": shift_type, "errors": serializer.errors})
+
+        response_data = {"created_or_updated": len(results), "results": results}
+        if errors:
+            response_data["errors"] = errors
+            return Response(response_data, status=status.HTTP_207_MULTI_STATUS)
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 class StaffConstraintViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):

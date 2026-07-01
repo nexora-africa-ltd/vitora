@@ -5,6 +5,8 @@ Tests for FHIR R4 Search and Write endpoints.
 Covers Gap #1 (FHIR Write), Gap #2 (FHIR Search) from the interoperability audit.
 """
 
+from datetime import date, timedelta
+
 import pytest  # type: ignore
 from rest_framework import status
 
@@ -137,6 +139,138 @@ class TestFHIRMedicationStatementSearch:
         """Should reject unauthenticated requests."""
         response = api_client.get("/fhir/MedicationStatement", {"patient": "1"})
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestFHIREncounterSearch:
+    """Tests for GET /fhir/Encounter?params search endpoint."""
+
+    def test_search_by_patient(self, authenticated_client, sample_patient):
+        """Should return encounters for a patient."""
+        response = authenticated_client.get("/fhir/Encounter", {"patient": str(sample_patient.pk)})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Bundle"
+        assert response.data["type"] == "searchset"
+
+    def test_search_by_class(self, authenticated_client, sample_encounter):
+        """Should filter encounters by class (AMB/IMP/EMER)."""
+        response = authenticated_client.get("/fhir/Encounter", {"class": "AMB"})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Bundle"
+
+    def test_search_by_date_prefix(self, authenticated_client, sample_encounter):
+        """Should support date prefixes (ge, le)."""
+        past_date = (date.today() - timedelta(days=365)).isoformat()
+        response = authenticated_client.get("/fhir/Encounter", {"date": f"ge{past_date}"})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Bundle"
+
+    def test_search_requires_auth(self, api_client):
+        """Should reject unauthenticated requests."""
+        response = api_client.get("/fhir/Encounter", {"patient": "1"})
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestFHIRDiagnosticReportSearch:
+    """Tests for GET /fhir/DiagnosticReport?params search endpoint."""
+
+    def test_search_by_patient(self, authenticated_client, sample_patient):
+        """Should return diagnostic reports for a patient."""
+        response = authenticated_client.get(
+            "/fhir/DiagnosticReport", {"patient": str(sample_patient.pk)}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Bundle"
+        assert response.data["type"] == "searchset"
+
+    def test_search_by_status(self, authenticated_client):
+        """Should filter by FHIR status."""
+        response = authenticated_client.get("/fhir/DiagnosticReport", {"status": "final"})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Bundle"
+
+    def test_search_requires_auth(self, api_client):
+        """Should reject unauthenticated requests."""
+        response = api_client.get("/fhir/DiagnosticReport", {"patient": "1"})
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestFHIRDatePrefixSearch:
+    """Tests for FHIR date prefix support (ge, le, gt, lt)."""
+
+    def test_birthdate_ge_prefix(self, authenticated_client, sample_patient):
+        """Should find patients born on or after a date."""
+        # sample_patient has DOB 1985-05-20
+        response = authenticated_client.get("/fhir/Patient", {"birthdate": "ge1980-01-01"})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["total"] >= 1
+
+    def test_birthdate_le_prefix(self, authenticated_client, sample_patient):
+        """Should find patients born on or before a date."""
+        response = authenticated_client.get("/fhir/Patient", {"birthdate": "le2000-01-01"})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["total"] >= 1
+
+    def test_birthdate_gt_excludes_exact(self, authenticated_client, sample_patient):
+        """Should exclude patients born exactly on the date (gt, not ge)."""
+        dob = sample_patient.date_of_birth
+        dob_str = dob.isoformat() if hasattr(dob, "isoformat") else str(dob)
+        response = authenticated_client.get("/fhir/Patient", {"birthdate": f"gt{dob_str}"})
+        assert response.status_code == status.HTTP_200_OK
+        # Exact date should NOT match with gt
+        mrns = [e["resource"]["identifier"][0]["value"] for e in response.data.get("entry", [])]
+        assert sample_patient.mrn not in mrns
+
+    def test_birthdate_lt_excludes_exact(self, authenticated_client, sample_patient):
+        """Should exclude patients born exactly on the date (lt, not le)."""
+        dob = sample_patient.date_of_birth
+        dob_str = dob.isoformat() if hasattr(dob, "isoformat") else str(dob)
+        response = authenticated_client.get("/fhir/Patient", {"birthdate": f"lt{dob_str}"})
+        assert response.status_code == status.HTTP_200_OK
+        mrns = [e["resource"]["identifier"][0]["value"] for e in response.data.get("entry", [])]
+        assert sample_patient.mrn not in mrns
+
+    def test_invalid_date_returns_all(self, authenticated_client, sample_patient):
+        """Should ignore invalid date and return all results."""
+        response = authenticated_client.get("/fhir/Patient", {"birthdate": "invalid-date"})
+        assert response.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.django_db
+class TestFHIRPaginationLinks:
+    """Tests for FHIR Bundle pagination links (next/previous)."""
+
+    def test_next_link_when_more_results(self, authenticated_client, sample_patient):
+        """Should include next link when there are more results."""
+        response = authenticated_client.get("/fhir/Patient", {"_count": "1", "_offset": "0"})
+        assert response.status_code == status.HTTP_200_OK
+        links = {link["relation"]: link["url"] for link in response.data["link"]}
+        assert "self" in links
+        # If total > 1, next should exist
+        if response.data["total"] > 1:
+            assert "next" in links
+            assert "_offset=1" in links["next"]
+
+    def test_previous_link_when_offset(self, authenticated_client, sample_patient):
+        """Should include previous link when offset > 0."""
+        response = authenticated_client.get("/fhir/Patient", {"_count": "1", "_offset": "1"})
+        assert response.status_code == status.HTTP_200_OK
+        links = {link["relation"]: link["url"] for link in response.data["link"]}
+        assert "previous" in links
+        assert "_offset=0" in links["previous"]
+
+    def test_no_next_link_on_last_page(self, authenticated_client, sample_patient):
+        """Should not include next link when on last page."""
+        # Get total first
+        response = authenticated_client.get("/fhir/Patient", {"_count": "100"})
+        total = response.data["total"]
+        # Request with offset past end
+        response = authenticated_client.get("/fhir/Patient", {"_count": "100", "_offset": "0"})
+        links = {link["relation"]: link["url"] for link in response.data["link"]}
+        if total <= 100:
+            assert "next" not in links
 
 
 @pytest.mark.django_db

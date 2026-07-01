@@ -533,6 +533,48 @@ export interface SchedulingSettings {
   updated_at: string;
 }
 
+// =============================================================================
+// Shift Type Configuration (per-facility shift times)
+// =============================================================================
+
+export interface ShiftTypeConfig {
+  id: number;
+  shift_type: ShiftType;
+  shift_type_display: string;
+  label: string;
+  display_label: string;
+  start_time: string;
+  end_time: string;
+  color: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShiftTypeConfigCreateData {
+  shift_type: ShiftType;
+  label?: string;
+  start_time: string;
+  end_time: string;
+  color?: string;
+  is_active?: boolean;
+}
+
+export interface ShiftTypeConfigDefaults {
+  [shiftType: string]: {
+    start_time: string;
+    end_time: string;
+    label: string;
+    color: string;
+  };
+}
+
+export interface ShiftTypeConfigBulkUpsertResult {
+  created_or_updated: number;
+  results: ShiftTypeConfig[];
+  errors?: Array<{ index: number; shift_type?: string; error?: string; errors?: Record<string, string[]> }>;
+}
+
 export type ConstraintType =
   | 'NO_NIGHTS'
   | 'NO_WEEKENDS'

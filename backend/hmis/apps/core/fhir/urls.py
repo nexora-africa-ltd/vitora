@@ -22,6 +22,8 @@ from django.urls import path
 
 from hmis.apps.core.fhir.search import (
     FHIRConditionSearchView,
+    FHIRDiagnosticReportSearchView,
+    FHIREncounterSearchView,
     FHIRMedicationStatementSearchView,
     FHIRObservationSearchView,
     FHIRPatientSearchView,
@@ -202,6 +204,16 @@ urlpatterns = [
         "MedicationStatement",
         FHIRMedicationStatementSearchView.as_view(),
         name="medication-statement-search",
+    ),
+    path(
+        "Encounter",
+        FHIREncounterSearchView.as_view(),
+        name="encounter-search",
+    ),
+    path(
+        "DiagnosticReport",
+        FHIRDiagnosticReportSearchView.as_view(),
+        name="diagnostic-report-search",
     ),
     # --- FHIR Write (Create) Endpoints ---
     path(

@@ -10,6 +10,13 @@ import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { Search, Globe, Upload, Activity, FileText, Network, FlaskConical } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { apiClient } from '@/lib/api/client';
 
 interface FHIRPatientResult {
@@ -19,6 +26,14 @@ interface FHIRPatientResult {
   name?: { family?: string; given?: string[] }[];
   gender?: string;
   birthDate?: string;
+  status?: string;
+  class?: { code?: string };
+  subject?: { reference?: string };
+  period?: { start?: string };
+  reasonCode?: { text?: string }[];
+  code?: { coding?: { code?: string; display?: string }[] };
+  conclusion?: string;
+  issued?: string;
 }
 
 interface FHIRBundle {
@@ -48,6 +63,7 @@ export default function InteroperabilityPage() {
 
   // FHIR Patient Search
   const [patientSearchQuery, setPatientSearchQuery] = useState('');
+  const [fhirResourceType, setFhirResourceType] = useState('Patient');
   const [patientResults, setPatientResults] = useState<FHIRPatientResult[]>([]);
   const [patientSearchLoading, setPatientSearchLoading] = useState(false);
   const [patientSearchError, setPatientSearchError] = useState('');
@@ -74,13 +90,43 @@ export default function InteroperabilityPage() {
     setPatientSearchError('');
     try {
       const params: Record<string, string> = {};
-      // Detect if searching by MRN or name
-      if (patientSearchQuery.startsWith('MRN-')) {
-        params.identifier = patientSearchQuery;
+
+      if (fhirResourceType === 'Patient') {
+        if (patientSearchQuery.startsWith('MRN-')) {
+          params.identifier = patientSearchQuery;
+        } else {
+          params.name = patientSearchQuery;
+        }
+      } else if (fhirResourceType === 'Encounter') {
+        // Search by patient ID or date
+        if (/^\d+$/.test(patientSearchQuery)) {
+          params.patient = patientSearchQuery;
+        } else {
+          params.date = patientSearchQuery;
+        }
+      } else if (fhirResourceType === 'DiagnosticReport') {
+        if (/^\d+$/.test(patientSearchQuery)) {
+          params.patient = patientSearchQuery;
+        } else {
+          params.status = patientSearchQuery;
+        }
+      } else if (fhirResourceType === 'Condition') {
+        if (/^\d+$/.test(patientSearchQuery)) {
+          params.patient = patientSearchQuery;
+        } else {
+          params.code = patientSearchQuery;
+        }
+      } else if (fhirResourceType === 'Observation') {
+        if (/^\d+$/.test(patientSearchQuery)) {
+          params.patient = patientSearchQuery;
+        } else {
+          params.category = patientSearchQuery;
+        }
       } else {
-        params.name = patientSearchQuery;
+        params.patient = patientSearchQuery;
       }
-      const response = await apiClient.get<FHIRBundle>('/fhir/Patient', { params });
+
+      const response = await apiClient.get<FHIRBundle>(`/fhir/${fhirResourceType}`, { params });
       setPatientResults(response.data.entry?.map((e) => e.resource) || []);
     } catch (err: unknown) {
       setPatientSearchError(err instanceof Error ? err.message : 'Search failed');
@@ -244,12 +290,37 @@ export default function InteroperabilityPage() {
           <TabsContent value="fhir-search" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">FHIR R4 Patient Search</CardTitle>
+                <CardTitle className="text-base">FHIR R4 Resource Search</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Select value={fhirResourceType} onValueChange={setFhirResourceType}>
+                    <SelectTrigger className="w-full sm:w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Patient">Patient</SelectItem>
+                      <SelectItem value="Encounter">Encounter</SelectItem>
+                      <SelectItem value="Condition">Condition</SelectItem>
+                      <SelectItem value="Observation">Observation</SelectItem>
+                      <SelectItem value="DiagnosticReport">DiagnosticReport</SelectItem>
+                      <SelectItem value="MedicationStatement">MedicationStatement</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Input
-                    placeholder="Search by name or MRN (e.g. MRN-20250101-0001)..."
+                    placeholder={
+                      fhirResourceType === 'Patient'
+                        ? 'Search by name or MRN...'
+                        : fhirResourceType === 'Encounter'
+                          ? 'Patient ID or date (ge2024-01-01)...'
+                          : fhirResourceType === 'Condition'
+                            ? 'Patient ID or ICD-10/SNOMED code...'
+                            : fhirResourceType === 'Observation'
+                              ? 'Patient ID or category (vital-signs, laboratory)...'
+                              : fhirResourceType === 'DiagnosticReport'
+                                ? 'Patient ID or status (final, preliminary)...'
+                                : 'Patient ID...'
+                    }
                     value={patientSearchQuery}
                     onChange={(e) => setPatientSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && searchFHIRPatients()}
@@ -260,25 +331,65 @@ export default function InteroperabilityPage() {
                   </Button>
                 </div>
 
+                <p className="text-xs text-muted-foreground">
+                  Supports FHIR date prefixes: <code>ge</code> (≥), <code>le</code> (≤), <code>gt</code> (&gt;), <code>lt</code> (&lt;).
+                  Example: <code>ge2024-01-01</code>
+                </p>
+
                 {patientSearchError && (
                   <p className="text-sm text-destructive">{patientSearchError}</p>
                 )}
 
                 {patientResults.length > 0 && (
                   <div className="border rounded-lg divide-y">
-                    {patientResults.map((patient, i) => (
-                      <div key={patient.id || i} className="p-3 flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">
-                            {patient.name?.[0]?.given?.join(' ')}{' '}
-                            {patient.name?.[0]?.family}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {patient.identifier?.[0]?.value} &bull;{' '}
-                            {patient.gender} &bull; DOB: {patient.birthDate}
-                          </p>
+                    {patientResults.map((resource, i) => (
+                      <div key={resource.id || i} className="p-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          {resource.resourceType === 'Patient' ? (
+                            <>
+                              <p className="font-medium truncate">
+                                {resource.name?.[0]?.given?.join(' ')}{' '}
+                                {resource.name?.[0]?.family}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {resource.identifier?.[0]?.value} &bull;{' '}
+                                {resource.gender} &bull; DOB: {resource.birthDate}
+                              </p>
+                            </>
+                          ) : resource.resourceType === 'Encounter' ? (
+                            <>
+                              <p className="font-medium truncate">
+                                Encounter #{resource.id} — {resource.status}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                Class: {resource.class?.code} &bull;{' '}
+                                {resource.period?.start} &bull;{' '}
+                                {resource.reasonCode?.[0]?.text || 'No reason'}
+                              </p>
+                            </>
+                          ) : resource.resourceType === 'DiagnosticReport' ? (
+                            <>
+                              <p className="font-medium truncate">
+                                Report #{resource.id} — {resource.status}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {resource.code?.coding?.[0]?.display || 'Lab report'} &bull;{' '}
+                                Issued: {resource.issued || '—'}
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-medium truncate">
+                                {resource.resourceType} #{resource.id}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                Status: {resource.status || '—'} &bull;{' '}
+                                {resource.subject?.reference || ''}
+                              </p>
+                            </>
+                          )}
                         </div>
-                        <Badge variant="outline">{patient.resourceType}</Badge>
+                        <Badge variant="outline" className="shrink-0">{resource.resourceType}</Badge>
                       </div>
                     ))}
                   </div>
