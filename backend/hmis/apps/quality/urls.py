@@ -6,10 +6,12 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     AnnualReportViewSet,
+    BenchmarkDataView,
     QualityDashboardView,
     QualityMeasureResultViewSet,
     QualityMeasureViewSet,
     QuarterlyReportViewSet,
+    SDMXImportView,
 )
 
 app_name = "quality"
@@ -22,5 +24,7 @@ router.register(r"results", QualityMeasureResultViewSet, basename="quality-measu
 
 urlpatterns = [
     path("dashboard/", QualityDashboardView.as_view(), name="quality-dashboard"),
+    path("sdmx/import/", SDMXImportView.as_view(), name="sdmx-import"),
+    path("benchmarks/", BenchmarkDataView.as_view(), name="benchmark-list"),
     path("", include(router.urls)),
 ]

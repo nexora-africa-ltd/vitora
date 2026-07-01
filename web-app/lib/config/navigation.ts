@@ -89,6 +89,7 @@ import {
   BellRing,
   Inbox,
   Wrench,
+  TrendingUp,
 } from 'lucide-react';
 
 import {
@@ -507,6 +508,7 @@ const _allNavItems: NavItemType[] = [
     children: [
       { label: 'Dashboard', href: '/quality', icon: LayoutDashboard, actionKey: 'quality.view_dashboard' },
       { label: 'Measures', href: '/quality/measures', icon: Target, actionKey: 'quality.view_measures' },
+      { label: 'Benchmarks', href: '/quality/benchmarks', icon: TrendingUp, actionKey: 'quality.view_dashboard' },
       { label: 'Quarterly Reports', href: '/quality/reports/quarterly', icon: BarChart3, actionKey: 'quality.view_reports' },
       { label: 'Annual Reports', href: '/quality/reports/annual', icon: FileText, actionKey: 'quality.view_reports' },
     ],
@@ -579,6 +581,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'HL7 Endpoints', href: '/admin/hl7-endpoints', icon: Network, actionKey: 'admin.view_hl7_messages', requiresInternet: true },
       { label: 'KENHDD Compliance', href: '/admin/kenhdd-compliance', icon: BookCheck, actionKey: 'admin.view_audit_logs' },
       { label: 'Reports', href: '/reports', icon: FileText, actionKey: 'admin.view_reports' },
+      { label: 'Interoperability', href: '/admin/interoperability', icon: Globe, actionKey: 'admin.view_audit_logs', requiresInternet: true },
     ],
   },
   {

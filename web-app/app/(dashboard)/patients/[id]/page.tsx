@@ -254,6 +254,31 @@ export default function PatientDetailPage() {
               </Link>
             </Button>
           )}
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto"
+            onClick={async () => {
+              try {
+                const { apiClient } = await import('@/lib/api/client');
+                const res = await apiClient.get(`/fhir/Patient/${patient.id}/$summary`, {
+                  headers: { 'Accept': 'application/fhir+json' },
+                });
+                const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/fhir+json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${patient.mrn}-ips.fhir.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch {
+                // silent — user can retry
+              }
+            }}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            <span className="sm:hidden">IPS</span>
+            <span className="hidden sm:inline">Download IPS</span>
+          </Button>
         </div>
 
         {/* SHA Eligibility Banner */}

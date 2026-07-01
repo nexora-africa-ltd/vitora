@@ -652,8 +652,8 @@ graph TB
 
 ## Notes
 
-- All diagrams use Mermaid syntax and render in GitHub, VS Code, and most Markdown viewers.
-- For the latest module list, see `backend/hmis/apps/` (currently 40 apps).
-- For API endpoint details, see `.github/copilot-instructions.md` → API Endpoints Reference.
+- All diagrams use Mermaid syntax and render on GitHub and in VS Code (with bierner.markdown-mermaid extension).
+- For the module list and descriptions, see `docs/modules-reference.md`.
+- For API endpoint details, see `docs/api-reference.md`.
 - For domain event catalog, see `docs/domain-events.md`.
 - For multi-tenancy details, see `docs/multitenancy.md`.
