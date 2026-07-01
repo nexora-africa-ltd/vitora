@@ -25,7 +25,13 @@ from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin
 
-from .models import AnnualReport, QualityMeasure, QualityMeasureResult, QuarterlyReport
+from .models import (
+    AnnualReport,
+    BenchmarkObservation,
+    QualityMeasure,
+    QualityMeasureResult,
+    QuarterlyReport,
+)
 from .serializers import (
     AnnualReportSerializer,
     QualityDashboardSerializer,
@@ -572,3 +578,106 @@ class QualityDashboardView(APIView):
         }
 
         return Response(data)
+
+
+# =============================================================================
+# SDMX Import View
+# =============================================================================
+
+
+class SDMXImportView(APIView):
+    """
+    Import SDMX-ML 2.1 data for facility benchmarking.
+
+    POST /api/quality/sdmx/import/
+    Accepts raw SDMX-ML XML in the request body or as a file upload.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    @extend_schema(
+        summary="Import SDMX-ML data for benchmarking",
+        description="Upload an SDMX-ML 2.1 file to import benchmark observations.",
+    )
+    def post(self, request: Request) -> Response:
+        from .services.sdmx_import_service import SDMXImportService
+
+        # Accept file upload or raw XML body
+        uploaded_file = request.FILES.get("file")
+        source = request.data.get("source", "EXTERNAL")
+
+        if uploaded_file:
+            xml_content = uploaded_file.read().decode("utf-8")
+        elif request.content_type and "xml" in request.content_type:
+            xml_content = request.body.decode("utf-8")
+        else:
+            return Response(
+                {"detail": "Provide an SDMX-ML file upload or XML body."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        service = SDMXImportService()
+        try:
+            dataset = service.parse_xml(xml_content)
+        except ValueError as e:
+            return Response(
+                {"detail": f"Invalid SDMX-ML: {e}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        stored = service.import_benchmark_data(dataset, source=source)
+
+        return Response(
+            {
+                "imported": stored,
+                "dataset_id": dataset.dataset_id,
+                "sender": dataset.sender_id,
+                "structure_ref": dataset.structure_ref,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class BenchmarkDataView(APIView):
+    """
+    List imported benchmark observations.
+
+    GET /api/quality/benchmarks/?indicator_code=&source=&time_period=
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(summary="List benchmark observations")
+    def get(self, request: Request) -> Response:
+        qs = BenchmarkObservation.objects.all()
+
+        indicator = request.query_params.get("indicator_code")
+        if indicator:
+            qs = qs.filter(indicator_code=indicator)
+
+        source = request.query_params.get("source")
+        if source:
+            qs = qs.filter(source=source)
+
+        time_period = request.query_params.get("time_period")
+        if time_period:
+            qs = qs.filter(time_period=time_period)
+
+        facility_code = request.query_params.get("facility_code")
+        if facility_code:
+            qs = qs.filter(facility_code=facility_code)
+
+        results = list(
+            qs[:100].values(
+                "indicator_code",
+                "time_period",
+                "facility_code",
+                "source",
+                "value",
+                "dimensions",
+                "imported_at",
+            )
+        )
+
+        return Response({"count": len(results), "results": results})

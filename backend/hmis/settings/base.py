@@ -890,6 +890,18 @@ HAPI_FHIR_BASE_URL = os.getenv("HAPI_FHIR_BASE_URL", "http://localhost:8090/fhir
 HAPI_FHIR_TIMEOUT = int(os.getenv("HAPI_FHIR_TIMEOUT", "10"))
 HAPI_FHIR_ENABLED = os.getenv("HAPI_FHIR_ENABLED", "true").lower() == "true"
 
+# LOINC FHIR Terminology Server (official)
+# Credentials from https://loinc.org/get-started/
+LOINC_FHIR_URL = os.getenv("LOINC_FHIR_URL", "https://fhir.loinc.org")
+LOINC_USERNAME = os.getenv("LOINC_USERNAME", "")
+LOINC_PASSWORD = os.getenv("LOINC_PASSWORD", "")
+LOINC_TIMEOUT = int(os.getenv("LOINC_TIMEOUT", "10"))
+
+# SNOMED CT Snowstorm Terminology Server
+SNOMED_TERMINOLOGY_URL = os.getenv("SNOMED_TERMINOLOGY_URL", "")
+SNOMED_BRANCH = os.getenv("SNOMED_BRANCH", "MAIN")
+SNOMED_TIMEOUT = int(os.getenv("SNOMED_TIMEOUT", "10"))
+
 # SHA Webhook/Callback Configuration
 # These are the URLs DHA calls to notify us about claim status changes
 # When registering with DHA, provide your actual domain:

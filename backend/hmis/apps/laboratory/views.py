@@ -1317,6 +1317,56 @@ class LOINCCodeViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
 
+class LOINCSearchView(APIView):
+    """
+    Search LOINC terminology using LOINCTerminologyService.
+
+    Queries local cache first, then falls back to external LOINC FHIR server
+    if credentials are configured. Used by lab ordering UI for code selection.
+
+    GET /api/laboratory/loinc-search/?q=<term>&limit=<n>
+    GET /api/laboratory/loinc-search/?code=<code>  (validate/lookup single code)
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Search LOINC terminology codes",
+        description="Search LOINC codes by term or validate a specific code.",
+    )
+    def get(self, request):
+        from .services.loinc_service import LOINCTerminologyService
+
+        service = LOINCTerminologyService()
+
+        # Single code lookup/validation
+        code = request.query_params.get("code")
+        if code:
+            result = service.lookup(code)
+            if result:
+                return Response({"valid": True, "result": result})
+            return Response({"valid": False, "result": None})
+
+        # Search by term
+        term = request.query_params.get("q", "").strip()
+        if len(term) < 2:
+            return Response(
+                {"detail": "Query 'q' must be at least 2 characters."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        limit = min(int(request.query_params.get("limit", 20)), 50)
+        results = service.search(term, limit=limit)
+
+        return Response(
+            {
+                "count": len(results),
+                "external_available": service.is_external_available,
+                "results": results,
+            }
+        )
+
+
 # ============================================================================
 # Lab Queue ViewSet
 # ============================================================================

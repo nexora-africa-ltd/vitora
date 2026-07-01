@@ -94,14 +94,13 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR("No Kenya locations found. Run location import."))
             return
 
-        # Map clinics
-        anc_clinic = Clinic.objects.filter(name__icontains="antenatal", status="ACTIVE").first()
-        ccc_clinic = Clinic.objects.filter(
-            name__icontains="comprehensive care", status="ACTIVE"
-        ).first()
-        diabetic_clinic = Clinic.objects.filter(name__icontains="diabetic", status="ACTIVE").first()
-        htn_clinic = Clinic.objects.filter(name__icontains="hypertens", status="ACTIVE").first()
-        opd_clinic = Clinic.objects.filter(name__icontains="general opd", status="ACTIVE").first()
+        # Map clinics (scoped to the resolved facility)
+        facility_clinics = Clinic.objects.filter(facility=facility, status="ACTIVE")
+        anc_clinic = facility_clinics.filter(name__icontains="antenatal").first()
+        ccc_clinic = facility_clinics.filter(name__icontains="comprehensive care").first()
+        diabetic_clinic = facility_clinics.filter(name__icontains="diabetic").first()
+        htn_clinic = facility_clinics.filter(name__icontains="hypertens").first()
+        opd_clinic = facility_clinics.filter(name__icontains="general opd").first()
 
         clinics_found = {
             "ANC": anc_clinic,
@@ -330,14 +329,16 @@ class Command(BaseCommand):
         if ccc_clinic:
             self.stdout.write("\n--- Seeding CCC patients (KE-CQM-003: HIV Viral Load) ---")
 
-            # Ensure TestCatalog has a Viral Load test
+            # Ensure TestCatalog has a Viral Load test (facility-scoped)
             vl_test, _ = TestCatalog.objects.get_or_create(
                 name="Viral Load",
+                facility=facility,
                 defaults={
                     "code": "VL-001",
                     "loinc_code": "20447-9",
                     "category": "VIROLOGY",
                     "specimen_type": "BLOOD",
+                    "organization": org,
                 },
             )
 
@@ -408,11 +409,13 @@ class Command(BaseCommand):
 
             hba1c_test, _ = TestCatalog.objects.get_or_create(
                 name="HbA1c",
+                facility=facility,
                 defaults={
                     "code": "HBA1C-001",
                     "loinc_code": "4548-4",
                     "category": "CHEMISTRY",
                     "specimen_type": "BLOOD",
+                    "organization": org,
                 },
             )
 
@@ -572,14 +575,14 @@ class Command(BaseCommand):
                     clinic=ccc_clinic,
                     patient=patient,
                     enrollment_date=period_start - timedelta(days=200),
-                    status="DEFAULTED",
+                    status="LOST_TO_FOLLOW_UP",
                     enrolled_by=user,
                     outcome_date=today - timedelta(days=random.randint(10, 40)),
                     outcome_reason="Missed 2+ consecutive appointments",
                 )
                 created_counts["enrollments"] += 1
 
-            self.stdout.write(self.style.SUCCESS("  Created 5 DEFAULTED CCC enrollments"))
+            self.stdout.write(self.style.SUCCESS("  Created 5 LOST_TO_FOLLOW_UP CCC enrollments"))
 
         # =====================================================================
         # Summary
@@ -597,6 +600,7 @@ class Command(BaseCommand):
 
     def _clear_seeded_data(self):
         """Remove all data tagged with SEED_TAG."""
+        from hmis.apps.billing.models import Invoice
         from hmis.apps.clinics.models import ClinicEnrollment, ClinicSession, ClinicVisit
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.laboratory.models import LabOrder
@@ -610,7 +614,8 @@ class Command(BaseCommand):
             self.stdout.write("No seeded data found.")
             return
 
-        # Delete in dependency order
+        # Delete in dependency order (invoices reference encounters via PROTECT)
+        Invoice.objects.filter(patient_id__in=patient_ids).delete()
         LabOrder.objects.filter(patient_id__in=patient_ids).delete()
         Encounter.objects.filter(patient_id__in=patient_ids).delete()
         ClinicVisit.objects.filter(patient_id__in=patient_ids).delete()

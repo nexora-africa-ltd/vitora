@@ -20,6 +20,12 @@ Endpoints:
 
 from django.urls import path
 
+from hmis.apps.core.fhir.search import (
+    FHIRConditionSearchView,
+    FHIRMedicationStatementSearchView,
+    FHIRObservationSearchView,
+    FHIRPatientSearchView,
+)
 from hmis.apps.core.fhir.views import (
     FHIRAllergyIntoleranceView,
     FHIRBundleView,
@@ -43,6 +49,14 @@ from hmis.apps.core.fhir.views import (
     FHIRPractitionerView,
     FHIRProcedureView,
     FHIRSpecimenView,
+)
+from hmis.apps.core.fhir.write import (
+    FHIRConditionCreateView,
+    FHIRDiagnosticReportCreateView,
+    FHIREncounterCreateView,
+    FHIRMedicationRequestCreateView,
+    FHIRObservationCreateView,
+    FHIRPatientCreateView,
 )
 
 app_name = "fhir"
@@ -167,5 +181,57 @@ urlpatterns = [
         "DeviceUseStatement/<int:pk>",
         FHIRDeviceUseStatementView.as_view(),
         name="device-use-statement-read",
+    ),
+    # --- FHIR Search Endpoints ---
+    path(
+        "Patient",
+        FHIRPatientSearchView.as_view(),
+        name="patient-search",
+    ),
+    path(
+        "Observation",
+        FHIRObservationSearchView.as_view(),
+        name="observation-search",
+    ),
+    path(
+        "Condition",
+        FHIRConditionSearchView.as_view(),
+        name="condition-search",
+    ),
+    path(
+        "MedicationStatement",
+        FHIRMedicationStatementSearchView.as_view(),
+        name="medication-statement-search",
+    ),
+    # --- FHIR Write (Create) Endpoints ---
+    path(
+        "Patient/",
+        FHIRPatientCreateView.as_view(),
+        name="patient-create",
+    ),
+    path(
+        "Observation/",
+        FHIRObservationCreateView.as_view(),
+        name="observation-create",
+    ),
+    path(
+        "Condition/",
+        FHIRConditionCreateView.as_view(),
+        name="condition-create",
+    ),
+    path(
+        "Encounter/",
+        FHIREncounterCreateView.as_view(),
+        name="encounter-create",
+    ),
+    path(
+        "MedicationRequest/",
+        FHIRMedicationRequestCreateView.as_view(),
+        name="medication-request-create",
+    ),
+    path(
+        "DiagnosticReport/",
+        FHIRDiagnosticReportCreateView.as_view(),
+        name="diagnostic-report-create",
     ),
 ]

@@ -22,6 +22,7 @@ from .views import (
     LabWorkflowSettingsViewSet,
     LabWorkloadReportView,
     LOINCCodeViewSet,
+    LOINCSearchView,
     PatientLabOrderViewSet,
     PatientLabResultViewSet,
     ReferralLabViewSet,
@@ -54,6 +55,7 @@ router.register(r"settings/barcode-config", LabBarcodeConfigViewSet, basename="b
 router.register(r"settings/workflow", LabWorkflowSettingsViewSet, basename="workflow-settings")
 
 urlpatterns = [
+    path("loinc-search/", LOINCSearchView.as_view(), name="loinc-search"),
     path("reports/turnaround-time/", LabTurnaroundTimeReportView.as_view(), name="lab-report-tat"),
     path("reports/workload/", LabWorkloadReportView.as_view(), name="lab-report-workload"),
     path(

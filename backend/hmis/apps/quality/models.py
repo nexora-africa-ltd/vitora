@@ -447,3 +447,71 @@ class QualityMeasureResult(TimeStampedModel):
             self.meets_target = False
 
         super().save(*args, **kwargs)
+
+
+# =============================================================================
+# BenchmarkObservation Model (SDMX Inbound)
+# =============================================================================
+
+
+class BenchmarkObservation(models.Model):
+    """
+    Stores imported SDMX observations for facility benchmarking.
+
+    Data comes from national registries (KNBS, KHIS, WHO) and enables
+    facilities to compare their indicators against national/regional averages.
+    """
+
+    indicator_code = models.CharField(
+        max_length=100,
+        db_index=True,
+        help_text="SDMX indicator code (e.g., 'TOTAL_VISITS', 'MMR')",
+    )
+    time_period = models.CharField(
+        max_length=20,
+        db_index=True,
+        help_text="Time period (e.g., '2025-Q1', '2025-01', '2025')",
+    )
+    facility_code = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Facility MFL code (empty for aggregate/national data)",
+    )
+    source = models.CharField(
+        max_length=50,
+        db_index=True,
+        help_text="Data source (e.g., 'KNBS', 'KHIS', 'WHO')",
+    )
+    value = models.CharField(
+        max_length=100,
+        help_text="Observation value (string to handle numeric and coded values)",
+    )
+    dimensions = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Additional SDMX dimension key-values",
+    )
+    attributes = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="SDMX observation attributes",
+    )
+    dataset_id = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Source SDMX dataset ID for traceability",
+    )
+    imported_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When this observation was imported",
+    )
+
+    class Meta:
+        unique_together = ("indicator_code", "time_period", "facility_code", "source")
+        ordering = ["-time_period", "indicator_code"]
+
+    def __str__(self) -> str:
+        return f"{self.indicator_code} = {self.value} ({self.time_period}, {self.source})"
