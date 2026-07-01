@@ -314,7 +314,7 @@ graph LR
 
     subgraph Backend["Cloud Backend"]
         DJANGO["Django REST API"]
-        NEON["Neon PostgreSQL"]
+        NEON["PostgreSQL"]
     end
 
     subgraph Desktop["Desktop Client (Tauri)"]
@@ -589,7 +589,7 @@ mindmap
       ICD-10 / ICD-11
     Infrastructure
       Azure Container Apps
-      Neon PostgreSQL
+      PostgreSQL
       PowerSync Cloud
       GitHub Actions (4 workflows)
       Docker
