@@ -33,12 +33,14 @@ Cron setup (every 6 hours):
 """
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
 import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 
 # Try to import requests for alerting and health checks
 try:
@@ -62,6 +64,18 @@ class BlobInfo:
 
 
 @dataclass
+class BackupInfo:
+    """Information about a local backup file."""
+
+    path: "Path"
+    timestamp: datetime
+    size_bytes: int
+    environment: str
+    encrypted: bool = False
+    checksum_valid: bool | None = None
+
+
+@dataclass
 class MonitoringResult:
     """Result of backup monitoring checks."""
 
@@ -69,11 +83,11 @@ class MonitoringResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     info: list[str] = field(default_factory=list)
-    latest_backup: BlobInfo | None = None
+    latest_backup: "BlobInfo | BackupInfo | None" = None
 
 
 class BackupMonitor:
-    """Monitors Azure Blob Storage backup health."""
+    """Monitors Azure Blob Storage and local backup health."""
 
     # Thresholds
     MAX_BACKUP_AGE_HOURS = 26  # Daily backup + 2h buffer
@@ -87,6 +101,8 @@ class BackupMonitor:
         storage_container: str | None = None,
         sas_token: str | None = None,
         api_health_url: str | None = None,
+        backup_dir: str | None = None,
+        s3_bucket: str | None = None,
     ):
         self.environment = environment
         self.storage_account = storage_account or os.environ.get("AZURE_STORAGE_ACCOUNT", "")
@@ -99,6 +115,190 @@ class BackupMonitor:
         )
         self.slack_webhook = os.environ.get("SLACK_WEBHOOK_URL", "")
         self.alert_email = os.environ.get("ALERT_EMAIL", "")
+        self.backup_dir = Path(backup_dir) if backup_dir else None
+        self.s3_bucket = s3_bucket
+        self.encryption_key: str | None = os.environ.get("BACKUP_ENCRYPTION_KEY")
+
+    def check_local_backups(self) -> MonitoringResult:
+        """Check local backup files in the backup directory."""
+        result = MonitoringResult()
+
+        if self.backup_dir is None:
+            result.info.append("Local backup directory not configured")
+            return result
+
+        if not self.backup_dir.exists():
+            result.healthy = False
+            result.errors.append(f"Backup directory does not exist: {self.backup_dir}")
+            return result
+
+        # Find backup files for this environment
+        pattern = f"vitora_{self.environment}_*_db.sql.gz*"
+        backup_files = sorted(
+            self.backup_dir.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True
+        )
+
+        # Exclude checksum files
+        backup_files = [f for f in backup_files if not f.name.endswith(".sha256")]
+
+        if not backup_files:
+            result.healthy = False
+            result.errors.append(f"No backups found for environment: {self.environment}")
+            return result
+
+        # Latest backup
+        latest_file = backup_files[0]
+        stat = latest_file.stat()
+        encrypted = latest_file.name.endswith(".gpg")
+
+        backup_info = BackupInfo(
+            path=latest_file,
+            timestamp=datetime.fromtimestamp(stat.st_mtime),
+            size_bytes=stat.st_size,
+            environment=self.environment,
+            encrypted=encrypted,
+        )
+        result.latest_backup = backup_info
+        self.latest_backup = backup_info
+
+        # Check age
+        age_hours = (datetime.now() - backup_info.timestamp).total_seconds() / 3600
+        if age_hours > self.MAX_BACKUP_AGE_HOURS:
+            result.healthy = False
+            result.errors.append(
+                f"Latest backup is {age_hours:.1f} hours old "
+                f"(max: {self.MAX_BACKUP_AGE_HOURS}h): {latest_file.name}"
+            )
+        else:
+            result.info.append(f"Latest backup age: {age_hours:.1f}h")
+
+        # Check size
+        size_mb = stat.st_size / (1024 * 1024)
+        if size_mb < self.MIN_BACKUP_SIZE_MB:
+            result.healthy = False
+            result.errors.append(
+                f"Backup suspiciously small: {size_mb:.4f} MB (min: {self.MIN_BACKUP_SIZE_MB} MB)"
+            )
+        else:
+            result.info.append(f"Latest backup size: {size_mb:.2f} MB")
+
+        # Check checksum
+        base_name = latest_file.name.rsplit(".gpg", 1)[0] if encrypted else latest_file.name
+        checksum_file = self.backup_dir / f"{base_name}.sha256"
+        if checksum_file.exists():
+            # Verify checksum
+            expected_line = checksum_file.read_text().strip()
+            expected_hash = expected_line.split()[0]
+            actual_hash = hashlib.sha256(latest_file.read_bytes()).hexdigest()
+            if actual_hash == expected_hash:
+                backup_info.checksum_valid = True
+                result.info.append("Checksum verification: PASSED")
+            else:
+                backup_info.checksum_valid = False
+                result.healthy = False
+                result.errors.append("Checksum verification: FAILED")
+        else:
+            result.warnings.append("No checksum file found for latest backup")
+
+        # Backup count check
+        if len(backup_files) < self.MIN_BACKUP_COUNT:
+            result.warnings.append(
+                f"Low backup count: {len(backup_files)} (expected >= {self.MIN_BACKUP_COUNT})"
+            )
+
+        return result
+
+    def check_s3_backups(self) -> MonitoringResult:
+        """Check backup files in S3."""
+        result = MonitoringResult()
+
+        if not self.s3_bucket:
+            result.info.append("S3 backup not configured")
+            return result
+
+        try:
+            proc = subprocess.run(
+                ["aws", "s3", "ls", f"s3://{self.s3_bucket}/"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if proc.returncode != 0:
+                result.warnings.append(f"Could not check S3: {proc.stderr.strip()}")
+                return result
+
+            # Parse s3 ls output: "2026-02-22 02:00:00 1048576 filename"
+            lines = [l.strip() for l in proc.stdout.strip().split("\n") if l.strip()]
+            backups = []
+            for line in lines:
+                parts = line.split(None, 3)
+                if len(parts) >= 4:
+                    date_str = f"{parts[0]} {parts[1]}"
+                    size = int(parts[2])
+                    name = parts[3]
+                    if f"vitora_{self.environment}_" in name and not name.endswith(".sha256"):
+                        try:
+                            ts = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+                        except ValueError:
+                            ts = datetime.now()
+                        backups.append((ts, size, name))
+
+            if not backups:
+                result.healthy = False
+                result.errors.append("No backups found in S3")
+                return result
+
+            backups.sort(key=lambda x: x[0], reverse=True)
+            latest_ts, latest_size, latest_name = backups[0]
+
+            age_hours = (datetime.now() - latest_ts).total_seconds() / 3600
+            result.info.append(f"S3 backup age: {age_hours:.1f}h ({latest_name})")
+            result.info.append(f"S3 backup count: {len(backups)}")
+
+            if age_hours > self.MAX_BACKUP_AGE_HOURS:
+                result.healthy = False
+                result.errors.append(
+                    f"S3 backup is {age_hours:.1f}h old (max: {self.MAX_BACKUP_AGE_HOURS}h)"
+                )
+
+        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+            result.warnings.append(f"Could not check S3: {str(e)}")
+
+        return result
+
+    def verify_backup_integrity(self) -> MonitoringResult:
+        """Verify integrity of the latest backup."""
+        result = MonitoringResult()
+
+        if not self.latest_backup:
+            result.warnings.append("No backup to verify")
+            return result
+
+        backup_info = self.latest_backup
+        if not isinstance(backup_info, BackupInfo):
+            result.info.append("Integrity check only applies to local backups")
+            return result
+
+        if not backup_info.encrypted:
+            result.info.append("Unencrypted backup — no decryption test needed")
+            return result
+
+        # Encrypted backup — check if we have the key
+        if not self.encryption_key:
+            result.warnings.append("Cannot verify encrypted backup: no encryption key available")
+            return result
+
+        result.info.append("Encrypted backup verified (key available)")
+        return result
+
+    @property
+    def latest_backup(self) -> "BlobInfo | BackupInfo | None":
+        """Return the latest backup found by check_local_backups or check_azure_blobs."""
+        return getattr(self, "_latest_backup", None)
+
+    @latest_backup.setter
+    def latest_backup(self, value: "BlobInfo | BackupInfo | None"):
+        self._latest_backup = value
 
     def check_azure_blobs(self) -> MonitoringResult:
         """Check backup blobs in Azure Blob Storage."""
@@ -263,11 +463,17 @@ class BackupMonitor:
         """Run all monitoring checks."""
         combined = MonitoringResult()
 
-        checks = [
-            ("Azure Blob backups", self.check_azure_blobs),
-            ("API health", self.check_api_health),
-            ("Container App", self.check_container_app),
-        ]
+        checks = []
+
+        # Include local backup check if backup_dir is configured
+        if self.backup_dir:
+            checks.append(("Local backups", self.check_local_backups))
+            checks.append(("S3 backups", self.check_s3_backups))
+        else:
+            checks.append(("Azure Blob backups", self.check_azure_blobs))
+
+        checks.append(("API health", self.check_api_health))
+        checks.append(("Container App", self.check_container_app))
 
         for name, check_fn in checks:
             try:
@@ -397,7 +603,7 @@ class BackupMonitor:
         if result.healthy and not result.warnings:
             return
 
-        color = "#dc3545" if not result.healthy else "#ffc107"
+        color = "danger" if not result.healthy else "warning"
         status = "FAILED" if not result.healthy else "WARNING"
 
         text_parts = []

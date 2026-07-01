@@ -384,6 +384,8 @@ graph TB
 
 ## 9. SHA / DHA HIE Integration
 
+### 9a. Claims Lifecycle
+
 ```mermaid
 sequenceDiagram
     participant V as Vitora HMIS
@@ -413,10 +415,57 @@ sequenceDiagram
     SHA_SYS-->>DHA: Adjudication Result
     DHA-->>V: Claim Status
 
-    Note over V,SHA_SYS: Remittance
+    Note over V,SHA_SYS: ILM Intervention Lifecycle
+    V->>DHA: POST /claims/{id}/ilm/interventions/retire
+    DHA-->>V: Intervention Retired
+    V->>DHA: POST /claims/{id}/ilm/interventions/restore
+    DHA-->>V: Intervention Restored
+    V->>DHA: POST /claims/{id}/ilm/preview-payer
+    DHA-->>V: Payer Adjudication View (14 states)
+
+    Note over V,SHA_SYS: Remittance Reconciliation
     V->>DHA: GET /remittances/fetch
     DHA-->>V: Payment Details
     V->>V: Auto-reconcile to Local Claims
+```
+
+### 9b. Preauthorization Workflow
+
+```mermaid
+sequenceDiagram
+    participant C as Clinician
+    participant V as Vitora HMIS
+    participant DHA as DHA HIE Gateway
+    participant P360 as Practice360
+
+    Note over C,P360: 7 Preauth Types: Normal, Surgical, Elective, Oncology, Renal, Imaging, Optical
+
+    C->>V: Create Preauth Request
+    V->>DHA: POST /ilm/preauth/create
+    DHA-->>V: Preauth ID + Status
+
+    Note over C,P360: Doctor Consent (Practice360)
+    V->>DHA: POST /ilm/preauth/doctor-consent
+    DHA->>P360: Send consent request
+    P360-->>DHA: Pending
+
+    loop Poll until approved/rejected
+        V->>DHA: GET /ilm/preauth/doctor-consent/poll
+        DHA-->>V: Status (PENDING/APPROVED/REJECTED)
+    end
+
+    alt Consent Approved
+        V->>DHA: POST /preauth/submit
+        DHA-->>V: Preauth Approved
+        V-->>C: Proceed with service
+    else Consent Rejected
+        DHA-->>V: Preauth Denied
+        V-->>C: Notify rejection reason
+    end
+
+    Note over C,P360: Cancellation (if needed)
+    V->>DHA: POST /ilm/preauth/cancel
+    DHA-->>V: Preauth Cancelled
 ```
 
 ---
