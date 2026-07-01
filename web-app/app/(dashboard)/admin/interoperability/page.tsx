@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import { Search, Globe, Upload, Activity, FileText, Network, FlaskConical } from 'lucide-react';
 import {
   Select,
@@ -67,12 +68,14 @@ export default function InteroperabilityPage() {
   const [patientResults, setPatientResults] = useState<FHIRPatientResult[]>([]);
   const [patientSearchLoading, setPatientSearchLoading] = useState(false);
   const [patientSearchError, setPatientSearchError] = useState('');
+  const debouncedFhirQuery = useDebounce(patientSearchQuery, 400);
 
   // LOINC Search
   const [loincQuery, setLoincQuery] = useState('');
   const [loincResults, setLoincResults] = useState<LOINCResult[]>([]);
   const [loincSearchLoading, setLoincSearchLoading] = useState(false);
   const [loincExternalAvailable, setLoincExternalAvailable] = useState(false);
+  const debouncedLoincQuery = useDebounce(loincQuery, 400);
 
   // SDMX Import
   const [sdmxFile, setSdmxFile] = useState<File | null>(null);
@@ -84,46 +87,48 @@ export default function InteroperabilityPage() {
   const [benchmarks, setBenchmarks] = useState<BenchmarkResult[]>([]);
   const [benchmarksLoading, setBenchmarksLoading] = useState(false);
 
-  const searchFHIRPatients = async () => {
-    if (!patientSearchQuery.trim()) return;
+  const searchFHIRPatients = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setPatientResults([]);
+      return;
+    }
     setPatientSearchLoading(true);
     setPatientSearchError('');
     try {
       const params: Record<string, string> = {};
 
       if (fhirResourceType === 'Patient') {
-        if (patientSearchQuery.startsWith('MRN-')) {
-          params.identifier = patientSearchQuery;
+        if (query.startsWith('MRN-')) {
+          params.identifier = query;
         } else {
-          params.name = patientSearchQuery;
+          params.name = query;
         }
       } else if (fhirResourceType === 'Encounter') {
-        // Search by patient ID or date
-        if (/^\d+$/.test(patientSearchQuery)) {
-          params.patient = patientSearchQuery;
+        if (/^\d+$/.test(query)) {
+          params.patient = query;
         } else {
-          params.date = patientSearchQuery;
+          params.date = query;
         }
       } else if (fhirResourceType === 'DiagnosticReport') {
-        if (/^\d+$/.test(patientSearchQuery)) {
-          params.patient = patientSearchQuery;
+        if (/^\d+$/.test(query)) {
+          params.patient = query;
         } else {
-          params.status = patientSearchQuery;
+          params.status = query;
         }
       } else if (fhirResourceType === 'Condition') {
-        if (/^\d+$/.test(patientSearchQuery)) {
-          params.patient = patientSearchQuery;
+        if (/^\d+$/.test(query)) {
+          params.patient = query;
         } else {
-          params.code = patientSearchQuery;
+          params.code = query;
         }
       } else if (fhirResourceType === 'Observation') {
-        if (/^\d+$/.test(patientSearchQuery)) {
-          params.patient = patientSearchQuery;
+        if (/^\d+$/.test(query)) {
+          params.patient = query;
         } else {
-          params.category = patientSearchQuery;
+          params.category = query;
         }
       } else {
-        params.patient = patientSearchQuery;
+        params.patient = query;
       }
 
       const response = await apiClient.get<FHIRBundle>(`/fhir/${fhirResourceType}`, { params });
@@ -134,17 +139,29 @@ export default function InteroperabilityPage() {
     } finally {
       setPatientSearchLoading(false);
     }
-  };
+  }, [fhirResourceType]);
 
-  const searchLOINC = async () => {
-    if (!loincQuery.trim() || loincQuery.length < 2) return;
+  // Auto-search on debounced query change
+  useEffect(() => {
+    if (debouncedFhirQuery.length >= 2) {
+      searchFHIRPatients(debouncedFhirQuery);
+    } else {
+      setPatientResults([]);
+    }
+  }, [debouncedFhirQuery, searchFHIRPatients]);
+
+  const searchLOINC = useCallback(async (query: string) => {
+    if (!query.trim() || query.length < 2) {
+      setLoincResults([]);
+      return;
+    }
     setLoincSearchLoading(true);
     try {
       const response = await apiClient.get<{
         count: number;
         external_available: boolean;
         results: LOINCResult[];
-      }>('/api/laboratory/loinc-search/', { params: { q: loincQuery } });
+      }>('/api/laboratory/loinc-search/', { params: { q: query } });
       setLoincResults(response.data.results);
       setLoincExternalAvailable(response.data.external_available);
     } catch {
@@ -152,7 +169,16 @@ export default function InteroperabilityPage() {
     } finally {
       setLoincSearchLoading(false);
     }
-  };
+  }, []);
+
+  // Auto-search LOINC on debounced query change
+  useEffect(() => {
+    if (debouncedLoincQuery.length >= 2) {
+      searchLOINC(debouncedLoincQuery);
+    } else {
+      setLoincResults([]);
+    }
+  }, [debouncedLoincQuery, searchLOINC]);
 
   const importSDMX = async () => {
     if (!sdmxFile) return;
@@ -307,28 +333,32 @@ export default function InteroperabilityPage() {
                       <SelectItem value="MedicationStatement">MedicationStatement</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Input
-                    placeholder={
-                      fhirResourceType === 'Patient'
-                        ? 'Search by name or MRN...'
-                        : fhirResourceType === 'Encounter'
-                          ? 'Patient ID or date (ge2024-01-01)...'
-                          : fhirResourceType === 'Condition'
-                            ? 'Patient ID or ICD-10/SNOMED code...'
-                            : fhirResourceType === 'Observation'
-                              ? 'Patient ID or category (vital-signs, laboratory)...'
-                              : fhirResourceType === 'DiagnosticReport'
-                                ? 'Patient ID or status (final, preliminary)...'
-                                : 'Patient ID...'
-                    }
-                    value={patientSearchQuery}
-                    onChange={(e) => setPatientSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && searchFHIRPatients()}
-                    className="flex-1"
-                  />
-                  <Button onClick={searchFHIRPatients} disabled={patientSearchLoading}>
-                    {patientSearchLoading ? 'Searching...' : 'Search'}
-                  </Button>
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder={
+                        fhirResourceType === 'Patient'
+                          ? 'Search by name or MRN...'
+                          : fhirResourceType === 'Encounter'
+                            ? 'Patient ID or date (ge2024-01-01)...'
+                            : fhirResourceType === 'Condition'
+                              ? 'Patient ID or ICD-10/SNOMED code...'
+                              : fhirResourceType === 'Observation'
+                                ? 'Patient ID or category (vital-signs, laboratory)...'
+                                : fhirResourceType === 'DiagnosticReport'
+                                  ? 'Patient ID or status (final, preliminary)...'
+                                  : 'Patient ID...'
+                      }
+                      value={patientSearchQuery}
+                      onChange={(e) => setPatientSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
+                    {patientSearchLoading && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <p className="text-xs text-muted-foreground">
@@ -434,17 +464,19 @@ export default function InteroperabilityPage() {
                 <CardTitle className="text-base">LOINC Terminology Search</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex gap-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search LOINC codes (e.g. hemoglobin, glucose)..."
                     value={loincQuery}
                     onChange={(e) => setLoincQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && searchLOINC()}
-                    className="flex-1"
+                    className="pl-9"
                   />
-                  <Button onClick={searchLOINC} disabled={loincSearchLoading}>
-                    {loincSearchLoading ? 'Searching...' : 'Search'}
-                  </Button>
+                  {loincSearchLoading && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    </div>
+                  )}
                 </div>
 
                 {loincExternalAvailable && (

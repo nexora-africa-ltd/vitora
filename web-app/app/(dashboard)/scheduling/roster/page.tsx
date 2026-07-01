@@ -80,7 +80,7 @@ import {
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { toast } from 'sonner';
-import { resourcesApi, shiftsApi, staffConstraintsApi, schedulingSettingsApi } from '@/lib/api/scheduling';
+import { resourcesApi, shiftsApi, staffConstraintsApi, schedulingSettingsApi, shiftTypeConfigsApi } from '@/lib/api/scheduling';
 import { QRCodeDisplay } from '@/components/scheduling/qr-clock-in';
 import type {
   ShiftType,
@@ -127,6 +127,13 @@ const DAY_LABELS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday',
 // Helpers
 // =============================================================================
 
+function toLocalDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getWeekStart(d: Date): Date {
   const date = new Date(d);
   date.setDate(date.getDate() - date.getDay()); // Sunday
@@ -138,7 +145,7 @@ function getWeekDates(weekStart: Date): string[] {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);
     d.setDate(d.getDate() + i);
-    return d.toISOString().split('T')[0] ?? '';
+    return toLocalDateString(d);
   });
 }
 
@@ -175,6 +182,7 @@ export default function WeeklyRosterPage() {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const weekLabel = useMemo(() => formatWeekRange(weekDates), [weekDates]);
+  const today = useMemo(() => toLocalDateString(new Date()), []);
 
   // Active paint brush
   const [paintType, setPaintType] = useState<ShiftType>('DAY');
@@ -239,6 +247,12 @@ export default function WeeklyRosterPage() {
   const { data: schedulingSettings } = useQuery({
     queryKey: ['scheduling-settings-current'],
     queryFn: () => schedulingSettingsApi.getCurrent(),
+  });
+
+  // Fetch facility-configured shift type times (for creating shifts with correct times)
+  const { data: shiftTypeDefaults } = useQuery({
+    queryKey: ['shift-type-config-defaults'],
+    queryFn: () => shiftTypeConfigsApi.defaults(),
   });
 
   // Build per-resource blocked shift types from constraints
@@ -308,6 +322,8 @@ export default function WeeklyRosterPage() {
   const handleCellClick = useCallback(
     (resourceId: number, date: string) => {
       if (!canManageSchedules) return;
+      // Prevent editing past dates
+      if (date < today) return;
       const key = cellKey(resourceId, date);
       setDraft((prev) => {
         const next = new Map(prev);
@@ -336,7 +352,7 @@ export default function WeeklyRosterPage() {
         return next;
       });
     },
-    [paintType, existingShifts, canManageSchedules],
+    [paintType, existingShifts, canManageSchedules, today],
   );
 
   // Determine what's displayed in a cell
@@ -381,14 +397,21 @@ export default function WeeklyRosterPage() {
           continue;
         }
         const [resourceId, date] = [Number(key.split('-')[0]), key.substring(key.indexOf('-') + 1)];
+        // Skip past dates
+        if (date < today) continue;
         const config = SHIFT_MAP[shiftType];
         if (!config) continue;
+
+        // Use facility-configured times if available, otherwise fall back to hardcoded SHIFT_MAP
+        const facilityConfig = shiftTypeDefaults?.[shiftType];
+        const startTime = facilityConfig?.start_time ?? config.start;
+        const endTime = facilityConfig?.end_time ?? config.end;
 
         newShifts.push({
           staff_resource: resourceId,
           shift_date: date,
-          start_time: config.start,
-          end_time: config.end,
+          start_time: startTime,
+          end_time: endTime,
           shift_type: shiftType,
           department: departments.find((d) => d.name === departmentFilter)?.id,
         });
@@ -911,7 +934,6 @@ export default function WeeklyRosterPage() {
   // ==========================================================================
 
   const isLoading = resourcesLoading || shiftsLoading;
-  const today = new Date().toISOString().split('T')[0] ?? '';
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
@@ -1332,12 +1354,13 @@ export default function WeeklyRosterPage() {
                       </th>
                       {weekDates.map((date, i) => {
                         const isToday = date === today;
+                        const isPast = date < today;
                         return (
                           <th
                             key={date}
                             className={`px-1 py-2 text-center text-xs font-medium min-w-[80px] ${
                               isToday ? 'bg-primary/5' : ''
-                            }`}
+                            } ${isPast ? 'opacity-50' : ''}`}
                           >
                             <div className={`${isToday ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
                               {DAY_LABELS[i]}
@@ -1364,6 +1387,7 @@ export default function WeeklyRosterPage() {
                         {weekDates.map((date) => {
                           const cell = getCellState(staff.id, date);
                           const isToday = date === today;
+                          const isPast = date < today;
                           const shiftInfo = cell.type ? SHIFT_MAP[cell.type] : null;
                           const conflict = conflictMap.get(cellKey(staff.id, date));
                           const savedShift = existingShifts.get(cellKey(staff.id, date));
@@ -1372,9 +1396,9 @@ export default function WeeklyRosterPage() {
                           return (
                             <td
                               key={date}
-                              className={`px-1 py-1 text-center ${canManageSchedules ? 'cursor-pointer' : ''} transition-colors ${
+                              className={`px-1 py-1 text-center ${canManageSchedules && !isPast ? 'cursor-pointer' : ''} transition-colors ${
                                 isToday ? 'bg-primary/5' : ''
-                              } ${conflict ? 'bg-orange-50 dark:bg-orange-950/20' : ''} hover:bg-muted/50`}
+                              } ${isPast ? 'opacity-50' : ''} ${conflict ? 'bg-orange-50 dark:bg-orange-950/20' : ''} hover:bg-muted/50`}
                               onClick={() => handleCellClick(staff.id, date)}
                               onContextMenu={hasSavedShift ? (e) => {
                                 e.preventDefault();
@@ -1507,6 +1531,7 @@ export default function WeeklyRosterPage() {
               <div className="space-y-1.5">
                 {staffList.map((staff) => {
                   const date = weekDates[mobileDayIndex]!;
+                  const isPast = date < today;
                   const cell = getCellState(staff.id, date);
                   const shiftInfo = cell.type ? SHIFT_MAP[cell.type] : null;
                   const conflict = conflictMap.get(cellKey(staff.id, date));
@@ -1517,8 +1542,8 @@ export default function WeeklyRosterPage() {
                     <div
                       key={staff.id}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors ${
-                        canManageSchedules ? 'cursor-pointer active:bg-muted/80' : ''
-                      } ${conflict ? 'border-orange-300 dark:border-orange-700 bg-orange-50/50 dark:bg-orange-950/10' : 'bg-card'}`}
+                        canManageSchedules && !isPast ? 'cursor-pointer active:bg-muted/80' : ''
+                      } ${isPast ? 'opacity-50' : ''} ${conflict ? 'border-orange-300 dark:border-orange-700 bg-orange-50/50 dark:bg-orange-950/10' : 'bg-card'}`}
                       onClick={() => handleCellClick(staff.id, date)}
                     >
                       {/* Avatar */}
