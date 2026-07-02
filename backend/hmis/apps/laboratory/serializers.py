@@ -95,6 +95,7 @@ class TestCatalogSerializer(serializers.ModelSerializer):
             "code",
             "name",
             "short_name",
+            "loinc_code",
             "category",
             "specimen_type",
             "result_type",
@@ -125,6 +126,7 @@ class TestCatalogCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = TestCatalog
         fields = [
+            "id",
             "code",
             "name",
             "short_name",
@@ -147,7 +149,10 @@ class TestCatalogCreateSerializer(serializers.ModelSerializer):
             "result_options",
             "is_panel",
             "is_active",
+            "created_at",
+            "updated_at",
         ]
+        read_only_fields = ["id", "created_at", "updated_at"]
 
     def validate_code(self):
         """Ensure code is unique within the facility (case-insensitive)."""
@@ -610,19 +615,30 @@ class LabResultCreateSerializer(serializers.ModelSerializer):
         entered_by = self.context["request"].user
         result = LabResult.objects.create(entered_by=entered_by, **validated_data)
 
-        # Auto-populate result_loinc_code from LabResultTemplate if not provided
+        # Auto-populate result_loinc_code from LabResultTemplate or TestCatalog
         if not result.result_loinc_code:
             from hmis.apps.laboratory.models import LabResultTemplate
 
-            test_code = result.order_item.test.code
-            loinc_code = result.order_item.test.loinc_code
-            # Try matching by test code or LOINC code
-            template = LabResultTemplate.objects.filter(
-                test_code__in=[c for c in [test_code, loinc_code] if c],
-                result_loinc_code__gt="",
-            ).first()
+            test = result.order_item.test
+            test_code = test.code
+            order_loinc = test.loinc_code or ""
+
+            # Strategy 1: Match from LabResultTemplate (for panels with per-parameter LOINCs)
+            lookup_codes = [c for c in [test_code, order_loinc] if c]
+            template = (
+                LabResultTemplate.objects.filter(
+                    test_code__in=lookup_codes,
+                    result_loinc_code__gt="",
+                ).first()
+                if lookup_codes
+                else None
+            )
             if template:
                 result.result_loinc_code = template.result_loinc_code
+                result.save(update_fields=["result_loinc_code"])
+            elif order_loinc and test.result_type != "PANEL":
+                # Strategy 2: For non-panel tests, the order LOINC IS the result LOINC
+                result.result_loinc_code = order_loinc
                 result.save(update_fields=["result_loinc_code"])
 
         if result.specimen is None:

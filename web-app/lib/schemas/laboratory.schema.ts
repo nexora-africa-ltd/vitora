@@ -310,6 +310,7 @@ export const LabTestCatalogListSchema = z.object({
   code: z.string(),
   name: z.string(),
   short_name: z.string(),
+  loinc_code: z.string().nullable().optional(),
   category: TestCategorySchema,
   specimen_type: SpecimenTypeSchema,
   result_type: ResultTypeSchema,

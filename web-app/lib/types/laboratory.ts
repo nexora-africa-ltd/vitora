@@ -12,6 +12,7 @@ export interface TestCatalogListItem {
   code: string;
   name: string;
   short_name: string;
+  loinc_code?: string | null;
   category: TestCategory;
   specimen_type: SpecimenType;
   result_type: ResultType;
