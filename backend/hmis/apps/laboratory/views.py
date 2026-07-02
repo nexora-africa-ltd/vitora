@@ -7,6 +7,7 @@ import logging
 from datetime import date
 from difflib import SequenceMatcher
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import models, transaction
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -663,6 +664,15 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             order = LabWorkflowService.collect_specimen(order, request.user)
             serializer = self.get_serializer(order)
             return Response(serializer.data)
+        except (ValidationError, DjangoValidationError) as e:
+            message = e.message if hasattr(e, "message") else str(e)
+            logger.warning(
+                "Specimen collection validation failed for lab order %s: %s", order.pk, message
+            )
+            return Response(
+                {"error": message},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except Exception:
             logger.exception("Error recording specimen collection for lab order %s", order.pk)
             return Response(

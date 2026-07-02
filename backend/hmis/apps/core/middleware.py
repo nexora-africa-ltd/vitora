@@ -237,15 +237,10 @@ class AdminAccessMiddleware:
             return redirect(f"/admin/login/?next={quote(request.get_full_path())}")
 
         # MFA verification check
-        from hmis.apps.core.mfa.utils import is_mfa_enabled, is_mfa_required
+        from hmis.apps.core.mfa.utils import is_mfa_enabled
 
         mfa_enabled = is_mfa_enabled(user)
         admin_mfa_required = bool(getattr(settings, "ADMIN_MFA_REQUIRED", False))
-
-        if admin_mfa_required and is_mfa_required(user) and not mfa_enabled:
-            return HttpResponseForbidden(
-                "Multi-factor authentication must be configured before accessing Django admin."
-            )
 
         if admin_mfa_required or mfa_enabled:
             if not request.session.get("admin_mfa_verified"):

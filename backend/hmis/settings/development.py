@@ -102,6 +102,9 @@ LOGGING["loggers"]["django"]["level"] = "DEBUG"  # noqa: F405
 # MFA enforcement — disabled in development for convenience
 MFA_ENFORCEMENT = os.getenv("MFA_ENFORCEMENT", "false").lower() == "true"
 
+# Admin MFA — disabled in development for convenience
+ADMIN_MFA_REQUIRED = os.getenv("ADMIN_MFA_REQUIRED", "false").lower() == "true"
+
 # Onboarding enforcement — disabled in development for convenience
 ONBOARDING_ENFORCEMENT = os.getenv("ONBOARDING_ENFORCEMENT", "false").lower() == "true"
 

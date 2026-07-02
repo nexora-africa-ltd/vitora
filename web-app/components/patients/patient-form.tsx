@@ -496,6 +496,18 @@ export function PatientForm({
     if (client.address) form.setValue('address', client.address);
     if (client.village_estate) form.setValue('village', client.village_estate);
 
+    // Auto-populate identification from CR client
+    if (client.national_id) {
+      form.setValue('identification_type', 'national_id');
+      form.setValue('identification_number', client.national_id);
+    } else if (client.passport_number) {
+      form.setValue('identification_type', 'passport');
+      form.setValue('identification_number', client.passport_number);
+    } else if (client.alien_id) {
+      form.setValue('identification_type', 'alien_id');
+      form.setValue('identification_number', client.alien_id);
+    }
+
     // Extract sha_number and household_number from other_identifications
     if (client.other_identifications?.length) {
       for (const ident of client.other_identifications) {

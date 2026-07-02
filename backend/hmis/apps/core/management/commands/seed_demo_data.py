@@ -22,6 +22,13 @@ class Command(BaseCommand):
             action="store_true",
             help="Force seeding even if demo users already exist",
         )
+        parser.add_argument(
+            "--facility",
+            type=str,
+            default=None,
+            help="Facility ID or MFL code to seed data into. "
+            "If omitted, creates the default demo org + 2 facilities.",
+        )
 
     def handle(self, *args, **options):
         from datetime import date, timedelta
@@ -617,112 +624,136 @@ class Command(BaseCommand):
 
         with transaction.atomic():
             # =============================================================
-            # Step 1: Create Departments
+            # Step 1: Resolve or create Organization + Facilities
             # =============================================================
-            self.stdout.write(self.style.MIGRATE_HEADING("\n1. Creating Departments..."))
-            departments_map = {}
-            for dept_data in DEPARTMENTS:
-                dept, created = Department.objects.update_or_create(
-                    code=dept_data["code"],
+            facility_arg = options.get("facility")
+
+            if facility_arg:
+                # --facility provided: look up existing facility
+                self.stdout.write(
+                    self.style.MIGRATE_HEADING(f"\n1. Resolving facility '{facility_arg}'...")
+                )
+                # Try by ID first, then by MFL code
+                try:
+                    hq_facility = Facility.objects.get(pk=int(facility_arg))
+                except (ValueError, Facility.DoesNotExist):
+                    try:
+                        hq_facility = Facility.objects.get(mfl_code=facility_arg)
+                    except Facility.DoesNotExist:
+                        self.stderr.write(
+                            self.style.ERROR(
+                                f"Facility not found: '{facility_arg}'. "
+                                "Provide a valid facility ID or MFL code."
+                            )
+                        )
+                        return
+
+                demo_org = hq_facility.organization
+                if demo_org is None:
+                    self.stderr.write(
+                        self.style.ERROR(
+                            f"Facility '{hq_facility.name}' has no organization. "
+                            "Assign it to an organization first."
+                        )
+                    )
+                    return
+
+                # Use the same facility for both HQ and BRANCH when targeting
+                # a specific facility
+                branch_facility = hq_facility
+                self.stdout.write(
+                    f"  Using facility: {hq_facility.name} "
+                    f"(id={hq_facility.id}, mfl={hq_facility.mfl_code})"
+                )
+                self.stdout.write(f"  Organization: {demo_org.name}")
+            else:
+                # No --facility: create the default demo org + 2 facilities
+                self.stdout.write(
+                    self.style.MIGRATE_HEADING("\n1. Creating Organization & Facilities...")
+                )
+
+                # Resolve a county + sub-county for location fields
+                demo_county = County.objects.first()
+                demo_sub_county = None
+                if demo_county:
+                    demo_sub_county = demo_county.sub_counties.first()
+
+                demo_org, org_created = Organization.objects.update_or_create(
+                    slug="demo-health-services",
                     defaults={
-                        "name": dept_data["name"],
-                        "department_type": dept_data["department_type"],
+                        "name": "Demo Health Services Ltd",
+                        "contact_email": "info@demo.vitora.health",
+                        "contact_phone": "0720000000",
+                        "address": "Moi Avenue, Nairobi",
+                        "subscription_tier": "PROFESSIONAL",
                         "is_active": True,
                     },
                 )
-                departments_map[dept_data["code"]] = dept
-                status = "Created" if created else "Updated"
-                self.stdout.write(f"  {status}: {dept.name} ({dept.code})")
+                if demo_county:
+                    demo_org.county = demo_county
+                    demo_org.sub_county = demo_sub_county
+                    demo_org.save(update_fields=["county", "sub_county"])
+                self.stdout.write(f"  {'Created' if org_created else 'Updated'}: {demo_org.name}")
 
-            # =============================================================
-            # Step 1b: Create Organization + 2 Facilities
-            # =============================================================
-            self.stdout.write(
-                self.style.MIGRATE_HEADING("\n1b. Creating Organization & Facilities...")
-            )
+                # Headquarters facility
+                hq_defaults = {
+                    "name": "Demo General Hospital",
+                    "organization": demo_org,
+                    "branch_code": "HQ",
+                    "is_headquarters": True,
+                    "level": "4",
+                    "ownership": "PRIVATE",
+                    "has_outpatient": True,
+                    "has_pharmacy": True,
+                    "has_inpatient": True,
+                    "has_emergency": True,
+                    "has_laboratory": True,
+                    "has_imaging": True,
+                    "has_maternity": True,
+                    "sha_contracted": True,
+                }
+                if demo_county:
+                    hq_defaults["county"] = demo_county
+                if demo_sub_county:
+                    hq_defaults["sub_county"] = demo_sub_county
 
-            # Resolve a county + sub-county for location fields
-            demo_county = County.objects.first()
-            demo_sub_county = None
-            if demo_county:
-                demo_sub_county = demo_county.sub_counties.first()
+                hq_facility, hq_created = Facility.objects.update_or_create(
+                    mfl_code="DEMO-HQ-001",
+                    defaults=hq_defaults,
+                )
+                self.stdout.write(
+                    f"  {'Created' if hq_created else 'Updated'}: {hq_facility.name} (HQ)"
+                )
 
-            demo_org, org_created = Organization.objects.update_or_create(
-                slug="demo-health-services",
-                defaults={
-                    "name": "Demo Health Services Ltd",
-                    "contact_email": "info@demo.vitora.health",
-                    "contact_phone": "0720000000",
-                    "address": "Moi Avenue, Nairobi",
-                    "subscription_tier": "PROFESSIONAL",
-                    "is_active": True,
-                },
-            )
-            if demo_county:
-                demo_org.county = demo_county
-                demo_org.sub_county = demo_sub_county
-                demo_org.save(update_fields=["county", "sub_county"])
-            self.stdout.write(f"  {'Created' if org_created else 'Updated'}: {demo_org.name}")
+                # Branch facility
+                branch_defaults = {
+                    "name": "Demo Community Health Centre",
+                    "organization": demo_org,
+                    "branch_code": "BR01",
+                    "is_headquarters": False,
+                    "level": "3",
+                    "ownership": "PRIVATE",
+                    "has_outpatient": True,
+                    "has_pharmacy": True,
+                    "has_laboratory": True,
+                    "has_maternity": False,
+                    "has_inpatient": False,
+                    "has_emergency": False,
+                    "has_imaging": False,
+                    "sha_contracted": True,
+                }
+                if demo_county:
+                    branch_defaults["county"] = demo_county
+                if demo_sub_county:
+                    branch_defaults["sub_county"] = demo_sub_county
 
-            # Headquarters facility
-            hq_defaults = {
-                "name": "Demo General Hospital",
-                "organization": demo_org,
-                "branch_code": "HQ",
-                "is_headquarters": True,
-                "level": "4",
-                "ownership": "PRIVATE",
-                "has_outpatient": True,
-                "has_pharmacy": True,
-                "has_inpatient": True,
-                "has_emergency": True,
-                "has_laboratory": True,
-                "has_imaging": True,
-                "has_maternity": True,
-                "sha_contracted": True,
-            }
-            if demo_county:
-                hq_defaults["county"] = demo_county
-            if demo_sub_county:
-                hq_defaults["sub_county"] = demo_sub_county
-
-            hq_facility, hq_created = Facility.objects.update_or_create(
-                mfl_code="DEMO-HQ-001",
-                defaults=hq_defaults,
-            )
-            self.stdout.write(
-                f"  {'Created' if hq_created else 'Updated'}: {hq_facility.name} (HQ)"
-            )
-
-            # Branch facility
-            branch_defaults = {
-                "name": "Demo Community Health Centre",
-                "organization": demo_org,
-                "branch_code": "BR01",
-                "is_headquarters": False,
-                "level": "3",
-                "ownership": "PRIVATE",
-                "has_outpatient": True,
-                "has_pharmacy": True,
-                "has_laboratory": True,
-                "has_maternity": False,
-                "has_inpatient": False,
-                "has_emergency": False,
-                "has_imaging": False,
-                "sha_contracted": True,
-            }
-            if demo_county:
-                branch_defaults["county"] = demo_county
-            if demo_sub_county:
-                branch_defaults["sub_county"] = demo_sub_county
-
-            branch_facility, br_created = Facility.objects.update_or_create(
-                mfl_code="DEMO-BR-001",
-                defaults=branch_defaults,
-            )
-            self.stdout.write(
-                f"  {'Created' if br_created else 'Updated'}: {branch_facility.name} (Branch)"
-            )
+                branch_facility, br_created = Facility.objects.update_or_create(
+                    mfl_code="DEMO-BR-001",
+                    defaults=branch_defaults,
+                )
+                self.stdout.write(
+                    f"  {'Created' if br_created else 'Updated'}: {branch_facility.name} (Branch)"
+                )
 
             # Facility lookup for user assignment
             facility_map = {
@@ -731,27 +762,71 @@ class Command(BaseCommand):
             }
 
             # =============================================================
+            # Step 1b: Create Departments (scoped to facility)
+            # =============================================================
+            self.stdout.write(self.style.MIGRATE_HEADING("\n1b. Creating Departments..."))
+            departments_map = {}
+            for dept_data in DEPARTMENTS:
+                dept, created = Department.objects.update_or_create(
+                    code=dept_data["code"],
+                    facility=hq_facility,
+                    defaults={
+                        "name": dept_data["name"],
+                        "department_type": dept_data["department_type"],
+                        "organization": demo_org,
+                        "is_active": True,
+                    },
+                )
+                departments_map[dept_data["code"]] = dept
+                status = "Created" if created else "Updated"
+                self.stdout.write(f"  {status}: {dept.name} ({dept.code})")
+
+            # =============================================================
             # Step 2: Create Wards with Beds
             # =============================================================
             self.stdout.write(self.style.MIGRATE_HEADING("\n2. Creating Wards and Beds..."))
             try:
+                from django.db import IntegrityError as DjIntegrityError
+
                 from hmis.apps.inpatient.models import Bed, Ward
 
                 for ward_data in WARDS:
                     # Extract capacity for bed creation but keep it in defaults
                     capacity = ward_data["capacity"]
-                    ward, created = Ward.objects.update_or_create(
-                        code=ward_data["code"],
-                        defaults={
-                            "name": ward_data["name"],
-                            "ward_type": ward_data["ward_type"],
-                            "floor": ward_data.get("floor", ""),
-                            "capacity": capacity,
-                            "daily_rate": ward_data["daily_rate"],
-                            "description": ward_data.get("description", ""),
-                            "is_active": True,
-                        },
-                    )
+                    try:
+                        from django.db import transaction as inner_txn
+
+                        with inner_txn.atomic():
+                            ward, created = Ward.objects.update_or_create(
+                                code=ward_data["code"],
+                                facility=hq_facility,
+                                defaults={
+                                    "name": ward_data["name"],
+                                    "ward_type": ward_data["ward_type"],
+                                    "floor": ward_data.get("floor", ""),
+                                    "capacity": capacity,
+                                    "daily_rate": ward_data["daily_rate"],
+                                    "description": ward_data.get("description", ""),
+                                    "organization": demo_org,
+                                    "is_active": True,
+                                },
+                            )
+                    except (DjIntegrityError, Exception) as e:
+                        # Name conflict with existing ward at this facility —
+                        # try to find by name instead
+                        ward = Ward.objects.filter(
+                            name=ward_data["name"], facility=hq_facility
+                        ).first()
+                        if ward:
+                            self.stdout.write(
+                                f"  Skipped: {ward_data['code']} "
+                                f"(existing ward '{ward.name}' code={ward.code})"
+                            )
+                            continue
+                        self.stdout.write(
+                            self.style.WARNING(f"  Skipped: {ward_data['code']} ({e})")
+                        )
+                        continue
 
                     # Create beds if ward was just created
                     if created:
@@ -1054,6 +1129,8 @@ class Command(BaseCommand):
                             "county": default_county,
                             "sub_county": default_sub_county,
                             "registered_by": registered_by,
+                            "organization": demo_org,
+                            "registered_at_facility": hq_facility,
                             "phone_number": f"07{randint(10000000, 99999999)}",
                             "consent_given": True,
                             "consent_date": None,
@@ -1093,6 +1170,8 @@ class Command(BaseCommand):
                             "county": county,
                             "sub_county": sub_county,
                             "registered_by": registered_by,
+                            "organization": demo_org,
+                            "registered_at_facility": hq_facility,
                             "phone_number": f"07{randint(10000000, 99999999)}",
                             "consent_given": True,
                         },
@@ -1147,9 +1226,10 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("✅ Demo data seeding completed successfully!"))
         self.stdout.write(self.style.SUCCESS("=" * 60))
 
-        self.stdout.write("\n🏥 Organization: Demo Health Services Ltd")
-        self.stdout.write("   HQ: Demo General Hospital (DEMO-HQ-001)")
-        self.stdout.write("   Branch: Demo Community Health Centre (DEMO-BR-001)")
+        self.stdout.write(f"\n🏥 Organization: {demo_org.name}")
+        self.stdout.write(f"   HQ: {hq_facility.name} ({hq_facility.mfl_code})")
+        if branch_facility != hq_facility:
+            self.stdout.write(f"   Branch: {branch_facility.name} ({branch_facility.mfl_code})")
 
         self.stdout.write("\n📋 Demo Credentials (HQ):")
         self.stdout.write("-" * 75)

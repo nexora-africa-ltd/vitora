@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/select';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { SeedClinicsDialog } from '@/components/clinics/seed-clinics-dialog';
 import type { ClinicListParams, ClinicStatus, ClinicType } from '@/lib/types/clinic';
 import { cn } from '@/lib/utils/cn';
 
@@ -276,14 +277,19 @@ export default function ClinicsPage() {
             <p className="text-sm text-muted-foreground text-center mb-4 px-4">
               {search || clinicType !== 'ALL' || status !== 'ALL'
                 ? 'Try adjusting your filters'
-                : 'Get started by adding your first clinic'}
+                : 'Get started by adding your first clinic or seeding defaults'}
             </p>
-            <Button asChild size="sm">
-              <Link href="/clinics/new">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Clinic
-              </Link>
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              {!(search || clinicType !== 'ALL' || status !== 'ALL') && (
+                <SeedClinicsDialog />
+              )}
+              <Button asChild size="sm">
+                <Link href="/clinics/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Clinic
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
