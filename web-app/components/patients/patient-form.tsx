@@ -497,15 +497,45 @@ export function PatientForm({
     if (client.village_estate) form.setValue('village', client.village_estate);
 
     // Auto-populate identification from CR client
+    // Check top-level fields first, then fall back to other_identifications
+    let idPopulated = false;
     if (client.national_id) {
       form.setValue('identification_type', 'national_id');
       form.setValue('identification_number', client.national_id);
+      idPopulated = true;
     } else if (client.passport_number) {
       form.setValue('identification_type', 'passport');
       form.setValue('identification_number', client.passport_number);
+      idPopulated = true;
     } else if (client.alien_id) {
       form.setValue('identification_type', 'alien_id');
       form.setValue('identification_number', client.alien_id);
+      idPopulated = true;
+    }
+
+    // Fallback: extract national ID from other_identifications if top-level is empty
+    if (!idPopulated && client.other_identifications?.length) {
+      for (const ident of client.other_identifications) {
+        const typeLabel = ident.identification_type.toLowerCase();
+        if ((typeLabel.includes('national') || typeLabel === 'national id') && ident.identification_number) {
+          form.setValue('identification_type', 'national_id');
+          form.setValue('identification_number', ident.identification_number);
+          idPopulated = true;
+          break;
+        }
+        if (typeLabel.includes('passport') && ident.identification_number) {
+          form.setValue('identification_type', 'passport');
+          form.setValue('identification_number', ident.identification_number);
+          idPopulated = true;
+          break;
+        }
+        if (typeLabel.includes('alien') && ident.identification_number) {
+          form.setValue('identification_type', 'alien_id');
+          form.setValue('identification_number', ident.identification_number);
+          idPopulated = true;
+          break;
+        }
+      }
     }
 
     // Extract sha_number and household_number from other_identifications
