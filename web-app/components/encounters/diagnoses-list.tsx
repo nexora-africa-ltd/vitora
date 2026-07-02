@@ -32,18 +32,28 @@ export function DiagnosesList({ diagnoses }: DiagnosesListProps) {
           <CardContent className="p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   {diagnosis.icd10_code_display && (
                     <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">
                       {diagnosis.icd10_code_display}
                     </code>
+                  )}
+                  {diagnosis.icd11_code && (
+                    <Badge variant="outline" className="text-xs font-mono">
+                      ICD-11: {diagnosis.icd11_code}
+                    </Badge>
+                  )}
+                  {diagnosis.snomed_code && (
+                    <Badge variant="outline" className="text-xs font-mono bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                      SCT: {diagnosis.snomed_code}
+                    </Badge>
                   )}
                   <Badge className={diagnosisTypeColors[diagnosis.diagnosis_type]}>
                     {diagnosis.diagnosis_type}
                   </Badge>
                 </div>
                 <p className="font-medium">
-                  {diagnosis.icd10_description || diagnosis.free_text_diagnosis}
+                  {diagnosis.icd11_display?.split(' - ').slice(1).join(' - ') || diagnosis.icd10_description || diagnosis.snomed_display || diagnosis.free_text_diagnosis}
                 </p>
                 {diagnosis.notes && (
                   <p className="text-sm text-muted-foreground mt-2">
