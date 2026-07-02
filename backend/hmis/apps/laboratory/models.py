@@ -126,7 +126,7 @@ class TestCatalog(FacilityScopedModel):
     sha_claimable = models.BooleanField(default=True, help_text="Covered by Kenya SHA")
 
     # Result configuration
-    result_type = models.CharField(max_length=20, choices=RESULT_TYPES)
+    result_type = models.CharField(max_length=20, choices=RESULT_TYPES, default="NUMERIC")
     result_unit = models.CharField(max_length=30, blank=True, help_text='e.g., "mg/dL", "mmol/L"')
     normal_range_male = models.CharField(max_length=50, blank=True, help_text='e.g., "4.5-5.5"')
     normal_range_female = models.CharField(max_length=50, blank=True)

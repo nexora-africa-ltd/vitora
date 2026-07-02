@@ -338,6 +338,8 @@ class Command(BaseCommand):
                     "loinc_code": "20447-9",
                     "category": "VIROLOGY",
                     "specimen_type": "BLOOD",
+                    "result_type": "NUMERIC",
+                    "result_unit": "copies/mL",
                     "organization": org,
                 },
             )
@@ -415,6 +417,8 @@ class Command(BaseCommand):
                     "loinc_code": "4548-4",
                     "category": "CHEMISTRY",
                     "specimen_type": "BLOOD",
+                    "result_type": "NUMERIC",
+                    "result_unit": "%",
                     "organization": org,
                 },
             )

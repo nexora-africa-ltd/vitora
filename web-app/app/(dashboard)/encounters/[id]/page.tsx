@@ -63,6 +63,7 @@ import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useFacility } from '@/lib/context/facility-context';
 import { useCommentCount } from '@/lib/hooks/use-comment-count';
 import { CommentThread } from '@/components/comments';
+import { PatientDetailSheet } from '@/components/patients/patient-detail-sheet';
 import Link from 'next/link';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 import type { AIQuickAction } from '@/lib/types/ai';
@@ -251,6 +252,7 @@ export default function EncounterDetailPage() {
   const [autoTriggerCarePlan, setAutoTriggerCarePlan] = useState(false);
   const [autoTriggerInvestigations, setAutoTriggerInvestigations] = useState(false);
   const [autoTriggerEGFR, setAutoTriggerEGFR] = useState(false);
+  const [patientSheetOpen, setPatientSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!activePanelAction || !clearPanelAction) return;
@@ -427,14 +429,15 @@ export default function EncounterDetailPage() {
       {/* Patient Summary Bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
         <div className="flex flex-col gap-1 min-w-0">
-          <Link
-            href={`/patients/${encounter.patient}`}
-            className="flex items-center gap-1.5 hover:text-primary text-sm font-medium"
+          <button
+            type="button"
+            onClick={() => setPatientSheetOpen(true)}
+            className="flex items-center gap-1.5 hover:text-primary text-sm font-medium text-left cursor-pointer transition-colors"
           >
             <User className="h-4 w-4 shrink-0" />
             <span className="truncate">{encounter.patient_name}</span>
             <span className="text-muted-foreground">({encounter.patient_mrn})</span>
-          </Link>
+          </button>
           <p className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
             <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             {formatDate(encounter.encounter_date)}
@@ -444,6 +447,12 @@ export default function EncounterDetailPage() {
           {status?.label}
         </Badge>
       </div>
+
+      <PatientDetailSheet
+        patientId={encounter.patient}
+        open={patientSheetOpen}
+        onOpenChange={setPatientSheetOpen}
+      />
 
       <ClinicalSnapshotBanner encounterId={encounterId} />
 
@@ -467,7 +476,7 @@ export default function EncounterDetailPage() {
       <VitalsTrendChart
         data={vitalsHistory ?? []}
         isLoading={isLoadingVitals}
-        defaultRange="24h"
+        defaultRange="all"
         compact
       />
 

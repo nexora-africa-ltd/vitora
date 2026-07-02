@@ -10,27 +10,165 @@
     label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; color: #333; }
     input[type="text"] { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; box-sizing: border-box; text-align: center; letter-spacing: 0.25em; }
     input[type="text"]:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79,70,229,0.2); }
-    button { width: 100%; padding: 0.75rem; background: #4f46e5; color: #fff; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; margin-top: 1rem; }
-    button:hover { background: #4338ca; }
+    button, .btn { width: 100%; padding: 0.75rem; background: #4f46e5; color: #fff; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; margin-top: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; text-decoration: none; }
+    button:hover, .btn:hover { background: #4338ca; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-passkey { background: #059669; }
+    .btn-passkey:hover { background: #047857; }
     .error { color: #dc2626; font-size: 0.875rem; margin-top: 0.5rem; }
+    .success { color: #059669; font-size: 0.875rem; margin-top: 0.5rem; }
+    .divider { display: flex; align-items: center; margin: 1.5rem 0; gap: 0.75rem; }
+    .divider::before, .divider::after { content: ''; flex: 1; border-top: 1px solid #e5e7eb; }
+    .divider span { color: #9ca3af; font-size: 0.75rem; text-transform: uppercase; }
     .logout { display: block; text-align: center; margin-top: 1rem; color: #666; font-size: 0.875rem; text-decoration: none; }
     .logout:hover { color: #333; }
+    .passkey-icon { width: 20px; height: 20px; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>🔐 MFA Verification</h1>
-    <p>Enter the 6-digit code from your authenticator app to access the admin panel.</p>
+    <p>Verify your identity to access the admin panel.</p>
+
+    {% if has_passkeys %}
+    <!-- Passkey section (primary when available) -->
+    <div id="passkey-section">
+      <button type="button" class="btn btn-passkey" id="passkey-btn" onclick="authenticateWithPasskey()">
+        <svg class="passkey-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z"/><path d="M15 11c-4 0-7 2-7 5v1h10"/><path d="M7.5 15.5 5 21l2.5-1L9 22l2-5"/></svg>
+        Use Passkey
+      </button>
+      <p id="passkey-error" class="error hidden"></p>
+      <p id="passkey-status" class="success hidden"></p>
+    </div>
+
+    <div class="divider"><span>or use authenticator app</span></div>
+    {% endif %}
+
+    <!-- TOTP section -->
     <form method="post">
       {% csrf_token %}
       <label for="totp_code">Verification Code</label>
-      <input type="text" id="totp_code" name="totp_code" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code" autofocus required>
+      <input type="text" id="totp_code" name="totp_code" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code" {% if not has_passkeys %}autofocus{% endif %} required>
       {% if error %}
         <p class="error">{{ error }}</p>
       {% endif %}
-      <button type="submit">Verify</button>
+      <button type="submit">Verify Code</button>
     </form>
     <a href="/admin/logout/" class="logout">Log out</a>
   </div>
+
+  {% if has_passkeys %}
+  <script>
+    function getCookie(name) {
+      const cookies = document.cookie.split(';');
+      for (let c of cookies) {
+        c = c.trim();
+        if (c.startsWith(name + '=')) return decodeURIComponent(c.substring(name.length + 1));
+      }
+      return null;
+    }
+
+    async function authenticateWithPasskey() {
+      const btn = document.getElementById('passkey-btn');
+      const errorEl = document.getElementById('passkey-error');
+      const statusEl = document.getElementById('passkey-status');
+      errorEl.classList.add('hidden');
+      statusEl.classList.add('hidden');
+      btn.disabled = true;
+      btn.textContent = 'Waiting for passkey…';
+
+      try {
+        // 1. Get authentication options from server
+        const beginResp = await fetch('/admin/mfa-verify/webauthn/begin/', {
+          credentials: 'same-origin',
+        });
+        if (!beginResp.ok) {
+          const data = await beginResp.json();
+          throw new Error(data.error || 'Failed to start passkey authentication.');
+        }
+        const options = await beginResp.json();
+
+        // 2. Decode challenge and allowCredentials
+        options.challenge = base64urlToBuffer(options.challenge);
+        if (options.allowCredentials) {
+          options.allowCredentials = options.allowCredentials.map(cred => ({
+            ...cred,
+            id: base64urlToBuffer(cred.id),
+          }));
+        }
+
+        // 3. Call browser WebAuthn API
+        const assertion = await navigator.credentials.get({ publicKey: options });
+
+        // 4. Encode response for server
+        const credential = {
+          id: assertion.id,
+          rawId: bufferToBase64url(assertion.rawId),
+          type: assertion.type,
+          response: {
+            authenticatorData: bufferToBase64url(assertion.response.authenticatorData),
+            clientDataJSON: bufferToBase64url(assertion.response.clientDataJSON),
+            signature: bufferToBase64url(assertion.response.signature),
+            userHandle: assertion.response.userHandle ? bufferToBase64url(assertion.response.userHandle) : null,
+          },
+          authenticatorAttachment: assertion.authenticatorAttachment || null,
+        };
+
+        // 5. Send to server for verification
+        const completeResp = await fetch('/admin/mfa-verify/webauthn/complete/', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+          },
+          body: JSON.stringify(credential),
+        });
+
+        const result = await completeResp.json();
+        if (completeResp.ok && result.success) {
+          statusEl.textContent = 'Verified! Redirecting…';
+          statusEl.classList.remove('hidden');
+          window.location.href = result.redirect || '/admin/';
+        } else {
+          throw new Error(result.error || 'Verification failed.');
+        }
+      } catch (err) {
+        if (err.name === 'NotAllowedError') {
+          errorEl.textContent = 'Passkey authentication was cancelled.';
+        } else {
+          errorEl.textContent = err.message || 'Passkey authentication failed.';
+        }
+        errorEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="passkey-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z"/><path d="M15 11c-4 0-7 2-7 5v1h10"/><path d="M7.5 15.5 5 21l2.5-1L9 22l2-5"/></svg> Use Passkey';
+      }
+    }
+
+    // Base64url helpers
+    function base64urlToBuffer(base64url) {
+      const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+      const pad = base64.length % 4 === 0 ? '' : '='.repeat(4 - (base64.length % 4));
+      const binary = atob(base64 + pad);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes.buffer;
+    }
+
+    function bufferToBase64url(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    // Auto-trigger passkey on page load if available
+    if (window.PublicKeyCredential) {
+      // Small delay to let the page render first
+      setTimeout(() => authenticateWithPasskey(), 300);
+    }
+  </script>
+  {% endif %}
 </body>
 </html>

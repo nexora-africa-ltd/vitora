@@ -108,7 +108,9 @@ def health_check(request):
 
 @never_cache
 def admin_mfa_verify(request):
-    """Admin MFA verification page — TOTP check before accessing /admin/."""
+    """Admin MFA verification page — TOTP or WebAuthn/Passkey check before accessing /admin/.
+    If no MFA device is configured, shows a setup wizard instead.
+    """
     from django.shortcuts import redirect
     from django.template.response import TemplateResponse
     from django.utils import timezone as tz
@@ -116,10 +118,20 @@ def admin_mfa_verify(request):
     if not request.user.is_authenticated:
         return redirect("/admin/login/")
 
+    # Check what MFA methods the user has
+    from hmis.apps.core.mfa.models import UserTOTPDevice, UserWebAuthnCredential
+
+    has_passkeys = UserWebAuthnCredential.objects.filter(user=request.user).exists()
+    has_totp = UserTOTPDevice.objects.filter(user=request.user, confirmed=True).exists()
+    has_any_mfa = has_passkeys or has_totp
+
+    # If user has no MFA configured, show setup wizard
+    if not has_any_mfa:
+        return _admin_mfa_setup(request)
+
     error = None
     if request.method == "POST":
         totp_code = request.POST.get("totp_code", "").strip()
-        from hmis.apps.core.mfa.models import UserTOTPDevice
 
         device = (
             UserTOTPDevice.objects.filter(user=request.user, confirmed=True)
@@ -134,7 +146,210 @@ def admin_mfa_verify(request):
             return redirect("/admin/")
         error = "Invalid verification code. Please try again."
 
-    return TemplateResponse(request, "admin/mfa_verify.html", {"error": error})
+    return TemplateResponse(
+        request, "admin/mfa_verify.html", {"error": error, "has_passkeys": has_passkeys}
+    )
+
+
+def _admin_mfa_setup(request):
+    """Admin MFA setup wizard — shown when user has no MFA device configured."""
+    import base64
+    import io
+
+    import qrcode
+    from django.template.response import TemplateResponse
+    from django.utils import timezone as tz
+
+    from hmis.apps.core.mfa.models import BackupCode, UserTOTPDevice
+
+    error = None
+    step = "qr"  # 'qr' → show QR code, 'confirm' after successful verification
+
+    # Get or create an unconfirmed device for setup
+    device = UserTOTPDevice.objects.filter(user=request.user, confirmed=False).first()
+    if not device:
+        device = UserTOTPDevice.objects.create(user=request.user, name="Authenticator App")
+
+    if request.method == "POST":
+        totp_code = request.POST.get("totp_code", "").strip()
+        if device.verify_token(totp_code):
+            # Confirm the device
+            device.confirmed = True
+            device.confirmed_at = tz.now()
+            device.save(update_fields=["confirmed", "confirmed_at"])
+
+            # Generate backup codes
+            backup_codes = BackupCode.generate_codes(user=request.user)
+
+            # Mark admin MFA as verified for this session
+            request.session["admin_mfa_verified"] = True
+            request.session["admin_last_activity_at"] = tz.now().timestamp()
+
+            # Show success with backup codes
+            return TemplateResponse(
+                request,
+                "admin/mfa_setup.html",
+                {"step": "complete", "backup_codes": backup_codes},
+            )
+        else:
+            error = "Invalid code. Please check your authenticator app and try again."
+
+    # Generate QR code
+    provisioning_uri = device.get_provisioning_uri()
+    qr = qrcode.QRCode(version=1, box_size=10, border=4)
+    qr.add_data(provisioning_uri)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    qr_base64 = base64.b64encode(buffer.getvalue()).decode()
+
+    return TemplateResponse(
+        request,
+        "admin/mfa_setup.html",
+        {
+            "step": step,
+            "qr_code": qr_base64,
+            "secret_key": device.secret_key,
+            "error": error,
+        },
+    )
+
+
+@never_cache
+def admin_webauthn_begin(request):
+    """Generate WebAuthn authentication options for admin MFA verification."""
+    import json
+
+    from django.http import JsonResponse
+
+    from hmis.apps.core.mfa.models import UserWebAuthnCredential
+
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Not authenticated"}, status=401)
+
+    credentials = UserWebAuthnCredential.objects.filter(user=request.user)
+    if not credentials.exists():
+        return JsonResponse({"error": "No passkeys registered."}, status=400)
+
+    from webauthn import generate_authentication_options
+    from webauthn.helpers import bytes_to_base64url, options_to_json
+    from webauthn.helpers.structs import (
+        AuthenticatorTransport,
+        PublicKeyCredentialDescriptor,
+        UserVerificationRequirement,
+    )
+
+    allow_credentials = [
+        PublicKeyCredentialDescriptor(
+            id=bytes(cred.credential_id),
+            transports=[AuthenticatorTransport(t) for t in (cred.transports or [])],
+        )
+        for cred in credentials
+    ]
+
+    from django.conf import settings as django_settings
+
+    rp_id = getattr(django_settings, "WEBAUTHN_RP_ID", "localhost")
+
+    options = generate_authentication_options(
+        rp_id=rp_id,
+        allow_credentials=allow_credentials,
+        user_verification=UserVerificationRequirement.PREFERRED,
+    )
+
+    # Store challenge in session
+    request.session["admin_webauthn_challenge"] = bytes_to_base64url(options.challenge)
+
+    return JsonResponse(json.loads(options_to_json(options)))
+
+
+@never_cache
+@csrf_exempt
+def admin_webauthn_complete(request):
+    """Verify WebAuthn authentication response for admin MFA verification."""
+    import json
+
+    from django.http import JsonResponse
+    from django.utils import timezone as tz
+
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Not authenticated"}, status=401)
+
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+
+    challenge_b64 = request.session.get("admin_webauthn_challenge")
+    if not challenge_b64:
+        return JsonResponse({"error": "No authentication session. Please try again."}, status=400)
+
+    # Clear challenge immediately to prevent replay
+    del request.session["admin_webauthn_challenge"]
+
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Invalid request body."}, status=400)
+
+    from django.conf import settings as django_settings
+    from webauthn import verify_authentication_response
+    from webauthn.helpers import base64url_to_bytes, parse_authentication_credential_json
+
+    from hmis.apps.core.mfa.models import UserWebAuthnCredential
+
+    rp_id = getattr(django_settings, "WEBAUTHN_RP_ID", "localhost")
+    origin = getattr(django_settings, "WEBAUTHN_ORIGIN", "http://localhost:3009")
+    if "," in origin:
+        origin = [o.strip() for o in origin.split(",")]
+
+    try:
+        credential = parse_authentication_credential_json(json.dumps(body))
+
+        stored_cred = UserWebAuthnCredential.objects.filter(
+            user=request.user,
+            credential_id=credential.raw_id,
+        ).first()
+
+        if not stored_cred:
+            return JsonResponse({"error": "Credential not recognized."}, status=400)
+
+        expected_challenge = base64url_to_bytes(challenge_b64)
+
+        verification = verify_authentication_response(
+            credential=credential,
+            expected_challenge=expected_challenge,
+            expected_rp_id=rp_id,
+            expected_origin=origin,
+            credential_public_key=bytes(stored_cred.public_key),
+            credential_current_sign_count=stored_cred.sign_count,
+        )
+
+        # Update sign count
+        stored_cred.sign_count = verification.new_sign_count
+        stored_cred.last_used_at = tz.now()
+        stored_cred.save(update_fields=["sign_count", "last_used_at"])
+
+        # Mark admin MFA as verified
+        request.session["admin_mfa_verified"] = True
+        request.session["admin_last_activity_at"] = tz.now().timestamp()
+
+        return JsonResponse({"success": True, "redirect": "/admin/"})
+
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception("Admin WebAuthn verification failed")
+        return JsonResponse({"error": "Passkey verification failed."}, status=400)
+
+
+@never_cache
+def admin_logout(request):
+    """Admin logout that accepts both GET and POST (Django 5+ only accepts POST)."""
+    from django.contrib.auth import logout as auth_logout
+    from django.shortcuts import redirect
+
+    auth_logout(request)
+    return redirect("/admin/login/")
 
 
 # Create a router for API endpoints
@@ -186,6 +401,13 @@ urlpatterns = [
     path("", health_check, name="health_check"),
     path("api/health/", health_check, name="api_health_check"),
     path("admin/mfa-verify/", admin_mfa_verify, name="admin-mfa-verify"),
+    path("admin/mfa-verify/webauthn/begin/", admin_webauthn_begin, name="admin-webauthn-begin"),
+    path(
+        "admin/mfa-verify/webauthn/complete/",
+        admin_webauthn_complete,
+        name="admin-webauthn-complete",
+    ),
+    path("admin/logout/", admin_logout, name="admin-logout"),
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
     path("api/me/permissions/", me_permissions, name="me-permissions"),

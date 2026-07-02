@@ -21,7 +21,7 @@
  */
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { usePatientContext } from '@/lib/context/patient-context';
 import { useOptionalEncounterContext } from '@/lib/context/encounter-context';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +35,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
+import { PatientDetailSheet } from '@/components/patients/patient-detail-sheet';
 import { calculateAge, formatDate } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 
@@ -66,6 +67,7 @@ const GENDER_LABELS: Record<string, string> = {
 export function PatientShellHeader({ className, compact = false }: PatientShellHeaderProps) {
   const { patient, isLoading, error, isVerified, hasSHA, isSensitive } = usePatientContext();
   const encounterContext = useOptionalEncounterContext();
+  const [patientSheetOpen, setPatientSheetOpen] = useState(false);
 
   // Loading state
   if (isLoading) {
@@ -137,12 +139,16 @@ export function PatientShellHeader({ className, compact = false }: PatientShellH
           {/* Name and MRN */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
-              <h2 className={cn(
-                'font-semibold truncate',
-                compact ? 'text-sm' : 'text-sm md:text-base'
-              )}>
+              <button
+                type="button"
+                onClick={() => setPatientSheetOpen(true)}
+                className={cn(
+                  'font-semibold truncate hover:text-primary cursor-pointer transition-colors text-left',
+                  compact ? 'text-sm' : 'text-sm md:text-base'
+                )}
+              >
                 {patient.first_name} {patient.last_name}
-              </h2>
+              </button>
 
               {/* Verification Badges - Only show when patient data is confirmed loaded */}
               {isVerified && patient?.cr_number && (
@@ -232,6 +238,12 @@ export function PatientShellHeader({ className, compact = false }: PatientShellH
           </div>
         )}
       </div>
+
+      <PatientDetailSheet
+        patientId={patient.id}
+        open={patientSheetOpen}
+        onOpenChange={setPatientSheetOpen}
+      />
     </header>
   );
 }
