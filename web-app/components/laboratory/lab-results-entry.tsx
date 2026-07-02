@@ -380,7 +380,10 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
                 <div className="flex items-center justify-between">
                   <div>
                     <p className={cn('font-medium text-sm text-foreground', isEffectivePanel(item) && 'font-semibold')}>{item.test_name}</p>
-                    <p className="text-xs text-muted-foreground">{item.test_code}{isEffectivePanel(item) ? ' (Panel)' : ''}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.test_code}{isEffectivePanel(item) ? ' (Panel)' : ''}
+                      {item.loinc_code && <span className="ml-1 font-mono opacity-70">• {item.loinc_code}</span>}
+                    </p>
                   </div>
                   {!isEffectivePanel(item) && (
                     item.has_result ? (
@@ -446,7 +449,12 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
             ) : null}
           </div>
           {activeItem ? (
-            <p className="text-sm text-muted-foreground">{activeItem.test_code}</p>
+            <p className="text-sm text-muted-foreground">
+              {activeItem.test_code}
+              {activeItem.loinc_code && (
+                <span className="ml-2 font-mono text-xs opacity-70">LOINC: {activeItem.loinc_code}</span>
+              )}
+            </p>
           ) : null}
         </CardHeader>
         <CardContent>
@@ -581,6 +589,11 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
                       )}
                       {catalogTest.requires_fasting && (
                         <Badge variant="outline" className="text-xs">Fasting Required</Badge>
+                      )}
+                      {catalogTest.loinc_code && (
+                        <span className="text-muted-foreground">
+                          LOINC: <span className="font-mono font-medium text-foreground">{catalogTest.loinc_code}</span>
+                        </span>
                       )}
                       {catalogTest.special_instructions && (
                         <span className="text-muted-foreground text-xs">

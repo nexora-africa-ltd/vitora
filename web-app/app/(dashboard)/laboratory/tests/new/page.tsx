@@ -27,6 +27,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { laboratoryApi } from '@/lib/api/laboratory';
+import { LOINCSelect } from '@/components/terminology';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useToast } from '@/lib/hooks';
@@ -221,9 +222,19 @@ export default function NewTestCatalogPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>LOINC Code</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., 26515-7" {...field} />
-                    </FormControl>
+                    <div className="space-y-2">
+                      <LOINCSelect
+                        value={field.value ? { code: field.value, name: '' } : null}
+                        onSelect={(loinc) => field.onChange(loinc.code)}
+                        placeholder="Search LOINC codes..."
+                      />
+                      <Input
+                        placeholder="Or enter manually, e.g., 26515-7"
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        className="font-mono text-sm"
+                      />
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

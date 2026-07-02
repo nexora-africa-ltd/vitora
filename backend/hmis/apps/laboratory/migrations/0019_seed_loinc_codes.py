@@ -21,40 +21,34 @@ from django.db import migrations
 # ─────────────────────────────────────────────────────────────────────
 LOINC_MAP: dict[str, str] = {
     # Hematology
-    "CBC": "58410-2",        # CBC panel - Blood by Automated count
-    "HB": "718-7",           # Hemoglobin [Mass/volume] in Blood
-    "ESR": "4537-7",         # Erythrocyte sedimentation rate
-    "BG": "882-1",           # ABO+Rh group [Type] in Blood
+    "CBC": "57021-8",        # Complete Blood Cell Count (CBC) with Differential, Blood
+    "HB": "718-7",           # Hemoglobin, Blood
     "FBC": "57021-8",        # CBC W Auto Differential panel - Blood
     "WBC": "6690-2",         # Leukocytes [#/volume] in Blood
-    "PLT": "777-3",          # Platelets [#/volume] in Blood
+    "PLT": "777-3",          # Platelet Count
+    "BG": "882-1",           # ABO/Rh, Blood
     # Clinical Chemistry
-    "RBS": "2345-7",         # Glucose [Mass/volume] in Serum or Plasma
-    "FBS": "1558-6",         # Fasting glucose [Mass/volume] in Serum or Plasma
-    "CREA": "2160-0",        # Creatinine [Mass/volume] in Serum or Plasma
-    "CR": "2160-0",          # Creatinine (duplicate code) — same LOINC
-    "BUN": "3094-0",         # Urea nitrogen [Mass/volume] in Serum or Plasma
-    "K": "2823-3",           # Potassium [Moles/volume] in Serum or Plasma
-    "NA": "2951-2",          # Sodium [Moles/volume] in Serum or Plasma
-    "HBA1C": "4548-4",       # Hemoglobin A1c/Hemoglobin.total in Blood
-    "TROPI": "10839-9",      # Troponin I.cardiac [Mass/volume] in Serum or Plasma
-    "CRP": "1988-5",         # C reactive protein [Mass/volume] in Serum or Plasma
-    "EGFR": "48642-3",       # Glomerular filtration rate/1.73 sq M
+    "RBS": "2345-7",         # Glucose, Random, Serum
+    "CREA": "2160-0",        # Creatinine, Serum
+    "CR": "2160-0",          # Creatinine (duplicate code)
+    "BUN": "3094-0",         # Blood Urea Nitrogen (BUN), Serum
+    "K": "2823-3",           # Potassium, Serum
+    "NA": "2951-2",          # Sodium, Serum
+    "HBA1C": "4548-4",       # Hemoglobin A1c, Blood
+    "CRP": "1988-5",         # C-Reactive Protein (CRP), Serum
+    "EGFR": "45066-8",       # Creatinine with Estimated Glomerular Filtration Rate (eGFR), Serum
+    "TROPI": "89579-7",      # Troponin I, High Sensitivity, Plasma
     # Serology
-    "HIV": "75622-1",        # HIV 1 and 2 tests - Meaningful Use set
-    "HBSAG": "5196-1",       # Hepatitis B virus surface Ag [Presence] in Serum
-    "WIDAL": "5408-0",       # Salmonella sp Ab [Titer] in Serum (closest available)
+    "HBSAG": "5196-1",       # Chronic Hepatitis B Screen, Serum
+    "HIV": "96557-4",        # HIV-1/HIV-2 RNA Detection, Plasma
     # Parasitology
-    "MPS": "51587-4",        # Plasmodium sp [Presence] in Blood by Light microscopy
-    "MRDT": "70569-9",       # Plasmodium sp Ag [Presence] in Blood by Rapid immunoassay
-    "STOOL": "10701-1",      # Ova and parasites identified in Stool
+    "MPS": "47260-5",        # Malaria, Molecular Detection, PCR, Varies
+    "MRDT": "51714-4",       # Rapid Malaria/Babesia Smear, Varies
     # Urinalysis / Microbiology
-    "UA": "24357-6",         # Urinalysis macro (dipstick) panel
-    "UC": "630-4",           # Bacteria identified in Urine by Culture
-    "BCULTURE": "600-7",     # Bacteria identified in Blood by Culture
+    "UC": "630-4",           # Bacterial Culture, Aerobic, with Antimicrobial Susceptibilities, Urine
     # Immunology / Molecular
-    "CD4": "24467-3",        # CD4 cells [#/volume] in Blood
-    "VL": "25836-8",         # HIV 1 RNA [#/volume] (viral load)
+    "CD4": "24467-3",        # CD4 T Cells
+    "VL": "89543-3",         # HIV RNA level copies/mL
 }
 
 
@@ -100,7 +94,7 @@ NEW_TESTS = [
         "code": "ALT",
         "name": "Alanine Aminotransferase",
         "short_name": "ALT",
-        "loinc_code": "1742-6",
+        "loinc_code": "1743-4",
         "category": "CHEMISTRY",
         "specimen_type": "SERUM",
         "result_type": "NUMERIC",
@@ -116,7 +110,7 @@ NEW_TESTS = [
         "code": "AST",
         "name": "Aspartate Aminotransferase",
         "short_name": "AST",
-        "loinc_code": "1920-8",
+        "loinc_code": "30239-8",
         "category": "CHEMISTRY",
         "specimen_type": "SERUM",
         "result_type": "NUMERIC",
@@ -132,7 +126,7 @@ NEW_TESTS = [
         "code": "LDH",
         "name": "Lactate Dehydrogenase",
         "short_name": "LDH",
-        "loinc_code": "2532-0",
+        "loinc_code": "14804-9",
         "category": "CHEMISTRY",
         "specimen_type": "SERUM",
         "result_type": "NUMERIC",
@@ -148,7 +142,7 @@ NEW_TESTS = [
         "code": "ABG",
         "name": "Arterial Blood Gas",
         "short_name": "ABG",
-        "loinc_code": "24336-0",
+        "loinc_code": "",
         "category": "CHEMISTRY",
         "specimen_type": "BLOOD",
         "result_type": "PANEL",
@@ -178,7 +172,7 @@ NEW_TESTS = [
         "code": "APTT",
         "name": "Activated Partial Thromboplastin Time",
         "short_name": "aPTT",
-        "loinc_code": "3173-2",
+        "loinc_code": "14979-9",
         "category": "HEMATOLOGY",
         "specimen_type": "BLOOD",
         "result_type": "NUMERIC",
@@ -194,7 +188,7 @@ NEW_TESTS = [
         "code": "DDIMER",
         "name": "D-Dimer",
         "short_name": "D-Dimer",
-        "loinc_code": "48066-5",
+        "loinc_code": "48067-3",
         "category": "HEMATOLOGY",
         "specimen_type": "BLOOD",
         "result_type": "NUMERIC",
@@ -210,7 +204,7 @@ NEW_TESTS = [
         "code": "PROCAL",
         "name": "Procalcitonin",
         "short_name": "PCT",
-        "loinc_code": "75241-0",
+        "loinc_code": "33959-8",
         "category": "CHEMISTRY",
         "specimen_type": "BLOOD",
         "result_type": "NUMERIC",

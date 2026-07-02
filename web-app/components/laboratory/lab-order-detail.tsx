@@ -476,6 +476,11 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
                       <Badge variant="outline" className="text-xs">
                         {item.test_code}
                       </Badge>
+                      {item.loinc_code && (
+                        <Badge variant="secondary" className="text-xs font-mono">
+                          LOINC: {item.loinc_code}
+                        </Badge>
+                      )}
                     </div>
                     {item.special_instructions && (
                       <p className="text-sm text-muted-foreground mt-1">

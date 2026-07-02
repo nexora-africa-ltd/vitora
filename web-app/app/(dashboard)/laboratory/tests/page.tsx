@@ -24,7 +24,7 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
-import { Plus, FlaskConical, DollarSign, Clock, Download } from 'lucide-react';
+import { Plus, FlaskConical, DollarSign, Clock, Download, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const EMPTY_TESTS: TestCatalogListItem[] = [];
@@ -115,11 +115,17 @@ export default function LaboratoryTestsPage() {
           helpContent="Browse, search, and manage the laboratory test catalog. Configure reference ranges, pricing, result types, and availability."
           actions={
             canManage ? (
-              <Button onClick={() => router.push('/laboratory/tests/new')}>
-                <Plus className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Add Test</span>
-                <span className="sm:hidden">Add</span>
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => router.push('/laboratory/tests/loinc-mapping')}>
+                  <Link2 className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">LOINC Mapping</span>
+                </Button>
+                <Button onClick={() => router.push('/laboratory/tests/new')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Add Test</span>
+                  <span className="sm:hidden">Add</span>
+                </Button>
+              </div>
             ) : undefined
           }
         />
@@ -253,6 +259,17 @@ export default function LaboratoryTestsPage() {
                     ),
                   },
                   { key: 'code', header: 'Code', sortable: true },
+                  {
+                    key: 'loinc_code',
+                    header: 'LOINC',
+                    sortable: true,
+                    hideOnMobile: true,
+                    cell: (t) => (
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {t.loinc_code || '-'}
+                      </span>
+                    ),
+                  },
                   { key: 'category', header: 'Category', sortable: true, hideOnMobile: true },
                   { key: 'specimen_type', header: 'Specimen', sortable: true, hideOnMobile: true },
                   {

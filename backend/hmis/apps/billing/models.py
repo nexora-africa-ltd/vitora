@@ -3111,6 +3111,20 @@ class SHAClaimItem(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # LOINC codes for interoperability (FHIR Observation / SHA lab claims)
+    loinc_code = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="Order-level LOINC code (from TestCatalog) for the test ordered",
+    )
+    result_loinc_code = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="Result-level LOINC code (from LabResult) for the specific observation",
+    )
+
     class Meta:
         verbose_name = "SHA Claim Item"
         verbose_name_plural = "SHA Claim Items"
