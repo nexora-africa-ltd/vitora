@@ -504,7 +504,7 @@ export function AIChatPanel({
       {/* Proactive Insights (when encounter-aware) */}
       {isEncounterAware && (
         <>
-          <div className="px-3 py-2">
+          <div className="px-3 py-2 max-h-[200px] overflow-y-auto">
             <ProactiveInsightsPanel
               insights={proactiveInsights}
               onDismiss={dismissProactiveInsight}

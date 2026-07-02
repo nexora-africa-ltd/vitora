@@ -423,6 +423,15 @@ class TibaBotClient:
         """
         flat_payload = dict(payload.get("patient_features", {}))
 
+        # Normalize gender: TibaBot expects "Male"/"Female"/"Other", not "M"/"F"/"O"
+        gender_map = {"M": "Male", "F": "Female", "O": "Other"}
+        if flat_payload.get("gender") in gender_map:
+            flat_payload["gender"] = gender_map[flat_payload["gender"]]
+
+        # Ensure glucose field exists (required by TibaBot, default to 0 if not available)
+        if "glucose" not in flat_payload:
+            flat_payload["glucose"] = 0.0
+
         # Include context fields at root if TibaBot accepts them
         if "user_context" in payload:
             flat_payload["user_context"] = payload["user_context"]
