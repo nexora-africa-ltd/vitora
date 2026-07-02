@@ -161,7 +161,7 @@ export default function InteroperabilityPage() {
         count: number;
         external_available: boolean;
         results: LOINCResult[];
-      }>('/api/laboratory/loinc-search/', { params: { q: query } });
+      }>('/api/lab/loinc-search/', { params: { q: query } });
       setLoincResults(response.data.results);
       setLoincExternalAvailable(response.data.external_available);
     } catch {

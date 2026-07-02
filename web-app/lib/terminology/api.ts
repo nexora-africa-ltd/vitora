@@ -119,15 +119,35 @@ export async function searchICHI(
 /**
  * Search LOINC laboratory test codes
  *
+ * Uses the laboratory LOINC search endpoint which queries local cache first,
+ * then falls back to external LOINC FHIR server when credentials are configured.
+ *
  * @example
  * const results = await searchLOINC({ search: 'hemoglobin' });
  */
 export async function searchLOINC(
   params?: TerminologySearchParams
 ): Promise<PaginatedLOINCCodes> {
-  const url = buildUrl('/api/billing/terminology/loinc/', params);
-  const response = await apiClient.get(url);
-  return response.data;
+  const query = params?.search || '';
+  const limit = params?.page_size || 20;
+  const response = await apiClient.get('/api/lab/loinc-search/', {
+    params: { q: query, limit },
+  });
+  // Map the response from { code, component, display } to LOINCCode shape
+  const data = response.data as {
+    count: number;
+    external_available: boolean;
+    results: Array<{ code: string; component: string; display: string }>;
+  };
+  return {
+    count: data.count,
+    source: data.external_available ? 'loinc-external' : 'local',
+    results: data.results.map((r) => ({
+      loinc_num: r.code,
+      component: r.component || r.display,
+      long_common_name: r.display || r.component,
+    })),
+  };
 }
 
 // ============================================================================
