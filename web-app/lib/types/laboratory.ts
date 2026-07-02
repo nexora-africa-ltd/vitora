@@ -131,6 +131,8 @@ export interface Specimen {
   id: number;
   barcode: string;
   specimen_type: SpecimenType;
+  /** SNOMED CT code for specimen type (e.g., 119297000 for Blood) */
+  snomed_code?: string;
   container_type?: string | null;
   lab_order: number;
   order_items: number[];

@@ -1281,6 +1281,7 @@ class SpecimenSerializer(serializers.ModelSerializer):
             "barcode",
             "specimen_type",
             "specimen_type_display",
+            "snomed_code",
             "container_type",
             "lab_order",
             "order_number",

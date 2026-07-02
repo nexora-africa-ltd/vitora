@@ -10,7 +10,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useDebounce } from '@/lib/hooks/use-debounce';
-import { Search, Globe, Upload, Activity, FileText, Network, FlaskConical } from 'lucide-react';
+import { Search, Globe, Upload, Activity, FileText, Network, FlaskConical, BookOpen, Stethoscope } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -86,6 +86,24 @@ export default function InteroperabilityPage() {
   // Benchmarks
   const [benchmarks, setBenchmarks] = useState<BenchmarkResult[]>([]);
   const [benchmarksLoading, setBenchmarksLoading] = useState(false);
+
+  // SNOMED CT Search
+  const [snomedQuery, setSnomedQuery] = useState('');
+  const [snomedResults, setSnomedResults] = useState<Array<{ concept_id: string; display: string; semantic_tag?: string }>>([]);
+  const [snomedLoading, setSnomedLoading] = useState(false);
+  const debouncedSnomedQuery = useDebounce(snomedQuery, 400);
+
+  // ICD-10 Search
+  const [icd10Query, setIcd10Query] = useState('');
+  const [icd10Results, setIcd10Results] = useState<Array<{ id: number; code: string; description: string }>>([]);
+  const [icd10Loading, setIcd10Loading] = useState(false);
+  const debouncedIcd10Query = useDebounce(icd10Query, 400);
+
+  // ICD-11 Search
+  const [icd11Query, setIcd11Query] = useState('');
+  const [icd11Results, setIcd11Results] = useState<Array<{ code: string; title: string; definition?: string }>>([]);
+  const [icd11Loading, setIcd11Loading] = useState(false);
+  const debouncedIcd11Query = useDebounce(icd11Query, 400);
 
   const searchFHIRPatients = useCallback(async (query: string) => {
     if (!query.trim()) {
@@ -216,6 +234,60 @@ export default function InteroperabilityPage() {
     }
   };
 
+  // SNOMED CT search
+  const searchSNOMED = useCallback(async (query: string) => {
+    if (!query.trim() || query.length < 2) { setSnomedResults([]); return; }
+    setSnomedLoading(true);
+    try {
+      const response = await apiClient.get<{ results: Array<{ concept_id: string; display: string; semantic_tag?: string }> }>(
+        '/api/encounters/snomed/search/', { params: { q: query, limit: 20 } }
+      );
+      setSnomedResults(response.data.results || []);
+    } catch { setSnomedResults([]); }
+    finally { setSnomedLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (debouncedSnomedQuery.length >= 2) searchSNOMED(debouncedSnomedQuery);
+    else setSnomedResults([]);
+  }, [debouncedSnomedQuery, searchSNOMED]);
+
+  // ICD-10 search
+  const searchICD10 = useCallback(async (query: string) => {
+    if (!query.trim() || query.length < 2) { setIcd10Results([]); return; }
+    setIcd10Loading(true);
+    try {
+      const response = await apiClient.get<{ results: Array<{ id: number; code: string; description: string }> }>(
+        '/api/icd10-codes/', { params: { search: query, page_size: 20 } }
+      );
+      setIcd10Results(response.data.results || []);
+    } catch { setIcd10Results([]); }
+    finally { setIcd10Loading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (debouncedIcd10Query.length >= 2) searchICD10(debouncedIcd10Query);
+    else setIcd10Results([]);
+  }, [debouncedIcd10Query, searchICD10]);
+
+  // ICD-11 search
+  const searchICD11 = useCallback(async (query: string) => {
+    if (!query.trim() || query.length < 2) { setIcd11Results([]); return; }
+    setIcd11Loading(true);
+    try {
+      const response = await apiClient.get<{ results: Array<{ code: string; title: string; definition?: string }> }>(
+        '/api/sha/terminology/search/', { params: { type: 'icd11', search: query, page_size: 20 } }
+      );
+      setIcd11Results(response.data.results || []);
+    } catch { setIcd11Results([]); }
+    finally { setIcd11Loading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (debouncedIcd11Query.length >= 2) searchICD11(debouncedIcd11Query);
+    else setIcd11Results([]);
+  }, [debouncedIcd11Query, searchICD11]);
+
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
       <div className="space-y-6">
@@ -299,6 +371,16 @@ export default function InteroperabilityPage() {
               <FlaskConical className="h-4 w-4" />
               <span className="sm:hidden">LOINC</span>
               <span className="hidden sm:inline">LOINC Lookup</span>
+            </TabsTrigger>
+            <TabsTrigger value="snomed" className="gap-2">
+              <Stethoscope className="h-4 w-4" />
+              <span className="sm:hidden">SNOMED</span>
+              <span className="hidden sm:inline">SNOMED CT</span>
+            </TabsTrigger>
+            <TabsTrigger value="icd" className="gap-2">
+              <BookOpen className="h-4 w-4" />
+              <span className="sm:hidden">ICD</span>
+              <span className="hidden sm:inline">ICD-10/11</span>
             </TabsTrigger>
             <TabsTrigger value="sdmx" className="gap-2">
               <Upload className="h-4 w-4" />
@@ -501,6 +583,130 @@ export default function InteroperabilityPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* SNOMED CT Search Tab */}
+          <TabsContent value="snomed" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">SNOMED CT Concept Search</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search SNOMED CT concepts (e.g., diabetes, fracture, hypertension)..."
+                    value={snomedQuery}
+                    onChange={(e) => setSnomedQuery(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+
+                {snomedLoading && <p className="text-sm text-muted-foreground">Searching...</p>}
+
+                {snomedResults.length > 0 && (
+                  <div className="border rounded-lg divide-y max-h-[400px] overflow-y-auto">
+                    {snomedResults.map((r) => (
+                      <div key={r.concept_id} className="p-3 hover:bg-muted/50">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="font-mono text-xs shrink-0">{r.concept_id}</Badge>
+                          <span className="text-sm font-medium">{r.display}</span>
+                        </div>
+                        {r.semantic_tag && (
+                          <span className="text-xs text-muted-foreground ml-[88px]">{r.semantic_tag}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!snomedLoading && snomedResults.length === 0 && debouncedSnomedQuery.length >= 2 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">No concepts found</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ICD-10/11 Search Tab */}
+          <TabsContent value="icd" className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* ICD-10 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">ICD-10 Search</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search ICD-10 codes (e.g., malaria, E11)..."
+                      value={icd10Query}
+                      onChange={(e) => setIcd10Query(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+
+                  {icd10Loading && <p className="text-sm text-muted-foreground">Searching...</p>}
+
+                  {icd10Results.length > 0 && (
+                    <div className="border rounded-lg divide-y max-h-[350px] overflow-y-auto">
+                      {icd10Results.map((r) => (
+                        <div key={r.id} className="p-2.5 hover:bg-muted/50">
+                          <div className="flex items-center gap-2">
+                            <Badge className="font-mono text-xs shrink-0 bg-blue-100 text-blue-800">{r.code}</Badge>
+                            <span className="text-sm">{r.description}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!icd10Loading && icd10Results.length === 0 && debouncedIcd10Query.length >= 2 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">No codes found</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* ICD-11 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">ICD-11 Search</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search ICD-11 codes (e.g., diabetes, BA00)..."
+                      value={icd11Query}
+                      onChange={(e) => setIcd11Query(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+
+                  {icd11Loading && <p className="text-sm text-muted-foreground">Searching...</p>}
+
+                  {icd11Results.length > 0 && (
+                    <div className="border rounded-lg divide-y max-h-[350px] overflow-y-auto">
+                      {icd11Results.map((r, i) => (
+                        <div key={`${r.code}-${i}`} className="p-2.5 hover:bg-muted/50">
+                          <div className="flex items-center gap-2">
+                            <Badge className="font-mono text-xs shrink-0 bg-purple-100 text-purple-800">{r.code}</Badge>
+                            <span className="text-sm">{r.title}</span>
+                          </div>
+                          {r.definition && (
+                            <p className="text-xs text-muted-foreground mt-1 ml-[72px] line-clamp-2">{r.definition}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!icd11Loading && icd11Results.length === 0 && debouncedIcd11Query.length >= 2 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">No codes found</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* SDMX Import Tab */}

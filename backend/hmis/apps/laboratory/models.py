@@ -240,6 +240,22 @@ class TestCatalog(FacilityScopedModel):
 
 SPECIMEN_TYPES = TestCatalog.SPECIMEN_TYPES
 
+# SNOMED CT codes for specimen types (SCT Body Substance hierarchy)
+# Reference: https://browser.ihtsdotools.org
+SPECIMEN_SNOMED_MAP: dict[str, str] = {
+    "BLOOD": "119297000",  # Blood specimen
+    "SERUM": "119364003",  # Serum specimen
+    "PLASMA": "119361006",  # Plasma specimen
+    "URINE": "122575003",  # Urine specimen
+    "STOOL": "119339001",  # Stool specimen
+    "CSF": "258450006",  # Cerebrospinal fluid specimen
+    "SPUTUM": "119334006",  # Sputum specimen
+    "SWAB": "257261003",  # Swab
+    "TISSUE": "119376003",  # Tissue specimen
+    "ASPIRATE": "119295008",  # Aspirate specimen
+    "OTHER": "123038009",  # Specimen (generic)
+}
+
 
 class LOINCCode(models.Model):
     """LOINC code reference for lab test interoperability."""
@@ -808,6 +824,14 @@ class Specimen(models.Model):
     storage_location = models.CharField(max_length=100, blank=True)
     storage_temperature = models.CharField(max_length=20, blank=True)
 
+    # SNOMED CT coding for FHIR interoperability
+    snomed_code = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="SNOMED CT code for specimen type (auto-populated from specimen_type)",
+    )
+
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -822,6 +846,12 @@ class Specimen(models.Model):
 
     def __str__(self):
         return f"{self.barcode} - {self.lab_order.order_number}"
+
+    def save(self, *args, **kwargs):
+        # Auto-populate SNOMED code from specimen_type
+        if not self.snomed_code and self.specimen_type:
+            self.snomed_code = SPECIMEN_SNOMED_MAP.get(self.specimen_type, "")
+        super().save(*args, **kwargs)
 
 
 class LabResult(models.Model):
