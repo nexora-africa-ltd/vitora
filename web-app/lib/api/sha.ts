@@ -587,14 +587,30 @@ async function searchICHI(params?: TerminologySearchParams): Promise<PaginatedIC
 
 /**
  * Search LOINC lab test codes
+ * Uses the laboratory LOINC search endpoint (local + external FHIR fallback)
  */
 async function searchLOINC(params?: TerminologySearchParams): Promise<PaginatedLOINCCodes> {
-  const queryString = params ? buildQueryString(params) : '';
-  const url = queryString
-    ? `/api/billing/terminology/loinc/?${queryString}`
-    : '/api/billing/terminology/loinc/';
-  const response = await apiClient.get(url);
-  return parseResponse(PaginatedLOINCCodesSchema, response.data, { context: 'shaApi.searchLOINC' });
+  const query = params?.search || '';
+  const limit = params?.page_size || 20;
+  const response = await apiClient.get('/api/lab/loinc-search/', {
+    params: { q: query, limit },
+  });
+  // Map the response from { code, component, display } to LOINCCode shape
+  const data = response.data as {
+    count: number;
+    external_available: boolean;
+    results: Array<{ code: string; component: string; display: string }>;
+  };
+  const mapped: PaginatedLOINCCodes = {
+    count: data.count,
+    source: data.external_available ? 'loinc-external' : 'local',
+    results: data.results.map((r) => ({
+      loinc_num: r.code,
+      component: r.component || r.display,
+      long_common_name: r.display || r.component,
+    })),
+  };
+  return parseResponse(PaginatedLOINCCodesSchema, mapped, { context: 'shaApi.searchLOINC' });
 }
 
 // ============================================================================
