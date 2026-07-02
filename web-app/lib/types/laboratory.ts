@@ -539,6 +539,8 @@ export interface LabOrderItem {
   test: number;
   test_code: string;
   test_name: string;
+  /** LOINC code for the ordered test (from TestCatalog) */
+  loinc_code?: string;
   is_panel: boolean;
   result_type: ResultType;
   result_unit?: string;
@@ -588,6 +590,8 @@ export interface LabResult {
   is_external_result: boolean;
   external_result_attachment?: string | null;
   external_result_date?: string | null;
+  /** LOINC code for this specific result observation (for FHIR/SHA interoperability) */
+  result_loinc_code?: string;
   created_at: string;
   updated_at: string;
   validation_summary?: ValidationSummary | null;

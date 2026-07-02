@@ -878,6 +878,7 @@ class Command(BaseCommand):
                                     "reference_ranges": param["reference_ranges"],
                                     "critical_low": param["critical_low"],
                                     "critical_high": param["critical_high"],
+                                    "result_loinc_code": param.get("result_loinc_code", ""),
                                     "is_active": True,
                                 },
                             )
