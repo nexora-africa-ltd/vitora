@@ -963,6 +963,14 @@ class LabResult(models.Model):
     )
     amended_at = models.DateTimeField(null=True, blank=True, help_text="When result was amended")
 
+    # Result LOINC code — copied from LabResultTemplate at result entry time
+    result_loinc_code = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="LOINC code for this specific result observation (for FHIR/SHA interoperability)",
+    )
+
     # External results
     is_external_result = models.BooleanField(default=False)
     external_result_attachment = models.FileField(
@@ -1544,6 +1552,15 @@ class LabResultTemplate(models.Model):
     parameter_code = models.CharField(max_length=20, help_text="LOINC component code")
     parameter_name = models.CharField(max_length=100)
     unit = models.CharField(max_length=50)
+
+    # Result LOINC code — the specific LOINC for this observation/result parameter
+    # e.g. a CBC order (58410-2) has result parameters: Hemoglobin (718-7), WBC (6690-2), etc.
+    result_loinc_code = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="LOINC code for this specific result observation (e.g. 718-7 for Hemoglobin)",
+    )
 
     # Reference ranges by demographic
     # Stored as JSON for flexibility

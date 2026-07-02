@@ -224,6 +224,7 @@ class LabResultNestedSerializer(serializers.ModelSerializer):
             "is_external_result",
             "external_result_attachment",
             "external_result_date",
+            "result_loinc_code",
             "created_at",
             "updated_at",
             "validation_summary",
@@ -261,6 +262,7 @@ class LabOrderItemSerializer(serializers.ModelSerializer):
     test = serializers.PrimaryKeyRelatedField(read_only=True)
     test_name = serializers.CharField(source="test.name", read_only=True)
     test_code = serializers.CharField(source="test.code", read_only=True)
+    loinc_code = serializers.CharField(source="test.loinc_code", read_only=True, default="")
     is_panel = serializers.BooleanField(source="test.is_panel", read_only=True)
     result_type = serializers.CharField(source="test.result_type", read_only=True)
     result_unit = serializers.CharField(source="test.result_unit", read_only=True, default="")
@@ -287,6 +289,7 @@ class LabOrderItemSerializer(serializers.ModelSerializer):
             "test",
             "test_name",
             "test_code",
+            "loinc_code",
             "is_panel",
             "result_type",
             "result_unit",
@@ -510,6 +513,7 @@ class LabResultSerializer(serializers.ModelSerializer):
             "is_external_result",
             "external_result_attachment",
             "external_result_date",
+            "result_loinc_code",
             "created_at",
             "updated_at",
             "validation_summary",
@@ -599,11 +603,27 @@ class LabResultCreateSerializer(serializers.ModelSerializer):
             "equipment",
             "is_external_result",
             "external_result_date",
+            "result_loinc_code",
         ]
 
     def create(self, validated_data):
         entered_by = self.context["request"].user
         result = LabResult.objects.create(entered_by=entered_by, **validated_data)
+
+        # Auto-populate result_loinc_code from LabResultTemplate if not provided
+        if not result.result_loinc_code:
+            from hmis.apps.laboratory.models import LabResultTemplate
+
+            test_code = result.order_item.test.code
+            loinc_code = result.order_item.test.loinc_code
+            # Try matching by test code or LOINC code
+            template = LabResultTemplate.objects.filter(
+                test_code__in=[c for c in [test_code, loinc_code] if c],
+                result_loinc_code__gt="",
+            ).first()
+            if template:
+                result.result_loinc_code = template.result_loinc_code
+                result.save(update_fields=["result_loinc_code"])
 
         if result.specimen is None:
             queue_entry = getattr(result.order_item.lab_order, "queue_entry", None)
