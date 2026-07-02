@@ -322,6 +322,11 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
   // Encounter context
   const setEncounterAwareContext = useCallback(
     (patient: AIPatientContext | null, encounter: AIEncounterContext | null) => {
+      // Don't clear context if user navigated to the full AI page from an encounter
+      // (returnToUrl is set when "Open full view" is clicked from widget)
+      if (patient === null && encounter === null && returnToUrlRef.current) {
+        return;
+      }
       setPatientContext(patient);
       setEncounterContext(encounter);
       // Clear enrichment when the base context changes (e.g., navigation to
