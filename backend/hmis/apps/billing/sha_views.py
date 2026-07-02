@@ -2163,6 +2163,9 @@ class FacilitySearchView(APIView):
         Search/validate facility in Master Facility List.
 
         GET /api/billing/facility/validate/?facility_code=XXXXX
+
+        Uses ILM middleware (/api/v1/facilities/search) as primary,
+        falls back to legacy /v1/facility-search if ILM fails.
         """
         facility_code = request.query_params.get("facility_code")
         fid = request.query_params.get("fid")
@@ -2173,6 +2176,91 @@ class FacilitySearchView(APIView):
             )
 
         try:
+            # Try ILM middleware first (/api/v1/facilities/search)
+            from hmis.apps.billing.services.ilm_registries_service import IlmRegistriesService
+
+            ilm_result = None
+            try:
+                identifier = facility_code or fid or ""
+                identifier_type = "fr-code" if facility_code else "fid"
+                ilm_svc = IlmRegistriesService()
+                ilm_result = ilm_svc.search_facility(
+                    identifier=identifier,
+                    identifier_type=identifier_type,
+                    facility=getattr(request, "facility", None),
+                    user=request.user,
+                )
+            except Exception:
+                logger.debug("ILM facility search unavailable, falling back to legacy")
+
+            # Parse ILM response (returns a list of facilities)
+            if ilm_result and ilm_result.status_code == 200 and ilm_result.payload:
+                ilm_data = ilm_result.payload
+                # ILM returns a list; take the first match
+                fac_data = (
+                    ilm_data[0]
+                    if isinstance(ilm_data, list) and len(ilm_data) > 0
+                    else (
+                        ilm_data
+                        if isinstance(ilm_data, dict)
+                        and (ilm_data.get("officialName") or ilm_data.get("name"))
+                        else None
+                    )
+                )
+                if fac_data:
+                    # ILM uses camelCase: kephLevel, officialName, frCode, fidCode, etc.
+                    dha_level = (
+                        fac_data.get("kephLevel")
+                        or fac_data.get("keph_level")
+                        or fac_data.get("level")
+                        or ""
+                    )
+
+                    # Auto-correct facility level from DHA
+                    level_corrected = False
+                    local_facility = getattr(request, "facility", None)
+                    if dha_level and local_facility and hasattr(local_facility, "level"):
+                        from hmis.apps.core.models import Facility as FacilityModel
+
+                        # Normalize "LEVEL 2" or "Level 2" or "2" to just "2"
+                        normalized_level = str(dha_level).upper().replace("LEVEL", "").strip()[:1]
+                        if normalized_level.isdigit() and normalized_level != local_facility.level:
+                            old_level = local_facility.level
+                            FacilityModel.objects.filter(pk=local_facility.pk).update(
+                                level=normalized_level
+                            )
+                            level_corrected = True
+                            logger.info(
+                                "Auto-corrected facility %s level from %s to %s (per DHA ILM)",
+                                getattr(local_facility, "mfl_code", ""),
+                                old_level,
+                                normalized_level,
+                            )
+
+                    return Response(
+                        {
+                            "found": True,
+                            "facility": {
+                                "facility_code": fac_data.get("frCode")
+                                or fac_data.get("facility_code")
+                                or identifier,
+                                "name": fac_data.get("officialName") or fac_data.get("name", ""),
+                                "level": dha_level,
+                                "county": fac_data.get("county", ""),
+                                "sub_county": fac_data.get("sub_county", ""),
+                                "ward": fac_data.get("ward", ""),
+                                "ownership": fac_data.get("ownership", ""),
+                                "facility_type": fac_data.get("facility_type", ""),
+                                "operational_status": fac_data.get("operational_status", ""),
+                                "license_expiry": fac_data.get("license_expiry"),
+                                "is_sha_contracted": fac_data.get("approved")
+                                or fac_data.get("sha_contracted", False),
+                            },
+                            "level_corrected": level_corrected,
+                        }
+                    )
+
+            # Fallback to legacy DHASearchService
             service = DHASearchService()
             facility = service.search_facility(
                 facility_code=facility_code,
@@ -2180,6 +2268,33 @@ class FacilitySearchView(APIView):
             )
 
             if facility and facility.found:
+                # Auto-correct local facility level from DHA if mismatched
+                level_corrected = False
+                dha_level = facility.level
+                if dha_level and request.user.is_authenticated:
+                    from hmis.apps.core.models import Facility as FacilityModel
+
+                    local_facility = getattr(request, "facility", None)
+                    if local_facility and hasattr(local_facility, "level"):
+                        # Normalize DHA level to our format (e.g., "Level 4" -> "4", "4" -> "4")
+                        normalized_level = str(dha_level).replace("Level ", "").strip()[:1]
+                        if (
+                            normalized_level
+                            and normalized_level.isdigit()
+                            and normalized_level != local_facility.level
+                        ):
+                            old_level = local_facility.level
+                            FacilityModel.objects.filter(pk=local_facility.pk).update(
+                                level=normalized_level
+                            )
+                            level_corrected = True
+                            logger.info(
+                                "Auto-corrected facility %s level from %s to %s (per DHA registry)",
+                                local_facility.mfl_code,
+                                old_level,
+                                normalized_level,
+                            )
+
                 return Response(
                     {
                         "found": True,
@@ -2198,6 +2313,7 @@ class FacilitySearchView(APIView):
                             ),
                             "is_sha_contracted": facility.approved,
                         },
+                        "level_corrected": level_corrected,
                     }
                 )
             else:
