@@ -200,3 +200,5 @@ jobs:
             FACILITY_EMAIL=${{ vars.FACILITY_EMAIL || '' }}
             FACILITY_LICENSE=${{ vars.FACILITY_LICENSE || '' }}
             LICENSE_SIGNING_KEY=secretref:license-signing-key
+            LOINC_USERNAME=secretref:loinc-username
+            LOINC_PASSWORD=secretref:loinc-password

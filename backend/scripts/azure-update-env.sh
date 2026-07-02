@@ -75,6 +75,8 @@ declare -A SECRETS=(
   ["dhis2-username"]="${DHIS2_USERNAME:-}"
   ["dhis2-password"]="${DHIS2_PASSWORD:-}"
   ["license-signing-key"]="${LICENSE_SIGNING_KEY:-}"
+  ["loinc-username"]="${LOINC_USERNAME:-}"
+  ["loinc-password"]="${LOINC_PASSWORD:-}"
 )
 
 SECRET_ARGS=()
@@ -240,6 +242,8 @@ az containerapp update \
     "FACILITY_EMAIL=${FACILITY_EMAIL:-}" \
     "FACILITY_LICENSE=${FACILITY_LICENSE:-}" \
     "LICENSE_SIGNING_KEY=secretref:license-signing-key" \
+    "LOINC_USERNAME=secretref:loinc-username" \
+    "LOINC_PASSWORD=secretref:loinc-password" \
   --output none
 
 echo ""
