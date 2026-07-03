@@ -84,11 +84,17 @@ class ClinicSerializer(serializers.ModelSerializer):
         return obj.is_scheduled_today()
 
     def validate_code(self, value):
-        """Validate clinic code uniqueness."""
+        """Validate clinic code uniqueness per facility."""
         instance = getattr(self, "instance", None)
         if instance and instance.code == value:
             return value
-        if Clinic.objects.filter(code=value).exists():
+        # Scope uniqueness check to the current facility
+        request = self.context.get("request")
+        facility = getattr(request, "facility", None) if request else None
+        qs = Clinic.objects.filter(code=value)
+        if facility:
+            qs = qs.filter(facility=facility)
+        if qs.exists():
             raise serializers.ValidationError("A clinic with this code already exists.")
         return value
 

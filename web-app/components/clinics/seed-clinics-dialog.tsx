@@ -134,8 +134,18 @@ export function SeedClinicsDialog() {
         });
         created++;
         setSeededCount(created);
-      } catch {
-        failed++;
+      } catch (err: unknown) {
+        // If it's a duplicate code error (clinic already exists), count as success
+        const resp = err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: Record<string, unknown> } }).response
+          : null;
+        const isDuplicate = resp?.data?.code || resp?.data?.detail?.toString().includes('already');
+        if (isDuplicate) {
+          created++;
+          setSeededCount(created);
+        } else {
+          failed++;
+        }
       }
     }
 
