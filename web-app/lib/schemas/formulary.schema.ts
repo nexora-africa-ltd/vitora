@@ -45,9 +45,9 @@ export const PpbProductSchema = z.object({
   category: z.string(),
   keml_reference: z
     .object({
-      code: z.string(),
-      name: z.string(),
-      level_of_use: z.number(),
+      code: z.string().optional().default(''),
+      name: z.string().optional().default(''),
+      level_of_use: z.number().optional(),
     })
     .nullable()
     .optional(),

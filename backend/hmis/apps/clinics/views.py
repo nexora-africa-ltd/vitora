@@ -294,10 +294,10 @@ class ClinicViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             # Get or create today's session
             session, _ = clinic.get_or_create_session(timezone.localdate())
 
-            # Get waiting visits ordered by priority and queue number
+            # Get today's visits (all active statuses for dashboard display)
             visits = ClinicVisit.objects.filter(
                 session=session,
-                status__in=["REGISTERED", "WAITING", "CALLED"],
+                status__in=["REGISTERED", "WAITING", "CALLED", "IN_CONSULTATION", "COMPLETED"],
             ).order_by("priority", "queue_number")
 
             serializer = ClinicVisitSerializer(visits, many=True)

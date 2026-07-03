@@ -84,6 +84,7 @@ export function useClinicalTemplate(id: number) {
     queryKey: ['clinical-templates', id],
     queryFn: () => clinicalTemplatesApi.get(id),
     forceApi: !id,
+    enabled: !!id,
   });
 }
 
