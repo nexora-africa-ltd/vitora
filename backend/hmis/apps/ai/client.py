@@ -641,6 +641,74 @@ class TibaBotClient:
             data=payload,
         )
 
+    # TibaBot-recognized standardized test names.
+    # Maps common facility test names (snake_case from display) to TibaBot's expected identifiers.
+    TIBABOT_TEST_NAME_MAP: dict[str, str] = {
+        # Glucose
+        "random_blood_sugar": "random_glucose",
+        "fasting_blood_sugar": "fasting_glucose",
+        "rbs": "random_glucose",
+        "fbs": "fasting_glucose",
+        "glucose_random": "random_glucose",
+        "glucose_fasting": "fasting_glucose",
+        "blood_glucose_random": "random_glucose",
+        "blood_glucose_fasting": "fasting_glucose",
+        # Hematology
+        "hemoglobin": "hemoglobin",
+        "hb": "hemoglobin",
+        "haemoglobin": "hemoglobin",
+        "white_blood_cell_count": "wbc",
+        "wbc_count": "wbc",
+        "leukocytes": "wbc",
+        "platelet_count": "platelets",
+        "plt": "platelets",
+        # Renal
+        "serum_creatinine": "creatinine",
+        "creatinine": "creatinine",
+        "blood_urea_nitrogen": "bun",
+        "urea": "bun",
+        # Liver
+        "alanine_aminotransferase": "alt",
+        "alt_gpt": "alt",
+        "aspartate_aminotransferase": "ast",
+        "ast_got": "ast",
+        "total_bilirubin": "bilirubin_total",
+        "alkaline_phosphatase": "alp",
+        # Electrolytes
+        "potassium": "potassium",
+        "sodium": "sodium",
+        "chloride": "chloride",
+        "bicarbonate": "bicarbonate",
+        "calcium": "calcium",
+        # Lipids
+        "total_cholesterol": "cholesterol_total",
+        "hdl_cholesterol": "hdl",
+        "ldl_cholesterol": "ldl",
+        "triglycerides": "triglycerides",
+        # Inflammatory
+        "c_reactive_protein": "crp",
+        "crp": "crp",
+        "erythrocyte_sedimentation_rate": "esr",
+        "esr": "esr",
+        # Diabetes
+        "hba1c": "hba1c",
+        "glycated_hemoglobin": "hba1c",
+        "hemoglobin_a1c": "hba1c",
+        # Coagulation
+        "prothrombin_time_inr": "inr",
+        "pt_inr": "inr",
+        "d_dimer": "d_dimer",
+        # Cardiac
+        "troponin_i": "troponin",
+        "troponin_t": "troponin",
+        "lactate_dehydrogenase": "ldh",
+        # Other
+        "procalcitonin": "procalcitonin",
+        "lactate": "lactate",
+        "lactate_lactic_acid": "lactate",
+        "arterial_blood_gas": "abg",
+    }
+
     def interpret_lab(self, payload: dict[str, Any]) -> dict[str, Any]:
         """
         Interpret lab results in clinical context.
@@ -659,6 +727,13 @@ class TibaBotClient:
         """
         # Build an explicit abnormal results summary so the AI cannot miss flagged values
         lab_results = payload.get("lab_results", [])
+
+        # Normalize test names to TibaBot-recognized identifiers
+        for lr in lab_results:
+            raw_name = lr.get("test_name", "")
+            normalized = self.TIBABOT_TEST_NAME_MAP.get(raw_name, raw_name)
+            lr["test_name"] = normalized
+
         abnormal_lines = []
         for lr in lab_results:
             flag = lr.get("flag", "")

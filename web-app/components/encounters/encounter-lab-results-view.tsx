@@ -85,7 +85,9 @@ function orderItemsToAILabResults(items: LabOrderItem[]): AILabResultItem[] {
   return items
     .filter((i) => i.has_result && i.result && !i.is_panel)
     .map((i) => ({
-      test_name: i.test_name,
+      // Use snake_case normalized name for TibaBot compatibility
+      // e.g., "Random Blood Sugar" → "random_blood_sugar", "Fasting Blood Sugar" → "fasting_blood_sugar"
+      test_name: i.test_name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''),
       value: i.result!.numeric_value ?? (parseFloat(String(i.result!.text_value)) || 0),
       unit: i.result!.result_unit || '',
       reference_low: i.result!.reference_low ?? undefined,
