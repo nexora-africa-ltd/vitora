@@ -65,6 +65,8 @@ interface CheckinSuccessModalProps {
   onDismiss?: () => void;
   /** Optional custom label for the dismiss button (defaults to "Stay Here") */
   dismissLabel?: string;
+  /** Skip SHA consent step (e.g., when consent was already obtained at check-in) */
+  skipSHAConsent?: boolean;
 }
 
 /**
@@ -77,6 +79,7 @@ export function CheckinSuccessModal({
   checkInResult,
   onDismiss,
   dismissLabel,
+  skipSHAConsent = false,
 }: CheckinSuccessModalProps) {
   const router = useRouter();
   const [shaConsentPending, setShaConsentPending] = useState(true);
@@ -84,9 +87,9 @@ export function CheckinSuccessModal({
   // Reset consent state when modal opens with a new check-in result
   useEffect(() => {
     if (open && checkInResult) {
-      setShaConsentPending(true);
+      setShaConsentPending(!skipSHAConsent);
     }
-  }, [open, checkInResult]);
+  }, [open, checkInResult, skipSHAConsent]);
 
   if (!checkInResult) return null;
 
@@ -166,8 +169,8 @@ export function CheckinSuccessModal({
               <p className="text-sm text-warning text-center">{data.warning}</p>
             )}
 
-            {/* SHA Consent Step — shown for SHA-eligible patients */}
-            {data.patientId && (
+            {/* SHA Consent Step — shown for SHA-eligible patients (skip if already obtained) */}
+            {data.patientId && !skipSHAConsent && (
               <SHAConsentStep
                 patientId={data.patientId}
                 encounterId={data.encounterId}

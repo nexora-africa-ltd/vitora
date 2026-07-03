@@ -410,10 +410,14 @@ def process_checkin(
     # Duplicate check — BEFORE creating encounter/checkin to avoid orphaned records
     # =========================================================================
     if destination_type in ("TRIAGE", "EMERGENCY"):
-        existing_entry = WaitingQueue.objects.filter(
+        triage_dup_qs = WaitingQueue.objects.filter(
             patient=patient,
             status__in=["WAITING_TRIAGE", "IN_TRIAGE"],
-        ).first()
+        )
+        # Scope to current facility (allow same patient at different facilities)
+        if facility:
+            triage_dup_qs = triage_dup_qs.filter(encounter__facility=facility)
+        existing_entry = triage_dup_qs.first()
         if existing_entry:
             dest_label = "Emergency triage" if destination_type == "EMERGENCY" else "Triage"
             raise ValueError(
