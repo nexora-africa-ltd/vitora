@@ -35,6 +35,9 @@ python manage.py import_kenya_locations data/kenya_locations.csv
 echo "==> [3/12] Importing ICD-10 codes..."
 python manage.py import_icd10 data/icd10_kenya_common.csv
 
+echo "==> [3b/12] Importing ICD-11 codes..."
+python manage.py import_icd11 data/ICD-11.csv
+
 echo "==> [4/12] Importing LOINC codes..."
 python manage.py import_loinc
 

@@ -953,6 +953,15 @@ class ClinicVisit(FacilityScopedModel, TimeStampedModel):
 
         self.save()
 
+        # Sync encounter consultation_status to CALLED
+        if self.encounter_id:
+            from hmis.apps.encounters.models import Encounter
+
+            Encounter.objects.filter(
+                pk=self.encounter_id,
+                consultation_status="WAITING",
+            ).update(consultation_status="CALLED")
+
     def ensure_consultation_encounter(self, existing_encounter=None):
         """Ensure this clinic visit is linked to a consultation-ready encounter."""
         from hmis.apps.clinics.services.template_routing import resolve_default_clinical_template
@@ -1072,6 +1081,15 @@ class ClinicVisit(FacilityScopedModel, TimeStampedModel):
         self.completed_at = timezone.now()
         self.save()
         self.session.update_statistics()
+
+        # Sync encounter consultation_status to COMPLETED
+        if self.encounter_id:
+            from hmis.apps.encounters.models import Encounter
+
+            Encounter.objects.filter(
+                pk=self.encounter_id,
+                consultation_status__in=["WAITING", "CALLED", "IN_PROGRESS"],
+            ).update(consultation_status="COMPLETED")
 
     def refer_to_clinic(self, target_clinic, reason, user):
         """Refer patient to another clinic."""
