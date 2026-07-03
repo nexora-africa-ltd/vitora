@@ -768,6 +768,7 @@ export interface Claim {
 
   // Facility
   facility_code?: string | null;
+  sha_facility_fr_code?: string | null;
   facility_level?: string | null;
 
   // Versioning

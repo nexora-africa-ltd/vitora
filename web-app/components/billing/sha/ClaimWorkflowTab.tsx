@@ -63,14 +63,14 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-3 sm:space-y-4 md:space-y-6">
       {/* Step 0 — Pre-visit checks (already proactive) */}
       <PreVisitChecksPanel
         patientPk={typeof claim.patient === 'number' ? claim.patient : undefined}
         shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
         shaMemberNumber={claim.sha_member_number ?? undefined}
         defaultDhaPatientId={claim.dha_external_id ?? undefined}
-        defaultFacilityCode={claim.facility_code ?? undefined}
+        defaultFacilityCode={claim.sha_facility_fr_code ?? claim.facility_code ?? undefined}
       />
 
       {/* Missing documents (advisory) */}

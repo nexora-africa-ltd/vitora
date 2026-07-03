@@ -63,6 +63,7 @@ import { shaApi } from '@/lib/api/sha';
 import { useAuth } from '@/lib/auth/context';
 import { useSHAMember } from '@/lib/hooks/use-sha';
 import { usePatient } from '@/lib/hooks/use-patients';
+import { useFacility } from '@/lib/context/facility-context';
 import {
   parseEligibility,
   parseFacility,
@@ -82,7 +83,7 @@ interface PreVisitChecksPanelProps {
   defaultIdentificationType?: string;
   /** DHA Client-Registry CR number for benefits/utilisation queries. */
   defaultDhaPatientId?: string;
-  /** Facility code (MFL/FID) to pre-fill the facility registry lookup. */
+  /** Facility code (FR/SHA code) to pre-fill the facility registry lookup. */
   defaultFacilityCode?: string;
   /** Local SHA member number (`SHA-XXXXX-N`) used as a CR fallback. */
   shaMemberNumber?: string;
@@ -154,12 +155,12 @@ function CheckCard({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="rounded-lg border bg-card">
-        <div className="flex items-center gap-2 px-3 py-2.5">
+      <div className="rounded-lg border bg-card overflow-hidden">
+        <div className="flex items-center gap-1.5 px-2 py-2 sm:gap-2 sm:px-3 sm:py-2.5">
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="flex flex-1 items-center gap-2 text-left hover:opacity-80"
+              className="flex flex-1 items-center gap-1.5 sm:gap-2 text-left hover:opacity-80 min-w-0"
             >
               {open ? (
                 <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -168,9 +169,9 @@ function CheckCard({
               )}
               <span className="shrink-0">{icon}</span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{title}</p>
+                <p className="truncate text-xs sm:text-sm font-medium">{title}</p>
                 {subtitle && (
-                  <p className="truncate text-[11px] text-muted-foreground">{subtitle}</p>
+                  <p className="truncate text-[10px] sm:text-[11px] text-muted-foreground">{subtitle}</p>
                 )}
               </div>
             </button>
@@ -193,7 +194,7 @@ function CheckCard({
           )}
         </div>
         <CollapsibleContent>
-          <div className="border-t px-3 py-3">{children}</div>
+          <div className="border-t px-2 py-2 sm:px-3 sm:py-3">{children}</div>
         </CollapsibleContent>
       </div>
     </Collapsible>
@@ -214,6 +215,7 @@ export function PreVisitChecksPanel({
   shaMemberNumber = '',
 }: PreVisitChecksPanelProps) {
   const { user } = useAuth();
+  const { facilityDetail } = useFacility();
 
   // Resolve identification from the SHA member or patient record.
   const { data: member } = useSHAMember(shaMemberId);
@@ -234,7 +236,11 @@ export function PreVisitChecksPanel({
     'National ID';
   const memberNumber = shaMemberNumber || member?.sha_member_number || '';
   const dhaPatientId = defaultDhaPatientId || toCrId(memberNumber);
-  const facilityCode = defaultFacilityCode || user?.facility?.mfl_code || '';
+  // Prefer SHA facility FR code from facility settings over MFL code
+  const facilityCode = defaultFacilityCode
+    || facilityDetail?.sha_facility_code
+    || facilityDetail?.dha_fr_code
+    || '';
   const licenseNumber = user?.license_number || '';
   const regulator = user?.licensing_body || '';
   const practitionerIdNumber = user?.national_id || '';
@@ -269,7 +275,7 @@ export function PreVisitChecksPanel({
     queryFn: () =>
       shaApi.ilmFacilitySearch({
         identifier: facilityCode,
-        identifier_type: 'mfl',
+        identifier_type: 'fr-code',
       }),
     enabled: !!facilityCode,
     staleTime: 30 * 60 * 1000,
@@ -353,12 +359,12 @@ export function PreVisitChecksPanel({
         : 'skipped';
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between gap-2 text-base">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-primary" />
-            Pre-visit DHA HIE Checks
+    <Card className="overflow-hidden">
+      <CardHeader className="px-3 pb-3 sm:px-6">
+        <CardTitle className="flex items-center justify-between gap-2 text-sm sm:text-base">
+          <div className="flex items-center gap-2 min-w-0">
+            <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+            <span className="truncate">Pre-visit DHA HIE Checks</span>
           </div>
           <StatusPill
             status={summaryTone}
@@ -372,7 +378,7 @@ export function PreVisitChecksPanel({
           />
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-2 px-3 sm:px-6">
         {/* 1. Patient coverage */}
         <CheckCard
           icon={
