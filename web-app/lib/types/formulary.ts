@@ -49,7 +49,7 @@ export interface PpbProduct {
   keml_reference?: {
     code: string;
     name: string;
-    level_of_use: number;
+    level_of_use?: number;
   } | null;
 }
 
