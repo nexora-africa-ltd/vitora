@@ -1151,6 +1151,25 @@ class LabResultItemSerializer(serializers.Serializer):
         max_length=50,
         help_text="Unit of measurement (e.g., 'mg/dL', 'mmol/L').",
     )
+    reference_low = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Lower bound of normal reference range.",
+    )
+    reference_high = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Upper bound of normal reference range.",
+    )
+    flag = serializers.CharField(
+        max_length=20,
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Result flag: NORMAL, HIGH, LOW, CRITICAL_HIGH, CRITICAL_LOW, ABNORMAL.",
+    )
     timestamp = serializers.DateTimeField(
         required=False,
         allow_null=True,

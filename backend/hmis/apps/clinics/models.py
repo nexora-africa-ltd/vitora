@@ -953,14 +953,18 @@ class ClinicVisit(FacilityScopedModel, TimeStampedModel):
 
         self.save()
 
-        # Sync encounter consultation_status to CALLED
+        # Sync encounter consultation_status to CALLED + assign clinician
         if self.encounter_id:
             from hmis.apps.encounters.models import Encounter
 
             Encounter.objects.filter(
                 pk=self.encounter_id,
                 consultation_status="WAITING",
-            ).update(consultation_status="CALLED")
+            ).update(
+                consultation_status="CALLED",
+                assigned_clinician=clinician,
+                claimed_at=timezone.now(),
+            )
 
     def ensure_consultation_encounter(self, existing_encounter=None):
         """Ensure this clinic visit is linked to a consultation-ready encounter."""
@@ -1056,6 +1060,12 @@ class ClinicVisit(FacilityScopedModel, TimeStampedModel):
         # This ensures the encounter is removed from the consultation queue
         if encounter.consultation_status not in ("IN_PROGRESS", "COMPLETED"):
             encounter.begin_consultation()
+
+        # Ensure assigned_clinician is set on encounter (for "my active" list)
+        if user and not encounter.assigned_clinician_id:
+            encounter.assigned_clinician = user
+            encounter.claimed_at = timezone.now()
+            encounter.save(update_fields=["assigned_clinician", "claimed_at"])
 
         # Generate billing if consultation fee not already charged
         if not self.consultation_fee_charged:
