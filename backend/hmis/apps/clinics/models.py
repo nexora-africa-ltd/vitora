@@ -100,8 +100,7 @@ class Clinic(FacilityScopedModel, TimeStampedModel):
     )
     code = models.CharField(
         max_length=20,
-        unique=True,
-        help_text="Unique clinic code (e.g., 'CCC-001', 'DENTAL-001')",
+        help_text="Clinic code, unique per facility (e.g., 'CCC-001', 'DENTAL-001')",
     )
     description = models.TextField(
         blank=True,
@@ -257,6 +256,12 @@ class Clinic(FacilityScopedModel, TimeStampedModel):
         ordering = ["name"]
         verbose_name = "Clinic"
         verbose_name_plural = "Clinics"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "code"],
+                name="unique_clinic_code_per_facility",
+            ),
+        ]
         permissions = [
             ("view_ccc_clinic", "Can view CCC (HIV) clinic data"),
             ("view_mental_health_clinic", "Can view Mental Health clinic data"),
