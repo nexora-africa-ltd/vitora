@@ -160,6 +160,61 @@ def publish_encounter_event(sender, instance, created, **kwargs):
     if not created and hasattr(instance, "has_critical_vitals"):
         _notify_critical_vitals(instance)
 
+    # Sync SHA claim diagnosis when encounter is closed
+    if not created and getattr(instance, "status", "") == "CLOSED":
+        _sync_claim_diagnosis_on_close(instance)
+
+
+def _sync_claim_diagnosis_on_close(encounter):
+    """Sync primary diagnosis to SHA claim when encounter is closed."""
+    try:
+        from hmis.apps.billing.models import SHAClaim
+        from hmis.apps.encounters.models import Diagnosis
+
+        claim = SHAClaim.objects.filter(
+            encounter=encounter,
+            status__in=["DRAFT", "PENDING", "SUBMITTED"],
+        ).first()
+        if not claim:
+            return
+
+        # Get the primary confirmed diagnosis, fallback to any primary
+        primary = (
+            Diagnosis.objects.filter(
+                encounter=encounter, diagnosis_type="PRIMARY", is_confirmed=True
+            ).first()
+            or Diagnosis.objects.filter(encounter=encounter, diagnosis_type="PRIMARY").first()
+            or Diagnosis.objects.filter(encounter=encounter, is_confirmed=True).first()
+        )
+        if not primary:
+            return
+
+        code = (
+            primary.icd11_code
+            or (primary.icd10_code_display.split(" - ")[0] if primary.icd10_code_display else "")
+            or primary.snomed_code
+            or ""
+        )
+        description = (
+            primary.icd11_display
+            or primary.icd10_description
+            or primary.snomed_display
+            or primary.free_text_diagnosis
+            or ""
+        )
+
+        if code and code != claim.primary_diagnosis_code:
+            claim.primary_diagnosis_code = code
+            claim.primary_diagnosis_description = description[:255]
+            claim.save(update_fields=["primary_diagnosis_code", "primary_diagnosis_description"])
+            logger.info(
+                "Updated SHA claim %s diagnosis to %s on encounter close",
+                claim.claim_number,
+                code,
+            )
+    except Exception:
+        logger.exception("Failed to sync SHA claim diagnosis on encounter %s close", encounter.id)
+
 
 def _notify_critical_vitals(instance):
     """Notify clinicians if encounter has critical vital signs."""
@@ -213,3 +268,70 @@ def _notify_critical_vitals(instance):
         )
     except Exception:
         logger.exception("Failed to notify critical vitals for encounter %s", instance.id)
+
+
+# =============================================================================
+# SHA Claim Diagnosis Sync
+# =============================================================================
+
+
+@receiver(post_save, sender="encounters.Diagnosis")
+def sync_sha_claim_diagnosis(sender, instance, **kwargs):
+    """
+    Update SHA claim primary diagnosis when a confirmed diagnosis is saved.
+
+    Triggers when:
+    - A diagnosis is created with is_confirmed=True
+    - A diagnosis is updated to is_confirmed=True
+    - A PRIMARY diagnosis type is saved
+
+    Also triggered on encounter close (via encounter status change signal above).
+    """
+    try:
+        diagnosis = instance
+        encounter = diagnosis.encounter
+
+        # Only sync for confirmed PRIMARY diagnoses
+        if not (diagnosis.is_confirmed or diagnosis.diagnosis_type == "PRIMARY"):
+            return
+
+        from hmis.apps.billing.models import SHAClaim
+
+        # Find active claim for this encounter
+        claim = SHAClaim.objects.filter(
+            encounter=encounter,
+            status__in=["DRAFT", "PENDING", "SUBMITTED"],
+        ).first()
+
+        if not claim:
+            return
+
+        # Determine the diagnosis code and description
+        code = (
+            diagnosis.icd11_code
+            or (
+                diagnosis.icd10_code_display.split(" - ")[0] if diagnosis.icd10_code_display else ""
+            )
+            or diagnosis.snomed_code
+            or ""
+        )
+        description = (
+            diagnosis.icd11_display
+            or diagnosis.icd10_description
+            or diagnosis.snomed_display
+            or diagnosis.free_text_diagnosis
+            or ""
+        )
+
+        if code and code != claim.primary_diagnosis_code:
+            claim.primary_diagnosis_code = code
+            claim.primary_diagnosis_description = description[:255]
+            claim.save(update_fields=["primary_diagnosis_code", "primary_diagnosis_description"])
+            logger.info(
+                "Updated SHA claim %s diagnosis to %s for encounter %s",
+                claim.claim_number,
+                code,
+                encounter.id,
+            )
+    except Exception:
+        logger.exception("Failed to sync SHA claim diagnosis for diagnosis %s", instance.pk)

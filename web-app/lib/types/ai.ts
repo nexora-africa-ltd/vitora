@@ -614,6 +614,12 @@ export interface AILabResultItem {
   value: number;
   /** Unit of measurement (e.g., "mg/dL", "mmol/L") */
   unit: string;
+  /** Lower bound of normal reference range */
+  reference_low?: number | null;
+  /** Upper bound of normal reference range */
+  reference_high?: number | null;
+  /** Result flag: NORMAL, HIGH, LOW, CRITICAL_HIGH, CRITICAL_LOW, ABNORMAL */
+  flag?: string;
   /** When the sample was collected */
   timestamp?: string;
 }

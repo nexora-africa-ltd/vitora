@@ -657,6 +657,26 @@ class TibaBotClient:
             Dict with flags, patterns, interpretation_summary,
             suggested_followup_labs, critical_alerts.
         """
+        # Build an explicit abnormal results summary so the AI cannot miss flagged values
+        lab_results = payload.get("lab_results", [])
+        abnormal_lines = []
+        for lr in lab_results:
+            flag = lr.get("flag", "")
+            if flag and flag.upper() not in ("NORMAL", ""):
+                ref_low = lr.get("reference_low")
+                ref_high = lr.get("reference_high")
+                ref_str = (
+                    f"ref: {ref_low}-{ref_high}"
+                    if ref_low is not None and ref_high is not None
+                    else ""
+                )
+                abnormal_lines.append(
+                    f"{lr.get('test_name')}: {lr.get('value')} {lr.get('unit', '')} "
+                    f"[{flag.upper()}] ({ref_str})"
+                )
+        if abnormal_lines:
+            payload = {**payload, "abnormal_results_summary": "; ".join(abnormal_lines)}
+
         return self._request(
             method="POST",
             endpoint="/lab/interpret",

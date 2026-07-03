@@ -88,6 +88,9 @@ function orderItemsToAILabResults(items: LabOrderItem[]): AILabResultItem[] {
       test_name: i.test_name,
       value: i.result!.numeric_value ?? (parseFloat(String(i.result!.text_value)) || 0),
       unit: i.result!.result_unit || '',
+      reference_low: i.result!.reference_low ?? undefined,
+      reference_high: i.result!.reference_high ?? undefined,
+      flag: i.result!.result_flag || '',
     }));
 }
 
