@@ -181,6 +181,8 @@ export interface ParsedFacility {
   facilityType: string;
   kephLevel: string;
   shaContractStatus: string;
+  shaOperationalStatus: string;
+  facilityLicenseStatus: string;
   shaContractedServices: string[];
   county: string;
   subCounty: string;
@@ -190,6 +192,7 @@ export function parseFacility(resp: IlmRegistryResponse | null | undefined): Par
   const rec = firstRecord(resp?.data);
   if (!rec) return null;
   const services = rec.shaContractedServices ?? rec.sha_contracted_services ?? rec.contractedServices;
+  const shaOps = (rec.SHAOperationStatus ?? rec.shaOperationStatus ?? {}) as Record<string, unknown>;
 
   return {
     fidCode: getString(rec, 'fidCode', 'fid_code', 'mflCode', 'mfl_code'),
@@ -198,6 +201,8 @@ export function parseFacility(resp: IlmRegistryResponse | null | undefined): Par
     facilityType: getString(rec, 'facilityType', 'facility_type', 'type'),
     kephLevel: getString(rec, 'kephLevel', 'keph_level', 'level'),
     shaContractStatus: getString(rec, 'shaContractStatus', 'sha_contract_status', 'contractStatus').toUpperCase(),
+    shaOperationalStatus: getString(shaOps, 'operationalStatus', 'operational_status').toUpperCase(),
+    facilityLicenseStatus: getString(rec, 'facilityLicenseStatus', 'facility_license_status', 'licenseStatus').toUpperCase(),
     shaContractedServices: Array.isArray(services) ? (services as string[]).map(String) : [],
     county: getString(rec, 'county', 'countyName'),
     subCounty: getString(rec, 'subCounty', 'sub_county', 'subCountyName'),

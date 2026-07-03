@@ -321,14 +321,23 @@ export function PreVisitChecksPanel({
 
   const benefitsStatus: CheckStatus = dhaPatientId ? 'ok' : 'skipped';
 
+  // Facility is considered verified if it has an active SHA contract,
+  // OR active SHA operational status, OR is licensed (public facilities
+  // often have empty shaContractStatus but active SHAOperationStatus).
+  const facilityIsOk = !!(
+    parsedFacility?.shaContractStatus === 'ACTIVE' ||
+    parsedFacility?.shaContractStatus === 'CONTRACTED' ||
+    parsedFacility?.shaOperationalStatus === 'ACTIVE' ||
+    parsedFacility?.facilityLicenseStatus === 'LICENSED'
+  );
+
   const facilityStatus: CheckStatus = !facilityCode
     ? 'skipped'
     : facilityQuery.isLoading
       ? 'loading'
       : facilityQuery.isError
         ? 'fail'
-        : parsedFacility?.shaContractStatus === 'ACTIVE' ||
-            parsedFacility?.shaContractStatus === 'CONTRACTED'
+        : facilityIsOk
           ? 'ok'
           : 'warn';
 
@@ -469,14 +478,14 @@ export function PreVisitChecksPanel({
           status={facilityStatus}
           statusLabel={
             facilityStatus === 'ok'
-              ? 'Contracted'
+              ? 'Verified'
               : facilityStatus === 'warn'
-                ? 'Not contracted'
+                ? 'Not verified'
                 : facilityStatus === 'fail'
                   ? 'Failed'
                   : facilityStatus === 'loading'
                     ? 'Checking…'
-                    : 'No MFL'
+                    : 'No code'
           }
           defaultOpen={facilityStatus === 'warn' || facilityStatus === 'fail'}
           loading={facilityQuery.isFetching}
