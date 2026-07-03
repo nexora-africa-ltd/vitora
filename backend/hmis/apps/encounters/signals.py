@@ -173,7 +173,7 @@ def _sync_claim_diagnosis_on_close(encounter):
 
         claim = SHAClaim.objects.filter(
             encounter=encounter,
-            status__in=["DRAFT", "PENDING", "SUBMITTED"],
+            status__in=["draft", "pending_submission", "submitted"],
         ).first()
         if not claim:
             return
@@ -189,15 +189,16 @@ def _sync_claim_diagnosis_on_close(encounter):
         if not primary:
             return
 
+        # Determine the diagnosis code and description
         code = (
             primary.icd11_code
-            or (primary.icd10_code_display.split(" - ")[0] if primary.icd10_code_display else "")
+            or (primary.icd10_code.code if primary.icd10_code else "")
             or primary.snomed_code
             or ""
         )
         description = (
             primary.icd11_display
-            or primary.icd10_description
+            or (primary.icd10_code.description if primary.icd10_code else "")
             or primary.snomed_display
             or primary.free_text_diagnosis
             or ""
@@ -300,7 +301,7 @@ def sync_sha_claim_diagnosis(sender, instance, **kwargs):
         # Find active claim for this encounter
         claim = SHAClaim.objects.filter(
             encounter=encounter,
-            status__in=["DRAFT", "PENDING", "SUBMITTED"],
+            status__in=["draft", "pending_submission", "submitted"],
         ).first()
 
         if not claim:
@@ -309,15 +310,13 @@ def sync_sha_claim_diagnosis(sender, instance, **kwargs):
         # Determine the diagnosis code and description
         code = (
             diagnosis.icd11_code
-            or (
-                diagnosis.icd10_code_display.split(" - ")[0] if diagnosis.icd10_code_display else ""
-            )
+            or (diagnosis.icd10_code.code if diagnosis.icd10_code else "")
             or diagnosis.snomed_code
             or ""
         )
         description = (
             diagnosis.icd11_display
-            or diagnosis.icd10_description
+            or (diagnosis.icd10_code.description if diagnosis.icd10_code else "")
             or diagnosis.snomed_display
             or diagnosis.free_text_diagnosis
             or ""

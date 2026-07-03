@@ -12,7 +12,7 @@
  * - /encounters/new/details  → Step 2: Encounter type, chief complaint
  * - /encounters/new/history  → Step 3: Medical history (optional)
  * - /encounters/new/notes    → Step 4: Clinical notes (optional)
- * - /encounters/new/diagnosis → Step 5: ICD-10 diagnoses (optional)
+ * - /encounters/new/diagnosis → Step 5: Diagnoses (optional)
  * - /encounters/new/review   → Step 6: Summary and create
  */
 'use client';

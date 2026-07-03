@@ -28,6 +28,7 @@ import { Separator } from '@/components/ui/separator';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate } from '@/lib/utils/format';
+import { buildPrintDocument, openPrintWindow, escapeHtml } from '@/lib/documents';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { Prescription } from '@/lib/types/pharmacy';
@@ -192,11 +193,11 @@ export function SOAPNoteSummary({
   // Build diagnoses string
   const diagnosesString = useMemo(() => {
     if (diagnoses.length === 0) return null;
-    return diagnoses.map((d, i) => {
-      const type = d.diagnosis_type === 'PRIMARY' ? '[PRIMARY]' : d.diagnosis_type === 'SECONDARY' ? '[SECONDARY]' : '[DDx]';
-      const code = d.icd10_display || d.free_text_diagnosis || 'Unspecified';
+    return diagnoses.map((d) => {
+      const type = d.diagnosis_type === 'PRIMARY' ? 'Primary' : d.diagnosis_type === 'SECONDARY' ? 'Secondary' : 'DDx';
+      const display = d.icd10_display || d.icd11_display || d.snomed_display || d.free_text_diagnosis || 'Unspecified';
       const certainty = d.certainty !== 'confirmed' ? ` (${d.certainty})` : '';
-      return `${i + 1}. ${type} ${code}${certainty}`;
+      return `${display} — ${type}${certainty}`;
     });
   }, [diagnoses]);
 
@@ -367,34 +368,88 @@ export function SOAPNoteSummary({
     }
   };
 
-  // Print functionality
-  const handlePrint = () => {
-    const printContent = generatePlainTextNote();
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>SOAP Note - ${patientMrn || 'Unknown'}</title>
-            <style>
-              body {
-                font-family: 'Courier New', monospace;
-                font-size: 12px;
-                line-height: 1.5;
-                padding: 20px;
-                white-space: pre-wrap;
-              }
-              @media print {
-                body { margin: 0; padding: 10mm; }
-              }
-            </style>
-          </head>
-          <body>${printContent.replace(/\n/g, '<br>')}</body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
+  // Build structured HTML for printing
+  const generatePrintHtml = () => {
+    const e = escapeHtml;
+    const sections: string[] = [];
+
+    // Header
+    sections.push(`
+      <div class="header">
+        <h1>Clinical SOAP Note</h1>
+        <table class="meta-table">
+          <tr><td><strong>Patient:</strong></td><td>${e(patientName || 'Unknown')} ${patientMrn ? `(${e(patientMrn)})` : ''}</td></tr>
+          <tr><td><strong>Date:</strong></td><td>${encounterDate ? formatDate(encounterDate) : new Date().toLocaleDateString()}</td></tr>
+          <tr><td><strong>Type:</strong></td><td>${e(formData.encounter_type)}</td></tr>
+          ${providerName ? `<tr><td><strong>Provider:</strong></td><td>${e(providerName)}</td></tr>` : ''}
+        </table>
+      </div>
+    `);
+
+    // SUBJECTIVE
+    const subjectiveItems: string[] = [];
+    if (formData.chief_complaint) subjectiveItems.push(`<p><strong>Chief Complaint:</strong> ${e(formData.chief_complaint)}</p>`);
+    if (sectionStatus.hpi?.content?.[0]) subjectiveItems.push(`<p><strong>HPI:</strong> ${e(sectionStatus.hpi.content[0]).replace(/\n/g, '<br>')}</p>`);
+    if (formData.allergies) subjectiveItems.push(`<p><strong>Allergies:</strong> ${e(formData.allergies)}</p>`);
+    if (formData.current_medications) subjectiveItems.push(`<p><strong>Current Medications:</strong> ${e(formData.current_medications)}</p>`);
+    if (formData.chronic_conditions) subjectiveItems.push(`<p><strong>PMHx:</strong> ${e(formData.chronic_conditions)}</p>`);
+    if (formData.past_surgeries) subjectiveItems.push(`<p><strong>PSHx:</strong> ${e(formData.past_surgeries)}</p>`);
+    if (formData.family_history) subjectiveItems.push(`<p><strong>FHx:</strong> ${e(formData.family_history)}</p>`);
+    if (formData.social_history) subjectiveItems.push(`<p><strong>SHx:</strong> ${e(formData.social_history)}</p>`);
+    sections.push(`<div class="section"><h2>SUBJECTIVE</h2>${subjectiveItems.join('') || '<p class="empty">No subjective data recorded</p>'}</div>`);
+
+    // OBJECTIVE
+    const objectiveItems: string[] = [];
+    objectiveItems.push(`<p><strong>Vitals:</strong> ${e(vitalsString)}</p>`);
+    if (sectionStatus.physicalExam?.content?.[0]) objectiveItems.push(`<p><strong>Physical Examination:</strong> ${e(sectionStatus.physicalExam.content[0]).replace(/\n/g, '<br>')}</p>`);
+    sections.push(`<div class="section"><h2>OBJECTIVE</h2>${objectiveItems.join('')}</div>`);
+
+    // ASSESSMENT
+    const assessmentItems: string[] = [];
+    if (sectionStatus.assessment?.content?.[0]) assessmentItems.push(`<p>${e(sectionStatus.assessment.content[0]).replace(/\n/g, '<br>')}</p>`);
+    if (diagnosesString && diagnosesString.length > 0) {
+      assessmentItems.push(`<p><strong>Diagnoses:</strong></p><ol>${diagnosesString.map(d => `<li>${e(d)}</li>`).join('')}</ol>`);
     }
+    sections.push(`<div class="section"><h2>ASSESSMENT</h2>${assessmentItems.join('') || '<p class="empty">No assessment recorded</p>'}</div>`);
+
+    // PLAN
+    const planItems: string[] = [];
+    if (sectionStatus.plan?.content?.[0]) planItems.push(`<p><strong>Plan:</strong> ${e(sectionStatus.plan.content[0]).replace(/\n/g, '<br>')}</p>`);
+    if (labOrdersString && labOrdersString.length > 0) {
+      planItems.push(`<p><strong>Lab Orders:</strong></p><ul>${labOrdersString.map(l => `<li>${e(l)}</li>`).join('')}</ul>`);
+    }
+    if (prescriptionsString && prescriptionsString.length > 0) {
+      planItems.push(`<p><strong>Medications:</strong></p><ul>${prescriptionsString.map(p => `<li>${e(p)}</li>`).join('')}</ul>`);
+    }
+    if (formData.notes) planItems.push(`<p><strong>Additional Notes:</strong> ${e(formData.notes)}</p>`);
+    sections.push(`<div class="section"><h2>PLAN</h2>${planItems.join('') || '<p class="empty">No plan recorded</p>'}</div>`);
+
+    // Footer
+    sections.push(`<div class="footer"><p>Generated: ${new Date().toLocaleString()}</p><div class="sig">Signature &amp; Stamp</div></div>`);
+
+    return sections.join('');
+  };
+
+  // Print using the centralized document renderer
+  const handlePrint = () => {
+    const bodyHtml = generatePrintHtml();
+    const title = `SOAP Note - ${patientMrn || 'Unknown'}`;
+    const soapCSS = `
+      .header { margin-bottom: 1.5em; padding-bottom: 1em; border-bottom: 2px solid var(--primary-color, #1a365d); }
+      .header h1 { font-size: 1.4em; margin: 0 0 0.5em; }
+      .meta-table { font-size: 0.9em; border: none; }
+      .meta-table td { padding: 2px 12px 2px 0; border: none; }
+      .section { margin-bottom: 1.5em; }
+      .section h2 { font-size: 1.1em; color: var(--primary-color, #1a365d); border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 0.5em; }
+      .section p { margin: 0.3em 0; font-size: 0.9em; line-height: 1.5; }
+      .section ul { margin: 0.3em 0 0.3em 1.5em; font-size: 0.9em; }
+      .section li { margin: 0.2em 0; }
+      .empty { color: #888; font-style: italic; }
+      .footer { margin-top: 2em; padding-top: 1em; border-top: 1px solid #ddd; font-size: 0.8em; color: #666; }
+      .sig { margin-top: 3em; padding-top: 1em; border-top: 1px dashed #aaa; width: 250px; text-align: center; font-size: 0.85em; color: #666; }
+    `;
+    const fullHtml = buildPrintDocument(bodyHtml, title, 'a4', 'default', soapCSS);
+    openPrintWindow(fullHtml);
   };
 
   return (
@@ -576,20 +631,19 @@ export function SOAPNoteSummary({
           </h3>
           <div className="pl-4 sm:pl-6 space-y-2 text-sm">
             {sectionStatus.assessment?.content?.[0] && (
-              <div>
-                <span className="font-medium">Clinical Assessment:</span>{' '}
-                <span className="whitespace-pre-line">{sectionStatus.assessment.content[0]}</span>
+              <div className="whitespace-pre-line">
+                {sectionStatus.assessment.content[0]}
               </div>
             )}
 
             {diagnosesString && diagnosesString.length > 0 ? (
               <div>
                 <span className="font-medium">Diagnoses:</span>
-                <ul className="mt-1 space-y-1">
+                <ol className="mt-1 space-y-1 list-decimal list-inside">
                   {diagnosesString.map((d, i) => (
-                    <li key={i} className="pl-2">{d}</li>
+                    <li key={i}>{d}</li>
                   ))}
-                </ul>
+                </ol>
               </div>
             ) : (
               <p className="text-amber-600 dark:text-amber-400 italic">

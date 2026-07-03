@@ -736,6 +736,43 @@ class Encounter(HistoryMixin, FacilityScopedModel):
             except Encounter.DoesNotExist:
                 pass  # New encounter, no validation needed
 
+    # -------------------------------------------------------------------------
+    # Template → Flat field denormalization
+    # -------------------------------------------------------------------------
+
+    # Maps template section names to flat model fields.
+    # Each section's key-value pairs are joined as "key: value" lines.
+    TEMPLATE_SECTION_FIELD_MAP = {
+        "History of Present Illness": "history_of_present_illness",
+        "HPI": "history_of_present_illness",
+        "Physical Examination": "physical_examination",
+        "Examination": "physical_examination",
+        "Assessment": "assessment",
+        "Clinical Assessment": "assessment",
+    }
+
+    def _denormalize_template_data(self):
+        """
+        Flatten clinical_template_data sections into the corresponding
+        flat text fields. Only overwrites a flat field if it is currently empty.
+        """
+        for section_name, field_name in self.TEMPLATE_SECTION_FIELD_MAP.items():
+            section = self.clinical_template_data.get(section_name)
+            if not section or not isinstance(section, dict):
+                continue
+            # Skip if the flat field already has content
+            current_value = getattr(self, field_name, "")
+            if current_value and current_value.strip():
+                continue
+            # Flatten section key-value pairs into readable text
+            lines = []
+            for key, value in section.items():
+                if value and str(value).strip():
+                    label = key.replace("_", " ").title()
+                    lines.append(f"{label}: {value}")
+            if lines:
+                setattr(self, field_name, "\n".join(lines))
+
     def save(self, *args, **kwargs):
         """Override save to auto-set triage and tenant fields."""
         # --- Tenant auto-resolution ---
@@ -749,6 +786,14 @@ class Encounter(HistoryMixin, FacilityScopedModel):
                     self.facility_id = patient.registered_at_facility_id
             except Exception:
                 pass  # patient not loaded yet (raw FK only)
+
+        # --- Denormalize clinical_template_data into flat SOAP fields ---
+        # When template data is present and flat fields are empty, flatten the
+        # structured template sections into the SOAP text fields. This ensures
+        # downstream consumers (FHIR export, search, reports, SOAP display)
+        # always have populated flat fields regardless of input mode.
+        if self.clinical_template_data and isinstance(self.clinical_template_data, dict):
+            self._denormalize_template_data()
 
         # Auto-set triage_requirement based on encounter_type
         if self.encounter_type:
