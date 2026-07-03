@@ -813,6 +813,7 @@ interface DiagnosisListDisplayProps {
   diagnoses: DiagnosisFormData[];
   onRemove: (index: number) => void;
   onEdit?: (index: number) => void;
+  onUpdate?: (index: number, diagnosis: DiagnosisFormData) => void;
   editingIndex?: number | null;
   disabled?: boolean;
 }
@@ -821,6 +822,7 @@ export function DiagnosisListDisplay({
   diagnoses,
   onRemove,
   onEdit,
+  onUpdate,
   editingIndex,
   disabled = false
 }: DiagnosisListDisplayProps) {
@@ -862,10 +864,22 @@ export function DiagnosisListDisplay({
                 <Badge className={certaintyColors[diagnosis.certainty]}>
                   {diagnosis.certainty === 'ruled_out' ? 'RULED OUT' : diagnosis.certainty}
                 </Badge>
+                {/* Quick confirm toggle */}
+                {onUpdate && !disabled && diagnosis.certainty !== 'confirmed' && diagnosis.certainty !== 'ruled_out' && (
+                  <button
+                    type="button"
+                    onClick={() => onUpdate(index, { ...diagnosis, certainty: 'confirmed', is_confirmed: true })}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border border-green-300 text-green-700 hover:bg-green-100 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/30 transition-colors"
+                    title="Mark as confirmed"
+                  >
+                    <Check className="h-3 w-3" />
+                    Confirm
+                  </button>
+                )}
                 {diagnosis.is_confirmed && (
                   <Badge variant="outline" className="gap-1">
                     <Check className="h-3 w-3" />
-                    Lab Confirmed
+                    Diagnostics Confirmed
                   </Badge>
                 )}
               </div>
@@ -970,6 +984,7 @@ export function DiagnosisFormContent({
         diagnoses={diagnoses}
         onRemove={onRemove}
         onEdit={onUpdate ? handleEdit : undefined}
+        onUpdate={onUpdate}
         editingIndex={editingDiagnosis?.index ?? null}
         disabled={disabled}
       />

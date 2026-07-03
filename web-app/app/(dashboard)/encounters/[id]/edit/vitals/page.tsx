@@ -126,7 +126,7 @@ export default function EncounterEditVitalsPage() {
   const handleNext = useCallback(() => {
     // Mark section as complete
     markSectionComplete(encounterId, 'vitals');
-    // Navigate to history step
+    // Always go to History (present in both template and free-text flows)
     router.push(`/encounters/${encounterId}/edit/history`);
   }, [encounterId, markSectionComplete, router]);
 

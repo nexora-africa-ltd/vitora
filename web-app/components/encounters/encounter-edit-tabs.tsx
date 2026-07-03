@@ -85,11 +85,11 @@ const TABS: TabConfig[] = [
   },
   {
     id: 'orders',
-    label: 'Orders',
-    shortLabel: 'Ord',
+    label: 'Orders & Referrals',
+    shortLabel: 'Orders',
     icon: <SquareDashedTopSolid className="h-4 w-4" />,
     path: '/orders',
-    description: 'Lab, imaging, pharmacy',
+    description: 'Lab, imaging, pharmacy, referrals',
     sectionKey: 'orders',
   },
   {
@@ -111,6 +111,17 @@ const TABS: TabConfig[] = [
   },
 ];
 
+// Template tab — shown when a clinical template is active (replaces History + Notes)
+const TEMPLATE_TAB: TabConfig = {
+  id: 'template',
+  label: 'Template',
+  shortLabel: 'Tmpl',
+  icon: <ClipboardList className="h-4 w-4" />,
+  path: '/notes',
+  description: 'Clinical template form',
+  sectionKey: 'notes',
+};
+
 // =============================================================================
 // Component
 // =============================================================================
@@ -124,12 +135,34 @@ export function EncounterEditTabs() {
   const encounterId = Number(params.id);
   const completion = getSectionCompletion(encounterId);
 
+  // When a clinical template is active, replace Notes with "Template" tab
+  // Keep History since it captures allergies/meds that templates typically don't include
+  // Hide Referrals tab from the main flow (accessible via "Refer" button on Orders page)
+  const hasTemplate = !!encounter?.clinical_template;
+  const visibleTabs = hasTemplate
+    ? [
+        TABS.find((t) => t.id === 'vitals')!,
+        TABS.find((t) => t.id === 'history')!,
+        TEMPLATE_TAB,
+        TABS.find((t) => t.id === 'diagnosis')!,
+        TABS.find((t) => t.id === 'orders')!,
+        TABS.find((t) => t.id === 'review')!,
+      ]
+    : [
+        TABS.find((t) => t.id === 'vitals')!,
+        TABS.find((t) => t.id === 'history')!,
+        TABS.find((t) => t.id === 'notes')!,
+        TABS.find((t) => t.id === 'diagnosis')!,
+        TABS.find((t) => t.id === 'orders')!,
+        TABS.find((t) => t.id === 'review')!,
+      ];
+
   // Base path for tab links
   const basePath = `/encounters/${encounterId}/edit`;
 
   // Determine active tab from pathname
   const getActiveTab = () => {
-    for (const tab of TABS) {
+    for (const tab of visibleTabs) {
       if (pathname.endsWith(tab.path)) {
         return tab.id;
       }
@@ -159,7 +192,7 @@ export function EncounterEditTabs() {
         className="flex items-center gap-0.5 sm:gap-1 px-2 sm:px-4 overflow-x-auto scrollbar-thin"
         aria-label="Encounter edit tabs"
       >
-        {TABS.map((tab, index) => {
+        {visibleTabs.map((tab, index) => {
           const isActive = activeTab === tab.id;
           const href = tab.id === 'vitals' ? basePath : `${basePath}${tab.path}`;
           const isComplete = tab.sectionKey && completion?.[tab.sectionKey];

@@ -1001,6 +1001,8 @@ class ClinicVisit(FacilityScopedModel, TimeStampedModel):
                     encounter_data["spo2"] = ta.spo2
                 if ta.weight is not None:
                     encounter_data["weight"] = ta.weight
+                if ta.height is not None:
+                    encounter_data["height"] = ta.height
                 if ta.systolic_bp is not None and ta.diastolic_bp is not None:
                     encounter_data["blood_pressure"] = f"{ta.systolic_bp}/{ta.diastolic_bp}"
                 encounter_data["vitals_source"] = "TRIAGE"

@@ -10,7 +10,7 @@
 
 import { useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Beaker, ScanLine, Pill, Syringe } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowRightLeft, Beaker, ScanLine, Pill, Syringe } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -21,6 +21,7 @@ import { EncounterLabOrders } from '@/components/encounters/encounter-lab-orders
 import { EncounterImagingOrders } from '@/components/encounters/encounter-imaging-orders';
 import { EncounterPrescriptions } from '@/components/encounters/encounter-prescriptions';
 import { EncounterProcedureOrders } from '@/components/encounters/encounter-procedure-orders';
+import { EncounterReferralsContent } from '@/components/encounters/encounter-referrals-content';
 import { InvestigationSuggestionsPanel } from '@/components/encounters/investigation-suggestions-panel';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useEncounterEditStore } from '@/lib/stores/encounter-edit-store';
@@ -65,10 +66,10 @@ export default function EncounterEditOrdersPage() {
     router.push(`/encounters/${encounterId}/edit/diagnosis`);
   }, [encounterId, router]);
 
-  // Navigate to next step
+  // Navigate to next step (Review, skipping referrals — referrals accessible from Review)
   const handleNext = useCallback(() => {
     markSectionComplete(encounterId, 'orders');
-    router.push(`/encounters/${encounterId}/edit/referrals`);
+    router.push(`/encounters/${encounterId}/edit/review`);
   }, [encounterId, markSectionComplete, router]);
 
   if (isLoading || !session) {
@@ -121,7 +122,7 @@ export default function EncounterEditOrdersPage() {
 
       {/* Orders Tabs */}
       <Tabs defaultValue="lab" className="space-y-4">
-        <TabsList className="w-full grid grid-cols-4">
+        <TabsList className="w-full grid grid-cols-5">
           <TabsTrigger value="lab" className="gap-1.5 px-2 sm:px-4">
             <Beaker className="h-5 w-5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Lab</span>
@@ -157,6 +158,10 @@ export default function EncounterEditOrdersPage() {
                 {procCount}
               </span>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="referrals" className="gap-1.5 px-2 sm:px-4">
+            <ArrowRightLeft className="h-5 w-5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Refer</span>
           </TabsTrigger>
         </TabsList>
 
@@ -203,6 +208,14 @@ export default function EncounterEditOrdersPage() {
             disabled={!isEditable}
           />
         </TabsContent>
+
+        <TabsContent value="referrals">
+          <EncounterReferralsContent
+            encounterId={encounterId}
+            patientId={session.patientId}
+            disabled={!isEditable}
+          />
+        </TabsContent>
       </Tabs>
 
       {/* Navigation */}
@@ -210,7 +223,7 @@ export default function EncounterEditOrdersPage() {
         <CardContent className="py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
             <p className="text-sm text-muted-foreground">
-              Step 5 of 7 — {labCount + imagingCount + rxCount + procCount} orders placed
+              {labCount + imagingCount + rxCount + procCount} orders placed
             </p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={handlePrev}>
@@ -218,7 +231,7 @@ export default function EncounterEditOrdersPage() {
                 Back
               </Button>
               <Button onClick={handleNext}>
-                Next: Referrals
+                Review & Finalize
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
