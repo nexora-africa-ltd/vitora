@@ -129,10 +129,15 @@ export interface ParsedEligibility {
 
 function parseScheme(raw: Record<string, unknown>): ParsedScheme {
   const coverage = (raw.coverage ?? {}) as Record<string, unknown>;
+  const rawStatus = getString(coverage, 'status', 'coverageStatus');
+  // DHA returns "1" for active coverage, or text like "ACTIVE"
+  const normalizedStatus = rawStatus === '1' || rawStatus.toUpperCase() === 'ACTIVE'
+    ? 'ACTIVE'
+    : rawStatus.toUpperCase() || 'INACTIVE';
   return {
     schemeName: getString(raw, 'schemeName', 'scheme_name', 'name'),
     memberType: getString(raw, 'memberType', 'member_type', 'membership_type'),
-    coverageStatus: getString(coverage, 'status', 'coverageStatus').toUpperCase(),
+    coverageStatus: normalizedStatus,
     coverageStart: getString(coverage, 'startDate', 'start_date', 'effectiveStartDate'),
     coverageEnd: getString(coverage, 'endDate', 'end_date', 'effectiveEndDate'),
   };
@@ -146,7 +151,11 @@ export function parseEligibility(resp: IlmRegistryResponse | null | undefined): 
     ? (rec.schemes as Record<string, unknown>[])
     : [];
   const schemes = rawSchemes.map(parseScheme);
-  const isActive = schemes.some((s) => s.coverageStatus === 'ACTIVE');
+  // DHA signals eligibility via: schemes[].coverage.status === "1" (parsed above),
+  // OR top-level `eligible: 1` / `statusCode: "10"` when no schemes present.
+  const isActive = schemes.some((s) => s.coverageStatus === 'ACTIVE')
+    || rec.eligible === 1 || rec.eligible === true
+    || String(rec.statusCode) === '10';
 
   return {
     fullName: getString(rec, 'fullName', 'full_name', 'name', 'patientName'),
