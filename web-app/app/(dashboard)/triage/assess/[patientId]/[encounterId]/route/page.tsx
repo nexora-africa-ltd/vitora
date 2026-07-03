@@ -685,6 +685,7 @@ export default function TriageRoutePage() {
         checkInResult={successData}
         onDismiss={handleSuccessClose}
         dismissLabel="Go to Queue"
+        skipSHAConsent
       />
     </div>
   );
