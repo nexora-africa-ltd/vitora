@@ -249,7 +249,7 @@ export default function EncounterEditDiagnosisPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Stethoscope className="h-5 w-5" />
-            ICD-10 Diagnoses ({diagnoses.length})
+            Diagnoses ({diagnoses.length})
           </CardTitle>
         </CardHeader>
         <CardContent>

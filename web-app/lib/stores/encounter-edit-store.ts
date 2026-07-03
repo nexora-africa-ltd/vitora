@@ -8,7 +8,7 @@
  * 1. Vitals step saves vital signs
  * 2. History step saves medical history
  * 3. Notes step saves HPI, PE, assessment, clinical template
- * 4. Diagnosis step saves ICD-10 diagnoses
+ * 4. Diagnosis step saves Diagnoses
  * 5. Orders step manages lab/imaging/pharmacy orders
  * 6. Referrals step manages referrals
  * 7. Review step shows SOAP summary and allows finalization

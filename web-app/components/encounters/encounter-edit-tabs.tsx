@@ -80,7 +80,7 @@ const TABS: TabConfig[] = [
     shortLabel: 'Dx',
     icon: <Stethoscope className="h-4 w-4" />,
     path: '/diagnosis',
-    description: 'ICD-10 diagnoses',
+    description: 'Diagnoses',
     sectionKey: 'diagnosis',
   },
   {

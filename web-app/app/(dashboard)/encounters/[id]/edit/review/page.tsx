@@ -84,15 +84,39 @@ export default function EncounterEditReviewPage() {
       ? existingDiagnoses
       : (existingDiagnoses as unknown as { results?: typeof existingDiagnoses })?.results || [];
 
-    return diagnosisArray.map((d) => ({
-      icd10_code: d.icd10_code,
-      icd10_display: d.icd10_code_display || d.icd10_description,
-      diagnosis_type: d.diagnosis_type,
-      free_text_diagnosis: d.free_text_diagnosis || '',
-      notes: d.notes || '',
-      is_confirmed: d.is_confirmed,
-      certainty: d.certainty,
-    }));
+    return diagnosisArray.map((d) => {
+      // Build display: prefer description over bare code, include coding system label
+      let icd10Display: string | null = null;
+      if (d.icd10_description) {
+        icd10Display = d.icd10_code_display
+          ? `${d.icd10_description} (ICD-10: ${d.icd10_code_display})`
+          : d.icd10_description;
+      } else if (d.icd10_code_display) {
+        icd10Display = `ICD-10: ${d.icd10_code_display}`;
+      }
+
+      const icd11Display = d.icd11_display
+        ? (d.icd11_code ? `${d.icd11_display} (ICD-11: ${d.icd11_code})` : d.icd11_display)
+        : (d.icd11_code ? `ICD-11: ${d.icd11_code}` : null);
+
+      const snomedDisplay = d.snomed_display
+        ? (d.snomed_code ? `${d.snomed_display} (SNOMED: ${d.snomed_code})` : d.snomed_display)
+        : (d.snomed_code ? `SNOMED: ${d.snomed_code}` : null);
+
+      return {
+        icd10_code: d.icd10_code,
+        icd10_display: icd10Display,
+        icd11_code: d.icd11_code || null,
+        icd11_display: icd11Display,
+        snomed_code: d.snomed_code || null,
+        snomed_display: snomedDisplay,
+        diagnosis_type: d.diagnosis_type,
+        free_text_diagnosis: d.free_text_diagnosis || '',
+        notes: d.notes || '',
+        is_confirmed: d.is_confirmed,
+        certainty: d.certainty,
+      };
+    });
   }, [existingDiagnoses]);
 
   // Check if encounter is editable

@@ -9,7 +9,7 @@
  * 2. Details step - encounter type, date, chief complaint
  * 3. History step - medical history (optional)
  * 4. Notes step - HPI, clinical notes (optional)
- * 5. Diagnosis step - ICD-10 diagnoses (optional)
+ * 5. Diagnosis step - Diagnoses (optional)
  * 6. Review step - summary and create
  *
  * Data is persisted to localStorage for crash recovery.
