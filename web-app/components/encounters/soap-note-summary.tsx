@@ -67,6 +67,25 @@ export function SOAPNoteSummary({
 
   // Calculate section completeness
   const sectionStatus = useMemo(() => {
+    // Helper: flatten clinical_template_data section into readable text
+    const flattenTemplateSection = (sectionName: string): string => {
+      const section = formData.clinical_template_data?.[sectionName];
+      if (!section || typeof section !== 'object') return '';
+      return Object.entries(section)
+        .filter(([, v]) => v && String(v).trim())
+        .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
+        .join('\n');
+    };
+
+    // Use template data for HPI/PE/Assessment when template is active and flat fields are empty
+    const hpiText = formData.history_of_present_illness?.trim()
+      || flattenTemplateSection('History of Present Illness');
+    const peText = formData.physical_examination?.trim()
+      || flattenTemplateSection('Physical Examination');
+    const assessmentText = formData.assessment?.trim()
+      || flattenTemplateSection('Assessment');
+    const planText = flattenTemplateSection('Plan');
+
     const status: Record<string, SectionStatus> = {
       chiefComplaint: {
         complete: !!formData.chief_complaint?.trim(),
@@ -75,10 +94,10 @@ export function SOAPNoteSummary({
         content: formData.chief_complaint ? [formData.chief_complaint] : [],
       },
       hpi: {
-        complete: !!formData.history_of_present_illness?.trim(),
+        complete: !!hpiText,
         label: 'History of Present Illness',
         shortLabel: 'HPI',
-        content: formData.history_of_present_illness ? [formData.history_of_present_illness] : [],
+        content: hpiText ? [hpiText] : [],
       },
       medicalHistory: {
         complete: !!(
@@ -113,23 +132,23 @@ export function SOAPNoteSummary({
         content: [],
       },
       physicalExam: {
-        complete: !!formData.physical_examination?.trim(),
+        complete: !!peText,
         label: 'Physical Examination',
         shortLabel: 'PE',
-        content: formData.physical_examination ? [formData.physical_examination] : [],
+        content: peText ? [peText] : [],
       },
       assessment: {
-        complete: !!formData.assessment?.trim() || diagnoses.length > 0,
+        complete: !!assessmentText || diagnoses.length > 0,
         label: 'Assessment & Diagnosis',
         shortLabel: 'Dx',
-        content: [],
+        content: assessmentText ? [assessmentText] : [],
       },
       plan: {
-        // Plan is complete if there are lab orders, prescriptions, or treatment plan exists
-        complete: labOrders.length > 0 || prescriptions.length > 0,
+        // Plan is complete if there are lab orders, prescriptions, or template plan data
+        complete: labOrders.length > 0 || prescriptions.length > 0 || !!planText,
         label: 'Plan',
         shortLabel: 'Rx',
-        content: [],
+        content: planText ? [planText] : [],
       },
     };
 
@@ -254,8 +273,8 @@ export function SOAPNoteSummary({
     if (formData.chief_complaint) {
       lines.push(`Chief Complaint: ${formData.chief_complaint}`);
     }
-    if (formData.history_of_present_illness) {
-      lines.push(`HPI: ${formData.history_of_present_illness}`);
+    if (sectionStatus.hpi?.content?.[0]) {
+      lines.push(`HPI: ${sectionStatus.hpi.content[0]}`);
     }
     if (formData.allergies) {
       lines.push(`Allergies: ${formData.allergies}`);
@@ -283,8 +302,8 @@ export function SOAPNoteSummary({
     // OBJECTIVE
     lines.push('OBJECTIVE:');
     lines.push(`Vitals: ${vitalsString}`);
-    if (formData.physical_examination) {
-      lines.push(`Physical Exam: ${formData.physical_examination}`);
+    if (sectionStatus.physicalExam?.content?.[0]) {
+      lines.push(`Physical Exam: ${sectionStatus.physicalExam.content[0]}`);
     }
     if (!sectionStatus.vitals?.complete && !sectionStatus.physicalExam?.complete) {
       lines.push('[No objective data recorded]');
@@ -293,8 +312,8 @@ export function SOAPNoteSummary({
 
     // ASSESSMENT
     lines.push('ASSESSMENT:');
-    if (formData.assessment) {
-      lines.push(formData.assessment);
+    if (sectionStatus.assessment?.content?.[0]) {
+      lines.push(sectionStatus.assessment.content[0]);
     }
     if (diagnosesString && diagnosesString.length > 0) {
       diagnosesString.forEach((d) => lines.push(d));
@@ -306,6 +325,9 @@ export function SOAPNoteSummary({
 
     // PLAN
     lines.push('PLAN:');
+    if (sectionStatus.plan?.content?.[0]) {
+      lines.push(`Plan: ${sectionStatus.plan.content[0]}`);
+    }
     if (labOrdersString && labOrdersString.length > 0) {
       lines.push('Labs:');
       labOrdersString.forEach((l) => lines.push(l));
@@ -460,10 +482,10 @@ export function SOAPNoteSummary({
               </p>
             )}
 
-            {formData.history_of_present_illness && (
+            {sectionStatus.hpi?.content?.[0] && (
               <div>
                 <span className="font-medium">HPI:</span>{' '}
-                {formData.history_of_present_illness}
+                <span className="whitespace-pre-line">{sectionStatus.hpi.content[0]}</span>
               </div>
             )}
 
@@ -531,10 +553,10 @@ export function SOAPNoteSummary({
               )}
             </div>
 
-            {formData.physical_examination ? (
+            {sectionStatus.physicalExam?.content?.[0] ? (
               <div>
                 <span className="font-medium">Physical Examination:</span>{' '}
-                {formData.physical_examination}
+                <span className="whitespace-pre-line">{sectionStatus.physicalExam.content[0]}</span>
               </div>
             ) : (
               <p className="text-amber-600 dark:text-amber-400 italic">
@@ -553,10 +575,10 @@ export function SOAPNoteSummary({
             ASSESSMENT
           </h3>
           <div className="pl-4 sm:pl-6 space-y-2 text-sm">
-            {formData.assessment && (
+            {sectionStatus.assessment?.content?.[0] && (
               <div>
                 <span className="font-medium">Clinical Assessment:</span>{' '}
-                {formData.assessment}
+                <span className="whitespace-pre-line">{sectionStatus.assessment.content[0]}</span>
               </div>
             )}
 
@@ -586,10 +608,10 @@ export function SOAPNoteSummary({
             PLAN
           </h3>
           <div className="pl-4 sm:pl-6 space-y-3 text-sm">
-            {formData.plan && (
+            {sectionStatus.plan?.content?.[0] && (
               <div>
                 <span className="font-medium">Treatment Plan:</span>{' '}
-                {formData.plan}
+                <span className="whitespace-pre-line">{sectionStatus.plan.content[0]}</span>
               </div>
             )}
 

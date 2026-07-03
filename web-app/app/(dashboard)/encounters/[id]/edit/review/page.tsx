@@ -74,7 +74,8 @@ export default function EncounterEditReviewPage() {
   // Build form data for SOAP summary
   const formData = useMemo((): EncounterFormData | null => {
     return getFormData(encounterId);
-  }, [encounterId, getFormData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [encounterId, getFormData, session]);
 
   // Convert diagnoses to form format
   const diagnosisFormData = useMemo((): DiagnosisFormData[] => {

@@ -103,7 +103,7 @@ function EditLayoutContent({ children }: { children: React.ReactNode }) {
   const encounterId = Number(params.id);
   const { encounter, isLoading, error } = useEncounterContext();
   const { data: existingDiagnoses } = useEncounterDiagnoses(encounterId);
-  const { initSession, getSession } = useEncounterEditStore();
+  const { initSession, getSession, setNotes } = useEncounterEditStore();
 
   // Initialize store session when encounter data is available
   useEffect(() => {
@@ -111,7 +111,19 @@ function EditLayoutContent({ children }: { children: React.ReactNode }) {
 
     // Check if session already exists
     const existingSession = getSession(encounterId);
-    if (existingSession) return;
+    if (existingSession) {
+      // Sync clinical_template_data if session is stale (was created before template was saved)
+      if (
+        !existingSession.notes.clinical_template_data &&
+        encounter.clinical_template_data
+      ) {
+        setNotes(encounterId, {
+          clinical_template: encounter.clinical_template || null,
+          clinical_template_data: encounter.clinical_template_data,
+        });
+      }
+      return;
+    }
 
     // Parse blood pressure
     const bp = parseBP(encounter.blood_pressure);
@@ -163,7 +175,7 @@ function EditLayoutContent({ children }: { children: React.ReactNode }) {
       clinical_template: encounter.clinical_template || null,
       clinical_template_data: encounter.clinical_template_data || null,
     }, diagnoses);
-  }, [encounter, isLoading, encounterId, existingDiagnoses, initSession, getSession]);
+  }, [encounter, isLoading, encounterId, existingDiagnoses, initSession, getSession, setNotes]);
 
   if (isLoading) {
     return <EditLayoutLoading />;
