@@ -49,6 +49,15 @@ app.conf.task_routes = {
     # Billing tasks
     "hmis.apps.billing.tasks.poll_sha_claim_statuses": {"queue": "billing"},
     "hmis.apps.billing.tasks.submit_pending_sha_claims": {"queue": "billing"},
+    "hmis.apps.billing.tasks.fetch_and_reconcile_remittances": {"queue": "billing"},
+    "hmis.apps.billing.tasks.escalate_overdue_queries": {"queue": "billing"},
+    "hmis.apps.billing.tasks.generate_daily_claims_digest": {"queue": "billing"},
+    "hmis.apps.billing.tasks.auto_start_visit": {"queue": "billing"},
+    "hmis.apps.billing.tasks.auto_trigger_consent": {"queue": "billing"},
+    "hmis.apps.billing.tasks.auto_populate_interventions": {"queue": "billing"},
+    "hmis.apps.billing.tasks.auto_attach_documents": {"queue": "billing"},
+    "hmis.apps.billing.tasks.cache_patient_eligibility": {"queue": "billing"},
+    "hmis.apps.billing.tasks.auto_submit_preauth": {"queue": "billing"},
     # Quality reporting tasks
     "hmis.apps.quality.tasks.generate_quarterly_reports": {"queue": "reporting"},
     "hmis.apps.quality.tasks.generate_annual_reports": {"queue": "reporting"},
@@ -174,6 +183,21 @@ app.conf.beat_schedule = {
     "billing-refresh-sha-interventions": {
         "task": "hmis.apps.billing.tasks.refresh_sha_interventions",
         "schedule": crontab(minute=0, hour=3, day_of_week="sunday"),
+    },
+    # Billing: Fetch and reconcile SHA remittances daily at 6 AM
+    "billing-fetch-reconcile-remittances": {
+        "task": "hmis.apps.billing.tasks.fetch_and_reconcile_remittances",
+        "schedule": crontab(minute=0, hour=6),
+    },
+    # Billing: Escalate overdue SHA queries every 4 hours
+    "billing-escalate-overdue-queries": {
+        "task": "hmis.apps.billing.tasks.escalate_overdue_queries",
+        "schedule": crontab(minute=30, hour="*/4"),
+    },
+    # Billing: Generate daily SHA claims digest at 6 PM
+    "billing-daily-claims-digest": {
+        "task": "hmis.apps.billing.tasks.generate_daily_claims_digest",
+        "schedule": crontab(minute=0, hour=18),
     },
     # Pharmacy: Expire overdue prescriptions daily at 1 AM
     "pharmacy-expire-prescriptions": {

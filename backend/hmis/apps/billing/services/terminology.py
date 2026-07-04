@@ -68,6 +68,8 @@ class InterventionCode:
     quantity_per_year: str | None = None
     requires_preauthorization: bool = False
     access_point: str | None = None
+    payment_mechanism: str | None = None
+    benefit_code: str | None = None
 
     @classmethod
     def from_api_response(cls, data: dict) -> "InterventionCode":

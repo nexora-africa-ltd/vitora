@@ -302,3 +302,187 @@ def refresh_otp_whitelist_statuses():
     )
     logger.info(result_msg)
     return result_msg
+
+
+# =============================================================================
+# SHA Claims Workflow Automation Tasks
+# =============================================================================
+
+
+@shared_task(name="hmis.apps.billing.tasks.auto_start_visit")
+def auto_start_visit(encounter_id: int):
+    """
+    Auto-start DHA visit for a SHA-eligible encounter.
+
+    Triggered by encounter creation signal. Retries up to 3 times
+    if consent is not yet available (may be pending OTP validation).
+    """
+    from hmis.apps.billing.sha_automation import SHAClaimAutomationService
+
+    result = SHAClaimAutomationService.auto_start_visit(encounter_id)
+    logger = logging.getLogger(__name__)
+    logger.info("Auto-start visit for encounter %s: %s", encounter_id, result.get("status"))
+    return result
+
+
+@shared_task(
+    name="hmis.apps.billing.tasks.auto_trigger_consent",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=2,
+)
+def auto_trigger_consent(patient_id: int, facility_id: int):
+    """
+    Auto-send OTP consent when SHA-eligible patient is queued for clinic.
+
+    Triggered by clinic queue addition. Has retry logic for transient failures.
+    """
+    from hmis.apps.billing.sha_automation import SHAClaimAutomationService
+
+    result = SHAClaimAutomationService.auto_trigger_consent(patient_id, facility_id)
+    logger = logging.getLogger(__name__)
+    logger.info("Auto-consent for patient %s: %s", patient_id, result.get("status"))
+    return result
+
+
+@shared_task(name="hmis.apps.billing.tasks.auto_populate_interventions")
+def auto_populate_interventions(encounter_id: int, claim_id: int):
+    """
+    Auto-suggest and attach SHA interventions based on clinical actions.
+
+    Triggered after lab orders, prescriptions, or diagnoses are recorded.
+    """
+    from hmis.apps.billing.sha_automation import SHAClaimAutomationService
+
+    logger = logging.getLogger(__name__)
+
+    suggestions = SHAClaimAutomationService.suggest_interventions_for_encounter(encounter_id)
+    if suggestions:
+        result = SHAClaimAutomationService.auto_attach_interventions(claim_id, suggestions)
+        logger.info(
+            "Auto-interventions for claim %s: %d attached, %d skipped",
+            claim_id,
+            result.get("attached", 0),
+            result.get("skipped", 0),
+        )
+        return result
+
+    return {"attached": 0, "skipped": 0, "reason": "no_suggestions"}
+
+
+@shared_task(name="hmis.apps.billing.tasks.auto_attach_documents")
+def auto_attach_documents(claim_id: int):
+    """
+    Auto-attach existing digital documents to a SHA claim.
+
+    Triggered when lab results are verified or clinical notes are finalized.
+    """
+    from hmis.apps.billing.sha_automation import SHAClaimAutomationService
+
+    result = SHAClaimAutomationService.auto_attach_documents(claim_id)
+    logger = logging.getLogger(__name__)
+    logger.info("Auto-attach docs for claim %s: %d attached", claim_id, result.get("attached", 0))
+    return result
+
+
+@shared_task(name="hmis.apps.billing.tasks.fetch_and_reconcile_remittances")
+def fetch_and_reconcile_remittances():
+    """
+    Fetch SHA remittances from DHA and auto-reconcile against local claims.
+
+    Runs daily at 6 AM via Celery beat. Processes all SHA-enabled facilities.
+    """
+    from hmis.apps.billing.sha_automation import SHAClaimAutomationService
+
+    result = SHAClaimAutomationService.fetch_and_reconcile_remittances()
+    logger = logging.getLogger(__name__)
+    logger.info(
+        "Remittance fetch: %d facilities, %d remittances, %d claims reconciled",
+        result.get("facilities_processed", 0),
+        result.get("remittances_fetched", 0),
+        result.get("claims_reconciled", 0),
+    )
+    return result
+
+
+@shared_task(name="hmis.apps.billing.tasks.escalate_overdue_queries")
+def escalate_overdue_queries():
+    """
+    Escalate SHA claims with QUERY status approaching deadline (< 48h).
+
+    Runs every 4 hours. Publishes critical-priority notifications.
+    """
+    from hmis.apps.billing.sha_automation import SHAClaimAutomationService
+
+    result = SHAClaimAutomationService.escalate_overdue_queries()
+    logger = logging.getLogger(__name__)
+    logger.info("Query escalation: %d claims escalated", result.get("escalated", 0))
+    return result
+
+
+@shared_task(name="hmis.apps.billing.tasks.cache_patient_eligibility")
+def cache_patient_eligibility(patient_id: int, facility_id: int | None = None):
+    """
+    Pre-check and cache SHA eligibility for a patient.
+
+    Triggered when patient is registered/updated with National ID.
+    """
+    from hmis.apps.billing.sha_automation import SHAClaimAutomationService
+
+    result = SHAClaimAutomationService.cache_patient_eligibility(patient_id, facility_id)
+    logger = logging.getLogger(__name__)
+    logger.info("Eligibility cache for patient %s: %s", patient_id, result.get("status"))
+    return result
+
+
+@shared_task(name="hmis.apps.billing.tasks.generate_daily_claims_digest")
+def generate_daily_claims_digest():
+    """
+    Generate end-of-day SHA claims digest for all facilities.
+
+    Runs daily at 6 PM. Publishes digest events for dashboard/notifications.
+    """
+    from django.db.models import Q
+
+    from hmis.apps.billing.sha_automation import SHAClaimAutomationService
+    from hmis.apps.core.events import publish_event
+    from hmis.apps.core.models import Facility
+
+    logger = logging.getLogger(__name__)
+    facilities = Facility.objects.exclude(Q(mfl_code="") | Q(mfl_code__isnull=True))
+
+    for facility in facilities:
+        try:
+            digest = SHAClaimAutomationService.generate_daily_digest(facility.pk)
+
+            publish_event(
+                event_type="billing.sha_claims.daily_digest",
+                aggregate_type="Facility",
+                aggregate_id=facility.pk,
+                payload=digest,
+                facility_id=facility.pk,
+            )
+        except Exception:
+            logger.exception("Daily digest failed for facility %s", facility.pk)
+
+    return f"Generated digests for {facilities.count()} facilities"
+
+
+@shared_task(name="hmis.apps.billing.tasks.auto_submit_preauth")
+def auto_submit_preauth(encounter_id: int, procedure_type: str):
+    """
+    Auto-submit preauth for routine procedures on encounter creation.
+
+    Triggered by clinical order signals for known routine procedure types.
+    """
+    from hmis.apps.billing.sha_automation import SHAClaimAutomationService
+
+    result = SHAClaimAutomationService.auto_submit_preauth(encounter_id, procedure_type)
+    logger = logging.getLogger(__name__)
+    logger.info(
+        "Auto-preauth for encounter %s (%s): %s",
+        encounter_id,
+        procedure_type,
+        result.get("status"),
+    )
+    return result

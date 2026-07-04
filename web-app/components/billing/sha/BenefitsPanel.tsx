@@ -156,6 +156,23 @@ function getField(item: Record<string, unknown>, ...keys: string[]): string {
   return '';
 }
 
+/**
+ * When DHA returns an intervention object whose standard name fields are all empty,
+ * scan remaining string values for something displayable.
+ * Common in sparse responses for sub-benefits that have no active interventions.
+ */
+function inferNameFromKeys(item: Record<string, unknown>): string {
+  // Skip keys that are clearly not names
+  const skipKeys = new Set(['code', 'interventionCode', 'intervention_code', 'benefitCode', 'benefit_code', 'status', 'active', 'accessPoint', 'access_point', 'paymentMechanism', 'payment_mechanism']);
+  for (const [key, val] of Object.entries(item)) {
+    if (skipKeys.has(key)) continue;
+    if (typeof val === 'string' && val.trim().length > 3 && val.trim().length < 200) {
+      return val.trim();
+    }
+  }
+  return '';
+}
+
 function getBenefitCode(item: BenefitPackageItem): string {
   return getField(item, 'parentBenefitCode', 'parent_benefit_code', 'code');
 }
@@ -398,7 +415,14 @@ function SubBenefitAccordion({
   });
 
   const interventions = expanded
-    ? extractItems<InterventionItem>(interventionsResponse?.data)
+    ? extractItems<InterventionItem>(interventionsResponse?.data).filter((i) => {
+        // Filter out garbage entries returned by DHA when a sub-benefit has no
+        // active interventions (e.g. `{ message: "..." }` or empty objects).
+        const item = i as Record<string, unknown>;
+        const hasCode = !!getField(item, 'code', 'intervention_code', 'interventionCode', 'benefitCode');
+        const hasName = !!getField(item, 'name', 'intervention_name', 'interventionName', 'benefit_name', 'benefitName', 'display_name', 'displayName');
+        return hasCode || hasName;
+      })
     : [];
 
   return (
@@ -452,8 +476,18 @@ function SubBenefitAccordion({
 
 function InterventionRow({ intervention }: { intervention: InterventionItem }) {
   const item = intervention as Record<string, unknown>;
-  const code = getField(item, 'code', 'intervention_code', 'interventionCode');
-  const name = getField(item, 'name', 'intervention_name', 'interventionName') || code || 'Unknown Intervention';
+  const code = getField(item, 'code', 'intervention_code', 'interventionCode', 'benefitCode', 'benefit_code');
+  const name = getField(
+    item,
+    'name',
+    'intervention_name',
+    'interventionName',
+    'benefit_name',
+    'benefitName',
+    'description',
+    'display_name',
+    'displayName',
+  ) || code || inferNameFromKeys(item) || 'Unknown Intervention';
   const paymentMech = getField(item, 'paymentMechanism', 'payment_mechanism');
   const tariff = (item.overallTariff ?? item.overall_tariff) as number | undefined;
   const needsPreauth = (item.needsPreauth ?? item.needs_preauth) as boolean | undefined;

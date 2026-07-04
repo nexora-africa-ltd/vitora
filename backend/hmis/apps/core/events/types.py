@@ -94,6 +94,19 @@ class BillingEvents:
     # Time-barring alerts
     SHA_CLAIM_TIME_BAR_WARNING = "billing.sha_claim.time_bar_warning"
     SHA_CLAIM_TIME_BARRED = "billing.sha_claim.time_barred"
+    # Claims workflow automation
+    SHA_CLAIM_QUERY_ASSIGNED = "billing.sha_claim.query_assigned"
+    SHA_CLAIM_QUERY_ESCALATED = "billing.sha_claim.query_escalated"
+    SHA_CLAIM_BATCH_VALIDATED = "billing.sha_claim.batch_validated"
+    SHA_CLAIM_BULK_SUBMITTED = "billing.sha_claim.bulk_submitted"
+    SHA_CLAIMS_DAILY_DIGEST = "billing.sha_claims.daily_digest"
+    SHA_CONSENT_AUTO_TRIGGERED = "billing.sha_consent.auto_triggered"
+    SHA_VISIT_AUTO_STARTED = "billing.sha_visit.auto_started"
+    SHA_INTERVENTIONS_AUTO_POPULATED = "billing.sha_interventions.auto_populated"
+    SHA_DOCUMENTS_AUTO_ATTACHED = "billing.sha_documents.auto_attached"
+    SHA_ELIGIBILITY_CACHED = "billing.sha_eligibility.cached"
+    SHA_PREAUTH_AUTO_SUBMITTED = "billing.sha_preauth.auto_submitted"
+    SHA_REMITTANCE_AUTO_FETCHED = "billing.sha_remittance.auto_fetched"
 
 
 class PharmacyEvents:

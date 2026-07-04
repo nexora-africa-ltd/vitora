@@ -832,6 +832,9 @@ export interface Claim {
   is_time_barred?: boolean;
   hours_until_time_barred?: number | null;
 
+  // Consent state (computed by serializer — checks ConsentToken exists today)
+  consent_obtained?: boolean;
+
   // FHIR reference
   fhir_bundle_id?: string | null;
   created_by?: number | null;

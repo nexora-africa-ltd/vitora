@@ -223,6 +223,8 @@ def _record_to_intervention_kwargs(record: dict, facility_level: int | None = No
         "effective_date": None,
         "raw_data": extras,
         "access_point": extras.get("access_point", ""),
+        "payment_mechanism": extras.get("payment_mechanism", ""),
+        "benefit_code": extras.get("benefit", ""),
         # Additional fields for Procedure-type sub-interventions
         "max_amount_per_test": extras.get("Total Maximum Amount per test"),
         "quantity_per_year": extras.get(
@@ -239,9 +241,23 @@ def search_local_interventions(
     category: str | None = None,
     limit: int = 50,
     offset: int = 0,
+    payment_mechanism: str | None = None,
+    active_only: bool = False,
+    access_point: str | None = None,
 ) -> tuple[list[dict], int]:
     """
     Search local interventions by name or code.
+
+    Args:
+        query: Free-text search against display_name and code.
+        facility_level: Filter to interventions applicable at this facility level.
+        category: Filter by benefit code (e.g. "SHA-12-SC-01").
+        limit / offset: Pagination.
+        payment_mechanism: Filter by DHA payment mechanism
+            (e.g. "FEE FOR SERVICE", "CAPITATION", "CASE BASED"). Case-insensitive.
+        active_only: If True, exclude retired or inactive interventions.
+        access_point: Filter by access point. Accepts "OP" (matches "OP" and
+            "OP and IP") or "IP" (matches "IP" and "OP and IP"). Case-insensitive.
 
     Returns a tuple of (results, total_count) where results is a list of kwargs
     dicts suitable for InterventionCode(**kwargs), sliced by offset/limit.
@@ -249,25 +265,69 @@ def search_local_interventions(
     interventions, _ = _load_interventions()
 
     query_lower = query.lower().strip() if query else ""
+    pm_lower = payment_mechanism.lower().strip() if payment_mechanism else None
+    ap_upper = access_point.upper().strip() if access_point else None
     matched = []
 
     for record in interventions:
         # Filter by active status
         extras = record.get("extras", {})
-        if extras.get("active") == "False" or record.get("retired"):
+        record_active = extras.get("active") != "False" and not record.get("retired")
+        if active_only and not record_active:
+            continue
+        if not active_only and (extras.get("active") == "False" or record.get("retired")):
+            # Preserve legacy behaviour: default view still hides inactive rows.
             continue
 
-        # Filter by facility level
+        # Filter by facility level.
+        # KEPH levels appear as "LEVEL 2", "LEVEL 3", "LEVEL 3A/B/C", "LEVEL 4A/B/C",
+        # "LEVEL 6A/B", etc. A facility at KEPH level N is entitled to any
+        # intervention whose numeric level starts with N (e.g. Level 3 matches
+        # "LEVEL 3", "LEVEL 3A", "LEVEL 3B", but not "LEVEL 4").
         if facility_level is not None:
             levels = extras.get("levels_applicable", [])
-            if levels:
-                level_str = f"LEVEL {facility_level}"
-                if level_str not in levels:
-                    continue
+            if not levels:
+                # No level specified on the intervention — hide from strict
+                # facility-scoped browsing to avoid leaking higher-level codes.
+                continue
+            allowed_numeric = set()
+            for lvl in levels:
+                text = str(lvl).upper().strip()
+                # Extract the leading digit block after "LEVEL "
+                # Handles "LEVEL 3", "LEVEL 3A", "LEVEL 6B", "L3", "3A" etc.
+                for token in text.replace("LEVEL", "").split():
+                    digits = "".join(c for c in token if c.isdigit())
+                    if digits:
+                        import contextlib
+
+                        with contextlib.suppress(ValueError):
+                            allowed_numeric.add(int(digits))
+                        break
+            if facility_level not in allowed_numeric:
+                continue
 
         # Filter by category (benefit code)
         if category and extras.get("benefit", "").lower() != category.lower():
             continue
+
+        # Filter by payment mechanism (DHA rejects capitation codes at start_visit)
+        if pm_lower:
+            record_pm = str(extras.get("payment_mechanism", "")).lower()
+            if record_pm != pm_lower:
+                continue
+
+        # Filter by access point (OP matches "OP" and "OP and IP", etc.)
+        if ap_upper:
+            record_ap = str(extras.get("access_point", "")).upper()
+            if ap_upper == "OP":
+                if record_ap not in ("OP", "OP AND IP") and "OP" not in record_ap:
+                    continue
+            elif ap_upper == "IP":
+                if record_ap not in ("IP", "OP AND IP") and "IP" not in record_ap:
+                    continue
+            else:
+                if record_ap != ap_upper:
+                    continue
 
         # Filter by search query (match against id or display_name)
         if query_lower:
