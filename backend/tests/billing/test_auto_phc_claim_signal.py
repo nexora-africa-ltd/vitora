@@ -259,3 +259,109 @@ class TestAutoPhcClaimCreation:
         )
         assert payload.get("claim_flow") == "phc"
         assert payload.get("trigger") == "outpatient_encounter_created"
+
+
+@pytest.mark.django_db
+class TestPhcClaimRetryAndQueueTrigger:
+    """Tests for retry mechanism and queue-triggered claim creation."""
+
+    @override_settings(FACILITY_LEVEL="L3", FACILITY_MFL_CODE="99999")
+    def test_retry_task_queued_on_failure(
+        self, phc_patient, phc_sha_member, sample_facility, mocker
+    ):
+        """When _maybe_create_phc_claim fails, a retry Celery task should be queued."""
+        # Make SHAClaim.objects.create raise to simulate SQLite locking
+        mocker.patch(
+            "hmis.apps.billing.models.SHAClaim.objects.create",
+            side_effect=Exception("database is locked"),
+        )
+        mock_retry = mocker.patch(
+            "hmis.apps.billing.tasks.retry_phc_claim_creation.apply_async",
+        )
+
+        Encounter.objects.create(
+            patient=phc_patient,
+            encounter_type="OPD",
+            chief_complaint="Retry test",
+            facility=sample_facility,
+        )
+
+        # Retry task should have been queued
+        assert mock_retry.called
+        call_args = mock_retry.call_args
+        assert call_args.kwargs.get("countdown") == 10
+
+    @override_settings(FACILITY_LEVEL="L3", FACILITY_MFL_CODE="99999")
+    def test_queue_trigger_creates_claim_for_existing_encounter(
+        self, phc_patient, phc_sha_member, sample_facility, mocker
+    ):
+        """When patient is queued, trigger_phc_claim_on_queue creates missing claim."""
+        from hmis.apps.billing.signals import trigger_phc_claim_on_queue
+
+        # Create encounter WITHOUT triggering the signal (simulate failed signal)
+        mocker.patch("hmis.apps.billing.signals._maybe_create_phc_claim")
+        encounter = Encounter.objects.create(
+            patient=phc_patient,
+            encounter_type="OPD",
+            chief_complaint="Queue fallback test",
+            facility=sample_facility,
+        )
+
+        # Verify no claim exists yet
+        assert not SHAClaim.objects.filter(encounter=encounter).exists()
+
+        # Now restore the real function and call trigger_phc_claim_on_queue
+        mocker.stopall()
+        trigger_phc_claim_on_queue(phc_patient.pk, sample_facility.pk)
+
+        # Claim should now exist
+        claim = SHAClaim.objects.filter(
+            encounter=encounter, claim_flow=SHAClaim.ClaimFlow.PHC
+        ).first()
+        assert claim is not None
+        assert claim.status == SHAClaim.ClaimStatus.DRAFT
+
+    @override_settings(FACILITY_LEVEL="L3", FACILITY_MFL_CODE="99999")
+    def test_queue_trigger_skips_if_claim_already_exists(
+        self, phc_patient, phc_sha_member, sample_facility
+    ):
+        """trigger_phc_claim_on_queue should not duplicate an existing claim."""
+        from hmis.apps.billing.signals import trigger_phc_claim_on_queue
+
+        # Normal path: encounter created → claim auto-created
+        encounter = Encounter.objects.create(
+            patient=phc_patient,
+            encounter_type="OPD",
+            chief_complaint="No duplicate test",
+            facility=sample_facility,
+        )
+
+        assert (
+            SHAClaim.objects.filter(encounter=encounter, claim_flow=SHAClaim.ClaimFlow.PHC).count()
+            == 1
+        )
+
+        # Queue trigger should not create a second claim
+        trigger_phc_claim_on_queue(phc_patient.pk, sample_facility.pk)
+
+        assert (
+            SHAClaim.objects.filter(encounter=encounter, claim_flow=SHAClaim.ClaimFlow.PHC).count()
+            == 1
+        )
+
+    @override_settings(FACILITY_LEVEL="L3", FACILITY_MFL_CODE="99999")
+    def test_queue_trigger_no_sha_member_is_noop(self, phc_patient, sample_facility):
+        """trigger_phc_claim_on_queue does nothing for non-SHA patients."""
+        from hmis.apps.billing.signals import trigger_phc_claim_on_queue
+
+        SHAMember.objects.filter(patient=phc_patient).delete()
+
+        Encounter.objects.create(
+            patient=phc_patient,
+            encounter_type="OPD",
+            chief_complaint="Cash patient",
+            facility=sample_facility,
+        )
+
+        trigger_phc_claim_on_queue(phc_patient.pk, sample_facility.pk)
+        assert SHAClaim.objects.filter(patient=phc_patient).count() == 0

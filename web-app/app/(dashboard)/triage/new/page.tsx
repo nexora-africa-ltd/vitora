@@ -731,6 +731,7 @@ export default function NewTriagePage() {
           setSuccessData(null);
           router.push('/triage');
         }}
+        skipSHAConsent
       />
     </div>
   );

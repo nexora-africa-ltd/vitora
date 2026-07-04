@@ -1134,6 +1134,7 @@ export default function PatientCheckinPage() {
         onOpenChange={setShowSuccessModal}
         checkInResult={checkInResult}
         onDismiss={() => setCheckInResult(null)}
+        skipSHAConsent
       />
 
       <RouteToClinicDialog

@@ -584,6 +584,12 @@ def process_checkin(
             linked_procedure_order=linked_procedure_order,
         )
 
+    # =========================================================================
+    # Async SHA eligibility verification — checks on every visit so membership
+    # status is never stale (membership can expire, be suspended, etc.)
+    # =========================================================================
+    _trigger_sha_check(patient, facility)
+
     return checkin, warning
 
 
@@ -632,3 +638,22 @@ def _link_procedure_orders_on_checkin(
             order.status = ProcedureOrder.Status.READY
         order.clinic_visit = clinic_visit
         order.save(update_fields=["status", "clinic_visit", "updated_at"])
+
+
+def _trigger_sha_check(patient, facility=None):
+    """
+    Fire async SHA eligibility verification on every check-in.
+    Ensures SHAMember status is refreshed from DHA API before claim creation.
+    """
+    try:
+        from hmis.apps.billing.signals import trigger_sha_eligibility_verification
+
+        facility_id = getattr(facility, "id", None) if facility else None
+        trigger_sha_eligibility_verification(patient.id, facility_id)
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).debug(
+            "SHA eligibility check not queued for patient %s (billing unavailable)",
+            patient.id,
+        )

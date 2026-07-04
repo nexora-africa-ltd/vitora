@@ -25,7 +25,6 @@ import {
   Activity,
   FileText,
   Building2,
-  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,7 +39,6 @@ import {
 import { useCheckInPatient } from '@/lib/hooks/use-triage';
 import { useToast } from '@/lib/hooks/use-toast';
 import { CheckinSuccessModal, type CheckinSuccessData } from './checkin-success-modal';
-import { SHAConsentStep } from '@/components/patients/sha-consent-step';
 import { RouteToClinicDialog } from '@/components/triage/route-to-clinic-dialog';
 import type { Patient } from '@/lib/types/patient';
 
@@ -58,22 +56,12 @@ export function PatientRegistrationSuccess({
 
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [showRouteDialog, setShowRouteDialog] = useState(false);
-  const [showShaConsent, setShowShaConsent] = useState(false);
-  const [pendingCheckin, setPendingCheckin] = useState(false);
-  const [checkinEncounterId, setCheckinEncounterId] = useState<number | null>(null);
 
   // Success modal state
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState<CheckinSuccessData | null>(null);
 
-  const handleCheckInToQueue = () => {
-    // Show SHA consent step first — patient is only checked into triage
-    // after consent is obtained or explicitly skipped.
-    setPendingCheckin(true);
-    setShowShaConsent(true);
-  };
-
-  const performCheckin = async () => {
+  const handleCheckInToQueue = async () => {
     setIsCheckingIn(true);
     try {
       const result = await checkInPatient.mutateAsync({
@@ -83,7 +71,6 @@ export function PatientRegistrationSuccess({
       });
 
       const encId = (result as { encounter?: number | null }).encounter ?? null;
-      setCheckinEncounterId(encId);
 
       // Show success modal with navigation option
       setSuccessData({
@@ -105,15 +92,6 @@ export function PatientRegistrationSuccess({
       });
     } finally {
       setIsCheckingIn(false);
-      setPendingCheckin(false);
-    }
-  };
-
-  const handleConsentComplete = (result: { consented: boolean; consentId?: number }) => {
-    setShowShaConsent(false);
-    // Whether consent was obtained or skipped, proceed with the check-in
-    if (pendingCheckin) {
-      performCheckin();
     }
   };
 
@@ -225,7 +203,7 @@ export function PatientRegistrationSuccess({
                     className="w-full sm:w-auto xl:flex-1"
                     size="lg"
                     onClick={handleCheckInToQueue}
-                    disabled={isCheckingIn || showRouteDialog || pendingCheckin}
+                    disabled={isCheckingIn || showRouteDialog}
                     title="Adds the patient to the triage waiting queue so vitals/triage can begin."
                   >
                     <UserPlus className="h-5 w-5 sm:mr-2" />
@@ -316,32 +294,6 @@ export function PatientRegistrationSuccess({
         </CardContent>
       </Card>
 
-      {/* SHA Consent — shown before check-in to ensure consent is obtained first */}
-      {showShaConsent ? (
-        <SHAConsentStep
-          patientId={patient.id}
-          encounterId={checkinEncounterId}
-          onComplete={handleConsentComplete}
-        />
-      ) : (
-        <Card className="border-dashed">
-          <CardContent className="flex items-center justify-between py-4 px-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <ShieldCheck className="h-4 w-4" />
-              <span>Obtain SHA visit consent (OTP verification)</span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowShaConsent(true)}
-            >
-              <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
-              Start SHA Consent
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
       <RouteToClinicDialog
         open={showRouteDialog}
         onOpenChange={setShowRouteDialog}
@@ -359,6 +311,7 @@ export function PatientRegistrationSuccess({
         onOpenChange={setShowSuccessModal}
         checkInResult={successData}
         onDismiss={() => setSuccessData(null)}
+        skipSHAConsent
       />
     </div>
   );

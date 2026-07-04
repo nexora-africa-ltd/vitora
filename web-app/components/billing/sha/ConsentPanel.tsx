@@ -212,6 +212,7 @@ export function ConsentPanel({
   const { facilityDetail } = useFacility();
   const facilityLevel = facilityDetail?.level ? parseInt(facilityDetail.level.replace(/[^0-9]/g, ''), 10) : undefined;
   const facilityLevelKnown = typeof facilityLevel === 'number' && !Number.isNaN(facilityLevel);
+  const isPhcLevel = facilityLevelKnown && facilityLevel! <= 3;
 
   // Step 1: Live DHA benefit-interventions (requires patient CR ID).
   // Try SHA-12-SC-01 (Outpatient PHC) first — most dispensaries are PHC-contracted.
@@ -237,6 +238,7 @@ export function ConsentPanel({
       .map((i) => ({
         code: i.code,
         label: `${i.name}${i.paymentMechanism ? ` · ${i.paymentMechanism}` : ''}${i.tariff ? ` · KES ${Number(i.tariff).toLocaleString()}` : ''}`,
+        schemes: undefined as string[] | undefined,
       }));
   }, [liveInterventionsResp]);
 
@@ -245,7 +247,7 @@ export function ConsentPanel({
     queryKey: ['sha-interventions-for-consent-static', facilityLevel],
     queryFn: () =>
       shaApi.searchInterventionCodes('', 100, facilityLevel, {
-        paymentMechanism: 'FEE FOR SERVICE',
+        paymentMechanism: isPhcLevel ? 'FEE FOR SERVICE,FIXED FEE FOR SERVICE' : 'FEE FOR SERVICE',
         accessPoint: 'OP',
         activeOnly: true,
       }),
@@ -258,6 +260,7 @@ export function ConsentPanel({
     if (!staticInterventions?.length) return [];
     return staticInterventions.map((i) => ({
       code: i.code,
+      schemes: i.schemes,
       label: `${i.name}${i.category ? ` · ${i.category}` : ''}${i.price ? ` · KES ${Number(i.price).toLocaleString()}` : ''}`,
     }));
   }, [staticInterventions]);
@@ -541,6 +544,11 @@ export function ConsentPanel({
                     {interventionOptions.map((opt) => (
                       <SelectItem key={opt.code} value={opt.code} className="text-xs">
                         {opt.label}
+                        {opt.schemes && opt.schemes.length > 0 && (
+                          <span className="ml-1 text-muted-foreground">
+                            · {opt.schemes.join(', ')}
+                          </span>
+                        )}
                       </SelectItem>
                     ))}
                   </SelectContent>
