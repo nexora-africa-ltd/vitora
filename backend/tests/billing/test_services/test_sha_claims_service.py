@@ -290,6 +290,8 @@ def valid_claim(
     test_user,
 ):
     """Create a valid claim with items and attachments for submission tests."""
+    from django.utils import timezone
+
     claim = SHAClaim.objects.create(
         patient=claims_patient,
         sha_member=claims_sha_member,
@@ -302,6 +304,7 @@ def valid_claim(
         facility_code="TEST-001",
         facility_level=SHATariff.TariffLevel.LEVEL_3,
         created_by=test_user,
+        previewed_at=timezone.now(),
     )
 
     # Add claim item

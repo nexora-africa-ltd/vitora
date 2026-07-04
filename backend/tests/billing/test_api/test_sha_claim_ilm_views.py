@@ -256,7 +256,12 @@ class TestPreviewSubmitClose:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_submit_calls_service(self, sha_client, sample_sha_claim):
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with (
+            patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc,
+            patch(
+                "hmis.apps.billing.models.SHAClaim.validate_for_submission", return_value=(True, [])
+            ),
+        ):
             svc.return_value.submit.return_value = _ilm_result({"sha_claim_reference": "SHA-REF-1"})
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "submit"),

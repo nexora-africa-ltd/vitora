@@ -183,7 +183,7 @@ class TestAdminAccessMiddleware:
     def test_required_admin_mfa_blocks_superuser_without_device(
         self, rf, superuser, settings, mocker
     ):
-        """Staging/prod admin MFA enforcement blocks superusers until MFA is configured."""
+        """Staging/prod admin MFA enforcement redirects superusers to MFA setup."""
         settings.ADMIN_MFA_REQUIRED = True
         settings.MFA_ENFORCEMENT = True
         mocker.patch(
@@ -193,7 +193,8 @@ class TestAdminAccessMiddleware:
         request = self._add_session(rf.get("/admin/core/staffprofile/"))
         request.user = superuser
         response = _make_admin_mw()(request)
-        assert response.status_code == 403
+        assert response.status_code == 302
+        assert "/admin/mfa-verify/" in response.url
 
     def test_admin_session_expires_after_idle_timeout(self, rf, superuser, settings, mocker):
         """Idle admin sessions should be logged out and sent back to admin login."""

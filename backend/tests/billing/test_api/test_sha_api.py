@@ -181,6 +181,8 @@ def sample_sha_claim(db, sample_sha_member, sample_encounter, test_user):
 @pytest.fixture
 def sample_claim_with_items(db, sample_sha_claim, sample_sha_tariff, test_user):
     """Create a claim with items and attachments ready for submission."""
+    from django.utils import timezone
+
     from hmis.apps.billing.models import SHAClaimAttachment, SHAClaimItem
 
     # Add claim item
@@ -192,6 +194,10 @@ def sample_claim_with_items(db, sample_sha_claim, sample_sha_tariff, test_user):
         quantity=Decimal("1.00"),
         unit_price=sample_sha_tariff.sha_amount,
     )
+
+    # Mark as previewed (DHA UAT requirement: must preview before submit)
+    sample_sha_claim.previewed_at = timezone.now()
+    sample_sha_claim.save(update_fields=["previewed_at"])
 
     # Add required attachments
     test_file = SimpleUploadedFile(

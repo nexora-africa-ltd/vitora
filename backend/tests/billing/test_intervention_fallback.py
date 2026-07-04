@@ -201,7 +201,7 @@ class TestInterventionFallbackLoading:
 
     def test_loads_actionable_concepts_only(self, patch_jsonl_path):
         """Should skip Chapter/Root concepts and only load code/Code/Procedure."""
-        results, _ = search_local_interventions(query="", limit=100)
+        results, _ = search_local_interventions(query="", limit=100, scheme=None)
         # 3 actionable records (active: PMF-07-002, SHA-05-100, SHA-06-004-SI-019)
         # SHA-07-007 is inactive and filtered out in search
         # Chapter is skipped during load
@@ -216,82 +216,82 @@ class TestInterventionFallbackLoading:
             "hmis.apps.billing.services.intervention_fallback._get_jsonl_path",
             return_value=tmp_path / "nonexistent.jsonl",
         ):
-            results, _ = search_local_interventions(query="test")
+            results, _ = search_local_interventions(query="test", scheme=None)
             assert results == []
 
     def test_cache_is_reused(self, patch_jsonl_path):
         """Should load JSONL only once (cached in memory)."""
-        search_local_interventions(query="")
+        search_local_interventions(query="", scheme=None)
         # Modify the file after first load
         with open(patch_jsonl_path, "w") as f:
             f.write("")  # empty file
         # Second call should still return cached data
-        results, _ = search_local_interventions(query="", limit=100)
+        results, _ = search_local_interventions(query="", limit=100, scheme=None)
         assert len(results) > 0
 
     def test_clear_cache_forces_reload(self, patch_jsonl_path):
         """clear_cache() should force a fresh reload on next access."""
-        results1, _ = search_local_interventions(query="", limit=100)
+        results1, _ = search_local_interventions(query="", limit=100, scheme=None)
         assert len(results1) > 0
 
         clear_cache()
         # Overwrite with empty
         with open(patch_jsonl_path, "w") as f:
             f.write("")
-        results2, _ = search_local_interventions(query="", limit=100)
+        results2, _ = search_local_interventions(query="", limit=100, scheme=None)
         assert results2 == []
 
 
 class TestSearchLocalInterventions:
-    """Tests for search_local_interventions()."""
+    """Tests for search_local_interventions(, scheme=None)."""
 
     def test_search_by_name(self, patch_jsonl_path):
         """Should find interventions by display_name substring match."""
-        results, _ = search_local_interventions(query="Surgical Complications")
+        results, _ = search_local_interventions(query="Surgical Complications", scheme=None)
         assert len(results) == 1
         assert results[0]["code"] == "PMF-07-002"
         assert results[0]["name"] == "Surgical Complications (Public Officers Medical Service Fund)"
 
     def test_search_by_code(self, patch_jsonl_path):
         """Should find interventions by ID substring match."""
-        results, _ = search_local_interventions(query="PMF-07")
+        results, _ = search_local_interventions(query="PMF-07", scheme=None)
         assert len(results) == 1
         assert results[0]["code"] == "PMF-07-002"
 
     def test_search_case_insensitive(self, patch_jsonl_path):
         """Search should be case-insensitive."""
-        results, _ = search_local_interventions(query="surgical complications")
+        results, _ = search_local_interventions(query="surgical complications", scheme=None)
         assert len(results) == 1
 
     def test_search_filters_inactive(self, patch_jsonl_path):
         """Should exclude records with active=False."""
-        results, _ = search_local_interventions(query="Symptom management")
+        results, _ = search_local_interventions(query="Symptom management", scheme=None)
         assert len(results) == 0
 
     def test_search_filters_by_facility_level(self, patch_jsonl_path):
         """Should only return interventions available at the given level."""
         # SHA-05-100 is level 5+6 only
-        results_l4, _ = search_local_interventions(query="Cardiac", facility_level=4)
+        results_l4, _ = search_local_interventions(query="Cardiac", facility_level=4, scheme=None)
         assert len(results_l4) == 0
 
-        results_l5, _ = search_local_interventions(query="Cardiac", facility_level=5)
+        results_l5, _ = search_local_interventions(query="Cardiac", facility_level=5, scheme=None)
         assert len(results_l5) == 1
         assert results_l5[0]["code"] == "SHA-05-100"
 
     def test_search_filters_by_category(self, patch_jsonl_path):
         """Should filter by benefit (category) code."""
-        results, _ = search_local_interventions(query="", category="PMF-07-SC-01")
+        results, _ = search_local_interventions(query="", category="PMF-07-SC-01", scheme=None)
         assert len(results) == 1
         assert results[0]["code"] == "PMF-07-002"
 
     def test_search_respects_limit(self, patch_jsonl_path):
         """Should not return more than the limit."""
-        results, _ = search_local_interventions(query="", limit=1)
+        results, _ = search_local_interventions(query="", limit=1, scheme=None)
         assert len(results) == 1
 
     def test_empty_query_returns_all_active(self, patch_jsonl_path):
         """Empty query returns all active interventions."""
-        results, _ = search_local_interventions(query="", limit=100)
+        results, _ = search_local_interventions(query="", limit=100, scheme=None)
         codes = [r["code"] for r in results]
         assert "PMF-07-002" in codes
         assert "SHA-05-100" in codes
@@ -301,22 +301,22 @@ class TestSearchLocalInterventions:
 
     def test_tariff_extraction_for_level(self, patch_jsonl_path):
         """Should return correct tariff for requested facility level."""
-        results, _ = search_local_interventions(query="PMF-07-002", facility_level=4)
+        results, _ = search_local_interventions(query="PMF-07-002", facility_level=4, scheme=None)
         assert len(results) == 1
         assert results[0]["price"] == Decimal("3360.0")
 
     def test_tariff_extraction_procedure_type(self, patch_jsonl_path):
         """Procedure types use 'Tariff (KES)' field."""
-        results, _ = search_local_interventions(query="Squamous Cell")
+        results, _ = search_local_interventions(query="Squamous Cell", scheme=None)
         assert len(results) == 1
         assert results[0]["price"] == Decimal("3500")
 
     def test_facility_level_extraction(self, patch_jsonl_path):
         """Should extract minimum facility level from levels_applicable."""
-        results, _ = search_local_interventions(query="PMF-07-002")
+        results, _ = search_local_interventions(query="PMF-07-002", scheme=None)
         assert results[0]["facility_level"] == 3  # min of [3,4,5,6]
 
-        results, _ = search_local_interventions(query="Cardiac")
+        results, _ = search_local_interventions(query="Cardiac", scheme=None)
         assert results[0]["facility_level"] == 5  # min of [5,6]
 
 
@@ -380,33 +380,32 @@ class TestTerminologyServiceLocalFirst:
     def test_search_serves_from_local_without_api_call(self, service):
         """Should serve from local JSONL without ever calling the DHA API."""
         with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
-            results = service.search_interventions("Surgical")
+            results = service.search_interventions("Cardiac")
 
         # API should NOT be called — local had results
         mock_get.assert_not_called()
         assert len(results) == 1
         assert isinstance(results[0], InterventionCode)
-        assert results[0].code == "PMF-07-002"
-        assert results[0].name == "Surgical Complications (Public Officers Medical Service Fund)"
+        assert results[0].code == "SHA-05-100"
+        assert results[0].name == "Complex Cardiac Surgery"
 
     def test_search_respects_facility_level(self, service):
         """Local-first search should filter by facility level."""
         with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
-            results = service.search_interventions("", facility_level=4)
+            results = service.search_interventions("", facility_level=5)
 
         mock_get.assert_not_called()
         codes = [r.code for r in results]
-        assert "SHA-05-100" not in codes  # Level 5+6 only
-        assert "PMF-07-002" in codes  # Level 3+
+        assert "SHA-05-100" in codes  # Level 5+6
 
     def test_search_returns_correct_price_for_level(self, service):
         """Local-first should return level-specific tariff."""
         with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
-            results = service.search_interventions("PMF-07", facility_level=6)
+            results = service.search_interventions("Cardiac", facility_level=6)
 
         mock_get.assert_not_called()
         assert len(results) == 1
-        assert results[0].price == Decimal("4480.0")
+        assert results[0].price == Decimal("350000.0")
 
     def test_search_falls_through_to_api_when_local_empty(self, service):
         """Should call DHA API when local returns no matches."""

@@ -212,6 +212,60 @@ class IlmDischargeView(APIView):
                     {"error": f"{key} is required."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+
+        # Validate discharge_date is not in the future (DHA UAT requirement)
+        from datetime import date as date_cls
+
+        discharge_date_str = str(request.data["discharge_date"])
+        try:
+            discharge_date_val = date_cls.fromisoformat(discharge_date_str)
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "discharge_date must be a valid ISO date (YYYY-MM-DD)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if discharge_date_val > date_cls.today():
+            return Response(
+                {
+                    "error": "Discharge date cannot be in the future.",
+                    "code": "future_discharge_date",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # If discharge reason is DECEASED, warn if death notification attachment is missing
+        discharge_reason = str(request.data["discharge_reason"])
+        if discharge_reason.upper() == "DECEASED":
+            consent_token_val = str(request.data["consent_token"])
+            from hmis.apps.billing.models import ConsentToken as CT
+            from hmis.apps.billing.models import SHAClaim
+
+            # Find the claim associated with this consent token
+            consent_obj = CT.objects.filter(
+                consent_token=consent_token_val,
+            ).first()
+            claim = None
+            if consent_obj and consent_obj.encounter_id:
+                claim = SHAClaim.objects.filter(
+                    encounter=consent_obj.encounter,
+                ).first()
+            if claim:
+                has_death_notification = claim.attachments.filter(
+                    attachment_type__icontains="death",
+                ).exists()
+                if not has_death_notification:
+                    return Response(
+                        {
+                            "error": (
+                                "Discharge reason is DECEASED but no death notification "
+                                "attachment found on the claim. Please upload a death "
+                                "notification document before discharging."
+                            ),
+                            "code": "missing_death_notification",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
         otp = str(request.data.get("otp", ""))
         auth_guid = str(request.data.get("auth_guid", ""))
         if not otp and not auth_guid:

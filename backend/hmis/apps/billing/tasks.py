@@ -309,8 +309,13 @@ def refresh_otp_whitelist_statuses():
 # =============================================================================
 
 
-@shared_task(name="hmis.apps.billing.tasks.auto_start_visit")
-def auto_start_visit(encounter_id: int):
+@shared_task(
+    name="hmis.apps.billing.tasks.auto_start_visit",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+)
+def auto_start_visit(self, encounter_id: int):
     """
     Auto-start DHA visit for a SHA-eligible encounter.
 
@@ -322,6 +327,17 @@ def auto_start_visit(encounter_id: int):
     result = SHAClaimAutomationService.auto_start_visit(encounter_id)
     logger = logging.getLogger(__name__)
     logger.info("Auto-start visit for encounter %s: %s", encounter_id, result.get("status"))
+
+    # Retry if consent not yet available (OTP may still be pending validation)
+    if result.get("status") == "no_consent" and self.request.retries < self.max_retries:
+        logger.info(
+            "Consent not yet available for encounter %s, retrying (%d/%d)",
+            encounter_id,
+            self.request.retries + 1,
+            self.max_retries,
+        )
+        raise self.retry(countdown=60 * (self.request.retries + 1))
+
     return result
 
 

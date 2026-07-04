@@ -160,7 +160,7 @@ class TestClinicModel:
         assert clinic.updated_at is not None
 
     def test_clinic_code_must_be_unique(self, sample_clinic):
-        """Clinic code must be unique across all clinics."""
+        """Clinic code must be unique per facility."""
         from hmis.apps.clinics.models import Clinic
 
         with pytest.raises(IntegrityError):
@@ -168,6 +168,8 @@ class TestClinicModel:
                 name="Duplicate Clinic",
                 clinic_type="GENERAL_OPD",
                 code="OPD-001",  # Same code as sample_clinic
+                facility=sample_clinic.facility,
+                organization=sample_clinic.organization,
             )
 
     def test_clinic_type_choices_validation(self, db):

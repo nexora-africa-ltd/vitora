@@ -325,6 +325,22 @@ def notify_on_result_verification(sender, instance, created, **kwargs):
                 except Exception as notif_error:
                     logger.error(f"Failed to send in-app notification: {notif_error}")
 
+                # Trigger SHA document attachment for the associated claim
+                try:
+                    from hmis.apps.billing.models import SHAClaim
+                    from hmis.apps.billing.signals import trigger_sha_document_attachment
+
+                    encounter = getattr(lab_order, "encounter", None)
+                    if encounter:
+                        claim = SHAClaim.objects.filter(
+                            encounter=encounter,
+                            status=SHAClaim.ClaimStatus.DRAFT,
+                        ).first()
+                        if claim:
+                            trigger_sha_document_attachment(claim.id)
+                except Exception:
+                    logger.debug("SHA document attachment trigger skipped")
+
     except Exception as e:
         logger.error(f"Failed to send verification notification for result {instance.id}: {e}")
 

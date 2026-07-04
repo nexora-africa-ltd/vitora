@@ -199,6 +199,16 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.billing.tasks.generate_daily_claims_digest",
         "schedule": crontab(minute=0, hour=18),
     },
+    # Billing: Flag time-barring claims every 30 minutes (24h emergency, 14-day query)
+    "billing-flag-time-barring-claims": {
+        "task": "hmis.apps.billing.tasks.flag_time_barring_claims",
+        "schedule": crontab(minute="*/30"),
+    },
+    # Billing: Poll ILM preauth statuses every 5 minutes (DHA preauth decisions)
+    "billing-poll-ilm-preauth-statuses": {
+        "task": "hmis.apps.billing.tasks.poll_ilm_preauth_statuses",
+        "schedule": crontab(minute="*/5"),
+    },
     # Pharmacy: Expire overdue prescriptions daily at 1 AM
     "pharmacy-expire-prescriptions": {
         "task": "hmis.apps.pharmacy.tasks.expire_prescriptions",

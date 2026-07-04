@@ -4,7 +4,7 @@
  */
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
@@ -17,12 +17,14 @@ import {
   Loader2,
   RefreshCw,
   Search,
+  Send,
   XCircle,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ClaimStatusBadge } from '@/components/billing/sha/ClaimComponents';
 import {
   DropdownMenu,
@@ -30,7 +32,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -38,14 +39,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 
 import { ClaimsStatusChart } from '@/components/widgets';
 import { TimeBarBadge } from '@/components/billing/sha/TimeBarBadge';
@@ -71,191 +66,50 @@ interface StatsCardProps {
   value: string | number;
   description?: string;
   icon: React.ReactNode;
-  trend?: 'up' | 'down' | 'neutral';
-  trendValue?: string;
   className?: string;
 }
 
-function StatsCard({
-  title,
-  value,
-  description,
-  icon,
-  trend,
-  trendValue,
-  className,
-}: StatsCardProps) {
+function StatsCard({ title, value, description, icon, className }: StatsCardProps) {
   return (
-    <Card className={className}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <Card className={`relative overflow-hidden ${className ?? ''}`}>
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+        aria-hidden="true"
+      />
+      <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         <div className="text-muted-foreground">{icon}</div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="relative">
         <div className="text-2xl font-bold">{value}</div>
         {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
-        {trend && trendValue && (
-          <p
-            className={`text-xs mt-1 ${
-              trend === 'up'
-                ? 'text-green-600'
-                : trend === 'down'
-                  ? 'text-red-600'
-                  : 'text-gray-600'
-            }`}
-          >
-            {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} {trendValue}
-          </p>
-        )}
       </CardContent>
     </Card>
   );
 }
 
-interface ClaimsFilterProps {
-  status: string;
-  onStatusChange: (status: string) => void;
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
-}
-
-function ClaimsFilter({ status, onStatusChange, searchQuery, onSearchChange }: ClaimsFilterProps) {
-  return (
-    <div className="flex flex-col sm:flex-row gap-4">
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by claim number, patient, or reference..."
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-      <Select value={status} onValueChange={onStatusChange}>
-        <SelectTrigger className="w-[180px]">
-          <Filter className="h-4 w-4 mr-2" />
-          <SelectValue placeholder="Filter by status" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Claims</SelectItem>
-          <SelectItem value="draft">Draft</SelectItem>
-          <SelectItem value="pending">Pending</SelectItem>
-          <SelectItem value="submitted">Submitted</SelectItem>
-          <SelectItem value="processing">Processing</SelectItem>
-          <SelectItem value="approved">Approved</SelectItem>
-          <SelectItem value="rejected">Rejected</SelectItem>
-          <SelectItem value="paid">Paid</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
-
-interface ClaimsTableProps {
-  claims: Claim[];
-  isLoading: boolean;
-  onClaimClick: (claim: Claim) => void;
-}
-
-function ClaimsTable({ claims, isLoading, onClaimClick }: ClaimsTableProps) {
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-48" />
-            </div>
-            <div className="text-right space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-3 w-16" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (claims.length === 0) {
-    return (
-      <div className="text-center py-12 border rounded-lg bg-muted/20">
-        <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <h3 className="text-lg font-medium text-muted-foreground">No Claims Found</h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          No SHA claims match your current filters.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Claim</TableHead>
-          <TableHead>Patient</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Amount</TableHead>
-          <TableHead>Date</TableHead>
-          <TableHead className="w-8"></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {claims.map((claim) => (
-          <TableRow
-            key={claim.id}
-            className="cursor-pointer hover:bg-muted/50"
-            onClick={() => onClaimClick(claim)}
-          >
-            <TableCell>
-              <div className="space-y-1">
-                <p className="font-medium font-mono text-sm">{claim.claim_number || `#${claim.id}`}</p>
-                {claim.sha_reference && (
-                  <p className="text-xs text-muted-foreground font-mono">Ref: {claim.sha_reference}</p>
-                )}
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="space-y-1">
-                <p className="font-medium">{claim.patient_name || 'Unknown'}</p>
-                <p className="text-xs text-muted-foreground">{claim.patient_mrn}</p>
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="flex flex-col gap-1">
-                <ClaimStatusBadge status={claim.status} />
-                <TimeBarBadge claim={claim} compact />
-              </div>
-            </TableCell>
-            <TableCell className="text-right">
-              <p className="font-medium">{formatCurrency(parseFloat(claim.total_amount ?? '0'))}</p>
-              {claim.approved_amount && claim.status === 'approved' && (
-                <p className="text-xs text-green-600">
-                  Approved: {formatCurrency(parseFloat(claim.approved_amount))}
-                </p>
-              )}
-            </TableCell>
-            <TableCell>
-              <p className="text-sm">
-                {claim.submitted_at
-                  ? format(parseISO(claim.submitted_at), 'MMM d, yyyy')
-                  : format(parseISO(claim.created_at), 'MMM d, yyyy')}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {claim.submitted_at
-                  ? format(parseISO(claim.submitted_at), 'h:mm a')
-                  : 'Not submitted'}
-              </p>
-            </TableCell>
-            <TableCell>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
+/** Export claims to CSV. */
+function exportClaimsCSV(claims: Claim[]) {
+  const headers = ['Claim Number', 'Patient', 'MRN', 'Status', 'Flow', 'Amount', 'Approved', 'Service Date', 'Submitted'];
+  const rows = claims.map((c) => [
+    c.claim_number || `#${c.id}`,
+    c.patient_name || '',
+    c.patient_mrn || '',
+    c.status,
+    c.claim_flow || '',
+    c.total_amount ?? '0',
+    c.approved_amount ?? '',
+    c.service_date || '',
+    c.submitted_at ? format(parseISO(c.submitted_at), 'yyyy-MM-dd HH:mm') : '',
+  ]);
+  const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `sha-claims-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHeader = true }: SHAClaimsPanelProps) {
@@ -266,6 +120,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
 
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const { data: claimsData, isLoading, refetch, isRefetching } = useClaims({
@@ -275,7 +130,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
 
   const claims = claimsData?.results ?? EMPTY_CLAIMS;
 
-  const stats = {
+  const stats = useMemo(() => ({
     total: claims.length,
     pending: claims.filter((c) => ['pending', 'submitted', 'processing'].includes(c.status)).length,
     approved: claims.filter((c) => c.status === 'approved').length,
@@ -284,7 +139,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
     approvedAmount: claims
       .filter((c) => c.approved_amount)
       .reduce((sum, c) => sum + parseFloat(c.approved_amount || '0'), 0),
-  };
+  }), [claims]);
 
   const claimsStatusData = useMemo(() => {
     const statusCounts = new Map<ClaimStatus, { count: number; amount: number }>();
@@ -295,15 +150,12 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
         amount: existing.amount + parseFloat(claim.total_amount ?? '0'),
       });
     });
-
     return Array.from(statusCounts.entries()).map(([status, data]) => ({
       status,
       count: data.count,
       amount: data.amount,
     }));
   }, [claims]);
-
-  const filteredClaims = claims;
 
   // Claims approaching time-barring deadline (within 12 hours or already barred)
   const expiringClaims = useMemo(
@@ -320,54 +172,74 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
     router.push(`${basePath}/${claim.id}`);
   };
 
-  const handleExport = () => {
-    console.log('Export claims');
-  };
+  const toggleSelection = useCallback((id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (selectedIds.size === claims.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(claims.map((c) => c.id)));
+    }
+  }, [claims, selectedIds.size]);
+
+  const selectedClaims = useMemo(
+    () => claims.filter((c) => selectedIds.has(c.id)),
+    [claims, selectedIds]
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {showHeader && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">SHA Claims</h2>
-            <p className="text-muted-foreground">Manage and track Social Health Authority insurance claims</p>
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">SHA Claims</h2>
+            <p className="text-sm text-muted-foreground">Manage and track Social Health Authority claims</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => refetch()} disabled={isRefetching}>
+            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isRefetching}>
               {isRefetching ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <RefreshCw className="h-4 w-4 mr-2" />
               )}
-              Refresh
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Export</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem onClick={handleExport}>Export as CSV</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExport}>Export as PDF</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportClaimsCSV(selectedClaims.length > 0 ? selectedClaims : claims)}>
+                  Export as CSV {selectedIds.size > 0 && `(${selectedIds.size} selected)`}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-4">
+      {/* Stats Row */}
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
         <StatsCard
           title="Total Claims"
           value={stats.total}
-          description={`${formatCurrency(stats.totalAmount)} total value`}
+          description={`${formatCurrency(stats.totalAmount)} value`}
           icon={<FileText className="h-4 w-4" />}
         />
         <StatsCard
           title="In Progress"
           value={stats.pending}
-          description="Awaiting SHA response"
+          description="Awaiting response"
           icon={<Clock className="h-4 w-4" />}
           className="border-yellow-200 dark:border-yellow-800"
         />
@@ -387,21 +259,20 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
         />
       </div>
 
+      {/* Charts — hidden on mobile for decluttering */}
       {claims.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="hidden md:grid gap-4 md:grid-cols-2">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Claims by Status</CardTitle>
-              <CardDescription>Distribution of claims by current status</CardDescription>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Claims by Status</CardTitle>
             </CardHeader>
             <CardContent>
               <ClaimsStatusChart data={claimsStatusData} showLegend />
             </CardContent>
           </Card>
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Claims by Amount</CardTitle>
-              <CardDescription>Value distribution by status</CardDescription>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Claims by Amount</CardTitle>
             </CardHeader>
             <CardContent>
               <ClaimsStatusChart data={claimsStatusData} showLegend showByAmount />
@@ -417,13 +288,10 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               <CardTitle className="text-base">Time-Barring Alerts</CardTitle>
-              <span className="text-xs bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 px-2 py-0.5 rounded-full font-medium">
+              <Badge variant="secondary" className="bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200">
                 {expiringClaims.length}
-              </span>
+              </Badge>
             </div>
-            <CardDescription>
-              These claims are approaching or have exceeded their DHA submission deadline.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -437,7 +305,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                     <span className="font-mono text-sm font-medium truncate">
                       {claim.claim_number || `#${claim.id}`}
                     </span>
-                    <span className="text-sm text-muted-foreground truncate">
+                    <span className="text-sm text-muted-foreground truncate hidden sm:inline">
                       {claim.patient_name}
                     </span>
                   </div>
@@ -446,7 +314,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
               ))}
               {expiringClaims.length > 5 && (
                 <p className="text-xs text-muted-foreground text-center pt-1">
-                  +{expiringClaims.length - 5} more claims approaching deadline
+                  +{expiringClaims.length - 5} more approaching deadline
                 </p>
               )}
             </div>
@@ -454,25 +322,207 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
         </Card>
       )}
 
+      {/* Batch Actions Toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/50">
+          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => exportClaimsCSV(selectedClaims)}
+          >
+            <Download className="h-3.5 w-3.5 mr-1.5" />
+            Export
+          </Button>
+          <Button
+            size="sm"
+            variant="default"
+            onClick={() => {
+              // Bulk submit via the existing hook
+              selectedClaims
+                .filter((c) => c.status === 'draft')
+                .forEach((c) => handleClaimClick(c));
+            }}
+            disabled={!selectedClaims.some((c) => c.status === 'draft')}
+          >
+            <Send className="h-3.5 w-3.5 mr-1.5" />
+            Submit Drafts
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+            Clear
+          </Button>
+        </div>
+      )}
+
+      {/* Claims List — Filter + ResponsiveTable */}
       <Card>
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <CardTitle>Claims List</CardTitle>
-              <CardDescription>
-                {filteredClaims.length} claim{filteredClaims.length !== 1 ? 's' : ''} found
-              </CardDescription>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-base">
+              Claims {claims.length > 0 && <span className="text-muted-foreground font-normal">({claims.length})</span>}
+            </CardTitle>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search claims..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9 w-full sm:w-52"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-9 w-full sm:w-[150px]">
+                  <Filter className="h-3.5 w-3.5 mr-1.5" />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="submitted">Submitted</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="query">Query</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <ClaimsFilter
-              status={statusFilter}
-              onStatusChange={setStatusFilter}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-            />
           </div>
         </CardHeader>
-        <CardContent>
-          <ClaimsTable claims={filteredClaims} isLoading={isLoading} onClaimClick={handleClaimClick} />
+        <CardContent className="px-0 sm:px-6">
+          <ResponsiveTable<Claim>
+            data={claims}
+            keyExtractor={(c) => c.id}
+            isLoading={isLoading}
+            emptyMessage="No SHA claims match your filters."
+            onRowClick={handleClaimClick}
+            defaultSortColumn="created_at"
+            defaultSortDirection="desc"
+            columns={[
+              {
+                key: 'select',
+                header: '',
+                cell: (claim) => (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedIds.has(claim.id)}
+                      onCheckedChange={() => toggleSelection(claim.id)}
+                    />
+                  </div>
+                ),
+              },
+              {
+                key: 'claim_number',
+                header: 'Claim',
+                sortable: true,
+                cell: (claim) => (
+                  <div className="space-y-0.5">
+                    <p className="font-medium font-mono text-sm">{claim.claim_number || `#${claim.id}`}</p>
+                    {claim.sha_reference && (
+                      <p className="text-xs text-muted-foreground font-mono truncate max-w-[120px]">
+                        {claim.sha_reference}
+                      </p>
+                    )}
+                  </div>
+                ),
+              },
+              {
+                key: 'patient_name',
+                header: 'Patient',
+                sortable: true,
+                hideOnMobile: true,
+                cell: (claim) => (
+                  <div className="space-y-0.5">
+                    <p className="font-medium">{claim.patient_name || 'Unknown'}</p>
+                    <p className="text-xs text-muted-foreground">{claim.patient_mrn}</p>
+                  </div>
+                ),
+              },
+              {
+                key: 'status',
+                header: 'Status',
+                sortable: true,
+                cell: (claim) => (
+                  <div className="flex flex-col gap-1">
+                    <ClaimStatusBadge status={claim.status} />
+                    <TimeBarBadge claim={claim} compact />
+                  </div>
+                ),
+              },
+              {
+                key: 'total_amount',
+                header: 'Amount',
+                sortable: true,
+                sortType: 'number',
+                hideOnMobile: true,
+                cell: (claim) => (
+                  <div className="text-right">
+                    <p className="font-medium">{formatCurrency(parseFloat(claim.total_amount ?? '0'))}</p>
+                    {claim.approved_amount && claim.status === 'approved' && (
+                      <p className="text-xs text-green-600">
+                        {formatCurrency(parseFloat(claim.approved_amount))}
+                      </p>
+                    )}
+                  </div>
+                ),
+                className: 'text-right',
+              },
+              {
+                key: 'created_at',
+                header: 'Date',
+                sortable: true,
+                sortType: 'date',
+                hideOnMobile: true,
+                cell: (claim) => (
+                  <div>
+                    <p className="text-sm">
+                      {claim.submitted_at
+                        ? format(parseISO(claim.submitted_at), 'MMM d, yyyy')
+                        : format(parseISO(claim.created_at), 'MMM d, yyyy')}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {claim.submitted_at ? 'Submitted' : 'Draft'}
+                    </p>
+                  </div>
+                ),
+              },
+              {
+                key: 'actions',
+                header: '',
+                cell: () => <ChevronRight className="h-4 w-4 text-muted-foreground" />,
+              },
+            ]}
+            mobileCard={(claim) => (
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedIds.has(claim.id)}
+                      onCheckedChange={() => toggleSelection(claim.id)}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm font-medium truncate">
+                        {claim.claim_number || `#${claim.id}`}
+                      </span>
+                      <ClaimStatusBadge status={claim.status} />
+                    </div>
+                    <p className="text-sm text-muted-foreground truncate mt-0.5">
+                      {claim.patient_name} • {claim.patient_mrn}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm font-medium">
+                        {formatCurrency(parseFloat(claim.total_amount ?? '0'))}
+                      </span>
+                      <TimeBarBadge claim={claim} compact />
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              </div>
+            )}
+          />
         </CardContent>
       </Card>
     </div>

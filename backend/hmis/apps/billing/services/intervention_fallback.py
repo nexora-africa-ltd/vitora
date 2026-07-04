@@ -245,6 +245,7 @@ def search_local_interventions(
     active_only: bool = False,
     access_point: str | None = None,
     patient_gender: str | None = None,
+    scheme: str | None = "SHA",
 ) -> tuple[list[dict], int]:
     """
     Search local interventions by name or code.
@@ -262,6 +263,9 @@ def search_local_interventions(
         patient_gender: "M" or "F". When set, excludes interventions whose
             `applicable_gender` is exclusively for the other gender (e.g. maternity
             SHA-08 codes are `FEMALE`-only and will be hidden for male patients).
+        scheme: Filter by applicable scheme. Defaults to "SHA" which excludes PMF
+            (Public Officers Medical Fund) interventions. Pass None or "" to include
+            all schemes.
 
     Returns a tuple of (results, total_count) where results is a list of kwargs
     dicts suitable for InterventionCode(**kwargs), sliced by offset/limit.
@@ -283,6 +287,26 @@ def search_local_interventions(
         if not active_only and (extras.get("active") == "False" or record.get("retired")):
             # Preserve legacy behaviour: default view still hides inactive rows.
             continue
+
+        # Filter by applicable scheme (exclude PMF codes from SHA searches)
+        if scheme:
+            applicable_schemes = extras.get("applicable_schemes", [])
+            if applicable_schemes:
+                # Record has explicit scheme list — check if requested scheme is in it
+                scheme_upper = scheme.upper()
+                record_schemes_upper = [s.upper() for s in applicable_schemes]
+                # SHA, UHC, and SHIF are all part of the same national scheme
+                sha_family = {"SHA", "UHC", "SHIF"}
+                if scheme_upper in sha_family:
+                    if not any(s in sha_family for s in record_schemes_upper):
+                        continue
+                elif scheme_upper not in record_schemes_upper:
+                    continue
+            else:
+                # No applicable_schemes specified — infer from code prefix
+                code = record.get("id", "")
+                if code.startswith("PMF-") and scheme.upper() not in ("PMF",):
+                    continue
 
         # Filter by facility level.
         # KEPH levels appear as "LEVEL 2", "LEVEL 3", "LEVEL 3A/B/C", "LEVEL 4A/B/C",
