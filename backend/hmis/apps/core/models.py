@@ -3175,6 +3175,14 @@ class Facility(TimeStampedModel):
     )
     biometrics_agent_national_id = encrypted_pii_property("biometrics_agent_national_id")
 
+    biometrics_enforced = models.BooleanField(
+        default=False,
+        help_text=(
+            "When True, DHA requires biometric (fingerprint) consent for this "
+            "facility — OTP-only consent is not allowed. Set by DHA compliance."
+        ),
+    )
+
     # ------------------------------------------------------------------
     # DHA Registry Cache (populated via ILM facility-search)
     # ------------------------------------------------------------------

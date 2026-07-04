@@ -1560,6 +1560,7 @@ class TerminologySearchView(APIView):
                 offset = int(request.query_params.get("offset", 0))
                 payment_mechanism = request.query_params.get("payment_mechanism")
                 access_point = request.query_params.get("access_point")
+                patient_gender = request.query_params.get("patient_gender")
                 active_only = request.query_params.get("active_only", "").lower() in (
                     "1",
                     "true",
@@ -1573,6 +1574,7 @@ class TerminologySearchView(APIView):
                     payment_mechanism=payment_mechanism or None,
                     active_only=active_only,
                     access_point=access_point or None,
+                    patient_gender=patient_gender or None,
                 )
                 # Convert to dicts
                 data = results_list
@@ -3334,6 +3336,57 @@ class ConsentSendOTPView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # ---- PHC pre-flight guards ----
+        # Guard: deceased patient
+        if sha_member.patient.is_deceased:
+            return Response(
+                {
+                    "error": "Cannot initiate consent for a deceased patient.",
+                    "code": "patient_deceased",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Guard: facility is biometrics-enforced (OTP not allowed)
+        if getattr(facility, "biometrics_enforced", False):
+            return Response(
+                {
+                    "error": "This facility requires biometric consent. OTP is not available.",
+                    "code": "biometrics_enforced",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Guard: duplicate active visit today (same patient + facility + access point)
+        from hmis.apps.billing.models import ConsentToken as CT
+
+        existing_active = CT.objects.filter(
+            patient=sha_member.patient,
+            facility=facility,
+            status__in=[CT.ConsentStatus.PENDING, CT.ConsentStatus.VALIDATED],
+            created_at__date=date.today(),
+        ).exists()
+        if existing_active:
+            # Reuse existing consent instead of blocking — idempotent
+            existing = (
+                CT.objects.filter(
+                    patient=sha_member.patient,
+                    facility=facility,
+                    status__in=[CT.ConsentStatus.PENDING, CT.ConsentStatus.VALIDATED],
+                    created_at__date=date.today(),
+                )
+                .order_by("-created_at")
+                .first()
+            )
+            if existing:
+                response_data = {
+                    "consent_id": existing.id,
+                    "otp_reference": existing.otp_reference or "",
+                    "status": existing.status,
+                    "message": "Existing active consent for today reused",
+                }
+                return Response(response_data, status=status.HTTP_200_OK)
+
         # Derive the Client Registry ID from the SHA number
         patient_cr_id = self._sha_number_to_cr_id(sha_member.sha_number)
         if not patient_cr_id:
@@ -3762,6 +3815,70 @@ class StartVisitView(APIView):
         # during send-otp if the request doesn't include them.
         if not intervention_codes and consent.intervention_codes:
             intervention_codes = consent.intervention_codes
+
+        # ---- PHC pre-flight guards ----
+        # Guard: deceased patient
+        if consent.patient and consent.patient.is_deceased:
+            return Response(
+                {"error": "Cannot start visit for a deceased patient.", "code": "patient_deceased"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Guard: one capitation claim per patient per day per facility
+        from hmis.apps.billing.models import SHAClaim
+
+        existing_capitation_today = (
+            SHAClaim.objects.filter(
+                patient=consent.patient,
+                facility=facility,
+                service_date=date.today(),
+                claim_flow=SHAClaim.ClaimFlow.PHC,
+            )
+            .exclude(
+                status__in=["cancelled", "written_off"],
+            )
+            .exists()
+        )
+        if existing_capitation_today:
+            return Response(
+                {
+                    "error": "This patient already has a capitation claim today at this facility. Only one per day is allowed.",
+                    "code": "duplicate_capitation_claim",
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        # Guard: check bed availability for inpatient visits
+        if service_type.upper() == "INPATIENT":
+            from hmis.apps.inpatient.models import Ward
+
+            wards_with_beds = Ward.objects.filter(facility=facility, is_active=True)
+            total_available = sum(w.available_beds for w in wards_with_beds)
+            if total_available == 0:
+                return Response(
+                    {
+                        "error": "No beds available at this facility for inpatient admission.",
+                        "code": "no_beds_available",
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+        # Guard: check if patient already has an active admission (inpatient)
+        if service_type.upper() == "INPATIENT" and consent.patient:
+            from hmis.apps.inpatient.models import Admission
+
+            active_admission = Admission.objects.filter(
+                patient=consent.patient,
+                status="ACTIVE",
+            ).exists()
+            if active_admission:
+                return Response(
+                    {
+                        "error": "Patient already has an active inpatient admission. Discharge or transfer first.",
+                        "code": "active_admission_exists",
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
 
         # Resolve encounter if provided (links consent token to encounter)
         encounter = None
