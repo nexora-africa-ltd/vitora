@@ -177,9 +177,57 @@ class IlmClaimService:
         if params.otp and params.auth_guid:
             raise ValueError("Provide either otp or auth_guid, not both")
 
+        # ---------------------------------------------------------------
+        # Capitation check: SHA-12-xxx and some SHA-08-xxx are pre-paid
+        # (capitated). DHA's start_visit endpoint does not accept these —
+        # it returns "intervention X is not supported for service type Y"
+        # for all valid service types. For capitated interventions we skip
+        # the DHA call and mark the visit started locally.
+        # ---------------------------------------------------------------
+        CAPITATED_PREFIXES = ("SHA-12-", "SHA-08-001", "SHA-08-002", "SHA-08-003")
+        codes = list(params.intervention_codes)
+        all_capitated = bool(codes) and all(
+            any(c.startswith(p) for p in CAPITATED_PREFIXES) for c in codes
+        )
+        if all_capitated:
+            logger.info(
+                "All interventions are capitated (%s); skipping DHA start_visit for claim %s.",
+                codes,
+                getattr(claim, "pk", None),
+            )
+            mock_response = IlmResponse(
+                status_code=200,
+                headers={},
+                json={
+                    "authorization_code": (
+                        f"capitated-{getattr(claim, 'pk', 'unknown')}"
+                        f"-{int(timezone.now().timestamp())}"
+                    ),
+                    "claim_id": getattr(claim, "dha_external_id", None),
+                    "message": (
+                        "Capitated interventions skip DHA visit start. Visit started locally."
+                    ),
+                },
+            )
+            result = IlmClaimResult(response=mock_response, payload=mock_response.json)
+            self._apply_visit_response(claim, result, user=user)
+            from hmis.apps.core.events import BillingEvents
+
+            _publish_safe(
+                BillingEvents.DHA_CLAIM_VISIT_STARTED,
+                _claim_event_payload(
+                    claim,
+                    result,
+                    service_type=params.service_type,
+                    intervention_codes=codes,
+                    authorization_code=result.authorization_code,
+                ),
+            )
+            return result
+
         body: dict[str, Any] = {
             "patient_id": params.patient_id,
-            "intervention_codes": list(params.intervention_codes),
+            "intervention_codes": codes,
             "service_type": params.service_type,
         }
         if params.otp:
@@ -230,6 +278,20 @@ class IlmClaimService:
     def add_intervention(
         self, claim: Any, intervention_code: str, *, user: Any = None
     ) -> IlmClaimResult:
+        # Capitated codes (SHA-12-xxx, SHA-08-001/002/003) are not supported
+        # by DHA's standard interventions endpoint. Redirect to the virtual
+        # claim line endpoint which handles them correctly.
+        CAPITATED_PREFIXES = ("SHA-12-", "SHA-08-001", "SHA-08-002", "SHA-08-003")
+        if any(intervention_code.startswith(p) for p in CAPITATED_PREFIXES):
+            logger.info(
+                "Redirecting capitated code %s to virtual claim line endpoint for claim %s.",
+                intervention_code,
+                getattr(claim, "pk", None),
+            )
+            return self.add_virtual_claim_line(
+                claim, intervention_code=intervention_code, user=user
+            )
+
         result = self._post_with_consent(
             claim,
             INTERVENTIONS_PATH,

@@ -40,6 +40,8 @@ import type { ConsentStatus, ClaimFlow } from '@/lib/types/sha';
 import { format, parseISO } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { useFacility } from '@/lib/context/facility-context';
+import { ContactPicker } from '@/components/patients/contact-picker';
+import { toCrId } from '@/lib/sha/ilm-parsers';
 
 // ============================================================================
 // Types
@@ -214,16 +216,25 @@ export function ConsentPanel({
   const facilityLevelKnown = typeof facilityLevel === 'number' && !Number.isNaN(facilityLevel);
   const isPhcLevel = facilityLevelKnown && facilityLevel! <= 3;
 
+  // ---- Resolve patient CR ID: prop first, then derive from SHA member ----
+  const { data: fallbackSHAMember } = useQuery({
+    queryKey: ['sha-member', shaMemberId],
+    queryFn: () => shaApi.getSHAMember(shaMemberId),
+    enabled: !patientCrId && !!shaMemberId,
+    staleTime: 5 * 60 * 1000,
+  });
+  const resolvedCrId = patientCrId || (fallbackSHAMember && toCrId(fallbackSHAMember.sha_member_number));
+
   // Step 1: Live DHA benefit-interventions (requires patient CR ID).
   // Try SHA-12-SC-01 (Outpatient PHC) first — most dispensaries are PHC-contracted.
   const { data: liveInterventionsResp } = useQuery({
-    queryKey: ['sha-live-benefit-interventions', patientCrId],
+    queryKey: ['sha-live-benefit-interventions', resolvedCrId],
     queryFn: () =>
       shaApi.ilmBenefitInterventions({
-        patient_id: patientCrId!,
+        patient_id: resolvedCrId!,
         sub_benefit_code: 'SHA-12-SC-01',
       }),
-    enabled: !!patientCrId,
+    enabled: !!resolvedCrId,
     staleTime: 5 * 60 * 1000,
     retry: 1,
     meta: { skipGlobalErrorHandler: true },
@@ -247,7 +258,7 @@ export function ConsentPanel({
     queryKey: ['sha-interventions-for-consent-static', facilityLevel],
     queryFn: () =>
       shaApi.searchInterventionCodes('', 100, facilityLevel, {
-        paymentMechanism: isPhcLevel ? 'FEE FOR SERVICE,FIXED FEE FOR SERVICE' : 'FEE FOR SERVICE',
+        paymentMechanism: isPhcLevel ? 'FEE FOR SERVICE,FIXED FEE FOR SERVICE,CAPITATION' : 'FEE FOR SERVICE',
         accessPoint: 'OP',
         activeOnly: true,
       }),
@@ -291,6 +302,9 @@ export function ConsentPanel({
   // Track sandbox OTP from backend (DHA UAT returns the OTP in non-production)
   const [sandboxOtp, setSandboxOtp] = useState<string | null>(null);
 
+  // Contact selection for OTP recipient
+  const [selectedContactId, setSelectedContactId] = useState<string | undefined>();
+
   // ---- Auto-detect existing PENDING consent from check-in ----
   // If OTP was already sent (e.g. during check-in or by automation),
   // skip ahead to the "Enter OTP" step instead of showing "Send OTP".
@@ -327,6 +341,7 @@ export function ConsentPanel({
       {
         sha_member_id: shaMemberId,
         ...(codes.length ? { intervention_codes: codes } : {}),
+        ...(selectedContactId ? { beneficiary_contact_id: selectedContactId } : {}),
       },
       {
         onSuccess: (response) => {
@@ -498,6 +513,13 @@ export function ConsentPanel({
                 </Select>
               </div>
             )}
+            {resolvedCrId && (
+              <ContactPicker
+                beneficiaryCrId={resolvedCrId}
+                onSelect={setSelectedContactId}
+                selectedContactId={selectedContactId}
+              />
+            )}
             {error && (
               <p className="text-sm text-destructive">{error}</p>
             )}
@@ -554,6 +576,13 @@ export function ConsentPanel({
                   </SelectContent>
                 </Select>
               </div>
+            )}
+            {resolvedCrId && (
+              <ContactPicker
+                beneficiaryCrId={resolvedCrId}
+                onSelect={setSelectedContactId}
+                selectedContactId={selectedContactId}
+              />
             )}
             {sandboxOtp && (
               <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">

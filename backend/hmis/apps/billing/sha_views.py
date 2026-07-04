@@ -3468,17 +3468,18 @@ class ConsentSendOTPView(APIView):
             patient=sha_member.patient,
             facility=facility,
             access_point=derived_access_point,
-            status__in=[CT.ConsentStatus.PENDING, CT.ConsentStatus.VALIDATED],
+            status=CT.ConsentStatus.VALIDATED,
             created_at__date=date.today(),
         ).exists()
         if existing_active:
-            # Reuse existing consent instead of blocking — idempotent
+            # Reuse existing VALIDATED consent instead of blocking — idempotent.
+            # PENDING consents always re-call DHA so a fresh OTP is generated.
             existing = (
                 CT.objects.filter(
                     patient=sha_member.patient,
                     facility=facility,
                     access_point=derived_access_point,
-                    status__in=[CT.ConsentStatus.PENDING, CT.ConsentStatus.VALIDATED],
+                    status=CT.ConsentStatus.VALIDATED,
                     created_at__date=date.today(),
                 )
                 .order_by("-created_at")
