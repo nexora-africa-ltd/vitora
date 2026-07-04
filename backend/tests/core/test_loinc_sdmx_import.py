@@ -25,10 +25,11 @@ class TestLOINCTerminologyService:
         assert service.base_url == "https://fhir.loinc.org"
         assert service.timeout == 10
 
-    def test_external_not_available_without_credentials(self):
+    def test_external_not_available_without_credentials(self, settings):
         """Should report external as unavailable without credentials."""
+        settings.LOINC_USERNAME = ""
+        settings.LOINC_PASSWORD = ""
         service = LOINCTerminologyService()
-        # Default has empty credentials
         assert service.is_external_available is False
 
     @pytest.mark.django_db
@@ -83,9 +84,13 @@ class TestLOINCTerminologyService:
         assert service.validate_code("99999-9") is False
 
     @pytest.mark.django_db
-    def test_search_local(self):
+    def test_search_local(self, settings):
         """Should search local LOINC codes by component name."""
         from hmis.apps.laboratory.models import LOINCCode
+
+        # Force local-only search (no external LOINC API)
+        settings.LOINC_USERNAME = ""
+        settings.LOINC_PASSWORD = ""
 
         LOINCCode.objects.create(
             code="718-7",

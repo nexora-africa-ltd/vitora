@@ -120,6 +120,8 @@ def sample_invoice(db, sample_patient, test_user, sample_facility, sample_organi
 @pytest.fixture
 def valid_claim_data(sha_member, sample_encounter, sample_invoice, test_user):
     """Valid claim data for tests."""
+    from django.utils import timezone
+
     return {
         "patient": sha_member.patient,
         "sha_member": sha_member,
@@ -132,6 +134,7 @@ def valid_claim_data(sha_member, sample_encounter, sample_invoice, test_user):
         "facility_code": "MFL-12345",
         "facility_level": "L3",
         "created_by": test_user,
+        "previewed_at": timezone.now(),
     }
 
 

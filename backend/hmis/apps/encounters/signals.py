@@ -332,5 +332,13 @@ def sync_sha_claim_diagnosis(sender, instance, **kwargs):
                 code,
                 encounter.id,
             )
+
+            # Trigger intervention suggestion when diagnosis is confirmed
+            try:
+                from hmis.apps.billing.tasks import auto_populate_interventions
+
+                auto_populate_interventions.apply_async(args=[encounter.id, claim.id], countdown=5)
+            except Exception:
+                logger.debug("SHA intervention suggestion not triggered (Celery unavailable)")
     except Exception:
         logger.exception("Failed to sync SHA claim diagnosis for diagnosis %s", instance.pk)

@@ -89,6 +89,8 @@ def sample_sha_tariff(db):
 @pytest.fixture
 def draft_claim(db, sample_sha_member, sample_encounter, test_user, sample_sha_tariff):
     """Draft claim with items and base attachments (clinical_notes + invoice)."""
+    from django.utils import timezone
+
     claim = SHAClaim.objects.create(
         patient=sample_sha_member.patient,
         sha_member=sample_sha_member,
@@ -102,6 +104,7 @@ def draft_claim(db, sample_sha_member, sample_encounter, test_user, sample_sha_t
         facility_code="TEST-001",
         facility_level="L3",
         created_by=test_user,
+        previewed_at=timezone.now(),
     )
     # Add claim item so it passes "has items" check
     SHAClaimItem.objects.create(

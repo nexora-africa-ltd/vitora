@@ -1100,6 +1100,9 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         LabResultItemSerializer,
         frozenset(
             {
+                "flag",
+                "reference_high",
+                "reference_low",
                 "test_name",
                 "timestamp",
                 "unit",

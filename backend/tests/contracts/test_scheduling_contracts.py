@@ -48,6 +48,7 @@ from hmis.apps.scheduling.serializers import (
     ShiftSwapRejectSerializer,
     ShiftSwapRequestListSerializer,
     ShiftSwapRequestSerializer,
+    ShiftTypeConfigSerializer,
     SlotCheckQuerySerializer,
     SlotCheckResponseSerializer,
     StaffConstraintSerializer,
@@ -658,6 +659,24 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "target_shift_summary",
                 "target_staff",
                 "target_staff_name",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        ShiftTypeConfigSerializer,
+        frozenset(
+            {
+                "color",
+                "created_at",
+                "display_label",
+                "end_time",
+                "id",
+                "is_active",
+                "label",
+                "shift_type",
+                "shift_type_display",
+                "start_time",
                 "updated_at",
             }
         ),

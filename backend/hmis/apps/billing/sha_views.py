@@ -918,6 +918,15 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         d = request.data
         if not d.get("icd_code") or not d.get("intervention_code"):
             return Response({"error": "icd_code and intervention_code required"}, status=400)
+        # ECCIF 24h billing window guard
+        if claim.is_emergency_claim and claim.is_time_barred:
+            return Response(
+                {
+                    "error": "Emergency claim 24-hour billing window has expired.",
+                    "code": "eccif_time_barred",
+                },
+                status=400,
+            )
         try:
             result = self._ilm_service().add_diagnosis(
                 claim,
@@ -952,6 +961,15 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         claim = self.get_object()
         d = request.data
+        # ECCIF 24h billing window guard
+        if claim.is_emergency_claim and claim.is_time_barred:
+            return Response(
+                {
+                    "error": "Emergency claim 24-hour billing window has expired.",
+                    "code": "eccif_time_barred",
+                },
+                status=400,
+            )
         try:
             line = ClaimLine(
                 intervention_code=str(d["intervention_code"]),
@@ -1026,6 +1044,64 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         )
         if not files_in:
             return Response({"error": "files required"}, status=400)
+
+        # Local pre-flight validation: size ≤ 2MB, type must be .jpg/.png/.pdf
+        MAX_ATTACHMENT_SIZE = 2 * 1024 * 1024  # 2MB per DHA spec
+        ALLOWED_CONTENT_TYPES = {
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+        }
+        ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
+        for f in files_in:
+            if f.size > MAX_ATTACHMENT_SIZE:
+                return Response(
+                    {
+                        "error": (
+                            f"File '{f.name}' exceeds maximum size of 2MB "
+                            f"({f.size / (1024 * 1024):.1f}MB)."
+                        ),
+                        "code": "file_too_large",
+                    },
+                    status=400,
+                )
+            import os
+
+            ext = os.path.splitext(f.name)[1].lower()
+            content_type = (f.content_type or "").lower()
+            if ext not in ALLOWED_EXTENSIONS:
+                return Response(
+                    {
+                        "error": (
+                            f"File '{f.name}' has unsupported extension '{ext}'. "
+                            f"Allowed: .pdf, .jpg, .jpeg, .png"
+                        ),
+                        "code": "invalid_file_type",
+                    },
+                    status=400,
+                )
+            if content_type and content_type not in ALLOWED_CONTENT_TYPES:
+                return Response(
+                    {
+                        "error": (
+                            f"File '{f.name}' has unsupported content type '{content_type}'. "
+                            f"Allowed: application/pdf, image/jpeg, image/png"
+                        ),
+                        "code": "invalid_file_type",
+                    },
+                    status=400,
+                )
+
+        # ECCIF 24h billing window guard
+        if claim.is_emergency_claim and claim.is_time_barred:
+            return Response(
+                {
+                    "error": "Emergency claim 24-hour billing window has expired.",
+                    "code": "eccif_time_barred",
+                },
+                status=400,
+            )
+
         multipart_files = [
             MultipartFile(
                 field_name="files",
@@ -1068,6 +1144,12 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             result = self._ilm_service().preview(claim, user=request.user)
         except Exception as exc:
             return self._ilm_handle_error(exc)
+        # Stamp previewed_at on success (DHA UAT: preview required before submit)
+        if result.response and result.response.ok:
+            from django.utils import timezone as tz
+
+            claim.previewed_at = tz.now()
+            claim.save(update_fields=["previewed_at", "updated_at"])
         return self._ilm_response(result)
 
     @action(detail=True, methods=["post"], url_path="ilm/preview-payer")
@@ -1087,6 +1169,19 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         invoice_number = d.get("invoice_number")
         if not invoice_number:
             return Response({"error": "invoice_number required"}, status=400)
+
+        # Local pre-flight validation (DHA UAT: catch errors before DHA round-trip)
+        is_valid, errors = claim.validate_for_submission()
+        if not is_valid:
+            return Response(
+                {
+                    "error": "Claim failed local pre-submission validation.",
+                    "code": "local_validation_failed",
+                    "validation_errors": errors,
+                },
+                status=400,
+            )
+
         try:
             result = self._ilm_service().submit(
                 claim,
@@ -3360,9 +3455,19 @@ class ConsentSendOTPView(APIView):
         # Guard: duplicate active visit today (same patient + facility + access point)
         from hmis.apps.billing.models import ConsentToken as CT
 
+        # Derive access_point from intervention codes for per-access-point dedup
+        INPATIENT_PREFIXES = ("SHA-07", "SHA-19", "SHA-03", "SHA-13", "SHA-20")
+        derived_access_point = "OP"
+        for code in intervention_codes:
+            prefix = "-".join(code.split("-")[:2])
+            if prefix in INPATIENT_PREFIXES:
+                derived_access_point = "IP"
+                break
+
         existing_active = CT.objects.filter(
             patient=sha_member.patient,
             facility=facility,
+            access_point=derived_access_point,
             status__in=[CT.ConsentStatus.PENDING, CT.ConsentStatus.VALIDATED],
             created_at__date=date.today(),
         ).exists()
@@ -3372,6 +3477,7 @@ class ConsentSendOTPView(APIView):
                 CT.objects.filter(
                     patient=sha_member.patient,
                     facility=facility,
+                    access_point=derived_access_point,
                     status__in=[CT.ConsentStatus.PENDING, CT.ConsentStatus.VALIDATED],
                     created_at__date=date.today(),
                 )
@@ -3459,6 +3565,7 @@ class ConsentSendOTPView(APIView):
                 identification_type="CR Number",
                 identification_number=patient_cr_id,
                 intervention_codes=intervention_codes,
+                access_point=derived_access_point,
                 status=ConsentToken.ConsentStatus.PENDING,
                 created_by=request.user,
             )

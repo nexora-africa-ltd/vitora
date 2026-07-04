@@ -2439,6 +2439,11 @@ class SHAClaim(FacilityScopedModel):
         blank=True,
         help_text="When /api/v1/claims/visit succeeded for this claim",
     )
+    previewed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the provider preview was last requested (required before submit)",
+    )
 
     class Meta:
         verbose_name = "SHA Claim"
@@ -2633,6 +2638,23 @@ class SHAClaim(FacilityScopedModel):
         # Check claimed amount is positive
         if self.claimed_amount <= Decimal("0.00"):
             errors.append("Claimed amount must be greater than zero")
+
+        # Check claim has been previewed at least once (DHA UAT requirement)
+        if not self.previewed_at:
+            errors.append(
+                "Claim must be previewed before submission. Call the preview endpoint first."
+            )
+
+        # Check all preauths on this claim are approved (DHA UAT requirement)
+        pending_preauths = self.preauths.filter(
+            status__in=[SHAPreauth.Status.DRAFT, SHAPreauth.Status.SUBMITTED],
+        )
+        if pending_preauths.exists():
+            pending_codes = ", ".join(p.intervention_code for p in pending_preauths[:5])
+            errors.append(
+                f"All pre-authorizations must be approved before submission. "
+                f"Pending/submitted preauths: {pending_codes}"
+            )
 
         # Check pre-authorization for restricted services
         items_needing_preauth = self.items.filter(
@@ -4024,6 +4046,14 @@ class ConsentToken(FacilityScopedModel):
         default=list,
         blank=True,
         help_text="SHA intervention codes sent with the OTP request",
+    )
+
+    # Access point for per-access-point consent dedup (DHA UAT requirement)
+    access_point = models.CharField(
+        max_length=4,
+        blank=True,
+        default="",
+        help_text="IP (inpatient), OP (outpatient) — used for per-access-point consent dedup",
     )
 
     # Token from DHA (returned after successful validation)
