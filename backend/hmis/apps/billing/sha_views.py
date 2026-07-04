@@ -1528,9 +1528,15 @@ class TerminologySearchView(APIView):
         search = request.query_params.get("search", "")
         limit = int(request.query_params.get("limit", 50))
 
-        # Allow browsing interventions by facility_level without a search term
+        # Allow browsing interventions by facility_level / payment_mechanism
+        # without a search term (used by claim/consent panels to enumerate
+        # DHA-eligible codes).
         if len(search) < 2 and not (
-            terminology_type == "interventions" and request.query_params.get("facility_level")
+            terminology_type == "interventions"
+            and (
+                request.query_params.get("facility_level")
+                or request.query_params.get("payment_mechanism")
+            )
         ):
             return Response(
                 {"results": [], "message": "Search query must be at least 2 characters"}
@@ -1552,11 +1558,21 @@ class TerminologySearchView(APIView):
             elif terminology_type == "interventions":
                 facility_level = request.query_params.get("facility_level")
                 offset = int(request.query_params.get("offset", 0))
+                payment_mechanism = request.query_params.get("payment_mechanism")
+                access_point = request.query_params.get("access_point")
+                active_only = request.query_params.get("active_only", "").lower() in (
+                    "1",
+                    "true",
+                    "yes",
+                )
                 results_list, total_count = search_local_interventions(
                     query=search,
                     facility_level=int(facility_level) if facility_level else None,
                     limit=limit,
                     offset=offset,
+                    payment_mechanism=payment_mechanism or None,
+                    active_only=active_only,
+                    access_point=access_point or None,
                 )
                 # Convert to dicts
                 data = results_list
@@ -3568,6 +3584,69 @@ class ConsentDetailView(APIView):
 
         serializer = ConsentTokenSerializer(consent)
         return Response(serializer.data)
+
+
+class ConsentLatestView(APIView):
+    """
+    Get the latest consent token for an SHA member from today.
+
+    GET /api/sha/consent/latest/?sha_member_id=123
+
+    Returns the most recent PENDING or VALIDATED consent token created today.
+    Used by the frontend to detect if an OTP was already sent (e.g. by
+    check-in automation) so the consent panel can skip to the OTP entry step.
+
+    Returns 200 with token data if found, or 404 if no token exists today.
+    """
+
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+
+    def get(self, request):
+        from hmis.apps.billing.models import ConsentToken
+        from hmis.apps.billing.sha_serializers import ConsentTokenSerializer
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response(
+                {"error": "No facility context."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        sha_member_id = request.query_params.get("sha_member_id")
+        if not sha_member_id:
+            return Response(
+                {"error": "sha_member_id query parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from django.utils import timezone
+
+        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+        consent = (
+            ConsentToken.objects.filter(
+                sha_member_id=sha_member_id,
+                facility=facility,
+                created_at__gte=today_start,
+                status__in=[
+                    ConsentToken.ConsentStatus.PENDING,
+                    ConsentToken.ConsentStatus.VALIDATED,
+                ],
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
+        if not consent:
+            return Response(
+                {"exists": False, "message": "No consent token from today"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = ConsentTokenSerializer(consent)
+        return Response({**serializer.data, "exists": True})
 
 
 class StartVisitView(APIView):

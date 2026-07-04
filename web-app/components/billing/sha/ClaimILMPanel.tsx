@@ -14,7 +14,7 @@
  */
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -55,6 +55,8 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { shaApi } from '@/lib/api/sha';
 import { useAuth } from '@/lib/auth/context';
+import { useFacility } from '@/lib/context/facility-context';
+import { useQuery } from '@tanstack/react-query';
 import type { CapitationValidationResult } from '@/lib/api/sha';
 import type { IlmCallResult } from '@/lib/schemas/sha.schema';
 import type { Claim } from '@/lib/types/sha';
@@ -65,6 +67,7 @@ import {
   getBenefitCode,
   INTERVENTION_COMBINATION_RULES,
 } from '@/lib/sha/combination-rules';
+import { toCrId } from '@/lib/sha/ilm-parsers';
 import { format, parseISO } from 'date-fns';
 
 // =============================================================================
@@ -104,6 +107,7 @@ const CANCEL_REASONS = [
 
 type ActionKey =
   | 'startVisit'
+  | 'resendOtp'
   | 'addIntervention'
   | 'addVirtualClaimLine'
   | 'addDiagnosis'
@@ -159,16 +163,19 @@ interface PractitionerFields {
 
 function derivePractitionerFields(user: ReturnType<typeof useAuth>['user']): PractitionerFields {
   if (!user) return {};
-  if (user.license_number) {
-    return {
-      practitioner_identification_number: user.license_number,
-      practitioner_identification_type: 'License Number',
-      practitioner_regulation_body: user.licensing_body || 'KMPDC',
-    };
-  }
+  // DHA only accepts 'National ID' as practitioner_identification_type.
+  // Even when we have a license number, we must identify by national ID.
   if (user.national_id) {
     return {
       practitioner_identification_number: user.national_id,
+      practitioner_identification_type: 'National ID',
+      practitioner_regulation_body: user.licensing_body || 'KMPDC',
+    };
+  }
+  // Fallback: use license number with National ID type (DHA resolves internally)
+  if (user.license_number) {
+    return {
+      practitioner_identification_number: user.license_number,
       practitioner_identification_type: 'National ID',
       practitioner_regulation_body: user.licensing_body || 'KMPDC',
     };
@@ -184,6 +191,59 @@ function formatErr(e: unknown): string {
     err?.message ??
     'Request failed'
   );
+}
+
+interface LiveInterventionItem {
+  code: string;
+  name: string;
+  paymentMechanism?: string;
+  tariff?: number;
+}
+
+/**
+ * Extract intervention items from the DHA `ilmBenefitInterventions` response.
+ * DHA returns deeply nested payloads — this normalizes across known shapes.
+ */
+function extractLiveInterventionItems(data: unknown): LiveInterventionItem[] {
+  if (!data) return [];
+  const items: LiveInterventionItem[] = [];
+
+  function extract(obj: unknown): void {
+    if (!obj) return;
+    if (Array.isArray(obj)) {
+      for (const item of obj) extract(item);
+      return;
+    }
+    if (typeof obj !== 'object') return;
+    const rec = obj as Record<string, unknown>;
+
+    // If this object has `code` or `interventionCode`, it's likely an intervention
+    const code = String(rec.code || rec.interventionCode || rec.intervention_code || '');
+    const name = String(
+      rec.name || rec.interventionName || rec.intervention_name ||
+      rec.benefit_name || rec.benefitName || rec.description || ''
+    );
+    if (code) {
+      items.push({
+        code,
+        name: name || code,
+        paymentMechanism: String(rec.paymentMechanism || rec.payment_mechanism || ''),
+        tariff: typeof rec.overallTariff === 'number' ? rec.overallTariff
+          : typeof rec.overall_tariff === 'number' ? rec.overall_tariff
+          : undefined,
+      });
+      return;
+    }
+
+    // Recurse into nested arrays
+    if (Array.isArray(rec.results)) extract(rec.results);
+    if (Array.isArray(rec.data)) extract(rec.data);
+    if (Array.isArray(rec.interventions)) extract(rec.interventions);
+    if (Array.isArray(rec.benefits)) extract(rec.benefits);
+  }
+
+  extract(data);
+  return items;
 }
 
 // =============================================================================
@@ -202,6 +262,8 @@ interface ClaimILMPanelProps {
   consentToken?: string;
   /** Raw OTP / biometric GUID captured during consent — auto-flows into start_visit. */
   consentCredential?: ConsentCredential;
+  /** Intervention code selected during consent — reused for start_visit to avoid mismatch. */
+  consentInterventionCode?: string;
   /** Called after any action finishes so the parent can refetch the claim. */
   onChange?: () => void;
 }
@@ -215,14 +277,90 @@ export function ClaimILMPanel({
   flow,
   consentToken = '',
   consentCredential,
+  consentInterventionCode = '',
   onChange,
 }: ClaimILMPanelProps) {
   const { user } = useAuth();
+  const { facilityDetail } = useFacility();
   const claimId = claim.id;
+
+  // ---- Intervention selection: live DHA → static catalog fallback ----
+  // Per DHA docs (Scenario 6), we MUST call ilmBenefitInterventions to get
+  // what this patient + facility can actually bill. The static catalog is only
+  // a fallback when DHA is unreachable.
+  const facilityLevel = facilityDetail?.level
+    ? parseInt(facilityDetail.level.replace(/[^0-9]/g, ''), 10)
+    : undefined;
+  const facilityLevelKnown = typeof facilityLevel === 'number' && !Number.isNaN(facilityLevel);
+
+  // Patient CR ID (needed for ilmBenefitInterventions)
+  const derivedPatientCrId =
+    claim.dha_external_id ||
+    toCrId(claim.sha_member_number ?? '') ||
+    '';
+
+  // Step 1: Live DHA benefit-interventions — authoritative source.
+  const { data: liveInterventionsResp } = useQuery({
+    queryKey: ['sha-live-benefit-interventions-ilm', derivedPatientCrId],
+    queryFn: () =>
+      shaApi.ilmBenefitInterventions({
+        patient_id: derivedPatientCrId,
+        sub_benefit_code: 'SHA-12-SC-01',
+      }),
+    enabled: !!derivedPatientCrId,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+    meta: { skipGlobalErrorHandler: true },
+  });
+
+  const liveOutpatientOptions = useMemo(() => {
+    if (!liveInterventionsResp?.data) return [];
+    const items = extractLiveInterventionItems(liveInterventionsResp.data);
+    return items
+      .filter((i) => i.code && i.name)
+      .map((i) => ({
+        code: i.code,
+        name: i.name,
+        category: i.paymentMechanism || undefined,
+        price: i.tariff,
+      }));
+  }, [liveInterventionsResp]);
+
+  // Step 2: Static catalog fallback (FFS + OP + active + level-filtered).
+  const { data: fallbackInterventions } = useQuery({
+    queryKey: ['ilm-fallback-outpatient-interventions', facilityLevel],
+    queryFn: () =>
+      shaApi.searchInterventionCodes('', 100, facilityLevel, {
+        paymentMechanism: 'FEE FOR SERVICE',
+        accessPoint: 'OP',
+        activeOnly: true,
+      }),
+    enabled: facilityLevelKnown && liveOutpatientOptions.length === 0,
+    staleTime: 60 * 60 * 1000,
+  });
+  const staticOutpatientOptions = useMemo(() => {
+    if (!fallbackInterventions?.length) return [];
+    return fallbackInterventions.map((i) => ({
+      code: i.code,
+      name: i.name,
+      category: i.category,
+      price: i.price,
+    }));
+  }, [fallbackInterventions]);
+
+  // Use live DHA results when available, otherwise static catalog.
+  const outpatientOptions = liveOutpatientOptions.length > 0
+    ? liveOutpatientOptions
+    : staticOutpatientOptions;
 
   // ---- Derived context from claim + auth ----
   const visitStarted = !!claim.dha_visit_started_at;
-  const patientCrId = claim.dha_external_id ?? '';
+  // Patient CR ID: prefer dha_external_id (set after DHA interaction), fall back
+  // to deriving from SHA member number (e.g. SHA-12345 → CR12345)
+  const patientCrId =
+    claim.dha_external_id ||
+    toCrId(claim.sha_member_number ?? '') ||
+    '';
   const invoiceNumber = claim.invoice_number ?? '';
   const activeInterventions = useMemo(
     () => (claim.claim_interventions ?? []).filter((i) => i.status === 'active'),
@@ -277,6 +415,11 @@ export function ClaimILMPanel({
     useState<(typeof CANCEL_REASONS)[number]['value']>('OTHER_REASONS');
   const [cancelText, setCancelText] = useState('');
 
+  // Manual intervention selection for start_visit when neither claim nor
+  // consent provided one. User picks explicitly to avoid DHA rejecting
+  // hardcoded fallbacks (e.g. SHA-12-001 not supported for OUTPATIENT).
+  const [manualInterventionCode, setManualInterventionCode] = useState('');
+
   // Add intervention / diagnosis dialogs
   const [addInterventionOpen, setAddInterventionOpen] = useState(false);
   const [newInterventionCode, setNewInterventionCode] = useState('');
@@ -322,18 +465,53 @@ export function ClaimILMPanel({
   }
 
   // ---- Action handlers ----
+  const handleResendOtp = useCallback(async () => {
+    if (!claim.sha_member) return;
+    setBusy('resendOtp');
+    setError(null);
+    try {
+      const memberId = typeof claim.sha_member === 'number' ? claim.sha_member : 0;
+      const result = await shaApi.sendConsentOTP({ sha_member_id: memberId });
+      // If sandbox/UAT, auto-fill the OTP
+      if (result.sandbox_otp) {
+        setStartOtp(result.sandbox_otp);
+      }
+      setError(null);
+    } catch (e: unknown) {
+      setError(formatErr(e));
+    } finally {
+      setBusy(null);
+    }
+  }, [claim.sha_member]);
+
   async function openVisit() {
-    if (!patientCrId || activeInterventions.length === 0) return;
+    if (!patientCrId) return;
     const credential = startAuthGuid
       ? { auth_guid: startAuthGuid }
       : { otp: startOtp };
+    // DHA start_visit requires at least one valid intervention code.
+    // Priority: (1) interventions already on the claim,
+    //           (2) intervention selected during consent (same one used to validate OTP),
+    //           (3) intervention manually selected in the panel dropdown.
+    let codes: string[] = [];
+    if (interventionCodes.length > 0) {
+      codes = interventionCodes;
+    } else if (consentInterventionCode) {
+      codes = [consentInterventionCode];
+    } else if (manualInterventionCode) {
+      codes = [manualInterventionCode];
+    }
+    if (codes.length === 0) {
+      setError('Select an intervention below before opening the visit.');
+      return;
+    }
     await run('startVisit', () =>
       shaApi.ilmStartVisit(claimId, {
         ...credential,
         patient_id: patientCrId,
-        intervention_codes: interventionCodes,
+        intervention_codes: codes,
         service_type: serviceType,
-        ...practitionerFields,
+        ...(hasPractitioner ? practitionerFields : {}),
       }),
     );
   }
@@ -412,11 +590,20 @@ export function ClaimILMPanel({
   }
 
   // ---- Prerequisites ----
+  // For opening a visit, the DHA start_visit endpoint validates the OTP directly
+  // (no pre-validated consent token needed). The consent token is only required
+  // for post-visit operations (add interventions, submit).
+  // Practitioner licence is recommended but NOT mandatory for visit start.
+  const hasConsentOrOtp = !!consentToken || !!startOtp || !!startAuthGuid;
   const prereqs: Array<{ label: string; ok: boolean; hint?: string }> = [
     {
       label: 'Patient consent',
-      ok: requiresConsent ? !!consentToken : true,
-      hint: requiresConsent ? undefined : 'Not required for emergency flow',
+      ok: requiresConsent ? hasConsentOrOtp : true,
+      hint: requiresConsent
+        ? hasConsentOrOtp
+          ? consentToken ? 'Token validated' : 'OTP entered — will validate on visit start'
+          : undefined
+        : 'Not required for emergency flow',
     },
     {
       label: 'Patient CR ID',
@@ -426,23 +613,42 @@ export function ClaimILMPanel({
     {
       label: `Active interventions`,
       ok: activeInterventions.length > 0,
-      hint: `${activeInterventions.length} on claim`,
+      hint: activeInterventions.length > 0
+        ? `${activeInterventions.length} on claim`
+        : 'Add at least one intervention first',
     },
     {
       label: 'Practitioner licence',
-      ok: hasPractitioner,
-      hint: practitionerFields.practitioner_identification_number,
+      ok: true, // Soft — DHA accepts without practitioner for visit start
+      hint: hasPractitioner
+        ? practitionerFields.practitioner_identification_number
+        : 'Optional for visit start (add later)',
     },
     {
       label: 'OTP / biometric',
-      ok: !!(startOtp || startAuthGuid),
-      hint: startAuthGuid ? 'Biometric authorised' : startOtp ? 'OTP ready' : undefined,
+      ok: !!(startOtp || startAuthGuid || consentToken),
+      hint: startAuthGuid
+        ? 'Biometric authorised'
+        : startOtp
+          ? 'OTP ready'
+          : consentToken
+            ? 'Consent validated'
+            : 'Enter OTP from patient below',
     },
   ];
   const canOpenVisit = prereqs.every((p) => p.ok);
+  // Effective intervention code that will be sent on start_visit — used to
+  // enable/disable the button and give the user visibility into what will be sent.
+  const effectiveInterventionCode =
+    interventionCodes[0] || consentInterventionCode || manualInterventionCode || '';
+  // Minimal requirements to attempt start_visit (DHA needs OTP + patient_id + intervention)
+  const canAttemptVisit =
+    !!patientCrId &&
+    !!(startOtp || startAuthGuid || consentToken) &&
+    !!effectiveInterventionCode;
 
   const panelTitle = flow
-    ? `DHA HIE Workflow — ${flow.badgeLabel}`
+    ? `DHA HIE Workflow - ${flow.badgeLabel}`
     : 'DHA HIE Workflow';
 
   // =============================================================================
@@ -505,37 +711,110 @@ export function ClaimILMPanel({
 
             <PrereqGrid prereqs={prereqs} />
 
+            {/* Intervention selector — shown when neither the claim nor consent
+                provided an intervention code. DHA requires a valid, facility-
+                eligible, FEE-FOR-SERVICE intervention on start_visit. Capitation
+                and inactive codes are filtered out server-side. */}
+            {activeInterventions.length === 0 && !consentInterventionCode && (
+              <div className="space-y-1 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+                <Label htmlFor="ilm-manual-intervention" className="text-xs font-medium text-amber-900 dark:text-amber-100">
+                  Select intervention for this visit
+                </Label>
+                <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                  Consent didn&apos;t include one. Pick a fee-for-service outpatient intervention your facility is entitled to bill.
+                  {facilityLevelKnown ? ` (filtered to KEPH Level ${facilityLevel})` : ''}
+                </p>
+                {!facilityLevelKnown ? (
+                  <p className="text-[11px] text-red-700 dark:text-red-300">
+                    Your facility&apos;s KEPH level is not set. Please contact your admin to configure it before selecting an intervention.
+                  </p>
+                ) : (
+                  <>
+                    <Select value={manualInterventionCode} onValueChange={setManualInterventionCode}>
+                      <SelectTrigger id="ilm-manual-intervention" className="bg-background">
+                        <SelectValue placeholder={outpatientOptions.length > 0 ? 'Choose an intervention…' : 'Loading eligible interventions…'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {outpatientOptions.map((opt) => (
+                          <SelectItem key={opt.code} value={opt.code}>
+                            <span className="font-mono text-xs">{opt.code}</span>
+                            {' — '}
+                            {opt.name}
+                            {opt.category ? ` · ${opt.category}` : ''}
+                            {opt.price ? ` · KES ${Number(opt.price).toLocaleString()}` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {outpatientOptions.length === 0 && (
+                      <p className="text-[11px] text-amber-800 dark:text-amber-200">
+                        No fee-for-service outpatient interventions found for a Level {facilityLevel} facility.
+                        Basic outpatient (SHA-12) is paid via capitation and cannot be billed per visit.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             {/* OTP / auth GUID input — only shown if not auto-populated */}
             {requiresConsent && !startAuthGuid && (
-              <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-                <div className="space-y-1">
-                  <Label htmlFor="ilm-start-otp" className="text-xs">
-                    OTP from patient
-                    {consentCredential?.otp && (
-                      <span className="ml-2 text-emerald-600 dark:text-emerald-400">
-                        · auto-filled from consent
-                      </span>
-                    )}
-                  </Label>
-                  <Input
-                    id="ilm-start-otp"
-                    value={startOtp}
-                    onChange={(e) => setStartOtp(e.target.value)}
-                    placeholder="Enter OTP if not already captured"
-                  />
-                </div>
-                <Button
-                  onClick={openVisit}
-                  disabled={!canOpenVisit || busy !== null}
-                  className="w-full sm:w-auto"
-                >
-                  {busy === 'startVisit' ? (
-                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+              <div className="space-y-2">
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <div className="space-y-1">
+                    <Label htmlFor="ilm-start-otp" className="text-xs">
+                      OTP from patient
+                      {consentCredential?.otp && (
+                        <span className="ml-2 text-emerald-600 dark:text-emerald-400">
+                          · auto-filled from consent
+                        </span>
+                      )}
+                    </Label>
+                    <Input
+                      id="ilm-start-otp"
+                      value={startOtp}
+                      onChange={(e) => setStartOtp(e.target.value)}
+                      placeholder="Enter OTP received by patient"
+                    />
+                  </div>
+                  {/* When OTP is entered: show "Open visit" (validates OTP + starts visit in one DHA call) */}
+                  {/* When OTP is empty: show "Send/Resend OTP" to get a fresh code */}
+                  {startOtp ? (
+                    <Button
+                      onClick={openVisit}
+                      disabled={!canAttemptVisit || busy !== null}
+                      className="w-full sm:w-auto"
+                    >
+                      {busy === 'startVisit' ? (
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      ) : (
+                        <Play className="mr-2 h-3 w-3" />
+                      )}
+                      Validate &amp; Open Visit
+                    </Button>
                   ) : (
-                    <Play className="mr-2 h-3 w-3" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleResendOtp}
+                      disabled={busy === 'resendOtp' || !claim.sha_member}
+                      className="w-full sm:w-auto"
+                      title="Send a fresh OTP to the patient's phone"
+                    >
+                      {busy === 'resendOtp' ? (
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      ) : (
+                        <Send className="mr-1 h-3 w-3" />
+                      )}
+                      Send OTP
+                    </Button>
                   )}
-                  Open visit
-                </Button>
+                </div>
+                {!startOtp && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Ask the patient for the OTP sent to their phone. If they didn&apos;t receive it or it expired, click &quot;Send OTP&quot;.
+                  </p>
+                )}
               </div>
             )}
 
@@ -567,6 +846,15 @@ export function ClaimILMPanel({
               <p className="text-xs text-muted-foreground">
                 Will submit {activeInterventions.length} intervention
                 {activeInterventions.length === 1 ? '' : 's'} ({serviceType.toLowerCase()})
+                {hasPractitioner ? `, on behalf of ${practitionerFields.practitioner_regulation_body}-${practitionerFields.practitioner_identification_number}` : ''}.
+              </p>
+            )}
+            {activeInterventions.length === 0 && effectiveInterventionCode && (
+              <p className="text-xs text-muted-foreground">
+                Will submit intervention <span className="font-mono">{effectiveInterventionCode}</span>
+                {' '}({serviceType.toLowerCase()})
+                {consentInterventionCode === effectiveInterventionCode ? ' — from consent' : ''}
+                {manualInterventionCode === effectiveInterventionCode && !consentInterventionCode ? ' — manually selected' : ''}
                 {hasPractitioner ? `, on behalf of ${practitionerFields.practitioner_regulation_body}-${practitionerFields.practitioner_identification_number}` : ''}.
               </p>
             )}

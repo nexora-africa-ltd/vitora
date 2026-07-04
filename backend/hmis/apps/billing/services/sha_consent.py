@@ -90,6 +90,9 @@ class SHAConsentService:
         Send OTP to patient for consent verification.
 
         Calls DHA POST /send-web-otp endpoint and creates a pending ConsentToken.
+        Idempotent: if a PENDING consent token was already created in the last
+        5 minutes (e.g. by the auto-consent automation), returns it without
+        sending a duplicate OTP to the patient.
 
         Args:
             sha_member: The SHA member to send OTP to.
@@ -103,6 +106,9 @@ class SHAConsentService:
         Raises:
             SHAConsentError: If OTP sending fails.
         """
+
+        from django.utils import timezone
+
         if not facility:
             raise SHAConsentError(
                 "Facility is required for consent token creation",
@@ -115,6 +121,33 @@ class SHAConsentService:
                 "SHA member has no national ID for OTP verification",
                 code="missing_national_id",
             )
+
+        # Idempotency: reuse any PENDING consent token from today for this member.
+        # This prevents duplicate OTP SMS across the patient journey:
+        # - Check-in sends OTP (creates PENDING token)
+        # - Triage takes 10-30 min
+        # - Patient routed to clinic queue → automation would re-trigger
+        # - Without this check, patient gets a second unwanted SMS
+        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        existing_pending = (
+            ConsentToken.objects.filter(
+                sha_member=sha_member,
+                facility=facility,
+                status=ConsentToken.ConsentStatus.PENDING,
+                created_at__gte=today_start,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
+        if existing_pending:
+            logger.info(
+                "Reusing existing PENDING consent token %s for member %s (sent %s ago)",
+                existing_pending.pk,
+                sha_member.pk,
+                timezone.now() - existing_pending.created_at,
+            )
+            return existing_pending
 
         payload = {
             "identification_type": "National ID",

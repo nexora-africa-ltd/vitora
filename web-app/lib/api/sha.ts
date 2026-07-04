@@ -543,15 +543,42 @@ async function searchInterventions(
 /**
  * Lightweight search for SHA interventions used in consent OTP flow.
  * Calls the terminology endpoint directly and returns raw results.
+ *
+ * @param search Free-text search (may be empty when `filters.paymentMechanism`
+ *   or `facilityLevel` is set — the backend allows empty search in that case).
+ * @param limit Max rows to return.
+ * @param facilityLevel Restrict to interventions applicable at this level (1–6).
+ * @param filters Optional narrower filters:
+ *   - `paymentMechanism`: `"FEE FOR SERVICE"` (per-visit billing) vs
+ *     `"CAPITATION"` (monthly stipend, not billable at start_visit).
+ *   - `accessPoint`: `"OP"` or `"IP"`.
+ *   - `activeOnly`: exclude retired / inactive interventions.
  */
 async function searchInterventionCodes(
   search: string,
   limit: number = 20,
-  facilityLevel?: number
-): Promise<{ code: string; name: string; category?: string; price?: number; access_point?: string }[]> {
-  if (search.length < 2) return [];
+  facilityLevel?: number,
+  filters?: {
+    paymentMechanism?: string;
+    accessPoint?: 'OP' | 'IP';
+    activeOnly?: boolean;
+  }
+): Promise<{
+  code: string;
+  name: string;
+  category?: string;
+  price?: number;
+  access_point?: string;
+  payment_mechanism?: string;
+  benefit_code?: string;
+}[]> {
+  // Backend allows empty search when facility_level OR payment_mechanism is set.
+  if (search.length < 2 && !facilityLevel && !filters?.paymentMechanism) return [];
   const params = new URLSearchParams({ search, limit: String(limit) });
   if (facilityLevel) params.set('facility_level', String(facilityLevel));
+  if (filters?.paymentMechanism) params.set('payment_mechanism', filters.paymentMechanism);
+  if (filters?.accessPoint) params.set('access_point', filters.accessPoint);
+  if (filters?.activeOnly) params.set('active_only', 'true');
   const response = await apiClient.get(
     `/api/sha/terminology/interventions/?${params.toString()}`
   );
@@ -562,6 +589,8 @@ async function searchInterventionCodes(
     category: r.category ? String(r.category) : undefined,
     price: typeof r.price === 'number' ? r.price : undefined,
     access_point: r.access_point ? String(r.access_point) : undefined,
+    payment_mechanism: r.payment_mechanism ? String(r.payment_mechanism) : undefined,
+    benefit_code: r.benefit_code ? String(r.benefit_code) : undefined,
   }));
 }
 
@@ -812,6 +841,18 @@ async function getConsentDetail(consentId: number): Promise<ConsentToken> {
 }
 
 /**
+ * Get the latest consent token for an SHA member from today.
+ * Used to detect if an OTP was already sent (e.g. at check-in or by automation).
+ * Returns the token data if found, throws 404 if none exists.
+ */
+async function getLatestConsent(shaMemberId: number): Promise<ConsentToken & { exists: boolean }> {
+  const response = await apiClient.get('/api/sha/consent/latest/', {
+    params: { sha_member_id: shaMemberId },
+  });
+  return response.data;
+}
+
+/**
  * Initiate biometric authorization via DHA HIE.
  * Returns auth_guid and iframe_url for fingerprint capture.
  */
@@ -934,6 +975,131 @@ async function getCapitationSummary(params?: {
   const response = await apiClient.get(
     `/api/billing/claims/capitation-summary/${qs ? `?${qs}` : ''}`
   );
+  return response.data;
+}
+
+// ============================================================================
+// SHA Claims Workflow Automation API
+// ============================================================================
+
+/** Batch validation result for a facility's draft claims */
+export interface BatchValidationResult {
+  total: number;
+  ready: number;
+  invalid: number;
+  missing_docs: number;
+  ready_claims: Array<{ id: number; claim_number: string; patient_name: string; claimed_amount: string }>;
+  invalid_claims: Array<{ id: number; claim_number: string; patient_name: string; errors: string[] }>;
+  missing_docs_claims: Array<{ id: number; claim_number: string; patient_name: string; missing_documents: string[] }>;
+  total_claimable_amount: string;
+}
+
+/** Bulk submission result */
+export interface BulkSubmitResult {
+  submitted: number;
+  failed: number;
+  skipped: number;
+  submitted_claims: Array<{ id: number; claim_number: string; status: string }>;
+  failed_claims: Array<{ id: number; claim_number: string; error: string }>;
+  skipped_claims: Array<{ id: number; claim_number: string; errors: string[] }>;
+}
+
+/** Daily digest summary */
+export interface DailyDigest {
+  date: string;
+  facility_id: number;
+  summary: {
+    created_today: number;
+    submitted_today: number;
+    pending_submission: number;
+    pending_amount: string;
+    approved_today_amount: string;
+    queries_outstanding: number;
+    time_bar_risk_count: number;
+  };
+  action_items: {
+    time_bar_risk: Array<{ id: number; claim_number: string; hours_remaining: number }>;
+    queries: Array<{ id: number; claim_number: string; patient: string }>;
+    unsubmitted_drafts: number;
+  };
+}
+
+/** Intervention suggestion from clinical data */
+export interface InterventionSuggestion {
+  code: string;
+  name: string;
+  tariff: string | null;
+  benefit_package: string;
+  source: string;
+  source_id: number;
+  source_name: string;
+}
+
+/**
+ * Batch-validate all draft SHA claims for the user's facility.
+ */
+async function batchValidateClaims(): Promise<BatchValidationResult> {
+  const response = await apiClient.post('/api/sha/claims/batch-validate/');
+  return response.data;
+}
+
+/**
+ * Bulk-submit multiple validated claims.
+ */
+async function bulkSubmitClaims(claimIds: number[]): Promise<BulkSubmitResult> {
+  const response = await apiClient.post('/api/sha/claims/bulk-submit/', {
+    claim_ids: claimIds,
+  });
+  return response.data;
+}
+
+/**
+ * Get SHA claims daily digest for the user's facility.
+ */
+async function getDailyDigest(): Promise<DailyDigest> {
+  const response = await apiClient.get('/api/sha/claims/daily-digest/');
+  return response.data;
+}
+
+/**
+ * Get intervention suggestions for a claim based on clinical actions.
+ */
+async function suggestInterventions(claimId: number): Promise<{
+  suggestions: InterventionSuggestion[];
+  count: number;
+}> {
+  const response = await apiClient.get(`/api/sha/claims/${claimId}/suggest-interventions/`);
+  return response.data;
+}
+
+/**
+ * Attach suggested interventions to a claim.
+ */
+async function attachSuggestedInterventions(
+  claimId: number,
+  interventions: Array<{ code: string; name: string; tariff?: string | null; source?: string; source_id?: number }>
+): Promise<{ attached: number; skipped: number }> {
+  const response = await apiClient.post(`/api/sha/claims/${claimId}/suggest-interventions/`, {
+    interventions,
+  });
+  return response.data;
+}
+
+/**
+ * Auto-attach existing digital documents to a claim.
+ */
+async function autoAttachDocuments(claimId: number): Promise<{ attached: number; already_attached?: number; error?: string }> {
+  const response = await apiClient.post(`/api/sha/claims/${claimId}/auto-attach-documents/`);
+  return response.data;
+}
+
+/**
+ * Trigger eligibility pre-check for a patient (background).
+ */
+async function triggerEligibilityPreCheck(patientId: number): Promise<{ status: string; message?: string }> {
+  const response = await apiClient.post('/api/sha/eligibility/pre-check/', {
+    patient_id: patientId,
+  });
   return response.data;
 }
 
@@ -1670,6 +1836,7 @@ export const shaApi = {
   validateConsentOTP,
   startVisit,
   getConsentDetail,
+  getLatestConsent,
   authorizeBiometric,
   getBiometricAuthStatus,
   cancelBiometricAuth,
@@ -1758,4 +1925,13 @@ export const shaApi = {
   validateCapitationProvider,
   validateCapitationDirect,
   getCapitationSummary,
+
+  // Claims Workflow Automation
+  batchValidateClaims,
+  bulkSubmitClaims,
+  getDailyDigest,
+  suggestInterventions,
+  attachSuggestedInterventions,
+  autoAttachDocuments,
+  triggerEligibilityPreCheck,
 };

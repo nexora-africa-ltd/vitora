@@ -8,7 +8,7 @@
  */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,10 @@ import { PreauthPanel } from './PreauthPanel';
 import { ClaimILMPanel } from './ClaimILMPanel';
 import { DischargePanel } from './DischargePanel';
 import { PreVisitChecksPanel } from './PreVisitChecksPanel';
+import { InterventionSuggestionsPanel } from './InterventionSuggestionsPanel';
+import { AutoAttachDocumentsButton } from './AutoAttachDocumentsButton';
+import { shaApi } from '@/lib/api/sha';
+import { toCrId } from '@/lib/sha/ilm-parsers';
 import type { Claim } from '@/lib/types/sha';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
 
@@ -33,13 +37,40 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
   const [consentTokenId, setConsentTokenId] = useState<number | undefined>();
   const [consentTokenStr, setConsentTokenStr] = useState('');
   const [consentCredential, setConsentCredential] = useState<ConsentCredential>({});
+  // Intervention code selected during consent — reused by ClaimILMPanel for start_visit
+  const [consentInterventionCode, setConsentInterventionCode] = useState<string>('');
+
+  // Derive patient CR ID for DHA API calls (intervention lookup, etc.)
+  const patientCrId = claim.dha_external_id || toCrId(claim.sha_member_number ?? '') || '';
 
   const isTerminal = TERMINAL_STATUSES.has(claim.status);
   const isDraft = claim.status === 'draft';
   const visitStarted = !!claim.dha_visit_started_at;
 
+  // Auto-fetch consent token if consent was obtained (at check-in / earlier)
+  // but the local state doesn't have the token string yet
+  const fetchedConsentRef = useRef(false);
+  useEffect(() => {
+    if (fetchedConsentRef.current || consentTokenStr || !claim.consent_obtained) return;
+    if (!claim.sha_member || visitStarted) return;
+    fetchedConsentRef.current = true;
+
+    const memberId = typeof claim.sha_member === 'number' ? claim.sha_member : undefined;
+    if (!memberId) return;
+
+    shaApi.getLatestConsent(memberId).then((data) => {
+      if (data?.consent_token) {
+        setConsentTokenStr(data.consent_token);
+        setConsentTokenId(data.id);
+      }
+    }).catch(() => { /* Non-fatal */ });
+  }, [claim.consent_obtained, claim.sha_member, consentTokenStr, visitStarted]);
+
+  // Hide consent panel if visit already started OR if a validated token was captured
+  const consentObtained = visitStarted || !!consentTokenStr || !!claim.consent_obtained;
+
   const showConsent =
-    flow.requiresConsent && !!claim.sha_member && !visitStarted && !isTerminal;
+    flow.requiresConsent && !!claim.sha_member && !consentObtained && !isTerminal;
   const showPreauth = flow.requiresPreauth && !!claim.sha_member && !isTerminal;
   const showIlm = !isTerminal;
   const showDischarge =
@@ -63,7 +94,7 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
   }
 
   return (
-    <div className="space-y-3 sm:space-y-4 md:space-y-6">
+    <div id="claim-workflow-section" className="space-y-3 sm:space-y-4 md:space-y-6">
       {/* Step 0 — Pre-visit checks (already proactive) */}
       <PreVisitChecksPanel
         patientPk={typeof claim.patient === 'number' ? claim.patient : undefined}
@@ -76,9 +107,12 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
       {missing.length > 0 && (
         <Card className="border-amber-200 dark:border-amber-800/60">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base text-amber-800 dark:text-amber-300">
-              Required documents
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base text-amber-800 dark:text-amber-300">
+                Required documents
+              </CardTitle>
+              <AutoAttachDocumentsButton claimId={claim.id} onAttached={onChange} />
+            </div>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p className="text-muted-foreground">
@@ -114,11 +148,13 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
           {showConsent && (
             <ConsentPanel
               shaMemberId={claim.sha_member!}
+              patientCrId={patientCrId || undefined}
               flow={flow.flow}
-              onConsentObtained={(id, token, credential) => {
+              onConsentObtained={(id, token, credential, interventionCode) => {
                 setConsentTokenId(id);
                 setConsentTokenStr(token);
                 setConsentCredential(credential);
+                if (interventionCode) setConsentInterventionCode(interventionCode);
               }}
             />
           )}
@@ -139,6 +175,16 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
         </div>
       )}
 
+      {/* Auto-suggested interventions from clinical data */}
+      {isDraft && (
+        <InterventionSuggestionsPanel
+          claimId={claim.id}
+          dhaPatientId={claim.dha_external_id ?? undefined}
+          shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
+          onAttached={onChange}
+        />
+      )}
+
       {/* Proactive ILM workflow (non-terminal states) */}
       {showIlm && (
         <ClaimILMPanel
@@ -146,6 +192,7 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
           flow={flow}
           consentToken={consentTokenStr}
           consentCredential={consentCredential}
+          consentInterventionCode={consentInterventionCode}
           onChange={onChange}
         />
       )}

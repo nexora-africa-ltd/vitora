@@ -8,6 +8,14 @@ Provides routes for SHA Members, Tariffs, Claims, and related operations.
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from hmis.apps.billing.sha_automation_views import (
+    ClaimAutoAttachDocumentsView,
+    ClaimBatchValidateView,
+    ClaimBulkSubmitView,
+    ClaimDailyDigestView,
+    ClaimInterventionSuggestionsView,
+    EligibilityPreCheckView,
+)
 from hmis.apps.billing.sha_ilm_lifecycle_views import (
     IlmDischargeOtpView,
     IlmDischargeView,
@@ -65,6 +73,7 @@ from hmis.apps.billing.sha_views import (
     BiometricCancelView,
     ClientRegistryView,
     ConsentDetailView,
+    ConsentLatestView,
     ConsentSendOTPView,
     ConsentValidateOTPView,
     EligibilityCheckView,
@@ -114,6 +123,7 @@ urlpatterns = [
     path("consent/send-otp/", ConsentSendOTPView.as_view(), name="consent-send-otp"),
     path("consent/validate-otp/", ConsentValidateOTPView.as_view(), name="consent-validate-otp"),
     path("consent/start-visit/", StartVisitView.as_view(), name="consent-start-visit"),
+    path("consent/latest/", ConsentLatestView.as_view(), name="consent-latest"),
     path("consent/authorize/", BiometricAuthorizeView.as_view(), name="consent-authorize"),
     path(
         "consent/authorize/<str:auth_guid>/status/",
@@ -296,5 +306,36 @@ urlpatterns = [
         "ilm/prescriptions/local/",
         SHADhaPrescriptionListView.as_view(),
         name="ilm-prescriptions-local",
+    ),
+    # ----- SHA Claims Workflow Automation -----
+    path(
+        "claims/batch-validate/",
+        ClaimBatchValidateView.as_view(),
+        name="claims-batch-validate",
+    ),
+    path(
+        "claims/bulk-submit/",
+        ClaimBulkSubmitView.as_view(),
+        name="claims-bulk-submit",
+    ),
+    path(
+        "claims/daily-digest/",
+        ClaimDailyDigestView.as_view(),
+        name="claims-daily-digest",
+    ),
+    path(
+        "claims/<int:claim_id>/suggest-interventions/",
+        ClaimInterventionSuggestionsView.as_view(),
+        name="claims-suggest-interventions",
+    ),
+    path(
+        "claims/<int:claim_id>/auto-attach-documents/",
+        ClaimAutoAttachDocumentsView.as_view(),
+        name="claims-auto-attach-documents",
+    ),
+    path(
+        "eligibility/pre-check/",
+        EligibilityPreCheckView.as_view(),
+        name="eligibility-pre-check",
     ),
 ]

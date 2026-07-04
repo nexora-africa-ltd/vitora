@@ -110,8 +110,13 @@ export function useClaimNextStep(
     }
 
     // 5. Consent required (SHIF/PHC flows)
+    // Show only if: flow requires consent, not emergency, visit not started,
+    // AND no consent token (PENDING or VALIDATED) exists today.
     const needsConsent =
-      flow?.requiresConsent && !claim.is_emergency_claim && !claim.dha_visit_started_at;
+      flow?.requiresConsent &&
+      !claim.is_emergency_claim &&
+      !claim.dha_visit_started_at &&
+      !claim.consent_obtained;
     if (needsConsent && claim.status === 'draft') {
       return {
         action: 'start-consent',

@@ -194,6 +194,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role_display: typeof userInfo.role_display === 'string' ? userInfo.role_display : fallbackUser.role_display,
         role_category: typeof userInfo.role_category === 'string' ? userInfo.role_category : fallbackUser.role_category,
         phone_number: typeof userInfo.phone_number === 'string' ? userInfo.phone_number : fallbackUser.phone_number,
+        license_number: typeof userInfo.license_number === 'string' ? userInfo.license_number : fallbackUser.license_number,
+        licensing_body: typeof userInfo.licensing_body === 'string' ? userInfo.licensing_body : fallbackUser.licensing_body,
+        national_id: typeof userInfo.national_id === 'string' ? userInfo.national_id : fallbackUser.national_id,
         facility: userInfo.facility && typeof userInfo.facility === 'object'
           ? userInfo.facility as UserFacility
           : null,

@@ -274,6 +274,7 @@ class SHAClaimSerializer(serializers.ModelSerializer):
     time_barring_deadline = serializers.DateTimeField(read_only=True)
     is_time_barred = serializers.BooleanField(read_only=True)
     hours_until_time_barred = serializers.FloatField(read_only=True)
+    consent_obtained = serializers.SerializerMethodField()
 
     class Meta:
         model = SHAClaim
@@ -326,6 +327,7 @@ class SHAClaimSerializer(serializers.ModelSerializer):
             "time_barring_deadline",
             "is_time_barred",
             "hours_until_time_barred",
+            "consent_obtained",
             "created_at",
             "updated_at",
         ]
@@ -373,6 +375,28 @@ class SHAClaimSerializer(serializers.ModelSerializer):
     def get_attachments_count(self, obj) -> int:
         """Return count of attachments."""
         return obj.attachments.count()
+
+    def get_consent_obtained(self, obj) -> bool:
+        """Check if a validated consent token exists for this claim's visit today."""
+        # If visit already started, consent was definitely obtained
+        if obj.dha_visit_started_at:
+            return True
+        # Check for a PENDING or VALIDATED consent token from today
+        if not obj.sha_member_id:
+            return False
+        from django.utils import timezone
+
+        from hmis.apps.billing.models import ConsentToken
+
+        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        return ConsentToken.objects.filter(
+            sha_member_id=obj.sha_member_id,
+            created_at__gte=today_start,
+            status__in=[
+                ConsentToken.ConsentStatus.PENDING,
+                ConsentToken.ConsentStatus.VALIDATED,
+            ],
+        ).exists()
 
     def validate(self, attrs):
         """Validate claim data."""

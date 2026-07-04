@@ -532,3 +532,81 @@ def publish_supplier_payment_event(sender, instance, created, **kwargs):
         facility_id=getattr(instance.bill, "facility_id", None),
         organization_id=getattr(instance.bill, "organization_id", None),
     )
+
+
+# =============================================================================
+# SHA Claims Workflow Automation Signals
+# =============================================================================
+
+
+@receiver(post_save, sender=Encounter)
+def trigger_sha_automation_on_encounter(sender, instance, created, **kwargs):
+    """
+    Trigger SHA automation when a new encounter is created.
+
+    Actions:
+    - Auto-start DHA visit (if consent available)
+    - Auto-suggest interventions (deferred to allow clinical data entry)
+    """
+    if not created:
+        return
+
+    if is_sync_materialization_active():
+        return
+
+    # Only trigger for facilities with SHA integration
+    facility = getattr(instance, "facility", None)
+    if not facility or not getattr(facility, "mfl_code", ""):
+        return
+
+    # Defer auto-start visit (gives time for consent OTP to be validated)
+    try:
+        from hmis.apps.billing.tasks import auto_start_visit
+
+        # Delay by 30 seconds to allow consent validation to complete
+        auto_start_visit.apply_async(args=[instance.pk], countdown=30)
+    except Exception:
+        logger.debug("SHA auto-start visit task not queued (Celery may be unavailable)")
+
+
+def trigger_sha_consent_on_queue(patient_id: int, facility_id: int):
+    """
+    Public function called by clinic queue signal to auto-trigger SHA consent.
+
+    This is called from the clinics app signal when a patient is added to
+    a clinic queue, avoiding a direct import of billing into clinics.
+    """
+    try:
+        from hmis.apps.billing.tasks import auto_trigger_consent
+
+        auto_trigger_consent.delay(patient_id, facility_id)
+    except Exception:
+        logger.debug("SHA auto-consent task not queued (Celery may be unavailable)")
+
+
+def trigger_sha_document_attachment(claim_id: int):
+    """
+    Public function called when lab results are verified or documents finalized.
+
+    Triggers automatic attachment of digital documents to SHA claims.
+    """
+    try:
+        from hmis.apps.billing.tasks import auto_attach_documents
+
+        auto_attach_documents.apply_async(args=[claim_id], countdown=5)
+    except Exception:
+        logger.debug("SHA auto-attach docs task not queued (Celery may be unavailable)")
+
+
+def trigger_sha_eligibility_cache(patient_id: int, facility_id: int | None = None):
+    """
+    Public function called when patient is registered/updated with National ID.
+
+    Triggers background eligibility pre-check and caching.
+    """
+    try:
+        from hmis.apps.billing.tasks import cache_patient_eligibility
+
+        cache_patient_eligibility.delay(patient_id, facility_id)
+    except Exception:
+        logger.debug("SHA eligibility cache task not queued (Celery may be unavailable)")

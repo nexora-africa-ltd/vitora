@@ -120,6 +120,12 @@ export default function ClaimDetailPage() {
       }
       if (step.targetTab) {
         handleTabChange(step.targetTab);
+        // For consent action, scroll to the workflow section after tab switch
+        if (step.action === 'start-consent') {
+          setTimeout(() => {
+            document.getElementById('claim-workflow-section')?.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
+        }
       }
     },
     [handleSubmit, handleResubmit, handleTabChange],
