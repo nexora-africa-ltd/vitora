@@ -244,6 +244,7 @@ def search_local_interventions(
     payment_mechanism: str | None = None,
     active_only: bool = False,
     access_point: str | None = None,
+    patient_gender: str | None = None,
 ) -> tuple[list[dict], int]:
     """
     Search local interventions by name or code.
@@ -258,6 +259,9 @@ def search_local_interventions(
         active_only: If True, exclude retired or inactive interventions.
         access_point: Filter by access point. Accepts "OP" (matches "OP" and
             "OP and IP") or "IP" (matches "IP" and "OP and IP"). Case-insensitive.
+        patient_gender: "M" or "F". When set, excludes interventions whose
+            `applicable_gender` is exclusively for the other gender (e.g. maternity
+            SHA-08 codes are `FEMALE`-only and will be hidden for male patients).
 
     Returns a tuple of (results, total_count) where results is a list of kwargs
     dicts suitable for InterventionCode(**kwargs), sliced by offset/limit.
@@ -267,6 +271,7 @@ def search_local_interventions(
     query_lower = query.lower().strip() if query else ""
     pm_lower = payment_mechanism.lower().strip() if payment_mechanism else None
     ap_upper = access_point.upper().strip() if access_point else None
+    gender_upper = patient_gender.upper().strip() if patient_gender else None
     matched = []
 
     for record in interventions:
@@ -328,6 +333,14 @@ def search_local_interventions(
             else:
                 if record_ap != ap_upper:
                     continue
+
+        # Filter by patient gender (maternity codes are FEMALE-only, etc.)
+        if gender_upper:
+            applicable_gender = str(extras.get("applicable_gender", "ALL")).upper()
+            if applicable_gender == "FEMALE" and gender_upper != "F":
+                continue
+            if applicable_gender == "MALE" and gender_upper != "M":
+                continue
 
         # Filter by search query (match against id or display_name)
         if query_lower:

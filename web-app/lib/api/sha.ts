@@ -562,6 +562,7 @@ async function searchInterventionCodes(
     paymentMechanism?: string;
     accessPoint?: 'OP' | 'IP';
     activeOnly?: boolean;
+    patientGender?: 'M' | 'F';
   }
 ): Promise<{
   code: string;
@@ -579,6 +580,7 @@ async function searchInterventionCodes(
   if (filters?.paymentMechanism) params.set('payment_mechanism', filters.paymentMechanism);
   if (filters?.accessPoint) params.set('access_point', filters.accessPoint);
   if (filters?.activeOnly) params.set('active_only', 'true');
+  if (filters?.patientGender) params.set('patient_gender', filters.patientGender);
   const response = await apiClient.get(
     `/api/sha/terminology/interventions/?${params.toString()}`
   );
