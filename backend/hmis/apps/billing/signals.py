@@ -117,16 +117,15 @@ def _maybe_create_phc_claim(encounter):
         return
 
     # Check facility level is PHC-eligible (Level 2 or 3)
-    facility_level = getattr(settings, "FACILITY_LEVEL", "L3")
-    # Normalize: "L3" → "3", "3" → "3" for comparison
-    level_num = facility_level.replace("L", "").replace("l", "").strip()
+    facility = getattr(encounter, "facility", None)
+    if not facility:
+        return
+    level_num = str(facility.level or "").strip()
     if level_num not in ("2", "3"):
         return
 
     # Normalize to "L{n}" format for the claim model (TariffLevel choices)
-    normalized_level = (
-        f"L{level_num}" if not facility_level.upper().startswith("L") else facility_level.upper()
-    )
+    normalized_level = f"L{level_num}"
 
     # Check if patient has active SHA membership
     try:
@@ -196,9 +195,16 @@ def _maybe_create_phc_claim(encounter):
         )
     except Exception:
         logger.exception(
-            "Auto PHC claim creation failed for encounter %s",
+            "Auto PHC claim creation failed for encounter %s — queuing retry",
             encounter.id,
         )
+        # Queue async retry so transient failures (e.g. SQLite locking) are recovered
+        try:
+            from hmis.apps.billing.tasks import retry_phc_claim_creation
+
+            retry_phc_claim_creation.apply_async(args=[encounter.id], countdown=10)
+        except Exception:
+            logger.debug("retry_phc_claim_creation task not queued (Celery may be unavailable)")
 
 
 def handle_discharge_billing(sender, instance, created, **kwargs):
@@ -569,6 +575,43 @@ def trigger_sha_automation_on_encounter(sender, instance, created, **kwargs):
         logger.debug("SHA auto-start visit task not queued (Celery may be unavailable)")
 
 
+def trigger_phc_claim_on_queue(patient_id: int, facility_id: int):
+    """
+    Public function called by clinic queue signal to ensure a PHC claim exists
+    for any same-day OPD/EMERGENCY encounter that is missing one.
+
+    Covers the case where the encounter was created before the clinic visit
+    and the original _maybe_create_phc_claim failed silently.
+    """
+    from hmis.apps.billing.models import SHAClaim, SHAMember
+    from hmis.apps.encounters.models import Encounter
+
+    try:
+        sha_member = SHAMember.objects.filter(
+            patient_id=patient_id,
+            status=SHAMember.MembershipStatus.ACTIVE,
+        ).first()
+        if not sha_member:
+            return
+
+        # Find today's OPD/EMERGENCY encounters for this patient without a PHC claim
+        encounters = Encounter.objects.filter(
+            patient_id=patient_id,
+            facility_id=facility_id,
+            encounter_date=date.today(),
+            encounter_type__in=("OPD", "EMERGENCY"),
+        ).exclude(
+            id__in=SHAClaim.objects.filter(
+                claim_flow=SHAClaim.ClaimFlow.PHC,
+            ).values_list("encounter_id", flat=True)
+        )
+
+        for enc in encounters:
+            _maybe_create_phc_claim(enc)
+    except Exception:
+        logger.debug("trigger_phc_claim_on_queue failed for patient %s", patient_id)
+
+
 def trigger_sha_consent_on_queue(patient_id: int, facility_id: int):
     """
     Public function called by clinic queue signal to auto-trigger SHA consent.
@@ -598,15 +641,25 @@ def trigger_sha_document_attachment(claim_id: int):
         logger.debug("SHA auto-attach docs task not queued (Celery may be unavailable)")
 
 
-def trigger_sha_eligibility_cache(patient_id: int, facility_id: int | None = None):
+def trigger_sha_eligibility_verification(patient_id: int, facility_id: int | None = None):
     """
-    Public function called when patient is registered/updated with National ID.
+    Verify or refresh SHA eligibility for a patient.
 
-    Triggers background eligibility pre-check and caching.
+    Called on patient registration and on every check-in to ensure SHA
+    membership status is never stale across visits.
+
+    - If the patient already has a SHAMember, calls check_eligibility()
+      with force_refresh=True, which updates SHAMember.status via the DHA API.
+    - If no SHAMember exists yet, calls check_eligibility_direct() using
+      national_id and auto-creates an active SHAMember if eligible.
     """
     try:
-        from hmis.apps.billing.tasks import cache_patient_eligibility
+        from hmis.apps.billing.tasks import verify_patient_sha_eligibility
 
-        cache_patient_eligibility.delay(patient_id, facility_id)
+        verify_patient_sha_eligibility.delay(patient_id, facility_id)
     except Exception:
-        logger.debug("SHA eligibility cache task not queued (Celery may be unavailable)")
+        logger.debug("SHA eligibility verification task not queued (Celery may be unavailable)")
+
+
+# Backward-compat alias
+trigger_sha_eligibility_cache = trigger_sha_eligibility_verification

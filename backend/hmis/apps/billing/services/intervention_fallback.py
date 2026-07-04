@@ -224,6 +224,7 @@ def _record_to_intervention_kwargs(record: dict, facility_level: int | None = No
         "raw_data": extras,
         "access_point": extras.get("access_point", ""),
         "payment_mechanism": extras.get("payment_mechanism", ""),
+        "schemes": extras.get("applicable_schemes", []),
         "benefit_code": extras.get("benefit", ""),
         # Additional fields for Procedure-type sub-interventions
         "max_amount_per_test": extras.get("Total Maximum Amount per test"),
@@ -340,9 +341,11 @@ def search_local_interventions(
             continue
 
         # Filter by payment mechanism (DHA rejects capitation codes at start_visit)
+        # Comma-separated values: "FEE FOR SERVICE,FIXED FEE FOR SERVICE" matches either.
         if pm_lower:
             record_pm = str(extras.get("payment_mechanism", "")).lower()
-            if record_pm != pm_lower:
+            allowed = [p.strip() for p in pm_lower.split(",")]
+            if record_pm not in allowed:
                 continue
 
         # Filter by access point (OP matches "OP" and "OP and IP", etc.)

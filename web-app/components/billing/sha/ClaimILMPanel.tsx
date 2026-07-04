@@ -292,6 +292,7 @@ export function ClaimILMPanel({
     ? parseInt(facilityDetail.level.replace(/[^0-9]/g, ''), 10)
     : undefined;
   const facilityLevelKnown = typeof facilityLevel === 'number' && !Number.isNaN(facilityLevel);
+  const isPhcLevel = facilityLevelKnown && facilityLevel! <= 3;
 
   // Patient CR ID (needed for ilmBenefitInterventions)
   const derivedPatientCrId =
@@ -323,6 +324,7 @@ export function ClaimILMPanel({
         name: i.name,
         category: i.paymentMechanism || undefined,
         price: i.tariff,
+        schemes: undefined as string[] | undefined,
       }));
   }, [liveInterventionsResp]);
 
@@ -331,7 +333,7 @@ export function ClaimILMPanel({
     queryKey: ['ilm-fallback-outpatient-interventions', facilityLevel],
     queryFn: () =>
       shaApi.searchInterventionCodes('', 100, facilityLevel, {
-        paymentMechanism: 'FEE FOR SERVICE',
+        paymentMechanism: isPhcLevel ? 'FEE FOR SERVICE,FIXED FEE FOR SERVICE' : 'FEE FOR SERVICE',
         accessPoint: 'OP',
         activeOnly: true,
       }),
@@ -345,6 +347,7 @@ export function ClaimILMPanel({
       name: i.name,
       category: i.category,
       price: i.price,
+      schemes: i.schemes,
     }));
   }, [fallbackInterventions]);
 
@@ -741,6 +744,7 @@ export function ClaimILMPanel({
                             {' — '}
                             {opt.name}
                             {opt.category ? ` · ${opt.category}` : ''}
+                            {opt.schemes && opt.schemes.length > 0 ? ` · ${opt.schemes.join(', ')}` : ''}
                             {opt.price ? ` · KES ${Number(opt.price).toLocaleString()}` : ''}
                           </SelectItem>
                         ))}

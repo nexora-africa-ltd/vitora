@@ -58,16 +58,20 @@ def clinic_visit_post_save(sender, instance, created, **kwargs):
                 facility_id=getattr(instance, "facility_id", None),
             )
 
-            # Trigger SHA consent OTP when patient is queued
+            # Trigger SHA consent OTP + ensure PHC claim when patient is queued
             patient_id = getattr(instance, "patient_id", None)
             facility_id = getattr(instance, "facility_id", None)
             if patient_id and facility_id:
                 try:
-                    from hmis.apps.billing.signals import trigger_sha_consent_on_queue
+                    from hmis.apps.billing.signals import (
+                        trigger_phc_claim_on_queue,
+                        trigger_sha_consent_on_queue,
+                    )
 
                     trigger_sha_consent_on_queue(patient_id, facility_id)
+                    trigger_phc_claim_on_queue(patient_id, facility_id)
                 except Exception:
-                    logger.debug("SHA consent trigger skipped (billing module unavailable)")
+                    logger.debug("SHA consent/claim trigger skipped (billing module unavailable)")
     except Exception as e:
         # Don't let WebSocket errors break the save operation
         logger.error(f"Error broadcasting clinic visit event: {e}")

@@ -480,6 +480,7 @@ export function QuickCheckinDialog({
       onOpenChange={setShowSuccessModal}
       checkInResult={checkInResult}
       onDismiss={handleSuccessModalDismiss}
+      skipSHAConsent
     />
   </>
   );

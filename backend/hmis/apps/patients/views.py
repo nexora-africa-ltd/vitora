@@ -60,6 +60,21 @@ def _fire_cr_sync(patient_id: int) -> None:
         logging.getLogger(__name__).warning("Failed to queue CR sync for patient %s", patient_id)
 
 
+def _fire_sha_auto_verify(patient_id: int, facility_id: int | None = None) -> None:
+    """Fire async SHA eligibility verification task."""
+    try:
+        from hmis.apps.billing.signals import trigger_sha_eligibility_verification
+
+        trigger_sha_eligibility_verification(patient_id, facility_id)
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "Failed to queue SHA auto-verify for patient %s",
+            patient_id,
+        )
+
+
 class PatientViewSet(
     TenantScopedViewMixin, ModelHistoryMixin, IdempotentCreateMixin, viewsets.ModelViewSet
 ):
@@ -213,6 +228,14 @@ class PatientViewSet(
                 from django.db import transaction as txn
 
                 txn.on_commit(lambda pid=patient.id: _fire_cr_sync(pid))
+
+            # Async SHA eligibility verification (fires after transaction commits)
+            # Runs independent of CR sync; checks every visit, not just once
+            facility_id = getattr(request, "facility_id", getattr(request, "facility", None))
+            facility_id = getattr(facility_id, "id", facility_id) if facility_id else None
+            transaction.on_commit(
+                lambda pid=patient.id, fid=facility_id: _fire_sha_auto_verify(pid, fid)
+            )
 
             # Re-serialize to include the newly created emergency contact
             response_serializer = self.get_serializer(patient)

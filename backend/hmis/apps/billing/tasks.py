@@ -310,6 +310,44 @@ def refresh_otp_whitelist_statuses():
 
 
 @shared_task(
+    name="hmis.apps.billing.tasks.retry_phc_claim_creation",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=30,
+)
+def retry_phc_claim_creation(self, encounter_id: int):
+    """
+    Retry PHC claim creation for an encounter after a transient failure.
+
+    Triggered by _maybe_create_phc_claim when the synchronous attempt fails
+    (e.g. SQLite database-locked under concurrent ASGI writes).
+    """
+    from hmis.apps.billing.signals import _maybe_create_phc_claim
+    from hmis.apps.encounters.models import Encounter
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        encounter = Encounter.objects.select_related("patient", "facility").get(pk=encounter_id)
+    except Encounter.DoesNotExist:
+        logger.warning("retry_phc_claim_creation: encounter %s not found", encounter_id)
+        return {"status": "not_found"}
+
+    try:
+        _maybe_create_phc_claim(encounter)
+        return {"status": "ok", "encounter_id": encounter_id}
+    except Exception as exc:
+        logger.warning(
+            "retry_phc_claim_creation failed for encounter %s (attempt %d/%d): %s",
+            encounter_id,
+            self.request.retries + 1,
+            self.max_retries,
+            exc,
+        )
+        raise self.retry(exc=exc) from exc
+
+
+@shared_task(
     name="hmis.apps.billing.tasks.auto_start_visit",
     bind=True,
     max_retries=3,
@@ -449,6 +487,143 @@ def cache_patient_eligibility(patient_id: int, facility_id: int | None = None):
     logger = logging.getLogger(__name__)
     logger.info("Eligibility cache for patient %s: %s", patient_id, result.get("status"))
     return result
+
+
+@shared_task(
+    name="hmis.apps.billing.tasks.verify_patient_sha_eligibility",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=2,
+    default_retry_delay=30,
+)
+def verify_patient_sha_eligibility(patient_id: int, facility_id: int | None = None):
+    """
+    Verify or refresh SHA eligibility for a patient.
+
+    Two modes:
+    1. SHAMember exists → calls check_eligibility() with force_refresh=True,
+       which updates SHAMember.status via update_member_eligibility().
+    2. No SHAMember → calls check_eligibility_direct() using national_id;
+       if eligible, creates SHAMember(status=active) and sets patient.sha_number.
+
+    Triggered on patient registration and on every check-in so eligibility is
+    never stale across visits.
+    """
+    from datetime import datetime
+
+    from django.utils import timezone
+
+    from hmis.apps.billing.models import SHAMember
+    from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
+    from hmis.apps.core.models import Facility
+    from hmis.apps.core.utils import get_system_user
+    from hmis.apps.patients.models import Patient
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        patient = Patient.objects.get(pk=patient_id)
+    except Patient.DoesNotExist:
+        logger.warning("verify_patient_sha_eligibility: patient %s not found", patient_id)
+        return {"status": "skipped", "reason": "patient_not_found"}
+
+    # Check if patient has a national_id to verify against
+    national_id = getattr(patient, "national_id", None) or getattr(
+        patient, "identification_number", None
+    )
+
+    sha_member = SHAMember.objects.filter(patient=patient).first()
+    service = SHAEligibilityService()
+
+    if sha_member:
+        # Mode 1: Refresh existing membership
+        facility = Facility.objects.filter(pk=facility_id).first() if facility_id else None
+        system_user = get_system_user()
+
+        result = service.check_eligibility(
+            sha_member=sha_member,
+            user=system_user,
+            force_refresh=True,
+            facility=facility,
+        )
+        logger.info(
+            "SHA eligibility refreshed for patient %s (member %s): eligible=%s",
+            patient_id,
+            sha_member.sha_number,
+            result.is_eligible,
+        )
+        return {
+            "status": "refreshed",
+            "eligible": result.is_eligible,
+            "sha_number": sha_member.sha_number,
+            "member_status": sha_member.status,
+        }
+
+    # Mode 2: No SHAMember yet — try direct lookup
+    if not national_id:
+        return {"status": "skipped", "reason": "no_national_id"}
+
+    direct_result = service.check_eligibility_direct(
+        identification_type="National ID",
+        identification_number=national_id,
+    )
+
+    if direct_result.get("error"):
+        logger.warning(
+            "Direct eligibility check failed for patient %s: %s",
+            patient_id,
+            direct_result["error"],
+        )
+        return {"status": "error", "reason": direct_result["error"]}
+
+    if direct_result.get("is_eligible"):
+        sha_number = direct_result.get("sha_number")
+        if not sha_number:
+            logger.warning(
+                "SHA eligible but no sha_number returned for patient %s",
+                patient_id,
+            )
+            return {"status": "error", "reason": "no_sha_number_in_response"}
+
+        coverage_end = direct_result.get("coverage_end_date")
+
+        # Store sha_number on patient record
+        if not patient.sha_number:
+            patient.sha_number = sha_number
+            patient.save(update_fields=["sha_number"])
+
+        # Create active SHAMember
+        SHAMember.objects.get_or_create(
+            patient=patient,
+            defaults={
+                "sha_number": sha_number,
+                "status": SHAMember.MembershipStatus.ACTIVE,
+                "membership_type": SHAMember.MembershipType.PRINCIPAL,
+                "last_eligibility_check": timezone.now(),
+                "eligibility_valid_until": (
+                    datetime.fromisoformat(coverage_end).date() if coverage_end else None
+                ),
+                "created_by": get_system_user(),
+            },
+        )
+        logger.info(
+            "SHA member auto-created for patient %s: %s (active)",
+            patient_id,
+            sha_number,
+        )
+        return {"status": "created", "sha_number": sha_number, "eligible": True}
+
+    # Not eligible
+    logger.info(
+        "Patient %s is not SHA-eligible: %s",
+        patient_id,
+        direct_result.get("reason", "unknown"),
+    )
+    return {
+        "status": "ineligible",
+        "reason": direct_result.get("reason", "Not eligible"),
+        "sha_number": direct_result.get("sha_number"),
+    }
 
 
 @shared_task(name="hmis.apps.billing.tasks.generate_daily_claims_digest")

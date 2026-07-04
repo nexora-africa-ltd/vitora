@@ -572,6 +572,7 @@ async function searchInterventionCodes(
   access_point?: string;
   payment_mechanism?: string;
   benefit_code?: string;
+  schemes?: string[];
 }[]> {
   // Backend allows empty search when facility_level OR payment_mechanism is set.
   if (search.length < 2 && !facilityLevel && !filters?.paymentMechanism) return [];
@@ -592,6 +593,7 @@ async function searchInterventionCodes(
     price: typeof r.price === 'number' ? r.price : undefined,
     access_point: r.access_point ? String(r.access_point) : undefined,
     payment_mechanism: r.payment_mechanism ? String(r.payment_mechanism) : undefined,
+    schemes: Array.isArray(r.schemes) ? r.schemes.map(String) : undefined,
     benefit_code: r.benefit_code ? String(r.benefit_code) : undefined,
   }));
 }
