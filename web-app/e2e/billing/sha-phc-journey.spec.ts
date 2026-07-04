@@ -2,8 +2,9 @@
  * SHA PHC Claim Journey — Level 2 Facility E2E Test
  *
  * Simulates the full patient journey at a Level 2 dispensary:
- * login → claim detail → PHC flow badge → intervention selection →
- * OTP consent → start visit → add virtual claim line → submit → payment.
+ * login → claim detail → PHC badge → select interventions → OTP consent →
+ * open visit → add multiple virtual claim lines (consultation + lab +
+ * pharmacy) → submit → verify.
  */
 import { test, expect, Page } from '@playwright/test';
 import { TEST_USER, login } from '../fixtures';
@@ -20,6 +21,13 @@ const CONSENT_TOKEN = 'ct_abc123';
 const PATIENT_CR_ID = 'CR-1001';
 const PATIENT_NAME = 'Jane Wanjiku Kamau';
 
+/** SHA-12 is "Basic Outpatient Services" — the only prefix ConsentPanel shows. */
+const INTERVENTIONS = {
+  consultation: { code: 'SHA-12-001', name: 'General consultation', price: 500, mech: 'FEE FOR SERVICE' },
+  lab:          { code: 'SHA-12-002', name: 'Rapid diagnostic test (Malaria)', price: 800, mech: 'FEE FOR SERVICE' },
+  pharmacy:     { code: 'SHA-12-003', name: 'Antimalarial (Artemether-Lumefantrine)', price: 600, mech: 'FEE FOR SERVICE' },
+} as const;
+
 // =============================================================================
 // Mock Data Builders
 // =============================================================================
@@ -33,6 +41,11 @@ function buildAuthResponse() {
       first_name: 'Test', last_name: 'User',
       is_staff: true, is_superuser: true, role: 'ADMIN', permissions: [],
       national_id: '12345678', license_number: 'LIC-001',
+      facility: {
+        id: FACILITY_ID, mfl_code: '12345', name: 'Kasarani Dispensary',
+        level: '2', sha_contracted: true,
+        modules: { billing: true, outpatient: true, pharmacy: true, laboratory: true, triage: true },
+      },
     },
   };
 }
@@ -95,31 +108,48 @@ function buildClaimResponse(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
-
 function buildInterventionsResponse() {
+  const results = Object.values(INTERVENTIONS).map((i) => ({
+    code: i.code,
+    name: i.name,
+    category: i.code.replace(/-\d{2}$/, '-SC-01'),
+    price: i.price,
+    facility_level: 2,
+    is_active: true,
+    effective_date: null,
+    access_point: 'OP',
+    payment_mechanism: i.mech,
+    schemes: ['PMF', 'UHC'],
+    benefit_code: i.code.replace(/-\d{2}$/, '-SC-01'),
+    requires_preauthorization: false,
+  }));
+  return { count: results.length, results };
+}
+
+/** Minimal intervention shape that claim.claim_interventions stores. */
+function interventionLine(code: string, id: number) {
+  const meta = Object.values(INTERVENTIONS).find((i) => i.code === code)!;
   return {
-    count: 4,
-    results: [
-      { code: 'SHA-05-001', name: 'Consultation, prescription, and issuing of glasses',
-        category: 'SHA-05-SC-01', price: 2500.00, facility_level: 2, is_active: true,
-        effective_date: null, access_point: 'OP',
-        payment_mechanism: 'FIXED FEE FOR SERVICE', schemes: ['PMF', 'UHC'],
-        benefit_code: 'SHA-05-SC-01', requires_preauthorization: false },
-      { code: 'SHA-08-004', name: 'Anti-D', category: 'SHA-08-SC-02', price: 1500.00,
-        facility_level: 2, is_active: true, effective_date: null, access_point: 'OP',
-        payment_mechanism: 'FIXED FEE FOR SERVICE', schemes: ['PMF', 'UHC'],
-        benefit_code: 'SHA-08-SC-02', requires_preauthorization: false },
-      { code: 'SHA-01-001', name: 'Ambulance service (Intra Metro <=25 km Radius)',
-        category: 'SHA-01-SC-02', price: 3000.00, facility_level: 2, is_active: true,
-        effective_date: null, access_point: 'OP and IP',
-        payment_mechanism: 'FIXED FEE FOR SERVICE', schemes: ['PMF', 'UHC'],
-        benefit_code: 'SHA-01-SC-02', requires_preauthorization: false },
-      { code: 'SHA-01-002', name: 'Ambulance service (Extra Metro > 25km)',
-        category: 'SHA-01-SC-02', price: 5000.00, facility_level: 2, is_active: true,
-        effective_date: null, access_point: 'OP and IP',
-        payment_mechanism: 'FIXED FEE FOR SERVICE', schemes: ['PMF', 'UHC'],
-        benefit_code: 'SHA-01-SC-02', requires_preauthorization: false },
-    ],
+    id,
+    intervention_code: code,
+    intervention_name: meta.name,
+    benefit_code: code.replace(/-\d{2}$/, '-SC-01'),
+    status: 'active',
+    required_document_types: [],
+    dha_intervention_id: `DHA-INT-${String(id).padStart(3, '0')}`,
+    tariff_amount: `${meta.price}.00`,
+    payment_mechanism: meta.mech.replace(/ /g, '_'),
+    access_point: 'OP',
+    needs_preauth: false,
+    needs_manual_preauth_approval: false,
+    is_surgical_preauth: false,
+    is_renal_preauth: false,
+    is_oncology_preauth: false,
+    is_imaging_preauth: false,
+    is_optical_preauth: false,
+    level2_tariff: `${meta.price}.00`,
+    created_at: '2026-07-05T08:30:00Z',
+    updated_at: '2026-07-05T08:30:00Z',
   };
 }
 
@@ -128,26 +158,21 @@ function buildInterventionsResponse() {
 // =============================================================================
 
 async function setupMocks(page: Page) {
-  // Mutable claim state — updated as the journey progresses
   let claimState = buildClaimResponse();
+  let nextIntervId = 1;
 
-  // Catch-all for any unmocked API routes — returns 200 with empty JSON
-  // Registered first so specific routes (below) override it.
+  // Catch-all for any unmocked API routes
   await page.route('**/api/**', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) });
   });
 
   // ── 1. Auth ──────────────────────────────────────────────────────────────
-  // Login endpoint — called by the real login form
   await page.route('**/api/auth/login/**', async (route) => {
-    const authResp = buildAuthResponse();
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authResp) });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(buildAuthResponse()) });
   });
-  // Token refresh (after page navigation)
   await page.route('**/api/auth/refresh/**', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ access: 'mock-access-token' }) });
   });
-  // Auth verification — called on every page load by AuthProvider
   await page.route('**/api/staff/me/**', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ user_info: buildAuthResponse().user }) });
   });
@@ -163,38 +188,75 @@ async function setupMocks(page: Page) {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(buildFacilityResponse()) });
   });
 
-  // ── 3. Claim detail (dynamic — updated as journey progresses) ────────────
+  // ── 3. Claim detail (dynamic) ────────────────────────────────────────────
   await page.route(`**/api/billing/claims/${CLAIM_ID}/**`, async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(claimState) });
   });
 
-  // ── 4. Intervention search (ConsentPanel) ────────────────────────────────
+  // ── 4. Intervention catalogue search ─────────────────────────────────────
   await page.route('**/api/sha/terminology/interventions/**', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(buildInterventionsResponse()) });
   });
 
-  // ── 5. Consent (send OTP / validate) ─────────────────────────────────────
-  // Get latest consent — return "not found" so ConsentPanel shows send-otp UI
+  // ── 5. Consent ───────────────────────────────────────────────────────────
   await page.route('**/api/sha/consent/latest/**', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: false }) });
   });
-  // Send OTP
   await page.route('**/api/sha/consent/send-otp/**', async (route) => {
     await route.fulfill({
       status: 200, contentType: 'application/json',
-      body: JSON.stringify({ consent_id: CONSENT_ID, sandbox_otp: '123456' }),
+      body: JSON.stringify({
+        consent_id: CONSENT_ID,
+        otp_reference: 'OTP-REF-001',
+        status: 'sent',
+        message: 'OTP sent successfully',
+        sandbox_otp: '123456',
+      }),
     });
   });
-  // Validate OTP
   await page.route('**/api/sha/consent/validate-otp/**', async (route) => {
     await route.fulfill({
       status: 200, contentType: 'application/json',
       body: JSON.stringify({ consent_token: CONSENT_TOKEN, id: CONSENT_ID }),
     });
   });
+  await page.route('**/api/sha/consent/start-visit/**', async (route) => {
+    await route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({
+        id: CONSENT_ID,
+        status: 'VALIDATED',
+        consent_token: CONSENT_TOKEN,
+        expires_at: '2026-07-05T10:00:00Z',
+        visit_data: {},
+        message: 'Visit started',
+      }),
+    });
+  });
+  // Consent detail (refetched after start-visit successfully validates OTP)
+  await page.route(`**/api/sha/consent/${CONSENT_ID}/**`, async (route) => {
+    await route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({
+        id: CONSENT_ID,
+        patient: 1,
+        sha_member: SHA_MEMBER_ID,
+        facility: FACILITY_ID,
+        consent_method: 'OTP',
+        status: 'VALIDATED',
+        otp_reference: 'OTP-REF-001',
+        consent_token: CONSENT_TOKEN,
+        identification_type: 'national_id',
+        identification_number: '12345678',
+        created_at: '2026-07-05T08:30:00Z',
+        validated_at: '2026-07-05T08:31:00Z',
+        expires_at: '2026-07-05T10:00:00Z',
+        is_valid: true,
+      }),
+    });
+  });
 
   // ── 6. DHA ILM ───────────────────────────────────────────────────────────
-  // PreVisitChecksPanel calls
   await page.route('**/api/sha/ilm/**', async (route) => {
     const url = route.request().url();
     if (url.includes('patient-eligibility')) {
@@ -218,7 +280,11 @@ async function setupMocks(page: Page) {
         body: JSON.stringify({ utilization: [], remaining_benefits: {} }),
       });
     } else if (url.includes('benefit-interventions')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) });
+      const interventions = buildInterventionsResponse().results;
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ data: { results: interventions }, http_status: 200 }),
+      });
     } else {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) });
     }
@@ -234,30 +300,26 @@ async function setupMocks(page: Page) {
         body: JSON.stringify({ success: true, message: 'Visit started', status_code: 200, payload: { visit_id: 'VIS-001' } }),
       });
     } else if (url.includes('/virtual-claim-line/')) {
+      // Parse the intervention code from the request body
+      const body = route.request().postDataJSON() ?? {};
+      const code: string = body.intervention_code ?? '';
+      const existing = claimState.claim_interventions;
+      const id = nextIntervId++;
       claimState = {
         ...claimState,
-        claim_interventions: [{
-          id: 1, intervention_code: 'SHA-05-001',
-          intervention_name: 'Consultation, prescription, and issuing of glasses',
-          benefit_code: 'SHA-05-SC-01', status: 'active',
-          required_document_types: [], dha_intervention_id: 'DHA-INT-001',
-          tariff_amount: '2500.00',
-          payment_mechanism: 'FIXED_FEE_FOR_SERVICE', access_point: 'OP',
-          needs_preauth: false, needs_manual_preauth_approval: false,
-          is_surgical_preauth: false, is_renal_preauth: false,
-          is_oncology_preauth: false, is_imaging_preauth: false,
-          is_optical_preauth: false, level2_tariff: '2500.00',
-          created_at: '2026-07-05T08:30:00Z', updated_at: '2026-07-05T08:30:00Z',
-        }],
+        claim_interventions: [...existing, interventionLine(code, id)],
       };
       await route.fulfill({
         status: 200, contentType: 'application/json',
-        body: JSON.stringify({ success: true, status_code: 200, payload: { claim_line_id: 'CL-001', authorization_code: 'AUTH-001' } }),
+        body: JSON.stringify({ success: true, status_code: 200, payload: { claim_line_id: `CL-${String(id).padStart(3, '0')}`, authorization_code: `AUTH-${String(id).padStart(3, '0')}` } }),
       });
     } else if (url.includes('/preview/')) {
+      const total = claimState.claim_interventions.reduce(
+        (sum, i) => sum + parseFloat(i.tariff_amount || '0'), 0,
+      );
       await route.fulfill({
         status: 200, contentType: 'application/json',
-        body: JSON.stringify({ success: true, status_code: 200, payload: { total: 2500 } }),
+        body: JSON.stringify({ success: true, status_code: 200, payload: { total } }),
       });
     } else if (url.includes('/submit/')) {
       claimState = {
@@ -282,7 +344,6 @@ async function setupMocks(page: Page) {
       body: JSON.stringify({ is_valid: true, provider_name: 'Kasarani Dispensary', provider_code: 'FAC-12345' }),
     });
   });
-
 }
 
 // =============================================================================
@@ -290,14 +351,12 @@ async function setupMocks(page: Page) {
 // =============================================================================
 
 test.describe('SHA PHC Claim Journey — Level 2 Facility', () => {
-  test('full journey: PHC badge → intervention → consent → start visit → virtual claim line → submit', async ({ page }) => {
+  test('full journey: PHC badge → consent → open visit → add consultation + lab + pharmacy → submit', async ({ page }) => {
     await setupMocks(page);
     await login(page, TEST_USER.username, TEST_USER.password);
 
     // ── 1. Navigate to claim detail (workflow tab) ─────────────────────
     await page.goto(`/transactions/sha-claims/${CLAIM_ID}#workflow`);
-
-    // Wait for the ConsentPanel to render
     await page.waitForSelector('text=Patient Consent', { timeout: 15000 });
 
     // ── 2. Verify PHC flow badge ──────────────────────────────────────
@@ -306,62 +365,72 @@ test.describe('SHA PHC Claim Journey — Level 2 Facility', () => {
     await expect(page.locator('text=PHC · simplified')).toBeVisible();
     await expect(page.locator('text=Uses virtual claim lines')).toBeVisible();
 
-    // ── 3. Intervention select shows Level 2 codes with schemes ───────
-    const interventionSelect = page.locator('text=Service / Intervention').locator('..').locator('button[role="combobox"]');
-    await interventionSelect.click();
+    // ── 3. ConsentPanel: select intervention → send OTP → validate ────
+    // Open the Service / Intervention dropdown
+    await page.locator('text=Service / Intervention').locator('..').locator('button[role="combobox"]').click();
 
-    await expect(page.locator('text=SHA-05-001')).toBeVisible();
-    await expect(page.locator('text=SHA-08-004')).toBeVisible();
-    await expect(page.locator('text=PMF, UHC')).toHaveCount(4);
+    // Wait for intervention options to appear in the popover
+    const option = page.getByRole('option', { name: INTERVENTIONS.consultation.name });
+    await expect(option).toBeVisible({ timeout: 10000 });
 
-    // Select SHA-05-001 (optical)
-    await page.locator('text=SHA-05-001').first().click();
+    // Verify all three Level 2 names are present
+    await expect(page.getByRole('option', { name: INTERVENTIONS.lab.name })).toBeVisible();
+    await expect(page.getByRole('option', { name: INTERVENTIONS.pharmacy.name })).toBeVisible();
 
-    // ── 4. Send OTP ────────────────────────────────────────────────────
-    await page.locator('button:has-text("Send OTP")').click();
+    // Select consultation
+    await option.click();
 
-    // Wait for OTP entry screen
+    // Send OTP — target the primary "Send OTP" button (not the resend variant)
+    await page.getByRole('button', { name: 'Send OTP', exact: true }).first().click();
     await page.waitForSelector('text=Enter the OTP code sent', { timeout: 10000 });
 
-    // ── 5. Validate OTP ────────────────────────────────────────────────
-    await page.locator('button:has-text("Validate")').click();
-
-    // Wait for consent to be validated
+    // Verify OTP (the ConsentPanel "Verify" button validates OTP + starts visit)
+    await page.locator('button:has-text("Verify")').click();
     await page.waitForSelector('text=Validated', { timeout: 10000 });
 
-    // ── 6. Open visit (via ClaimILMPanel) ─────────────────────────────
-    // After consent validation, the ClaimILMPanel should show "Validate & Open Visit"
+    // ── 4. Open visit ─────────────────────────────────────────────────
     await page.locator('button:has-text("Validate & Open Visit")').click();
-
-    // Wait for the visit to start — visit status pill appears
     await page.waitForSelector('text=Visit open', { timeout: 10000 });
 
-    // ── 7. Add virtual claim line intervention ─────────────────────────
-    // "Add intervention" button should be visible now that visit is started
-    await page.locator('button:has-text("Add intervention")').click();
-
-    // The Add intervention dialog opens — type the code
-    await page.locator('input[id="new-intervention"]').fill('SHA-05-001');
-
-    // Click Add
-    await page.locator('button:has-text("Add")').click();
-
-    // Wait for dialog to close — intervention added
+    // ── 5. Add multiple virtual claim lines ───────────────────────────
+    // 5a. Add consultation (already sent via consent code, but add as
+    //     explicit virtual claim line for the record)
+    await page.locator('#claim-workflow-section').getByRole('button', { name: 'Add intervention' }).click();
+    await page.waitForTimeout(1000);
+    await page.getByLabel('Intervention code').fill(INTERVENTIONS.consultation.code);
+    await page.locator('div[role="dialog"]').getByRole('button', { name: 'Add' }).click();
     await page.waitForTimeout(2000);
 
-    // ── 8. Submit claim ────────────────────────────────────────────────
-    // The Submit claim button is in the Lifecycle section
+    // 5b. Add lab test
+    await page.locator('#claim-workflow-section').getByRole('button', { name: 'Add intervention' }).click();
+    await page.waitForTimeout(1000);
+    await page.getByLabel('Intervention code').fill(INTERVENTIONS.lab.code);
+    await page.locator('div[role="dialog"]').getByRole('button', { name: 'Add' }).click();
+    await page.waitForTimeout(2000);
+
+    // 5c. Add pharmacy (prescription)
+    await page.locator('#claim-workflow-section').getByRole('button', { name: 'Add intervention' }).click();
+    await page.waitForTimeout(1000);
+    await page.getByLabel('Intervention code').fill(INTERVENTIONS.pharmacy.code);
+    await page.locator('div[role="dialog"]').getByRole('button', { name: 'Add' }).click();
+    await page.waitForTimeout(2000);
+
+    // Verify the count reflects 3 interventions
+    await expect(page.locator('text=3 active interventions')).toBeVisible();
+
+    // ── 6. Submit claim ───────────────────────────────────────────────
     await page.locator('button:has-text("Submit claim")').click();
-
-    // Wait for submission confirmation
     await page.waitForTimeout(2000);
 
-    // ── 9. Verify submitted status ────────────────────────────────────
-    // The claim refetch should update the claim status
+    // ── 7. Verify submitted status ────────────────────────────────────
     await page.locator('button:has-text("Refresh")').click();
     await expect(page.locator('text=submitted')).toBeVisible({ timeout: 10000 });
-
-    // ── 10. Verify SHA reference appears in the page ──────────────────
     await expect(page.locator('text=SHA-REF-001')).toBeVisible();
+
+    // ── 8. Switch to Interventions tab — all three lines should appear ─
+    await page.getByRole('tab', { name: /Interventions/ }).click();
+    await expect(page.locator(`text=${INTERVENTIONS.consultation.name}`)).toBeVisible();
+    await expect(page.locator(`text=${INTERVENTIONS.lab.name}`)).toBeVisible();
+    await expect(page.locator(`text=${INTERVENTIONS.pharmacy.name}`)).toBeVisible();
   });
 });
