@@ -466,7 +466,7 @@ export function ConsentPanel({
             Patient Consent
             {flow === 'phc' && (
               <Badge variant="outline" className="ml-2 text-[10px]">
-                PHC \u00b7 simplified
+                PHC · simplified
               </Badge>
             )}
           </CardTitle>
