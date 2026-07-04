@@ -396,22 +396,25 @@ test.describe('SHA PHC Claim Journey — Level 2 Facility', () => {
     // 5a. Add consultation (already sent via consent code, but add as
     //     explicit virtual claim line for the record)
     await page.locator('#claim-workflow-section').getByRole('button', { name: 'Add intervention' }).click();
-    await page.waitForTimeout(1000);
-    await page.getByLabel('Intervention code').fill(INTERVENTIONS.consultation.code);
+    await page.waitForTimeout(500);
+    await page.locator('div[role="dialog"]').getByRole('combobox').click();
+    await page.getByRole('option').filter({ hasText: INTERVENTIONS.consultation.code }).click();
     await page.locator('div[role="dialog"]').getByRole('button', { name: 'Add' }).click();
     await page.waitForTimeout(2000);
 
     // 5b. Add lab test
     await page.locator('#claim-workflow-section').getByRole('button', { name: 'Add intervention' }).click();
-    await page.waitForTimeout(1000);
-    await page.getByLabel('Intervention code').fill(INTERVENTIONS.lab.code);
+    await page.waitForTimeout(500);
+    await page.locator('div[role="dialog"]').getByRole('combobox').click();
+    await page.getByRole('option').filter({ hasText: INTERVENTIONS.lab.code }).click();
     await page.locator('div[role="dialog"]').getByRole('button', { name: 'Add' }).click();
     await page.waitForTimeout(2000);
 
     // 5c. Add pharmacy (prescription)
     await page.locator('#claim-workflow-section').getByRole('button', { name: 'Add intervention' }).click();
-    await page.waitForTimeout(1000);
-    await page.getByLabel('Intervention code').fill(INTERVENTIONS.pharmacy.code);
+    await page.waitForTimeout(500);
+    await page.locator('div[role="dialog"]').getByRole('combobox').click();
+    await page.getByRole('option').filter({ hasText: INTERVENTIONS.pharmacy.code }).click();
     await page.locator('div[role="dialog"]').getByRole('button', { name: 'Add' }).click();
     await page.waitForTimeout(2000);
 

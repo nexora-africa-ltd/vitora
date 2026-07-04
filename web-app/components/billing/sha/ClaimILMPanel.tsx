@@ -14,15 +14,18 @@
  */
 'use client';
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   AlertTriangle,
+  Check,
   CheckCircle2,
   ChevronRight,
+  ChevronsUpDown,
   CircleDashed,
   Loader2,
   Play,
   RefreshCw,
+  Search,
   Send,
   XCircle,
 } from 'lucide-react';
@@ -52,6 +55,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { shaApi } from '@/lib/api/sha';
 import { useAuth } from '@/lib/auth/context';
@@ -333,7 +349,7 @@ export function ClaimILMPanel({
     queryKey: ['ilm-fallback-outpatient-interventions', facilityLevel],
     queryFn: () =>
       shaApi.searchInterventionCodes('', 100, facilityLevel, {
-        paymentMechanism: isPhcLevel ? 'FEE FOR SERVICE,FIXED FEE FOR SERVICE' : 'FEE FOR SERVICE',
+        paymentMechanism: isPhcLevel ? 'FEE FOR SERVICE,FIXED FEE FOR SERVICE,CAPITATION' : 'FEE FOR SERVICE',
         accessPoint: 'OP',
         activeOnly: true,
       }),
@@ -397,6 +413,36 @@ export function ClaimILMPanel({
     if (consentCredential?.authGuid) setStartAuthGuid(consentCredential.authGuid);
   }, [consentCredential?.otp, consentCredential?.authGuid]);
 
+  // ---- Auto-open visit when consent was freshly obtained in this session ----
+  // If ConsentPanel just validated OTP/biometric and passed the credential
+  // through, we can skip the manual "Validate & Open Visit" button click
+  // and open the DHA visit straight away.
+  const autoOpenStarted = useRef(false);
+
+  useEffect(() => {
+    if (autoOpenStarted.current) return;
+    if (visitStarted) return;
+    if (!consentCredential || (!consentCredential.otp && !consentCredential.authGuid)) return;
+    if (!patientCrId) return;
+    const code = consentInterventionCode || interventionCodes[0] || '';
+    if (!code) return;
+
+    autoOpenStarted.current = true;
+
+    // Small delay so the UI can render the busy state before the async call
+    const timer = setTimeout(() => {
+      openVisit();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [
+    visitStarted,
+    consentCredential,
+    patientCrId,
+    consentInterventionCode,
+    interventionCodes,
+  ]);
+
   // Outpatient discharge state
   // OTP is pre-populated from the consent credential captured at start-visit
   // so the user doesn't have to re-enter it. If DHA requires a fresh discharge
@@ -426,6 +472,7 @@ export function ClaimILMPanel({
   // Add intervention / diagnosis dialogs
   const [addInterventionOpen, setAddInterventionOpen] = useState(false);
   const [newInterventionCode, setNewInterventionCode] = useState('');
+  const [interventionComboboxOpen, setInterventionComboboxOpen] = useState(false);
   const [addDiagnosisOpen, setAddDiagnosisOpen] = useState(false);
   const [newIcdCode, setNewIcdCode] = useState('');
   const [diagnosisAnchorCode, setDiagnosisAnchorCode] = useState('');
@@ -474,7 +521,18 @@ export function ClaimILMPanel({
     setError(null);
     try {
       const memberId = typeof claim.sha_member === 'number' ? claim.sha_member : 0;
-      const result = await shaApi.sendConsentOTP({ sha_member_id: memberId });
+      // Pass intervention codes so the OTP targets the right benefit package.
+      // Priority: claim interventions → consent intervention → none.
+      let codes: string[] = [];
+      if (interventionCodes.length > 0) {
+        codes = interventionCodes;
+      } else if (consentInterventionCode) {
+        codes = [consentInterventionCode];
+      }
+      const result = await shaApi.sendConsentOTP({
+        sha_member_id: memberId,
+        ...(codes.length ? { intervention_codes: codes } : {}),
+      });
       // If sandbox/UAT, auto-fill the OTP
       if (result.sandbox_otp) {
         setStartOtp(result.sandbox_otp);
@@ -485,7 +543,7 @@ export function ClaimILMPanel({
     } finally {
       setBusy(null);
     }
-  }, [claim.sha_member]);
+  }, [claim.sha_member, interventionCodes, consentInterventionCode]);
 
   async function openVisit() {
     if (!patientCrId) return;
@@ -764,38 +822,50 @@ export function ClaimILMPanel({
             {/* OTP / auth GUID input — only shown if not auto-populated */}
             {requiresConsent && !startAuthGuid && (
               <div className="space-y-2">
-                <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-                  <div className="space-y-1">
-                    <Label htmlFor="ilm-start-otp" className="text-xs">
-                      OTP from patient
-                      {consentCredential?.otp && (
-                        <span className="ml-2 text-emerald-600 dark:text-emerald-400">
-                          · auto-filled from consent
-                        </span>
-                      )}
-                    </Label>
-                    <Input
-                      id="ilm-start-otp"
-                      value={startOtp}
-                      onChange={(e) => setStartOtp(e.target.value)}
-                      placeholder="Enter OTP received by patient"
-                    />
+                {busy === 'startVisit' && consentCredential?.otp ? (
+                  /* Auto-open in progress — show clean loading state */
+                  <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-4 py-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <div className="text-sm">
+                      <span className="font-medium">Opening visit</span>
+                      <span className="text-muted-foreground">
+                        {' · '}validating consent &amp; starting DHA session…
+                      </span>
+                    </div>
                   </div>
-                  {/* When OTP is entered: show "Open visit" (validates OTP + starts visit in one DHA call) */}
-                  {/* When OTP is empty: show "Send/Resend OTP" to get a fresh code */}
-                  {startOtp ? (
-                    <Button
-                      onClick={openVisit}
-                      disabled={!canAttemptVisit || busy !== null}
-                      className="w-full sm:w-auto"
-                    >
-                      {busy === 'startVisit' ? (
-                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                      ) : (
-                        <Play className="mr-2 h-3 w-3" />
-                      )}
-                      Validate &amp; Open Visit
-                    </Button>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+                    <div className="space-y-1">
+                      <Label htmlFor="ilm-start-otp" className="text-xs">
+                        OTP from patient
+                        {consentCredential?.otp && (
+                          <span className="ml-2 text-emerald-600 dark:text-emerald-400">
+                            · auto-filled from consent
+                          </span>
+                        )}
+                      </Label>
+                      <Input
+                        id="ilm-start-otp"
+                        value={startOtp}
+                        onChange={(e) => setStartOtp(e.target.value)}
+                        placeholder="Enter OTP received by patient"
+                      />
+                    </div>
+                    {/* When OTP is entered: show "Open visit" (validates OTP + starts visit in one DHA call) */}
+                    {/* When OTP is empty: show "Send/Resend OTP" to get a fresh code */}
+                    {startOtp ? (
+                      <Button
+                        onClick={openVisit}
+                        disabled={!canAttemptVisit || busy !== null}
+                        className="w-full sm:w-auto"
+                      >
+                        {busy === 'startVisit' ? (
+                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        ) : (
+                          <Play className="mr-2 h-3 w-3" />
+                        )}
+                        Validate &amp; Open Visit
+                      </Button>
                   ) : (
                     <Button
                       variant="outline"
@@ -814,7 +884,8 @@ export function ClaimILMPanel({
                     </Button>
                   )}
                 </div>
-                {!startOtp && (
+              )}
+              {!startOtp && (
                   <p className="text-[11px] text-muted-foreground">
                     Ask the patient for the OTP sent to their phone. If they didn&apos;t receive it or it expired, click &quot;Send OTP&quot;.
                   </p>
@@ -1007,15 +1078,65 @@ export function ClaimILMPanel({
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label htmlFor="new-intervention" className="text-xs">
-                Intervention code
+              <Label className="text-xs">
+                Intervention
               </Label>
-              <Input
-                id="new-intervention"
-                value={newInterventionCode}
-                onChange={(e) => setNewInterventionCode(e.target.value.toUpperCase())}
-                placeholder="e.g. SHA-04-02-01"
-              />
+              <Popover open={interventionComboboxOpen} onOpenChange={setInterventionComboboxOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between font-mono text-xs h-9"
+                  >
+                    {newInterventionCode
+                      ? (() => {
+                          const opt = outpatientOptions.find((o) => o.code === newInterventionCode);
+                          return opt
+                            ? `${opt.code} — ${opt.name}${opt.price ? ` · KES ${Number(opt.price).toLocaleString()}` : ''}`
+                            : newInterventionCode;
+                        })()
+                      : 'Select intervention…'}
+                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                  <Command filter={(value, search) => {
+                    const opt = outpatientOptions.find((o) => o.code === value);
+                    if (!opt) return 0;
+                    const haystack = `${opt.code} ${opt.name} ${opt.category ?? ''}`.toLowerCase();
+                    return haystack.includes(search.toLowerCase()) ? 1 : 0;
+                  }}>
+                    <CommandInput placeholder="Search by code or name…" className="h-9" />
+                    <CommandList>
+                      <CommandEmpty>No matching intervention found.</CommandEmpty>
+                      <CommandGroup>
+                        {outpatientOptions.map((opt) => (
+                          <CommandItem
+                            key={opt.code}
+                            value={opt.code}
+                            onSelect={(value) => {
+                              setNewInterventionCode(value.toUpperCase());
+                              setInterventionComboboxOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={`mr-2 h-3 w-3 ${newInterventionCode === opt.code ? 'opacity-100' : 'opacity-0'}`}
+                            />
+                            <div className="flex flex-col">
+                              <span className="font-mono text-xs">{opt.code}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {opt.name}
+                                {opt.category ? ` · ${opt.category}` : ''}
+                                {opt.price ? ` · KES ${Number(opt.price).toLocaleString()}` : ''}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <CombinationGuard
               newCode={newInterventionCode}
