@@ -244,7 +244,12 @@ class TestInterventions:
         path = mock_client.post.call_args[0][0]
         body = mock_client.post.call_args.kwargs["json_body"]
         assert path == VIRTUAL_CLAIM_LINE_PATH
-        assert body == {"consent_token": "CT-TOKEN-XYZ", "intervention_code": "SHA-12-001"}
+        assert body == {
+            "consent_token": "CT-TOKEN-XYZ",
+            "intervention_code": "SHA-12-001",
+            "unit_price": "0.01",
+            "quantity": "1",
+        }
         assert mock_client.post.call_args.kwargs["consent_token"] == "CT-TOKEN-XYZ"
 
     def test_switch_intervention_without_retain(self, service, mock_client, claim, consent):
@@ -303,7 +308,12 @@ class TestVirtualClaimLine:
         path = mock_client.post.call_args[0][0]
         body = mock_client.post.call_args.kwargs["json_body"]
         assert path == VIRTUAL_CLAIM_LINE_PATH
-        assert body == {"consent_token": "CT-TOKEN-XYZ", "intervention_code": "PHC-001"}
+        assert body == {
+            "consent_token": "CT-TOKEN-XYZ",
+            "intervention_code": "PHC-001",
+            "unit_price": "0.01",
+            "quantity": "1",
+        }
         assert mock_client.post.call_args.kwargs["consent_token"] == "CT-TOKEN-XYZ"
 
     def test_full_payload(self, service, mock_client, claim, consent):
