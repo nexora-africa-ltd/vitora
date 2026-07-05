@@ -27,6 +27,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from django.conf import settings
 from django.utils import timezone
 
 from .consent_token_resolver import resolve_for_claim
@@ -227,6 +228,45 @@ class IlmClaimService:
                 params.practitioner_identification_type or "National ID"
             )
             body["practitioner_regulation_body"] = params.practitioner_regulation_body or "KMPDC"
+
+        # Sandbox biometric — skip DHA call, create a mock session locally.
+        # In sandbox the biometric auth_guid is randomly generated (not from DHA),
+        # so DHA's start_visit would reject it as unrecognised. OTP visits always
+        # call DHA (the OTP was issued by DHA and is valid).
+        is_sandbox_biometric = (
+            params.auth_guid and getattr(settings, "ENVIRONMENT", "development") != "production"
+        )
+        if is_sandbox_biometric:
+            import uuid
+
+            fake_auth_code = str(uuid.uuid4())
+            fake_response = IlmResponse(
+                status_code=200,
+                headers={},
+                json={"authorization_code": fake_auth_code, "status": "success"},
+                text=('{"authorization_code":"' + fake_auth_code + '","status":"success"}'),
+                elapsed_ms=0,
+            )
+            result = IlmClaimResult(response=fake_response, payload=fake_response.json)
+            self._apply_visit_response(claim, result, user=user)
+            from hmis.apps.core.events import BillingEvents
+
+            _publish_safe(
+                BillingEvents.DHA_CLAIM_VISIT_STARTED,
+                _claim_event_payload(
+                    claim,
+                    result,
+                    service_type=params.service_type,
+                    intervention_codes=list(params.intervention_codes),
+                    authorization_code=fake_auth_code,
+                ),
+            )
+            logger.info(
+                "Sandbox start_visit for claim %s — auth_code=%s",
+                getattr(claim, "pk", None),
+                fake_auth_code,
+            )
+            return result
 
         # Use the Keycloak OAuth2 Bearer token for start_visit; the ILM
         # middleware accepts it (unlike the self-signed HS256 JWT which
