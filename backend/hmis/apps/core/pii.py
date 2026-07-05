@@ -91,8 +91,17 @@ def encrypted_pii_property(field_name: str):
         try:
             return get_kms_provider().decrypt_string(raw)
         except Exception:
-            logger.warning(
-                "Failed to decrypt %s for %s pk=%s", field_name, type(self).__name__, self.pk
+            logger.error(
+                "PII decryption failed for %s.%s pk=%s — key mismatch or corrupted data",
+                type(self).__name__,
+                field_name,
+                self.pk,
+                exc_info=True,
+                extra={
+                    "pii_field": field_name,
+                    "model": type(self).__name__,
+                    "object_pk": self.pk,
+                },
             )
             return ""
 

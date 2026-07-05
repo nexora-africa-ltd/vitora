@@ -27,6 +27,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
 import { useSubmitPreauth, usePreauthStatus } from '@/lib/hooks/use-sha';
+import { useFacility } from '@/lib/context/facility-context';
 import type { PreauthDecision } from '@/lib/types/sha';
 import { format, parseISO } from 'date-fns';
 
@@ -116,6 +117,7 @@ export function PreauthPanel({
   const [electiveAuthorized, setElectiveAuthorized] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
 
+  const { facilityDetail } = useFacility();
   const submitPreauth = useSubmitPreauth();
   const { data: preauthStatus } = usePreauthStatus(preauthId);
 
@@ -350,8 +352,8 @@ export function PreauthPanel({
                       try {
                         const result = await shaApi.authorizeBiometric({
                           sha_member_id: shaMemberId,
-                          workstation_id: 'web-app',
-                          agent_national_id: '',
+                          workstation_id: facilityDetail?.workstation_id || 'web-app',
+                          agent_national_id: facilityDetail?.biometrics_agent_national_id || '',
                         });
                         setElectiveAuthGuid(result.auth_guid);
                       } catch (e: any) {

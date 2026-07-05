@@ -51,7 +51,7 @@ interface BiometricsConsentDialogProps {
   onMaxRetriesExhausted: () => void;
 }
 
-type BiometricStatus = 'initiating' | 'pending' | 'authorized' | 'failed' | 'expired' | 'cancelled';
+type BiometricStatus = 'initiating' | 'pending' | 'authorized' | 'failed' | 'expired' | 'cancelled' | 'sandbox';
 
 const MAX_RETRIES = 3;
 const POLL_INTERVAL_MS = 3000;
@@ -78,6 +78,7 @@ export function BiometricsConsentDialog({
   const [retryCount, setRetryCount] = useState(0);
   const [secondsRemaining, setSecondsRemaining] = useState(TIMEOUT_SECONDS);
   const [error, setError] = useState<string | null>(null);
+  const [sandboxMode, setSandboxMode] = useState(false);
 
   const pollRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
@@ -101,12 +102,25 @@ export function BiometricsConsentDialog({
     }
   }, [open]);
 
+  // In sandbox mode, simulate biometric approval after a brief delay
+  useEffect(() => {
+    if (!sandboxMode || !authGuid || !consentId) return;
+    const timer = setTimeout(() => {
+      if (!isMountedRef.current) return;
+      setStatus('authorized');
+      onSuccess({ authGuid, consentId });
+    }, 2000);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sandboxMode, authGuid, consentId]);
+
   // Initiate biometric auth when dialog opens
   const initiateBiometric = useCallback(async () => {
     setStatus('initiating');
     setError(null);
     setIframeUrl(null);
     setAuthGuid(null);
+    setSandboxMode(false);
     setSecondsRemaining(TIMEOUT_SECONDS);
 
     try {
@@ -121,12 +135,17 @@ export function BiometricsConsentDialog({
       setIframeUrl(result.iframe_url);
       setAuthGuid(result.auth_guid);
       setConsentId(result.consent_id);
-      setStatus('pending');
 
-      // Start polling
-      startPolling(result.auth_guid, result.consent_id);
-      // Start countdown
-      startCountdown();
+      if (result.sandbox_mode) {
+        setSandboxMode(true);
+        setStatus('sandbox');
+      } else {
+        setStatus('pending');
+        // Start polling
+        startPolling(result.auth_guid, result.consent_id);
+        // Start countdown
+        startCountdown();
+      }
     } catch (err) {
       if (!isMountedRef.current) return;
       setError(getApiErrorMessage(err));
@@ -247,6 +266,7 @@ export function BiometricsConsentDialog({
             <span className="text-sm text-muted-foreground">
               {status === 'initiating' && 'Initiating biometric session...'}
               {status === 'pending' && 'Waiting for patient fingerprint...'}
+              {status === 'sandbox' && 'Sandbox mode — simulating biometric approval...'}
               {status === 'authorized' && 'Biometric verified successfully'}
               {status === 'failed' && 'Verification failed'}
               {status === 'expired' && 'Session expired'}
@@ -302,7 +322,7 @@ export function BiometricsConsentDialog({
                 Fall back to OTP
               </Button>
             )}
-            {status === 'pending' && (
+            {(status === 'pending' || status === 'sandbox') && (
               <Button variant="ghost" size="sm" onClick={handleCancel}>
                 <X className="mr-1.5 h-3.5 w-3.5" />
                 Cancel
@@ -325,6 +345,8 @@ function StatusIndicator({ status }: { status: BiometricStatus }) {
       return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
     case 'pending':
       return <Fingerprint className={cn('h-4 w-4 text-primary animate-pulse')} />;
+    case 'sandbox':
+      return <Loader2 className="h-4 w-4 animate-spin text-amber-500" />;
     case 'authorized':
       return <CheckCircle2 className="h-4 w-4 text-green-600" />;
     case 'failed':

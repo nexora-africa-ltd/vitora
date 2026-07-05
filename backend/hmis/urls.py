@@ -95,6 +95,15 @@ def health_check(request):
     except Exception:
         websocket_enabled = False
 
+    # Quick KMS health check (PII encryption provider)
+    try:
+        from hmis.apps.core.kms import get_kms_provider
+
+        kms = get_kms_provider()
+        pii_encryption = "healthy" if kms.is_healthy() else "unhealthy"
+    except Exception:
+        pii_encryption = "unavailable"
+
     return JsonResponse(
         {
             "status": "healthy",
@@ -102,6 +111,7 @@ def health_check(request):
             "version": "0.1.0",
             "websocket_enabled": websocket_enabled,
             "icd11_local_fallback": get_icd11_local_fallback_status(),
+            "pii_encryption": pii_encryption,
         }
     )
 

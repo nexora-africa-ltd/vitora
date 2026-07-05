@@ -68,6 +68,8 @@ export interface FacilityDetail extends FacilityListItem {
   has_cds: boolean;
   /** Biometrics workstation ID for DHA HIE consent */
   workstation_id?: string;
+  /** When True, DHA requires biometric (fingerprint) consent — OTP-only consent is blocked */
+  biometrics_enforced?: boolean;
   /** Agent national ID for biometric authorization */
   biometrics_agent_national_id?: string;
   // DHA Registry Cache
@@ -109,6 +111,7 @@ export interface FacilityUpdateData {
   sha_facility_code?: string;
   dhis2_org_unit?: string;
   workstation_id?: string;
+  biometrics_enforced?: boolean;
   biometrics_agent_national_id?: string;
   has_outpatient?: boolean;
   has_inpatient?: boolean;

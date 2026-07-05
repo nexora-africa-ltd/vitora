@@ -15,6 +15,7 @@ Reference: https://hie-docs.dha.go.ke/docs/userJourney
 import contextlib
 import logging
 import time
+import uuid
 from datetime import timedelta
 from typing import Any
 
@@ -450,6 +451,14 @@ class SHAConsentService:
             consent.encounter = encounter
             consent.save(update_fields=["encounter"])
 
+        is_sandbox = getattr(settings, "ENVIRONMENT", "development") != "production"
+        if is_sandbox and auth_guid and consent.status == ConsentToken.ConsentStatus.VALIDATED:
+            return {
+                "status": "validated",
+                "consent_token": consent.consent_token,
+                "message": "Sandbox mode — visit started locally",
+            }
+
         endpoint = self._get_endpoint("start_visit")
         if not endpoint:
             logger.warning(
@@ -635,6 +644,10 @@ class SHAConsentService:
         Calls POST /api/v1/claims/authorize with workstationID and agent
         national_id. Returns auth_guid and iframe_url for fingerprint capture.
 
+        In sandbox (non-production), the DHA call is skipped and a local
+        auth_guid is generated so the full flow can be tested without a
+        biometric hardware device.
+
         Args:
             sha_member: The SHA member to authorize.
             workstation_id: Hardware Server workstation identifier.
@@ -653,6 +666,40 @@ class SHAConsentService:
                 "Facility is required for biometric authorization",
                 code="facility_required",
             )
+
+        is_sandbox = getattr(settings, "ENVIRONMENT", "development") != "production"
+
+        if is_sandbox:
+            # In sandbox, mock the biometric flow entirely — no DHA call
+            auth_guid = str(uuid.uuid4())
+            iframe_url = "about:blank"
+            consent = ConsentToken.objects.create(
+                patient=sha_member.patient,
+                sha_member=sha_member,
+                consent_method=ConsentToken.ConsentMethod.BIOMETRIC,
+                status=ConsentToken.ConsentStatus.PENDING,
+                otp_reference=auth_guid,
+                auth_guid=auth_guid,
+                iframe_url=iframe_url,
+                iframe_expires_at=timezone.now() + timedelta(minutes=10),
+                identification_number=agent_national_id,
+                created_by=user,
+                facility=facility,
+                organization=facility.organization if hasattr(facility, "organization") else None,
+            )
+            logger.info(
+                "Sandbox biometric authorization for consent %s (auth_guid: %s)",
+                consent.id,
+                auth_guid,
+            )
+            return {
+                "consent_id": consent.id,
+                "auth_guid": auth_guid,
+                "iframe_url": iframe_url,
+                "iframe_expires_at": consent.iframe_expires_at.isoformat(),
+                "status": "PENDING",
+                "sandbox_mode": True,
+            }
 
         endpoint = self._get_endpoint("authorize_biometric")
         if not endpoint:
@@ -717,6 +764,10 @@ class SHAConsentService:
         Calls GET /api/v1/claims/authorize/{auth_guid} to check if the
         fingerprint verification has completed.
 
+        In sandbox (non-production), pending biometric authorizations are
+        immediately confirmed as AUTHORIZED so the full flow can be tested
+        without a biometric hardware device.
+
         Args:
             auth_guid: The authorization GUID returned by authorize_biometric.
 
@@ -726,6 +777,32 @@ class SHAConsentService:
         Raises:
             SHAConsentError: If the status check fails.
         """
+        is_sandbox = getattr(settings, "ENVIRONMENT", "development") != "production"
+
+        if is_sandbox:
+            consent = ConsentToken.objects.filter(
+                auth_guid=auth_guid,
+                consent_method=ConsentToken.ConsentMethod.BIOMETRIC,
+            ).first()
+            if consent and consent.status == ConsentToken.ConsentStatus.PENDING:
+                token = str(uuid.uuid4())
+                consent.mark_validated(token=token, expires_in_seconds=3600)
+                logger.info(
+                    "Sandbox biometric consent %s auto-authorized (auth_guid: %s)",
+                    consent.id,
+                    auth_guid,
+                )
+                return {
+                    "auth_guid": auth_guid,
+                    "status": "AUTHORIZED",
+                    "consent_token": token,
+                }
+            return {
+                "auth_guid": auth_guid,
+                "status": consent.status if consent else "PENDING",
+                "consent_token": consent.consent_token if consent else "",
+            }
+
         endpoint = self._get_endpoint("authorize_biometric")
         if not endpoint:
             raise SHAConsentError(

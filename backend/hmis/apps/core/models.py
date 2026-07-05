@@ -3167,6 +3167,14 @@ class Facility(TimeStampedModel):
         help_text="SHA-specific facility code used in claims submission.",
     )
 
+    # Biometrics workstation — identifies the hardware server for fingerprint capture
+    workstation_id = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Hardware Server workstation identifier for DHA biometric consent.",
+    )
+
     # Biometrics agent — PII encrypted (Kenya DPA 2019 § 41)
     biometrics_agent_national_id_encrypted = models.TextField(
         blank=True,

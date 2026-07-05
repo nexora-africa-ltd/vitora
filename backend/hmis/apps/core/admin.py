@@ -1215,6 +1215,42 @@ class FacilityStaffInline(admin.TabularInline):
         return False
 
 
+class FacilityAdminForm(forms.ModelForm):
+    """Custom admin form that handles the encrypted biometrics_agent_national_id property.
+
+    The model field ``biometrics_agent_national_id`` was converted to a Python property
+    (via ``encrypted_pii_property``) in migration 0062.  Django admin cannot auto-generate
+    a form field for a property, so we define it explicitly here and bridge to the
+    property getter/setter.
+    """
+
+    biometrics_agent_national_id = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={"size": "40"}),
+    )
+
+    class Meta:
+        model = Facility
+        exclude = ()  # noqa: DJ006
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            # Populate the form field from the decrypted property
+            self.fields[
+                "biometrics_agent_national_id"
+            ].initial = self.instance.biometrics_agent_national_id
+
+    def save(self, commit: bool = True):
+        instance = super().save(commit=False)
+        instance.biometrics_agent_national_id = self.cleaned_data.get(
+            "biometrics_agent_national_id", ""
+        )
+        if commit:
+            instance.save()
+        return instance
+
+
 @admin.register(Facility)
 class FacilityAdmin(admin.ModelAdmin):
     """
@@ -1253,6 +1289,7 @@ class FacilityAdmin(admin.ModelAdmin):
         "has_laboratory",
         "has_pharmacy",
     ]
+    form = FacilityAdminForm
     search_fields = ["name", "mfl_code", "sha_facility_code"]
     ordering = ["name"]
     readonly_fields = ["created_at", "updated_at", "facility_ai_token_usage"]
@@ -1301,6 +1338,18 @@ class FacilityAdmin(admin.ModelAdmin):
                     "sha_facility_code",
                 ),
                 "classes": ("collapse",),
+            },
+        ),
+        (
+            "SHA Biometrics",
+            {
+                "fields": (
+                    "biometrics_enforced",
+                    "workstation_id",
+                    "biometrics_agent_national_id",
+                ),
+                "classes": ("collapse",),
+                "description": "Biometric consent configuration for DHA HIE integration.",
             },
         ),
         (

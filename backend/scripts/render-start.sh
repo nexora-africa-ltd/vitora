@@ -41,5 +41,9 @@ else
   # python manage.py backfill_org_facility
 fi
 
+echo "==> Checking PII encryption integrity..."
+python manage.py check_pii_integrity --model Facility \
+  || echo "⚠️  PII integrity check FAILED — review logs above. Server will still start."
+
 echo "==> Starting Daphne..."
 exec daphne -b 0.0.0.0 -p "$PORT" hmis.asgi:application

@@ -43,7 +43,7 @@ interface BiometricsConsentProps {
   className?: string;
 }
 
-type BiometricStep = 'detecting' | 'ready' | 'authorizing' | 'polling' | 'authorized' | 'failed';
+type BiometricStep = 'detecting' | 'ready' | 'authorizing' | 'polling' | 'authorized' | 'failed' | 'sandbox';
 
 const HARDWARE_SERVER_URL = 'http://localhost:18065/status';
 const POLL_INTERVAL_MS = 2000;
@@ -67,6 +67,7 @@ export function BiometricsConsent({
   const [consentId, setConsentId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [sandboxMode, setSandboxMode] = useState(false);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollStartRef = useRef<number>(0);
 
@@ -121,11 +122,16 @@ export function BiometricsConsent({
       setAuthGuid(result.auth_guid);
       setIframeUrl(result.iframe_url);
       setConsentId(result.consent_id);
-      setStep('polling');
+      setSandboxMode(!!result.sandbox_mode);
 
-      // Start polling
-      pollStartRef.current = Date.now();
-      pollTimerRef.current = setInterval(() => pollStatus(result.auth_guid), POLL_INTERVAL_MS);
+      if (result.sandbox_mode) {
+        setStep('sandbox');
+      } else {
+        setStep('polling');
+        // Start polling
+        pollStartRef.current = Date.now();
+        pollTimerRef.current = setInterval(() => pollStatus(result.auth_guid), POLL_INTERVAL_MS);
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to initiate biometric authorization';
       setError(message);
@@ -163,6 +169,19 @@ export function BiometricsConsent({
       // Network error during polling — don't stop, retry on next interval
     }
   }, [consentId, onAuthorized]);
+
+  // In sandbox mode, simulate biometric approval after a brief delay
+  useEffect(() => {
+    if (!sandboxMode || !authGuid || !consentId) return;
+    const timer = setTimeout(() => {
+      setStep('authorized');
+      if (consentId) {
+        onAuthorized?.(consentId, authGuid);
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sandboxMode, authGuid, consentId]);
 
   // Update pollStatus ref when consentId changes
   useEffect(() => {
@@ -209,6 +228,21 @@ export function BiometricsConsent({
             )}
             Start Fingerprint Verification
           </Button>
+        </div>
+      )}
+
+      {/* Step: Sandbox mode (DEV — simulated approval) */}
+      {step === 'sandbox' && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
+            <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+              Sandbox mode — simulating biometric approval...
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            In development mode, biometric verification is auto-approved. No fingerprint scan required.
+          </p>
         </div>
       )}
 

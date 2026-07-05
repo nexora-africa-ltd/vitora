@@ -214,6 +214,7 @@ export function ConsentPanel({
   //   2. Fall back to the static OCL catalog only if DHA returns nothing.
   const { facilityDetail } = useFacility();
   const facilityLevel = facilityDetail?.level ? parseInt(facilityDetail.level.replace(/[^0-9]/g, ''), 10) : undefined;
+  const facilityAgentNationalId = facilityDetail?.biometrics_agent_national_id || '';
   const facilityLevelKnown = typeof facilityLevel === 'number' && !Number.isNaN(facilityLevel);
   const isPhcLevel = facilityLevelKnown && facilityLevel! <= 3;
 
@@ -394,12 +395,18 @@ export function ConsentPanel({
     try {
       const result = await shaApi.authorizeBiometric({
         sha_member_id: shaMemberId,
-        workstation_id: 'vitora-web',
-        agent_national_id: '', // Resolved server-side from logged-in user
+        workstation_id: facilityDetail?.workstation_id || 'vitora-web',
+        agent_national_id: facilityAgentNationalId,
       });
       setConsentId(result.consent_id);
       setBiometricAuthGuid(result.auth_guid);
       setBiometricIframeUrl(result.iframe_url);
+      if (result.sandbox_mode) {
+        setStep('validated');
+        stopPolling();
+        onConsentObtained?.(result.consent_id!, '', { authGuid: result.auth_guid }, selectedIntervention);
+        return;
+      }
       setStep('biometric_pending');
       setBiometricPolling(true);
     } catch (e: unknown) {

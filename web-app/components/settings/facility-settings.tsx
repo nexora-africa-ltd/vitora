@@ -124,6 +124,7 @@ interface FacilityFormState {
   sha_contract_expiry: string;
   sha_facility_code: string;
   workstation_id: string;
+  biometrics_enforced: boolean;
   biometrics_agent_national_id: string;
   dhis2_org_unit: string;
   is_active: boolean;
@@ -166,6 +167,7 @@ function createFormState(facility: FacilityDetail): FacilityFormState {
     sha_contract_expiry: facility.sha_contract_expiry ?? '',
     sha_facility_code: facility.sha_facility_code,
     workstation_id: facility.workstation_id ?? '',
+    biometrics_enforced: facility.biometrics_enforced ?? false,
     biometrics_agent_national_id: facility.biometrics_agent_national_id ?? '',
     dhis2_org_unit: facility.dhis2_org_unit ?? '',
     is_active: facility.is_active,
@@ -716,6 +718,18 @@ export function FacilitySettingsTab() {
                 onChange={(event) => setForm((prev) => prev ? { ...prev, biometrics_agent_national_id: event.target.value } : prev)}
               />
               <p className="text-xs text-muted-foreground">National ID of the staff member registered with DHA for biometric authorization.</p>
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl border border-primary/10 px-4 py-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Biometrics enforced</p>
+                <p className="text-xs text-muted-foreground">When enabled, OTP-only consent is blocked — all consents require fingerprint verification.</p>
+              </div>
+              <Switch
+                checked={form.biometrics_enforced}
+                disabled={!canManageFacility || updateMutation.isPending}
+                onCheckedChange={(checked) => setForm((prev) => prev ? { ...prev, biometrics_enforced: checked } : prev)}
+              />
             </div>
 
             <div className="flex items-center justify-between rounded-xl border border-primary/10 px-4 py-3">
