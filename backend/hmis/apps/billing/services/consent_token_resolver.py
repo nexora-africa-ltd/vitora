@@ -46,6 +46,11 @@ def resolve_for_encounter(encounter: Any) -> ResolvedConsent:
         status=ConsentToken.ConsentStatus.VALIDATED,
     ).order_by("-validated_at")
     consent = qs.first()
+    logger.debug(
+        "resolve_for_encounter encounter=%s linked_validated=%s",
+        getattr(encounter, "pk", None),
+        consent.pk if consent else None,
+    )
     if consent is None and getattr(encounter, "patient_id", None):
         consent = (
             ConsentToken.objects.filter(
@@ -54,6 +59,11 @@ def resolve_for_encounter(encounter: Any) -> ResolvedConsent:
             )
             .order_by("-validated_at")
             .first()
+        )
+        logger.debug(
+            "resolve_for_encounter fallback patient=%s consent=%s",
+            encounter.patient_id,
+            consent.pk if consent else None,
         )
     return _validate_or_raise(consent)
 

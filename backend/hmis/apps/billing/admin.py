@@ -7,6 +7,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 
 from .models import (
+    ConsentToken,
     CreditNote,
     FacilityBillingConfig,
     ICD11CodeReference,
@@ -622,6 +623,8 @@ class SHAClaimAdmin(admin.ModelAdmin):
         "last_dha_status",
         "last_dha_payload_at",
         "dha_visit_started_at",
+        "active_consent_token",
+        "consent_tokens",
         "submitted_at",
         "created_at",
         "updated_at",
@@ -669,6 +672,8 @@ class SHAClaimAdmin(admin.ModelAdmin):
                     "last_dha_status",
                     "last_dha_payload_at",
                     "dha_visit_started_at",
+                    "active_consent_token",
+                    "consent_tokens",
                 ),
                 "description": "Tracking fields populated by IlmClaimService calls.",
             },
@@ -700,6 +705,39 @@ class SHAClaimAdmin(admin.ModelAdmin):
         return format_html(
             '<span style="color: {};">{}</span>', colors.get(status, "black"), status
         )
+
+    @admin.display(description="Active consent token")
+    def active_consent_token(self, obj):
+        encounter = getattr(obj, "encounter", None)
+        if not encounter:
+            return "—"
+        consent = (
+            ConsentToken.objects.filter(
+                encounter=encounter,
+                status=ConsentToken.ConsentStatus.VALIDATED,
+            )
+            .order_by("-validated_at")
+            .first()
+        )
+        if not consent:
+            return format_html('<span style="color: red;">None</span>')
+        token = consent.consent_token or ""
+        return token[:32] + "…" if len(token) > 32 else token
+
+    @admin.display(description="Consent tokens")
+    def consent_tokens(self, obj):
+        encounter = getattr(obj, "encounter", None)
+        if not encounter:
+            return "—"
+        tokens = ConsentToken.objects.filter(encounter=encounter).order_by("-created_at")
+        if not tokens:
+            return "—"
+        rows = []
+        for t in tokens:
+            token = (t.consent_token or "")[:24]
+            token = token + "…" if len(t.consent_token or "") > 24 else token
+            rows.append(f"{t.consent_method} | {t.status} | {token}")
+        return format_html("<br>".join(rows))
 
 
 # ============================================================================
@@ -1056,3 +1094,78 @@ class SupplierPaymentAdmin(admin.ModelAdmin):
     search_fields = ("payment_reference", "transaction_reference", "supplier__name")
     raw_id_fields = ("bill", "supplier", "paid_by", "facility", "organization")
     readonly_fields = ("payment_reference", "processed_at", "created_at", "updated_at")
+
+
+@admin.register(ConsentToken)
+class ConsentTokenAdmin(admin.ModelAdmin):
+    """Admin UI for managing DHA consent tokens.
+
+    Allows support staff to inspect and clean up stale tokens that prevent
+    ILM operations from resolving the correct consent token.
+    """
+
+    list_display = (
+        "id",
+        "patient",
+        "sha_member",
+        "facility",
+        "consent_method",
+        "status",
+        "encounter",
+        "claim_link",
+        "created_at",
+        "validated_at",
+        "expires_at",
+        "consent_token_preview",
+    )
+    list_filter = ("status", "consent_method", "created_at", "facility")
+    search_fields = (
+        "patient__first_name",
+        "patient__last_name",
+        "patient__national_id",
+        "sha_member__sha_number",
+        "consent_token",
+        "auth_guid",
+        "otp_reference",
+    )
+    raw_id_fields = ("patient", "sha_member", "encounter", "facility", "organization", "created_by")
+    readonly_fields = (
+        "consent_token",
+        "auth_guid",
+        "otp_reference",
+        "intervention_codes",
+        "created_at",
+        "validated_at",
+        "claim_link",
+    )
+    ordering = ("-created_at",)
+    date_hierarchy = "created_at"
+
+    @admin.display(description="Consent token")
+    def consent_token_preview(self, obj: ConsentToken) -> str:
+        token = obj.consent_token or ""
+        if len(token) > 24:
+            return token[:24] + "…"
+        return token
+
+    @admin.display(description="Claim")
+    def claim_link(self, obj: ConsentToken):
+        encounter = getattr(obj, "encounter", None)
+        if not encounter:
+            return "—"
+        claim = SHAClaim.objects.filter(encounter=encounter).order_by("-created_at").first()
+        if not claim:
+            return "—"
+        url = f"/admin/billing/shaclaim/{claim.pk}/change/"
+        return format_html('<a href="{}">{}</a>', url, claim.claim_number or claim.pk)
+
+    actions = ["delete_selected", "mark_expired"]
+
+    @admin.action(description="Mark selected tokens as expired")
+    def mark_expired(self, request, queryset):
+        from django.utils import timezone
+
+        updated = queryset.update(
+            status=ConsentToken.ConsentStatus.EXPIRED, expires_at=timezone.now()
+        )
+        self.message_user(request, f"{updated} token(s) marked as expired.")

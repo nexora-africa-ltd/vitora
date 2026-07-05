@@ -8,7 +8,7 @@
  */
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,6 +42,13 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
 
   // Derive patient CR ID for DHA API calls (intervention lookup, etc.)
   const patientCrId = claim.dha_external_id || toCrId(claim.sha_member_number ?? '') || '';
+
+  // Intervention codes already attached to the claim — passed to ConsentPanel so
+  // it can pre-select the service and include them in the OTP/biometric request.
+  const interventionCodes = useMemo(
+    () => (claim.claim_interventions ?? []).filter((i) => i.status === 'active').map((i) => i.intervention_code),
+    [claim.claim_interventions],
+  );
 
   const isTerminal = TERMINAL_STATUSES.has(claim.status);
   const isDraft = claim.status === 'draft';
@@ -152,11 +159,13 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
               shaMemberId={claim.sha_member!}
               patientCrId={patientCrId || undefined}
               flow={flow.flow}
+              interventionCodes={interventionCodes}
               onConsentObtained={(id, token, credential, interventionCode) => {
                 setConsentTokenId(id);
                 setConsentTokenStr(token);
                 setConsentCredential(credential);
                 if (interventionCode) setConsentInterventionCode(interventionCode);
+                onChange();
               }}
             />
           )}
