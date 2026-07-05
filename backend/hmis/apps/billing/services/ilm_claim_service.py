@@ -371,15 +371,28 @@ class IlmClaimService:
         submission after consent is sufficient. See DHA HIE user-journey
         Scenario C.
         """
-        body: dict[str, Any] = {"intervention_code": intervention_code}
+        if unit_price is None:
+            try:
+                from hmis.apps.billing.models import SHATariff
+
+                tariff = SHATariff.objects.filter(code=intervention_code, is_active=True).first()
+                if tariff is not None:
+                    unit_price = str(tariff.sha_amount)
+                else:
+                    unit_price = "0.01"
+            except Exception:
+                unit_price = "0.01"
+        if quantity is None:
+            quantity = "1"
+        body: dict[str, Any] = {
+            "intervention_code": intervention_code,
+            "unit_price": unit_price,
+            "quantity": quantity,
+        }
         if service_name is not None:
             body["service_name"] = service_name
         if service_identifier is not None:
             body["service_identifier"] = service_identifier
-        if unit_price is not None:
-            body["unit_price"] = unit_price
-        if quantity is not None:
-            body["quantity"] = quantity
         if scheme_code is not None:
             body["scheme_code"] = scheme_code
         if extra:
