@@ -782,6 +782,28 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             return Response({"error": exc.message}, status=status.HTTP_502_BAD_GATEWAY)
         if isinstance(exc, DHAError):
             return Response({"error": exc.message}, status=status.HTTP_502_BAD_GATEWAY)
+        from hmis.apps.billing.services.consent_token_resolver import (
+            ConsentTokenExpiredError,
+            ConsentTokenNotFoundError,
+        )
+
+        if isinstance(exc, ConsentTokenNotFoundError):
+            return Response(
+                {
+                    "error": "No validated consent token for this claim. "
+                    "Please complete the consent flow for the patient.",
+                    "code": "consent_token_not_found",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if isinstance(exc, ConsentTokenExpiredError):
+            return Response(
+                {
+                    "error": "Consent token has expired. Please re-consent the patient.",
+                    "code": "consent_token_expired",
+                },
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         logger.exception("Unexpected ILM error")
         return Response(
             {"error": "Internal error during DHA HIE call"},

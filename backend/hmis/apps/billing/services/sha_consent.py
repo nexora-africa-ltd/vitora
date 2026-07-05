@@ -673,13 +673,17 @@ class SHAConsentService:
             # In sandbox, mock the biometric flow entirely — no DHA call
             auth_guid = str(uuid.uuid4())
             iframe_url = "about:blank"
+            token = str(uuid.uuid4())
             consent = ConsentToken.objects.create(
                 patient=sha_member.patient,
                 sha_member=sha_member,
                 consent_method=ConsentToken.ConsentMethod.BIOMETRIC,
-                status=ConsentToken.ConsentStatus.PENDING,
+                status=ConsentToken.ConsentStatus.VALIDATED,
                 otp_reference=auth_guid,
                 auth_guid=auth_guid,
+                consent_token=token,
+                validated_at=timezone.now(),
+                expires_at=timezone.now() + timedelta(hours=24),
                 iframe_url=iframe_url,
                 iframe_expires_at=timezone.now() + timedelta(minutes=10),
                 identification_number=agent_national_id,
@@ -688,16 +692,18 @@ class SHAConsentService:
                 organization=facility.organization if hasattr(facility, "organization") else None,
             )
             logger.info(
-                "Sandbox biometric authorization for consent %s (auth_guid: %s)",
+                "Sandbox biometric authorization for consent %s (auth_guid: %s, token: %s)",
                 consent.id,
                 auth_guid,
+                token,
             )
             return {
                 "consent_id": consent.id,
                 "auth_guid": auth_guid,
                 "iframe_url": iframe_url,
                 "iframe_expires_at": consent.iframe_expires_at.isoformat(),
-                "status": "PENDING",
+                "status": "AUTHORIZED",
+                "consent_token": token,
                 "sandbox_mode": True,
             }
 
