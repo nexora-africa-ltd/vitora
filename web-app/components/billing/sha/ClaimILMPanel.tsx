@@ -422,7 +422,6 @@ export function ClaimILMPanel({
 
   useEffect(() => {
     if (autoOpenStarted.current) return;
-    if (visitStarted) return;
     if (!consentCredential || (!consentCredential.otp && !consentCredential.authGuid)) return;
     if (!patientCrId) return;
     const code = consentInterventionCode || interventionCodes[0] || '';
