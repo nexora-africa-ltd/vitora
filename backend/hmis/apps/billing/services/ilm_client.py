@@ -408,12 +408,81 @@ def _safe_response_excerpt(response: requests.Response, max_bytes: int = 4096) -
 
 
 def _extract_message(payload: Any, fallback: str) -> str:
-    if isinstance(payload, Mapping):
-        for key in ("message", "error", "detail", "Error"):
-            value = payload.get(key)
-            if isinstance(value, str) and value:
-                return value
+    """Extract a human-readable message from a DHA error response.
+
+    DHA returns errors in several shapes:
+      - {"message": "...", "error": "..."}
+      - {"message": "failed to start visit for patient: {\"Edi Error\":...}", ...}
+      - {"Edi Error": {"error": "..."}}
+      - {"Edi Error": {"error": ["...", "..."]}}
+    This helper walks common keys and nested structures to return the most
+    specific, user-facing message available.
+    """
+    if not isinstance(payload, Mapping):
+        return (fallback or "ILM error").strip()[:500]
+
+    # Nested DHA "Edi Error" container is the most specific source.
+    edi_error = payload.get("Edi Error") or payload.get("edi_error")
+    if isinstance(edi_error, Mapping):
+        nested = _extract_message(edi_error, "")
+        if nested:
+            return nested
+
+    # Direct keys
+    for key in ("message", "error", "detail", "Error"):
+        value = payload.get(key)
+        if isinstance(value, str) and value:
+            # Some DHA messages embed a JSON blob with the real Edi Error.
+            extracted = _extract_embedded_edi_error(value)
+            if extracted:
+                return extracted
+            return value
+        if isinstance(value, list) and value and isinstance(value[0], str):
+            return " ".join(value)
+
     return (fallback or "ILM error").strip()[:500]
+
+
+def _extract_embedded_edi_error(text: str) -> str | None:
+    """If a DHA message string embeds JSON containing an Edi Error, extract it."""
+    start = text.find('"Edi Error"')
+    if start == -1:
+        return None
+    # Find the JSON object that starts before "Edi Error"
+    brace_start = text.rfind("{", 0, start)
+    if brace_start == -1:
+        return None
+    # Find the matching closing brace, accounting for nested objects/arrays
+    depth = 0
+    in_string = False
+    escape_next = False
+    brace_end = -1
+    for i, ch in enumerate(text[brace_start:], start=brace_start):
+        if escape_next:
+            escape_next = False
+            continue
+        if ch == "\\" and in_string:
+            escape_next = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                brace_end = i
+                break
+    if brace_end == -1:
+        return None
+    try:
+        data = json.loads(text[brace_start : brace_end + 1])
+    except json.JSONDecodeError:
+        return None
+    return _extract_message(data, "") or None
 
 
 def _audit_status_for_exception(exc: SHAAuthError) -> str:

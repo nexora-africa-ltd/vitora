@@ -66,8 +66,10 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
     }).catch(() => { /* Non-fatal */ });
   }, [claim.consent_obtained, claim.sha_member, consentTokenStr, visitStarted]);
 
-  // Hide consent panel if visit already started OR if a validated token was captured
-  const consentObtained = visitStarted || !!consentTokenStr || !!claim.consent_obtained;
+  // Hide consent panel if a valid (non-expired) token exists.
+  // The backend's consent_obtained already checks expiry — if it returns false
+  // the token has expired and we must re-obtain consent, even if dha_visit_started_at is set.
+  const consentObtained = !!consentTokenStr || !!claim.consent_obtained;
 
   const showConsent =
     flow.requiresConsent && !!claim.sha_member && !consentObtained && !isTerminal;

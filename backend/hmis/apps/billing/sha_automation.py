@@ -53,6 +53,12 @@ class SHAClaimAutomationService:
         from hmis.apps.billing.services.sha_consent import SHAConsentService
 
         try:
+            from hmis.apps.facilities.models import Facility
+
+            facility = Facility.objects.filter(pk=facility_id).first()
+            if not facility:
+                return {"status": "error", "reason": f"Facility {facility_id} not found"}
+
             # Check SHA membership
             sha_member = SHAMember.objects.filter(
                 patient_id=patient_id,
@@ -85,10 +91,12 @@ class SHAClaimAutomationService:
                 }
 
             # Auto-send OTP
-            service = SHAConsentService()
+            service = SHAConsentService(facility=facility)
             result = service.send_otp(
                 sha_member=sha_member,
-                facility_id=facility_id,
+                facility_code=facility.mfl_code or "",
+                user=None,
+                facility=facility,
             )
 
             from hmis.apps.core.events import BillingEvents, publish_event

@@ -16,7 +16,7 @@ from hmis.apps.billing.services.dha_errors import (
     DHAUnauthorizedError,
     DHAValidationError,
 )
-from hmis.apps.billing.services.ilm_client import IlmClient, _redact
+from hmis.apps.billing.services.ilm_client import IlmClient, _extract_message, _redact
 from hmis.apps.core.models import DHAOutboundCall
 
 
@@ -160,3 +160,49 @@ class TestRedact:
     def test_passes_through_primitives(self):
         assert _redact("hello") == "hello"
         assert _redact(42) == 42
+
+
+class TestExtractMessage:
+    """Unit tests for the DHA error-message cleanup helper."""
+
+    def test_extracts_top_level_edi_error_string(self):
+        payload = {
+            "Edi Error": {"error": "Beneficiary not found"},
+            "message": "some wrapper",
+        }
+        assert _extract_message(payload, "fallback") == "Beneficiary not found"
+
+    def test_extracts_edi_error_array(self):
+        payload = {
+            "Edi Error": {
+                "error": [
+                    "This beneficiary is restricted to biometric visits.",
+                    "Submit a whitelist request if you need OTP.",
+                ]
+            }
+        }
+        result = _extract_message(payload, "fallback")
+        assert "restricted to biometric visits" in result
+        assert "whitelist request" in result
+
+    def test_extracts_embedded_edi_error_from_message_string(self):
+        payload = {
+            "error": "Bad Request",
+            "message": (
+                'failed to start visit for patient: {"Edi Error":{"error":['
+                '"This beneficiary (SILVANUS NJENGA WAIRIMU) is restricted to biometric visits at CHEWELE DISPENSARY for CAPITATION service. If you need to use OTP, submit a whitelist request for this beneficiary."]}}'
+            ),
+            "code": 400,
+        }
+        result = _extract_message(payload, "fallback")
+        assert "failed to start visit for patient" not in result
+        assert "SILVANUS NJENGA WAIRIMU" in result
+        assert "CHEWELE DISPENSARY" in result
+        assert "whitelist request" in result
+
+    def test_returns_fallback_for_unknown_payload(self):
+        assert _extract_message({"trace_id": "abc"}, "fallback") == "fallback"
+
+    def test_returns_plain_message_when_no_edi_error(self):
+        payload = {"message": "Something went wrong"}
+        assert _extract_message(payload, "fallback") == "Something went wrong"

@@ -15,6 +15,7 @@ import {
   Clock,
   Loader2,
   ShieldCheck,
+  ShieldAlert,
   Send,
   KeyRound,
   Fingerprint,
@@ -638,32 +639,77 @@ export function ConsentPanel({
             </div>
             {error && (
               <div className="space-y-2">
-                <p className="text-sm text-destructive">{error}</p>
-                {error.toLowerCase().includes('restricted to biometric') && (
-                  <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-2.5 space-y-2">
-                    <p className="text-xs text-amber-800 dark:text-amber-300">
-                      This patient is restricted to biometric verification at their registered facility. OTP is not allowed.
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
-                      onClick={() => {
-                        setError(null);
-                        setStep('idle');
-                        handleStartBiometric();
-                      }}
-                    >
-                      <Fingerprint className="mr-2 h-3.5 w-3.5" />
-                      Use Biometric Instead
-                    </Button>
-                  </div>
-                )}
-                {error.toLowerCase().includes('whitelist') && !error.toLowerCase().includes('restricted to biometric') && (
-                  <p className="text-xs text-muted-foreground">
-                    You may need to submit an OTP whitelist request for this beneficiary via DHA.
-                  </p>
-                )}
+                {(() => {
+                  const lower = error.toLowerCase();
+                  const isBiometricRestricted = lower.includes('restricted to biometric');
+                  const isWhitelist = lower.includes('whitelist');
+                  const hasKnownGuidance = isBiometricRestricted || isWhitelist;
+
+                  return (
+                    <>
+                      {!hasKnownGuidance && (
+                        <p className="text-sm text-destructive">{error}</p>
+                      )}
+                      {isBiometricRestricted && (
+                        <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-3 space-y-3">
+                          <div className="flex gap-2">
+                            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                            <p className="text-sm text-amber-900 dark:text-amber-200">
+                              {error}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
+                              onClick={() => {
+                                setError(null);
+                                setStep('idle');
+                                handleStartBiometric();
+                              }}
+                            >
+                              <Fingerprint className="mr-2 h-3.5 w-3.5" />
+                              Use Biometric Instead
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
+                              asChild
+                            >
+                              <a href="/transactions/sha-claims/whitelist">
+                                <ShieldAlert className="mr-2 h-3.5 w-3.5" />
+                                Request OTP Whitelist
+                              </a>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      {!isBiometricRestricted && isWhitelist && (
+                        <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-3 space-y-3">
+                          <div className="flex gap-2">
+                            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                            <p className="text-sm text-amber-900 dark:text-amber-200">
+                              {error}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
+                            asChild
+                          >
+                            <a href="/transactions/sha-claims/whitelist">
+                              <ShieldAlert className="mr-2 h-3.5 w-3.5" />
+                              Request OTP Whitelist
+                            </a>
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
           </div>

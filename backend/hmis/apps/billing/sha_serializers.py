@@ -377,18 +377,27 @@ class SHAClaimSerializer(serializers.ModelSerializer):
         return obj.attachments.count()
 
     def get_consent_obtained(self, obj) -> bool:
-        """Check if a validated consent token exists for this claim's visit today."""
-        # If visit already started, consent was definitely obtained
-        if obj.dha_visit_started_at:
-            return True
-        # Check for a PENDING or VALIDATED consent token from today
+        """Check if a valid (non-expired) consent token exists for this claim."""
         if not obj.sha_member_id:
             return False
         from django.utils import timezone
 
         from hmis.apps.billing.models import ConsentToken
 
-        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        now = timezone.now()
+
+        # Prefer encounter-linked token (most precise — survives SHA member reuse)
+        if obj.encounter_id:
+            valid = ConsentToken.objects.filter(
+                encounter_id=obj.encounter_id,
+                status=ConsentToken.ConsentStatus.VALIDATED,
+                expires_at__gt=now,
+            ).exists()
+            if valid:
+                return True
+
+        # Fallback: check sha_member + today (OTP-flow consents, or claims without encounter)
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         return ConsentToken.objects.filter(
             sha_member_id=obj.sha_member_id,
             created_at__gte=today_start,
@@ -396,6 +405,7 @@ class SHAClaimSerializer(serializers.ModelSerializer):
                 ConsentToken.ConsentStatus.PENDING,
                 ConsentToken.ConsentStatus.VALIDATED,
             ],
+            expires_at__gt=now,
         ).exists()
 
     def validate(self, attrs):
