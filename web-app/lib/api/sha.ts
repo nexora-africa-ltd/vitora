@@ -869,6 +869,7 @@ async function authorizeBiometric(data: {
   auth_guid: string;
   iframe_url: string;
   status: string;
+  consent_token?: string;
   sandbox_mode?: boolean;
 }> {
   const response = await apiClient.post('/api/sha/consent/authorize/', data);
