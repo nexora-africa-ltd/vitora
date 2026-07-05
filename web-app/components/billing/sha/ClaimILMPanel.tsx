@@ -29,6 +29,7 @@ import {
   Send,
   XCircle,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -507,7 +508,14 @@ export function ClaimILMPanel({
       onChange?.();
       return r;
     } catch (e: unknown) {
-      setError(formatErr(e));
+      const msg = formatErr(e);
+      setError(msg);
+      const code = (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
+      if (code === 'consent_token_expired') {
+        toast.error('Consent token has expired. Please re-consent the patient.');
+      } else if (code === 'consent_token_not_found') {
+        toast.error('No validated consent token for this claim. Please complete the consent flow.');
+      }
       throw e;
     } finally {
       setBusy(null);

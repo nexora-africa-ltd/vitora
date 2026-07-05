@@ -404,7 +404,8 @@ export function ConsentPanel({
       if (result.sandbox_mode) {
         setStep('validated');
         stopPolling();
-        onConsentObtained?.(result.consent_id!, '', { authGuid: result.auth_guid }, selectedIntervention);
+        const sandboxToken = result.consent_token || '';
+        onConsentObtained?.(result.consent_id!, sandboxToken, { authGuid: result.auth_guid }, selectedIntervention);
         return;
       }
       setStep('biometric_pending');
