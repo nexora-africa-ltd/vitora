@@ -139,13 +139,15 @@ class TestStartVisit:
         assert result.status_code == 201
         mock_client.post.assert_called_once()
         path, kwargs = mock_client.post.call_args[0][0], mock_client.post.call_args.kwargs
-        assert path == VISIT_PATH
+        # full URL includes the legacy DHA base URL
+        assert path.endswith(VISIT_PATH)
         body = kwargs["json_body"]
+        # all-capitated codes are passed through with service_type CAPITATION
         assert body == {
             "otp": "123456",
             "patient_id": "CR-001",
             "intervention_codes": ["SHA-12-001"],
-            "service_type": "OUTPATIENT",
+            "service_type": "CAPITATION",
         }
         assert kwargs["facility"] == claim.facility
         # Claim was updated
@@ -159,6 +161,28 @@ class TestStartVisit:
             encounter=claim.encounter, consent_token="AUTH-123"
         ).exists()
 
+    def test_mixed_codes_filters_capitated_only(self, service, mock_client, claim, test_user):
+        mock_client.post.return_value = _make_response(
+            201,
+            {"authorization_code": "AUTH-123", "claim_id": "DHA-9999"},
+            headers={"X-Correlation-Id": "corr-abc"},
+        )
+        result = service.start_visit(
+            claim,
+            StartVisitParams(
+                otp="123456",
+                patient_id="CR-001",
+                intervention_codes=["SHA-06-001", "SHA-12-001", "SHA-12-002"],
+                service_type="OUTPATIENT",
+            ),
+            user=test_user,
+        )
+        assert result.status_code == 201
+        path, kwargs = mock_client.post.call_args[0][0], mock_client.post.call_args.kwargs
+        body = kwargs["json_body"]
+        # only non-capitated codes are sent
+        assert body["intervention_codes"] == ["SHA-06-001"]
+
     def test_inpatient_visit_requires_admission_date(self, service, claim, test_user):
         with pytest.raises(ValueError, match="admission_date"):
             service.start_visit(
@@ -166,7 +190,7 @@ class TestStartVisit:
                 StartVisitParams(
                     otp="123",
                     patient_id="CR-001",
-                    intervention_codes=["SHA-12-001"],
+                    intervention_codes=["SHA-06-001"],
                     service_type="INPATIENT",
                 ),
                 user=test_user,
@@ -181,7 +205,7 @@ class TestStartVisit:
             StartVisitParams(
                 otp="123",
                 patient_id="CR-001",
-                intervention_codes=["SHA-12-001"],
+                intervention_codes=["SHA-06-001"],
                 service_type="INPATIENT",
                 admission_date="2026-04-29",
                 estimated_days_of_admission=3,
@@ -201,10 +225,25 @@ class TestStartVisit:
 @pytest.mark.django_db
 class TestInterventions:
     def test_add_intervention_includes_consent_token(self, service, mock_client, claim, consent):
-        service.add_intervention(claim, "SHA-12-001")
+        # Use a non-capitated code so the call goes through the standard
+        # interventions endpoint (capitated codes are redirected to the
+        # virtual claim line endpoint — covered by TestVirtualClaimLine).
+        service.add_intervention(claim, "SHA-06-001")
         path = mock_client.post.call_args[0][0]
         body = mock_client.post.call_args.kwargs["json_body"]
         assert path == INTERVENTIONS_PATH
+        assert body == {"consent_token": "CT-TOKEN-XYZ", "intervention_code": "SHA-06-001"}
+        assert mock_client.post.call_args.kwargs["consent_token"] == "CT-TOKEN-XYZ"
+
+    def test_add_intervention_capitated_redirects_to_virtual_claim_line(
+        self, service, mock_client, claim, consent
+    ):
+        # Capitated codes (SHA-12-* / SHA-08-001/002/003) must redirect to
+        # the virtual claim line endpoint rather than /claims/interventions.
+        service.add_intervention(claim, "SHA-12-001")
+        path = mock_client.post.call_args[0][0]
+        body = mock_client.post.call_args.kwargs["json_body"]
+        assert path == VIRTUAL_CLAIM_LINE_PATH
         assert body == {"consent_token": "CT-TOKEN-XYZ", "intervention_code": "SHA-12-001"}
         assert mock_client.post.call_args.kwargs["consent_token"] == "CT-TOKEN-XYZ"
 
@@ -422,6 +461,114 @@ class TestLifecycle:
         claim.refresh_from_db()
         assert claim.status == "written_off"
         assert claim.last_dha_status == "CLOSED"
+
+
+# ---------------------------------------------------------------------------
+# Full lifecycle integration test
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestFullLifecycle:
+    """End-to-end happy path: start_visit → add_intervention → add_line
+    → preview → submit → close."""
+
+    def test_full_lifecycle_success(self, service, mock_client, claim, test_user):
+        # Each DHA call returns a progressively richer response so the
+        # persistence side-effects (claim.dha_external_id, claim.status,
+        # claim.sha_claim_reference, etc.) are exercised end-to-end.
+        mock_client.post.side_effect = [
+            # 1. start_visit
+            _make_response(
+                201,
+                {"authorization_code": "AUTH-FLOW-1", "claim_id": "DHA-FLOW-99"},
+                headers={"X-Correlation-Id": "corr-flow"},
+            ),
+            # 2. add_intervention (non-capitated code)
+            _make_response(200, {"ok": True}),
+            # 3. add_line
+            _make_response(200, {"claim_line_id": "LINE-FLOW-1"}),
+            # 4. preview
+            _make_response(200, {"ok": True}),
+            # 5. submit
+            _make_response(
+                200,
+                {"sha_claim_reference": "SHA-REF-FLOW"},
+                headers={"X-Correlation-Id": "corr-submit"},
+            ),
+            # 6. close
+            _make_response(200, {"ok": True}),
+        ]
+
+        # --- start_visit ---
+        sv_result = service.start_visit(
+            claim,
+            StartVisitParams(
+                otp="123456",
+                patient_id="CR-001",
+                intervention_codes=["SHA-06-001"],
+                service_type="OUTPATIENT",
+            ),
+            user=test_user,
+        )
+        assert sv_result.status_code == 201
+        assert sv_result.authorization_code == "AUTH-FLOW-1"
+        claim.refresh_from_db()
+        assert claim.dha_external_id == "DHA-FLOW-99"
+        assert claim.dha_visit_started_at is not None
+        assert claim.last_dha_status == "VISIT_STARTED"
+        assert claim.dha_correlation_id == "corr-flow"
+        # ConsentToken was created from authorization_code
+        assert ConsentToken.objects.filter(
+            encounter=claim.encounter, consent_token="AUTH-FLOW-1"
+        ).exists()
+
+        # --- add_intervention ---
+        ai_result = service.add_intervention(claim, "SHA-06-001")
+        assert ai_result.status_code == 200
+
+        # --- add_line ---
+        al_result = service.add_line(
+            claim,
+            ClaimLine(
+                intervention_code="SHA-06-001",
+                service_name="Consultation",
+                service_identifier="C/001",
+                unit_price="500.00",
+                quantity="1",
+                scheme_code="UHC",
+            ),
+        )
+        assert al_result.status_code == 200
+
+        # --- preview ---
+        pv_result = service.preview(claim)
+        assert pv_result.status_code == 200
+
+        # --- submit ---
+        sb_result = service.submit(claim, invoice_number="INV/FLOW/1", user=test_user)
+        assert sb_result.status_code == 200
+        claim.refresh_from_db()
+        assert claim.status == "submitted"
+        assert claim.submitted_at is not None
+        assert claim.sha_claim_reference == "SHA-REF-FLOW"
+        assert claim.last_dha_status == "SUBMITTED"
+        assert claim.dha_correlation_id == "corr-submit"
+
+        # --- close ---
+        cls_result = service.close(
+            claim,
+            CloseClaimParams(
+                cancel_reason_type="WRONG_PATIENT", cancel_reason_text="wrong patient"
+            ),
+        )
+        assert cls_result.status_code == 200
+        claim.refresh_from_db()
+        assert claim.status == "written_off"
+        assert claim.last_dha_status == "CLOSED"
+
+        # Exactly 6 POSTs were made in sequence
+        assert mock_client.post.call_count == 6
 
 
 # ---------------------------------------------------------------------------

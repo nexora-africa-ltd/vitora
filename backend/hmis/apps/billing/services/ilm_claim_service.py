@@ -71,9 +71,12 @@ INTERVENTION_SWITCH_PATH = "/api/v1/claims/interventions/switch"
 INTERVENTION_RESTORE_PATH = "/api/v1/claims/interventions/restore"
 INTERVENTION_RETIRE_PATH = "/api/v1/claims/interventions/retire"
 # PHC (Primary Healthcare Fund) — Scenario C in DHA HIE user-journey spec.
-# Level 2/3 facilities use a "virtual claim line" path for capitation /
-# basic fee-for-service interventions (no preauth).
-VIRTUAL_CLAIM_LINE_PATH = "/api/v1/claims/add_virtual_claim_line"
+# Level 2/3 facilities use the same `/claims/lines` endpoint as the standard
+# billing flow to add a "virtual claim line" for capitation / basic
+# fee-for-service interventions (no preauth). The DHA HIE UAT Postman
+# collection ("Claims and Preauth / Billing / Add Virtual Claim Line")
+# routes this through `/api/v1/claims/lines`.
+VIRTUAL_CLAIM_LINE_PATH = "/api/v1/claims/lines"
 DIAGNOSES_PATH = "/api/v1/claims/diagnoses"
 LINES_PATH = "/api/v1/claims/lines"
 LINES_EDIT_PATH = "/api/v1/claims/lines/edit"
@@ -178,63 +181,39 @@ class IlmClaimService:
             raise ValueError("Provide either otp or auth_guid, not both")
 
         # ---------------------------------------------------------------
-        # Capitation check: SHA-12-xxx and some SHA-08-xxx are pre-paid
-        # (capitated). DHA's start_visit endpoint does not accept these —
-        # it returns "intervention X is not supported for service type Y"
-        # for all valid service types. For capitated interventions we skip
-        # the DHA call and mark the visit started locally.
+        # Capitated codes (SHA-12-xxx / SHA-08-001/002/003) are handled by
+        # the middleware under service_type "CAPITATION". Non-capitated
+        # visits use the caller's service type. Mixed lists fall back to
+        # filtering capitated codes out to avoid "not supported for service
+        # type OUTPATIENT" errors.
         # ---------------------------------------------------------------
         CAPITATED_PREFIXES = ("SHA-12-", "SHA-08-001", "SHA-08-002", "SHA-08-003")
-        codes = list(params.intervention_codes)
-        all_capitated = bool(codes) and all(
-            any(c.startswith(p) for p in CAPITATED_PREFIXES) for c in codes
+        all_capitated = bool(params.intervention_codes) and all(
+            any(c.startswith(p) for p in CAPITATED_PREFIXES) for c in params.intervention_codes
         )
         if all_capitated:
-            logger.info(
-                "All interventions are capitated (%s); skipping DHA start_visit for claim %s.",
-                codes,
-                getattr(claim, "pk", None),
-            )
-            mock_response = IlmResponse(
-                status_code=200,
-                headers={},
-                json={
-                    "authorization_code": (
-                        f"capitated-{getattr(claim, 'pk', 'unknown')}"
-                        f"-{int(timezone.now().timestamp())}"
-                    ),
-                    "claim_id": getattr(claim, "dha_external_id", None),
-                    "message": (
-                        "Capitated interventions skip DHA visit start. Visit started locally."
-                    ),
-                },
-            )
-            result = IlmClaimResult(response=mock_response, payload=mock_response.json)
-            self._apply_visit_response(claim, result, user=user)
-            from hmis.apps.core.events import BillingEvents
-
-            _publish_safe(
-                BillingEvents.DHA_CLAIM_VISIT_STARTED,
-                _claim_event_payload(
-                    claim,
-                    result,
-                    service_type=params.service_type,
-                    intervention_codes=codes,
-                    authorization_code=result.authorization_code,
-                ),
-            )
-            return result
+            codes = list(params.intervention_codes)
+            service_type = "CAPITATION"
+        else:
+            codes = [
+                c
+                for c in params.intervention_codes
+                if not any(c.startswith(p) for p in CAPITATED_PREFIXES)
+            ]
+            if not codes and params.intervention_codes:
+                codes = ["SHA-06-001"]
+            service_type = params.service_type
 
         body: dict[str, Any] = {
             "patient_id": params.patient_id,
             "intervention_codes": codes,
-            "service_type": params.service_type,
+            "service_type": service_type,
         }
         if params.otp:
             body["otp"] = params.otp
         else:
             body["auth_guid"] = params.auth_guid
-        if params.service_type.upper() == "INPATIENT":
+        if service_type.upper() == "INPATIENT":
             if not params.admission_date:
                 raise ValueError("admission_date is required for INPATIENT visits")
             body["admission_date"] = params.admission_date
@@ -249,6 +228,9 @@ class IlmClaimService:
             )
             body["practitioner_regulation_body"] = params.practitioner_regulation_body or "KMPDC"
 
+        # Use the Keycloak OAuth2 Bearer token for start_visit; the ILM
+        # middleware accepts it (unlike the self-signed HS256 JWT which
+        # it cannot verify).
         response = self.client.post(
             VISIT_PATH,
             json_body=body,

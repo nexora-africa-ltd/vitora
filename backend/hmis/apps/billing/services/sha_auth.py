@@ -160,7 +160,7 @@ class SHAAuthService:
         encoded = base64.b64encode(credentials.encode()).decode()
         return encoded
 
-    def generate_terminology_token(self, expires_in: int = 20) -> str:
+    def generate_terminology_token(self, expires_in: int = 20, key: str | None = None) -> str:
         """
         Generate a self-signed JWT for terminology API calls.
 
@@ -188,7 +188,20 @@ class SHAAuthService:
         header = {"alg": "HS256", "typ": "JWT"}
 
         # JWT Payload (matches Postman pre-request script)
-        payload = {"key": self.consumer_key, "iat": now, "exp": now + expires_in}
+        # iat is set 5 s in the past to tolerate clock skew with DHA servers.
+        # ``user`` must be the Keycloak client_id (e.g. "vitora"), not the
+        # consumer_key, because the ILM middleware looks up the client by
+        # client_id rather than the legacy consumer_key.
+        # ``key`` is the consumer_key for legacy SHA, but when used for ILM
+        # auth (self-signed JWT) it must be the client_id so the middleware
+        # can find the client and verify the HMAC signature.
+        default_key = self.client_id if self.auth_mode == "ilm" else self.consumer_key
+        payload = {
+            "key": key or default_key,
+            "user": self.client_id,
+            "iat": now - 5,
+            "exp": now + expires_in,
+        }
 
         # Encode header and payload using compact JSON (separators without spaces)
         # This matches JavaScript's JSON.stringify() output exactly

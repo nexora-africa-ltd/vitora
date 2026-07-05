@@ -3464,12 +3464,14 @@ class ConsentSendOTPView(APIView):
                 derived_access_point = "IP"
                 break
 
+        now = timezone.now()
         existing_active = CT.objects.filter(
             patient=sha_member.patient,
             facility=facility,
             access_point=derived_access_point,
             status=CT.ConsentStatus.VALIDATED,
             created_at__date=date.today(),
+            expires_at__gt=now,
         ).exists()
         if existing_active:
             # Reuse existing VALIDATED consent instead of blocking — idempotent.
@@ -3481,6 +3483,7 @@ class ConsentSendOTPView(APIView):
                     access_point=derived_access_point,
                     status=CT.ConsentStatus.VALIDATED,
                     created_at__date=date.today(),
+                    expires_at__gt=now,
                 )
                 .order_by("-created_at")
                 .first()
@@ -3782,19 +3785,24 @@ class ConsentLatestView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        from django.db.models import Q
         from django.utils import timezone
 
-        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        now = timezone.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
         consent = (
             ConsentToken.objects.filter(
                 sha_member_id=sha_member_id,
                 facility=facility,
                 created_at__gte=today_start,
-                status__in=[
-                    ConsentToken.ConsentStatus.PENDING,
-                    ConsentToken.ConsentStatus.VALIDATED,
-                ],
+            )
+            .filter(
+                Q(status=ConsentToken.ConsentStatus.PENDING)
+                | Q(
+                    status=ConsentToken.ConsentStatus.VALIDATED,
+                    expires_at__gt=now,
+                ),
             )
             .order_by("-created_at")
             .first()
