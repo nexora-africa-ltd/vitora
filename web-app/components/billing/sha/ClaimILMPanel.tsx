@@ -22,6 +22,7 @@ import {
   ChevronRight,
   ChevronsUpDown,
   CircleDashed,
+  Fingerprint,
   Loader2,
   Play,
   RefreshCw,
@@ -400,6 +401,8 @@ export function ClaimILMPanel({
   const useVirtualLine = flow?.addLineEndpoint === 'add_virtual_claim_line';
   const requiresConsent = flow ? flow.requiresConsent : true;
   const isInpatientFlow = !!flow?.supportsInpatientDischarge;
+  const facilityAgentNationalId = facilityDetail?.biometrics_agent_national_id || '';
+  const [biometricBusy, setBiometricBusy] = useState(false);
 
   // ---- Local UI state ----
   const [busy, setBusy] = useState<ActionKey | null>(null);
@@ -551,6 +554,30 @@ export function ClaimILMPanel({
       setBusy(null);
     }
   }, [claim.sha_member, interventionCodes, consentInterventionCode]);
+
+  const handleStartBiometric = useCallback(async () => {
+    setBiometricBusy(true);
+    setError(null);
+    try {
+      const memberId = typeof claim.sha_member === 'number' ? claim.sha_member : 0;
+      const result = await shaApi.authorizeBiometric({
+        sha_member_id: memberId,
+        workstation_id: facilityDetail?.workstation_id || 'vitora-web',
+        agent_national_id: facilityAgentNationalId,
+      });
+      setStartAuthGuid(result.auth_guid);
+      if (result.sandbox_mode) {
+        // Auto-open visit — biometric is already VALIDATED in sandbox
+        setTimeout(() => openVisit(), 300);
+      } else {
+        toast.info('Biometric authorization initiated — waiting for fingerprint…');
+      }
+    } catch (e: unknown) {
+      setError(formatErr(e));
+    } finally {
+      setBiometricBusy(false);
+    }
+  }, [claim.sha_member, facilityDetail?.workstation_id, facilityAgentNationalId]);
 
   async function openVisit() {
     if (!patientCrId) return;
@@ -897,6 +924,29 @@ export function ClaimILMPanel({
                     Ask the patient for the OTP sent to their phone. If they didn&apos;t receive it or it expired, click &quot;Send OTP&quot;.
                   </p>
                 )}
+
+                <div className="relative py-1">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">or</span>
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  onClick={handleStartBiometric}
+                  disabled={biometricBusy || busy !== null}
+                  className="w-full"
+                >
+                  {biometricBusy ? (
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                  ) : (
+                    <Fingerprint className="mr-2 h-3 w-3" />
+                  )}
+                  Biometric consent
+                </Button>
               </div>
             )}
 
