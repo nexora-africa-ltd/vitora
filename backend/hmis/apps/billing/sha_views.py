@@ -4100,6 +4100,36 @@ class BiometricAuthorizeView(APIView):
         workstation_id = request.data.get("workstation_id", "")
         agent_national_id = request.data.get("agent_national_id", "")
 
+        # In sandbox/UAT, auto-fill agent_national_id for dev convenience
+        if not agent_national_id:
+            agent_national_id = getattr(facility, "biometrics_agent_national_id", "") or ""
+            # Detect decryption failure: encrypted data exists but property returned empty
+            if not agent_national_id and facility.biometrics_agent_national_id_encrypted:
+                logger.error(
+                    "PII decryption failure for Facility %s (pk=%s) — "
+                    "biometrics_agent_national_id_encrypted has data but property returned empty. "
+                    "Check ENCRYPTION_KEY consistency.",
+                    facility.name,
+                    facility.pk,
+                    extra={
+                        "facility_id": facility.pk,
+                        "facility_name": facility.name,
+                        "pii_field": "biometrics_agent_national_id",
+                    },
+                )
+                return Response(
+                    {
+                        "error": (
+                            "Facility biometrics configuration error: stored data cannot be "
+                            "decrypted. Contact system administrator to verify the encryption key."
+                        ),
+                        "code": "pii_decryption_failed",
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+        if not agent_national_id and os.getenv("DJANGO_ENV", "development") != "production":
+            agent_national_id = "12345678"
+
         if not sha_member_id:
             return Response(
                 {"error": "sha_member_id is required"},

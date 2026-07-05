@@ -102,7 +102,11 @@ help:
 	@echo "  staging-env         - List all ACA env var names"
 	@echo "  staging-secrets     - List all ACA secret names"
 	@echo "  staging-deploy      - Build, push, and deploy image to ACA"
+	@echo "  staging-verify      - Post-deploy: PII integrity + login smoke test"
 	@echo "  staging-login-test  - Test login against the staging API"
+	@echo ""
+	@echo "Production:"
+	@echo "  prod-verify         - Post-deploy: PII integrity + login smoke test"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  clean         - Remove generated files and caches"
@@ -685,6 +689,16 @@ staging-deploy:
 	DJANGO_SETTINGS_MODULE=hmis.settings.staging bash scripts/azure-update-env.sh && \
 	echo "✅ Deployed $$TAG to ACA. Wait ~60s for rollout."
 
+# Post-deploy verification suite
+staging-verify:
+	@echo "=== Post-deploy verification ==="
+	@echo "-- PII integrity check --" && \
+	python manage.py check_pii_integrity --model Facility --fail-fast \
+		&& echo "✅ PII integrity OK" \
+		|| echo "❌ PII integrity FAILED"
+	@echo "-- Login smoke test --" && \
+	$(MAKE) staging-login-test
+
 # Quick login test against staging API
 staging-login-test:
 	@echo "Testing login..."
@@ -723,6 +737,20 @@ prod-env:
 
 prod-logs:
 	az containerapp logs show -n $(ACA_PROD_NAME) -g $(ACA_RG) --follow
+
+prod-verify:
+	@echo "=== Post-deploy verification ==="
+	@echo "-- PII integrity check --" && \
+	python manage.py check_pii_integrity --model Facility --fail-fast \
+		&& echo "✅ PII integrity OK" \
+		|| echo "❌ PII integrity FAILED"
+	@echo "-- Login smoke test --" && \
+	curl -sf $(ACA_API_URL)/api/token/ \
+		-X POST -H "Content-Type: application/json" \
+		-d '{"username":"demo_admin","password":"DemoAdmin2026?!"}' \
+		| python3 -c "import sys,json; d=json.load(sys.stdin); \
+			print('✅ Login OK — user:', d.get('user',{}).get('username','?')) if 'access' in d \
+			else print('❌ Login failed:', d)" 2>/dev/null || echo "❌ API unreachable"
 
 prod-status:
 	@az containerapp show -n $(ACA_PROD_NAME) -g $(ACA_RG) \

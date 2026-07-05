@@ -103,11 +103,11 @@ jobs:
             --output none 2>/dev/null || true
 
       - name: Build and push Prometheus image
-        working-directory: monitoring/prometheus/azure
+        working-directory: monitoring/prometheus
         run: |
           IMAGE_TAG="${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.PROMETHEUS_IMAGE_NAME }}:${{ github.sha }}"
           IMAGE_LATEST="${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.PROMETHEUS_IMAGE_NAME }}:latest"
-          docker build -t "$IMAGE_TAG" -t "$IMAGE_LATEST" .
+          docker build -f azure/Dockerfile -t "$IMAGE_TAG" -t "$IMAGE_LATEST" .
           docker push "$IMAGE_TAG"
           docker push "$IMAGE_LATEST"
 

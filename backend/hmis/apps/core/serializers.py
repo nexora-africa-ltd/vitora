@@ -1128,6 +1128,10 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
     enabled_module_names = serializers.ListField(child=serializers.CharField(), read_only=True)
     effective_logo_url = serializers.SerializerMethodField()
 
+    # Biometrics fields
+    workstation_id = serializers.CharField(required=False, allow_blank=True, default="")
+    biometrics_enforced = serializers.BooleanField(required=False, default=False)
+
     # Encrypted PII fields — exposed via model property descriptors
     biometrics_agent_national_id = serializers.CharField(
         required=False, allow_blank=True, default=""
@@ -1166,6 +1170,8 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "sha_contracted",
             "sha_contract_expiry",
             "sha_facility_code",
+            "workstation_id",
+            "biometrics_enforced",
             "biometrics_agent_national_id",
             # DHA Registry Cache
             "dha_registry_synced_at",

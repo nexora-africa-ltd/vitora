@@ -1,0 +1,33 @@
+# =============================================================================
+# PII Encryption Alert Rules
+# =============================================================================
+# Alerts fire when KMS cannot decrypt stored PII data — typically caused by
+# ENCRYPTION_KEY drift between deployments or corrupted ciphertext.
+#
+# These rules rely on the ``vitora_pii_encryption_healthy`` gauge exposed by
+# the Django /metrics endpoint (django-prometheus).
+# =============================================================================
+
+groups:
+  - name: pii_encryption
+    interval: 30s
+    rules:
+      - alert: PIIEncryptionDown
+        expr: vitora_pii_encryption_healthy == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "PII encryption provider is unhealthy"
+          description: |
+            KMS decryption of stored PII data is failing.
+            This means all encrypted fields (national_id, phone, email, etc.)
+            will be returned as empty strings.
+
+            Most likely cause: ENCRYPTION_KEY changed between deployments.
+            Check that the key in the environment matches the key used when
+            the data was encrypted.
+
+            Action: Restore the correct ENCRYPTION_KEY or re-encrypt all
+            PII data with the new key (see docs/dha/pii-encryption.md).
