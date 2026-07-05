@@ -202,13 +202,30 @@ function derivePractitionerFields(user: ReturnType<typeof useAuth>['user']): Pra
 }
 
 function formatErr(e: unknown): string {
-  const err = e as { response?: { data?: { error?: string; detail?: string } }; message?: string };
-  return (
-    err?.response?.data?.error ??
-    err?.response?.data?.detail ??
-    err?.message ??
-    'Request failed'
-  );
+  const err = e as {
+    response?: {
+      data?: {
+        error?: string;
+        detail?: string;
+        message?: string;
+        errors?: Record<string, string[]> | string[];
+      };
+    };
+    message?: string;
+  };
+  const data = err?.response?.data;
+  if (data?.error) return data.error;
+  if (data?.detail) return data.detail;
+  if (data?.message) return data.message;
+  if (Array.isArray(data?.errors)) {
+    return (data.errors as string[]).join('; ');
+  }
+  if (data?.errors && typeof data.errors === 'object') {
+    return Object.entries(data.errors)
+      .map(([field, msgs]) => `${field}: ${(msgs as string[]).join(', ')}`)
+      .join('; ');
+  }
+  return err?.message ?? 'Request failed';
 }
 
 interface LiveInterventionItem {
@@ -412,6 +429,8 @@ export function ClaimILMPanel({
   // OTP for start_visit — auto-filled from consent credential
   const [startOtp, setStartOtp] = useState(consentCredential?.otp ?? '');
   const [startAuthGuid, setStartAuthGuid] = useState(consentCredential?.authGuid ?? '');
+  // Sync local credential state when consent is obtained via the parent
+  // (ConsentPanel) after this panel has already mounted.
   useEffect(() => {
     if (consentCredential?.otp) setStartOtp(consentCredential.otp);
     if (consentCredential?.authGuid) setStartAuthGuid(consentCredential.authGuid);
@@ -434,7 +453,7 @@ export function ClaimILMPanel({
 
     // Small delay so the UI can render the busy state before the async call
     const timer = setTimeout(() => {
-      openVisit();
+      openVisitRef.current();
     }, 300);
 
     return () => clearTimeout(timer);
@@ -568,7 +587,7 @@ export function ClaimILMPanel({
       setStartAuthGuid(result.auth_guid);
       if (result.sandbox_mode) {
         // Auto-open visit — biometric is already VALIDATED in sandbox
-        setTimeout(() => openVisit(), 300);
+        setTimeout(() => openVisitRef.current(), 300);
       } else {
         toast.info('Biometric authorization initiated — waiting for fingerprint…');
       }
@@ -610,6 +629,10 @@ export function ClaimILMPanel({
       }),
     );
   }
+  // Ref to the latest openVisit so callbacks/effects that schedule async work
+  // (sandbox biometric auto-open, auto-open effect) always use current state.
+  const openVisitRef = useRef(openVisit);
+  openVisitRef.current = openVisit;
 
   async function preview() {
     await run('preview', () => shaApi.ilmPreview(claimId));
@@ -648,6 +671,10 @@ export function ClaimILMPanel({
 
   async function addIntervention() {
     if (!newInterventionCode) return;
+    if (interventionCodes.includes(newInterventionCode)) {
+      setError(`Intervention ${newInterventionCode} is already on the claim.`);
+      return;
+    }
     const fn = useVirtualLine
       ? () =>
           shaApi.ilmAddVirtualClaimLine(claimId, {
@@ -684,6 +711,12 @@ export function ClaimILMPanel({
     setCancelText('');
   }
 
+  // Effective intervention code that will be sent on start_visit — used to
+  // enable/disable the button, satisfy the prereqs, and give the user visibility
+  // into what will be sent.
+  const effectiveInterventionCode =
+    interventionCodes[0] || consentInterventionCode || manualInterventionCode || '';
+
   // ---- Prerequisites ----
   // For opening a visit, the DHA start_visit endpoint validates the OTP directly
   // (no pre-validated consent token needed). The consent token is only required
@@ -707,10 +740,12 @@ export function ClaimILMPanel({
     },
     {
       label: `Active interventions`,
-      ok: activeInterventions.length > 0,
+      ok: activeInterventions.length > 0 || !!effectiveInterventionCode,
       hint: activeInterventions.length > 0
         ? `${activeInterventions.length} on claim`
-        : 'Add at least one intervention first',
+        : effectiveInterventionCode
+          ? `Will use ${effectiveInterventionCode}`
+          : 'Add at least one intervention first',
     },
     {
       label: 'Practitioner licence',
@@ -732,10 +767,6 @@ export function ClaimILMPanel({
     },
   ];
   const canOpenVisit = prereqs.every((p) => p.ok);
-  // Effective intervention code that will be sent on start_visit — used to
-  // enable/disable the button and give the user visibility into what will be sent.
-  const effectiveInterventionCode =
-    interventionCodes[0] || consentInterventionCode || manualInterventionCode || '';
   // Minimal requirements to attempt start_visit (DHA needs OTP + patient_id + intervention)
   const canAttemptVisit =
     !!patientCrId &&
@@ -807,10 +838,11 @@ export function ClaimILMPanel({
             <PrereqGrid prereqs={prereqs} />
 
             {/* Intervention selector — shown when neither the claim nor consent
-                provided an intervention code. DHA requires a valid, facility-
-                eligible, FEE-FOR-SERVICE intervention on start_visit. Capitation
-                and inactive codes are filtered out server-side. */}
-            {activeInterventions.length === 0 && !consentInterventionCode && (
+                provided an intervention code and the user has not yet picked one
+                manually. DHA requires a valid, facility-eligible, FEE-FOR-SERVICE
+                intervention on start_visit. Capitation and inactive codes are
+                filtered out server-side. */}
+            {activeInterventions.length === 0 && !consentInterventionCode && !manualInterventionCode && (
               <div className="space-y-1 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
                 <Label htmlFor="ilm-manual-intervention" className="text-xs font-medium text-amber-900 dark:text-amber-100">
                   Select intervention for this visit
@@ -825,7 +857,16 @@ export function ClaimILMPanel({
                   </p>
                 ) : (
                   <>
-                    <Select value={manualInterventionCode} onValueChange={setManualInterventionCode}>
+                    <Select
+                      value={manualInterventionCode}
+                      onValueChange={(value) => {
+                        setManualInterventionCode(value);
+                        // Clear the stale "select an intervention" error once the user picks one.
+                        if (error === 'Select an intervention below before opening the visit.') {
+                          setError(null);
+                        }
+                      }}
+                    >
                       <SelectTrigger id="ilm-manual-intervention" className="bg-background">
                         <SelectValue placeholder={outpatientOptions.length > 0 ? 'Choose an intervention…' : 'Loading eligible interventions…'} />
                       </SelectTrigger>
@@ -1003,7 +1044,7 @@ export function ClaimILMPanel({
               <p className="text-xs text-muted-foreground">
                 {activeInterventions.length} active intervention
                 {activeInterventions.length === 1 ? '' : 's'}. Manage existing ones on the
-                Overview tab.
+                Interventions tab.
               </p>
               <div className="flex gap-2">
                 <Button
@@ -1208,7 +1249,10 @@ export function ClaimILMPanel({
             >
               Cancel
             </Button>
-            <Button onClick={addIntervention} disabled={!newInterventionCode || busy !== null}>
+            <Button
+              onClick={addIntervention}
+              disabled={!newInterventionCode || interventionCodes.includes(newInterventionCode) || busy !== null}
+            >
               {(busy === 'addIntervention' || busy === 'addVirtualClaimLine') && (
                 <Loader2 className="mr-2 h-3 w-3 animate-spin" />
               )}

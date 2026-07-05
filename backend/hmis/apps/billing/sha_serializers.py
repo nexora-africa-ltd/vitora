@@ -470,6 +470,15 @@ class SHAClaimInterventionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # CharField with blank=True stores empty strings, but the frontend Zod
+        # schema expects these enum fields to either be a valid value or absent.
+        for field in ("payment_mechanism", "access_point"):
+            if data.get(field) == "":
+                data.pop(field, None)
+        return data
+
 
 class SHAClaimDetailSerializer(SHAClaimSerializer):
     """Detailed serializer for SHA claim with nested items and attachments."""

@@ -248,7 +248,11 @@ class IlmClaimService:
                 elapsed_ms=0,
             )
             result = IlmClaimResult(response=fake_response, payload=fake_response.json)
-            self._apply_visit_response(claim, result, user=user)
+            self._apply_visit_response(claim, result, params=params, user=user)
+            # Persist the intervention codes locally so the claim reflects the
+            # active interventions immediately after visit start.
+            for code in codes:
+                self._persist_intervention(claim, code, result)
             from hmis.apps.core.events import BillingEvents
 
             _publish_safe(
@@ -278,7 +282,11 @@ class IlmClaimService:
             user=user,
         )
         result = IlmClaimResult(response=response, payload=response.json)
-        self._apply_visit_response(claim, result, user=user)
+        self._apply_visit_response(claim, result, params=params, user=user)
+        # Persist the intervention codes locally so the claim reflects the
+        # active interventions immediately after visit start.
+        for code in codes:
+            self._persist_intervention(claim, code, result)
         from hmis.apps.core.events import BillingEvents
 
         _publish_safe(
@@ -747,13 +755,20 @@ class IlmClaimService:
     # Persistence side-effects
     # -----------------------------------------------------------------
 
-    def _apply_visit_response(self, claim: Any, result: IlmClaimResult, *, user: Any) -> None:
+    def _apply_visit_response(
+        self,
+        claim: Any,
+        result: IlmClaimResult,
+        *,
+        params: StartVisitParams,
+        user: Any,
+    ) -> None:
         if not isinstance(result.payload, dict):
             return
         update_fields: list[str] = []
         auth_code = result.authorization_code
         if auth_code:
-            self._upsert_consent_token(claim, auth_code, user=user)
+            self._link_or_create_consent_token(claim, params, auth_code, user=user)
         external_id = result.payload.get("claim_id") or result.payload.get("dha_claim_id")
         if external_id and hasattr(claim, "dha_external_id"):
             claim.dha_external_id = str(external_id)[:64]
@@ -933,8 +948,23 @@ class IlmClaimService:
                 claim.dha_correlation_id = cid[:64]
                 update_fields.append("dha_correlation_id")
 
-    def _upsert_consent_token(self, claim: Any, token: str, *, user: Any) -> None:
-        """Persist the authorization_code returned from start_visit as a ConsentToken."""
+    def _link_or_create_consent_token(
+        self,
+        claim: Any,
+        params: StartVisitParams,
+        token: str,
+        *,
+        user: Any,
+    ) -> None:
+        """Link the encounter to the consent token used to start the visit.
+
+        For biometric flow the original biometric consent token (matched by
+        auth_guid) must remain the active token; start_visit's authorization_code
+        is not a consent token and must not replace it.
+
+        For OTP flow the pending OTP token for this patient/member is validated
+        and linked to the encounter.
+        """
         try:
             from hmis.apps.billing.models import ConsentToken
         except ImportError:  # pragma: no cover
@@ -942,12 +972,83 @@ class IlmClaimService:
         encounter = getattr(claim, "encounter", None)
         if encounter is None:
             return
-        existing = ConsentToken.objects.filter(
-            encounter=encounter,
-            consent_token=token,
-        ).first()
-        if existing:
+
+        consent = None
+        if params.auth_guid:
+            # Biometric: match the token that was authorized with this auth_guid.
+            consent = (
+                ConsentToken.objects.filter(
+                    auth_guid=params.auth_guid,
+                    consent_method=ConsentToken.ConsentMethod.BIOMETRIC,
+                )
+                .order_by("-created_at")
+                .first()
+            )
+            logger.info(
+                "_link_or_create_consent_token biometric auth_guid=%s matched=%s",
+                params.auth_guid,
+                consent.pk if consent else None,
+            )
+            # Fallback: any validated biometric token for this patient/member.
+            if consent is None:
+                consent = (
+                    ConsentToken.objects.filter(
+                        patient=claim.patient,
+                        sha_member=claim.sha_member,
+                        consent_method=ConsentToken.ConsentMethod.BIOMETRIC,
+                        status=ConsentToken.ConsentStatus.VALIDATED,
+                    )
+                    .order_by("-validated_at")
+                    .first()
+                )
+                logger.info(
+                    "_link_or_create_consent_token biometric fallback patient=%s matched=%s",
+                    getattr(claim.patient, "pk", None),
+                    consent.pk if consent else None,
+                )
+        elif params.otp:
+            # OTP: match a pending OTP token for this patient/member.
+            consent = (
+                ConsentToken.objects.filter(
+                    patient=claim.patient,
+                    sha_member=claim.sha_member,
+                    consent_method=ConsentToken.ConsentMethod.OTP,
+                    status=ConsentToken.ConsentStatus.PENDING,
+                )
+                .order_by("-created_at")
+                .first()
+            )
+            logger.info(
+                "_link_or_create_consent_token otp matched=%s",
+                consent.pk if consent else None,
+            )
+
+        if consent:
+            if consent.status != ConsentToken.ConsentStatus.VALIDATED:
+                consent.status = ConsentToken.ConsentStatus.VALIDATED
+                # For OTP the returned token is the consent token;
+                # for biometric keep the original consent_token.
+                if not consent.consent_token:
+                    consent.consent_token = token
+                consent.validated_at = timezone.now()
+                consent.save(update_fields=["status", "consent_token", "validated_at"])
+            if consent.encounter_id != encounter.pk:
+                consent.encounter = encounter
+                consent.save(update_fields=["encounter"])
+            # Ensure no stale tokens (e.g. old authorization_code tokens from a
+            # previous start_visit bug) are linked to this encounter.
+            deleted, _ = (
+                ConsentToken.objects.filter(encounter=encounter).exclude(pk=consent.pk).delete()
+            )
+            if deleted:
+                logger.info(
+                    "_link_or_create_consent_token deleted %s stale token(s) for encounter=%s",
+                    deleted,
+                    encounter.pk,
+                )
             return
+
+        # Fallback: create a new validated token (emergency/no prior consent flow).
         ConsentToken.objects.create(
             patient=claim.patient,
             sha_member=claim.sha_member,
