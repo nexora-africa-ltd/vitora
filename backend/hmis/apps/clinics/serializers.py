@@ -372,7 +372,9 @@ class ClinicVisitCreateSerializer(serializers.ModelSerializer):
 class ClinicVisitReferSerializer(serializers.Serializer):
     """Serializer for referring a patient to another clinic."""
 
-    target_clinic = serializers.PrimaryKeyRelatedField(queryset=Clinic.objects.all())
+    target_clinic_id = serializers.PrimaryKeyRelatedField(
+        source="target_clinic", queryset=Clinic.objects.all()
+    )
     reason = serializers.CharField(max_length=500)
 
 
