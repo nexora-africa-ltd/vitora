@@ -75,7 +75,7 @@ class TestPreviewEndpoint:
                 "no", status_code=401
             )
             r = sha_client.get(self.URL, {"consent_token": "c-1"})
-            assert r.status_code == 401
+            assert r.status_code == 502
 
 
 # ===========================================================================

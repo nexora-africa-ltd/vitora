@@ -627,6 +627,14 @@ export const ClaimSchema = z.object({
     intervention_name: z.string().optional().default(''),
     missing: z.array(z.string()),
   })).optional().default([]),
+
+  encounter_clinician: z.object({
+    id: z.number(),
+    name: z.string().nullable().optional(),
+    license_number: z.string().nullable().optional(),
+    licensing_body: z.string().nullable().optional(),
+    national_id: z.string().nullable().optional(),
+  }).nullable().optional(),
 });
 
 export type ClaimSchemaType = z.infer<typeof ClaimSchema>;

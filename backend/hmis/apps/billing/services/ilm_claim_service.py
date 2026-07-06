@@ -160,8 +160,8 @@ class IlmClaimResult:
 class IlmClaimService:
     """Per-action wrapper around the DHA ILM ``/api/v1/claims/*`` endpoints."""
 
-    def __init__(self, client: IlmClient | None = None) -> None:
-        self.client = client or IlmClient()
+    def __init__(self, client: IlmClient | None = None, *, facility: Any = None) -> None:
+        self.client = client or IlmClient(facility=facility)
 
     # -----------------------------------------------------------------
     # Start Visit (the only call that does NOT take a consent_token —

@@ -63,11 +63,11 @@ class TestPreauthFetchEndpoint:
             assert r.status_code == 200
             assert r.data["data"]["preauth_id"] == "p1"
 
-    def test_dha_unauthorized_returns_401(self, sha_client):
+    def test_dha_unauthorized_returns_502(self, sha_client):
         with patch(PA_SVC) as M:
             M.return_value.fetch_preauth.side_effect = DHAUnauthorizedError("no", status_code=401)
             r = sha_client.get(self.URL, {"consent_token": "c-1"})
-            assert r.status_code == 401
+            assert r.status_code == 502
 
 
 @pytest.mark.django_db

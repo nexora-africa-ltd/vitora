@@ -816,6 +816,9 @@ SHA_API_TIMEOUT = int(os.getenv("SHA_API_TIMEOUT", "30"))  # seconds
 SHA_AUTH_MODE = os.getenv("SHA_AUTH_MODE", "legacy")  # legacy | ilm
 SHA_AUTH_BASE_URL = os.getenv("SHA_AUTH_BASE_URL", SHA_API_BASE_URL)
 SHA_AUTH_TOKEN_ENDPOINT = os.getenv("SHA_AUTH_TOKEN_ENDPOINT", "")
+SHA_AUTH_SCOPE = os.getenv(
+    "SHA_AUTH_SCOPE", ""
+)  # OAuth2 scope for ILM token requests (e.g. "openid")
 SHA_CONSUMER_KEY = os.getenv("SHA_CONSUMER_KEY", "")  # Consumer key for API access
 SHA_CLIENT_ID = os.getenv("SHA_CLIENT_ID", "")  # ILM middleware OAuth client ID
 SHA_CLIENT_SECRET = os.getenv("SHA_CLIENT_SECRET", "")  # Client secret (if needed)

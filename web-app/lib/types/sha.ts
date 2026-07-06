@@ -835,6 +835,15 @@ export interface Claim {
   // Consent state (computed by serializer — checks ConsentToken exists today)
   consent_obtained?: boolean;
 
+  // Encounter clinician (source of truth for practitioner licence)
+  encounter_clinician?: {
+    id: number;
+    name?: string | null;
+    license_number?: string | null;
+    licensing_body?: string | null;
+    national_id?: string | null;
+  } | null;
+
   // FHIR reference
   fhir_bundle_id?: string | null;
   created_by?: number | null;

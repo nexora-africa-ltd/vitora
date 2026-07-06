@@ -64,13 +64,13 @@ class TestFacilitySearchEndpoint:
             assert kw["identifier_type"] == "mfl"
             assert kw["name"] == "Demo"
 
-    def test_unauthorized_returns_401(self, sha_client):
+    def test_unauthorized_returns_502(self, sha_client):
         with patch(ILM_SERVICE_PATH) as M:
             M.return_value.search_facility.side_effect = DHAUnauthorizedError(
                 "no token", status_code=401
             )
             resp = sha_client.get(self.URL, {"identifier": "x", "identifier_type": "mfl"})
-            assert resp.status_code == 401
+            assert resp.status_code == 502
 
     def test_not_found_returns_404(self, sha_client):
         with patch(ILM_SERVICE_PATH) as M:

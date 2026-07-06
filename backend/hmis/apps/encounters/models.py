@@ -228,6 +228,7 @@ class Encounter(HistoryMixin, FacilityScopedModel):
         ("CALLED", "Called - Patient summoned"),
         ("IN_PROGRESS", "In Progress - Being seen"),
         ("COMPLETED", "Completed - Consultation done"),
+        ("CANCELLED", "Cancelled"),
     ]
 
     # Required fields

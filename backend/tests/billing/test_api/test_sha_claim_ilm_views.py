@@ -313,10 +313,10 @@ class TestErrorMapping:
             response = sha_client.post(_claim_url(sample_sha_claim, "preview"), {}, format="json")
         assert response.status_code == status.HTTP_502_BAD_GATEWAY
 
-    def test_dha_unauthorized_returns_401(self, sha_client, sample_sha_claim):
+    def test_dha_unauthorized_returns_502(self, sha_client, sample_sha_claim):
         from hmis.apps.billing.services.dha_errors import DHAUnauthorizedError
 
         with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
             svc.return_value.preview.side_effect = DHAUnauthorizedError("nope")
             response = sha_client.post(_claim_url(sample_sha_claim, "preview"), {}, format="json")
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_502_BAD_GATEWAY

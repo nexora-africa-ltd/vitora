@@ -87,6 +87,14 @@ interface PreVisitChecksPanelProps {
   defaultFacilityCode?: string;
   /** Local SHA member number (`SHA-XXXXX-N`) used as a CR fallback. */
   shaMemberNumber?: string;
+  /** Encounter clinician details (source of truth for practitioner licence lookup). */
+  encounterClinician?: {
+    id: number;
+    name?: string | null;
+    license_number?: string | null;
+    licensing_body?: string | null;
+    national_id?: string | null;
+  } | null;
 }
 
 const ID_TYPES = ['National ID', 'Passport', 'Birth Certificate', 'Alien ID', 'SHA Number'];
@@ -213,6 +221,7 @@ export function PreVisitChecksPanel({
   defaultDhaPatientId = '',
   defaultFacilityCode = '',
   shaMemberNumber = '',
+  encounterClinician,
 }: PreVisitChecksPanelProps) {
   const { user } = useAuth();
   const { facilityDetail } = useFacility();
@@ -241,9 +250,10 @@ export function PreVisitChecksPanel({
     || facilityDetail?.sha_facility_code
     || facilityDetail?.dha_fr_code
     || '';
-  const licenseNumber = user?.license_number || '';
-  const regulator = user?.licensing_body || '';
-  const practitionerIdNumber = user?.national_id || '';
+  // Prefer encounter clinician over logged-in user for the practitioner licence check.
+  const licenseNumber = encounterClinician?.license_number || user?.license_number || '';
+  const regulator = encounterClinician?.licensing_body || user?.licensing_body || '';
+  const practitionerIdNumber = encounterClinician?.national_id || user?.national_id || '';
 
   // -------------------------------------------------------------------------
   // 1. Patient coverage (eligibility)
@@ -515,7 +525,7 @@ export function PreVisitChecksPanel({
           title="Practitioner licence"
           subtitle={
             !practitionerEnabled
-              ? 'No practitioner credentials on your staff profile'
+              ? 'No practitioner credentials on the encounter clinician profile'
               : parsedPractitioner?.fullName
                 ? `${parsedPractitioner.fullName} · ${parsedPractitioner.regulator || regulator}`
                 : `Verifying ${regulator} ${licenseNumber}…`
@@ -549,8 +559,8 @@ export function PreVisitChecksPanel({
             <p className="text-xs text-muted-foreground">No result yet.</p>
           ) : (
             <p className="text-xs text-muted-foreground">
-              Add a licence number and licensing body to your staff profile to enable
-              auto-verification.
+              Add a licence number and licensing body to the encounter clinician staff profile to
+              enable auto-verification.
             </p>
           )}
         </CheckCard>

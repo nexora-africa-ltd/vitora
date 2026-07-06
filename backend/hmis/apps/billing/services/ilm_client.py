@@ -201,11 +201,20 @@ class IlmClient:
             merged_headers.pop("Content-Type", None)
 
         # DHA requires facility identification headers on all requests.
-        if facility and hasattr(facility, "dha_fr_code") and facility.dha_fr_code:
-            merged_headers["X-Facility-Id"] = facility.dha_fr_code
-            merged_headers["X-Facility-Id-Type"] = "fr-code"
-        elif getattr(settings, "SHA_FACILITY_FR_CODE", ""):
-            merged_headers["X-Facility-Id"] = settings.SHA_FACILITY_FR_CODE
+        # Priority: facility.billing_config.sha_facility_fr_code > facility.dha_fr_code > settings fallback
+        fr_code: str | None = None
+        if facility is not None:
+            try:
+                bc = facility.billing_config
+                fr_code = bc.sha_facility_fr_code if bc else None
+            except Exception:
+                fr_code = None
+            if not fr_code:
+                fr_code = getattr(facility, "dha_fr_code", None)
+        if not fr_code:
+            fr_code = getattr(settings, "SHA_FACILITY_FR_CODE", "")
+        if fr_code:
+            merged_headers["X-Facility-Id"] = fr_code
             merged_headers["X-Facility-Id-Type"] = "fr-code"
 
         if headers:
@@ -302,6 +311,15 @@ class IlmClient:
                     attempt,
                 )
                 self._sleep_backoff(attempt)
+                continue
+
+            if status_code == 401 and attempt == 1:
+                logger.info(
+                    "ILM 401 on %s %s — forcing token refresh and retry",
+                    method,
+                    path,
+                )
+                merged_headers.update(self.auth_service.get_auth_headers(force_refresh=True))
                 continue
 
             audit_status = (

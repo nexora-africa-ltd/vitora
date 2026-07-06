@@ -320,6 +320,11 @@ class SHAAuthService:
                     "client_id": self.client_id,
                     "client_secret": self.client_secret,
                     "grant_type": "client_credentials",
+                    **(
+                        {"scope": getattr(settings, "SHA_AUTH_SCOPE", "")}
+                        if getattr(settings, "SHA_AUTH_SCOPE", "")
+                        else {}
+                    ),
                 },
                 timeout=self.timeout,
             )
