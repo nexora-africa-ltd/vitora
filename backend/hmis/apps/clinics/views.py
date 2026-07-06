@@ -708,6 +708,8 @@ class ClinicVisitViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     - POST /api/clinic-visits/{id}/start/ - Start consultation
     - POST /api/clinic-visits/{id}/complete/ - Complete visit
     - POST /api/clinic-visits/{id}/refer/ - Refer to another clinic
+    - POST /api/clinic-visits/{id}/cancel/ - Cancel visit
+    - POST /api/clinic-visits/{id}/no-show/ - Mark as no-show
     """
 
     tenant_scope = "facility"  # Visits are facility-scoped
@@ -809,6 +811,36 @@ class ClinicVisitViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         response_data["new_visit_id"] = new_visit.id if new_visit else None
 
         return Response(response_data)
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        """Cancel a clinic visit."""
+        visit = self.get_object()
+
+        if visit.status in ["COMPLETED", "CANCELLED", "REFERRED"]:
+            return Response(
+                {"error": "Cannot cancel visit from current status"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        visit.cancel_visit(request.user)
+        serializer = ClinicVisitSerializer(visit)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="no-show")
+    def no_show(self, request, pk=None):
+        """Mark a visit as no-show."""
+        visit = self.get_object()
+
+        if visit.status in ["COMPLETED", "CANCELLED", "NO_SHOW", "REFERRED"]:
+            return Response(
+                {"error": "Cannot mark as no-show from current status"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        visit.mark_no_show(request.user)
+        serializer = ClinicVisitSerializer(visit)
+        return Response(serializer.data)
 
 
 # =============================================================================

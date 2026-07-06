@@ -757,6 +757,32 @@ class ClinicVisit(FacilityScopedModel, TimeStampedModel):
         blank=True,
         help_text="When visit was completed",
     )
+    cancelled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When visit was cancelled",
+    )
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cancelled_clinic_visits",
+        help_text="User who cancelled the visit",
+    )
+    no_show_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When patient was marked as no-show",
+    )
+    no_show_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="no_show_clinic_visits",
+        help_text="User who marked the visit as no-show",
+    )
 
     # =========================================================================
     # Clinical Links
@@ -1102,6 +1128,40 @@ class ClinicVisit(FacilityScopedModel, TimeStampedModel):
                 pk=self.encounter_id,
                 consultation_status__in=["WAITING", "CALLED", "IN_PROGRESS"],
             ).update(consultation_status="COMPLETED")
+
+    def cancel_visit(self, user=None):
+        """Cancel a clinic visit."""
+        self.status = "CANCELLED"
+        self.cancelled_at = timezone.now()
+        self.cancelled_by = user
+        self.save()
+        self.session.update_statistics()
+
+        # Sync encounter consultation_status to CANCELLED
+        if self.encounter_id:
+            from hmis.apps.encounters.models import Encounter
+
+            Encounter.objects.filter(
+                pk=self.encounter_id,
+                consultation_status__in=["WAITING", "CALLED", "IN_PROGRESS"],
+            ).update(consultation_status="CANCELLED")
+
+    def mark_no_show(self, user=None):
+        """Mark a clinic visit as no-show."""
+        self.status = "NO_SHOW"
+        self.no_show_at = timezone.now()
+        self.no_show_by = user
+        self.save()
+        self.session.update_statistics()
+
+        # Sync encounter consultation_status to NO_SHOW
+        if self.encounter_id:
+            from hmis.apps.encounters.models import Encounter
+
+            Encounter.objects.filter(
+                pk=self.encounter_id,
+                consultation_status__in=["WAITING", "CALLED", "IN_PROGRESS"],
+            ).update(consultation_status="NO_SHOW")
 
     def refer_to_clinic(self, target_clinic, reason, user):
         """Refer patient to another clinic."""
