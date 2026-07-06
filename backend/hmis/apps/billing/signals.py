@@ -113,7 +113,7 @@ def _maybe_create_phc_claim(encounter):
     from hmis.apps.billing.models import SHAClaim, SHAMember
 
     # Only for outpatient encounters
-    if getattr(encounter, "encounter_type", None) not in ("OPD", "EMERGENCY"):
+    if getattr(encounter, "encounter_type", None) not in ("OPD", "EMERGENCY", "FOLLOW_UP"):
         return
 
     # Check facility level is PHC-eligible (Level 2 or 3)
