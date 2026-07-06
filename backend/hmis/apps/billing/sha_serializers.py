@@ -275,6 +275,7 @@ class SHAClaimSerializer(serializers.ModelSerializer):
     is_time_barred = serializers.BooleanField(read_only=True)
     hours_until_time_barred = serializers.FloatField(read_only=True)
     consent_obtained = serializers.SerializerMethodField()
+    encounter_clinician = serializers.SerializerMethodField()
 
     class Meta:
         model = SHAClaim
@@ -328,6 +329,7 @@ class SHAClaimSerializer(serializers.ModelSerializer):
             "is_time_barred",
             "hours_until_time_barred",
             "consent_obtained",
+            "encounter_clinician",
             "created_at",
             "updated_at",
         ]
@@ -407,6 +409,24 @@ class SHAClaimSerializer(serializers.ModelSerializer):
             ],
             expires_at__gt=now,
         ).exists()
+
+    def get_encounter_clinician(self, obj: SHAClaim) -> dict | None:
+        """Return licence details for the clinician assigned to the encounter."""
+        if not obj.encounter_id:
+            return None
+        user = getattr(obj.encounter, "assigned_clinician", None)
+        if not user:
+            return None
+        profile = getattr(user, "staff_profile", None)
+        if not profile:
+            return None
+        return {
+            "id": user.id,
+            "name": user.get_full_name() or user.username,
+            "license_number": profile.license_number or "",
+            "licensing_body": profile.licensing_body or "",
+            "national_id": profile.hwr_national_id or "",
+        }
 
     def validate(self, attrs):
         """Validate claim data."""

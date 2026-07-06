@@ -718,10 +718,10 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     # All endpoints use url_path="ilm/<action>/" to avoid clashing with
     # the legacy SHA submit/validate/appeal flow above.
 
-    def _ilm_service(self):
+    def _ilm_service(self, facility=None):
         from hmis.apps.billing.services.ilm_claim_service import IlmClaimService
 
-        return IlmClaimService()
+        return IlmClaimService(facility=facility)
 
     def _ilm_response(self, result):
         from rest_framework.response import Response as _R
@@ -771,7 +771,10 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if isinstance(exc, DHAUnauthorizedError):
-            return Response({"error": exc.message}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"error": exc.message, "code": "dha_unauthorized"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
         if isinstance(exc, DHANotFoundError):
             return Response({"error": exc.message}, status=status.HTTP_404_NOT_FOUND)
         if isinstance(exc, DHARateLimitedError):
@@ -835,7 +838,9 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            result = self._ilm_service().start_visit(claim, params, user=request.user)
+            result = self._ilm_service(facility=claim.facility).start_visit(
+                claim, params, user=request.user
+            )
         except Exception as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
@@ -849,7 +854,9 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 {"error": "intervention_code required"}, status=status.HTTP_400_BAD_REQUEST
             )
         try:
-            result = self._ilm_service().add_intervention(claim, code, user=request.user)
+            result = self._ilm_service(facility=claim.facility).add_intervention(
+                claim, code, user=request.user
+            )
         except Exception as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
@@ -859,7 +866,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         claim = self.get_object()
         d = request.data
         try:
-            result = self._ilm_service().switch_intervention(
+            result = self._ilm_service(facility=claim.facility).switch_intervention(
                 claim,
                 existing_intervention_code=d["existing_intervention_code"],
                 new_intervention_code=d["new_intervention_code"],
@@ -883,7 +890,9 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if not code:
             return Response({"error": "intervention_code required"}, status=400)
         try:
-            result = self._ilm_service().restore_intervention(claim, code, user=request.user)
+            result = self._ilm_service(facility=claim.facility).restore_intervention(
+                claim, code, user=request.user
+            )
         except Exception as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
@@ -895,7 +904,9 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if not code:
             return Response({"error": "intervention_code required"}, status=400)
         try:
-            result = self._ilm_service().retire_intervention(claim, code, user=request.user)
+            result = self._ilm_service(facility=claim.facility).retire_intervention(
+                claim, code, user=request.user
+            )
         except Exception as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
@@ -919,7 +930,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if extra is not None and not isinstance(extra, dict):
             return Response({"error": "extra must be an object"}, status=400)
         try:
-            result = self._ilm_service().add_virtual_claim_line(
+            result = self._ilm_service(facility=claim.facility).add_virtual_claim_line(
                 claim,
                 intervention_code=code,
                 service_name=d.get("service_name"),
@@ -950,7 +961,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 status=400,
             )
         try:
-            result = self._ilm_service().add_diagnosis(
+            result = self._ilm_service(facility=claim.facility).add_diagnosis(
                 claim,
                 icd_code=d["icd_code"],
                 intervention_code=d["intervention_code"],
@@ -972,7 +983,9 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if not code:
             return Response({"error": "icd_code required"}, status=400)
         try:
-            result = self._ilm_service().remove_diagnosis(claim, icd_code=code, user=request.user)
+            result = self._ilm_service(facility=claim.facility).remove_diagnosis(
+                claim, icd_code=code, user=request.user
+            )
         except Exception as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
@@ -1004,7 +1017,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         except KeyError as e:
             return Response({"error": f"missing field: {e}"}, status=400)
         try:
-            result = self._ilm_service().add_line(
+            result = self._ilm_service(facility=claim.facility).add_line(
                 claim,
                 line,
                 practitioner_identification_number=str(
@@ -1025,7 +1038,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if not d.get("claim_line_id"):
             return Response({"error": "claim_line_id required"}, status=400)
         try:
-            result = self._ilm_service().edit_line(
+            result = self._ilm_service(facility=claim.facility).edit_line(
                 claim,
                 claim_line_id=str(d["claim_line_id"]),
                 quantity=d.get("quantity"),
@@ -1044,7 +1057,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if not line_id:
             return Response({"error": "claim_line_id required"}, status=400)
         try:
-            result = self._ilm_service().remove_line(
+            result = self._ilm_service(facility=claim.facility).remove_line(
                 claim, claim_line_id=str(line_id), user=request.user
             )
         except Exception as exc:
@@ -1135,7 +1148,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         ]
         extra = {k: v for k, v in request.data.items() if k not in ("files", "file")}
         try:
-            result = self._ilm_service().add_attachment(
+            result = self._ilm_service(facility=claim.facility).add_attachment(
                 claim,
                 multipart_files,
                 extra_fields=extra or None,
@@ -1152,7 +1165,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if not attachment_id:
             return Response({"error": "attachment_id required"}, status=400)
         try:
-            result = self._ilm_service().remove_attachment(
+            result = self._ilm_service(facility=claim.facility).remove_attachment(
                 claim, attachment_id=str(attachment_id), user=request.user
             )
         except Exception as exc:
@@ -1163,7 +1176,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     def ilm_preview(self, request, pk=None):
         claim = self.get_object()
         try:
-            result = self._ilm_service().preview(claim, user=request.user)
+            result = self._ilm_service(facility=claim.facility).preview(claim, user=request.user)
         except Exception as exc:
             return self._ilm_handle_error(exc)
         # Stamp previewed_at on success (DHA UAT: preview required before submit)
@@ -1179,7 +1192,9 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         """Fetch the payer's adjudication view of this claim from DHA."""
         claim = self.get_object()
         try:
-            result = self._ilm_service().preview_payer_claim(claim, user=request.user)
+            result = self._ilm_service(facility=claim.facility).preview_payer_claim(
+                claim, user=request.user
+            )
         except Exception as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
@@ -1205,7 +1220,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             )
 
         try:
-            result = self._ilm_service().submit(
+            result = self._ilm_service(facility=claim.facility).submit(
                 claim,
                 invoice_number=str(invoice_number),
                 otp=str(d.get("otp", "")),
@@ -1236,7 +1251,9 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 cancel_reason_type=str(d["cancel_reason_type"]),
                 cancel_reason_text=str(d.get("cancel_reason_text", "")),
             )
-            result = self._ilm_service().close(claim, params, user=request.user)
+            result = self._ilm_service(facility=claim.facility).close(
+                claim, params, user=request.user
+            )
         except Exception as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)

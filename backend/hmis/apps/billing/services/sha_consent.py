@@ -611,6 +611,19 @@ class SHAConsentService:
         )
         response_data = response.json if isinstance(response.json, dict) else {}
         self._persist_consent_token(consent, response_data)
+
+        # Persist intervention codes locally so the claim reflects active interventions
+        if codes and consent.encounter_id:
+            from hmis.apps.billing.models import SHAClaim
+            from hmis.apps.billing.services.ilm_claim_service import IlmClaimResult, IlmClaimService
+
+            claim = SHAClaim.objects.filter(encounter=consent.encounter).first()
+            if claim and response.status_code < 400:
+                ilm_service = IlmClaimService(facility=getattr(claim, "facility", None))
+                ilm_result = IlmClaimResult(response=response, payload=response_data)
+                for code in codes:
+                    ilm_service._persist_intervention(claim, code, ilm_result)
+
         logger.info(
             "ILM visit started for consent %s (patient: %s)",
             consent.id,

@@ -449,13 +449,14 @@ export const TRIAGE_BYPASS_REASON_DISPLAY: Record<Exclude<TriageBypassReason, nu
 };
 
 // Consultation Status - matches CONSULTATION_STATUS_CHOICES
-export type ConsultationStatus = 'WAITING' | 'CALLED' | 'IN_PROGRESS' | 'COMPLETED';
+export type ConsultationStatus = 'WAITING' | 'CALLED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 
 export const CONSULTATION_STATUS_DISPLAY: Record<ConsultationStatus, string> = {
   WAITING: 'Waiting for consultation',
   CALLED: 'Called - Patient summoned',
   IN_PROGRESS: 'In Progress - Being seen',
   COMPLETED: 'Completed - Consultation done',
+  CANCELLED: 'Cancelled',
 };
 
 export interface ConsultationQueueItem {

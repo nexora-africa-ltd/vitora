@@ -76,7 +76,7 @@ class TestDischargeOtpEndpoint:
     def test_requires_fields(self, sha_client):
         assert sha_client.post(self.URL, {}, format="json").status_code == 400
 
-    def test_dha_unauthorized_returns_401(self, sha_client):
+    def test_dha_unauthorized_returns_502(self, sha_client):
         with patch(LF_SVC) as M:
             M.return_value.send_discharge_otp.side_effect = DHAUnauthorizedError(
                 "no", status_code=401
@@ -84,7 +84,7 @@ class TestDischargeOtpEndpoint:
             r = sha_client.post(
                 self.URL, {"consent_token": "c-1", "patient_id": "CR-1"}, format="json"
             )
-            assert r.status_code == 401
+            assert r.status_code == 502
 
 
 # ===========================================================================

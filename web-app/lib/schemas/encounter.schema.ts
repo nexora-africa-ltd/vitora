@@ -44,7 +44,7 @@ export const TriageStatusSchema = z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED',
 
 export const TriageRequirementSchema = z.enum(['MANDATORY', 'OPTIONAL', 'NOT_REQUIRED']);
 
-export const ConsultationStatusSchema = z.enum(['WAITING', 'CALLED', 'IN_PROGRESS', 'COMPLETED']);
+export const ConsultationStatusSchema = z.enum(['WAITING', 'CALLED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']);
 
 export const VitalsSourceSchema = z.enum(['TRIAGE', 'CONSULTATION', 'NURSING']);
 

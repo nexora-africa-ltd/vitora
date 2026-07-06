@@ -53,7 +53,7 @@ class SHAClaimAutomationService:
         from hmis.apps.billing.services.sha_consent import SHAConsentService
 
         try:
-            from hmis.apps.facilities.models import Facility
+            from hmis.apps.core.models import Facility
 
             facility = Facility.objects.filter(pk=facility_id).first()
             if not facility:
@@ -133,9 +133,12 @@ class SHAClaimAutomationService:
         Automatically start a DHA visit when a SHA-eligible encounter is created.
 
         Requires valid consent token. If no consent, queues for retry.
+        For OTP consent, auto-start is not possible (OTP code is not stored);
+        the user must start the visit manually via the StartVisitView.
 
         Returns:
-            Dict with status: 'started', 'no_consent', 'not_eligible', 'already_started', 'error'
+            Dict with status: 'started', 'no_consent', 'not_eligible',
+            'already_started', 'needs_manual_start', 'error'
         """
         from hmis.apps.billing.models import ConsentToken, SHAClaim, SHAMember
         from hmis.apps.billing.services.ilm_claim_service import IlmClaimService
@@ -178,18 +181,41 @@ class SHAClaimAutomationService:
             if not claim:
                 return {"status": "no_claim", "reason": "No SHA claim for encounter"}
 
-            # Start the visit
-            service = IlmClaimService()
-            facility = encounter.facility
+            # Auto-start only works for biometric consent (auth_guid is stored).
+            # OTP code is not stored on ConsentToken for security — the user
+            # must start the visit manually via StartVisitView.
+            if not consent_token.auth_guid:
+                return {
+                    "status": "needs_manual_start",
+                    "reason": "OTP consent requires manual visit start via StartVisitView",
+                }
 
-            result = service.start_visit(
-                consent_token=consent_token.token,
-                facility=facility,
-                user=None,
-                claim=claim,
+            # Start the visit
+            facility = encounter.facility
+            service = IlmClaimService(facility=facility)
+
+            # Derive intervention codes from encounter clinical data,
+            # falling back to codes sent with the OTP request
+            from hmis.apps.billing.services.ilm_claim_service import StartVisitParams
+
+            suggestions = cls.suggest_interventions_for_encounter(encounter_id)
+            codes = [s["code"] for s in suggestions] or (consent_token.intervention_codes or [])
+
+            params = StartVisitParams(
+                otp="",
+                auth_guid=consent_token.auth_guid,
+                patient_id=consent_token.identification_number,
+                intervention_codes=codes,
+                service_type="OUTPATIENT",
             )
 
-            if result and result.success:
+            result = service.start_visit(
+                claim=claim,
+                params=params,
+                user=None,
+            )
+
+            if result and result.status_code < 400:
                 claim.dha_visit_started_at = timezone.now()
                 claim.save(update_fields=["dha_visit_started_at", "updated_at"])
 

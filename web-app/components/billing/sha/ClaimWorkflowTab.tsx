@@ -110,6 +110,7 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
         shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
         shaMemberNumber={claim.sha_member_number ?? undefined}
         defaultDhaPatientId={claim.dha_external_id ?? undefined}
+        encounterClinician={claim.encounter_clinician}
       />
 
       {/* Missing documents (advisory) */}

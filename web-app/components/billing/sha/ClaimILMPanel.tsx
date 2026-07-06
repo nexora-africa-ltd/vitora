@@ -179,23 +179,33 @@ interface PractitionerFields {
   practitioner_regulation_body?: string;
 }
 
-function derivePractitionerFields(user: ReturnType<typeof useAuth>['user']): PractitionerFields {
-  if (!user) return {};
+interface ClinicianInfo {
+  license_number?: string | null;
+  licensing_body?: string | null;
+  national_id?: string | null;
+}
+
+function derivePractitionerFields(
+  clinician: ClinicianInfo | null | undefined,
+  user: ReturnType<typeof useAuth>['user'],
+): PractitionerFields {
+  const source = clinician?.national_id || clinician?.license_number ? clinician : user;
+  if (!source) return {};
   // DHA only accepts 'National ID' as practitioner_identification_type.
   // Even when we have a license number, we must identify by national ID.
-  if (user.national_id) {
+  if (source.national_id) {
     return {
-      practitioner_identification_number: user.national_id,
+      practitioner_identification_number: source.national_id,
       practitioner_identification_type: 'National ID',
-      practitioner_regulation_body: user.licensing_body || 'KMPDC',
+      practitioner_regulation_body: source.licensing_body || 'KMPDC',
     };
   }
   // Fallback: use license number with National ID type (DHA resolves internally)
-  if (user.license_number) {
+  if (source.license_number) {
     return {
-      practitioner_identification_number: user.license_number,
+      practitioner_identification_number: source.license_number,
       practitioner_identification_type: 'National ID',
-      practitioner_regulation_body: user.licensing_body || 'KMPDC',
+      practitioner_regulation_body: source.licensing_body || 'KMPDC',
     };
   }
   return {};
@@ -412,7 +422,10 @@ export function ClaimILMPanel({
     () => deriveServiceType(activeInterventions),
     [activeInterventions],
   );
-  const practitionerFields = useMemo(() => derivePractitionerFields(user), [user]);
+  const practitionerFields = useMemo(
+    () => derivePractitionerFields(claim.encounter_clinician, user),
+    [claim.encounter_clinician, user],
+  );
   const hasPractitioner = !!practitionerFields.practitioner_identification_number;
 
   const useVirtualLine = flow?.addLineEndpoint === 'add_virtual_claim_line';

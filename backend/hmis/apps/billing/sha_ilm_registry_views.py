@@ -57,7 +57,7 @@ def _ilm_handle_error(view_name: str, exc: DHAError, *, extra: dict | None = Non
     if isinstance(exc, DHAValidationError):
         http = status.HTTP_400_BAD_REQUEST
     elif isinstance(exc, DHAUnauthorizedError):
-        http = status.HTTP_401_UNAUTHORIZED
+        http = status.HTTP_502_BAD_GATEWAY
     elif isinstance(exc, DHANotFoundError):
         http = status.HTTP_404_NOT_FOUND
     elif isinstance(exc, DHARateLimitedError):
