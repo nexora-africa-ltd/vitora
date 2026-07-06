@@ -19,6 +19,7 @@ import {
   Send,
   KeyRound,
   ShieldCheck,
+  ShieldAlert,
   SkipForward,
   ChevronsUpDown,
   Search,
@@ -50,7 +51,6 @@ import { useSendConsentOTP, useStartVisit } from '@/lib/hooks/use-sha';
 import { useDebounce } from '@/lib/hooks';
 import { useFacility } from '@/lib/context/facility-context';
 import { OtpWhitelistRequestSheet, WhitelistStatusBadge } from './otp-whitelist-request-sheet';
-import { BiometricsConsentDialog } from './biometrics-consent-dialog';
 import { ContactPicker } from './contact-picker';
 import type { SHAMember } from '@/lib/types/sha';
 
@@ -69,6 +69,8 @@ interface SHAConsentStepProps {
   autoCheck?: boolean;
   /** Patient date of birth (ISO string) — used for minor detection in OTP/whitelist flows */
   patientDateOfBirth?: string;
+  /** Called when an error occurs during consent (for parent to show toast etc.) */
+  onError?: (error: string) => void;
   /** Custom className */
   className?: string;
 }
@@ -191,6 +193,7 @@ export function SHAConsentStep({
   patientId,
   encounterId,
   onComplete,
+  onError,
   autoCheck = true,
   patientDateOfBirth,
   className,
@@ -225,18 +228,21 @@ export function SHAConsentStep({
   const [existingWhitelistStatus, setExistingWhitelistStatus] = useState<string | null>(null);
   const [isCheckingWhitelist, setIsCheckingWhitelist] = useState(false);
 
-  // Biometrics dialog state
-  const [biometricsOpen, setBiometricsOpen] = useState(false);
+  // Inline biometric state (matches claims ConsentPanel pattern)
+  const [biometricIframeUrl, setBiometricIframeUrl] = useState<string | null>(null);
   const [biometricAuthGuid, setBiometricAuthGuid] = useState<string | null>(null);
   const [biometricConsentId, setBiometricConsentId] = useState<number | null>(null);
+  const biometricPollRef = useRef<NodeJS.Timeout | null>(null);
 
   // Contact picker state (for OTP target selection)
   const [selectedContactId, setSelectedContactId] = useState<string | undefined>(undefined);
 
+  const isMountedRef = useRef(true);
   const sendOTP = useSendConsentOTP();
   const startVisit = useStartVisit();
   const { facilityDetail } = useFacility();
   const facilityLevel = facilityDetail?.level;
+  const facilityAgentNationalId = facilityDetail?.biometrics_agent_national_id || '';
   const hasCheckedRef = useRef(false);
 
   // Biometric consent is primary for Level 4+ facilities
@@ -327,10 +333,13 @@ export function SHAConsentStep({
     return () => { cancelled = true; };
   }, [step, shaMember, patientId]);
 
-  // Cleanup countdown interval on unmount
+  // Cleanup intervals on unmount
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
       if (countdownRef.current) clearInterval(countdownRef.current);
+      if (biometricPollRef.current) clearInterval(biometricPollRef.current);
     };
   }, []);
 
@@ -441,7 +450,9 @@ export function SHAConsentStep({
           }, 1000);
         },
         onError: (err: unknown) => {
-          setError(extractDHAError(err) || 'Failed to send OTP');
+          const errorMsg = extractDHAError(err) || 'Failed to send OTP';
+          setError(errorMsg);
+          onError?.(errorMsg);
         },
       }
     );
@@ -467,21 +478,89 @@ export function SHAConsentStep({
           onComplete?.({ consented: true, consentId: response.id });
         },
         onError: (err: unknown) => {
+          const errorMsg = extractDHAError(err) || 'Failed to verify OTP';
           setStep('otp_sent');
-          setError(extractDHAError(err) || 'Failed to verify OTP');
+          setError(errorMsg);
+          onError?.(errorMsg);
         },
       }
     );
   };
 
-  // Biometric authorization handlers
-  const handleBiometricStart = () => {
-    setBiometricsOpen(true);
+  // ---- Inline biometric flow (matches claims ConsentPanel pattern) ----
+
+  const startBiometricPolling = (guid: string, cId: number) => {
+    if (biometricPollRef.current) clearInterval(biometricPollRef.current);
+    biometricPollRef.current = setInterval(async () => {
+      try {
+        const result = await shaApi.getBiometricAuthStatus(guid);
+        if (!isMountedRef.current) return;
+        const s = result.status?.toUpperCase();
+        if (s === 'AUTHORIZED') {
+          stopBiometricPolling();
+          handleBiometricSuccess({ authGuid: guid, consentId: cId });
+        } else if (s === 'FAILED' || s === 'REJECTED') {
+          stopBiometricPolling();
+          setStep('biometric_failed');
+          setError('Biometric verification failed. Please try again or use OTP.');
+        } else if (s === 'EXPIRED') {
+          stopBiometricPolling();
+          setStep('biometric_failed');
+          setError('Biometric session expired. Please try again or use OTP.');
+        }
+      } catch {
+        // Network error during polling — continue
+      }
+    }, 3000);
+  };
+
+  const stopBiometricPolling = () => {
+    if (biometricPollRef.current) {
+      clearInterval(biometricPollRef.current);
+      biometricPollRef.current = null;
+    }
+  };
+
+  const handleBiometricStart = async () => {
+    setError(null);
     setStep('biometric_pending');
+    const memberId = shaMember?.id;
+    if (!memberId) {
+      setError('SHA member record not found');
+      setStep('ready');
+      return;
+    }
+    try {
+      const result = await shaApi.authorizeBiometric({
+        sha_member_id: memberId,
+        workstation_id: facilityDetail?.workstation_id || 'WS-001',
+        agent_national_id: facilityAgentNationalId,
+      });
+
+      setBiometricConsentId(result.consent_id);
+      setConsentId(result.consent_id);
+      setBiometricAuthGuid(result.auth_guid);
+
+      if (result.sandbox_mode) {
+        // Sandbox — auto-approve after brief delay
+        await new Promise((r) => setTimeout(r, 1500));
+        handleBiometricSuccess({ authGuid: result.auth_guid, consentId: result.consent_id! });
+        return;
+      }
+
+      setBiometricIframeUrl(result.iframe_url);
+      startBiometricPolling(result.auth_guid, result.consent_id!);
+    } catch (err: unknown) {
+      setStep('ready');
+      const errorMsg = getApiErrorMessage(err) || 'Failed to initiate biometric auth';
+      setError(errorMsg);
+      onError?.(errorMsg);
+    }
   };
 
   const handleBiometricSuccess = (result: { authGuid: string; consentId: number }) => {
-    setBiometricsOpen(false);
+    stopBiometricPolling();
+    setBiometricIframeUrl(null);
     setBiometricAuthGuid(result.authGuid);
     setBiometricConsentId(result.consentId);
     setConsentId(result.consentId);
@@ -503,22 +582,26 @@ export function SHAConsentStep({
           onComplete?.({ consented: true, consentId: response.id });
         },
         onError: (err: unknown) => {
+          const errorMsg = extractDHAError(err) || 'Failed to start visit after biometric verification';
           setStep('biometric_failed');
-          setError(extractDHAError(err) || 'Failed to start visit after biometric verification');
+          setError(errorMsg);
+          onError?.(errorMsg);
         },
       }
     );
   };
 
-  const handleBiometricCancel = () => {
-    setBiometricsOpen(false);
+  const handleBiometricCancel = async () => {
+    stopBiometricPolling();
+    if (biometricAuthGuid) {
+      try {
+        await shaApi.cancelBiometricAuth(biometricAuthGuid);
+      } catch { /* best effort */ }
+    }
+    setBiometricAuthGuid(null);
+    setBiometricIframeUrl(null);
+    setBiometricConsentId(null);
     setStep('ready');
-  };
-
-  const handleBiometricMaxRetries = () => {
-    setBiometricsOpen(false);
-    setStep('biometric_failed');
-    setError('Biometric verification failed after maximum retries. Please use OTP instead.');
   };
 
   const handleSkip = () => {
@@ -724,32 +807,8 @@ export function SHAConsentStep({
 
           {error && <p className="text-xs text-destructive">{error}</p>}
 
-          {/* Action buttons: biometric primary vs OTP primary */}
-          {isBiometricPrimary ? (
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button
-                onClick={handleBiometricStart}
-                size="sm"
-              >
-                <Fingerprint className="mr-2 h-3.5 w-3.5" />
-                Verify Fingerprint
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleSendOTP}
-                disabled={sendOTP.isPending || isCreatingMember}
-                size="sm"
-                className="text-xs"
-              >
-                {(sendOTP.isPending || isCreatingMember) ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Send className="mr-1.5 h-3.5 w-3.5" />
-                )}
-                Use OTP Instead
-              </Button>
-            </div>
-          ) : (
+          {/* Action buttons: always show both biometric and OTP options */}
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Button
               onClick={handleSendOTP}
               disabled={sendOTP.isPending || isCreatingMember}
@@ -762,7 +821,15 @@ export function SHAConsentStep({
               )}
               {isCreatingMember ? 'Preparing...' : 'Send OTP'}
             </Button>
-          )}
+            <Button
+              variant={isBiometricPrimary ? 'default' : 'outline'}
+              onClick={handleBiometricStart}
+              size="sm"
+            >
+              <Fingerprint className="mr-2 h-3.5 w-3.5" />
+              {isBiometricPrimary ? 'Verify Fingerprint' : 'Biometric'}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -799,18 +866,64 @@ export function SHAConsentStep({
               Verify
             </Button>
           </div>
-          {error && <p className="text-xs text-destructive">{error}</p>}
-          {error && error.toLowerCase().includes('restricted to biometric') && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setWhitelistOpen(true)}
-              className="text-xs h-7 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-400 dark:hover:bg-amber-900/20"
-            >
-              <AlertTriangle className="mr-1 h-3 w-3" />
-              Request OTP Whitelist
-            </Button>
-          )}
+          {error && (() => {
+            const lower = error.toLowerCase();
+            const isBiometricRestricted = lower.includes('restricted to biometric');
+            const isWhitelistError = lower.includes('whitelist');
+            if (isBiometricRestricted) {
+              return (
+                <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-3 space-y-3">
+                  <div className="flex gap-2">
+                    <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                    <p className="text-sm text-amber-900 dark:text-amber-200">{error}</p>
+                  </div>
+                  <div className="flex flex-row flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 shrink-0"
+                      onClick={() => {
+                        setError(null);
+                        handleBiometricStart();
+                      }}
+                    >
+                      <Fingerprint className="mr-2 h-3.5 w-3.5" />
+                      Use Biometric Instead
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 shrink-0"
+                      onClick={() => setWhitelistOpen(true)}
+                    >
+                      <ShieldAlert className="mr-2 h-3.5 w-3.5" />
+                      Request OTP Whitelist
+                    </Button>
+                  </div>
+                </div>
+              );
+            }
+            if (isWhitelistError) {
+              return (
+                <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-3 space-y-3">
+                  <div className="flex gap-2">
+                    <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                    <p className="text-sm text-amber-900 dark:text-amber-200">{error}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 shrink-0"
+                    onClick={() => setWhitelistOpen(true)}
+                  >
+                    <ShieldAlert className="mr-2 h-3.5 w-3.5" />
+                    Request OTP Whitelist
+                  </Button>
+                </div>
+              );
+            }
+            return <p className="text-xs text-destructive">{error}</p>;
+          })()}
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -843,14 +956,40 @@ export function SHAConsentStep({
         </div>
       )}
 
-      {/* Step: Biometric pending — dialog is open */}
+      {/* Step: Biometric pending — inline iframe (matches claims ConsentPanel) */}
       {step === 'biometric_pending' && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 py-2">
-            <Fingerprint className="h-4 w-4 text-primary animate-pulse" />
-            <span className="text-sm text-muted-foreground">
-              Waiting for biometric verification...
-            </span>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span>Waiting for fingerprint capture…</span>
+          </div>
+          {biometricIframeUrl && (
+            <div className="rounded-md border overflow-hidden">
+              <iframe
+                src={biometricIframeUrl}
+                title="Biometric Fingerprint Capture"
+                className="w-full h-[280px]"
+                sandbox="allow-scripts allow-same-origin allow-forms"
+              />
+            </div>
+          )}
+          {!biometricIframeUrl && (
+            <p className="text-xs text-muted-foreground">
+              Biometric device should be active. The system is polling for authorization…
+            </p>
+          )}
+          {error && (
+            <p className="text-sm text-destructive">{error}</p>
+          )}
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBiometricCancel}
+            >
+              <X className="mr-1.5 h-3.5 w-3.5" />
+              Cancel
+            </Button>
           </div>
         </div>
       )}
@@ -871,6 +1010,66 @@ export function SHAConsentStep({
               </div>
             </div>
           </div>
+
+          {/* Check for DHA-specific errors (restricted to biometric / whitelist) */}
+          {error && (() => {
+            const lower = error.toLowerCase();
+            const isBiometricRestricted = lower.includes('restricted to biometric');
+            const isWhitelist = lower.includes('whitelist');
+            if (isBiometricRestricted) {
+              return (
+                <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-3 space-y-3">
+                  <div className="flex gap-2">
+                    <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                    <p className="text-sm text-amber-900 dark:text-amber-200">{error}</p>
+                  </div>
+                  <div className="flex flex-row flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 shrink-0"
+                      onClick={() => {
+                        setError(null);
+                        handleBiometricStart();
+                      }}
+                    >
+                      <Fingerprint className="mr-2 h-3.5 w-3.5" />
+                      Use Biometric Instead
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 shrink-0"
+                      onClick={() => setWhitelistOpen(true)}
+                    >
+                      <ShieldAlert className="mr-2 h-3.5 w-3.5" />
+                      Request OTP Whitelist
+                    </Button>
+                  </div>
+                </div>
+              );
+            }
+            if (isWhitelist) {
+              return (
+                <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-3 space-y-3">
+                  <div className="flex gap-2">
+                    <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                    <p className="text-sm text-amber-900 dark:text-amber-200">{error}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 shrink-0"
+                    onClick={() => setWhitelistOpen(true)}
+                  >
+                    <ShieldAlert className="mr-2 h-3.5 w-3.5" />
+                    Request OTP Whitelist
+                  </Button>
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           {/* Contact picker for OTP target */}
           {shaMember?.sha_member_number && (
@@ -952,17 +1151,6 @@ export function SHAConsentStep({
         </div>
       )}
 
-      {/* Biometrics Consent Dialog */}
-      <BiometricsConsentDialog
-        open={biometricsOpen}
-        onOpenChange={setBiometricsOpen}
-        shaMemberId={shaMember?.id || 0}
-        workstationId={facilityDetail?.workstation_id || 'WS-001'}
-        agentNationalId={facilityDetail?.biometrics_agent_national_id || ''}
-        onSuccess={handleBiometricSuccess}
-        onCancel={handleBiometricCancel}
-        onMaxRetriesExhausted={handleBiometricMaxRetries}
-      />
-    </div>
+  </div>
   );
 }
