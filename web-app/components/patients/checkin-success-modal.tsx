@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircle2, ArrowRight, X, Stethoscope, Building2 } from 'lucide-react';
+import { CheckCircle2, ArrowRight, X, Stethoscope, Building2, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SHAConsentStep } from '@/components/patients/sha-consent-step';
+import { useToast } from '@/lib/hooks/use-toast';
 import type { CheckInResponse } from '@/lib/types/checkin';
 
 /**
@@ -34,12 +35,14 @@ export interface CheckinSuccessData {
   patientId?: number;
   /** Encounter ID created during check-in (for linking consent) */
   encounterId?: number | null;
+  /** Patient date of birth (ISO string) — used for minor detection in OTP/whitelist flows */
+  dateOfBirth?: string;
 }
 
 /**
  * Create CheckinSuccessData from CheckInResponse
  */
-export function fromCheckInResponse(response: CheckInResponse, patientId?: number): CheckinSuccessData {
+export function fromCheckInResponse(response: CheckInResponse, patientId?: number, dateOfBirth?: string): CheckinSuccessData {
   const isTriage = response.destination === 'TRIAGE' || response.destination === 'Triage';
   return {
     patientName: response.patient_name,
@@ -53,6 +56,7 @@ export function fromCheckInResponse(response: CheckInResponse, patientId?: numbe
     warning: response.warning,
     patientId,
     encounterId: response.encounter_id ?? response.linked_encounter_id ?? null,
+    dateOfBirth,
   };
 }
 
@@ -82,12 +86,15 @@ export function CheckinSuccessModal({
   skipSHAConsent = false,
 }: CheckinSuccessModalProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [shaConsentPending, setShaConsentPending] = useState(true);
+  const [consentError, setConsentError] = useState<string | null>(null);
 
   // Reset consent state when modal opens with a new check-in result
   useEffect(() => {
     if (open && checkInResult) {
       setShaConsentPending(!skipSHAConsent);
+      setConsentError(null);
     }
   }, [open, checkInResult, skipSHAConsent]);
 
@@ -99,6 +106,15 @@ export function CheckinSuccessModal({
     : fromCheckInResponse(checkInResult);
 
   const isTriage = data.destination === 'triage';
+
+  const handleConsentError = (error: string) => {
+    setConsentError(error);
+    toast({
+      title: 'Consent Error',
+      description: error,
+      variant: 'destructive',
+    });
+  };
 
   const handleGoToDestination = () => {
     onOpenChange(false);
@@ -174,8 +190,20 @@ export function CheckinSuccessModal({
               <SHAConsentStep
                 patientId={data.patientId}
                 encounterId={data.encounterId}
+                patientDateOfBirth={data.dateOfBirth}
                 onComplete={() => setShaConsentPending(false)}
+                onError={handleConsentError}
               />
+            )}
+
+            {/* Inline consent error (in addition to toast) */}
+            {consentError && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                  <p className="text-sm text-destructive">{consentError}</p>
+                </div>
+              </div>
             )}
           </div>
         </ScrollArea>
