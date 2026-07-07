@@ -3,7 +3,7 @@
 %% styles.tex
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\usepackage[a4paper,margin=20mm]{geometry}
+\usepackage[a4paper,landscape,margin=20mm]{geometry}
 
 \usepackage{graphicx}
 \usepackage{tikz}
@@ -20,9 +20,10 @@
 
 \usepackage{hyperref}
 
-\usepackage{xcolor}
+\usepackage[table]{xcolor}
+\usepackage{amssymb}
 
-\usepackage{fontawesome5}
+%\usepackage{fontawesome5}
 
 \usepackage{titlesec}
 
@@ -33,6 +34,8 @@
 \usepackage{multicol}
 
 \usepackage{setspace}
+
+\setlength{\headheight}{13.6pt}
 
 \usepackage{background}
 
@@ -68,7 +71,7 @@ citecolor=Primary
 
 \fancyhf{}
 
-\fancyhead[L]{\textcolor{Gray}{TibaBot Clinical Intelligence Platform}}
+\fancyhead[L]{\textcolor{Gray}{TibaBot Healthcare Intelligence Platform}}
 
 \fancyhead[R]{\textcolor{Gray}{Nexora}}
 
@@ -80,23 +83,42 @@ citecolor=Primary
 %% SECTION STYLES
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\widowpenalty=5000
+\clubpenalty=5000
+
+\newcommand{\sectionbreak}{\newpage}
+
+\titleformat{\chapter}
+{\Huge\bfseries\color{Primary}}
+{}
+{0pt}
+{}
+
+\titlespacing*{\chapter}{0pt}{0pt}{2em}
+
 \titleformat{\section}
 {\Huge\bfseries\color{Primary}}
 {}
 {0pt}
 {}
 
+\titlespacing*{\section}{0pt}{3.5ex plus 1ex minus .2ex}{2.3ex plus .2ex}
+
 \titleformat{\subsection}
-{\Large\bfseries\color{Dark}}
+{\Large\bfseries\color{Primary}}
 {}
 {0pt}
 {}
 
+\titlespacing{\subsection}{0pt}{3.25ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+
 \titleformat{\subsubsection}
-{\large\bfseries}
+{\large\bfseries\color{Primary}}
 {}
 {0pt}
 {}
+
+\titlespacing{\subsubsection}{0pt}{3.25ex plus 1ex minus .2ex}{1.5ex plus .2ex}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% LISTS

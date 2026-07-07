@@ -1,13 +1,25 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
 %% architecture.tex
-%% TibaBot Healthcare Intelligence Platform
+%% TibaBot Healthcare Intelligence Platform — Architecture Overview
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter*{Healthcare Intelligence Platform Architecture}
 
-TibaBot has been designed as a Healthcare Intelligence Platform (HIP) that complements existing Hospital Management Information Systems rather than replacing them.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{What Is TibaBot?}
+
+TibaBot is an enterprise Healthcare Intelligence Platform (HIP) designed to embed advanced artificial intelligence capabilities into existing healthcare systems.
+
+Rather than functioning as another standalone application, TibaBot acts as an intelligence layer that augments existing Hospital Management Information Systems with continuously evolving AI services.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Platform Positioning}
+
+TibaBot has been designed to complement existing HMIS platforms rather than replace them.
 
 The HMIS remains the authoritative System of Record, while TibaBot provides an extensible System of Intelligence that delivers clinical, operational and administrative AI capabilities through a secure integration layer.
 
@@ -49,17 +61,18 @@ AI-Native Healthcare
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Platform Architecture}
+\section{Healthcare Intelligence Platform Architecture}
 
 \begin{center}
 
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[
 node distance=7mm,
 every node/.style={font=\small},
 layer/.style={
 draw,
 rounded corners=4pt,
-minimum width=15cm,
+text width=23cm,
 minimum height=1.2cm,
 align=center
 }
@@ -121,8 +134,8 @@ minimum height=1.5cm]
 draw=Border,
 rounded corners,
 fill=Light,
-below left=10mm and -2mm of platform,
-minimum width=4.4cm,
+below left=10mm and -5mm of platform,
+text width=6.5cm,
 minimum height=3.2cm,
 align=left
 ](clinical){
@@ -150,7 +163,7 @@ draw=Border,
 rounded corners,
 fill=Light,
 below=10mm of platform,
-minimum width=4.4cm,
+text width=6.5cm,
 minimum height=3.2cm,
 align=left
 ](knowledge){
@@ -177,8 +190,8 @@ RAG
 draw=Border,
 rounded corners,
 fill=Light,
-below right=10mm and -2mm of platform,
-minimum width=4.4cm,
+below right=10mm and -5mm of platform,
+text width=6.5cm,
 minimum height=3.2cm,
 align=left
 ](workflow){
@@ -206,7 +219,7 @@ draw=Success,
 rounded corners,
 fill=Success!8,
 below=18mm of knowledge,
-minimum width=14cm,
+text width=23cm,
 minimum height=1.4cm,
 align=center
 ](governance){
@@ -237,15 +250,20 @@ Security • Audit • Explainability • Monitoring • Evaluation • Complian
 
 \draw[-Latex,thick](workflow)--(governance);
 
-\end{tikzpicture}
+\end{tikzpicture}%
+}
 
 \end{center}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{The Five Platform Layers}
+\section{Five Intelligence Engines}
 
-\renewcommand{\arraystretch}{1.5}
+TibaBot is composed of five independent Intelligence Engines, each responsible for a distinct domain of healthcare intelligence.
+
+Engines may be deployed individually or collectively depending on organisational requirements.
+
+\vspace{4mm}
 
 \begin{center}
 
@@ -255,63 +273,39 @@ Security • Audit • Explainability • Monitoring • Evaluation • Complian
 
 \rowcolor{Primary!10}
 
-\textbf{Layer}
+\textbf{Intelligence Engine} &
 
-&
-
-\textbf{Purpose}
-
-\\
+\textbf{Purpose} \\
 
 \hline
 
-Clinical Intelligence Engine
+Clinical Intelligence Engine &
 
-&
-
-Clinical reasoning, decision support, documentation, diagnostics and patient summarisation.
-
-\\
+Clinical reasoning, decision support, differential diagnosis, risk prediction and patient summarisation. \\
 
 \hline
 
-Knowledge Intelligence Engine
+Knowledge Intelligence Engine &
 
-&
-
-Retrieval-Augmented Generation (RAG) using clinical guidelines, drug formularies, SOPs, medical literature and institutional knowledge.
-
-\\
+Retrieval-Augmented Generation (RAG) using clinical guidelines, drug formularies, hospital SOPs, medical literature and institutional knowledge. \\
 
 \hline
 
-Workflow Intelligence Engine
+Documentation Intelligence Engine &
 
-&
-
-Administrative automation, coding assistance, revenue cycle optimisation, reporting and workflow orchestration.
-
-\\
+SOAP notes, encounter summaries, discharge summaries, referral letters and clinical documentation automation. \\
 
 \hline
 
-Integration Fabric
+Diagnostic Intelligence Engine &
 
-&
-
-Secure interoperability with HMIS platforms through REST APIs, HL7, FHIR, SDKs and event-driven integrations.
-
-\\
+Laboratory interpretation, diagnostic reasoning, trend analysis and clinical correlation. \\
 
 \hline
 
-AI Governance Layer
+Workflow Intelligence Engine &
 
-&
-
-Security, auditability, explainability, monitoring, evaluation, access control and responsible AI governance.
-
-\\
+Administrative automation, coding assistance, revenue cycle optimisation, reporting and workflow orchestration. \\
 
 \hline
 
@@ -321,13 +315,338 @@ Security, auditability, explainability, monitoring, evaluation, access control a
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Designed for Enterprise Healthcare}
+\section{Platform Services}
 
-Unlike point solutions that solve a single problem, TibaBot has been architected as a reusable intelligence platform.
+Each Intelligence Engine exposes one or more Platform Services — consumable capabilities delivered through the Integration Fabric.
 
-New AI capabilities can be introduced by extending one or more intelligence engines without requiring hospitals to replace or redesign their existing HMIS.
+\vspace{4mm}
 
-This enables continuous innovation while protecting previous technology investments.
+\begin{center}
+
+\begin{tabularx}{\textwidth}{|Y|Y|}
+
+\hline
+
+\rowcolor{Primary!8}
+
+\textbf{Platform Service} &
+
+\textbf{Business Outcome} \\
+
+\hline
+
+Clinical Decision Support Service &
+
+Support evidence-based clinical decision making. \\
+
+\hline
+
+Clinical Documentation Service &
+
+Reduce clinician documentation burden. \\
+
+\hline
+
+Diagnostic Intelligence Service &
+
+Interpret laboratory and diagnostic information. \\
+
+\hline
+
+Knowledge Retrieval Service &
+
+Provide instant access to clinical knowledge. \\
+
+\hline
+
+Coding Intelligence Service &
+
+Improve coding quality and reimbursement readiness. \\
+
+\hline
+
+Workflow Intelligence Service &
+
+Automate operational and administrative processes. \\
+
+\hline
+
+Analytics Service &
+
+Generate operational and clinical insights. \\
+
+\hline
+
+\end{tabularx}
+
+\end{center}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Integration Fabric}
+
+TibaBot is engineered to integrate with both modern and legacy healthcare systems through a secure, standards-based Integration Fabric.
+
+\begin{center}
+
+\begin{tikzpicture}[node distance=7mm]
+
+\node[
+draw=Primary,
+rounded corners,
+fill=Primary!8,
+minimum width=3cm,
+minimum height=1cm
+](api){REST APIs};
+
+\node[
+draw=Primary,
+rounded corners,
+fill=Primary!8,
+minimum width=3cm,
+minimum height=1cm,
+right=of api
+](fhir){FHIR};
+
+\node[
+draw=Primary,
+rounded corners,
+fill=Primary!8,
+minimum width=3cm,
+minimum height=1cm,
+right=of fhir
+](hl7){HL7};
+
+\node[
+draw=Primary,
+rounded corners,
+fill=Primary!8,
+minimum width=3cm,
+minimum height=1cm,
+below=of fhir
+](sdk){SDK};
+
+\end{tikzpicture}
+
+\end{center}
+
+Supported integration methods include:
+
+\begin{itemize}
+
+\item REST APIs
+
+\item HL7
+
+\item HL7 FHIR
+
+\item SMART on FHIR
+
+\item Secure SDKs
+
+\item Embedded UI Components
+
+\item Event-driven integrations
+
+\item Webhooks
+
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{AI Governance Layer}
+
+Healthcare AI requires enterprise-grade governance. TibaBot has been designed with security, transparency and compliance at its core.
+
+\vspace{4mm}
+
+\begin{partnerbox}
+
+\begin{multicols}{2}
+
+\begin{itemize}
+
+\item Encryption in transit
+
+\item Encryption at rest
+
+\item Audit trails
+
+\item Role-based access control
+
+\item Explainable AI outputs
+
+\item Human oversight
+
+\item Model monitoring
+
+\item Version control
+
+\item Secure APIs
+
+\item Logging
+
+\item Data governance
+
+\item Continuous evaluation
+
+\end{itemize}
+
+\end{multicols}
+
+\end{partnerbox}
+
+In addition to these controls, the AI Governance Layer provides:
+
+\begin{itemize}
+
+\item Centralised policy enforcement across all Intelligence Engines
+
+\item Real-time model performance monitoring and alerting
+
+\item Automated compliance reporting for regulatory requirements
+
+\item Access control integrated with existing HMIS identity management
+
+\item Full audit trail for every AI-assisted decision
+
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Request Lifecycle}
+
+A typical request flows through the platform as follows:
+
+\vspace{4mm}
+
+\begin{center}
+
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+node distance=6mm,
+every node/.style={font=\small},
+flowstep/.style={
+draw,
+rounded corners,
+text width=3.2cm,
+minimum height=0.9cm,
+align=center
+}
+]
+
+\node[flowstep](user){Clinician Action};
+
+\node[flowstep,right=5mm of user](hmisStep){HMIS Event};
+
+\node[flowstep,right=5mm of hmisStep](fabricStep){Integration Fabric};
+
+\node[flowstep,fill=Accent!12,draw=Accent,right=5mm of fabricStep](engine){Intelligence Engine};
+
+\node[flowstep,fill=Success!8,draw=Success,right=5mm of engine](gov){AI Governance};
+
+\node[flowstep,below=8mm of engine](response){Response};
+
+\draw[-Latex,thick](user)--(hmisStep);
+
+\draw[-Latex,thick](hmisStep)--(fabricStep);
+
+\draw[-Latex,thick](fabricStep)--(engine);
+
+\draw[-Latex,thick](engine)--(gov);
+
+\draw[-Latex,thick](gov.south)--(response.north);
+
+\draw[-Latex,thick](response.west)-|(fabricStep.south);
+
+\draw[-Latex,thick](fabricStep.west)-|(hmisStep.south);
+
+\end{tikzpicture}%
+}
+
+\end{center}
+
+\vspace{4mm}
+
+\begin{enumerate}
+
+\item A clinician action within the HMIS triggers an event (e.g. patient lookup, order entry, documentation).
+
+\item The Integration Fabric routes the event to the appropriate Intelligence Engine.
+
+\item The Engine processes the request using its specialised models and knowledge base.
+
+\item The AI Governance Layer enforces security, audit and compliance policies before the response is returned.
+
+\item The response flows back through the Integration Fabric to the HMIS, where it is presented to the clinician.
+
+\end{enumerate}
+
+All interactions are logged, monitored and available for audit. The entire lifecycle completes within the HMIS workflow — clinicians never leave their familiar interface.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Deployment Models}
+
+TibaBot supports multiple deployment approaches to accommodate different partner infrastructure preferences and regulatory requirements.
+
+\vspace{4mm}
+
+\begin{center}
+
+\renewcommand{\arraystretch}{1.5}
+
+\begin{tabularx}{\textwidth}{|Y|Y|Y|}
+
+\hline
+
+\rowcolor{Primary!10}
+
+\textbf{Model} &
+
+\textbf{Description} &
+
+\textbf{Use Case} \\
+
+\hline
+
+Nexora Cloud &
+
+Fully managed by Nexora. Partner connects via secure APIs. &
+
+Fastest time to value. Minimal infrastructure overhead. \\
+
+\hline
+
+Dedicated Instance &
+
+Isolated single-tenant deployment managed by Nexora. &
+
+Enhanced data isolation for enterprise requirements. \\
+
+\hline
+
+Partner Cloud &
+
+Deployed within the partner's cloud environment. &
+
+Maximum data residency control. Regulatory compliance. \\
+
+\hline
+
+Hybrid &
+
+Core platform in Nexora cloud, sensitive workloads on-premise or in partner cloud. &
+
+Flexible balance of control and managed operations. \\
+
+\hline
+
+\end{tabularx}
+
+\end{center}
+
+Each deployment model includes the full TibaBot platform — all Intelligence Engines, Platform Services, the Integration Fabric and the AI Governance Layer. The choice of model affects data residency, latency and operational responsibility, not functional capability.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -389,26 +708,60 @@ Future AI services are delivered through the existing platform.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\section{Designed for Continuous Innovation}
+
+One of the greatest advantages of the TibaBot platform is that new capabilities can be introduced without requiring hospitals to replace their existing HMIS.
+
+As the platform evolves, partners gain access to new Intelligence Engines and Platform Services through platform updates rather than major software redevelopment projects.
+
+\vspace{5mm}
+
+\begin{infobox}
+
+\textbf{Examples of Future Platform Capabilities}
+
+\vspace{2mm}
+
+\begin{itemize}
+
+\item Medical imaging intelligence
+
+\item Predictive population health
+
+\item Clinical quality benchmarking
+
+\item Revenue leakage detection
+
+\item AI-assisted scheduling
+
+\item Clinical research support
+
+\item Voice-enabled consultations
+
+\item Ambient clinical documentation
+
+\item Patient digital assistants
+
+\item Public health analytics
+
+\end{itemize}
+
+\end{infobox}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \begin{callout}
 
 \centering
 
 \Huge
 
-\textbf{Today's HMIS}
+\textbf{Your HMIS Remains the System of Record.}
 
-\vspace{3mm}
-
-Store Clinical Information
-
-\vspace{10mm}
+\vspace{4mm}
 
 \Huge
 
-\textbf{TibaBot HIP}
-
-\vspace{3mm}
-
-Transforms Clinical Information into Clinical Intelligence
+\textbf{TibaBot Becomes the System of Intelligence.}
 
 \end{callout}
