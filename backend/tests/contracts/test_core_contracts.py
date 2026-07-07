@@ -348,6 +348,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "biometrics_agent_national_id",
+                "biometrics_enforced",
+                "workstation_id",
                 "branch_code",
                 "county",
                 "county_name",

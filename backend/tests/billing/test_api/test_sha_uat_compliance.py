@@ -430,7 +430,7 @@ class TestConsentDedupAccessPoint:
         sha_member = claim.sha_member
         facility = claim.facility
 
-        # Create existing OP consent for today
+        # Create existing OP consent for today (with future expires_at to avoid exclusion)
         existing = ConsentToken.objects.create(
             patient=claim.patient,
             sha_member=sha_member,
@@ -442,18 +442,23 @@ class TestConsentDedupAccessPoint:
             identification_number="CR0001234567890-1",
             access_point="OP",
             otp_reference="EXISTING-REF",
+            expires_at=timezone.now() + timedelta(hours=1),
             created_by=claim.created_by,
         )
 
         # Request consent with OP interventions (SHA-01 = outpatient)
-        response = sha_client.post(
-            "/api/sha/consent/send-otp/",
-            {
-                "sha_member_id": sha_member.id,
-                "intervention_codes": ["SHA-01-001"],  # Outpatient
-            },
-            format="json",
-        )
+        with patch(
+            "hmis.apps.billing.services.sha_consent.SHAConsentService._make_request"
+        ) as mock_req:
+            mock_req.return_value = {"otp_reference": "NEW-REF", "message": ""}
+            response = sha_client.post(
+                "/api/sha/consent/send-otp/",
+                {
+                    "sha_member_id": sha_member.id,
+                    "intervention_codes": ["SHA-01-001"],  # Outpatient
+                },
+                format="json",
+            )
 
         # Should reuse existing
         assert response.status_code == status.HTTP_200_OK

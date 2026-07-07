@@ -785,7 +785,7 @@ class TestClinicVisitViewSet:
         """Can refer a patient to another clinic."""
         url = reverse("clinicvisit-refer", kwargs={"pk": sample_clinic_visit.pk})
         data = {
-            "target_clinic": eye_clinic.pk,
+            "target_clinic_id": eye_clinic.pk,
             "reason": "Needs eye examination",
         }
         response = authenticated_client.post(url, data, format="json")
@@ -805,7 +805,7 @@ class TestClinicVisitViewSet:
 
         url = reverse("clinicvisit-refer", kwargs={"pk": sample_clinic_visit.pk})
         data = {
-            "target_clinic": eye_clinic.pk,
+            "target_clinic_id": eye_clinic.pk,
             "reason": "Needs eye examination",
         }
         response = authenticated_client.post(url, data, format="json")

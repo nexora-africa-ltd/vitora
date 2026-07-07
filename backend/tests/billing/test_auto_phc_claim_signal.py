@@ -76,14 +76,26 @@ class TestAutoPhcClaimCreation:
         assert claim.facility_level == "L3"
         assert claim.service_date == encounter.encounter_date
 
-    @override_settings(FACILITY_LEVEL="2", FACILITY_MFL_CODE="88888")
-    def test_level_2_facility_creates_phc_claim(self, phc_patient, phc_sha_member, sample_facility):
+    @override_settings(FACILITY_MFL_CODE="88888")
+    def test_level_2_facility_creates_phc_claim(
+        self, phc_patient, phc_sha_member, sample_organization, sample_county, sample_sub_county
+    ):
         """Level 2 dispensary should also auto-create PHC claims."""
+        from hmis.apps.core.models import Facility
+
+        l2_facility = Facility.objects.create(
+            name="Level 2 Dispensary",
+            level="2",
+            mfl_code="88888",
+            organization=sample_organization,
+            county=sample_county,
+            sub_county=sample_sub_county,
+        )
         encounter = Encounter.objects.create(
             patient=phc_patient,
             encounter_type="OPD",
             chief_complaint="Follow-up",
-            facility=sample_facility,
+            facility=l2_facility,
         )
 
         claim = SHAClaim.objects.filter(
@@ -95,14 +107,26 @@ class TestAutoPhcClaimCreation:
         assert claim.facility_code == "88888"
         assert claim.facility_level == "L2"  # Normalized to L prefix
 
-    @override_settings(FACILITY_LEVEL="L4", FACILITY_MFL_CODE="77777")
-    def test_level_4_does_not_create_phc_claim(self, phc_patient, phc_sha_member, sample_facility):
+    @override_settings(FACILITY_MFL_CODE="77777")
+    def test_level_4_does_not_create_phc_claim(
+        self, phc_patient, phc_sha_member, sample_organization, sample_county, sample_sub_county
+    ):
         """Level 4+ facilities should NOT auto-create PHC claims."""
+        from hmis.apps.core.models import Facility
+
+        l4_facility = Facility.objects.create(
+            name="Level 4 Sub-County Hospital",
+            level="4",
+            mfl_code="77777",
+            organization=sample_organization,
+            county=sample_county,
+            sub_county=sample_sub_county,
+        )
         encounter = Encounter.objects.create(
             patient=phc_patient,
             encounter_type="OPD",
             chief_complaint="Referral case",
-            facility=sample_facility,
+            facility=l4_facility,
         )
 
         claim = SHAClaim.objects.filter(
