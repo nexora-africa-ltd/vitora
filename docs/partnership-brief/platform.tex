@@ -1,0 +1,421 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% platform.tex
+%% TibaBot Clinical Intelligence Platform
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter*{The TibaBot Platform}
+
+TibaBot is an enterprise Clinical Intelligence Platform designed to embed advanced artificial intelligence capabilities into existing healthcare systems.
+
+Rather than functioning as another standalone application, TibaBot acts as an intelligence layer that augments existing HMIS platforms with continuously evolving AI services.
+
+\vspace{6mm}
+
+\begin{callout}
+
+\centering
+
+\Large
+
+\textbf{Existing HMIS + TibaBot = AI-Native Healthcare Platform}
+
+\end{callout}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Platform Architecture}
+
+\begin{center}
+
+\begin{tikzpicture}[
+node distance=8mm,
+every node/.style={font=\small},
+box/.style={
+draw,
+rounded corners,
+minimum width=14cm,
+minimum height=1cm,
+align=center
+}
+]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\node[
+box,
+fill=Primary!12,
+draw=Primary
+](users){
+
+\Large\textbf{Clinicians • Nurses • Laboratory • Pharmacy • Finance • Administration}
+
+};
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\node[
+box,
+fill=Light,
+draw=Border,
+below=of users
+](hmis){
+
+\Large\textbf{Existing Hospital Management Information System}
+
+};
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\node[
+box,
+fill=Secondary!12,
+draw=Secondary,
+below=of hmis,
+minimum height=1.6cm
+](tibabot){
+
+\Large\textbf{TibaBot Clinical Intelligence Platform}
+
+};
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\node[
+draw=Border,
+fill=Light,
+rounded corners,
+below left=12mm and -1mm of tibabot,
+minimum width=4.2cm,
+minimum height=2.8cm,
+align=left
+](ai){
+
+\textbf{Clinical AI}
+
+\vspace{2mm}
+
+• Decision Support
+
+• Differential Diagnosis
+
+• Risk Prediction
+
+• Documentation
+
+};
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\node[
+draw=Border,
+fill=Light,
+rounded corners,
+below=12mm of tibabot,
+minimum width=4.2cm,
+minimum height=2.8cm,
+align=left
+](knowledge){
+
+\textbf{Knowledge Layer}
+
+\vspace{2mm}
+
+• Clinical Guidelines
+
+• Drug References
+
+• Hospital SOPs
+
+• Medical Literature
+
+};
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\node[
+draw=Border,
+fill=Light,
+rounded corners,
+below right=12mm and -1mm of tibabot,
+minimum width=4.2cm,
+minimum height=2.8cm,
+align=left
+](services){
+
+\textbf{AI Services}
+
+\vspace{2mm}
+
+• APIs
+
+• RAG
+
+• Analytics
+
+• Monitoring
+
+};
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\draw[-Latex,thick](users)--(hmis);
+
+\draw[-Latex,thick](hmis)--(tibabot);
+
+\draw[-Latex,thick](tibabot)--(ai);
+
+\draw[-Latex,thick](tibabot)--(knowledge);
+
+\draw[-Latex,thick](tibabot)--(services);
+
+\end{tikzpicture}
+
+\end{center}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Modular by Design}
+
+Unlike monolithic AI assistants, TibaBot is composed of independent modules that can be deployed individually or collectively depending on organisational requirements.
+
+\vspace{4mm}
+
+\begin{center}
+
+\begin{tabularx}{\textwidth}{|Y|Y|}
+\hline
+
+\rowcolor{Primary!8}
+
+\textbf{Module} &
+\textbf{Purpose} \\
+
+\hline
+
+Clinical Intelligence &
+Decision support, diagnosis assistance, recommendations \\
+
+\hline
+
+Clinical Documentation &
+SOAP notes, encounter summaries, discharge summaries \\
+
+\hline
+
+Diagnostic Intelligence &
+Laboratory and diagnostic interpretation \\
+
+\hline
+
+Knowledge Management &
+Clinical guidelines, SOPs, policies, protocols \\
+
+\hline
+
+Revenue Optimisation &
+Coding assistance, documentation quality, claims support \\
+
+\hline
+
+Operational Intelligence &
+Automation, reporting, administrative assistance \\
+
+\hline
+
+Patient Engagement &
+Education, reminders, multilingual assistance \\
+
+\hline
+
+\end{tabularx}
+
+\end{center}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Enterprise Integration}
+
+TibaBot has been engineered to integrate with both modern and legacy healthcare systems.
+
+\vspace{5mm}
+
+\begin{center}
+
+\begin{tikzpicture}[node distance=7mm]
+
+\node[
+draw=Primary,
+rounded corners,
+fill=Primary!8,
+minimum width=3cm,
+minimum height=1cm
+](api){REST APIs};
+
+\node[
+draw=Primary,
+rounded corners,
+fill=Primary!8,
+minimum width=3cm,
+minimum height=1cm,
+right=of api
+](fhir){FHIR};
+
+\node[
+draw=Primary,
+rounded corners,
+fill=Primary!8,
+minimum width=3cm,
+minimum height=1cm,
+right=of fhir
+](hl7){HL7};
+
+\node[
+draw=Primary,
+rounded corners,
+fill=Primary!8,
+minimum width=3cm,
+minimum height=1cm,
+below=of fhir
+](sdk){SDK};
+
+\end{tikzpicture}
+
+\end{center}
+
+Supported deployment approaches include:
+
+\begin{itemize}
+
+\item REST APIs
+
+\item HL7
+
+\item HL7 FHIR
+
+\item SMART on FHIR
+
+\item Secure SDKs
+
+\item Embedded UI Components
+
+\item Event-driven integrations
+
+\item Webhooks
+
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Security and Governance}
+
+Healthcare AI requires enterprise-grade governance.
+
+TibaBot has been designed with security, transparency and compliance at its core.
+
+\vspace{4mm}
+
+\begin{partnerbox}
+
+\begin{multicols}{2}
+
+\begin{itemize}
+
+\item Encryption in transit
+
+\item Encryption at rest
+
+\item Audit trails
+
+\item Role-based access control
+
+\item Explainable AI outputs
+
+\item Human oversight
+
+\item Model monitoring
+
+\item Version control
+
+\item Secure APIs
+
+\item Logging
+
+\item Data governance
+
+\item Continuous evaluation
+
+\end{itemize}
+
+\end{multicols}
+
+\end{partnerbox}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Designed for Continuous Innovation}
+
+One of the greatest advantages of TibaBot is that new capabilities can be introduced without requiring hospitals to replace their existing HMIS.
+
+As the platform evolves, partners gain access to new AI services through platform updates rather than major software redevelopment projects.
+
+\vspace{5mm}
+
+\begin{infobox}
+
+\textbf{Examples of Future Platform Modules}
+
+\vspace{2mm}
+
+\begin{itemize}
+
+\item Medical imaging intelligence
+
+\item Predictive population health
+
+\item Clinical quality benchmarking
+
+\item Revenue leakage detection
+
+\item AI-assisted scheduling
+
+\item Clinical research support
+
+\item Voice-enabled consultations
+
+\item Ambient clinical documentation
+
+\item Patient digital assistants
+
+\item Public health analytics
+
+\end{itemize}
+
+\end{infobox}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Why This Architecture Matters}
+
+Traditional HMIS platforms are designed primarily to record healthcare information.
+
+TibaBot transforms those same systems into intelligent clinical platforms capable of assisting clinicians, supporting operational teams and continuously improving through advances in artificial intelligence.
+
+\vspace{5mm}
+
+\begin{callout}
+
+\centering
+
+\Large
+
+\textbf{Your HMIS Remains the System of Record.}
+
+\vspace{4mm}
+
+\Large
+
+\textbf{TibaBot Becomes the System of Intelligence.}
+
+\end{callout}

@@ -179,7 +179,12 @@ class TestSHARemittanceService:
         ]
 
         service = SHARemittanceService()
-        with patch("requests.get", return_value=mock_response):
+        with (
+            patch("requests.get", return_value=mock_response),
+            patch.object(
+                service, "_get_auth_headers", return_value={"Authorization": "Bearer test-token"}
+            ),
+        ):
             results = service.fetch_remittances("TEST-001", facility=sample_facility)
 
         assert len(results) == 2
@@ -209,7 +214,12 @@ class TestSHARemittanceService:
         ]
 
         service = SHARemittanceService()
-        with patch("requests.get", return_value=mock_response):
+        with (
+            patch("requests.get", return_value=mock_response),
+            patch.object(
+                service, "_get_auth_headers", return_value={"Authorization": "Bearer test-token"}
+            ),
+        ):
             lines = service.fetch_claims_paid(sample_remittance, "TEST-001")
 
         assert len(lines) == 2

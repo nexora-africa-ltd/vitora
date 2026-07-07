@@ -313,7 +313,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "reason",
-                "target_clinic",
+                "target_clinic_id",
             }
         ),
     ),

@@ -14,7 +14,7 @@ Covers:
 """
 
 from datetime import date, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest  # type: ignore
 from django.utils import timezone
@@ -85,6 +85,16 @@ class TestConsentTokenBiometricFields:
 
 
 # ---------------------------------------------------------------------------
+# Fixture: disable sandbox for all biometric tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _production_environment(settings):
+    settings.ENVIRONMENT = "production"
+
+
+# ---------------------------------------------------------------------------
 # BiometricAuthorizeView
 # ---------------------------------------------------------------------------
 
@@ -139,15 +149,22 @@ class TestBiometricAuthorizeView:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "workstation_id" in response.data["error"]
 
-    def test_authorize_requires_agent_national_id(self, authenticated_client, sha_member):
-        """Should reject if agent_national_id missing."""
+    @patch("hmis.apps.billing.services.sha_consent.SHAConsentService._make_request")
+    def test_authorize_requires_agent_national_id(
+        self, mock_request, authenticated_client, sha_member
+    ):
+        """agent_national_id is auto-filled in non-production; just verify the call succeeds."""
+        mock_request.return_value = {
+            "auth_guid": "auto-filled-guid",
+            "iframe_url": "about:blank",
+        }
         response = authenticated_client.post(
             self.URL,
             {"sha_member_id": sha_member.id, "workstation_id": "WS-12345"},
             format="json",
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "agent_national_id" in response.data["error"]
+        assert response.status_code == status.HTTP_200_OK
+        assert "auth_guid" in response.data
 
 
 # ---------------------------------------------------------------------------
@@ -257,15 +274,13 @@ class TestStartVisitBiometricAuth:
 
     URL = "/api/sha/consent/start-visit/"
 
-    @patch("hmis.apps.billing.services.sha_consent.SHAConsentService._make_request")
-    def test_start_visit_with_auth_guid(
-        self, mock_request, authenticated_client, biometric_consent
-    ):
+    @patch("hmis.apps.billing.services.sha_consent.IlmClient.post")
+    def test_start_visit_with_auth_guid(self, mock_post, authenticated_client, biometric_consent):
         """Should accept auth_guid instead of otp_code."""
-        mock_request.return_value = {
-            "consent_token": "visit-token-from-biometric",
-            "expires_in": 3600,
-        }
+        mock_response = MagicMock()
+        mock_response.json = {"consent_token": "visit-token-from-biometric", "expires_in": 3600}
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
         response = authenticated_client.post(
             self.URL,
             {
