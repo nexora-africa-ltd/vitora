@@ -64,7 +64,7 @@ function getBackendErrorMessage(err: unknown): { message: string; fieldErrors?: 
 export default function ChangePasswordPage() {
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
-  const { isAuthenticated, isLoading: authLoading, clearMustChangePassword } = useAuth();
+  const { clearMustChangePassword } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   const [newPassword, setNewPassword] = useState('');
@@ -83,13 +83,6 @@ export default function ChangePasswordPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [authLoading, isAuthenticated, router]);
 
   const isDark = mounted && resolvedTheme === 'dark';
 
@@ -199,14 +192,6 @@ export default function ChangePasswordPage() {
       setIsSubmitting(false);
     }
   };
-
-  if (authLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   return (
     <div className="relative flex min-h-screen items-center justify-center p-4 sm:p-8 bg-background">
