@@ -99,7 +99,7 @@ class UserAdmin(BaseUserAdmin):
 
     def get_form(self, request, obj=None, change=False, **kwargs):
         kwargs["form"] = MFAUserChangeForm
-        form = super().get_form(request, obj, change, **kwargs)
+        form = super().get_form(request, obj=obj, change=change, **kwargs)
         if obj is not None:
             profile = getattr(obj, "staff_profile", None)
             if profile:
