@@ -139,6 +139,7 @@ export interface FacilityUpdateData {
   has_quality?: boolean;
   has_billing?: boolean;
   has_private_insurance?: boolean;
+  has_moh_reporting?: boolean;
   has_ai_assistant?: boolean;
   has_cds?: boolean;
   has_procedures?: boolean;
