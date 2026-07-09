@@ -98,6 +98,8 @@ const MODULE_FIELDS: Array<{
   { key: 'moh_reporting', field: 'has_moh_reporting', title: 'MOH Reports', description: 'MOH 705/711/717 aggregate reporting and DHIS2 submission.' },
   { key: 'ai_assistant', field: 'has_ai_assistant', title: 'TibaBot AI Assistant', description: 'Enable TibaBot conversational AI for this facility (requires plan).' },
   { key: 'cds', field: 'has_cds', title: 'Clinical Decision Support', description: 'Enable CDS rules, alerts, and clinical recommendations (requires plan).' },
+  { key: 'procedures', field: 'has_procedures', title: 'Procedures', description: 'Clinical procedures, treatment room, and room assignment workflows.' },
+  { key: 'analytics', field: 'has_analytics', title: 'Analytics', description: 'BI dashboards, custom reports, and data analytics (requires plan).' },
 ];
 
 /**
@@ -155,6 +157,8 @@ interface FacilityFormState {
   has_moh_reporting: boolean;
   has_ai_assistant: boolean;
   has_cds: boolean;
+  has_procedures: boolean;
+  has_analytics: boolean;
 }
 
 function createFormState(facility: FacilityDetail): FacilityFormState {
@@ -198,6 +202,8 @@ function createFormState(facility: FacilityDetail): FacilityFormState {
     has_moh_reporting: facility.has_moh_reporting,
     has_ai_assistant: facility.has_ai_assistant,
     has_cds: facility.has_cds,
+    has_procedures: facility.has_procedures ?? false,
+    has_analytics: facility.has_analytics ?? false,
   };
 }
 

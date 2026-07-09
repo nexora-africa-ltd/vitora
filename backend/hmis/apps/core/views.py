@@ -2346,6 +2346,8 @@ class FacilityViewSet(viewsets.ModelViewSet):
             "has_maternity",
             "has_mortuary",
             "has_blood_bank",
+            "has_procedures",
+            "has_analytics",
         ]
         for field in module_fields:
             value = self.request.query_params.get(field)

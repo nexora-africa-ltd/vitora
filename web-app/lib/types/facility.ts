@@ -66,6 +66,8 @@ export interface FacilityDetail extends FacilityListItem {
   has_moh_reporting: boolean;
   has_ai_assistant: boolean;
   has_cds: boolean;
+  has_procedures: boolean;
+  has_analytics: boolean;
   /** Biometrics workstation ID for DHA HIE consent */
   workstation_id?: string;
   /** When True, DHA requires biometric (fingerprint) consent — OTP-only consent is blocked */
@@ -139,6 +141,8 @@ export interface FacilityUpdateData {
   has_private_insurance?: boolean;
   has_ai_assistant?: boolean;
   has_cds?: boolean;
+  has_procedures?: boolean;
+  has_analytics?: boolean;
   operating_mode?: FacilityOperatingMode;
   is_active?: boolean;
 }
@@ -183,5 +187,7 @@ export interface FacilityCreateData {
   has_private_insurance?: boolean;
   has_ai_assistant?: boolean;
   has_cds?: boolean;
+  has_procedures?: boolean;
+  has_analytics?: boolean;
   is_active?: boolean;
 }

@@ -1231,6 +1231,8 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "has_moh_reporting",
             "has_ai_assistant",
             "has_cds",
+            "has_procedures",
+            "has_analytics",
             # Operating mode
             "operating_mode",
             # Status & timestamps
@@ -1375,6 +1377,8 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
             "has_moh_reporting",
             "has_ai_assistant",
             "has_cds",
+            "has_procedures",
+            "has_analytics",
             # Operating mode
             "operating_mode",
             # Status
@@ -1431,6 +1435,8 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
             "has_lis_standalone",
             "has_pharmacy_standalone",
             "has_imaging_standalone",
+            "has_procedures",
+            "has_analytics",
         ]
         any_module_set = any(f in self.initial_data for f in module_fields)
 

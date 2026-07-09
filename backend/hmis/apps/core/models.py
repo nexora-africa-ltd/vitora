@@ -3467,6 +3467,14 @@ class Facility(TimeStampedModel):
         default=False,
         help_text="Clinical Decision Support (CDS) available at this facility (requires plan ai_assistant feature).",
     )
+    has_procedures = models.BooleanField(
+        default=False,
+        help_text="Clinical procedures / treatment room capability at this facility.",
+    )
+    has_analytics = models.BooleanField(
+        default=False,
+        help_text="Analytics and BI dashboards enabled at this facility (requires plan custom_reports feature).",
+    )
 
     # ------------------------------------------------------------------
     # Status
@@ -3541,6 +3549,8 @@ class Facility(TimeStampedModel):
                 "has_quality",
                 "has_billing",
                 "has_private_insurance",
+                "has_procedures",
+                "has_analytics",
             ]
             # Only apply defaults if no module was explicitly set beyond the
             # model-level defaults (outpatient=True, pharmacy=True, triage=True,
@@ -3593,6 +3603,8 @@ class Facility(TimeStampedModel):
         "has_private_insurance",
         "has_ai_assistant",
         "has_cds",
+        "has_procedures",
+        "has_analytics",
         # Service-specific flags — disabled by default, re-enabled per mode
         "has_pharmacy",
         "has_pharmacy_standalone",
@@ -3667,6 +3679,8 @@ class Facility(TimeStampedModel):
         "has_moh_reporting": "moh_reporting",
         "has_ai_assistant": "ai_assistant",
         "has_cds": "ai_assistant",
+        "has_procedures": "outpatient",
+        "has_analytics": "custom_reports",
     }
 
     # Subscription features required to switch into a given operating mode.
@@ -3757,6 +3771,8 @@ class Facility(TimeStampedModel):
             "moh_reporting": self.has_moh_reporting,
             "ai_assistant": self.has_ai_assistant,
             "cds": self.has_cds,
+            "procedures": self.has_procedures,
+            "analytics": self.has_analytics,
         }
 
     @property
@@ -3894,6 +3910,8 @@ class Facility(TimeStampedModel):
             "private_insurance": False,
             "ai_assistant": False,
             "cds": False,
+            "procedures": False,
+            "analytics": False,
         }
 
         level_overrides: dict[str, dict[str, bool]] = {

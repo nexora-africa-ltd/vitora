@@ -57,7 +57,34 @@ admin.site.unregister(User)
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    """Extend the default UserAdmin to enforce unique email addresses."""
+    """Extend the default UserAdmin to enforce unique email addresses
+    and provide MFA management actions."""
+
+    actions = None  # None means "use parent's" — we'll add our own below
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        actions["disable_mfa_for_users"] = (
+            self.disable_mfa_for_users,
+            "disable_mfa_for_users",
+            "Disable MFA for selected users (clear devices & grace deadline)",
+        )
+        return actions
+
+    def get_list_display(self, request):
+        return super().get_list_display(request) + ("mfa_status",)
+
+    @admin.display(description="MFA", boolean=False)
+    def mfa_status(self, obj):
+        """Show whether the user has MFA enabled."""
+        from hmis.apps.core.mfa.utils import is_mfa_enabled
+
+        if is_mfa_enabled(obj):
+            return "Yes"
+        has_gd = getattr(obj, "staff_profile", None) and obj.staff_profile.mfa_grace_deadline
+        if has_gd:
+            return "Grace period"
+        return "No"
 
     def _validate_unique_email(self, email, exclude_pk=None):
         if not email:
@@ -71,6 +98,35 @@ class UserAdmin(BaseUserAdmin):
     def save_model(self, request, obj, form, change):
         self._validate_unique_email(obj.email, exclude_pk=obj.pk if change else None)
         super().save_model(request, obj, form, change)
+
+    def disable_mfa_for_users(self, request, queryset):
+        """Delete all MFA devices and clear grace deadline for selected users."""
+        from hmis.apps.core.mfa.models import UserTOTPDevice, UserWebAuthnCredential
+
+        totp_deleted = 0
+        webauthn_deleted = 0
+        deadline_cleared = 0
+        for user in queryset:
+            deleted, _ = UserTOTPDevice.objects.filter(user=user).delete()
+            totp_deleted += deleted
+            deleted, _ = UserWebAuthnCredential.objects.filter(user=user).delete()
+            webauthn_deleted += deleted
+            profile = getattr(user, "staff_profile", None)
+            if profile and profile.mfa_grace_deadline:
+                profile.mfa_grace_deadline = None
+                profile.save(update_fields=["mfa_grace_deadline"])
+                deadline_cleared += 1
+
+        self.message_user(
+            request,
+            f"MFA disabled for {queryset.count()} user(s). "
+            f"({totp_deleted} TOTP devices, {webauthn_deleted} WebAuthn credentials deleted, "
+            f"{deadline_cleared} grace deadlines cleared.)",
+        )
+
+    disable_mfa_for_users.short_description = (
+        "Disable MFA for selected users (clear devices & grace deadline)"
+    )
 
 
 @admin.register(AuditLog)
@@ -423,6 +479,7 @@ class StaffProfileAdmin(admin.ModelAdmin):
         "employment_status",
         "employment_type",
         "is_license_valid_display",
+        "mfa_grace_deadline",
     ]
     list_filter = [
         "organization",
@@ -510,6 +567,7 @@ class StaffProfileAdmin(admin.ModelAdmin):
                     "date_joined",
                     "date_left",
                     "supervisor",
+                    "mfa_grace_deadline",
                 )
             },
         ),
@@ -1385,6 +1443,12 @@ class FacilityAdmin(admin.ModelAdmin):
                     "has_allied_health",
                     "has_quality",
                     "has_billing",
+                    "has_private_insurance",
+                    "has_moh_reporting",
+                    "has_ai_assistant",
+                    "has_cds",
+                    "has_procedures",
+                    "has_analytics",
                 ),
                 "description": "Toggle the clinical service modules available "
                 "at this facility. These flags drive the sidebar navigation in "
