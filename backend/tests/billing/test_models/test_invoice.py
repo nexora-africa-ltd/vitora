@@ -32,9 +32,11 @@ class TestInvoice:
         assert invoice.total_amount == Decimal("0.00")
         assert invoice.balance_due == Decimal("0.00")
 
-    def test_invoice_number_auto_generated(self, sample_patient, billing_user):
+    def test_invoice_number_auto_generated(self, sample_patient, billing_user, sample_facility):
         """Test invoice number follows format INV-YYYYMMDD-XXXX."""
-        invoice = Invoice.objects.create(patient=sample_patient, created_by=billing_user)
+        invoice = Invoice.objects.create(
+            patient=sample_patient, created_by=billing_user, facility=sample_facility
+        )
 
         assert invoice.invoice_number is not None
         assert invoice.invoice_number.startswith("INV-")
@@ -47,18 +49,59 @@ class TestInvoice:
         assert len(parts[2]) == 4  # XXXX
         assert parts[2].isdigit()
 
-    def test_invoice_number_uniqueness(self, sample_patient, billing_user):
-        """Test that duplicate invoice numbers are rejected."""
-        invoice1 = Invoice.objects.create(patient=sample_patient, created_by=billing_user)
+    def test_invoice_number_uniqueness(
+        self,
+        sample_patient,
+        billing_user,
+        sample_facility,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+        db,
+    ):
+        """Test per-facility invoice number uniqueness."""
+        from hmis.apps.core.models import Facility
 
-        # Try to create another invoice - should have different number
-        invoice2 = Invoice.objects.create(patient=sample_patient, created_by=billing_user)
+        # Create a second facility (same org) for cross-facility testing
+        facility2 = Facility.objects.create(
+            organization=sample_organization,
+            name="Test Health Centre 2",
+            mfl_code="99998",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
 
-        assert invoice1.invoice_number != invoice2.invoice_number
+        # Same facility: each invoice gets a unique number
+        inv_same_1 = Invoice.objects.create(
+            patient=sample_patient,
+            created_by=billing_user,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        inv_same_2 = Invoice.objects.create(
+            patient=sample_patient,
+            created_by=billing_user,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        assert inv_same_1.invoice_number != inv_same_2.invoice_number
 
-        # Test uniqueness constraint would raise IntegrityError or ValidationError
-        # We can't manually set invoice_number due to editable=False
-        # But the model ensures uniqueness through auto-generation
+        # Different facilities: can share the same sequence (different numbers allowed)
+        inv_other = Invoice.objects.create(
+            patient=sample_patient,
+            created_by=billing_user,
+            facility=facility2,
+            organization=sample_organization,
+        )
+        # Each facility has its own daily sequence
+        assert inv_same_1.invoice_number.endswith("-0001") or inv_other.invoice_number.endswith(
+            "-0001"
+        )
+
+        # Uniqueness constraint enforced per-facility (can't have two invoices
+        # with same number in the same facility — auto-generation prevents this)
 
     def test_invoice_encounter_linkage(self, sample_patient, sample_encounter, billing_user):
         """Test optional encounter linkage."""

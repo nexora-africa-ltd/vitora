@@ -471,7 +471,11 @@ def _with_relation_hints(data: dict, instance) -> dict:
             hints[f"{prefix}_end_time"] = related.end_time
             hints[f"{prefix}_effective_from"] = related.effective_from
         elif related_label == "billing.Invoice":
+            facility = getattr(related, "facility", None)
             hints[f"{prefix}_invoice_number"] = getattr(related, "invoice_number", "") or ""
+            hints[f"{prefix}_facility_mfl_code"] = (
+                getattr(facility, "mfl_code", "") if facility is not None else ""
+            )
         elif related_label == "billing.InvoiceItem":
             invoice = getattr(related, "invoice", None)
             service = getattr(related, "service", None)
@@ -480,6 +484,11 @@ def _with_relation_hints(data: dict, instance) -> dict:
             imaging_order = getattr(related, "imaging_order", None)
             hints[f"{prefix}_invoice_number"] = (
                 getattr(invoice, "invoice_number", "") if invoice is not None else ""
+            )
+            hints[f"{prefix}_facility_mfl_code"] = (
+                getattr(invoice.facility, "mfl_code", "")
+                if invoice is not None and invoice.facility_id is not None
+                else ""
             )
             hints[f"{prefix}_item_type"] = related.item_type
             hints[f"{prefix}_description"] = related.description

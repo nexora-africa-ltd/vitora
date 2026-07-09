@@ -347,8 +347,11 @@ def find_existing_for_materialized_create(model, cleaned_data: dict[str, Any]):
 
     if model._meta.label == "billing.Invoice":
         invoice_number = cleaned_data.get("invoice_number")
-        if invoice_number:
-            existing = model.objects.filter(invoice_number=invoice_number).first()
+        facility_id = cleaned_data.get("facility_id")
+        if invoice_number and facility_id:
+            existing = model.objects.filter(
+                invoice_number=invoice_number, facility_id=facility_id
+            ).first()
             if existing:
                 return existing
 
@@ -806,14 +809,15 @@ def resolve_service_id_from_sync_data(raw_data: dict[str, Any], prefix: str) -> 
 
 
 def resolve_invoice_id_from_sync_data(raw_data: dict[str, Any], prefix: str) -> int | None:
-    """Resolve a local Invoice PK by invoice number hint."""
+    """Resolve a local Invoice PK by invoice number and facility hints."""
     invoice_number = str(raw_data.get(f"{prefix}_invoice_number") or "").strip()
-    if not invoice_number:
+    facility_id = resolve_facility_id_from_sync_data(raw_data, f"{prefix}_facility_mfl_code")
+    if not (invoice_number and facility_id):
         return None
 
     from hmis.apps.billing.models import Invoice
 
-    invoice = Invoice.objects.filter(invoice_number=invoice_number).first()
+    invoice = Invoice.objects.filter(invoice_number=invoice_number, facility_id=facility_id).first()
     return invoice.pk if invoice else None
 
 

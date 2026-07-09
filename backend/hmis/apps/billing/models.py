@@ -175,7 +175,7 @@ class Invoice(FacilityScopedModel):
     id = models.BigAutoField(primary_key=True)
 
     # Invoice identification
-    invoice_number = models.CharField(max_length=50, unique=True, editable=False)
+    invoice_number = models.CharField(max_length=50, editable=False)
 
     # Patient and encounter linkage
     patient = models.ForeignKey(
@@ -325,6 +325,12 @@ class Invoice(FacilityScopedModel):
             models.Index(fields=["status", "due_date"]),
             models.Index(fields=["valid_until"]),  # For proforma expiry queries
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "invoice_number"],
+                name="unique_invoice_number_per_facility",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.invoice_number} - {self.patient}"
@@ -378,9 +384,12 @@ class Invoice(FacilityScopedModel):
         else:
             prefix = f"{settings.BILLING_INVOICE_PREFIX}{date_str}-"
 
-        # Get the last invoice number for today with this prefix
+        # Get the last invoice number for today with this prefix within the same facility
         last_invoice = (
-            Invoice.objects.filter(invoice_number__startswith=prefix)
+            Invoice.objects.filter(
+                invoice_number__startswith=prefix,
+                facility=self.facility,
+            )
             .order_by("-invoice_number")
             .first()
         )
