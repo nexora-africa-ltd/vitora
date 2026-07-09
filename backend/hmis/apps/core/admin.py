@@ -10,6 +10,7 @@ from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.core.exceptions import ValidationError
+from django.utils.html import format_html
 
 from .emergency_access.admin import EmergencyAccessAdmin  # noqa: F401
 from .models import (
@@ -67,24 +68,86 @@ class UserAdmin(BaseUserAdmin):
         actions["disable_mfa_for_users"] = (
             self.disable_mfa_for_users,
             "disable_mfa_for_users",
-            "Disable MFA for selected users (clear devices & grace deadline)",
+            "Disable MFA for selected users",
+        )
+        actions["enable_mfa_for_users"] = (
+            self.enable_mfa_for_users,
+            "enable_mfa_for_users",
+            "Enable MFA for selected users",
         )
         return actions
 
     def get_list_display(self, request):
         return super().get_list_display(request) + ("mfa_status",)
 
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        form = super().get_form(request, obj, change, **kwargs)
+        initial_mfa = False
+        if obj is not None:
+            profile = getattr(obj, "staff_profile", None)
+            initial_mfa = profile.mfa_disabled if profile else False
+
+        form.base_fields["mfa_disabled_toggle"] = forms.BooleanField(
+            required=False,
+            initial=initial_mfa,
+            label="MFA disabled",
+            help_text=(
+                "Tick to administratively disable MFA for this user. "
+                "Existing devices are preserved and become active if unticked."
+            ),
+        )
+        return form
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        extra = ("MFA", {"fields": ("mfa_info", "mfa_disabled_toggle")})
+        return fieldsets[:-1] + (extra,) + fieldsets[-1:]
+
+    def get_readonly_fields(self, request, obj=None):
+        readonly = list(super().get_readonly_fields(request, obj))
+        readonly.append("mfa_info")
+        return readonly
+
     @admin.display(description="MFA", boolean=False)
     def mfa_status(self, obj):
         """Show whether the user has MFA enabled."""
         from hmis.apps.core.mfa.utils import is_mfa_enabled
 
+        profile = getattr(obj, "staff_profile", None)
+        if profile and profile.mfa_disabled:
+            return "Disabled"
         if is_mfa_enabled(obj):
             return "Yes"
-        has_gd = getattr(obj, "staff_profile", None) and obj.staff_profile.mfa_grace_deadline
+        has_gd = profile and profile.mfa_grace_deadline
         if has_gd:
             return "Grace period"
         return "No"
+
+    @admin.display(description="MFA details")
+    def mfa_info(self, obj):
+        """Read-only summary of MFA state for the change form."""
+        from hmis.apps.core.mfa.utils import is_mfa_enabled, is_mfa_required
+
+        lines = []
+        profile = getattr(obj, "staff_profile", None)
+        if profile and profile.mfa_disabled:
+            lines.append("MFA is <strong>administratively disabled</strong>.")
+        elif is_mfa_enabled(obj):
+            lines.append("MFA is <strong>enabled</strong>.")
+        else:
+            lines.append("MFA is <strong>not configured</strong>.")
+
+        if is_mfa_required(obj):
+            lines.append("MFA is <strong>required</strong> for this user's role.")
+        else:
+            lines.append("MFA is <strong>not required</strong> for this user's role.")
+
+        if profile and profile.mfa_grace_deadline:
+            lines.append(
+                f"Grace deadline: {profile.mfa_grace_deadline.strftime('%Y-%m-%d %H:%M UTC')}"
+            )
+
+        return format_html("<br>".join(lines))
 
     def _validate_unique_email(self, email, exclude_pk=None):
         if not email:
@@ -98,35 +161,53 @@ class UserAdmin(BaseUserAdmin):
     def save_model(self, request, obj, form, change):
         self._validate_unique_email(obj.email, exclude_pk=obj.pk if change else None)
         super().save_model(request, obj, form, change)
+        if "mfa_disabled_toggle" in form.cleaned_data:
+            profile = getattr(obj, "staff_profile", None)
+            if profile is not None:
+                profile.mfa_disabled = bool(form.cleaned_data["mfa_disabled_toggle"])
+                profile.save(update_fields=["mfa_disabled"])
 
     def disable_mfa_for_users(self, request, queryset):
-        """Delete all MFA devices and clear grace deadline for selected users."""
-        from hmis.apps.core.mfa.models import UserTOTPDevice, UserWebAuthnCredential
-
-        totp_deleted = 0
-        webauthn_deleted = 0
-        deadline_cleared = 0
+        """Set mfa_disabled=True and clear grace deadline for selected users."""
+        updated = 0
         for user in queryset:
-            deleted, _ = UserTOTPDevice.objects.filter(user=user).delete()
-            totp_deleted += deleted
-            deleted, _ = UserWebAuthnCredential.objects.filter(user=user).delete()
-            webauthn_deleted += deleted
             profile = getattr(user, "staff_profile", None)
-            if profile and profile.mfa_grace_deadline:
+            if profile:
+                profile.mfa_disabled = True
                 profile.mfa_grace_deadline = None
-                profile.save(update_fields=["mfa_grace_deadline"])
-                deadline_cleared += 1
+                profile.save(update_fields=["mfa_disabled", "mfa_grace_deadline"])
+                updated += 1
 
         self.message_user(
             request,
-            f"MFA disabled for {queryset.count()} user(s). "
-            f"({totp_deleted} TOTP devices, {webauthn_deleted} WebAuthn credentials deleted, "
-            f"{deadline_cleared} grace deadlines cleared.)",
+            f"MFA administratively disabled for {updated} user(s). "
+            f"Existing devices are preserved and will become active if re-enabled.",
         )
 
-    disable_mfa_for_users.short_description = (
-        "Disable MFA for selected users (clear devices & grace deadline)"
-    )
+    disable_mfa_for_users.short_description = "Disable MFA for selected users"
+
+    def enable_mfa_for_users(self, request, queryset):
+        """Clear mfa_disabled flag and set grace deadline for selected users."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        updated = 0
+        for user in queryset:
+            profile = getattr(user, "staff_profile", None)
+            if profile:
+                profile.mfa_disabled = False
+                profile.mfa_grace_deadline = timezone.now() + timedelta(hours=72)
+                profile.save(update_fields=["mfa_disabled", "mfa_grace_deadline"])
+                updated += 1
+
+        self.message_user(
+            request,
+            f"MFA re-enabled for {updated} user(s). "
+            f"Users have 72 hours to set up MFA before access is restricted.",
+        )
+
+    enable_mfa_for_users.short_description = "Enable MFA for selected users"
 
 
 @admin.register(AuditLog)
@@ -479,6 +560,7 @@ class StaffProfileAdmin(admin.ModelAdmin):
         "employment_status",
         "employment_type",
         "is_license_valid_display",
+        "mfa_disabled",
         "mfa_grace_deadline",
     ]
     list_filter = [
@@ -567,6 +649,7 @@ class StaffProfileAdmin(admin.ModelAdmin):
                     "date_joined",
                     "date_left",
                     "supervisor",
+                    "mfa_disabled",
                     "mfa_grace_deadline",
                 )
             },

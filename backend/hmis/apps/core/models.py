@@ -1544,6 +1544,11 @@ class StaffProfile(SyncOriginMixin, models.Model):
             "MFA is set up. Default grace period: 72 hours."
         ),
     )
+    mfa_disabled = models.BooleanField(
+        default=False,
+        help_text="When True, MFA is administratively disabled for this user. "
+        "Existing devices are NOT deleted — they remain dormant until re-enabled.",
+    )
 
     # Employment
     employment_status = models.CharField(
