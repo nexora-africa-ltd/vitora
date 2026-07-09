@@ -34,6 +34,8 @@ export interface FacilityModules {
   moh_reporting: boolean;
   ai_assistant: boolean;
   cds: boolean;
+  procedures: boolean;
+  analytics: boolean;
 }
 
 // User's facility info included in auth response

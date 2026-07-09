@@ -288,7 +288,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Procedures',
     icon: Syringe,
     moduleKey: 'procedures',
-    facilityModule: 'outpatient',
+    facilityModule: 'procedures',
     children: [
       { label: 'Dashboard', href: '/procedures', icon: LayoutDashboard, actionKey: 'procedures.view_dashboard' },
       { label: 'Orders', href: '/procedures/orders', icon: SquareDashedTopSolid, actionKey: 'procedures.view_orders' },
@@ -514,10 +514,11 @@ const _allNavItems: NavItemType[] = [
     ],
   },
   {
-    label: 'Analytics',
+    label: 'Analytics & BI',
     href: '/analytics',
     icon: BarChart3,
     moduleKey: 'analytics',
+    facilityModule: 'analytics',
     planFeature: 'custom_reports',
   },
   {
