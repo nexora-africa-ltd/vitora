@@ -608,86 +608,90 @@ m2m:
 	echo "✅ Successfully merged $$CURRENT_BRANCH to main and pushed"
 
 # ============================================================================
-# Staging (Azure Container Apps) Commands
+# Shared Azure Container Apps variables
 # ============================================================================
 
-ACA_NAME     := vitora-api-prod
 ACA_RG       := vitora-rg
 ACR_NAME     := vitoraacr
 ACR_IMAGE    := vitora-api
-ACA_API_URL  := https://api.vitora.digital
+
+# ============================================================================
+# Staging (Azure Container Apps) Commands
+# ============================================================================
+
+ACA_STAGING_NAME    := vitora-api
+ACA_STAGING_API_URL := https://staging-api.vitora.digital
 
 # Show container health, active revision, replica count, and env var count
 staging-status:
-	@echo "=== ACA Status ==="
-	@curl -sf $(ACA_API_URL)/api/health/ 2>/dev/null && echo "" || echo "❌ API unreachable"
+	@echo "=== Staging ACA Status ($(ACA_STAGING_NAME)) ==="
+	@curl -sf $(ACA_STAGING_API_URL)/api/health/ 2>/dev/null && echo "" || echo "❌ API unreachable"
 	@echo ""
 	@echo "Active Revision:"
-	@az containerapp revision list -n $(ACA_NAME) -g $(ACA_RG) \
+	@az containerapp revision list -n $(ACA_STAGING_NAME) -g $(ACA_RG) \
 		--query "[?properties.active].{Name:name, Status:properties.runningState, Replicas:properties.replicas, Created:properties.createdTime}" \
 		-o table 2>/dev/null
 	@echo ""
-	@echo "Env Vars: $$(az containerapp show -n $(ACA_NAME) -g $(ACA_RG) \
+	@echo "Env Vars: $$(az containerapp show -n $(ACA_STAGING_NAME) -g $(ACA_RG) \
 		--query 'length(properties.template.containers[0].env)' -o tsv 2>/dev/null)"
-	@echo "Secrets:  $$(az containerapp show -n $(ACA_NAME) -g $(ACA_RG) \
+	@echo "Secrets:  $$(az containerapp show -n $(ACA_STAGING_NAME) -g $(ACA_RG) \
 		--query 'length(properties.configuration.secrets)' -o tsv 2>/dev/null)"
 
 # Tail live logs from the container
 staging-logs:
-	az containerapp logs show -n $(ACA_NAME) -g $(ACA_RG) --follow --tail 50
+	az containerapp logs show -n $(ACA_STAGING_NAME) -g $(ACA_RG) --follow --tail 50
 
 # Show last 100 log lines (non-streaming)
 staging-logs-100:
-	az containerapp logs show -n $(ACA_NAME) -g $(ACA_RG) --tail 100
+	az containerapp logs show -n $(ACA_STAGING_NAME) -g $(ACA_RG) --tail 100
 
 # Open a bash shell inside the running container
 staging-exec:
-	az containerapp exec -n $(ACA_NAME) -g $(ACA_RG) --command bash
+	az containerapp exec -n $(ACA_STAGING_NAME) -g $(ACA_RG) --command bash
 
 # Run the seed script inside the container
 staging-seed:
-	az containerapp exec -n $(ACA_NAME) -g $(ACA_RG) --command "bash scripts/seed.sh"
+	az containerapp exec -n $(ACA_STAGING_NAME) -g $(ACA_RG) --command "bash scripts/seed.sh"
 
 # Run Django migrations inside the container
 staging-migrate:
-	az containerapp exec -n $(ACA_NAME) -g $(ACA_RG) --command "python manage.py migrate"
+	az containerapp exec -n $(ACA_STAGING_NAME) -g $(ACA_RG) --command "python manage.py migrate"
 
 # Open Django shell inside the container
 staging-shell:
-	az containerapp exec -n $(ACA_NAME) -g $(ACA_RG) --command "python manage.py shell"
+	az containerapp exec -n $(ACA_STAGING_NAME) -g $(ACA_RG) --command "python manage.py shell"
 
 # Restart the active revision (picks up secret changes)
 staging-restart:
-	az containerapp revision restart -n $(ACA_NAME) -g $(ACA_RG) \
-		--revision $$(az containerapp revision list -n $(ACA_NAME) -g $(ACA_RG) \
+	az containerapp revision restart -n $(ACA_STAGING_NAME) -g $(ACA_RG) \
+		--revision $$(az containerapp revision list -n $(ACA_STAGING_NAME) -g $(ACA_RG) \
 			--query "[?properties.active].name" -o tsv 2>/dev/null)
 	@echo "✅ Restart triggered. Wait ~60s for new replica."
 
 # List all env var names on the container
 staging-env:
-	@az containerapp show -n $(ACA_NAME) -g $(ACA_RG) \
+	@az containerapp show -n $(ACA_STAGING_NAME) -g $(ACA_RG) \
 		--query "properties.template.containers[0].env[].[name,value || 'secretref']" -o table
 
 # List all secret names on the container
 staging-secrets:
-	@az containerapp show -n $(ACA_NAME) -g $(ACA_RG) \
+	@az containerapp show -n $(ACA_STAGING_NAME) -g $(ACA_RG) \
 		--query "properties.configuration.secrets[].name" -o tsv
 
-# Build, push, and deploy to ACA (manual deploy without CI)
+# Build, push, and deploy to STAGING ACA
 staging-deploy:
-	@echo "=== Building and deploying to ACA ==="
+	@echo "=== Building and deploying to STAGING ($(ACA_STAGING_NAME)) ==="
 	@TAG=$$(git rev-parse --short HEAD); \
 	echo "Image tag: $$TAG"; \
-	docker build -t $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG -t $(ACR_NAME).azurecr.io/$(ACR_IMAGE):latest . && \
+	docker build -t $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG -t $(ACR_NAME).azurecr.io/$(ACR_IMAGE):staging-latest . && \
 	az acr login --name $(ACR_NAME) && \
 	docker push $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG && \
-	docker push $(ACR_NAME).azurecr.io/$(ACR_IMAGE):latest && \
-	az containerapp update -n $(ACA_NAME) -g $(ACA_RG) \
-		--image $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG \
-		--output none && \
-	echo "=== Syncing environment variables ===" && \
-	DJANGO_SETTINGS_MODULE=hmis.settings.staging bash scripts/azure-update-env.sh && \
-	echo "✅ Deployed $$TAG to ACA. Wait ~60s for rollout."
+	docker push $(ACR_NAME).azurecr.io/$(ACR_IMAGE):staging-latest && \
+	az containerapp update -n $(ACA_STAGING_NAME) -g $(ACA_RG) \
+		--image $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG && \
+	echo "=== Syncing staging environment variables ===" && \
+	DJANGO_SETTINGS_MODULE=hmis.settings.staging ACA_NAME=$(ACA_STAGING_NAME) bash scripts/azure-update-env.sh && \
+	echo "✅ Deployed $$TAG to STAGING ($(ACA_STAGING_NAME)). Wait ~60s for rollout."
 
 # Post-deploy verification suite
 staging-verify:
@@ -702,7 +706,7 @@ staging-verify:
 # Quick login test against staging API
 staging-login-test:
 	@echo "Testing login..."
-	@curl -sf $(ACA_API_URL)/api/token/ \
+	@curl -sf $(ACA_STAGING_API_URL)/api/token/ \
 		-X POST -H "Content-Type: application/json" \
 		-d '{"username":"demo_admin","password":"DemoAdmin2026?!"}' \
 		| python3 -c "import sys,json; d=json.load(sys.stdin); \
@@ -712,10 +716,12 @@ staging-login-test:
 # =============================================================================
 # Production Deployment
 # =============================================================================
-ACA_PROD_NAME ?= vitora-api-prod
+
+ACA_PROD_NAME    ?= vitora-api-prod
+ACA_PROD_API_URL  := https://api.vitora.digital
 
 prod-deploy:
-	@echo "=== Building and deploying to PRODUCTION ACA ==="
+	@echo "=== Building and deploying to PRODUCTION ($(ACA_PROD_NAME)) ==="
 	@echo "⚠️  WARNING: This deploys to the PRODUCTION environment."
 	@read -p "Continue? [y/N] " confirm; \
 	if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then echo "Aborted."; exit 1; fi
@@ -726,14 +732,13 @@ prod-deploy:
 	docker push $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG && \
 	docker push $(ACR_NAME).azurecr.io/$(ACR_IMAGE):prod-latest && \
 	az containerapp update -n $(ACA_PROD_NAME) -g $(ACA_RG) \
-		--image $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG \
-		--output none && \
+		--image $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG && \
 	echo "=== Syncing production environment variables ===" && \
-	bash scripts/azure-update-env-production.sh && \
-	echo "✅ Deployed $$TAG to PRODUCTION. Wait ~60s for rollout."
+	ACA_NAME=$(ACA_PROD_NAME) bash scripts/azure-update-env-production.sh && \
+	echo "✅ Deployed $$TAG to PRODUCTION ($(ACA_PROD_NAME)). Wait ~60s for rollout."
 
 prod-env:
-	bash scripts/azure-update-env-production.sh
+	ACA_NAME=$(ACA_PROD_NAME) bash scripts/azure-update-env-production.sh
 
 prod-logs:
 	az containerapp logs show -n $(ACA_PROD_NAME) -g $(ACA_RG) --follow
@@ -745,7 +750,7 @@ prod-verify:
 		&& echo "✅ PII integrity OK" \
 		|| echo "❌ PII integrity FAILED"
 	@echo "-- Login smoke test --" && \
-	curl -sf $(ACA_API_URL)/api/token/ \
+	curl -sf $(ACA_PROD_API_URL)/api/token/ \
 		-X POST -H "Content-Type: application/json" \
 		-d '{"username":"demo_admin","password":"DemoAdmin2026?!"}' \
 		| python3 -c "import sys,json; d=json.load(sys.stdin); \
