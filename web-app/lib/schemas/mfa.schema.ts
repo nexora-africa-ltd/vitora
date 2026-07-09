@@ -99,6 +99,8 @@ const FacilityModulesSchema = z.object({
   moh_reporting: z.boolean().default(true),
   ai_assistant: z.boolean().default(false),
   cds: z.boolean().default(false),
+  procedures: z.boolean().default(false),
+  analytics: z.boolean().default(false),
 });
 
 const UserFacilitySchema = z.object({

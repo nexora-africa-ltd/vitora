@@ -268,6 +268,8 @@ function NoFacilityState() {
         moh_reporting: true,
         ai_assistant: false,
         cds: false,
+        procedures: false,
+        analytics: false,
       },
     });
     // Page will re-render with the selected facility
