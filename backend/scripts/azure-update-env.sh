@@ -125,11 +125,11 @@ az containerapp update \
     "DEMO_MODE=${DEMO_MODE:-true}" \
     "ACTIVE_SHIFT_ENFORCEMENT=${ACTIVE_SHIFT_ENFORCEMENT:-false}" \
     "ONBOARDING_ENFORCEMENT=${ONBOARDING_ENFORCEMENT:-false}" \
-    "ALLOWED_HOSTS=${FQDN},staging.vitora.digital,vitora-navy.vercel.app,localhost" \
+    "ALLOWED_HOSTS=${FQDN},staging.vitora.digital,localhost" \
     "SECURE_SSL_REDIRECT=true" \
-    "CORS_ALLOWED_ORIGINS=https://vitora-navy.vercel.app,https://staging.vitora.digital,http://localhost:3009" \
-    "CSRF_TRUSTED_ORIGINS=https://vitora-navy.vercel.app,https://staging.vitora.digital" \
-    "FRONTEND_URL=https://vitora-navy.vercel.app" \
+    "CORS_ALLOWED_ORIGINS=https://staging.vitora.digital,http://localhost:3009" \
+    "CSRF_TRUSTED_ORIGINS=https://staging.vitora.digital" \
+    "FRONTEND_URL=https://staging.vitora.digital" \
     "DOCUMENT_VERIFICATION_URL=https://staging.vitora.digital/verify" \
     "CLOUD_API_BASE_URL=${PUBLIC_API_BASE_URL}" \
     "SYNC_SERVER_URL=${PUBLIC_SYNC_SERVER_URL}" \

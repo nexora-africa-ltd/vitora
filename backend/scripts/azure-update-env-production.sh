@@ -125,10 +125,10 @@ az containerapp update \
     "DEMO_MODE=false" \
     "ACTIVE_SHIFT_ENFORCEMENT=true" \
     "ONBOARDING_ENFORCEMENT=true" \
-    "ALLOWED_HOSTS=${FQDN},${PROD_DOMAIN},${PROD_API_DOMAIN},${PROD_API_FQDN}" \
+    "ALLOWED_HOSTS=${FQDN},${PROD_DOMAIN},${PROD_API_DOMAIN},${PROD_API_FQDN},vitora-navy.vercel.app" \
     "SECURE_SSL_REDIRECT=true" \
-    "CORS_ALLOWED_ORIGINS=https://${PROD_DOMAIN},https://app.vitora.digital,https://${PROD_API_DOMAIN}" \
-    "CSRF_TRUSTED_ORIGINS=https://${PROD_DOMAIN},https://app.vitora.digital,https://${PROD_API_DOMAIN}" \
+    "CORS_ALLOWED_ORIGINS=https://${PROD_DOMAIN},https://${PROD_API_DOMAIN},https://vitora-navy.vercel.app" \
+    "CSRF_TRUSTED_ORIGINS=https://${PROD_DOMAIN},https://${PROD_API_DOMAIN},https://vitora-navy.vercel.app" \
     "FRONTEND_URL=https://${PROD_DOMAIN}" \
     "DOCUMENT_VERIFICATION_URL=https://${PROD_DOMAIN}/verify" \
     "CLOUD_API_BASE_URL=${PUBLIC_API_BASE_URL}" \
