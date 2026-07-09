@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, Check, AlertTriangle, Mail } from 'lucide-react';
+import { Copy, Check, AlertTriangle, Mail, Send } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,7 @@ interface CredentialDialogProps {
   tempPassword: string;
   fullName: string;
   email: string;
+  emailSent?: boolean;
 }
 
 export function CredentialDialog({
@@ -30,6 +31,7 @@ export function CredentialDialog({
   tempPassword,
   fullName,
   email,
+  emailSent = false,
 }: CredentialDialogProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -75,6 +77,15 @@ export function CredentialDialog({
               The user will be required to change this password on first login.
             </p>
           </div>
+
+          {emailSent && (
+            <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-3 flex items-start gap-3">
+              <Send className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+              <p className="text-sm text-green-700 dark:text-green-400 font-medium">
+                Welcome email sent to {email || 'the staff member'} with these credentials.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-3">
             <div className="space-y-1.5">

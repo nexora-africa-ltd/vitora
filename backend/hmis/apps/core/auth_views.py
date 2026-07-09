@@ -20,9 +20,10 @@ from django.db import transaction
 from django.utils import timezone
 from django_ratelimit.decorators import ratelimit
 from rest_framework import status, viewsets
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 
 from .models import (
     AuditLog,
@@ -829,6 +830,41 @@ def change_password(request):
         {"message": "Password changed successfully."},
         status=status.HTTP_200_OK,
     )
+
+
+# ============================================================================
+# Validate Password (Authenticated)
+# ============================================================================
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([AnonRateThrottle])
+def validate_password(request):
+    """
+    Validate a candidate password without changing it.
+
+    POST /api/core/auth/validate-password/
+    Body: { "password": "candidate" }
+
+    Returns 200 with { "valid": true } if the password passes Django's
+    AUTH_PASSWORD_VALIDATORS, or 400 with { "errors": ["..."] } if not.
+
+    AllowAny is intentional: this endpoint is used during signup (before the
+    user is authenticated) as well as during forced password changes.
+    """
+    from .serializers import PasswordValidationSerializer
+
+    serializer = PasswordValidationSerializer(data=request.data)
+    if not serializer.is_valid():
+        # Extract password-specific errors
+        password_errors = serializer.errors.get("password", ["Invalid password."])
+        return Response(
+            {"valid": False, "errors": password_errors},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    return Response({"valid": True}, status=status.HTTP_200_OK)
 
 
 # ============================================================================

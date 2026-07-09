@@ -20,6 +20,7 @@ from .auth_views import (
     password_reset_request,
     setup_check,
     setup_initialize,
+    validate_password,
     verify_email,
 )
 from .dashboard_views import (
@@ -91,6 +92,7 @@ urlpatterns = [
     path("auth/password-reset/request/", password_reset_request, name="password-reset-request"),
     path("auth/password-reset/confirm/", password_reset_confirm, name="password-reset-confirm"),
     path("auth/change-password/", change_password, name="change-password"),
+    path("auth/validate-password/", validate_password, name="validate-password"),
     # --- Self-service signup ---
     path("auth/signup/", org_signup, name="org-signup"),
     path("auth/verify-email/", verify_email, name="verify-email"),

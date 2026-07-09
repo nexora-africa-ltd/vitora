@@ -18,6 +18,7 @@ import type {
   RoleListParams,
   StaffProfileCreateData,
   StaffProfileUpdateData,
+  StaffPasswordResetData,
   StaffListParams,
   AuditLogListParams,
   AuditAction,
@@ -197,6 +198,18 @@ export function useUpdateStaffProfile() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: StaffProfileUpdateData }) =>
       staffApi.update(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['staff'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-profile', id] });
+    },
+  });
+}
+
+export function useResetStaffPassword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: StaffPasswordResetData }) =>
+      staffApi.resetPassword(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['staff'] });
       queryClient.invalidateQueries({ queryKey: ['staff-profile', id] });

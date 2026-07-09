@@ -199,6 +199,9 @@ export const StaffProfileSchema = z.object({
   supervisor: z.number().nullable().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
+  // Present only on direct creation responses
+  temp_password: z.string().optional(),
+  email_sent: z.boolean().optional(),
 });
 
 export type StaffProfileSchemaType = z.infer<typeof StaffProfileSchema>;

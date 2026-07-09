@@ -1044,7 +1044,7 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     def get_permissions(self):
         """Set permissions based on action."""
-        if self.action in ["create", "destroy"]:
+        if self.action in ["create", "destroy", "reset_password"]:
             permission_classes = [FacilityAdminPermission]
         else:
             permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
@@ -1100,27 +1100,31 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         read_serializer = StaffProfileSerializer(staff_profile)
         response_data = read_serializer.data
 
-        # Include temp password (one-time, for credential display dialog)
+        # Include temp password only when it was auto-generated (never leak
+        # manually-entered passwords back in the response).
         temp_password = getattr(staff_profile, "_temp_password", None)
-        if temp_password:
+        password_was_generated = getattr(staff_profile, "_password_was_generated", False)
+        if temp_password and password_was_generated:
             response_data["temp_password"] = temp_password
 
-        # Optionally send welcome email with credentials
+        # Optionally send welcome email with credentials. Only possible for
+        # auto-generated passwords; manual passwords must be communicated
+        # through another channel by the admin.
         send_email = request.data.get("send_email", False)
-        if send_email and temp_password:
+        if send_email and temp_password and password_was_generated:
             from .services.email_service import send_welcome_email
 
             org_name = ""
             if staff_profile.organization:
                 org_name = staff_profile.organization.name
-            send_welcome_email(
+            email_sent = send_welcome_email(
                 to_email=staff_profile.user.email,
                 username=staff_profile.user.username,
                 temp_password=temp_password,
                 full_name=staff_profile.user.get_full_name(),
                 organization_name=org_name,
             )
-            response_data["email_sent"] = True
+            response_data["email_sent"] = email_sent
 
         return Response(response_data, status=status.HTTP_201_CREATED)
 
@@ -1412,6 +1416,91 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "my_license": my_status,
             }
         )
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="reset-password",
+        permission_classes=[FacilityAdminPermission],
+    )
+    def reset_password(self, request, pk=None):
+        """
+        Admin reset of a staff member's password.
+
+        POST /api/staff/{id}/reset-password/
+        Body:
+          - password: optional manual password (auto-generated if omitted)
+          - must_change_password: optional bool (default True)
+          - send_email: optional bool (default False)
+
+        Returns the staff profile. If the password was auto-generated,
+        `temp_password` is included for one-time display.
+        """
+        import secrets
+
+        from .serializers import StaffPasswordResetSerializer
+
+        staff_profile = self.get_object()
+        serializer = StaffPasswordResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        password = serializer.validated_data.get("password")
+        must_change_password = serializer.validated_data.get("must_change_password", True)
+        send_email = serializer.validated_data.get("send_email", False)
+
+        password_was_generated = False
+        if not password:
+            password = secrets.token_urlsafe(12)
+            password_was_generated = True
+
+        # Auto-generated passwords always force a reset.
+        if password_was_generated:
+            must_change_password = True
+
+        user = staff_profile.user
+        user.set_password(password)
+        user.save(update_fields=["password"])
+
+        staff_profile.must_change_password = must_change_password
+        staff_profile.save(update_fields=["must_change_password"])
+
+        AuditLog.log(
+            action="staff_password_reset",
+            user=request.user,
+            resource_type="StaffProfile",
+            resource_id=staff_profile.id,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "employee_id": staff_profile.employee_id,
+                "username": user.username,
+                "password_generated": password_was_generated,
+                "must_change_password": must_change_password,
+            },
+        )
+
+        read_serializer = StaffProfileSerializer(staff_profile)
+        response_data = read_serializer.data
+
+        if password_was_generated:
+            response_data["temp_password"] = password
+
+            if send_email:
+                from .services.email_service import send_welcome_email
+
+                org_name = ""
+                if staff_profile.organization:
+                    org_name = staff_profile.organization.name
+                email_sent = send_welcome_email(
+                    to_email=user.email,
+                    username=user.username,
+                    temp_password=password,
+                    full_name=user.get_full_name(),
+                    organization_name=org_name,
+                )
+                response_data["email_sent"] = email_sent
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
     def perform_destroy(self, instance):
         """

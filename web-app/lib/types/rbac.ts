@@ -227,6 +227,9 @@ export interface StaffProfile {
   supervisor?: number | null;
   created_at?: string;
   updated_at?: string;
+  // Present only on direct creation responses
+  temp_password?: string;
+  email_sent?: boolean;
 }
 
 export interface OrgChartSummary {
@@ -250,7 +253,7 @@ export interface StaffProfileCreateData {
   last_name: string;
   middle_name?: string;
   password?: string; // Auto-generated if not provided
-  employee_id: string;
+  employee_id?: string; // Auto-generated if not provided
   department?: number | null;
   role?: number | null;
   primary_facility?: number | null;
@@ -262,6 +265,8 @@ export interface StaffProfileCreateData {
   specialization?: string;
   hwr_national_id?: string;
   hire_date?: string;
+  must_change_password?: boolean; // Defaults to true; ignored when password is auto-generated
+  send_email?: boolean; // Send welcome email with auto-generated credentials
 }
 
 export interface StaffProfileUpdateData extends Partial<Omit<StaffProfileCreateData, 'password'>> {
@@ -275,6 +280,12 @@ export interface StaffProfileUpdateData extends Partial<Omit<StaffProfileCreateD
   primary_department?: number | null;
   primary_role?: number | null;
   supervisor?: number | null;
+}
+
+export interface StaffPasswordResetData {
+  password?: string;
+  must_change_password?: boolean;
+  send_email?: boolean;
 }
 
 // Username check response

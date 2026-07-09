@@ -324,6 +324,7 @@ class MFAVerifyView(APIView):
                 fields={
                     "access": serializers.CharField(),
                     "refresh": serializers.CharField(),
+                    "must_change_password": serializers.BooleanField(),
                     "user": serializers.JSONField(),
                 },
             ),
@@ -431,10 +432,15 @@ class MFAVerifyView(APIView):
         # Use shared helper for consistent auth response shape
         from hmis.apps.core.views import _build_user_info
 
+        must_change_password = (
+            hasattr(user, "staff_profile") and user.staff_profile.must_change_password
+        )
+
         return Response(
             {
                 "access": str(refresh.access_token),
                 "refresh": str(refresh),
+                "must_change_password": must_change_password,
                 "user": _build_user_info(user),
             }
         )
@@ -908,6 +914,7 @@ class WebAuthnAuthenticateCompleteView(APIView):
                 fields={
                     "access": serializers.CharField(),
                     "refresh": serializers.CharField(),
+                    "must_change_password": serializers.BooleanField(),
                     "user": serializers.JSONField(),
                 },
             ),
@@ -1027,10 +1034,15 @@ class WebAuthnAuthenticateCompleteView(APIView):
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
 
+        must_change_password = (
+            hasattr(user, "staff_profile") and user.staff_profile.must_change_password
+        )
+
         response = Response(
             {
                 "access": access_token,
                 "refresh": refresh_token,
+                "must_change_password": must_change_password,
                 "user": _build_user_info(user),
             }
         )

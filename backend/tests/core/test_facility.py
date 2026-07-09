@@ -175,15 +175,15 @@ class TestFacilityModel:
         assert defaults["dialysis"] is False
 
     def test_default_modules_level_6(self):
-        """Level 6 defaults: all clinical modules enabled (AI/CDS opt-in)."""
+        """Level 6 defaults: all clinical modules enabled (AI/CDS/procedures/analytics opt-in)."""
         from hmis.apps.core.models import Facility
 
         defaults = Facility.default_modules_for_level("6")
-        opt_in = {"ai_assistant", "cds"}
+        opt_in = {"ai_assistant", "cds", "procedures", "analytics"}
         assert all(v for k, v in defaults.items() if k not in opt_in)
-        # AI/CDS are explicit per-facility opt-ins regardless of level
-        assert defaults["ai_assistant"] is False
-        assert defaults["cds"] is False
+        # Opt-in modules are explicit per-facility choices regardless of level
+        for key in opt_in:
+            assert defaults[key] is False
 
     def test_default_modules_unknown_level(self):
         """Unknown levels fall back to outpatient only."""
