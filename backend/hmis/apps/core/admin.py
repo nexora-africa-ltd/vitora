@@ -66,12 +66,12 @@ class UserAdmin(BaseUserAdmin):
     def get_actions(self, request):
         actions = super().get_actions(request)
         actions["disable_mfa_for_users"] = (
-            self.disable_mfa_for_users,
+            UserAdmin.disable_mfa_for_users,
             "disable_mfa_for_users",
             "Disable MFA for selected users",
         )
         actions["enable_mfa_for_users"] = (
-            self.enable_mfa_for_users,
+            UserAdmin.enable_mfa_for_users,
             "enable_mfa_for_users",
             "Enable MFA for selected users",
         )
