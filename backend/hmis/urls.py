@@ -12,6 +12,7 @@ from django.http import JsonResponse
 from django.urls import include, path
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
+from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework import routers
 from rest_framework_simplejwt.views import TokenVerifyView
@@ -408,6 +409,11 @@ terminology_router = routers.DefaultRouter()
 terminology_router.register(r"codesystems", CodeSystemViewSet, basename="codesystem")
 
 urlpatterns = [
+    path(
+        "favicon.ico",
+        serve,
+        {"path": "favicon.ico", "document_root": settings.STATIC_ROOT},
+    ),
     path("", health_check, name="health_check"),
     path("api/health/", health_check, name="api_health_check"),
     path("admin/mfa-verify/", admin_mfa_verify, name="admin-mfa-verify"),

@@ -7,7 +7,7 @@ patient engagement, and Kenya EMR interoperability. This guide is for
 third-party developers integrating TibaBot into HMIS systems, hospital
 portals, community health worker apps, and patient-facing mobile apps.
 
-**Production:** `https://tibabot.vitora.nexora.africa`  
+**Production:** `https://tibabot.vitora.nexora.africa`
 **Staging:** Contact the team for staging credentials.
 
 ---
