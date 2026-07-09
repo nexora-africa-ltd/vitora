@@ -56,11 +56,28 @@ User = get_user_model()
 admin.site.unregister(User)
 
 
-@admin.register(User)
+class MFAUserChangeForm(forms.ModelForm):
+    """Custom User change form with an MFA disabled toggle."""
+
+    mfa_disabled_toggle = forms.BooleanField(
+        required=False,
+        label="MFA disabled",
+        help_text=(
+            "Tick to administratively disable MFA for this user. "
+            "Existing devices are preserved and become active if unticked."
+        ),
+    )
+
+    class Meta:
+        model = User
+        fields = "__all__"  # noqa: DJ007
+
+
 class UserAdmin(BaseUserAdmin):
     """Extend the default UserAdmin to enforce unique email addresses
     and provide MFA management actions."""
 
+    form = MFAUserChangeForm
     actions = None  # None means "use parent's" — we'll add our own below
 
     def get_actions(self, request):
@@ -80,22 +97,13 @@ class UserAdmin(BaseUserAdmin):
     def get_list_display(self, request):
         return super().get_list_display(request) + ("mfa_status",)
 
-    def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj, **kwargs)
-        initial_mfa = False
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        kwargs["form"] = MFAUserChangeForm
+        form = super().get_form(request, obj, change, **kwargs)
         if obj is not None:
             profile = getattr(obj, "staff_profile", None)
-            initial_mfa = profile.mfa_disabled if profile else False
-
-        form.base_fields["mfa_disabled_toggle"] = forms.BooleanField(
-            required=False,
-            initial=initial_mfa,
-            label="MFA disabled",
-            help_text=(
-                "Tick to administratively disable MFA for this user. "
-                "Existing devices are preserved and become active if unticked."
-            ),
-        )
+            if profile:
+                form.base_fields["mfa_disabled_toggle"].initial = profile.mfa_disabled
         return form
 
     def get_fieldsets(self, request, obj=None):
