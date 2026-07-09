@@ -218,6 +218,9 @@ class UserAdmin(BaseUserAdmin):
     enable_mfa_for_users.short_description = "Enable MFA for selected users"
 
 
+admin.site.register(User, UserAdmin)
+
+
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
     """Admin configuration for AuditLog model."""

@@ -3,11 +3,12 @@
 
 from django.contrib import admin
 
+from hmis.apps.core.mixins import TenantScopedAdminMixin
 from hmis.apps.referrals.models import ClinicalReferral
 
 
 @admin.register(ClinicalReferral)
-class ClinicalReferralAdmin(admin.ModelAdmin):
+class ClinicalReferralAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for ClinicalReferral."""
 
     list_display = [

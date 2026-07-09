@@ -5,6 +5,8 @@ Django admin configuration for encounters app.
 
 from django.contrib import admin
 
+from hmis.apps.core.mixins import TenantScopedAdminMixin
+
 from .models import (
     Diagnosis,
     Encounter,
@@ -34,7 +36,7 @@ class TreatmentPlanInline(admin.StackedInline):
 
 
 @admin.register(ICD10Code)
-class ICD10CodeAdmin(admin.ModelAdmin):
+class ICD10CodeAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = (
         "id",
         "code",

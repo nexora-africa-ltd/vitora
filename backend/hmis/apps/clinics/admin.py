@@ -3,6 +3,8 @@
 
 from django.contrib import admin
 
+from hmis.apps.core.mixins import TenantScopedAdminMixin
+
 from .models import (
     Clinic,
     ClinicEnrollment,
@@ -41,7 +43,7 @@ class ClinicStaffInline(admin.TabularInline):
 
 
 @admin.register(Clinic)
-class ClinicAdmin(admin.ModelAdmin):
+class ClinicAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin for Clinic model."""
 
     list_display = (

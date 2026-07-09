@@ -5,6 +5,8 @@ Django admin configuration for patients app.
 
 from django.contrib import admin
 
+from hmis.apps.core.mixins import TenantScopedAdminMixin
+
 from .models import Allergy, DeathRecord, EmergencyContact, Patient
 
 
@@ -27,7 +29,7 @@ class EmergencyContactInline(admin.TabularInline):
 
 
 @admin.register(Patient)
-class PatientAdmin(admin.ModelAdmin):
+class PatientAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin configuration for Patient model."""
 
     list_display = [
@@ -108,7 +110,7 @@ class PatientAdmin(admin.ModelAdmin):
 
 
 @admin.register(EmergencyContact)
-class EmergencyContactAdmin(admin.ModelAdmin):
+class EmergencyContactAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin configuration for EmergencyContact model."""
 
     list_display = ["patient", "full_name", "relationship"]
@@ -140,7 +142,7 @@ class AllergyInline(admin.TabularInline):
 
 
 @admin.register(Allergy)
-class AllergyAdmin(admin.ModelAdmin):
+class AllergyAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin configuration for Allergy model."""
 
     list_display = [
@@ -228,7 +230,7 @@ class AllergyAdmin(admin.ModelAdmin):
 
 
 @admin.register(DeathRecord)
-class DeathRecordAdmin(admin.ModelAdmin):
+class DeathRecordAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin configuration for DeathRecord model."""
 
     list_display = [

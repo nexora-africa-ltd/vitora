@@ -4,6 +4,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
+from hmis.apps.core.mixins import TenantScopedAdminMixin
 from hmis.apps.insurance.models import (
     InsuranceClaim,
     InsuranceClaimItem,
@@ -68,7 +69,7 @@ class InsurancePlanInline(admin.TabularInline):
 
 
 @admin.register(InsuranceProvider)
-class InsuranceProviderAdmin(admin.ModelAdmin):
+class InsuranceProviderAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = ["name", "code", "provider_type", "status_badge", "organization", "created_at"]
     list_filter = ["provider_type", "status", "organization"]
     search_fields = ["name", "code", "contact_person"]
@@ -81,7 +82,7 @@ class InsuranceProviderAdmin(admin.ModelAdmin):
 
 
 @admin.register(InsurancePlan)
-class InsurancePlanAdmin(admin.ModelAdmin):
+class InsurancePlanAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = [
         "name",
         "code",
@@ -101,7 +102,7 @@ class InsurancePlanAdmin(admin.ModelAdmin):
 
 
 @admin.register(PatientInsurance)
-class PatientInsuranceAdmin(admin.ModelAdmin):
+class PatientInsuranceAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = [
         "patient",
         "provider",
@@ -123,7 +124,7 @@ class PatientInsuranceAdmin(admin.ModelAdmin):
 
 
 @admin.register(InsuranceProviderConfig)
-class InsuranceProviderConfigAdmin(admin.ModelAdmin):
+class InsuranceProviderConfigAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = [
         "provider",
         "facility",
@@ -150,7 +151,7 @@ class InsuranceClaimItemInline(admin.TabularInline):
 
 
 @admin.register(InsuranceClaim)
-class InsuranceClaimAdmin(admin.ModelAdmin):
+class InsuranceClaimAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = [
         "claim_number",
         "provider",
@@ -184,7 +185,7 @@ class InsuranceClaimAdmin(admin.ModelAdmin):
 
 
 @admin.register(InsurancePreauth)
-class InsurancePreauthAdmin(admin.ModelAdmin):
+class InsurancePreauthAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = [
         "preauth_number",
         "provider",
@@ -219,7 +220,7 @@ class InsuranceRemittanceLineInline(admin.TabularInline):
 
 
 @admin.register(InsuranceRemittance)
-class InsuranceRemittanceAdmin(admin.ModelAdmin):
+class InsuranceRemittanceAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = [
         "remittance_number",
         "provider",
@@ -239,7 +240,7 @@ class InsuranceRemittanceAdmin(admin.ModelAdmin):
 
 
 @admin.register(PayerTariff)
-class PayerTariffAdmin(admin.ModelAdmin):
+class PayerTariffAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = [
         "provider",
         "service_code",
@@ -255,7 +256,7 @@ class PayerTariffAdmin(admin.ModelAdmin):
 
 
 @admin.register(InsuranceOutboundCall)
-class InsuranceOutboundCallAdmin(admin.ModelAdmin):
+class InsuranceOutboundCallAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = [
         "created_at",
         "provider",

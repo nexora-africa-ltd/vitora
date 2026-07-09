@@ -8,6 +8,8 @@ from __future__ import annotations
 from django.contrib import admin
 from django.utils.html import format_html
 
+from hmis.apps.core.mixins import TenantScopedAdminMixin
+
 from .models import (
     CDSAlert,
     CDSAlertStatus,
@@ -19,7 +21,7 @@ from .models import (
 
 
 @admin.register(CDSRule)
-class CDSRuleAdmin(admin.ModelAdmin):
+class CDSRuleAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = [
         "code",
         "name",
@@ -147,7 +149,7 @@ class CDSRuleAdmin(admin.ModelAdmin):
 
 
 @admin.register(CDSAlert)
-class CDSAlertAdmin(admin.ModelAdmin):
+class CDSAlertAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = [
         "id",
         "rule_code_display",

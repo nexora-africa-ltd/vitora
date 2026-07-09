@@ -7,6 +7,8 @@ Sprint 1.5-1.6 Track D: Inpatient Foundation
 
 from django.contrib import admin
 
+from hmis.apps.core.mixins import TenantScopedAdminMixin
+
 from .models import (
     Admission,
     AdmissionRecommendation,
@@ -37,7 +39,7 @@ from .models import (
 
 
 @admin.register(Ward)
-class WardAdmin(admin.ModelAdmin):
+class WardAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for Ward model."""
 
     list_display = [
@@ -57,7 +59,7 @@ class WardAdmin(admin.ModelAdmin):
 
 
 @admin.register(Bed)
-class BedAdmin(admin.ModelAdmin):
+class BedAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for Bed model."""
 
     list_display = [
@@ -75,7 +77,7 @@ class BedAdmin(admin.ModelAdmin):
 
 
 @admin.register(AdmissionRecommendation)
-class AdmissionRecommendationAdmin(admin.ModelAdmin):
+class AdmissionRecommendationAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for AdmissionRecommendation model."""
 
     list_display = [
@@ -150,7 +152,7 @@ class AdmissionRecommendationAdmin(admin.ModelAdmin):
 
 
 @admin.register(Admission)
-class AdmissionAdmin(admin.ModelAdmin):
+class AdmissionAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for Admission model."""
 
     list_display = [
@@ -242,7 +244,7 @@ class DischargeDiagnosisInline(admin.TabularInline):
 
 
 @admin.register(Discharge)
-class DischargeAdmin(admin.ModelAdmin):
+class DischargeAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for Discharge model."""
 
     inlines = [DischargeDiagnosisInline]
@@ -337,7 +339,7 @@ class DischargeAdmin(admin.ModelAdmin):
 
 
 @admin.register(Transfer)
-class TransferAdmin(admin.ModelAdmin):
+class TransferAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for Transfer model."""
 
     list_display = [
@@ -405,7 +407,7 @@ class TransferAdmin(admin.ModelAdmin):
 
 
 @admin.register(WardRound)
-class WardRoundAdmin(admin.ModelAdmin):
+class WardRoundAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for WardRound model."""
 
     list_display = [
@@ -476,7 +478,7 @@ class WardRoundAdmin(admin.ModelAdmin):
 
 
 @admin.register(NursingKardex)
-class NursingKardexAdmin(admin.ModelAdmin):
+class NursingKardexAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for NursingKardex model."""
 
     list_display = [
@@ -534,7 +536,7 @@ class NursingKardexAdmin(admin.ModelAdmin):
 
 
 @admin.register(InpatientConsumableUsage)
-class InpatientConsumableUsageAdmin(admin.ModelAdmin):
+class InpatientConsumableUsageAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for inpatient consumable usage records."""
 
     list_display = [
@@ -607,7 +609,7 @@ class KardexHandoverNoteInline(admin.TabularInline):
 
 
 @admin.register(KardexShiftNote)
-class KardexShiftNoteAdmin(admin.ModelAdmin):
+class KardexShiftNoteAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for KardexShiftNote model."""
 
     list_display = [
@@ -637,7 +639,7 @@ class KardexShiftNoteAdmin(admin.ModelAdmin):
 
 
 @admin.register(NursingCarePlanEntry)
-class NursingCarePlanEntryAdmin(admin.ModelAdmin):
+class NursingCarePlanEntryAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for NursingCarePlanEntry model."""
 
     list_display = [
@@ -696,7 +698,7 @@ class NursingCarePlanEntryAdmin(admin.ModelAdmin):
 
 
 @admin.register(KardexHandoverNote)
-class KardexHandoverNoteAdmin(admin.ModelAdmin):
+class KardexHandoverNoteAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for KardexHandoverNote model."""
 
     list_display = [
@@ -738,7 +740,7 @@ class KardexHandoverNoteAdmin(admin.ModelAdmin):
 
 
 @admin.register(ShiftHandover)
-class ShiftHandoverAdmin(admin.ModelAdmin):
+class ShiftHandoverAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for ShiftHandover model."""
 
     list_display = [
@@ -817,7 +819,7 @@ class ShiftHandoverAdmin(admin.ModelAdmin):
 
 
 @admin.register(ReviewRequest)
-class ReviewRequestAdmin(admin.ModelAdmin):
+class ReviewRequestAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for ReviewRequest model."""
 
     list_display = [
@@ -901,7 +903,7 @@ class ReviewRequestAdmin(admin.ModelAdmin):
 
 
 @admin.register(SupervisorAlertAcknowledgment)
-class SupervisorAlertAcknowledgmentAdmin(admin.ModelAdmin):
+class SupervisorAlertAcknowledgmentAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for SupervisorAlertAcknowledgment model."""
 
     list_display = [
@@ -933,7 +935,7 @@ class SupervisorAlertAcknowledgmentAdmin(admin.ModelAdmin):
 
 
 @admin.register(TemperatureReading)
-class TemperatureReadingAdmin(admin.ModelAdmin):
+class TemperatureReadingAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for TemperatureReading model."""
 
     list_display = [
@@ -957,7 +959,7 @@ class TemperatureReadingAdmin(admin.ModelAdmin):
 
 
 @admin.register(BPMonitoringReading)
-class BPMonitoringReadingAdmin(admin.ModelAdmin):
+class BPMonitoringReadingAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for BPMonitoringReading model."""
 
     list_display = [
@@ -1010,7 +1012,7 @@ class FluidBalanceEntryInline(admin.TabularInline):
 
 
 @admin.register(FluidBalanceSheet)
-class FluidBalanceSheetAdmin(admin.ModelAdmin):
+class FluidBalanceSheetAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for FluidBalanceSheet model."""
 
     list_display = [
@@ -1052,7 +1054,7 @@ class FluidBalanceSheetAdmin(admin.ModelAdmin):
 
 
 @admin.register(FluidBalanceEntry)
-class FluidBalanceEntryAdmin(admin.ModelAdmin):
+class FluidBalanceEntryAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for FluidBalanceEntry model (standalone access)."""
 
     list_display = [
@@ -1098,7 +1100,7 @@ class TransfusionObservationEntryInline(admin.TabularInline):
 
 
 @admin.register(BloodTransfusionObservation)
-class BloodTransfusionObservationAdmin(admin.ModelAdmin):
+class BloodTransfusionObservationAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for BloodTransfusionObservation model."""
 
     list_display = [
@@ -1182,7 +1184,7 @@ class BloodTransfusionObservationAdmin(admin.ModelAdmin):
 
 
 @admin.register(TransfusionObservationEntry)
-class TransfusionObservationEntryAdmin(admin.ModelAdmin):
+class TransfusionObservationEntryAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for TransfusionObservationEntry model (standalone access)."""
 
     list_display = [
@@ -1211,7 +1213,7 @@ class TransfusionObservationEntryAdmin(admin.ModelAdmin):
 
 
 @admin.register(MedicationAdministration)
-class MedicationAdministrationAdmin(admin.ModelAdmin):
+class MedicationAdministrationAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for MedicationAdministration model."""
 
     list_display = [
@@ -1240,7 +1242,7 @@ class MedicationAdministrationAdmin(admin.ModelAdmin):
 
 
 @admin.register(AdverseTransfusionReaction)
-class AdverseTransfusionReactionAdmin(admin.ModelAdmin):
+class AdverseTransfusionReactionAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for Adverse Transfusion Reaction reports."""
 
     list_display = [
@@ -1395,7 +1397,7 @@ class AdverseTransfusionReactionAdmin(admin.ModelAdmin):
 
 
 @admin.register(DischargeTemplate)
-class DischargeTemplateAdmin(admin.ModelAdmin):
+class DischargeTemplateAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for DischargeTemplate model."""
 
     list_display = [
