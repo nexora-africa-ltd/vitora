@@ -87,6 +87,7 @@ export interface AuthState {
   tokens: AuthTokens | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  mustChangePassword: boolean;
 }
 
 // Auth context value
@@ -94,9 +95,10 @@ export interface AuthContextValue extends AuthState {
   login: (username: string, password: string) => Promise<LoginResult>;
   logout: () => void;
   refreshToken: () => Promise<void>;
-  verifyMFA: (mfaToken: string, options: { token?: string; backupCode?: string }) => Promise<void>;
-  verifyMFAWithWebAuthn: (mfaToken: string, credential: unknown) => Promise<void>;
+  verifyMFA: (mfaToken: string, options: { token?: string; backupCode?: string }) => Promise<MFAResult>;
+  verifyMFAWithWebAuthn: (mfaToken: string, credential: unknown) => Promise<MFAResult>;
   updateUserFacility: (facility: UserFacility | null) => void;
+  clearMustChangePassword: () => void;
 }
 
 // Login result type
@@ -112,11 +114,17 @@ export interface LoginResult {
   error?: string;
 }
 
+// MFA verification result type
+export interface MFAResult {
+  mustChangePassword?: boolean;
+}
+
 // Create context with undefined default
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 // Token storage keys — tokens are now in httpOnly cookies (not in localStorage)
 const USER_KEY = 'vitora_user';
+const MUST_CHANGE_PW_KEY = 'vitora_must_change_password';
 // Cookie name for middleware auth check (must match middleware.ts)
 const AUTH_COOKIE_NAME = 'vitora_authenticated';
 // Idle timer activity key (must match use-idle-timer.ts)
@@ -169,6 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tokens: null,
     isAuthenticated: false,
     isLoading: true,
+    mustChangePassword: false,
   });
 
   const syncUserFromBackend = useCallback(async (fallbackUser: User): Promise<User> => {
@@ -228,14 +237,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const userStr = localStorage.getItem(USER_KEY);
 
-        if (userStr) {
-          const storedUser = JSON.parse(userStr) as User;
-          setState({
-            user: storedUser,
-            tokens: null, // Tokens are in httpOnly cookies
-            isAuthenticated: true,
-            isLoading: false,
-          });
+if (userStr) {
+            const storedUser = JSON.parse(userStr) as User;
+            const storedMustChange = localStorage.getItem(MUST_CHANGE_PW_KEY) === 'true';
+            setState({
+              user: storedUser,
+              tokens: null,  // Tokens are in httpOnly cookies
+              isAuthenticated: true,
+              isLoading: false,
+              mustChangePassword: storedMustChange,
+            });
 
           // Verify auth is still valid by syncing from backend
           // (if the cookie has expired, this will fail and we'll clear state)
@@ -250,12 +261,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } catch {
             // Auth cookie expired — clear state + middleware cookie
             localStorage.removeItem(USER_KEY);
+            localStorage.removeItem(MUST_CHANGE_PW_KEY);
             document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
             setState({
               user: null,
               tokens: null,
               isAuthenticated: false,
               isLoading: false,
+              mustChangePassword: false,
             });
           }
         } else {
@@ -264,6 +277,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch {
         localStorage.removeItem(USER_KEY);
+        localStorage.removeItem(MUST_CHANGE_PW_KEY);
         document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
         setState((prev) => ({ ...prev, isLoading: false }));
       }
@@ -286,12 +300,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         // Cookie expired while hidden — clear auth and force redirect to login
         localStorage.removeItem(USER_KEY);
+        localStorage.removeItem(MUST_CHANGE_PW_KEY);
         document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
         setState({
           user: null,
           tokens: null,
           isAuthenticated: false,
           isLoading: false,
+          mustChangePassword: false,
         });
       }
     };
@@ -368,6 +384,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Store user profile (non-sensitive) in localStorage
       localStorage.setItem(USER_KEY, JSON.stringify(user));
+      if (data.must_change_password) {
+        localStorage.setItem(MUST_CHANGE_PW_KEY, 'true');
+      } else {
+        localStorage.removeItem(MUST_CHANGE_PW_KEY);
+      }
 
       // Reset idle timer
       localStorage.setItem(IDLE_ACTIVITY_KEY, Date.now().toString());
@@ -380,6 +401,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         tokens: null,  // Tokens are in httpOnly cookies
         isAuthenticated: true,
         isLoading: false,
+        mustChangePassword: !!data.must_change_password,
       });
 
       return {
@@ -466,6 +488,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Store user profile (non-sensitive)
       localStorage.setItem(USER_KEY, JSON.stringify(user));
+      if (data.must_change_password) {
+        localStorage.setItem(MUST_CHANGE_PW_KEY, 'true');
+      } else {
+        localStorage.removeItem(MUST_CHANGE_PW_KEY);
+      }
 
       // Reset idle timer
       localStorage.setItem(IDLE_ACTIVITY_KEY, Date.now().toString());
@@ -478,7 +505,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         tokens: null,  // Tokens are in httpOnly cookies
         isAuthenticated: true,
         isLoading: false,
+        mustChangePassword: !!data.must_change_password,
       });
+
+      return {
+        mustChangePassword: !!data.must_change_password,
+      };
     } catch (error) {
       setState((prev) => ({ ...prev, isLoading: false }));
       throw error;
@@ -553,6 +585,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       localStorage.setItem(USER_KEY, JSON.stringify(user));
+      if (data.must_change_password) {
+        localStorage.setItem(MUST_CHANGE_PW_KEY, 'true');
+      } else {
+        localStorage.removeItem(MUST_CHANGE_PW_KEY);
+      }
       localStorage.setItem(IDLE_ACTIVITY_KEY, Date.now().toString());
       document.cookie = `${AUTH_COOKIE_NAME}=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 
@@ -561,7 +598,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         tokens: null,
         isAuthenticated: true,
         isLoading: false,
+        mustChangePassword: !!data.must_change_password,
       });
+
+      return {
+        mustChangePassword: !!data.must_change_password,
+      };
     } catch (error) {
       setState((prev) => ({ ...prev, isLoading: false }));
       throw error;
@@ -581,6 +623,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Clear local data
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(MFA_GRACE_KEY);
+    localStorage.removeItem(MUST_CHANGE_PW_KEY);
 
     // Clear clinical form drafts to prevent data leaking on shared workstations
     clearAllDrafts();
@@ -593,6 +636,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tokens: null,
       isAuthenticated: false,
       isLoading: false,
+      mustChangePassword: false,
     });
   }, []);
 
@@ -629,6 +673,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Clear the must-change-password flag (called after successful password change)
+  const clearMustChangePassword = useCallback(() => {
+    localStorage.removeItem(MUST_CHANGE_PW_KEY);
+    setState((prev) => ({ ...prev, mustChangePassword: false }));
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -639,6 +689,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         verifyMFA,
         verifyMFAWithWebAuthn,
         updateUserFacility,
+        clearMustChangePassword,
       }}
     >
       {children}

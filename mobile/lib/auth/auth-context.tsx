@@ -87,6 +87,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       }
 
+      if (response.must_change_password) {
+        return {
+          success: false,
+          error: 'You must set a new password before signing in on mobile. Please sign in from the web app first.',
+        };
+      }
+
       if (!response.access || !response.refresh || !response.user) {
         return {
           success: false,

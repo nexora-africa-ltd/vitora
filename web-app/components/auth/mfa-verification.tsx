@@ -108,11 +108,16 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
         ? { token: token.replace(/\s/g, '') }
         : { backupCode: backupCode.replace(/\s/g, '') };
 
-      await verifyMFA(mfaToken, options);
+      const result = await verifyMFA(mfaToken, options);
       mfaToast.success();
 
       // Small delay to ensure localStorage writes are committed before navigation
       await new Promise(resolve => setTimeout(resolve, 100));
+
+      if (result.mustChangePassword) {
+        router.replace('/change-password');
+        return;
+      }
 
       // Use replace to prevent going back to login page. Preserve callbackUrl
       // when the user was bounced here from a protected route (e.g. idle logout).
@@ -160,10 +165,16 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
       // Complete authentication via the auth context so AuthGuard sees us as
       // authenticated (the backend additionally sets httpOnly cookies for web
       // clients so subsequent API calls do not 401).
-      await verifyMFAWithWebAuthn(mfaToken, credential);
+      const result = await verifyMFAWithWebAuthn(mfaToken, credential);
 
       mfaToast.success();
       await new Promise(resolve => setTimeout(resolve, 100));
+
+      if (result.mustChangePassword) {
+        router.replace('/change-password');
+        return;
+      }
+
       router.replace(resolvePostLoginPath());
     } catch (err) {
       if (err instanceof Error && err.name === 'NotAllowedError') {

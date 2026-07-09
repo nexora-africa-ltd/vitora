@@ -14,7 +14,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, Check, X, Loader2, Sparkles, Send } from 'lucide-react';
+import { Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, Check, X, Loader2, Sparkles, Send, Eye, EyeOff } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCreateStaffProfile, useDepartments, useRoles } from '@/lib/hooks/use-rbac';
@@ -66,7 +67,8 @@ export default function NewStaffPage() {
     tempPassword: string;
     fullName: string;
     email: string;
-  }>({ open: false, username: '', tempPassword: '', fullName: '', email: '' });
+    emailSent: boolean;
+  }>({ open: false, username: '', tempPassword: '', fullName: '', email: '', emailSent: false });
 
   // Invitation-specific form state
   const [inviteData, setInviteData] = useState({
@@ -128,7 +130,18 @@ export default function NewStaffPage() {
     specialization: '',
     hwr_national_id: '',
     hire_date: new Date(),
+    password: '',
+    confirm_password: '',
+    force_password_reset: true,
+    send_email: false,
   });
+
+  // Password visibility toggles
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // True when the admin is entering a manual password
+  const isManualPassword = formData.password.length > 0;
 
   useEffect(() => {
     if (!facility?.id) {
@@ -359,9 +372,7 @@ export default function NewStaffPage() {
     if (!formData.last_name.trim()) {
       newErrors.last_name = 'Last name is required';
     }
-    if (!formData.employee_id.trim()) {
-      newErrors.employee_id = 'Employee ID is required';
-    }
+    // Employee ID is optional; leave blank to auto-generate
     if (!formData.department) {
       newErrors.department = 'Department is required';
     }
@@ -370,6 +381,16 @@ export default function NewStaffPage() {
     }
     if (!formData.primary_facility) {
       newErrors.primary_facility = 'Primary facility is required';
+    }
+
+    // Manual password validation
+    if (formData.password) {
+      if (formData.password.length < 8) {
+        newErrors.password = 'Password must be at least 8 characters';
+      }
+      if (formData.password !== formData.confirm_password) {
+        newErrors.confirm_password = 'Passwords do not match';
+      }
     }
 
     setErrors(newErrors);
@@ -388,7 +409,7 @@ export default function NewStaffPage() {
         first_name: formData.first_name,
         last_name: formData.last_name,
         middle_name: formData.middle_name || undefined,
-        employee_id: formData.employee_id,
+        employee_id: formData.employee_id || undefined,
         department: parseInt(formData.department),
         role: parseInt(formData.role),
         primary_facility: parseInt(formData.primary_facility),
@@ -400,17 +421,21 @@ export default function NewStaffPage() {
         specialization: formData.specialization || undefined,
         hwr_national_id: formData.hwr_national_id || undefined,
         hire_date: formData.hire_date?.toISOString().split('T')[0],
+        password: formData.password || undefined,
+        must_change_password: formData.force_password_reset,
+        send_email: formData.send_email,
       });
 
-      // Check if response includes temp_password (direct creation)
-      const resultAny = result as unknown as Record<string, unknown>;
-      if (resultAny.temp_password) {
+      // Show credential dialog when a temp password was generated. If the admin
+      // entered a manual password, no credential is returned; just confirm success.
+      if (result.temp_password) {
         setCredentialDialog({
           open: true,
-          username: String(resultAny.user_username || formData.username),
-          tempPassword: String(resultAny.temp_password),
+          username: result.user_username || formData.username,
+          tempPassword: result.temp_password,
           fullName: `${formData.first_name} ${formData.last_name}`,
           email: formData.email,
+          emailSent: result.email_sent ?? false,
         });
       } else {
         toast({
@@ -999,9 +1024,7 @@ export default function NewStaffPage() {
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="employee_id">
-                  Employee ID <span className="text-destructive">*</span>
-                </Label>
+                <Label htmlFor="employee_id">Employee ID</Label>
                 <div className="relative">
                   <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -1010,13 +1033,16 @@ export default function NewStaffPage() {
                     name="employee_id"
                     value={formData.employee_id}
                     onChange={(e) => handleChange('employee_id', e.target.value)}
-                    placeholder="EMP-001…"
+                    placeholder="Auto-generated if blank"
                     className={`pl-9 ${errors.employee_id ? 'border-destructive' : ''}`}
                   />
                 </div>
                 {errors.employee_id && (
                   <p className="text-sm text-destructive">{errors.employee_id}</p>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  Leave blank to auto-generate (e.g., VH-2026-XXXX).
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="hire_date">Hire Date</Label>
@@ -1119,6 +1145,135 @@ export default function NewStaffPage() {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Password & Access
+            </CardTitle>
+            <CardDescription>
+              Set an initial password or let Vitora generate a secure one
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="password">Initial Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    autoComplete="new-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={(e) => handleChange('password', e.target.value)}
+                    placeholder="Leave blank to auto-generate"
+                    className={`pr-10 ${errors.password ? 'border-destructive' : ''}`}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
+                {errors.password && (
+                  <p className="text-sm text-destructive">{errors.password}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {isManualPassword
+                    ? 'You chose a manual password. Share it securely with the staff member.'
+                    : 'Vitora will generate a 16-character temporary password.'}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirm_password">Confirm Password</Label>
+                <div className="relative">
+                  <Input
+                    id="confirm_password"
+                    name="confirm_password"
+                    autoComplete="new-password"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={formData.confirm_password}
+                    onChange={(e) => handleChange('confirm_password', e.target.value)}
+                    placeholder="Re-enter manual password"
+                    disabled={!isManualPassword}
+                    className={`pr-10 ${errors.confirm_password ? 'border-destructive' : ''}`}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    disabled={!isManualPassword}
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
+                {errors.confirm_password && (
+                  <p className="text-sm text-destructive">{errors.confirm_password}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border/50 p-4 space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="force_password_reset" className="text-sm font-medium">
+                    Force password reset on first login
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    The staff member must set a new password before using the app.
+                  </p>
+                </div>
+                <Switch
+                  id="force_password_reset"
+                  checked={formData.force_password_reset}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev) => ({ ...prev, force_password_reset: checked }))
+                  }
+                  disabled={!isManualPassword}
+                />
+              </div>
+
+              {!isManualPassword && (
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="send_email" className="text-sm font-medium">
+                      Send welcome email with credentials
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Email the temporary username and password to the staff member.
+                    </p>
+                  </div>
+                  <Switch
+                    id="send_email"
+                    checked={formData.send_email}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev) => ({ ...prev, send_email: checked }))
+                    }
+                  />
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button variant="outline" type="button" asChild>
             <Link href="/admin/staff">Cancel</Link>
@@ -1143,6 +1298,7 @@ export default function NewStaffPage() {
         tempPassword={credentialDialog.tempPassword}
         fullName={credentialDialog.fullName}
         email={credentialDialog.email}
+        emailSent={credentialDialog.emailSent}
       />
     </div>
   );

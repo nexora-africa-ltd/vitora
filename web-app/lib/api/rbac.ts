@@ -40,6 +40,7 @@ import type {
   StaffProfile,
   StaffProfileCreateData,
   StaffProfileUpdateData,
+  StaffPasswordResetData,
   OrgMembership,
   OrgMembershipCreateData,
   OrgMembershipUpdateData,
@@ -193,6 +194,11 @@ export const staffApi = {
 
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/api/staff/${id}/`);
+  },
+
+  resetPassword: async (id: number, data: StaffPasswordResetData): Promise<StaffProfile> => {
+    const response = await apiClient.post<StaffProfile>(`/api/staff/${id}/reset-password/`, data);
+    return parseResponse(StaffProfileSchema, response.data, { context: 'staffApi.resetPassword' });
   },
 
   /**

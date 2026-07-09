@@ -11,13 +11,14 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
-import { Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, AlertTriangle, Users, Sparkles } from 'lucide-react';
+import { Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, AlertTriangle, Users, Sparkles, Lock, Eye, EyeOff } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -51,12 +52,22 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/lib/hooks/use-toast';
-import { useStaffProfile, useUpdateStaffProfile, useDeleteStaffProfile, useDepartments, useRoles, useStaffList, useOrgMemberships, useCreateOrgMembership, useUpdateOrgMembership, useDeleteOrgMembership } from '@/lib/hooks/use-rbac';
+import { useStaffProfile, useUpdateStaffProfile, useDeleteStaffProfile, useResetStaffPassword, useDepartments, useRoles, useStaffList, useOrgMemberships, useCreateOrgMembership, useUpdateOrgMembership, useDeleteOrgMembership } from '@/lib/hooks/use-rbac';
 import { facilitiesApi } from '@/lib/api/facilities';
 import { DHAPractitionerSearch } from '@/components/sha/practitioner-search';
+import { CredentialDialog } from '@/components/admin/credential-dialog';
 import type { DHAPractitioner } from '@/lib/types/sha';
 
 export default function EditStaffPage() {
@@ -68,6 +79,7 @@ export default function EditStaffPage() {
   const { data: staff, isLoading, error } = useStaffProfile(staffId);
   const updateStaff = useUpdateStaffProfile();
   const terminateStaff = useDeleteStaffProfile();
+  const resetPassword = useResetStaffPassword();
   const { data: orgMemberships } = useOrgMemberships({ staff_profile: staffId });
   const createMembership = useCreateOrgMembership();
   const updateMembership = useUpdateOrgMembership();
@@ -109,6 +121,24 @@ export default function EditStaffPage() {
   });
   const [membershipErrors, setMembershipErrors] = useState<Record<string, string>>({});
   const [hwrPopulated, setHwrPopulated] = useState(false);
+
+  // Reset password dialog state
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetPasswordValue, setResetPasswordValue] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  const [resetForceChange, setResetForceChange] = useState(true);
+  const [resetSendEmail, setResetSendEmail] = useState(false);
+  const [resetShowPassword, setResetShowPassword] = useState(false);
+  const [resetShowConfirmPassword, setResetShowConfirmPassword] = useState(false);
+  const [resetErrors, setResetErrors] = useState<Record<string, string>>({});
+  const [credentialDialog, setCredentialDialog] = useState<{
+    open: boolean;
+    username: string;
+    tempPassword: string;
+    fullName: string;
+    email: string;
+    emailSent: boolean;
+  }>({ open: false, username: '', tempPassword: '', fullName: '', email: '', emailSent: false });
 
   // Load staff data into form
   useEffect(() => {
@@ -284,6 +314,62 @@ export default function EditStaffPage() {
     }
   };
 
+  const validateResetPassword = () => {
+    const nextErrors: Record<string, string> = {};
+    if (resetPasswordValue && resetPasswordValue.length < 8) {
+      nextErrors.password = 'Password must be at least 8 characters';
+    }
+    if (resetPasswordValue && resetPasswordValue !== resetConfirmPassword) {
+      nextErrors.confirm_password = 'Passwords do not match';
+    }
+    setResetErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleResetPassword = async () => {
+    if (!validateResetPassword()) return;
+
+    try {
+      const result = await resetPassword.mutateAsync({
+        id: staffId,
+        data: {
+          password: resetPasswordValue || undefined,
+          must_change_password: resetForceChange,
+          send_email: resetSendEmail,
+        },
+      });
+
+      setResetDialogOpen(false);
+      setResetPasswordValue('');
+      setResetConfirmPassword('');
+      setResetForceChange(true);
+      setResetSendEmail(false);
+      setResetErrors({});
+
+      if (result.temp_password) {
+        setCredentialDialog({
+          open: true,
+          username: result.user_username,
+          tempPassword: result.temp_password,
+          fullName: result.full_name,
+          email: result.user_email,
+          emailSent: result.email_sent ?? false,
+        });
+      } else {
+        toast({
+          title: 'Password reset',
+          description: `Password for ${staff?.user_first_name} ${staff?.user_last_name} has been updated.`,
+        });
+      }
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to reset password',
+      });
+    }
+  };
+
   const validateMembership = () => {
     const nextErrors: Record<string, string> = {};
 
@@ -392,25 +478,175 @@ export default function EditStaffPage() {
         helpContent="Update account, assignment, and professional details for an existing staff record."
         actions={
           staff.employment_status === 'ACTIVE' ? (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm">Terminate</Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Terminate Staff Member?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will terminate {staff.user_first_name}&apos;s employment and revoke access to the system. They will no longer be able to log in.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeactivate}>
-                    Confirm Termination
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <div className="flex items-center gap-2">
+              <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <Lock className="h-4 w-4" />
+                    Reset Password
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Lock className="h-5 w-5" />
+                      Reset Password
+                    </DialogTitle>
+                    <DialogDescription>
+                      Set a new password for {staff.user_first_name} {staff.user_last_name}. Leave the password field blank to generate a secure temporary password.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4 py-2">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="reset_password">New Password</Label>
+                        <div className="relative">
+                          <Input
+                            id="reset_password"
+                            type={resetShowPassword ? 'text' : 'password'}
+                            value={resetPasswordValue}
+                            onChange={(e) => {
+                              setResetPasswordValue(e.target.value);
+                              if (resetErrors.password) setResetErrors((prev) => ({ ...prev, password: '' }));
+                            }}
+                            placeholder="Auto-generate"
+                            className={`pr-10 ${resetErrors.password ? 'border-destructive' : ''}`}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                            onClick={() => setResetShowPassword((prev) => !prev)}
+                            aria-label={resetShowPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {resetShowPassword ? (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </div>
+                        {resetErrors.password && (
+                          <p className="text-sm text-destructive">{resetErrors.password}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="reset_confirm_password">Confirm Password</Label>
+                        <div className="relative">
+                          <Input
+                            id="reset_confirm_password"
+                            type={resetShowConfirmPassword ? 'text' : 'password'}
+                            value={resetConfirmPassword}
+                            onChange={(e) => {
+                              setResetConfirmPassword(e.target.value);
+                              if (resetErrors.confirm_password) setResetErrors((prev) => ({ ...prev, confirm_password: '' }));
+                            }}
+                            placeholder="Re-enter password"
+                            disabled={!resetPasswordValue}
+                            className={`pr-10 ${resetErrors.confirm_password ? 'border-destructive' : ''}`}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                            onClick={() => setResetShowConfirmPassword((prev) => !prev)}
+                            disabled={!resetPasswordValue}
+                            aria-label={resetShowConfirmPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {resetShowConfirmPassword ? (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </div>
+                        {resetErrors.confirm_password && (
+                          <p className="text-sm text-destructive">{resetErrors.confirm_password}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-border/50 p-4 space-y-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="reset_force_change" className="text-sm font-medium">
+                            Force password reset on next login
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            The staff member must set a new password before using the app.
+                          </p>
+                        </div>
+                        <Switch
+                          id="reset_force_change"
+                          checked={resetForceChange}
+                          onCheckedChange={setResetForceChange}
+                          disabled={!resetPasswordValue}
+                        />
+                      </div>
+
+                      {!resetPasswordValue && (
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="reset_send_email" className="text-sm font-medium">
+                              Send welcome email with credentials
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                              Email the temporary username and password to the staff member.
+                            </p>
+                          </div>
+                          <Switch
+                            id="reset_send_email"
+                            checked={resetSendEmail}
+                            onCheckedChange={setResetSendEmail}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setResetDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleResetPassword}
+                      disabled={resetPassword.isPending}
+                    >
+                      {resetPassword.isPending ? 'Resetting…' : 'Reset Password'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm">Terminate</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Terminate Staff Member?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will terminate {staff.user_first_name}&apos;s employment and revoke access to the system. They will no longer be able to log in.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeactivate}>
+                      Confirm Termination
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           ) : null
         }
       />
@@ -988,6 +1224,16 @@ export default function EditStaffPage() {
           </Button>
         </div>
       </form>
+
+      <CredentialDialog
+        open={credentialDialog.open}
+        onClose={() => setCredentialDialog((prev) => ({ ...prev, open: false }))}
+        username={credentialDialog.username}
+        tempPassword={credentialDialog.tempPassword}
+        fullName={credentialDialog.fullName}
+        email={credentialDialog.email}
+        emailSent={credentialDialog.emailSent}
+      />
     </div>
   );
 }

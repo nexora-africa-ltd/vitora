@@ -32,5 +32,6 @@ export interface LoginResponse {
   mfa_required?: boolean;
   mfa_setup_required?: boolean;
   mfa_token?: string;
+  must_change_password?: boolean;
   user?: AuthUser;
 }

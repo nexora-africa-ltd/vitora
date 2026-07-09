@@ -29,6 +29,7 @@ export const LoginResponseSchema = z.object({
   mfa_required: z.boolean().optional(),
   mfa_setup_required: z.boolean().optional(),
   mfa_token: z.string().optional(),
+  must_change_password: z.boolean().optional(),
   user: AuthUserSchema.optional(),
 });
 

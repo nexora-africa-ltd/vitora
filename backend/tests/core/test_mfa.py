@@ -614,6 +614,33 @@ class TestMFALoginFlow:
         assert "user" in response.data
         assert response.data["user"]["username"] == "testuser"
 
+    def test_mfa_verify_returns_must_change_password(
+        self, api_client, test_user, test_staff_profile, db, settings
+    ):
+        """MFA verify should include must_change_password when the flag is set."""
+        settings.MFA_ENFORCEMENT = True
+        from hmis.apps.core.mfa.models import UserTOTPDevice
+
+        test_staff_profile.must_change_password = True
+        test_staff_profile.save(update_fields=["must_change_password"])
+
+        device = UserTOTPDevice.objects.create(user=test_user, name="Phone", confirmed=True)
+
+        login_response = api_client.post(
+            "/api/token/",
+            {"username": "testuser", "password": "testpassword123"},
+        )
+        mfa_token = login_response.data["mfa_token"]
+
+        response = api_client.post(
+            "/api/mfa/verify/",
+            {"mfa_token": mfa_token, "token": device.generate_token()},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "must_change_password" in response.data
+        assert response.data["must_change_password"] is True
+
     def test_mfa_verify_rejects_invalid_totp(self, api_client, test_user, db, settings):
         """Should reject invalid TOTP token."""
         settings.MFA_ENFORCEMENT = True

@@ -62,8 +62,9 @@ function AccessDenied() {
  * Wraps the dashboard layout to force navigation on auth loss.
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, mustChangePassword } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   // Redirect to login when session expires (e.g., desktop app restored from tray)
   useEffect(() => {
@@ -71,6 +72,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       router.replace('/login');
     }
   }, [isAuthenticated, isLoading, router]);
+
+  // Redirect to change-password when backend requires it (e.g., admin-generated credentials)
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && mustChangePassword && pathname !== '/change-password') {
+      router.replace('/change-password');
+    }
+  }, [isAuthenticated, isLoading, mustChangePassword, pathname, router]);
 
   if (isLoading) {
     return (

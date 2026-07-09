@@ -5,6 +5,7 @@
 
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
+import { z } from 'zod';
 import {
   StaffInvitationSchema,
   PaginatedInvitationSchema,
@@ -162,6 +163,15 @@ export const changePasswordApi = {
   change: async (data: ChangePasswordData): Promise<{ message: string }> => {
     const response = await apiClient.post('/api/core/auth/change-password/', data);
     return parseResponse(MessageResponseSchema, response.data, { context: 'changePasswordApi.change' });
+  },
+
+  validate: async (password: string): Promise<{ valid: boolean; errors?: string[] }> => {
+    const response = await apiClient.post('/api/core/auth/validate-password/', { password });
+    return parseResponse(
+      z.object({ valid: z.boolean(), errors: z.array(z.string()).optional() }),
+      response.data,
+      { context: 'changePasswordApi.validate' },
+    );
   },
 };
 

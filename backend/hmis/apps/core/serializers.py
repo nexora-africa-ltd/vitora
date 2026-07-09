@@ -516,7 +516,10 @@ class StaffProfileCreateSerializer(serializers.Serializer):
     password = serializers.CharField(max_length=128, required=False, write_only=True)
 
     # StaffProfile fields
-    employee_id = serializers.CharField(max_length=20)
+    employee_id = serializers.CharField(
+        max_length=20, required=False, allow_blank=True, allow_null=True
+    )
+    must_change_password = serializers.BooleanField(required=False, default=True)
     middle_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
     department = serializers.PrimaryKeyRelatedField(
         queryset=Department.objects.filter(is_active=True),
@@ -564,8 +567,8 @@ class StaffProfileCreateSerializer(serializers.Serializer):
         return value.lower()
 
     def validate_employee_id(self, value):
-        """Validate employee_id is unique."""
-        if StaffProfile.objects.filter(employee_id=value).exists():
+        """Validate employee_id is unique (skip when blank so auto-generation works)."""
+        if value and StaffProfile.objects.filter(employee_id=value).exists():
             raise serializers.ValidationError("This employee ID is already in use.")
         return value
 
@@ -584,6 +587,7 @@ class StaffProfileCreateSerializer(serializers.Serializer):
         first_name = validated_data.pop("first_name")
         last_name = validated_data.pop("last_name")
         password = validated_data.pop("password", None)
+        must_change_password = validated_data.pop("must_change_password", True)
 
         # Generate a random password if not provided
         password_was_generated = False
@@ -595,6 +599,11 @@ class StaffProfileCreateSerializer(serializers.Serializer):
         if "date_joined" not in validated_data or validated_data.get("date_joined") is None:
             validated_data["date_joined"] = date.today()
 
+        # Allow the model to auto-generate employee_id when blank/None
+        employee_id = validated_data.get("employee_id")
+        if not employee_id:
+            validated_data.pop("employee_id", None)
+
         # Create the user
         user = User.objects.create_user(
             username=username,
@@ -604,8 +613,11 @@ class StaffProfileCreateSerializer(serializers.Serializer):
             password=password,
         )
 
-        # Set must_change_password for direct creation
-        validated_data["must_change_password"] = True
+        # Generated passwords must force a reset on first login. Manual passwords
+        # respect the admin's choice (default True for defense in depth).
+        if password_was_generated:
+            must_change_password = True
+        validated_data["must_change_password"] = must_change_password
 
         # Create the staff profile
         staff_profile = StaffProfile.objects.create(user=user, **validated_data)
@@ -615,6 +627,20 @@ class StaffProfileCreateSerializer(serializers.Serializer):
         staff_profile._password_was_generated = password_was_generated
 
         return staff_profile
+
+
+class StaffPasswordResetSerializer(serializers.Serializer):
+    """Serializer for admin-initiated staff password resets."""
+
+    password = serializers.CharField(max_length=128, required=False, write_only=True)
+    must_change_password = serializers.BooleanField(required=False, default=True)
+    send_email = serializers.BooleanField(required=False, default=False)
+
+    def validate_password(self, value):
+        """Reject common weak passwords when set manually."""
+        if value and len(value) < 8:
+            raise serializers.ValidationError("Password must be at least 8 characters.")
+        return value
 
 
 class OrgChartSummarySerializer(serializers.Serializer):
@@ -1888,6 +1914,22 @@ class ChangePasswordSerializer(serializers.Serializer):
         if data["new_password"] != data["confirm_password"]:
             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
         return data
+
+
+class PasswordValidationSerializer(serializers.Serializer):
+    """Validate a password against Django's AUTH_PASSWORD_VALIDATORS."""
+
+    password = serializers.CharField(min_length=1, max_length=128, write_only=True)
+
+    def validate_password(self, value):
+        """Run Django password validators and return error messages."""
+        from django.contrib.auth.password_validation import validate_password
+
+        try:
+            validate_password(value)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(e.messages) from None
+        return value
 
 
 class InvitationPublicSerializer(serializers.ModelSerializer):
