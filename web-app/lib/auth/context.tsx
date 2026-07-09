@@ -259,6 +259,12 @@ if (userStr) {
               }));
             }
           } catch {
+            // Sync failed — if mustChangePassword is set, don't clear auth.
+            // The user has a valid session but is restricted to password change.
+            if (storedMustChange) {
+              setState((prev) => ({ ...prev, isLoading: false }));
+              return;
+            }
             // Auth cookie expired — clear state + middleware cookie
             localStorage.removeItem(USER_KEY);
             localStorage.removeItem(MUST_CHANGE_PW_KEY);
