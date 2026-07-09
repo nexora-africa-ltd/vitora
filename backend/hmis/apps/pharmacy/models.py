@@ -28,12 +28,15 @@ from hmis.apps.core.history import HistoryMixin
 from hmis.apps.core.mixins import FacilityScopedModel
 
 
-def generate_prescription_number():
+def generate_prescription_number(facility=None):
     """
     Generate a unique Prescription Number.
 
     Format: RX-YYYYMMDD-XXXX
     Where XXXX is a 4-digit sequential number for the day.
+
+    Args:
+        facility: Facility instance to scope the number generation.
 
     Returns:
         str: A unique prescription number string
@@ -44,12 +47,11 @@ def generate_prescription_number():
     # Get the Prescription model via the app registry to avoid circular imports
     Prescription = apps.get_model("pharmacy", "Prescription")
 
-    # Find the highest prescription number for today
-    latest_prescription = (
-        Prescription.objects.filter(prescription_number__startswith=prefix)
-        .order_by("-prescription_number")
-        .first()
-    )
+    # Find the highest prescription number for today within the same facility
+    qs = Prescription.objects.filter(prescription_number__startswith=prefix)
+    if facility:
+        qs = qs.filter(facility=facility)
+    latest_prescription = qs.order_by("-prescription_number").first()
 
     if latest_prescription:
         # Extract the sequence number and increment
@@ -620,7 +622,6 @@ class Prescription(HistoryMixin, FacilityScopedModel):
     # Prescription number (auto-generated)
     prescription_number = models.CharField(
         max_length=50,
-        unique=True,
         editable=False,
         help_text="Prescription Number (auto-generated, format: RX-YYYYMMDD-XXXX)",
     )
@@ -728,6 +729,12 @@ class Prescription(HistoryMixin, FacilityScopedModel):
 
     class Meta:
         ordering = ["-prescribed_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "prescription_number"],
+                name="unique_prescription_number_per_facility",
+            ),
+        ]
         indexes = [
             models.Index(fields=["prescription_number"]),
             models.Index(fields=["status"]),
@@ -739,7 +746,7 @@ class Prescription(HistoryMixin, FacilityScopedModel):
     def save(self, *args, **kwargs):
         """Override save to auto-generate prescription number."""
         if not self.prescription_number:
-            self.prescription_number = generate_prescription_number()
+            self.prescription_number = generate_prescription_number(facility=self.facility)
         super().save(*args, **kwargs)
 
     def is_valid(self) -> bool:

@@ -2284,7 +2284,6 @@ class SHAClaim(FacilityScopedModel):
     # Claim identification
     claim_number = models.CharField(
         max_length=30,
-        unique=True,
         editable=False,
         help_text="Internal claim reference (format: CLM-YYYYMMDD-XXXX)",
     )
@@ -2458,6 +2457,12 @@ class SHAClaim(FacilityScopedModel):
         verbose_name = "SHA Claim"
         verbose_name_plural = "SHA Claims"
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "claim_number"],
+                name="unique_claim_number_per_facility",
+            ),
+        ]
         indexes = [
             models.Index(fields=["claim_number"]),
             models.Index(fields=["sha_claim_reference"]),
@@ -2477,7 +2482,7 @@ class SHAClaim(FacilityScopedModel):
     def save(self, *args, **kwargs):
         """Override save to generate claim number, auto-resolve tenant, and run validation."""
         if not self.claim_number:
-            self.claim_number = self.generate_claim_number()
+            self.claim_number = self.generate_claim_number(facility=self.facility)
         # Auto-resolve facility from encounter if not explicitly set
         if not self.facility_id and self.encounter_id:
             try:
@@ -2531,18 +2536,18 @@ class SHAClaim(FacilityScopedModel):
         if errors:
             raise ValidationError(errors)
 
-    @staticmethod
-    def generate_claim_number() -> str:
+    @classmethod
+    def generate_claim_number(cls, facility=None) -> str:
         """Generate unique claim number in format CLM-YYYYMMDD-XXXX."""
         today = date.today()
         date_str = today.strftime("%Y%m%d")
         prefix = f"CLM-{date_str}-"
 
-        last_claim = (
-            SHAClaim.objects.filter(claim_number__startswith=prefix)
-            .order_by("-claim_number")
-            .first()
-        )
+        # Facility scoping: only look for the highest number within this facility
+        qs = cls.objects.filter(claim_number__startswith=prefix)
+        if facility:
+            qs = qs.filter(facility=facility)
+        last_claim = qs.order_by("-claim_number").first()
 
         if last_claim:
             last_seq = int(last_claim.claim_number.split("-")[-1])

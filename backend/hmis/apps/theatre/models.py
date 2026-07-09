@@ -148,7 +148,7 @@ class SurgeryCase(FacilityScopedModel, TimeStampedModel):
     }
 
     # Identity — auto-generated: SURG-YYYYMMDD-XXXX
-    case_number = models.CharField(max_length=30, unique=True, editable=False)
+    case_number = models.CharField(max_length=30, editable=False)
 
     # Patient & encounter
     patient = models.ForeignKey(
@@ -259,6 +259,12 @@ class SurgeryCase(FacilityScopedModel, TimeStampedModel):
             ("manage_theatre", "Can manage theatre schedules and cases"),
             ("document_surgery", "Can document operative notes"),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "case_number"],
+                name="unique_case_number_per_facility",
+            ),
+        ]
         indexes = [
             models.Index(fields=["case_number"]),
             models.Index(fields=["status"]),
@@ -279,11 +285,14 @@ class SurgeryCase(FacilityScopedModel, TimeStampedModel):
         super().save(*args, **kwargs)
 
     def _generate_case_number(self) -> str:
-        """Generate unique case number: SURG-YYYYMMDD-XXXX."""
+        """Generate unique case number per facility: SURG-YYYYMMDD-XXXX."""
         today = timezone.now().date()
         prefix = f"SURG-{today.strftime('%Y%m%d')}-"
         last = (
-            SurgeryCase.objects.filter(case_number__startswith=prefix)
+            SurgeryCase.objects.filter(
+                case_number__startswith=prefix,
+                facility=self.facility,
+            )
             .order_by("-case_number")
             .first()
         )

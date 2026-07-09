@@ -760,7 +760,6 @@ class Admission(FacilityScopedModel, TimeStampedModel):
     # Admission details
     admission_number = models.CharField(
         max_length=50,
-        unique=True,
         editable=False,
         help_text="Unique admission number (ADM-YYYYMMDD-XXXX)",
     )
@@ -873,6 +872,11 @@ class Admission(FacilityScopedModel, TimeStampedModel):
                 condition=models.Q(admission_status="ACTIVE"),
                 name="unique_active_admission_per_bed",
             ),
+            # Unique admission number per facility
+            models.UniqueConstraint(
+                fields=["facility", "admission_number"],
+                name="unique_admission_number_per_facility",
+            ),
         ]
         permissions = [
             ("receive_critical_alerts", "Can receive critical ward-compatibility alerts"),
@@ -924,10 +928,11 @@ class Admission(FacilityScopedModel, TimeStampedModel):
         today = self.admission_date.strftime("%Y%m%d")
         prefix = f"ADM-{today}-"
 
-        # Get the last admission number for today
-        last_admission = Admission.objects.filter(admission_number__startswith=prefix).aggregate(
-            Max("admission_number")
-        )["admission_number__max"]
+        # Get the last admission number for today within the same facility
+        last_admission = Admission.objects.filter(
+            admission_number__startswith=prefix,
+            facility=self.facility,
+        ).aggregate(Max("admission_number"))["admission_number__max"]
 
         if last_admission:
             # Extract sequence number and increment
