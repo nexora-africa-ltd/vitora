@@ -5,11 +5,13 @@ Django admin configuration for laboratory models.
 
 from django.contrib import admin
 
+from hmis.apps.core.mixins import TenantScopedAdminMixin
+
 from .models import LabOrder, LabOrderItem, LabResult, LOINCCode, Specimen, TestCatalog
 
 
 @admin.register(TestCatalog)
-class TestCatalogAdmin(admin.ModelAdmin):
+class TestCatalogAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for Test Catalog."""
 
     list_display = ("code", "name", "category", "specimen_type", "cost", "facility", "is_active")
@@ -20,7 +22,7 @@ class TestCatalogAdmin(admin.ModelAdmin):
 
 
 @admin.register(LOINCCode)
-class LOINCCodeAdmin(admin.ModelAdmin):
+class LOINCCodeAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for LOINC codes."""
 
     list_display = ("code", "short_name", "component", "system")
@@ -28,7 +30,7 @@ class LOINCCodeAdmin(admin.ModelAdmin):
 
 
 @admin.register(LabOrder)
-class LabOrderAdmin(admin.ModelAdmin):
+class LabOrderAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for Lab Orders."""
 
     list_display = ("order_number", "patient", "status", "priority", "ordered_at")
@@ -39,7 +41,7 @@ class LabOrderAdmin(admin.ModelAdmin):
 
 
 @admin.register(LabOrderItem)
-class LabOrderItemAdmin(admin.ModelAdmin):
+class LabOrderItemAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for Lab Order Items."""
 
     list_display = ("lab_order", "test", "status", "unit_cost")
@@ -48,7 +50,7 @@ class LabOrderItemAdmin(admin.ModelAdmin):
 
 
 @admin.register(LabResult)
-class LabResultAdmin(admin.ModelAdmin):
+class LabResultAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for Lab Results."""
 
     list_display = ("order_item", "result_flag", "verification_status", "entered_at")
@@ -58,7 +60,7 @@ class LabResultAdmin(admin.ModelAdmin):
 
 
 @admin.register(Specimen)
-class SpecimenAdmin(admin.ModelAdmin):
+class SpecimenAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for Specimens."""
 
     list_display = ("barcode", "specimen_type", "status", "lab_order", "collected_at")

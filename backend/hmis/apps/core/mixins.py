@@ -519,6 +519,69 @@ class TenantScopedViewMixin:
         serializer.save(**self.get_tenant_save_kwargs())
 
 
+class TenantScopedAdminMixin:
+    """
+    Admin mixin that adds tenant fields to list_display / list_filter /
+    raw_id_fields and scopes the queryset by facility / organization
+    for non-superusers (future-proof — AdminAccessMiddleware currently
+    restricts /admin/ to superusers).
+
+    Auto-sets tenant FKs from ``request`` when creating records.
+    """
+
+    def _model_has_field(self, field_name: str) -> bool:
+        try:
+            return any(
+                f.name == field_name
+                for f in (self.model._meta.concrete_fields + self.model._meta.many_to_many)
+            )
+        except Exception:  # noqa: S110
+            return False
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        user = getattr(request, "user", None)
+        if user and user.is_superuser:
+            return qs
+        facility = getattr(request, "facility", None)
+        org = getattr(request, "organization", None)
+        if facility and self._model_has_field("facility"):
+            qs = qs.filter(facility=facility)
+        elif org and self._model_has_field("organization"):
+            qs = qs.filter(organization=org)
+        return qs
+
+    def get_list_display(self, request):
+        display = list(super().get_list_display(request))
+        if self._model_has_field("facility") and "facility" not in display:
+            display.append("facility")
+        return display
+
+    def get_list_filter(self, request):
+        filters = list(super().get_list_filter(request))
+        if self._model_has_field("facility") and "facility" not in filters:
+            filters.append("facility")
+        if self._model_has_field("organization") and "organization" not in filters:
+            filters.append("organization")
+        return filters
+
+    def get_raw_id_fields(self, request):
+        fields = set(super().get_raw_id_fields(request) or [])
+        if self._model_has_field("facility"):
+            fields.add("facility")
+        if self._model_has_field("organization"):
+            fields.add("organization")
+        return list(fields)
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            if hasattr(obj, "facility_id") and not obj.facility_id:
+                obj.facility = getattr(request, "facility", None)
+            if hasattr(obj, "organization_id") and not obj.organization_id:
+                obj.organization = getattr(request, "organization", None)
+        super().save_model(request, obj, form, change)
+
+
 class ReadOnCreateMixin:
     """
     Re-serialize the 201 response using the read/detail serializer.

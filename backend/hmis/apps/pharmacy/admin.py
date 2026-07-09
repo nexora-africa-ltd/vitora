@@ -3,6 +3,8 @@
 
 from django.contrib import admin
 
+from hmis.apps.core.mixins import TenantScopedAdminMixin
+
 from .models import (
     AlertSettings,
     Dispensing,
@@ -16,7 +18,7 @@ from .models import (
 
 
 @admin.register(Drug)
-class DrugAdmin(admin.ModelAdmin):
+class DrugAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = (
         "id",
         "code",

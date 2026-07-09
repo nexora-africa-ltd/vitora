@@ -9,6 +9,8 @@ viewing cases, and monitoring alerts.
 from django.contrib import admin
 from django.utils.html import format_html
 
+from hmis.apps.core.mixins import TenantScopedAdminMixin
+
 from .models import (
     DHIS2DataElementMapping,
     IDSRDiseaseSummary,
@@ -24,7 +26,7 @@ from .models import (
 
 
 @admin.register(NotifiableDisease)
-class NotifiableDiseaseAdmin(admin.ModelAdmin):
+class NotifiableDiseaseAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin for NotifiableDisease model."""
 
     list_display = [
@@ -57,7 +59,7 @@ class NotifiableDiseaseAdmin(admin.ModelAdmin):
 
 
 @admin.register(NotifiableCase)
-class NotifiableCaseAdmin(admin.ModelAdmin):
+class NotifiableCaseAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin for NotifiableCase model."""
 
     list_display = [
@@ -180,7 +182,7 @@ class NotifiableCaseAdmin(admin.ModelAdmin):
 
 
 @admin.register(SurveillanceAlert)
-class SurveillanceAlertAdmin(admin.ModelAdmin):
+class SurveillanceAlertAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin for SurveillanceAlert model."""
 
     list_display = [
@@ -226,7 +228,7 @@ class SurveillanceAlertAdmin(admin.ModelAdmin):
 
 
 @admin.register(OutbreakThreshold)
-class OutbreakThresholdAdmin(admin.ModelAdmin):
+class OutbreakThresholdAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin for OutbreakThreshold model."""
 
     list_display = [
@@ -292,7 +294,7 @@ class IDSRDiseaseSummaryInline(admin.TabularInline):
 
 
 @admin.register(IDSRWeeklyReport)
-class IDSRWeeklyReportAdmin(admin.ModelAdmin):
+class IDSRWeeklyReportAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin for IDSRWeeklyReport model."""
 
     list_display = [
@@ -403,7 +405,7 @@ class IDSRWeeklyReportAdmin(admin.ModelAdmin):
 
 
 @admin.register(DHIS2DataElementMapping)
-class DHIS2DataElementMappingAdmin(admin.ModelAdmin):
+class DHIS2DataElementMappingAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """
     Admin for DHIS2 Data Element Mappings.
 
@@ -525,7 +527,7 @@ class DHIS2DataElementMappingAdmin(admin.ModelAdmin):
 
 
 @admin.register(IHRNotification)
-class IHRNotificationAdmin(admin.ModelAdmin):
+class IHRNotificationAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin for IHRNotification model."""
 
     list_display = [
