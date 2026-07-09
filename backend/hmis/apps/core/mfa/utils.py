@@ -22,7 +22,9 @@ def is_mfa_enabled(user: "AbstractUser") -> bool:
     """
     Check if MFA is enabled for a user.
 
-    MFA is considered enabled if the user has at least one confirmed TOTP device.
+    MFA is considered enabled if the user has at least one confirmed TOTP device
+    or at least one WebAuthn credential, AND MFA has not been administratively
+    disabled on their staff profile.
 
     Args:
         user: User to check
@@ -31,6 +33,10 @@ def is_mfa_enabled(user: "AbstractUser") -> bool:
         bool: True if MFA is enabled
     """
     from django.db.utils import OperationalError, ProgrammingError
+
+    profile = getattr(user, "staff_profile", None)
+    if profile and profile.mfa_disabled:
+        return False
 
     from hmis.apps.core.mfa.models import UserTOTPDevice, UserWebAuthnCredential
 
@@ -65,6 +71,11 @@ def is_mfa_required(user: "AbstractUser") -> bool:
     from django.conf import settings
 
     if not getattr(settings, "MFA_ENFORCEMENT", True):
+        return False
+
+    # Administratively disabled — override all role requirements
+    profile = getattr(user, "staff_profile", None)
+    if profile and profile.mfa_disabled:
         return False
 
     # Superusers always require MFA
