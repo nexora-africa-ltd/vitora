@@ -147,6 +147,26 @@ class TestCloudDownwardSyncSignal:
         assert entry.operation == "UPDATE"
 
     @override_settings(SYNC_ENABLED=True, ENVIRONMENT="production")
+    def test_staff_profile_save_creates_json_safe_synced_entry(self, test_staff_profile):
+        """StaffProfile changes on cloud should produce a JSON-safe downward sync entry."""
+        import json
+
+        SyncQueue.objects.all().delete()
+
+        test_staff_profile.mfa_disabled = True
+        test_staff_profile.save()
+
+        entry = SyncQueue.objects.filter(
+            model_name="core.StaffProfile",
+            record_id=test_staff_profile.pk,
+        ).last()
+        assert entry is not None
+        assert entry.status == "SYNCED"
+        assert entry.operation == "UPDATE"
+        # Regression: the payload must be re-serializable by the DB JSON encoder.
+        assert isinstance(json.dumps(entry.data), str)
+
+    @override_settings(SYNC_ENABLED=True, ENVIRONMENT="production")
     def test_onboarding_completion_creates_sync_entry(self, sample_organization):
         """Onboarding completion on cloud should be pullable by hubs."""
         SyncQueue.objects.all().delete()
