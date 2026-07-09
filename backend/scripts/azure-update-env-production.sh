@@ -17,7 +17,7 @@
 set -euo pipefail
 
 RG="vitora-rg"
-APP_NAME="vitora-api-prod"
+APP_NAME="${ACA_NAME:-vitora-api-prod}"
 LOCATION="eastus"
 
 FQDN=$(az containerapp show \

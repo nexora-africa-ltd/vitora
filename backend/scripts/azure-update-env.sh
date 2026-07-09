@@ -23,7 +23,7 @@ set -euo pipefail
 
 # Must match azure-setup.sh
 RG="vitora-rg"
-APP_NAME="vitora-api"
+APP_NAME="${ACA_NAME:-vitora-api}"
 LOCATION="eastus"
 
 FQDN=$(az containerapp show \
