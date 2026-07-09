@@ -6,7 +6,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Save, Building2, MapPin, Shield, Loader2, Boxes } from 'lucide-react';
+import { Save, Building2, MapPin, Shield, Loader2, Boxes, Fingerprint } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -79,6 +79,10 @@ const MODULE_LABELS: { key: string; label: string }[] = [
   { key: 'has_billing', label: 'Finance / Billing' },
   { key: 'has_private_insurance', label: 'Private Insurance' },
   { key: 'has_moh_reporting', label: 'MOH Reports' },
+  { key: 'has_ai_assistant', label: 'TibaBot AI Assistant' },
+  { key: 'has_cds', label: 'Clinical Decision Support' },
+  { key: 'has_procedures', label: 'Procedures' },
+  { key: 'has_analytics', label: 'Analytics' },
 ];
 
 /**
@@ -119,6 +123,10 @@ export default function EditFacilityPage() {
     sha_contract_expiry: '',
     operating_mode: 'FULL_HMIS' as FacilityOperatingMode,
     is_active: true,
+    workstation_id: '',
+    biometrics_enforced: false,
+    biometrics_agent_national_id: '',
+    dhis2_org_unit: '',
     // Module flags
     has_outpatient: false,
     has_inpatient: false,
@@ -145,6 +153,10 @@ export default function EditFacilityPage() {
     has_billing: true,
     has_private_insurance: false,
     has_moh_reporting: true,
+    has_ai_assistant: false,
+    has_cds: false,
+    has_procedures: false,
+    has_analytics: false,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -169,6 +181,10 @@ export default function EditFacilityPage() {
         sha_contract_expiry: facility.sha_contract_expiry || '',
         operating_mode: (facility.operating_mode as FacilityOperatingMode | undefined) ?? 'FULL_HMIS',
         is_active: facility.is_active,
+        workstation_id: facility.workstation_id || '',
+        biometrics_enforced: facility.biometrics_enforced ?? false,
+        biometrics_agent_national_id: facility.biometrics_agent_national_id || '',
+        dhis2_org_unit: facility.dhis2_org_unit || '',
         has_outpatient: facility.has_outpatient,
         has_inpatient: facility.has_inpatient,
         has_emergency: facility.has_emergency,
@@ -194,6 +210,10 @@ export default function EditFacilityPage() {
         has_billing: facility.has_billing,
         has_private_insurance: facility.has_private_insurance,
         has_moh_reporting: facility.has_moh_reporting,
+        has_ai_assistant: facility.has_ai_assistant,
+        has_cds: facility.has_cds,
+        has_procedures: facility.has_procedures,
+        has_analytics: facility.has_analytics,
       });
       setCountyId(facility.county);
       setSubCountyId(facility.sub_county);
@@ -273,6 +293,10 @@ export default function EditFacilityPage() {
       sha_contract_expiry: formData.sha_contract_expiry || null,
       operating_mode: formData.operating_mode,
       is_active: formData.is_active,
+      workstation_id: formData.workstation_id || undefined,
+      biometrics_enforced: formData.biometrics_enforced,
+      biometrics_agent_national_id: formData.biometrics_agent_national_id || undefined,
+      dhis2_org_unit: formData.dhis2_org_unit || undefined,
       has_outpatient: formData.has_outpatient,
       has_inpatient: formData.has_inpatient,
       has_emergency: formData.has_emergency,
@@ -296,6 +320,12 @@ export default function EditFacilityPage() {
       has_allied_health: formData.has_allied_health,
       has_quality: formData.has_quality,
       has_billing: formData.has_billing,
+      has_private_insurance: formData.has_private_insurance,
+      has_moh_reporting: formData.has_moh_reporting,
+      has_ai_assistant: formData.has_ai_assistant,
+      has_cds: formData.has_cds,
+      has_procedures: formData.has_procedures,
+      has_analytics: formData.has_analytics,
     };
     updateFacility.mutate(payload);
   };
@@ -414,6 +444,55 @@ export default function EditFacilityPage() {
                 </div>
               </>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Integrations & Biometrics */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Fingerprint className="h-4 w-4 text-muted-foreground" />
+              Integrations & Biometrics
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="dhis2_org_unit">DHIS2 Organisation Unit UID</Label>
+              <Input
+                id="dhis2_org_unit"
+                placeholder="e.g. nK071D5AAo3"
+                value={formData.dhis2_org_unit}
+                onChange={(e) => handleChange('dhis2_org_unit', e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Used for MOH aggregate reporting and DHIS2 submission.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="workstation_id">Biometric Workstation ID</Label>
+              <Input
+                id="workstation_id"
+                placeholder="e.g. WS-001"
+                value={formData.workstation_id}
+                onChange={(e) => handleChange('workstation_id', e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Identifies this workstation for DHA biometric consent.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="biometrics_agent_national_id">Biometric Agent National ID</Label>
+              <Input
+                id="biometrics_agent_national_id"
+                placeholder="National ID of the authorizing agent"
+                value={formData.biometrics_agent_national_id}
+                onChange={(e) => handleChange('biometrics_agent_national_id', e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">National ID of the staff member registered with DHA for biometric authorization.</p>
+            </div>
+            <div className="flex items-center gap-3 pt-4">
+              <Switch checked={formData.biometrics_enforced} onCheckedChange={(v) => handleChange('biometrics_enforced', v)} />
+              <div>
+                <Label>Biometrics enforced</Label>
+                <p className="text-xs text-muted-foreground">When enabled, OTP-only consent is blocked.</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
