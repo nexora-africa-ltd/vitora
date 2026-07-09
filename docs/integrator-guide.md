@@ -127,7 +127,189 @@ curl -X POST https://tibabot.vitora.nexora.africa/icd10/code \
 
 ---
 
-## 4. Webhooks
+## 4. TibaBot SDKs
+
+TibaBot provides official SDKs in Python, JavaScript/TypeScript, and Dart/Flutter.
+The SDKs wrap the REST API with typed request/response models, automatic
+authentication, configurable timeouts, and structured exceptions. For the
+complete SDK reference, sample applications, and embedded widget examples, see
+`docs/sdk_implementation_guide.md`.
+
+### 4.1 Available SDKs
+
+| SDK | Location | Install target |
+|-----|----------|----------------|
+| Python | `sdk/python/tibabot/` | `pip install tibabot-client` |
+| JavaScript/TypeScript | `sdk/javascript/` | `npm install tibabot-client` |
+| Dart/Flutter | `sdk/flutter/` | Git dependency (`sdk/flutter`) |
+
+### 4.2 Installation
+
+**Python**
+
+```bash
+pip install tibabot-client
+```
+
+**JavaScript/TypeScript**
+
+```bash
+npm install tibabot-client
+```
+
+
+**Dart/Flutter**
+
+```yaml
+# pubspec.yaml
+dependencies:
+  tibabot_client:
+    git:
+      url: https://github.com/nexora-africa-ltd/tibabot.git
+      path: sdk/flutter
+```
+
+### 4.3 Authentication
+
+All SDKs accept either a facility/practitioner API key or a short-lived bearer
+token (used for SMART-on-FHIR / user-scoped flows).
+
+```python
+from tibabot import TibaBotClient
+client = TibaBotClient(
+    base_url="https://tibabot.vitora.nexora.africa",
+    api_key="tbf_your_key_here",
+)
+```
+
+```typescript
+import { TibaBotClient } from "tibabot-client";
+const client = new TibaBotClient({
+  baseUrl: "https://tibabot.vitora.nexora.africa",
+  apiKey: "tbf_your_key_here",
+});
+```
+
+```dart
+import 'package:tibabot_client/tibabot_client.dart';
+final client = TibaBotClient(apiKey: 'tbf_your_key_here');
+```
+
+### 4.4 Common SDK Workflows
+
+#### Symptom triage
+
+```python
+from tibabot import TriageRequest
+triage = client.triage(TriageRequest(symptoms=["fever", "headache"]))
+print(triage.triage_level)
+```
+
+```typescript
+const triage = await client.triage({ symptoms: ["fever", "headache"] });
+console.log(triage.triage_level);
+```
+
+```dart
+final triage = await client.triage(TriageRequest(symptoms: ['fever', 'headache']));
+print(triage.triageLevel);
+```
+
+#### Clinical decision support
+
+```python
+from tibabot import ClinicalAssistRequest
+assist = client.clinical_assist(
+    ClinicalAssistRequest(
+        query="Treatment for uncomplicated malaria in pregnancy",
+        context={"age": 28, "sex": "F", "pregnant": True},
+    )
+)
+print(assist.recommendation)
+```
+
+#### Patient platform
+
+```python
+from tibabot import CreatePatientRequest, VitalsRequest
+patient = client.create_patient(
+    CreatePatientRequest(demographics={"age": 30, "sex": "F"})
+)
+vitals = client.record_vitals(
+    patient.patient_id,
+    VitalsRequest(vital_type="blood_pressure", value="120/80"),
+)
+print(vitals.timestamp)
+```
+
+### 4.5 Error handling
+
+SDKs raise typed exceptions that map to the HTTP status codes described in
+Section 6. Catch them by type:
+
+```python
+from tibabot import TibaBotError, RateLimitError, ValidationError
+try:
+    client.triage(TriageRequest(symptoms=[]))
+except ValidationError as e:
+    print("Validation:", e.details)
+except RateLimitError as e:
+    print(f"Retry after {e.retry_after}s")
+except TibaBotError as e:
+    print(f"API error: {e}")
+```
+
+```typescript
+import { ValidationError, RateLimitError, TibaBotError } from "tibabot-client";
+try {
+  await client.triage({ symptoms: [] });
+} catch (e) {
+  if (e instanceof ValidationError) console.log("Validation:", e.details);
+  else if (e instanceof RateLimitError) console.log(`Retry after ${e.retryAfter}s`);
+  else if (e instanceof TibaBotError) console.log("API error:", e.message);
+}
+```
+
+```dart
+try {
+  await client.triage(TriageRequest(symptoms: []));
+} on TibaBotValidationError catch (e) {
+  print('Validation: ${e.details}');
+} on TibaBotRateLimitError {
+  print('Rate limited');
+} on TibaBotError catch (e) {
+  print('Error: ${e.message}');
+}
+```
+
+### 4.6 Rate limiting and retries
+
+The SDKs do not retry automatically on `429 Too Many Requests`. Read the
+`Retry-After` value from the rate-limit exception (Python/JS) or implement an
+exponential backoff. See Section 7 for the authenticated and unauthenticated
+rate-limit tiers.
+
+### 4.7 Embedded UI widgets
+
+For no-code integration, drop a vanilla-JS web component into any page:
+
+```html
+<script src="https://cdn.tibabot.health/widgets/tibabot-chat.js"></script>
+<tibabot-chat
+  api-key="tbf_your_key_here"
+  base-url="https://tibabot.vitora.nexora.africa"
+  title="Clinical Assistant"
+></tibabot-chat>
+```
+
+A triage widget is also available at
+`https://cdn.tibabot.health/widgets/tibabot-triage.js`. See
+`docs/sdk_implementation_guide.md` for full attribute lists, React/Vue/Angular
+integration, and framework-specific mobile examples.
+
+---
+
+## 5. Webhooks
 
 TibaBot can push events to your endpoint for real-time integration.
 
@@ -175,7 +357,7 @@ assert hmac.compare_digest(expected, received_signature)
 
 ---
 
-## 5. Error Handling
+## 6. Error Handling
 
 All errors return JSON:
 
@@ -201,7 +383,7 @@ All errors return JSON:
 
 ---
 
-## 6. Rate Limiting
+## 7. Rate Limiting
 
 | Tier | Limit |
 |------|-------|
@@ -215,7 +397,7 @@ On 429, wait the number of seconds specified in `Retry-After` before retrying.
 
 ---
 
-## 7. Pagination
+## 8. Pagination
 
 List endpoints support pagination via `?page=` and `?limit=`:
 
@@ -227,7 +409,7 @@ Responses include `total`, `page`, `limit`, and `pages` in the response body.
 
 ---
 
-## 8. Idempotency
+## 9. Idempotency
 
 For critical POST endpoints (e.g., creating patients, logging encounters), you
 can provide an `Idempotency-Key` header. If a request fails (network error,
@@ -236,7 +418,7 @@ window.
 
 ---
 
-## 9. Versioning
+## 10. Versioning
 
 TibaBot does not use URL path versioning. Breaking changes are announced with
 a **minimum 90-day deprecation notice** via the `Sunset` response header on
@@ -245,7 +427,7 @@ affected endpoints. Pin your integration to a specific build by checking the
 
 ---
 
-## 10. Support
+## 11. Support
 
 - **Issues:** Report bugs via the support channel provided during onboarding
 - **Changes:** Subscribe to the changelog (URL provided during onboarding)
@@ -253,7 +435,7 @@ affected endpoints. Pin your integration to a specific build by checking the
 
 ---
 
-## 11. Changelog
+## 12. Changelog
 
 | Date | Change |
 |------|--------|
@@ -499,5 +681,3 @@ affected endpoints. Pin your integration to a specific build by checking the
 | `GET /stats` | None | API usage statistics |
 | `GET /rate-limit` | None | Current rate limit status |
 | `POST /auth/validate` | None | Validate API key |
-
-For a complete internal reference, see `docs/api-guide.md`.
