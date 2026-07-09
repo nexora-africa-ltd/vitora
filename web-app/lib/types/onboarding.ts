@@ -97,6 +97,7 @@ export interface ChangePasswordData {
   current_password?: string;
   new_password: string;
   confirm_password: string;
+  reset_token?: string;
 }
 
 // =============================================================================

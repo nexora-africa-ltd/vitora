@@ -30,7 +30,7 @@ interface FacilityContextValue {
 const FacilityContext = createContext<FacilityContextValue | undefined>(undefined);
 
 export function FacilityProvider({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, mustChangePassword } = useAuth();
   const [facilityOverride, setFacilityOverrideState] = useState<UserFacility | null>(null);
 
   const assignedFacility = useMemo(() => user?.facility ?? null, [user]);
@@ -77,12 +77,14 @@ export function FacilityProvider({ children }: { children: ReactNode }) {
     return assignedFacility;
   }, [assignedFacility, facilityOverride]);
 
-  // Fetch full facility detail (location, SHA info, etc.) via React Query
+  // Fetch full facility detail (location, SHA info, etc.) via React Query.
+  // Disabled when mustChangePassword is set — the session is restricted
+  // and all API calls except password endpoints return 401.
   const facilityId = facility?.id ?? null;
   const { data: facilityDetail = null } = useQuery({
     queryKey: ['facility-detail', facilityId],
     queryFn: () => facilitiesApi.get(facilityId as number),
-    enabled: facilityId !== null,
+    enabled: facilityId !== null && !mustChangePassword,
     staleTime: 5 * 60 * 1000,  // 5 minutes — facility data rarely changes
     gcTime: 30 * 60 * 1000,    // 30 minutes
   });

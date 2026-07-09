@@ -88,6 +88,7 @@ export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   mustChangePassword: boolean;
+  resetToken: string | null;
 }
 
 // Auth context value
@@ -99,6 +100,7 @@ export interface AuthContextValue extends AuthState {
   verifyMFAWithWebAuthn: (mfaToken: string, credential: unknown) => Promise<MFAResult>;
   updateUserFacility: (facility: UserFacility | null) => void;
   clearMustChangePassword: () => void;
+  clearResetToken: () => void;
 }
 
 // Login result type
@@ -110,6 +112,7 @@ export interface LoginResult {
   mfaGraceDeadline?: string;    // ISO 8601 — when MFA setup grace period expires
   mfaGraceExpired?: boolean;    // true if grace period already passed
   mustChangePassword?: boolean;
+  passwordResetToken?: string;
   availableMethods?: string[];  // e.g. ['totp', 'webauthn', 'backup_code']
   error?: string;
 }
@@ -117,6 +120,7 @@ export interface LoginResult {
 // MFA verification result type
 export interface MFAResult {
   mustChangePassword?: boolean;
+  passwordResetToken?: string;
 }
 
 // Create context with undefined default
@@ -125,6 +129,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 // Token storage keys — tokens are now in httpOnly cookies (not in localStorage)
 const USER_KEY = 'vitora_user';
 const MUST_CHANGE_PW_KEY = 'vitora_must_change_password';
+const RESET_TOKEN_KEY = 'vitora_reset_token';
 // Cookie name for middleware auth check (must match middleware.ts)
 const AUTH_COOKIE_NAME = 'vitora_authenticated';
 // Idle timer activity key (must match use-idle-timer.ts)
@@ -178,6 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: false,
     isLoading: true,
     mustChangePassword: false,
+    resetToken: null,
   });
 
   const syncUserFromBackend = useCallback(async (fallbackUser: User): Promise<User> => {
@@ -240,42 +246,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 if (userStr) {
             const storedUser = JSON.parse(userStr) as User;
             const storedMustChange = localStorage.getItem(MUST_CHANGE_PW_KEY) === 'true';
+            const storedResetToken = localStorage.getItem(RESET_TOKEN_KEY) || null;
             setState({
               user: storedUser,
               tokens: null,  // Tokens are in httpOnly cookies
               isAuthenticated: true,
               isLoading: false,
               mustChangePassword: storedMustChange,
+              resetToken: storedResetToken,
             });
 
-          // Verify auth is still valid by syncing from backend
-          // (if the cookie has expired, this will fail and we'll clear state)
-          try {
-            const syncedUser = await syncUserFromBackend(storedUser);
-            if (JSON.stringify(syncedUser) !== JSON.stringify(storedUser)) {
-              setState((prev) => ({
-                ...prev,
-                user: syncedUser,
-              }));
+          // Verify auth is still valid by syncing from backend.
+          // Skip when mustChangePassword is set — the API will reject with 401
+          // because the user has a restricted session, and the axios interceptor
+          // would redirect to /login via handleAuthError().
+          if (!storedMustChange) {
+            try {
+              const syncedUser = await syncUserFromBackend(storedUser);
+              if (JSON.stringify(syncedUser) !== JSON.stringify(storedUser)) {
+                setState((prev) => ({
+                  ...prev,
+                  user: syncedUser,
+                }));
+              }
+            } catch {
+              // Auth cookie expired — clear state + middleware cookie
+              localStorage.removeItem(USER_KEY);
+              localStorage.removeItem(MUST_CHANGE_PW_KEY);
+              localStorage.removeItem(RESET_TOKEN_KEY);
+              document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+              setState({
+                user: null,
+                tokens: null,
+                isAuthenticated: false,
+                isLoading: false,
+                mustChangePassword: false,
+                resetToken: null,
+              });
             }
-          } catch {
-            // Sync failed — if mustChangePassword is set, don't clear auth.
-            // The user has a valid session but is restricted to password change.
-            if (storedMustChange) {
-              setState((prev) => ({ ...prev, isLoading: false }));
-              return;
-            }
-            // Auth cookie expired — clear state + middleware cookie
-            localStorage.removeItem(USER_KEY);
-            localStorage.removeItem(MUST_CHANGE_PW_KEY);
-            document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-            setState({
-              user: null,
-              tokens: null,
-              isAuthenticated: false,
-              isLoading: false,
-              mustChangePassword: false,
-            });
           }
         } else {
           document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
@@ -284,6 +292,7 @@ if (userStr) {
       } catch {
         localStorage.removeItem(USER_KEY);
         localStorage.removeItem(MUST_CHANGE_PW_KEY);
+        localStorage.removeItem(RESET_TOKEN_KEY);
         document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
         setState((prev) => ({ ...prev, isLoading: false }));
       }
@@ -314,6 +323,7 @@ if (userStr) {
           isAuthenticated: false,
           isLoading: false,
           mustChangePassword: false,
+          resetToken: null,
         });
       }
     };
@@ -392,8 +402,14 @@ if (userStr) {
       localStorage.setItem(USER_KEY, JSON.stringify(user));
       if (data.must_change_password) {
         localStorage.setItem(MUST_CHANGE_PW_KEY, 'true');
+        if (data.password_reset_token) {
+          localStorage.setItem(RESET_TOKEN_KEY, data.password_reset_token);
+        } else {
+          localStorage.removeItem(RESET_TOKEN_KEY);
+        }
       } else {
         localStorage.removeItem(MUST_CHANGE_PW_KEY);
+        localStorage.removeItem(RESET_TOKEN_KEY);
       }
 
       // Reset idle timer
@@ -408,11 +424,13 @@ if (userStr) {
         isAuthenticated: true,
         isLoading: false,
         mustChangePassword: !!data.must_change_password,
+        resetToken: data.password_reset_token || null,
       });
 
       return {
         success: true,
         mustChangePassword: !!data.must_change_password,
+        passwordResetToken: data.password_reset_token,
         mfaSetupRequired: !!data.mfa_setup_required,
         mfaGraceDeadline: data.mfa_grace_deadline || undefined,
         mfaGraceExpired: !!data.mfa_grace_expired,
@@ -496,8 +514,14 @@ if (userStr) {
       localStorage.setItem(USER_KEY, JSON.stringify(user));
       if (data.must_change_password) {
         localStorage.setItem(MUST_CHANGE_PW_KEY, 'true');
+        if (data.password_reset_token) {
+          localStorage.setItem(RESET_TOKEN_KEY, data.password_reset_token);
+        } else {
+          localStorage.removeItem(RESET_TOKEN_KEY);
+        }
       } else {
         localStorage.removeItem(MUST_CHANGE_PW_KEY);
+        localStorage.removeItem(RESET_TOKEN_KEY);
       }
 
       // Reset idle timer
@@ -512,10 +536,12 @@ if (userStr) {
         isAuthenticated: true,
         isLoading: false,
         mustChangePassword: !!data.must_change_password,
+        resetToken: data.password_reset_token || null,
       });
 
       return {
         mustChangePassword: !!data.must_change_password,
+        passwordResetToken: data.password_reset_token,
       };
     } catch (error) {
       setState((prev) => ({ ...prev, isLoading: false }));
@@ -593,8 +619,14 @@ if (userStr) {
       localStorage.setItem(USER_KEY, JSON.stringify(user));
       if (data.must_change_password) {
         localStorage.setItem(MUST_CHANGE_PW_KEY, 'true');
+        if (data.password_reset_token) {
+          localStorage.setItem(RESET_TOKEN_KEY, data.password_reset_token);
+        } else {
+          localStorage.removeItem(RESET_TOKEN_KEY);
+        }
       } else {
         localStorage.removeItem(MUST_CHANGE_PW_KEY);
+        localStorage.removeItem(RESET_TOKEN_KEY);
       }
       localStorage.setItem(IDLE_ACTIVITY_KEY, Date.now().toString());
       document.cookie = `${AUTH_COOKIE_NAME}=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
@@ -605,10 +637,12 @@ if (userStr) {
         isAuthenticated: true,
         isLoading: false,
         mustChangePassword: !!data.must_change_password,
+        resetToken: data.password_reset_token || null,
       });
 
       return {
         mustChangePassword: !!data.must_change_password,
+        passwordResetToken: data.password_reset_token,
       };
     } catch (error) {
       setState((prev) => ({ ...prev, isLoading: false }));
@@ -630,6 +664,7 @@ if (userStr) {
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(MFA_GRACE_KEY);
     localStorage.removeItem(MUST_CHANGE_PW_KEY);
+    localStorage.removeItem(RESET_TOKEN_KEY);
 
     // Clear clinical form drafts to prevent data leaking on shared workstations
     clearAllDrafts();
@@ -643,6 +678,7 @@ if (userStr) {
       isAuthenticated: false,
       isLoading: false,
       mustChangePassword: false,
+      resetToken: null,
     });
   }, []);
 
@@ -685,6 +721,12 @@ if (userStr) {
     setState((prev) => ({ ...prev, mustChangePassword: false }));
   }, []);
 
+  // Clear the password reset token (called after logout or successful password change)
+  const clearResetToken = useCallback(() => {
+    localStorage.removeItem(RESET_TOKEN_KEY);
+    setState((prev) => ({ ...prev, resetToken: null }));
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -696,6 +738,7 @@ if (userStr) {
         verifyMFAWithWebAuthn,
         updateUserFacility,
         clearMustChangePassword,
+        clearResetToken,
       }}
     >
       {children}

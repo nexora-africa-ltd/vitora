@@ -199,6 +199,15 @@ apiClient.interceptors.response.use(
 
     // Handle 401 Unauthorized — try cookie-based refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // On the change-password page the session is restricted —
+      // don't redirect to /login, just reject silently.
+      if (
+        typeof window !== 'undefined' &&
+        window.location.pathname === '/change-password'
+      ) {
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({

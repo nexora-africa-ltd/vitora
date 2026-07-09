@@ -53,7 +53,7 @@ from hmis.apps.core.mfa.serializers import (
     WebAuthnRegisterCompleteSerializer,
 )
 from hmis.apps.core.mfa.utils import get_client_ip, get_mfa_status, is_mfa_required
-from hmis.apps.core.models import AuditLog
+from hmis.apps.core.models import AuditLog, PasswordResetToken
 from hmis.apps.core.permissions import WriteRequiresRolePermission
 
 logger = logging.getLogger(__name__)
@@ -436,14 +436,18 @@ class MFAVerifyView(APIView):
             hasattr(user, "staff_profile") and user.staff_profile.must_change_password
         )
 
-        return Response(
-            {
-                "access": str(refresh.access_token),
-                "refresh": str(refresh),
-                "must_change_password": must_change_password,
-                "user": _build_user_info(user),
-            }
-        )
+        response_data = {
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "must_change_password": must_change_password,
+            "user": _build_user_info(user),
+        }
+
+        if must_change_password:
+            reset_token = PasswordResetToken.objects.create(user=user)
+            response_data["password_reset_token"] = str(reset_token.token)
+
+        return Response(response_data)
 
 
 class BackupCodesDownloadView(APIView):
@@ -1038,14 +1042,18 @@ class WebAuthnAuthenticateCompleteView(APIView):
             hasattr(user, "staff_profile") and user.staff_profile.must_change_password
         )
 
-        response = Response(
-            {
-                "access": access_token,
-                "refresh": refresh_token,
-                "must_change_password": must_change_password,
-                "user": _build_user_info(user),
-            }
-        )
+        response_data = {
+            "access": access_token,
+            "refresh": refresh_token,
+            "must_change_password": must_change_password,
+            "user": _build_user_info(user),
+        }
+
+        if must_change_password:
+            reset_token = PasswordResetToken.objects.create(user=user)
+            response_data["password_reset_token"] = str(reset_token.token)
+
+        response = Response(response_data)
 
         # Set httpOnly auth cookies for web clients so that subsequent API
         # calls (which rely on cookie-based auth in web mode) succeed

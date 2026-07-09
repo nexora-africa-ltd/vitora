@@ -1889,13 +1889,19 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 
 class ChangePasswordSerializer(serializers.Serializer):
-    """Change password (authenticated, for must_change_password flow)."""
+    """Change password (authenticated or via reset_token, for must_change_password flow)."""
 
     current_password = serializers.CharField(
         max_length=128,
         write_only=True,
         required=False,
-        help_text="Required unless the user has must_change_password=True.",
+        help_text="Required unless the user has must_change_password=True or reset_token is provided.",
+    )
+    reset_token = serializers.UUIDField(
+        write_only=True,
+        required=False,
+        help_text="One-time token issued on login when must_change_password is True. "
+        "When provided, authentication is not required and current_password is skipped.",
     )
     new_password = serializers.CharField(min_length=8, max_length=128, write_only=True)
     confirm_password = serializers.CharField(max_length=128, write_only=True)
