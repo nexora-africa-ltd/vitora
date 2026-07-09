@@ -11,6 +11,7 @@ Two independent signal paths:
 from __future__ import annotations
 
 import json
+import logging
 
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
@@ -27,6 +28,8 @@ from hmis.apps.core.sync_registry import (
     is_downward_sync_model,
     is_upward_sync_model,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def get_model_label(instance) -> str:
@@ -60,11 +63,68 @@ def should_queue_downward_sync(model_label: str) -> bool:
     return is_downward_sync_model(model_label)
 
 
+def _make_json_safe(data: dict) -> dict:
+    """Return a copy of *data* with values safe for JSONField storage.
+
+    Ensures date/time, UUID, Decimal and other Django-friendly values become
+    JSON-safe primitives before the payload is stored in SyncQueue.data.
+    """
+    return json.loads(json.dumps(data, cls=DjangoJSONEncoder))
+
+
+def _find_non_serializable(obj, path="root"):
+    """Yield (path, value) tuples for values that cannot be JSON-encoded."""
+    try:
+        json.dumps(obj, cls=DjangoJSONEncoder)
+        return
+    except (TypeError, ValueError):
+        pass
+
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            yield from _find_non_serializable(value, f"{path}.{key}")
+    elif isinstance(obj, (list, tuple)):
+        for index, value in enumerate(obj):
+            yield from _find_non_serializable(value, f"{path}[{index}]")
+    else:
+        yield path, obj
+
+
+def _create_sync_queue_entry(**kwargs) -> SyncQueue | None:
+    """Create a SyncQueue entry, logging (but not raising) serialization errors.
+
+    The caller has already persisted the underlying model change; failing to
+    queue the sync entry should not roll that change back or surface a 500.
+    """
+    try:
+        return SyncQueue.objects.create(**kwargs)
+    except TypeError as exc:
+        model_name = kwargs.get("model_name")
+        record_id = kwargs.get("record_id")
+        data = kwargs.get("data", {})
+        logger.exception(
+            "Sync queue payload for %s:%s is not JSON serializable: %s",
+            model_name,
+            record_id,
+            exc,
+        )
+        for bad_path, bad_value in _find_non_serializable(data):
+            logger.error(
+                "Non-serializable sync value at %s for %s:%s: %r (type=%s)",
+                bad_path,
+                model_name,
+                record_id,
+                bad_value,
+                type(bad_value).__name__,
+            )
+        return None
+
+
 def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) -> dict:
     """Serialize a model instance into JSON-safe sync data."""
     model_label = get_model_label(instance)
     if model_label == "auth.User":
-        return _with_relation_hints(
+        data = _with_relation_hints(
             {
                 "id": instance.pk,
                 "username": instance.username,
@@ -76,8 +136,7 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
             },
             instance,
         )
-
-    if model_label == "core.StaffProfile":
+    elif model_label == "core.StaffProfile":
         # `username` is denormalized here so the cloud can resolve the linked
         # user even if the hub's local PK collides with an existing cloud
         # user's PK (see `_upsert_hub_user` soft-link logic).
@@ -87,7 +146,7 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
         department = getattr(instance, "primary_department", None)
         organization = getattr(instance, "organization", None)
         facility = getattr(instance, "primary_facility", None)
-        return _with_relation_hints(
+        data = _with_relation_hints(
             {
                 "id": instance.pk,
                 "user_id": instance.user_id,
@@ -122,12 +181,11 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
             },
             instance,
         )
-
-    if model_label == "core.Role":
+    elif model_label == "core.Role":
         organization = getattr(instance, "organization", None)
         facility = getattr(instance, "facility", None)
         parent_role = getattr(instance, "parent_role", None)
-        return _with_relation_hints(
+        data = _with_relation_hints(
             {
                 "id": instance.pk,
                 "code": instance.code or "",
@@ -153,14 +211,13 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
             },
             instance,
         )
-
-    if model_label == "core.Department":
+    elif model_label == "core.Department":
         organization = getattr(instance, "organization", None)
         facility = getattr(instance, "facility", None)
         parent = getattr(instance, "parent", None)
         head = getattr(instance, "head", None)
         head_user = getattr(head, "user", None) if head is not None else None
-        return _with_relation_hints(
+        data = _with_relation_hints(
             {
                 "id": instance.pk,
                 "code": instance.code or "",
@@ -185,8 +242,7 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
             },
             instance,
         )
-
-    if model_label == "core.OrgMembership":
+    elif model_label == "core.OrgMembership":
         staff_profile = getattr(instance, "staff_profile", None)
         staff_user = getattr(staff_profile, "user", None) if staff_profile is not None else None
         organization = getattr(instance, "organization", None)
@@ -195,7 +251,7 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
         facility_mfl_codes = (
             list(instance.facilities.values_list("mfl_code", flat=True)) if instance.pk else []
         )
-        return _with_relation_hints(
+        data = _with_relation_hints(
             {
                 "id": instance.pk,
                 "staff_profile_id": instance.staff_profile_id,
@@ -227,14 +283,13 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
             },
             instance,
         )
-
-    if model_label == "scheduling.Resource":
+    elif model_label == "scheduling.Resource":
         organization = getattr(instance, "organization", None)
         facility = getattr(instance, "facility", None)
         department = getattr(instance, "department", None)
         staff_profile = getattr(instance, "staff_profile", None)
         staff_user = getattr(staff_profile, "user", None) if staff_profile is not None else None
-        return _with_relation_hints(
+        data = _with_relation_hints(
             {
                 "id": instance.pk,
                 "name": instance.name,
@@ -263,13 +318,12 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
             },
             instance,
         )
-
-    if model_label == "clinics.Clinic":
+    elif model_label == "clinics.Clinic":
         organization = getattr(instance, "organization", None)
         facility = getattr(instance, "facility", None)
         department = getattr(instance, "department", None)
         scheduling_resource = getattr(instance, "scheduling_resource", None)
-        return _with_relation_hints(
+        data = _with_relation_hints(
             {
                 "id": instance.pk,
                 "name": instance.name,
@@ -313,21 +367,22 @@ def serialize_instance_for_sync(instance, *, exclude_fields: tuple[str, ...]) ->
             },
             instance,
         )
+    else:
+        data = _serialize_all_concrete_fields(instance, exclude_fields)
+        # Preserve M2M relations as PK lists (model_to_dict used to do this for us).
+        for m2m_field in instance._meta.many_to_many:
+            if m2m_field.name in exclude_fields:
+                continue
+            try:
+                data[m2m_field.name] = list(
+                    getattr(instance, m2m_field.name).values_list("pk", flat=True)
+                )
+            except Exception:  # noqa: BLE001 — unsaved instances, etc.
+                data[m2m_field.name] = []
+        data["id"] = instance.pk
+        data = _with_relation_hints(data, instance)
 
-    data = _serialize_all_concrete_fields(instance, exclude_fields)
-    # Preserve M2M relations as PK lists (model_to_dict used to do this for us).
-    for m2m_field in instance._meta.many_to_many:
-        if m2m_field.name in exclude_fields:
-            continue
-        try:
-            data[m2m_field.name] = list(
-                getattr(instance, m2m_field.name).values_list("pk", flat=True)
-            )
-        except Exception:  # noqa: BLE001 — unsaved instances, etc.
-            data[m2m_field.name] = []
-    data["id"] = instance.pk
-    json_safe = json.loads(json.dumps(data, cls=DjangoJSONEncoder))
-    return _with_relation_hints(json_safe, instance)
+    return _make_json_safe(data)
 
 
 def _serialize_all_concrete_fields(instance, exclude_fields: tuple[str, ...]) -> dict:
@@ -664,7 +719,7 @@ def auto_queue_for_sync(sender, instance, created, raw=False, **kwargs):  # noqa
     data = add_sync_meta(data, direction=entry.direction, priority=entry.priority)
     organization, facility = get_tenant_context(instance)
 
-    SyncQueue.objects.create(
+    _create_sync_queue_entry(
         operation="CREATE" if created else "UPDATE",
         organization=organization,
         facility=facility,
@@ -690,7 +745,7 @@ def auto_queue_delete_for_sync(sender, instance, **kwargs):  # noqa: ARG001
         return
 
     organization, facility = get_tenant_context(instance)
-    SyncQueue.objects.create(
+    _create_sync_queue_entry(
         operation="DELETE",
         organization=organization,
         facility=facility,
@@ -735,7 +790,7 @@ def requeue_org_membership_on_facility_m2m(sender, instance, action, **kwargs): 
     data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
     data = add_sync_meta(data, direction=entry.direction, priority=entry.priority)
     organization, facility = get_tenant_context(instance)
-    SyncQueue.objects.create(
+    _create_sync_queue_entry(
         operation="UPDATE",
         organization=organization,
         facility=facility,
@@ -796,7 +851,7 @@ def auto_queue_downward_sync(sender, instance, created, raw=False, **kwargs):  #
     data = add_sync_meta(data, direction=entry.direction, priority=entry.priority)
     organization, facility = get_tenant_context(instance)
 
-    SyncQueue.objects.create(
+    _create_sync_queue_entry(
         operation="CREATE" if created else "UPDATE",
         organization=organization,
         facility=facility,
@@ -823,7 +878,7 @@ def auto_queue_downward_delete(sender, instance, **kwargs):  # noqa: ARG001
         return
 
     organization, facility = get_tenant_context(instance)
-    SyncQueue.objects.create(
+    _create_sync_queue_entry(
         operation="DELETE",
         organization=organization,
         facility=facility,
