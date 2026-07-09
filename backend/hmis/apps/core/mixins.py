@@ -575,10 +575,12 @@ class TenantScopedAdminMixin:
 
     def save_model(self, request, obj, form, change):
         if not change:
-            if hasattr(obj, "facility_id") and not obj.facility_id:
-                obj.facility = getattr(request, "facility", None)
-            if hasattr(obj, "organization_id") and not obj.organization_id:
-                obj.organization = getattr(request, "organization", None)
+            facility = getattr(request, "facility", None)
+            if facility and hasattr(obj, "facility_id") and not obj.facility_id:
+                obj.facility = facility
+            org = getattr(request, "organization", None)
+            if org and hasattr(obj, "organization_id") and not obj.organization_id:
+                obj.organization = org
         super().save_model(request, obj, form, change)
 
 
