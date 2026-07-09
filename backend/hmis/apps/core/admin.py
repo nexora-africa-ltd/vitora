@@ -80,8 +80,8 @@ class UserAdmin(BaseUserAdmin):
     def get_list_display(self, request):
         return super().get_list_display(request) + ("mfa_status",)
 
-    def get_form(self, request, obj=None, change=False, **kwargs):
-        form = super().get_form(request, obj, change, **kwargs)
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
         initial_mfa = False
         if obj is not None:
             profile = getattr(obj, "staff_profile", None)
