@@ -38,6 +38,7 @@ from .models import (
     Notification,
     Organization,
     OrgMembership,
+    PasswordResetToken,
     PushSubscription,
     Role,
     StaffProfile,
@@ -641,6 +642,8 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                 # Check must_change_password flag
                 if hasattr(user, "staff_profile") and user.staff_profile.must_change_password:
                     response.data["must_change_password"] = True
+                    reset_token = PasswordResetToken.objects.create(user=user)
+                    response.data["password_reset_token"] = str(reset_token.token)
                 else:
                     response.data["must_change_password"] = False
 

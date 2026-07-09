@@ -30,41 +30,58 @@ interface PasswordValidationState {
 }
 
 function getBackendErrorMessage(err: unknown): { message: string; fieldErrors?: Record<string, string[]> } {
-  if (!(err instanceof AxiosError)) {
-    return { message: err instanceof Error ? err.message : 'Failed to change password' };
-  }
-
-  const data = err.response?.data;
-  if (!data || typeof data !== 'object') {
-    return { message: err.message || 'Failed to change password' };
-  }
-
-  // Collect field-level errors
-  const fieldErrors: Record<string, string[]> = {};
-  for (const [key, value] of Object.entries(data)) {
-    if (Array.isArray(value)) {
-      fieldErrors[key] = value.map((v) => (typeof v === 'string' ? v : String(v)));
-    } else if (typeof value === 'string') {
-      fieldErrors[key] = [value];
+  if (err instanceof AxiosError) {
+    const data = err.response?.data;
+    if (!data || typeof data !== 'object') {
+      return { message: err.message || 'Failed to change password' };
     }
+    const fieldErrors: Record<string, string[]> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (Array.isArray(value)) {
+        fieldErrors[key] = value.map((v) => (typeof v === 'string' ? v : String(v)));
+      } else if (typeof value === 'string') {
+        fieldErrors[key] = [value];
+      }
+    }
+    const messages: string[] = [];
+    if (fieldErrors.new_password) messages.push(...fieldErrors.new_password);
+    if (fieldErrors.confirm_password) messages.push(...fieldErrors.confirm_password);
+    if (fieldErrors.current_password) messages.push(...fieldErrors.current_password);
+    if (fieldErrors.non_field_errors) messages.push(...fieldErrors.non_field_errors);
+    if (data.detail && typeof data.detail === 'string') messages.push(data.detail);
+    const message = messages.length > 0 ? messages.join(' ') : err.message || 'Failed to change password';
+    return { message, fieldErrors };
   }
 
-  // Prefer a readable single message
-  const messages: string[] = [];
-  if (fieldErrors.new_password) messages.push(...fieldErrors.new_password);
-  if (fieldErrors.confirm_password) messages.push(...fieldErrors.confirm_password);
-  if (fieldErrors.current_password) messages.push(...fieldErrors.current_password);
-  if (fieldErrors.non_field_errors) messages.push(...fieldErrors.non_field_errors);
-  if (data.detail && typeof data.detail === 'string') messages.push(data.detail);
+  // Plain Error with { response } attached (from fetch-based API)
+  const plain = err as Error & { response?: { status: number; data: Record<string, unknown> } };
+  if (plain.response?.data) {
+    const data = plain.response.data;
+    const fieldErrors: Record<string, string[]> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (Array.isArray(value)) {
+        fieldErrors[key] = value.map((v) => (typeof v === 'string' ? v : String(v)));
+      } else if (typeof value === 'string') {
+        fieldErrors[key] = [value];
+      }
+    }
+    const messages: string[] = [];
+    if (fieldErrors.new_password) messages.push(...fieldErrors.new_password);
+    if (fieldErrors.confirm_password) messages.push(...fieldErrors.confirm_password);
+    if (fieldErrors.current_password) messages.push(...fieldErrors.current_password);
+    if (fieldErrors.non_field_errors) messages.push(...fieldErrors.non_field_errors);
+    if (data.detail && typeof data.detail === 'string') messages.push(data.detail);
+    const message = messages.length > 0 ? messages.join(' ') : plain.message || 'Failed to change password';
+    return { message, fieldErrors };
+  }
 
-  const message = messages.length > 0 ? messages.join(' ') : err.message || 'Failed to change password';
-  return { message, fieldErrors };
+  return { message: plain?.message || 'Failed to change password' };
 }
 
 export default function ChangePasswordPage() {
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
-  const { clearMustChangePassword } = useAuth();
+  const { clearMustChangePassword, resetToken } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   const [newPassword, setNewPassword] = useState('');
@@ -174,9 +191,13 @@ export default function ChangePasswordPage() {
       await changePasswordApi.change({
         new_password: newPassword,
         confirm_password: confirmPassword,
+        reset_token: resetToken || undefined,
       });
       // Password changed successfully — proceed to dashboard
       clearMustChangePassword();
+      if (resetToken) {
+        localStorage.removeItem('vitora_reset_token');
+      }
       router.push('/');
     } catch (err) {
       const { message, fieldErrors: backendFieldErrors } = getBackendErrorMessage(err);

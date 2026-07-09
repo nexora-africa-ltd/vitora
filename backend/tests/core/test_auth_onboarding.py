@@ -645,7 +645,7 @@ class TestChangePassword:
         assert user.staff_profile.must_change_password is False
 
     def test_change_password_unauthenticated(self):
-        """Unauthenticated users cannot change passwords."""
+        """Unauthenticated users cannot change passwords without a reset token."""
         client = APIClient()
         response = client.post(
             "/api/core/auth/change-password/",
@@ -654,7 +654,7 @@ class TestChangePassword:
                 "confirm_password": "SomePass!123",
             },
         )
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
 # ============================================================================

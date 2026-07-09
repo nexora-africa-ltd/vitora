@@ -776,26 +776,90 @@ def password_reset_confirm(request):
 # ============================================================================
 
 
+def _resolve_change_password_user(data, request):
+    """
+    Resolve the user for a change-password request.
+
+    Supports two flows:
+    1. reset_token flow (unauthenticated): validates the one-time token,
+       returns the associated user. Raises 400 on invalid/expired token.
+    2. Authenticated flow: returns request.user (requires IsAuthenticated).
+
+    Returns (user, is_forced) tuple where is_forced indicates the password
+    change is mandatory (must_change_password=True).
+    """
+    reset_token_str = data.get("reset_token")
+    if reset_token_str:
+        try:
+            reset_token = PasswordResetToken.objects.select_related("user").get(
+                token=reset_token_str
+            )
+        except PasswordResetToken.DoesNotExist:
+            raise ValidationError(
+                {"reset_token": ["Invalid or expired reset token."]},
+                code="invalid",
+            ) from None
+
+        if not reset_token.is_valid:
+            raise ValidationError(
+                {"reset_token": ["This reset token has expired or already been used."]},
+                code="invalid",
+            )
+
+        return reset_token.user, True
+
+    return request.user, (
+        hasattr(request.user, "staff_profile") and request.user.staff_profile.must_change_password
+    )
+
+
+class ValidationError(Exception):
+    def __init__(self, detail, code=None):
+        self.detail = detail
+        self.code = code
+
+
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def change_password(request):
     """
-    Change password for the authenticated user.
+    Change password — supports authenticated and unauthenticated flows.
 
-    If user has must_change_password=True, current_password is not required.
-    Otherwise, current_password must be provided and correct.
+    Authenticated flow (no reset_token):
+      Requires IsAuthenticated. If must_change_password=True, current_password
+      is optional. Otherwise, current_password is required.
+
+    Unauthenticated flow (with reset_token):
+      Validates a one-time password reset token issued during login when
+      must_change_password=True. No authentication required. The token is
+      consumed on success.
     """
+    from rest_framework.exceptions import ValidationError as DRFValidationError
+
     serializer = ChangePasswordSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
-    user = request.user
     data = serializer.validated_data
+    has_reset_token = bool(data.get("reset_token"))
 
-    # Check if must_change_password is set
-    is_forced = hasattr(user, "staff_profile") and user.staff_profile.must_change_password
+    if has_reset_token:
+        # Unauthenticated flow — validate token and resolve user
+        try:
+            user, is_forced = _resolve_change_password_user(data, request)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        # Authenticated flow — check permission first
+        if not request.user or not request.user.is_authenticated:
+            raise DRFValidationError(
+                {"detail": "Authentication credentials were not provided."},
+                code="not_authenticated",
+            )
+        user = request.user
+        is_forced = hasattr(user, "staff_profile") and user.staff_profile.must_change_password
 
-    if not is_forced:
-        # Normal password change — require current password
+    # Validate current_password for non-forced authenticated changes
+    if not is_forced and not has_reset_token:
         current_password = data.get("current_password")
         if not current_password:
             return Response(
@@ -811,10 +875,17 @@ def change_password(request):
     user.set_password(data["new_password"])
     user.save(update_fields=["password"])
 
-    # Clear the forced flag
+    # Clear the forced flag and consume the reset token
     if is_forced:
         user.staff_profile.must_change_password = False
         user.staff_profile.save(update_fields=["must_change_password"])
+
+    if has_reset_token:
+        try:
+            reset_token = PasswordResetToken.objects.get(token=data["reset_token"])
+            reset_token.consume()
+        except PasswordResetToken.DoesNotExist:
+            pass  # Should not happen, token was already validated above
 
     AuditLog.log(
         action="password_changed",
@@ -823,7 +894,7 @@ def change_password(request):
         resource_id=user.id,
         ip_address=_get_client_ip(request),
         user_agent=request.META.get("HTTP_USER_AGENT", ""),
-        details={"forced": is_forced},
+        details={"forced": is_forced, "via_reset_token": has_reset_token},
     )
 
     return Response(
