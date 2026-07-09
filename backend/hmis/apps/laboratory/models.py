@@ -25,12 +25,15 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
-def generate_lab_order_number():
+def generate_lab_order_number(facility=None):
     """
     Generate a unique laboratory order number.
 
     Format: LAB-YYYYMMDD-XXXX
     Where XXXX is a 4-digit sequential number for the day.
+
+    Args:
+        facility: Facility instance to scope the number generation.
 
     Returns:
         str: A unique lab order number string
@@ -38,10 +41,11 @@ def generate_lab_order_number():
     today = datetime.now().strftime("%Y%m%d")
     prefix = f"LAB-{today}-"
 
-    # Find the highest order number for today
-    latest_order = (
-        LabOrder.objects.filter(order_number__startswith=prefix).order_by("-order_number").first()
-    )
+    # Find the highest order number for today within the same facility
+    qs = LabOrder.objects.filter(order_number__startswith=prefix)
+    if facility:
+        qs = qs.filter(facility=facility)
+    latest_order = qs.order_by("-order_number").first()
 
     if latest_order:
         # Extract the sequence number and increment
@@ -315,7 +319,7 @@ class LabOrder(FacilityScopedModel):
     }
 
     # Identity
-    order_number = models.CharField(max_length=30, unique=True, editable=False)
+    order_number = models.CharField(max_length=30, editable=False)
 
     # Relationships
     patient = models.ForeignKey(
@@ -434,6 +438,12 @@ class LabOrder(FacilityScopedModel):
         verbose_name = "Lab Order"
         verbose_name_plural = "Lab Orders"
         ordering = ["-ordered_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "order_number"],
+                name="unique_order_number_per_facility",
+            ),
+        ]
         indexes = [
             models.Index(fields=["order_number"]),
             models.Index(fields=["patient"]),
@@ -448,7 +458,7 @@ class LabOrder(FacilityScopedModel):
     def save(self, *args, **kwargs):
         """Override save to auto-generate order number."""
         if not self.order_number:
-            self.order_number = generate_lab_order_number()
+            self.order_number = generate_lab_order_number(facility=self.facility)
         super().save(*args, **kwargs)
 
     def calculate_total_cost(self):
