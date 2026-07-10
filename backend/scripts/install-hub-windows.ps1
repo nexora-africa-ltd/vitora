@@ -196,10 +196,6 @@ $TibaBotJwtAudience = Resolve-ConfigValue "TIBABOT_JWT_AUDIENCE" $TibaBotConfig.
 $TibaBotJwtExpirySeconds = Resolve-ConfigValue "TIBABOT_JWT_EXPIRY_SECONDS" $TibaBotConfig.jwt_expiry_seconds "300"
 $TibaBotJwksUrl = Resolve-ConfigValue "TIBABOT_JWKS_URL" $TibaBotConfig.jwks_url ""
 $TibaBotAdminKey = Resolve-ConfigValue "TIBABOT_ADMIN_KEY" $TibaBotConfig.admin_key ""
-$TibaBotEnableLabAssist = Resolve-ConfigValue "TIBABOT_ENABLE_LAB_ASSIST" $TibaBotConfig.enable_lab_assist "true"
-$TibaBotEnableDischargeAssist = Resolve-ConfigValue "TIBABOT_ENABLE_DISCHARGE_ASSIST" $TibaBotConfig.enable_discharge_assist "true"
-$TibaBotEnableCarePlan = Resolve-ConfigValue "TIBABOT_ENABLE_CARE_PLAN" $TibaBotConfig.enable_care_plan "true"
-$TibaBotEnableClerkingAssist = Resolve-ConfigValue "TIBABOT_ENABLE_CLERKING_ASSIST" $TibaBotConfig.enable_clerking_assist "true"
 $HubCloudAuthEnabled = Resolve-ConfigValue "HUB_CLOUD_AUTH_ENABLED" $activationResponse.hub_cloud_auth_enabled "true"
 $HubCloudAuthUrl = Resolve-ConfigValue "HUB_CLOUD_AUTH_URL" $activationResponse.hub_cloud_auth_url "$CloudUrl/api/auth/login/"
 
@@ -535,10 +531,6 @@ TIBABOT_JWT_AUDIENCE=$TibaBotJwtAudience
 TIBABOT_JWT_EXPIRY_SECONDS=$TibaBotJwtExpirySeconds
 TIBABOT_JWKS_URL=$TibaBotJwksUrl
 TIBABOT_ADMIN_KEY=$TibaBotAdminKey
-TIBABOT_ENABLE_LAB_ASSIST=$TibaBotEnableLabAssist
-TIBABOT_ENABLE_DISCHARGE_ASSIST=$TibaBotEnableDischargeAssist
-TIBABOT_ENABLE_CARE_PLAN=$TibaBotEnableCarePlan
-TIBABOT_ENABLE_CLERKING_ASSIST=$TibaBotEnableClerkingAssist
 WEBAUTHN_RP_ID=$WebauthnRpId
 WEBAUTHN_ORIGIN=$WebauthnOrigin
 "@
@@ -836,11 +828,7 @@ $envVars = @(
     "TIBABOT_JWT_AUDIENCE=$TibaBotJwtAudience",
     "TIBABOT_JWT_EXPIRY_SECONDS=$TibaBotJwtExpirySeconds",
     "TIBABOT_JWKS_URL=$TibaBotJwksUrl",
-    "TIBABOT_ADMIN_KEY=$TibaBotAdminKey",
-    "TIBABOT_ENABLE_LAB_ASSIST=$TibaBotEnableLabAssist",
-    "TIBABOT_ENABLE_DISCHARGE_ASSIST=$TibaBotEnableDischargeAssist",
-    "TIBABOT_ENABLE_CARE_PLAN=$TibaBotEnableCarePlan",
-    "TIBABOT_ENABLE_CLERKING_ASSIST=$TibaBotEnableClerkingAssist"
+    "TIBABOT_ADMIN_KEY=$TibaBotAdminKey"
 ) -join "`n"
 & $nssmExe set $ServiceName AppEnvironmentExtra $envVars
 

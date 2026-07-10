@@ -2,7 +2,7 @@
 Tests for Proactive AI Insights endpoint and engine.
 
 Tests cover:
-- Feature flag gating (TIBABOT_ENABLED + TIBABOT_ENABLE_PROACTIVE_INSIGHTS)
+- Feature flag gating (TIBABOT_ENABLED)
 - Authentication requirement
 - Input validation (serializer)
 - Tier 1: Rule-based vital alerts (all 9 rules)
@@ -50,9 +50,9 @@ class TestProactiveInsightsFeatureGating:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_PROACTIVE_INSIGHTS=False)
+    @override_settings(TIBABOT_ENABLED=False)
     def test_returns_404_when_proactive_feature_disabled(self, authenticated_client):
-        """Should return 404 when TIBABOT_ENABLE_PROACTIVE_INSIGHTS is False."""
+        """Should return 404 when TIBABOT_ENABLED is False."""
         response = authenticated_client.post(
             "/api/ai/clinical/proactive-insights/",
             {

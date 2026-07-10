@@ -2702,3 +2702,136 @@ class ProactiveInsightsResponseSerializer(serializers.Serializer):
     context_hash = serializers.CharField()
     tier_counts = ProactiveInsightTierCountsSerializer()
     total = serializers.IntegerField()
+
+
+# =============================================================================
+# Webhook serializers
+# =============================================================================
+
+_WEBHOOK_EVENT_CHOICES = [
+    "clinical_assist_completed",
+    "clinical_chat_completed",
+    "document_generated",
+    "patient_created",
+    "screening_completed",
+    "alert_triggered",
+]
+
+
+class WebhookRegisterRequestSerializer(serializers.Serializer):
+    """Request for POST /api/ai/webhooks/ — register a new webhook subscription."""
+
+    url = serializers.URLField(help_text="Your webhook receiver endpoint URL.")
+    events = serializers.ListField(
+        child=serializers.ChoiceField(choices=_WEBHOOK_EVENT_CHOICES),
+        help_text="List of TibaBot events to subscribe to.",
+    )
+    secret = serializers.CharField(
+        max_length=200,
+        help_text="Shared secret for HMAC-SHA256 payload verification.",
+    )
+
+
+class WebhookUpdateRequestSerializer(serializers.Serializer):
+    """Request for PUT /api/ai/webhooks/{id}/ — update a webhook subscription."""
+
+    url = serializers.URLField(required=False, help_text="Updated receiver URL.")
+    events = serializers.ListField(
+        child=serializers.ChoiceField(choices=_WEBHOOK_EVENT_CHOICES),
+        required=False,
+        help_text="Updated event list.",
+    )
+    secret = serializers.CharField(
+        max_length=200,
+        required=False,
+        help_text="Updated shared secret.",
+    )
+
+
+class WebhookDeliverySerializer(serializers.Serializer):
+    """A single webhook delivery attempt."""
+
+    id = serializers.CharField()
+    status = serializers.CharField()
+    status_code = serializers.IntegerField(required=False, default=0)
+    attempted_at = serializers.CharField(required=False, allow_blank=True, default="")
+    response_body = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class WebhookItemSerializer(serializers.Serializer):
+    """A registered webhook subscription."""
+
+    id = serializers.CharField()
+    url = serializers.CharField()
+    events = serializers.ListField(child=serializers.CharField())
+    is_active = serializers.BooleanField(default=True)
+    created_at = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class WebhookListResponseSerializer(serializers.Serializer):
+    """Response for GET /api/ai/webhooks/"""
+
+    webhooks = WebhookItemSerializer(many=True)
+
+
+class WebhookDeliveryListResponseSerializer(serializers.Serializer):
+    """Response for GET /api/ai/webhooks/{id}/deliveries/"""
+
+    deliveries = WebhookDeliverySerializer(many=True)
+
+
+# =============================================================================
+# Facility Knowledge Base serializers
+# =============================================================================
+
+
+class FacilityKBDocumentSerializer(serializers.Serializer):
+    """A document in the facility knowledge base."""
+
+    id = serializers.CharField()
+    filename = serializers.CharField()
+    size_bytes = serializers.IntegerField(required=False, default=0)
+    uploaded_at = serializers.CharField(required=False, allow_blank=True, default="")
+    status = serializers.CharField(required=False, allow_blank=True, default="processed")
+
+
+class FacilityKBInfoResponseSerializer(serializers.Serializer):
+    """Response for GET /api/ai/facility/knowledge-base/"""
+
+    facility_name = serializers.CharField(required=False, allow_blank=True, default="")
+    document_count = serializers.IntegerField(required=False, default=0)
+    documents = FacilityKBDocumentSerializer(many=True, required=False, default=list)
+    total_size_bytes = serializers.IntegerField(required=False, default=0)
+
+
+class FacilityKBSearchResultSerializer(serializers.Serializer):
+    """A single search result from facility KB search."""
+
+    id = serializers.CharField()
+    filename = serializers.CharField()
+    snippet = serializers.CharField(required=False, allow_blank=True, default="")
+    score = serializers.FloatField(required=False, default=0.0)
+
+
+class FacilityKBSearchResponseSerializer(serializers.Serializer):
+    """Response for GET /api/ai/facility/knowledge-base/search/"""
+
+    results = FacilityKBSearchResultSerializer(many=True)
+    query = serializers.CharField(required=False, allow_blank=True, default="")
+    total = serializers.IntegerField(required=False, default=0)
+
+
+class FacilityKBUploadResponseSerializer(serializers.Serializer):
+    """Response for POST /api/ai/facility/knowledge-base/upload/"""
+
+    id = serializers.CharField()
+    filename = serializers.CharField()
+    status = serializers.CharField(required=False, allow_blank=True, default="processing")
+    size_bytes = serializers.IntegerField(required=False, default=0)
+
+
+class FacilityKBDocumentDeleteResponseSerializer(serializers.Serializer):
+    """Response for DELETE /api/ai/facility/knowledge-base/documents/{id}/"""
+
+    status = serializers.CharField(default="deleted")
+    message = serializers.CharField(required=False, allow_blank=True, default="")

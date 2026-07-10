@@ -1533,3 +1533,95 @@ export interface ProactiveInsightsResponse {
   tier_counts: ProactiveInsightTierCounts;
   total: number;
 }
+
+// =============================================================================
+// Webhooks
+// =============================================================================
+
+export type TibaBotWebhookEvent =
+  | 'clinical_assist_completed'
+  | 'clinical_chat_completed'
+  | 'document_generated'
+  | 'patient_created'
+  | 'screening_completed'
+  | 'alert_triggered';
+
+export interface TibaBotWebhook {
+  id: string;
+  url: string;
+  events: TibaBotWebhookEvent[];
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface TibaBotWebhookListResponse {
+  webhooks: TibaBotWebhook[];
+}
+
+export interface TibaBotWebhookRegisterRequest {
+  url: string;
+  events: TibaBotWebhookEvent[];
+  secret: string;
+}
+
+export interface TibaBotWebhookUpdateRequest {
+  url?: string;
+  events?: TibaBotWebhookEvent[];
+  secret?: string;
+}
+
+export interface TibaBotWebhookDelivery {
+  id: string;
+  status: string;
+  status_code?: number;
+  attempted_at?: string;
+  response_body?: string;
+}
+
+export interface TibaBotWebhookDeliveryListResponse {
+  deliveries: TibaBotWebhookDelivery[];
+}
+
+// =============================================================================
+// Facility Knowledge Base
+// =============================================================================
+
+export interface FacilityKBDocument {
+  id: string;
+  filename: string;
+  size_bytes?: number;
+  uploaded_at?: string;
+  status?: string;
+}
+
+export interface FacilityKBInfoResponse {
+  facility_name?: string;
+  document_count?: number;
+  documents?: FacilityKBDocument[];
+  total_size_bytes?: number;
+}
+
+export interface FacilityKBSearchResult {
+  id: string;
+  filename: string;
+  snippet?: string;
+  score?: number;
+}
+
+export interface FacilityKBSearchResponse {
+  results: FacilityKBSearchResult[];
+  query?: string;
+  total?: number;
+}
+
+export interface FacilityKBUploadResponse {
+  id: string;
+  filename: string;
+  status?: string;
+  size_bytes?: number;
+}
+
+export interface FacilityKBDocumentDeleteResponse {
+  status: string;
+  message?: string;
+}

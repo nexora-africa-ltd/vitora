@@ -270,7 +270,7 @@ class TibaBotClient:
 
         except requests.exceptions.RetryError as e:
             logger.warning("TibaBot max retries exceeded: %s", e)
-            raise TibaBotUnavailableError("TibaBot AI service is currently unavailable.") from e
+            raise TibaBotUnavailableError(f"TibaBot service unavailable after retries: {e}") from e
 
         except requests.exceptions.HTTPError as e:
             status = e.response.status_code if e.response is not None else None
@@ -281,9 +281,13 @@ class TibaBotClient:
                 except Exception:
                     pass
             if status and status >= 500:
-                logger.warning("TibaBot server error: %s", status)
+                logger.warning(
+                    "TibaBot server error: status=%s body=%s",
+                    status,
+                    response_body,
+                )
                 raise TibaBotUnavailableError(
-                    "TibaBot AI service returned a server error.",
+                    f"TibaBot server error (HTTP {status}): {response_body or 'no response body'}",
                     status_code=status,
                 ) from e
             logger.error(
@@ -1171,10 +1175,11 @@ class TibaBotClient:
                     pass
             if status_code and status_code >= 500:
                 logger.warning(
-                    "TibaBot ECG upload server error: %s — %s", status_code, response_body
+                    "TibaBot facility KB upload server error: %s — %s", status_code, response_body
                 )
                 raise TibaBotUnavailableError(
-                    "TibaBot AI service returned a server error.", status_code=status_code
+                    f"TibaBot server error (HTTP {status_code}): {response_body or 'no response body'}",
+                    status_code=status_code,
                 ) from e
             logger.error("TibaBot ECG upload error: %s — response: %s", status_code, response_body)
             raise TibaBotError(
@@ -1234,6 +1239,112 @@ class TibaBotClient:
     def ecg_patterns(self) -> list[dict[str, Any]]:
         """List all supported ECG patterns/diagnoses."""
         return self._request(method="GET", endpoint="/clinical/ecg/patterns")  # type: ignore[return-value]
+
+    # ── Webhooks ──────────────────────────────────────────────────────────
+
+    def register_webhook(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Register a new webhook subscription."""
+        return self._request(method="POST", endpoint="/webhooks", data=payload)
+
+    def list_webhooks(self) -> dict[str, Any]:
+        """List registered webhooks."""
+        return self._request(method="GET", endpoint="/webhooks")
+
+    def get_webhook(self, webhook_id: str) -> dict[str, Any]:
+        """Get webhook details."""
+        return self._request(method="GET", endpoint=f"/webhooks/{webhook_id}")
+
+    def update_webhook(self, webhook_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Update a webhook subscription."""
+        return self._request(method="PUT", endpoint=f"/webhooks/{webhook_id}", data=payload)
+
+    def delete_webhook(self, webhook_id: str) -> dict[str, Any]:
+        """Delete a webhook subscription."""
+        return self._request(method="DELETE", endpoint=f"/webhooks/{webhook_id}")
+
+    def pause_webhook(self, webhook_id: str) -> dict[str, Any]:
+        """Pause webhook delivery."""
+        return self._request(method="POST", endpoint=f"/webhooks/{webhook_id}/pause")
+
+    def activate_webhook(self, webhook_id: str) -> dict[str, Any]:
+        """Resume webhook delivery."""
+        return self._request(method="POST", endpoint=f"/webhooks/{webhook_id}/activate")
+
+    def get_webhook_deliveries(self, webhook_id: str) -> dict[str, Any]:
+        """List webhook delivery history."""
+        return self._request(method="GET", endpoint=f"/webhooks/{webhook_id}/deliveries")
+
+    # ── Facility Knowledge Base ───────────────────────────────────────────
+
+    def get_facility_kb(self) -> dict[str, Any]:
+        """Get facility knowledge base info and document list."""
+        return self._request(method="GET", endpoint="/facility/knowledge-base")
+
+    def upload_to_facility_kb(
+        self, file_data: bytes, filename: str, content_type: str
+    ) -> dict[str, Any]:
+        """
+        Upload a document to the facility knowledge base.
+
+        Uses multipart/form-data.
+        """
+        import io
+
+        url = f"{self.base_url.rstrip('/')}/facility/knowledge-base/upload"
+        headers: dict[str, str] = {}
+        user = _get_current_user()
+        if user is not None:
+            token = mint_tibabot_jwt(user)
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+            facility_key = _resolve_facility_api_key(user)
+            if facility_key:
+                headers["X-API-Key"] = facility_key
+
+        try:
+            files = {"file": (filename, io.BytesIO(file_data), content_type)}
+            upload_headers = dict(headers)
+            upload_headers["Content-Type"] = None  # type: ignore[assignment]
+            upload_headers["Accept"] = "application/json"
+            response = self.session.post(
+                url, files=files, timeout=self.timeout * 2, headers=upload_headers
+            )
+            response.raise_for_status()
+            return response.json()  # type: ignore[no-any-return]
+        except requests.exceptions.ConnectionError as e:
+            raise TibaBotUnavailableError("TibaBot AI service is currently unavailable.") from e
+        except requests.exceptions.Timeout as e:
+            raise TibaBotUnavailableError("TibaBot AI service request timed out.") from e
+        except requests.exceptions.HTTPError as e:
+            status_code = e.response.status_code if e.response is not None else None
+            response_body = ""
+            if e.response is not None:
+                try:
+                    response_body = e.response.text[:500]
+                except Exception:
+                    pass
+            if status_code and status_code >= 500:
+                raise TibaBotUnavailableError(
+                    "TibaBot AI service returned a server error.", status_code=status_code
+                ) from e
+            raise TibaBotError(
+                f"TibaBot facility KB error (HTTP {status_code}): {response_body or e}",
+                status_code=status_code,
+            ) from e
+
+    def delete_facility_kb_document(self, document_id: str) -> dict[str, Any]:
+        """Delete a document from the facility knowledge base."""
+        return self._request(
+            method="DELETE", endpoint=f"/facility/knowledge-base/documents/{document_id}"
+        )
+
+    def search_facility_kb(self, query: str, limit: int = 10) -> dict[str, Any]:
+        """Search the facility knowledge base."""
+        return self._request(
+            method="GET",
+            endpoint="/facility/knowledge-base/search",
+            params={"q": query, "limit": limit},
+        )
 
 
 # Module-level singleton (created on first import — lazy via function)

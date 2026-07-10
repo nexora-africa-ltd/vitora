@@ -42,9 +42,9 @@ def mock_tibabot():
 
 @pytest.mark.django_db
 class TestPerFeatureFlags:
-    """Per-feature flags gate individual endpoints behind TIBABOT_ENABLE_*."""
+    """AI endpoints are gated behind TIBABOT_ENABLED."""
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_LAB_ASSIST=False)
+    @override_settings(TIBABOT_ENABLED=False)
     def test_lab_interpret_404_when_feature_disabled(self, authenticated_client):
         response = authenticated_client.post(
             "/api/ai/lab/interpret/",
@@ -59,7 +59,7 @@ class TestPerFeatureFlags:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_DISCHARGE_READINESS=False)
+    @override_settings(TIBABOT_ENABLED=False)
     def test_discharge_assess_404_when_feature_disabled(self, authenticated_client):
         response = authenticated_client.post(
             "/api/ai/discharge/assess/",
@@ -68,7 +68,7 @@ class TestPerFeatureFlags:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_CARE_PLAN=False)
+    @override_settings(TIBABOT_ENABLED=False)
     def test_care_plan_404_when_feature_disabled(self, authenticated_client):
         response = authenticated_client.post(
             "/api/ai/care-plan/generate/",
@@ -77,7 +77,7 @@ class TestPerFeatureFlags:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_CLERKING_ASSIST=False)
+    @override_settings(TIBABOT_ENABLED=False)
     def test_clerking_autocomplete_404_when_feature_disabled(self, authenticated_client):
         response = authenticated_client.post(
             "/api/ai/clerking/autocomplete/",

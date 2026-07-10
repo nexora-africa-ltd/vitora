@@ -228,7 +228,7 @@ class TestECGFeatureFlags:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=False)
+    @override_settings(TIBABOT_ENABLED=False)
     def test_404_when_ecg_feature_disabled(self, authenticated_client, ecg_interpret_request):
         response = authenticated_client.post(
             "/api/ai/ecg/interpret/",
@@ -271,7 +271,7 @@ class TestECGAuthentication:
 class TestECGInterpret:
     """Tests for POST /api/ai/ecg/interpret/."""
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_success(
         self, authenticated_client, mock_tibabot_ecg, ecg_interpret_request, ecg_interpret_response
     ):
@@ -286,7 +286,7 @@ class TestECGInterpret:
         assert response.data["confidence"] == 0.85
         mock_tibabot_ecg.ecg_interpret.assert_called_once()
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_minimal_input(self, authenticated_client, mock_tibabot_ecg, ecg_interpret_response):
         """Accepts minimal input (all fields optional)."""
         mock_tibabot_ecg.ecg_interpret.return_value = ecg_interpret_response
@@ -296,7 +296,7 @@ class TestECGInterpret:
         )
         assert response.status_code == status.HTTP_200_OK
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_raw_findings_input(
         self, authenticated_client, mock_tibabot_ecg, ecg_interpret_response
     ):
@@ -310,7 +310,7 @@ class TestECGInterpret:
         )
         assert response.status_code == status.HTTP_200_OK
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_invalid_heart_rate(self, authenticated_client, mock_tibabot_ecg):
         """Rejects heart rate out of range."""
         response = authenticated_client.post(
@@ -318,7 +318,7 @@ class TestECGInterpret:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_tibabot_unavailable_returns_503(self, authenticated_client, mock_tibabot_ecg):
         from hmis.apps.ai.client import TibaBotUnavailableError
 
@@ -330,7 +330,7 @@ class TestECGInterpret:
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert "error" in response.data
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_tibabot_error_returns_502(self, authenticated_client, mock_tibabot_ecg):
         from hmis.apps.ai.client import TibaBotError
 
@@ -351,7 +351,7 @@ class TestECGInterpret:
 class TestECGCompare:
     """Tests for POST /api/ai/ecg/compare/."""
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_success(
         self, authenticated_client, mock_tibabot_ecg, ecg_compare_request, ecg_compare_response
     ):
@@ -364,14 +364,14 @@ class TestECGCompare:
         assert response.data["progression"] == "worsened"
         assert len(response.data["changes"]) == 2
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_missing_baseline_rejected(self, authenticated_client, mock_tibabot_ecg):
         response = authenticated_client.post(
             "/api/ai/ecg/compare/", {"current": {"heart_rate": 88}}, format="json"
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_missing_current_rejected(self, authenticated_client, mock_tibabot_ecg):
         response = authenticated_client.post(
             "/api/ai/ecg/compare/", {"baseline": {"heart_rate": 72}}, format="json"
@@ -388,7 +388,7 @@ class TestECGCompare:
 class TestECGUpload:
     """Tests for POST /api/ai/ecg/upload/."""
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_success(self, authenticated_client, mock_tibabot_ecg):
         from django.core.files.uploadedfile import SimpleUploadedFile
 
@@ -409,13 +409,13 @@ class TestECGUpload:
         assert response.data["source_format"] == "image"
         mock_tibabot_ecg.ecg_upload.assert_called_once()
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_no_file_returns_400(self, authenticated_client, mock_tibabot_ecg):
         response = authenticated_client.post("/api/ai/ecg/upload/", {}, format="multipart")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "No file" in response.data["error"]
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_unsupported_format_returns_400(self, authenticated_client, mock_tibabot_ecg):
         from django.core.files.uploadedfile import SimpleUploadedFile
 
@@ -436,7 +436,7 @@ class TestECGUpload:
 class TestECGReport:
     """Tests for POST /api/ai/ecg/report/."""
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_success_returns_pdf(
         self, authenticated_client, mock_tibabot_ecg, ecg_interpret_response
     ):
@@ -455,7 +455,7 @@ class TestECGReport:
         assert response["Content-Type"] == "application/pdf"
         assert "ecg_report.pdf" in response["Content-Disposition"]
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_missing_interpretation_rejected(self, authenticated_client, mock_tibabot_ecg):
         response = authenticated_client.post(
             "/api/ai/ecg/report/", {"facility_name": "Test"}, format="json"
@@ -472,7 +472,7 @@ class TestECGReport:
 class TestCHA2DS2VASc:
     """Tests for POST /api/ai/ecg/scores/cha2ds2-vasc/."""
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_success(
         self, authenticated_client, mock_tibabot_ecg, cha2ds2_vasc_request, cha2ds2_vasc_response
     ):
@@ -485,14 +485,14 @@ class TestCHA2DS2VASc:
         assert response.data["score"] == 5
         assert response.data["anticoagulation_indicated"] is True
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_missing_age_rejected(self, authenticated_client, mock_tibabot_ecg):
         response = authenticated_client.post(
             "/api/ai/ecg/scores/cha2ds2-vasc/", {"sex": "male"}, format="json"
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_missing_sex_rejected(self, authenticated_client, mock_tibabot_ecg):
         response = authenticated_client.post(
             "/api/ai/ecg/scores/cha2ds2-vasc/", {"age": 72}, format="json"
@@ -509,7 +509,7 @@ class TestCHA2DS2VASc:
 class TestHASBLED:
     """Tests for POST /api/ai/ecg/scores/has-bled/."""
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_success(
         self, authenticated_client, mock_tibabot_ecg, has_bled_request, has_bled_response
     ):
@@ -522,7 +522,7 @@ class TestHASBLED:
         assert response.data["score"] == 5
         assert response.data["risk_category"] == "high"
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_all_defaults(self, authenticated_client, mock_tibabot_ecg, has_bled_response):
         """Works with empty body (all boolean fields default to False)."""
         mock_tibabot_ecg.ecg_score_has_bled.return_value = has_bled_response
@@ -540,7 +540,7 @@ class TestHASBLED:
 class TestECGPatterns:
     """Tests for GET /api/ai/ecg/patterns/."""
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_ECG_INTERPRETER=True)
+    @override_settings(TIBABOT_ENABLED=True)
     def test_success(self, api_client, mock_tibabot_ecg):
         """Patterns endpoint is publicly accessible (no auth)."""
         patterns = [

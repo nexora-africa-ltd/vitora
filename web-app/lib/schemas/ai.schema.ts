@@ -827,3 +827,85 @@ export const ProactiveInsightsResponseSchema = z.object({
   tier_counts: ProactiveInsightTierCountsSchema,
   total: z.number(),
 });
+
+// =============================================================================
+// Webhooks
+// =============================================================================
+
+export const TibaBotWebhookEventSchema = z.enum([
+  'clinical_assist_completed',
+  'clinical_chat_completed',
+  'document_generated',
+  'patient_created',
+  'screening_completed',
+  'alert_triggered',
+]);
+
+export const TibaBotWebhookSchema = z.object({
+  id: z.string(),
+  url: z.string(),
+  events: z.array(TibaBotWebhookEventSchema),
+  is_active: z.boolean().default(true),
+  created_at: z.string().optional().default(''),
+});
+
+export const TibaBotWebhookListResponseSchema = z.object({
+  webhooks: z.array(TibaBotWebhookSchema),
+});
+
+export const TibaBotWebhookDeliverySchema = z.object({
+  id: z.string(),
+  status: z.string(),
+  status_code: z.number().optional().default(0),
+  attempted_at: z.string().optional().default(''),
+  response_body: z.string().optional().default(''),
+});
+
+export const TibaBotWebhookDeliveryListResponseSchema = z.object({
+  deliveries: z.array(TibaBotWebhookDeliverySchema),
+});
+
+// =============================================================================
+// Facility Knowledge Base
+// =============================================================================
+
+export const FacilityKBDocumentSchema = z.object({
+  id: z.string(),
+  filename: z.string(),
+  size_bytes: z.number().optional().default(0),
+  uploaded_at: z.string().optional().default(''),
+  status: z.string().optional().default('processed'),
+});
+
+export const FacilityKBInfoResponseSchema = z.object({
+  facility_name: z.string().optional().default(''),
+  document_count: z.number().optional().default(0),
+  documents: z.array(FacilityKBDocumentSchema).optional().default([]),
+  total_size_bytes: z.number().optional().default(0),
+  error: z.string().optional(),
+}).passthrough();
+
+export const FacilityKBSearchResultSchema = z.object({
+  id: z.string(),
+  filename: z.string(),
+  snippet: z.string().optional().default(''),
+  score: z.number().optional().default(0),
+});
+
+export const FacilityKBSearchResponseSchema = z.object({
+  results: z.array(FacilityKBSearchResultSchema),
+  query: z.string().optional().default(''),
+  total: z.number().optional().default(0),
+});
+
+export const FacilityKBUploadResponseSchema = z.object({
+  id: z.string(),
+  filename: z.string(),
+  status: z.string().optional().default('processing'),
+  size_bytes: z.number().optional().default(0),
+});
+
+export const FacilityKBDocumentDeleteResponseSchema = z.object({
+  status: z.string().default('deleted'),
+  message: z.string().optional().default(''),
+});

@@ -219,7 +219,8 @@ def _provision_single_key(fk: "TibaBotFacilityKey", admin_key: str) -> dict[str,
         "facility_name": facility.name,
         "org_id": org_slug,
         "facility_level": _parse_level(facility.level),
-        "scopes": fk.scopes or ["chat", "triage", "icd10", "clinical", "predict"],
+        "scopes": fk.scopes
+        or ["chat", "triage", "icd10", "clinical", "predict", "webhooks", "facility_kb"],
         "jwt_issuer": getattr(settings, "TIBABOT_JWT_ISSUER", "vitora.nexora.africa"),
     }
 
@@ -345,7 +346,8 @@ class TibaBotFacilityKeyAdmin(admin.ModelAdmin):
                         "fields": ("scopes",),
                         "classes": ("collapse",),
                         "description": (
-                            'Default: ["chat", "triage", "icd10", "clinical", "predict"]. '
+                            'Default: ["chat", "triage", "icd10", "clinical", "predict", '
+                            '"webhooks", "facility_kb"]. '
                             "Leave empty to use defaults."
                         ),
                     },

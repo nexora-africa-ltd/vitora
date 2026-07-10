@@ -57,18 +57,6 @@ def _build_tibabot_config(facility) -> dict[str, Any]:
         "jwt_audience": getattr(settings, "TIBABOT_JWT_AUDIENCE", "tibabot"),
         "jwt_expiry_seconds": str(getattr(settings, "TIBABOT_JWT_EXPIRY_SECONDS", 300)),
         "jwks_url": getattr(settings, "TIBABOT_JWKS_URL", ""),
-        "enable_lab_assist": "true"
-        if getattr(settings, "TIBABOT_ENABLE_LAB_ASSIST", True)
-        else "false",
-        "enable_discharge_assist": "true"
-        if getattr(settings, "TIBABOT_ENABLE_DISCHARGE_READINESS", True)
-        else "false",
-        "enable_care_plan": "true"
-        if getattr(settings, "TIBABOT_ENABLE_CARE_PLAN", True)
-        else "false",
-        "enable_clerking_assist": "true"
-        if getattr(settings, "TIBABOT_ENABLE_CLERKING_ASSIST", True)
-        else "false",
     }
 
     # Include per-facility API key if one exists

@@ -95,7 +95,7 @@ class TestInvestigationFeatureFlags:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_INVESTIGATIONS=False)
+    @override_settings(TIBABOT_ENABLED=False)
     def test_per_feature_flag_off_returns_404(self, authenticated_client):
         response = authenticated_client.post(
             "/api/ai/investigations/suggest/",

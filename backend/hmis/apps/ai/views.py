@@ -16,9 +16,11 @@ ClinicalChatSessionDetailView) provide local session history.
 
 import json
 import logging
+from typing import Any
 
 from django.utils import timezone
 from rest_framework import permissions, status
+from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -1726,7 +1728,6 @@ class EGFRCalculateView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_EGFR"
 
     def post(self, request: Request) -> Response:
         from .serializers import EGFRCalculateRequestSerializer, EGFRCalculateResponseSerializer
@@ -1832,7 +1833,6 @@ class LabInterpretView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_LAB_ASSIST"
 
     def post(self, request: Request) -> Response:
         serializer = LabInterpretRequestSerializer(data=request.data)
@@ -1909,7 +1909,6 @@ class DischargeAssessView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_DISCHARGE_READINESS"
 
     def post(self, request: Request) -> Response:
         serializer = DischargeAssessRequestSerializer(data=request.data)
@@ -2015,7 +2014,6 @@ class DischargeConditionsListView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_DISCHARGE_READINESS"
 
     def get(self, request: Request) -> Response:
         try:
@@ -2045,7 +2043,6 @@ class CarePlanGenerateView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_CARE_PLAN"
 
     def post(self, request: Request) -> Response:
         serializer = CarePlanGenerateRequestSerializer(data=request.data)
@@ -2142,7 +2139,6 @@ class CarePlanGenerateFHIRView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_CARE_PLAN"
 
     def post(self, request: Request) -> Response:
         serializer = CarePlanGenerateRequestSerializer(data=request.data)
@@ -2192,7 +2188,6 @@ class CarePlanConditionsListView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_CARE_PLAN"
 
     def get(self, request: Request) -> Response:
         try:
@@ -2220,7 +2215,6 @@ class ClerkingAutocompleteView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_CLERKING_ASSIST"
 
     def post(self, request: Request) -> Response:
         serializer = ClerkingAutocompleteRequestSerializer(data=request.data)
@@ -2265,7 +2259,6 @@ class ClerkingStructureView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_CLERKING_ASSIST"
 
     def post(self, request: Request) -> Response:
         serializer = ClerkingStructureRequestSerializer(data=request.data)
@@ -2481,7 +2474,6 @@ class InvestigationSuggestView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_INVESTIGATIONS"
 
     def post(self, request: Request) -> Response:
         serializer = InvestigationSuggestRequestSerializer(data=request.data)
@@ -2733,7 +2725,6 @@ class SurgicalPreOpAssessView(AIFeatureGatedMixin, APIView):
     """Proxy surgical pre-operative risk assessment and persist results."""
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
 
     def post(self, request: Request) -> Response:
         serializer = SurgicalPreOpAssessRequestSerializer(data=request.data)
@@ -2803,7 +2794,6 @@ class SurgicalChecklistStartView(AIFeatureGatedMixin, APIView):
     """Start a TibaBot advisory checklist session and persist the initial snapshot."""
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
 
     def post(self, request: Request) -> Response:
         serializer = SurgicalChecklistStartRequestSerializer(data=request.data)
@@ -2880,7 +2870,6 @@ class SurgicalChecklistAdvanceView(AIFeatureGatedMixin, APIView):
     """Advance a persisted TibaBot advisory checklist session."""
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
 
     def post(self, request: Request, session_id: str) -> Response:
         serializer = SurgicalChecklistAdvanceRequestSerializer(data=request.data)
@@ -2961,7 +2950,6 @@ class SurgicalChecklistStatusView(AIFeatureGatedMixin, APIView):
     """Fetch live status for a TibaBot advisory checklist session."""
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
 
     def get(self, request: Request, session_id: str) -> Response:
         try:
@@ -3002,7 +2990,6 @@ class SurgicalPostOpCarePlanView(AIFeatureGatedMixin, APIView):
     """Generate a TibaBot post-operative care plan and persist it."""
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
 
     def post(self, request: Request) -> Response:
         serializer = SurgicalPostOpCarePlanRequestSerializer(data=request.data)
@@ -3063,7 +3050,6 @@ class SurgicalProcedureListView(AIFeatureGatedMixin, APIView):
     """List TibaBot surgical procedure templates for mapping and UI fallback."""
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
 
     def get(self, request: Request) -> Response:
         try:
@@ -3089,7 +3075,6 @@ class SurgicalProcedureDetailView(AIFeatureGatedMixin, APIView):
     """Get a single TibaBot surgical procedure template."""
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
 
     def get(self, request: Request, procedure_key: str) -> Response:
         try:
@@ -3115,7 +3100,6 @@ class StoredSurgicalPreOpAssessListView(AIFeatureGatedMixin, APIView):
     """Return saved surgical pre-op assessments for a surgery case."""
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
 
     def get(self, request: Request) -> Response:
         surgery_case_id = request.query_params.get("surgery_case_id")
@@ -3135,7 +3119,6 @@ class StoredSurgicalChecklistSessionListView(AIFeatureGatedMixin, APIView):
     """Return saved advisory checklist session snapshots for a surgery case."""
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
 
     def get(self, request: Request) -> Response:
         surgery_case_id = request.query_params.get("surgery_case_id")
@@ -3155,7 +3138,6 @@ class StoredSurgicalPostOpCarePlanListView(AIFeatureGatedMixin, APIView):
     """Return saved surgical post-op care plans for a surgery case."""
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
 
     def get(self, request: Request) -> Response:
         surgery_case_id = request.query_params.get("surgery_case_id")
@@ -3440,7 +3422,6 @@ class ProactiveInsightsView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_PROACTIVE_INSIGHTS"
     throttle_scope = "ai_proactive"
 
     def post(self, request: Request) -> Response:
@@ -3510,4 +3491,462 @@ class ProactiveInsightsView(AIFeatureGatedMixin, APIView):
         response_serializer = ProactiveInsightsResponseSerializer(data=result)
         if response_serializer.is_valid():
             return Response(response_serializer.data)
+        return Response(result)
+
+
+# =============================================================================
+# Webhook Management
+# =============================================================================
+
+
+class WebhookRegisterView(AIFeatureGatedMixin, APIView):
+    """
+    Register a new TibaBot webhook subscription.
+
+    POST /api/ai/webhooks/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        from .serializers import WebhookRegisterRequestSerializer
+
+        serializer = WebhookRegisterRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        payload = {
+            "url": data["url"],
+            "events": data["events"],
+            "secret": data["secret"],
+        }
+
+        try:
+            client = get_tibabot_client()
+            result = client.register_webhook(payload)
+        except TibaBotUnavailableError:
+            return Response(
+                {"error": "TibaBot service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            return Response(
+                {"error": str(e)},
+                status=e.status_code or status.HTTP_502_BAD_GATEWAY,
+            )
+
+        AuditLog.log(
+            action="ai_webhook_register",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={"events": data["events"], "url": data["url"][:200]},
+        )
+
+        return Response(result, status=status.HTTP_201_CREATED)
+
+
+class WebhookListView(AIFeatureGatedMixin, APIView):
+    """
+    List registered TibaBot webhooks.
+
+    GET /api/ai/webhooks/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        try:
+            client = get_tibabot_client()
+            result = client.list_webhooks()
+        except TibaBotUnavailableError:
+            return Response(
+                {"error": "TibaBot service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            return Response(
+                {"error": str(e)},
+                status=e.status_code or status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(result)
+
+
+class WebhookDetailView(AIFeatureGatedMixin, APIView):
+    """
+    Get, update, or delete a TibaBot webhook subscription.
+
+    GET    /api/ai/webhooks/{id}/
+    PUT    /api/ai/webhooks/{id}/
+    DELETE /api/ai/webhooks/{id}/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request, webhook_id: str) -> Response:
+        try:
+            client = get_tibabot_client()
+            result = client.get_webhook(webhook_id)
+        except TibaBotUnavailableError:
+            return Response(
+                {"error": "TibaBot service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            return Response(
+                {"error": str(e)},
+                status=e.status_code or status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(result)
+
+    def put(self, request: Request, webhook_id: str) -> Response:
+        from .serializers import WebhookUpdateRequestSerializer
+
+        serializer = WebhookUpdateRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        payload: dict[str, Any] = {}
+        if "url" in data:
+            payload["url"] = data["url"]
+        if "events" in data:
+            payload["events"] = data["events"]
+        if "secret" in data:
+            payload["secret"] = data["secret"]
+
+        try:
+            client = get_tibabot_client()
+            result = client.update_webhook(webhook_id, payload)
+        except TibaBotUnavailableError:
+            return Response(
+                {"error": "TibaBot service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            return Response(
+                {"error": str(e)},
+                status=e.status_code or status.HTTP_502_BAD_GATEWAY,
+            )
+
+        AuditLog.log(
+            action="ai_webhook_update",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={"webhook_id": webhook_id},
+        )
+
+        return Response(result)
+
+    def delete(self, request: Request, webhook_id: str) -> Response:
+        try:
+            client = get_tibabot_client()
+            result = client.delete_webhook(webhook_id)
+        except TibaBotUnavailableError:
+            return Response(
+                {"error": "TibaBot service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            return Response(
+                {"error": str(e)},
+                status=e.status_code or status.HTTP_502_BAD_GATEWAY,
+            )
+
+        AuditLog.log(
+            action="ai_webhook_delete",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={"webhook_id": webhook_id},
+        )
+
+        return Response(result)
+
+
+class WebhookPauseView(AIFeatureGatedMixin, APIView):
+    """
+    Pause a TibaBot webhook delivery.
+
+    POST /api/ai/webhooks/{id}/pause/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request: Request, webhook_id: str) -> Response:
+        try:
+            client = get_tibabot_client()
+            result = client.pause_webhook(webhook_id)
+        except TibaBotUnavailableError:
+            return Response(
+                {"error": "TibaBot service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            return Response(
+                {"error": str(e)},
+                status=e.status_code or status.HTTP_502_BAD_GATEWAY,
+            )
+
+        AuditLog.log(
+            action="ai_webhook_pause",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={"webhook_id": webhook_id},
+        )
+
+        return Response(result)
+
+
+class WebhookActivateView(AIFeatureGatedMixin, APIView):
+    """
+    Resume a TibaBot webhook delivery.
+
+    POST /api/ai/webhooks/{id}/activate/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request: Request, webhook_id: str) -> Response:
+        try:
+            client = get_tibabot_client()
+            result = client.activate_webhook(webhook_id)
+        except TibaBotUnavailableError:
+            return Response(
+                {"error": "TibaBot service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            return Response(
+                {"error": str(e)},
+                status=e.status_code or status.HTTP_502_BAD_GATEWAY,
+            )
+
+        AuditLog.log(
+            action="ai_webhook_activate",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={"webhook_id": webhook_id},
+        )
+
+        return Response(result)
+
+
+class WebhookDeliveryHistoryView(AIFeatureGatedMixin, APIView):
+    """
+    List delivery history for a TibaBot webhook.
+
+    GET /api/ai/webhooks/{id}/deliveries/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request, webhook_id: str) -> Response:
+        try:
+            client = get_tibabot_client()
+            result = client.get_webhook_deliveries(webhook_id)
+        except TibaBotUnavailableError:
+            return Response(
+                {"error": "TibaBot service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            return Response(
+                {"error": str(e)},
+                status=e.status_code or status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(result)
+
+
+# =============================================================================
+# Facility Knowledge Base
+# =============================================================================
+
+
+class FacilityKBInfoView(AIFeatureGatedMixin, APIView):
+    """
+    Get facility knowledge base info and document list.
+
+    GET /api/ai/facility/knowledge-base/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        try:
+            client = get_tibabot_client()
+            result = client.get_facility_kb()
+        except TibaBotUnavailableError as e:
+            logger.warning("TibaBot facility KB unavailable: %s", e, exc_info=True)
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            logger.warning("TibaBot facility KB error: %s", e, exc_info=True)
+            return Response(
+                {"error": str(e)},
+                status=e.status_code or status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(result)
+
+
+class FacilityKBUploadView(AIFeatureGatedMixin, APIView):
+    """
+    Upload a document to the facility knowledge base.
+
+    POST /api/ai/facility/knowledge-base/upload/
+
+    Accepts multipart/form-data with a single ``file`` field.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request: Request) -> Response:
+        uploaded_file = request.FILES.get("file")
+        if not uploaded_file:
+            return Response(
+                {"error": "No file provided. Include a 'file' field in the multipart form."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file_data = uploaded_file.read()
+        filename = uploaded_file.name or "upload"
+        content_type = uploaded_file.content_type or "application/octet-stream"
+
+        max_size_mb = 20
+        if len(file_data) > max_size_mb * 1024 * 1024:
+            return Response(
+                {"error": f"File exceeds {max_size_mb} MB limit."},
+                status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            )
+
+        try:
+            client = get_tibabot_client()
+            result = client.upload_to_facility_kb(file_data, filename, content_type)
+        except TibaBotUnavailableError:
+            return Response(
+                {"error": "TibaBot service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            return Response(
+                {"error": str(e)},
+                status=e.status_code or status.HTTP_502_BAD_GATEWAY,
+            )
+
+        AuditLog.log(
+            action="ai_facility_kb_upload",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={"filename": filename, "size_bytes": len(file_data)},
+        )
+
+        return Response(result, status=status.HTTP_201_CREATED)
+
+
+class FacilityKBDocumentDeleteView(AIFeatureGatedMixin, APIView):
+    """
+    Delete a document from the facility knowledge base.
+
+    DELETE /api/ai/facility/knowledge-base/documents/{document_id}/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request: Request, document_id: str) -> Response:
+        try:
+            client = get_tibabot_client()
+            result = client.delete_facility_kb_document(document_id)
+        except TibaBotUnavailableError:
+            return Response(
+                {"error": "TibaBot service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            return Response(
+                {"error": str(e)},
+                status=e.status_code or status.HTTP_502_BAD_GATEWAY,
+            )
+
+        AuditLog.log(
+            action="ai_facility_kb_delete",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={"document_id": document_id},
+        )
+
+        return Response(result)
+
+
+class FacilityKBSearchView(AIFeatureGatedMixin, APIView):
+    """
+    Search the facility knowledge base.
+
+    GET /api/ai/facility/knowledge-base/search/?q=<query>&limit=10
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        query = request.query_params.get("q", "").strip()
+        if not query:
+            return Response(
+                {"error": "Query parameter 'q' is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            limit = int(request.query_params.get("limit", "10"))
+        except (TypeError, ValueError):
+            limit = 10
+        limit = max(1, min(limit, 50))
+
+        try:
+            client = get_tibabot_client()
+            result = client.search_facility_kb(query, limit)
+        except TibaBotUnavailableError:
+            return Response(
+                {"error": "TibaBot service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            return Response(
+                {"error": str(e)},
+                status=e.status_code or status.HTTP_502_BAD_GATEWAY,
+            )
+
+        AuditLog.log(
+            action="ai_facility_kb_search",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={"query": query[:200], "limit": limit},
+        )
+
         return Response(result)

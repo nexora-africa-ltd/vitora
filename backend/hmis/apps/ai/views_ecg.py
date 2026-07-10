@@ -135,7 +135,6 @@ class ECGInterpretView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_ECG_INTERPRETER"
 
     def post(self, request: Request) -> Response:
         serializer = ECGInterpretRequestSerializer(data=request.data)
@@ -180,7 +179,6 @@ class ECGCompareView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_ECG_INTERPRETER"
 
     def post(self, request: Request) -> Response:
         serializer = ECGCompareRequestSerializer(data=request.data)
@@ -226,7 +224,6 @@ class ECGUploadView(AIFeatureGatedMixin, APIView):
 
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser]
-    ai_feature_flag = "TIBABOT_ENABLE_ECG_INTERPRETER"
 
     ALLOWED_EXTENSIONS = {
         ".jpg",
@@ -307,7 +304,6 @@ class ECGReportView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_ECG_INTERPRETER"
 
     def post(self, request: Request) -> HttpResponse:
         serializer = ECGReportRequestSerializer(data=request.data)
@@ -350,7 +346,6 @@ class ECGScoreCHA2DS2VAScView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_ECG_INTERPRETER"
 
     def post(self, request: Request) -> Response:
         serializer = CHA2DS2VAScRequestSerializer(data=request.data)
@@ -391,7 +386,6 @@ class ECGScoreHASBLEDView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    ai_feature_flag = "TIBABOT_ENABLE_ECG_INTERPRETER"
 
     def post(self, request: Request) -> Response:
         serializer = HASBLEDRequestSerializer(data=request.data)
@@ -433,7 +427,6 @@ class ECGPatternsView(AIFeatureGatedMixin, APIView):
     """
 
     permission_classes = [permissions.AllowAny]
-    ai_feature_flag = "TIBABOT_ENABLE_ECG_INTERPRETER"
 
     def get(self, request: Request) -> Response:  # noqa: ARG002
         try:

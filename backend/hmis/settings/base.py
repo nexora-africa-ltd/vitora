@@ -1017,25 +1017,6 @@ TIBABOT_JWKS_URL = os.getenv("TIBABOT_JWKS_URL", "")
 # the TibaBot admin API.  Only needed by platform operators (Nexora staff).
 TIBABOT_ADMIN_KEY = os.getenv("TIBABOT_ADMIN_KEY", "")
 
-# Per-feature flags (all default to True — opt-out, not opt-in).
-# Each requires TIBABOT_ENABLED=true as a prerequisite.
-TIBABOT_ENABLE_LAB_ASSIST = os.getenv("TIBABOT_ENABLE_LAB_ASSIST", "true").lower() == "true"
-TIBABOT_ENABLE_DISCHARGE_READINESS = (
-    os.getenv("TIBABOT_ENABLE_DISCHARGE_READINESS", "true").lower() == "true"
-)
-TIBABOT_ENABLE_CARE_PLAN = os.getenv("TIBABOT_ENABLE_CARE_PLAN", "true").lower() == "true"
-TIBABOT_ENABLE_CLERKING_ASSIST = (
-    os.getenv("TIBABOT_ENABLE_CLERKING_ASSIST", "true").lower() == "true"
-)
-TIBABOT_ENABLE_SURGICAL_ASSISTANT = (
-    os.getenv("TIBABOT_ENABLE_SURGICAL_ASSISTANT", "true").lower() == "true"
-)
-TIBABOT_ENABLE_PROACTIVE_INSIGHTS = (
-    os.getenv("TIBABOT_ENABLE_PROACTIVE_INSIGHTS", "true").lower() == "true"
-)
-TIBABOT_ENABLE_ECG_INTERPRETER = (
-    os.getenv("TIBABOT_ENABLE_ECG_INTERPRETER", "true").lower() == "true"
-)
 
 # ============================================================================
 # SMART on FHIR OAuth2 Configuration (Phase 5)

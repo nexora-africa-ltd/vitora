@@ -138,11 +138,6 @@ az containerapp create \
     "TIBABOT_API_URL=https://tibabot.vitora.nexora.africa" \
     "TIBABOT_API_KEY=secretref:tibabot-api-key" \
     "TIBABOT_TIMEOUT=30" \
-    "TIBABOT_ENABLE_LAB_ASSIST=true" \
-    "TIBABOT_ENABLE_DISCHARGE_READINESS=true" \
-    "TIBABOT_ENABLE_CARE_PLAN=true" \
-    "TIBABOT_ENABLE_CLERKING_ASSIST=true" \
-    "TIBABOT_ENABLE_SURGICAL_ASSISTANT=true" \
     "SETUP_WIZARD_ENABLED=true" \
     "DJANGO_LOG_LEVEL=INFO" \
     "SMS_BACKEND=hmis.apps.core.sms.backends.MockSMSBackend" \
