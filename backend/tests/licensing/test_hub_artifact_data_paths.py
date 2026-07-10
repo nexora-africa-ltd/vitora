@@ -71,10 +71,6 @@ def test_windows_hub_service_env_includes_tibabot_and_cloud_auth_flags():
         "TIBABOT_JWT_EXPIRY_SECONDS",
         "TIBABOT_JWKS_URL",
         "TIBABOT_ADMIN_KEY",
-        "TIBABOT_ENABLE_LAB_ASSIST",
-        "TIBABOT_ENABLE_DISCHARGE_ASSIST",
-        "TIBABOT_ENABLE_CARE_PLAN",
-        "TIBABOT_ENABLE_CLERKING_ASSIST",
         "HUB_CLOUD_AUTH_ENABLED",
         "HUB_CLOUD_AUTH_URL",
     ]

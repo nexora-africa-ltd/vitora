@@ -76,11 +76,7 @@ function Build-HubServiceEnvironment {
         "TIBABOT_JWT_AUDIENCE=$(Get-HubEnvValue 'TIBABOT_JWT_AUDIENCE' 'tibabot')",
         "TIBABOT_JWT_EXPIRY_SECONDS=$(Get-HubEnvValue 'TIBABOT_JWT_EXPIRY_SECONDS' '300')",
         "TIBABOT_JWKS_URL=$(Get-HubEnvValue 'TIBABOT_JWKS_URL')",
-        "TIBABOT_ADMIN_KEY=$(Get-HubEnvValue 'TIBABOT_ADMIN_KEY')",
-        "TIBABOT_ENABLE_LAB_ASSIST=$(Get-HubEnvValue 'TIBABOT_ENABLE_LAB_ASSIST' 'true')",
-        "TIBABOT_ENABLE_DISCHARGE_ASSIST=$(Get-HubEnvValue 'TIBABOT_ENABLE_DISCHARGE_ASSIST' 'true')",
-        "TIBABOT_ENABLE_CARE_PLAN=$(Get-HubEnvValue 'TIBABOT_ENABLE_CARE_PLAN' 'true')",
-        "TIBABOT_ENABLE_CLERKING_ASSIST=$(Get-HubEnvValue 'TIBABOT_ENABLE_CLERKING_ASSIST' 'true')"
+        "TIBABOT_ADMIN_KEY=$(Get-HubEnvValue 'TIBABOT_ADMIN_KEY')"
     ) -join "`n"
 }
 

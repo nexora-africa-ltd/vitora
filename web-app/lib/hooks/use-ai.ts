@@ -646,3 +646,49 @@ export function useAIInsights() {
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 }
+
+// =============================================================================
+// Facility Knowledge Base
+// =============================================================================
+
+export function useFacilityKB() {
+  return useQuery({
+    queryKey: aiKeys.all.concat(['facility-kb'] as any),
+    queryFn: () => aiApi.getFacilityKB(),
+    enabled: ENABLE_AI,
+    retry: false,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useFacilityKBSearch(query: string, limit?: number) {
+  return useQuery({
+    queryKey: aiKeys.all.concat(['facility-kb', 'search', query, limit] as any),
+    queryFn: () => aiApi.searchFacilityKB(query, limit),
+    enabled: ENABLE_AI && query.length >= 2,
+    retry: false,
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useUploadToFacilityKB() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (file: File) => aiApi.uploadToFacilityKB(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: aiKeys.all.concat(['facility-kb'] as any) });
+    },
+  });
+}
+
+export function useDeleteFacilityKBDocument() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (documentId: string) => aiApi.deleteFacilityKBDocument(documentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: aiKeys.all.concat(['facility-kb'] as any) });
+    },
+  });
+}

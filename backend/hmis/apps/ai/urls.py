@@ -30,6 +30,10 @@ from .views import (
     DischargeAssessView,
     DischargeConditionsListView,
     EGFRCalculateView,
+    FacilityKBDocumentDeleteView,
+    FacilityKBInfoView,
+    FacilityKBSearchView,
+    FacilityKBUploadView,
     ICD10SuggestView,
     ICULabEnrichmentView,
     ICUPredictView,
@@ -54,6 +58,12 @@ from .views import (
     SurgicalPreOpAssessView,
     SurgicalProcedureDetailView,
     SurgicalProcedureListView,
+    WebhookActivateView,
+    WebhookDeliveryHistoryView,
+    WebhookDetailView,
+    WebhookListView,
+    WebhookPauseView,
+    WebhookRegisterView,
 )
 from .views_ecg import (
     ECGCompareView,
@@ -287,4 +297,44 @@ urlpatterns = [
         name="ecg-score-has-bled",
     ),
     path("ecg/patterns/", ECGPatternsView.as_view(), name="ecg-patterns"),
+    # ── Webhooks ──────────────────────────────────────────────────────
+    path("webhooks/", WebhookRegisterView.as_view(), name="webhook-register"),
+    path("webhooks/list/", WebhookListView.as_view(), name="webhook-list"),
+    path("webhooks/<str:webhook_id>/", WebhookDetailView.as_view(), name="webhook-detail"),
+    path(
+        "webhooks/<str:webhook_id>/pause/",
+        WebhookPauseView.as_view(),
+        name="webhook-pause",
+    ),
+    path(
+        "webhooks/<str:webhook_id>/activate/",
+        WebhookActivateView.as_view(),
+        name="webhook-activate",
+    ),
+    path(
+        "webhooks/<str:webhook_id>/deliveries/",
+        WebhookDeliveryHistoryView.as_view(),
+        name="webhook-deliveries",
+    ),
+    # ── Facility Knowledge Base ───────────────────────────────────────
+    path(
+        "facility/knowledge-base/",
+        FacilityKBInfoView.as_view(),
+        name="facility-kb-info",
+    ),
+    path(
+        "facility/knowledge-base/upload/",
+        FacilityKBUploadView.as_view(),
+        name="facility-kb-upload",
+    ),
+    path(
+        "facility/knowledge-base/documents/<str:document_id>/",
+        FacilityKBDocumentDeleteView.as_view(),
+        name="facility-kb-document-delete",
+    ),
+    path(
+        "facility/knowledge-base/search/",
+        FacilityKBSearchView.as_view(),
+        name="facility-kb-search",
+    ),
 ]

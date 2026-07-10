@@ -50,6 +50,12 @@ import {
   AIEGFRCalculateResponseSchema,
   StoredEGFRResultSchema,
   ProactiveInsightsResponseSchema,
+  TibaBotWebhookListResponseSchema,
+  TibaBotWebhookDeliveryListResponseSchema,
+  FacilityKBInfoResponseSchema,
+  FacilityKBSearchResponseSchema,
+  FacilityKBUploadResponseSchema,
+  FacilityKBDocumentDeleteResponseSchema,
 } from '@/lib/schemas/ai.schema';
 import { parseResponse } from '@/lib/schemas/validation';
 import type {
@@ -119,6 +125,14 @@ import type {
   StoredEGFRResult,
   ProactiveInsightsRequest,
   ProactiveInsightsResponse,
+  TibaBotWebhookListResponse,
+  TibaBotWebhookRegisterRequest,
+  TibaBotWebhookUpdateRequest,
+  TibaBotWebhookDeliveryListResponse,
+  FacilityKBInfoResponse,
+  FacilityKBSearchResponse,
+  FacilityKBUploadResponse,
+  FacilityKBDocumentDeleteResponse,
 } from '@/lib/types/ai';
 
 export const aiApi = {
@@ -790,6 +804,110 @@ export const aiApi = {
     const response = await apiClient.post('/api/ai/clinical/proactive-insights/', data);
     return parseResponse(ProactiveInsightsResponseSchema, response.data, {
       context: 'aiApi.getProactiveInsights',
+    });
+  },
+
+  // ===========================================================================
+  // Webhooks
+  // ===========================================================================
+
+  /** List all registered webhooks. */
+  listWebhooks: async (): Promise<TibaBotWebhookListResponse> => {
+    const response = await apiClient.get('/api/ai/webhooks/list/');
+    return parseResponse(TibaBotWebhookListResponseSchema, response.data, {
+      context: 'aiApi.listWebhooks',
+    });
+  },
+
+  /** Register a new webhook subscription. */
+  registerWebhook: async (data: TibaBotWebhookRegisterRequest): Promise<TibaBotWebhookListResponse> => {
+    const response = await apiClient.post('/api/ai/webhooks/', data);
+    return parseResponse(TibaBotWebhookListResponseSchema, response.data, {
+      context: 'aiApi.registerWebhook',
+    });
+  },
+
+  /** Get webhook details. */
+  getWebhook: async (webhookId: string): Promise<TibaBotWebhookListResponse> => {
+    const response = await apiClient.get(`/api/ai/webhooks/${webhookId}/`);
+    return parseResponse(TibaBotWebhookListResponseSchema, response.data, {
+      context: 'aiApi.getWebhook',
+    });
+  },
+
+  /** Update a webhook subscription. */
+  updateWebhook: async (webhookId: string, data: TibaBotWebhookUpdateRequest): Promise<TibaBotWebhookListResponse> => {
+    const response = await apiClient.put(`/api/ai/webhooks/${webhookId}/`, data);
+    return parseResponse(TibaBotWebhookListResponseSchema, response.data, {
+      context: 'aiApi.updateWebhook',
+    });
+  },
+
+  /** Delete a webhook subscription. */
+  deleteWebhook: async (webhookId: string): Promise<Record<string, unknown>> => {
+    const response = await apiClient.delete(`/api/ai/webhooks/${webhookId}/`);
+    return response.data;
+  },
+
+  /** Pause webhook delivery. */
+  pauseWebhook: async (webhookId: string): Promise<Record<string, unknown>> => {
+    const response = await apiClient.post(`/api/ai/webhooks/${webhookId}/pause/`);
+    return response.data;
+  },
+
+  /** Resume webhook delivery. */
+  activateWebhook: async (webhookId: string): Promise<Record<string, unknown>> => {
+    const response = await apiClient.post(`/api/ai/webhooks/${webhookId}/activate/`);
+    return response.data;
+  },
+
+  /** List webhook delivery history. */
+  getWebhookDeliveries: async (webhookId: string): Promise<TibaBotWebhookDeliveryListResponse> => {
+    const response = await apiClient.get(`/api/ai/webhooks/${webhookId}/deliveries/`);
+    return parseResponse(TibaBotWebhookDeliveryListResponseSchema, response.data, {
+      context: 'aiApi.getWebhookDeliveries',
+    });
+  },
+
+  // ===========================================================================
+  // Facility Knowledge Base
+  // ===========================================================================
+
+  /** Get facility knowledge base info and document list. */
+  getFacilityKB: async (): Promise<FacilityKBInfoResponse> => {
+    const response = await apiClient.get('/api/ai/facility/knowledge-base/');
+    return parseResponse(FacilityKBInfoResponseSchema, response.data, {
+      context: 'aiApi.getFacilityKB',
+    });
+  },
+
+  /** Upload a document to the facility knowledge base. */
+  uploadToFacilityKB: async (file: File): Promise<FacilityKBUploadResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post('/api/ai/facility/knowledge-base/upload/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return parseResponse(FacilityKBUploadResponseSchema, response.data, {
+      context: 'aiApi.uploadToFacilityKB',
+    });
+  },
+
+  /** Delete a document from the facility knowledge base. */
+  deleteFacilityKBDocument: async (documentId: string): Promise<FacilityKBDocumentDeleteResponse> => {
+    const response = await apiClient.delete(`/api/ai/facility/knowledge-base/documents/${documentId}/`);
+    return parseResponse(FacilityKBDocumentDeleteResponseSchema, response.data, {
+      context: 'aiApi.deleteFacilityKBDocument',
+    });
+  },
+
+  /** Search the facility knowledge base. */
+  searchFacilityKB: async (query: string, limit?: number): Promise<FacilityKBSearchResponse> => {
+    const response = await apiClient.get('/api/ai/facility/knowledge-base/search/', {
+      params: { q: query, ...(limit ? { limit } : {}) },
+    });
+    return parseResponse(FacilityKBSearchResponseSchema, response.data, {
+      context: 'aiApi.searchFacilityKB',
     });
   },
 };

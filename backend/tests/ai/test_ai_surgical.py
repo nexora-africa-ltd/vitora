@@ -263,7 +263,7 @@ class TestAISurgicalFeatureFlags:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_SURGICAL_ASSISTANT=False)
+    @override_settings(TIBABOT_ENABLED=False)
     def test_feature_flag_off_returns_404(self, authenticated_client, sample_surgery_case):
         response = authenticated_client.post(
             "/api/ai/surgical/pre-op/assess/",

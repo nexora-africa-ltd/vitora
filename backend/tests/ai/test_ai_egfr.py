@@ -77,7 +77,7 @@ class TestEGFRFeatureFlags:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    @override_settings(TIBABOT_ENABLED=True, TIBABOT_ENABLE_EGFR=False)
+    @override_settings(TIBABOT_ENABLED=False)
     def test_404_when_egfr_feature_disabled(self, authenticated_client, egfr_request_data):
         response = authenticated_client.post(
             "/api/ai/egfr/calculate/",
@@ -90,7 +90,7 @@ class TestEGFRFeatureFlags:
     def test_enabled_by_default_when_master_on(
         self, authenticated_client, egfr_request_data, mock_tibabot, egfr_tibabot_response
     ):
-        """TIBABOT_ENABLE_EGFR defaults to True (opt-out pattern)."""
+        """Feature is enabled when master TIBABOT_ENABLED flag is on."""
         mock_tibabot.calculate_egfr.return_value = egfr_tibabot_response
         response = authenticated_client.post(
             "/api/ai/egfr/calculate/",

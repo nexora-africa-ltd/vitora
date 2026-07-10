@@ -78,6 +78,7 @@ import {
   UserPlus,
   BotIcon,
   MessageSquare,
+  Library,
   Droplets,
   CircleDot,
   Award,
@@ -556,6 +557,7 @@ const _allNavItems: NavItemType[] = [
     children: [
       { label: 'Chat', href: '/ai', icon: MessageSquare, actionKey: 'ai.use_chat' },
       { label: 'Drug Formulary', href: '/ai/formulary', icon: Pill, actionKey: 'ai.use_chat' },
+      { label: 'Knowledge Base', href: '/ai/knowledge-base', icon: Library, actionKey: 'ai.use_chat' },
       { label: 'ECG Interpreter', href: '/ai/ecg', icon: Activity, actionKey: 'ai.use_chat' },
       { label: 'Insights', href: '/ai/insights', icon: BarChart3, actionKey: 'ai.view_insights' },
     ],
