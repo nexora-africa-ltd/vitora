@@ -25,7 +25,7 @@ export interface NavigationResult {
 }
 
 export function useNavigationItems(): NavigationResult {
-  const { canAccessModule, canPerformAction } = usePermissions();
+  const { canAccessModule, canPerformAction, isSuperuser } = usePermissions();
   const { hasModule, facilityDetail } = useFacility();
   const { navigationMode, isClinicalNavigationEligible } = useNavigationMode();
   const { hasFeature } = useSubscription();
@@ -43,6 +43,7 @@ export function useNavigationItems(): NavigationResult {
       facilityLevel: facilityDetail?.level,
       facilityOwnership: facilityDetail?.ownership,
       activeClinicTypes,
+      isSuperuser,
     };
 
     const isAllowed = (item: { moduleKey?: string; facilityModule?: string; actionKey?: string; planFeature?: string; requiresInternet?: boolean; visibleWhen?: (ctx: NavItemVisibilityContext) => boolean }): boolean => {
@@ -88,6 +89,7 @@ export function useNavigationItems(): NavigationResult {
   }, [
     canAccessModule,
     canPerformAction,
+    isSuperuser,
     hasModule,
     hasFeature,
     facilityDetail,
