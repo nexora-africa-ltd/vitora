@@ -309,8 +309,11 @@ class IlmRegistriesService:
         sha_member: Any = None,
         facility: Any = None,
         user: Any = None,
+        service_type: str | None = None,
     ) -> IlmRegistryResult:
-        params = {"patient_id": patient_id, "sub_benefit_code": sub_benefit_code}
+        params: dict[str, Any] = {"patient_id": patient_id, "sub_benefit_code": sub_benefit_code}
+        if service_type:
+            params["service_type"] = service_type
         response = self.client.get(
             PATIENT_BENEFIT_INTERVENTIONS_PATH,
             params=params,

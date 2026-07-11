@@ -8,7 +8,7 @@
  */
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -40,6 +40,8 @@ import {
 } from '@/lib/hooks/use-inpatient';
 import { BedSelectionGrid } from '@/components/inpatient';
 import { cn } from '@/lib/utils/cn';
+import { useFacility } from '@/lib/context/facility-context';
+import { shaApi } from '@/lib/api/sha';
 
 export default function NewEncounterAdmissionPage() {
   const router = useRouter();
@@ -54,9 +56,58 @@ export default function NewEncounterAdmissionPage() {
   const { data: patientData, id: patientId } = getPatient();
   const details = getDetails();
   const admission = getAdmission();
+  const { facilityDetail } = useFacility();
   const [wardAssignmentMode, setWardAssignmentMode] = useState<'auto' | 'manual'>(
     admission.wardId ? 'manual' : 'auto'
   );
+
+  // SHA eligibility check when payer type is SHA
+  const [shaEligibility, setShaEligibility] = useState<{
+    status: 'idle' | 'checking' | 'eligible' | 'ineligible' | 'blocked';
+    message?: string;
+  }>({ status: 'idle' });
+  const shaCheckAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (admission.payerType !== 'SHA' || !patientId) {
+      setShaEligibility({ status: 'idle' });
+      return;
+    }
+
+    const controller = new AbortController();
+    shaCheckAbortRef.current = controller;
+
+    setShaEligibility({ status: 'checking' });
+
+    shaApi
+      .checkPatientEligibility(patientId)
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        if (!result.is_eligible) {
+          setShaEligibility({
+            status: 'ineligible',
+            message: 'Patient is not SHA-eligible. Claims will be rejected. Consider using Cash payment.',
+          });
+          return;
+        }
+        // Check facility-level coverage
+        const coverageBlocked = (result as any).response_data?.coverage_blocked;
+        const coverageCaveat = (result as any).response_data?.coverage_caveat;
+        if (coverageBlocked && coverageCaveat) {
+          setShaEligibility({ status: 'blocked', message: coverageCaveat });
+        } else {
+          setShaEligibility({ status: 'eligible' });
+        }
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setShaEligibility({ status: 'idle' });
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [admission.payerType, patientId]);
 
   // Redirect if not IPD or no patient
   useEffect(() => {
@@ -233,6 +284,26 @@ export default function NewEncounterAdmissionPage() {
                 <SelectItem value="CORPORATE">Corporate</SelectItem>
               </SelectContent>
             </Select>
+            {/* SHA eligibility warning */}
+            {admission.payerType === 'SHA' && shaEligibility.status === 'checking' && (
+              <p className="text-xs text-muted-foreground">Checking SHA eligibility...</p>
+            )}
+            {admission.payerType === 'SHA' && shaEligibility.status === 'ineligible' && (
+              <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-700 dark:text-amber-300">
+                  {shaEligibility.message}
+                </AlertDescription>
+              </Alert>
+            )}
+            {admission.payerType === 'SHA' && shaEligibility.status === 'blocked' && (
+              <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-700 dark:text-amber-300">
+                  {shaEligibility.message}
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
 
           {/* Ward Assignment Mode */}

@@ -88,7 +88,7 @@ class SHAClaimsService:
         )
 
     def create_claim_from_encounter(
-        self, encounter, invoice, user, claim_type: str = None
+        self, encounter, invoice, user, claim_type: str = None, admission=None
     ) -> SHAClaim:
         """
         Create a new claim from an encounter and invoice.
@@ -98,6 +98,7 @@ class SHAClaimsService:
             invoice: Associated invoice
             user: User creating the claim
             claim_type: Override claim type (auto-detected if None)
+            admission: Optional Admission instance (used for IPD diagnosis and dates)
 
         Returns:
             New SHAClaim instance
@@ -109,7 +110,8 @@ class SHAClaimsService:
             >>> claim = service.create_claim_from_encounter(
             ...     encounter=encounter,
             ...     invoice=invoice,
-            ...     user=request.user
+            ...     user=request.user,
+            ...     admission=admission,
             ... )
         """
         patient = encounter.patient
@@ -158,34 +160,48 @@ class SHAClaimsService:
         if not secondary_diagnosis_codes:
             secondary_diagnosis_codes = getattr(encounter, "secondary_diagnosis_codes", []) or []
 
-        # For IPD claims, fall back to discharge diagnoses if encounter has none
+        # For IPD claims, fall back to admission/discharge diagnoses if encounter has none
         if claim_type == SHAClaim.ClaimType.INPATIENT or (
             not claim_type and encounter.encounter_type == "IPD"
         ):
             if not primary_diagnosis_code:
-                admission = getattr(encounter, "admission", None)
-                if admission is None and hasattr(encounter, "patient"):
-                    from hmis.apps.inpatient.models import Admission
+                # Use provided admission or look it up
+                if admission is None:
+                    admission_obj = getattr(encounter, "admission", None)
+                    if admission_obj is None and hasattr(encounter, "patient"):
+                        from hmis.apps.inpatient.models import Admission
 
-                    admission = (
-                        Admission.objects.filter(patient=encounter.patient)
-                        .order_by("-admission_date")
-                        .first()
-                    )
-                if admission is not None:
-                    discharge = getattr(admission, "discharge", None)
-                    if discharge is not None and hasattr(discharge, "diagnoses"):
-                        d_primary = discharge.diagnoses.filter(role="PRIMARY").first()
-                        if d_primary:
-                            primary_diagnosis_code = d_primary.code or ""
-                            primary_diagnosis_description = d_primary.description or ""
-                        if not secondary_diagnosis_codes:
-                            d_secondaries = discharge.diagnoses.filter(
-                                role__in=["SECONDARY", "COMPLICATION"]
-                            )
-                            for dd in d_secondaries:
-                                if dd.code:
-                                    secondary_diagnosis_codes.append(dd.code)
+                        admission_obj = (
+                            Admission.objects.filter(patient=encounter.patient)
+                            .order_by("-admission_date")
+                            .first()
+                        )
+                else:
+                    admission_obj = admission
+
+                if admission_obj is not None:
+                    # At admission time: use admitting diagnosis
+                    if getattr(admission_obj, "admitting_diagnosis", None):
+                        primary_diagnosis_code = admission_obj.admitting_diagnosis or ""
+                        primary_diagnosis_description = (
+                            getattr(admission_obj, "admitting_diagnosis_text", "") or ""
+                        )
+
+                    # At discharge time (or if admitting dx missing): try discharge diagnoses
+                    if not primary_diagnosis_code:
+                        discharge = getattr(admission_obj, "discharge", None)
+                        if discharge is not None and hasattr(discharge, "diagnoses"):
+                            d_primary = discharge.diagnoses.filter(role="PRIMARY").first()
+                            if d_primary:
+                                primary_diagnosis_code = d_primary.code or ""
+                                primary_diagnosis_description = d_primary.description or ""
+                            if not secondary_diagnosis_codes:
+                                d_secondaries = discharge.diagnoses.filter(
+                                    role__in=["SECONDARY", "COMPLICATION"]
+                                )
+                                for dd in d_secondaries:
+                                    if dd.code:
+                                        secondary_diagnosis_codes.append(dd.code)
 
         # Build claim data - always include required fields even if empty (model validation will catch)
         claim_data = {
@@ -207,11 +223,23 @@ class SHAClaimsService:
         if secondary_diagnosis_codes:
             claim_data["secondary_diagnosis_codes"] = secondary_diagnosis_codes
 
-        # For IPD claims, extract admission date
+        # For IPD claims, extract admission date from Admission object
         if claim_type == SHAClaim.ClaimType.INPATIENT:
-            admission_date = getattr(encounter, "admission_date", None)
-            if admission_date:
-                claim_data["admission_date"] = admission_date
+            if admission is not None:
+                admission_dt = getattr(admission, "admission_date", None)
+                if admission_dt:
+                    claim_data["admission_date"] = (
+                        admission_dt.date() if hasattr(admission_dt, "date") else admission_dt
+                    )
+            else:
+                # Fallback: try encounter's admission reverse relation
+                admission_rel = getattr(encounter, "admission", None)
+                if admission_rel is not None:
+                    admission_dt = getattr(admission_rel, "admission_date", None)
+                    if admission_dt:
+                        claim_data["admission_date"] = (
+                            admission_dt.date() if hasattr(admission_dt, "date") else admission_dt
+                        )
 
         # Create claim
         claim = SHAClaim.objects.create(**claim_data)
@@ -220,6 +248,54 @@ class SHAClaimsService:
         for invoice_item in invoice.items.all():
             SHAClaimItem.create_from_invoice_item(claim, invoice_item)
 
+        return claim
+
+    def update_claim_on_discharge(self, claim: SHAClaim, discharge) -> SHAClaim:
+        """Update an existing inpatient SHA claim with discharge data.
+
+        Called at discharge time to populate discharge_date, final diagnoses,
+        and refresh claim items from the finalized invoice.
+
+        Args:
+            claim: The existing SHAClaim (created at admission time).
+            discharge: The Discharge instance with discharge_date and diagnoses.
+
+        Returns:
+            Updated SHAClaim instance.
+        """
+        # Set discharge date
+        discharge_dt = discharge.discharge_date
+        if discharge_dt:
+            claim.discharge_date = (
+                discharge_dt.date() if hasattr(discharge_dt, "date") else discharge_dt
+            )
+
+        # Update diagnoses from discharge records (overrides admitting diagnosis if present)
+        if hasattr(discharge, "diagnoses"):
+            primary = discharge.diagnoses.filter(role="PRIMARY").first()
+            if primary:
+                claim.primary_diagnosis_code = primary.code or ""
+                claim.primary_diagnosis_description = primary.description or ""
+
+            secondaries = discharge.diagnoses.filter(role__in=["SECONDARY", "COMPLICATION"])
+            secondary_codes = [dd.code for dd in secondaries if dd.code]
+            if secondary_codes:
+                claim.secondary_diagnosis_codes = secondary_codes
+
+        # Refresh claim items from updated invoice
+        if claim.invoice:
+            claim.claim_items.all().delete()
+            for invoice_item in claim.invoice.items.all():
+                SHAClaimItem.create_from_invoice_item(claim, invoice_item)
+
+        # Recalculate claimed amount
+        from decimal import Decimal
+
+        claim.claimed_amount = sum(
+            item.claimed_amount or Decimal("0") for item in claim.claim_items.all()
+        )
+
+        claim.save()
         return claim
 
     def _determine_claim_type(self, encounter) -> str:

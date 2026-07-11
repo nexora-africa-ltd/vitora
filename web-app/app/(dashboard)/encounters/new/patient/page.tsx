@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/select';
 import { PatientSelector } from '@/components/encounters/patient-selector';
 import { VitalsForm } from '@/components/encounters/vitals-form';
+import { SHAStatusIndicator } from '@/components/patients/sha-status-indicator';
 import { useNewEncounterStore, type NewEncounterVitals } from '@/lib/stores/new-encounter-store';
 import type { Patient } from '@/lib/types/patient';
 import type { EncounterFormData } from '@/lib/types/encounter-form';
@@ -297,6 +298,14 @@ export default function NewEncounterPatientPage() {
               selectedPatient={selectedPatient}
               onChange={handlePatientChange}
             />
+            {patientId && selectedPatient && (
+              <div className="mt-3">
+                <SHAStatusIndicator
+                  patientId={patientId}
+                  identificationNumber={selectedPatient.identification_number}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -201,12 +201,13 @@ class SHAClaimAutomationService:
             suggestions = cls.suggest_interventions_for_encounter(encounter_id)
             codes = [s["code"] for s in suggestions] or (consent_token.intervention_codes or [])
 
+            service_type = "INPATIENT" if encounter.encounter_type == "IPD" else "OUTPATIENT"
             params = StartVisitParams(
                 otp="",
                 auth_guid=consent_token.auth_guid,
                 patient_id=consent_token.identification_number,
                 intervention_codes=codes,
-                service_type="OUTPATIENT",
+                service_type=service_type,
             )
 
             result = service.start_visit(
@@ -431,9 +432,9 @@ class SHAClaimAutomationService:
                     claim=claim,
                     intervention_code=intervention["code"],
                     intervention_name=intervention.get("name", ""),
-                    tariff_amount=Decimal(intervention["tariff"])
-                    if intervention.get("tariff")
-                    else None,
+                    tariff_amount=(
+                        Decimal(intervention["tariff"]) if intervention.get("tariff") else None
+                    ),
                 )
                 attached += 1
 

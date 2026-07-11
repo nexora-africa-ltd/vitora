@@ -1377,6 +1377,7 @@ async function ilmBenefitInterventions(params: {
   sub_benefit_code: string;
   patient_pk?: number;
   sha_member_id?: number;
+  service_type?: 'OUTPATIENT' | 'INPATIENT';
 }): Promise<IlmRegistryResponse> {
   const response = await apiClient.get(`${ILM_BASE}/benefit-interventions/`, { params });
   return parseResponse(IlmRegistryResponseSchema, response.data, {

@@ -321,13 +321,14 @@ class IlmSubBenefitsView(APIView):
 
 
 class IlmBenefitInterventionsView(APIView):
-    """GET /api/sha/ilm/benefit-interventions/?patient_id=&sub_benefit_code=&patient_pk="""
+    """GET /api/sha/ilm/benefit-interventions/?patient_id=&sub_benefit_code=&patient_pk=&service_type="""
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def get(self, request):
         patient_id = request.query_params.get("patient_id")
         sub_benefit_code = request.query_params.get("sub_benefit_code")
+        service_type = request.query_params.get("service_type")  # "OUTPATIENT" | "INPATIENT"
         if not patient_id or not sub_benefit_code:
             return Response(
                 {"error": "patient_id and sub_benefit_code are required"},
@@ -344,6 +345,7 @@ class IlmBenefitInterventionsView(APIView):
                 sha_member=_resolve_sha_member(request),
                 facility=_facility(request),
                 user=request.user,
+                service_type=service_type,
             )
         except DHAError as exc:
             return _ilm_handle_error(
