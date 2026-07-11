@@ -48,6 +48,7 @@ export { DependentsView } from './DependentsView';
 
 // Benefits & Interventions Panel
 export { BenefitsPanel } from './BenefitsPanel';
+export type { BenefitsEmptyReason } from './BenefitsPanel';
 
 // Facility & Practitioner Validation
 export {

@@ -340,11 +340,15 @@ function CRResultCard({
   const router = useRouter();
   const [showDependants, setShowDependants] = useState(false);
   const [capitationWarning, setCapitationWarning] = useState<CapitationValidationResult | null>(null);
+  const [benefitsEmpty, setBenefitsEmpty] = useState(false);
+  const [benefitsChecked, setBenefitsChecked] = useState(false);
 
   // Validate capitation provider match when eligibility data arrives
   useEffect(() => {
     if (!eligibility || !eligibility.is_eligible) {
       setCapitationWarning(null);
+      setBenefitsEmpty(false);
+      setBenefitsChecked(false);
       return;
     }
     // Build the eligibility response object for the validation endpoint
@@ -685,6 +689,24 @@ function CRResultCard({
         )}
       </CardContent>
 
+      {/* Eligible to be treated at this facility — benefits available */}
+      {eligibility?.is_eligible && benefitsChecked && !benefitsEmpty && eligibility?.sha_number && (
+        <CardContent className="py-3 border-t">
+          <div className="flex gap-2 rounded-md border border-green-300 bg-green-50 p-3 dark:border-green-700 dark:bg-green-950/40">
+            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-green-800 dark:text-green-300">
+                Eligible for Treatment at This Facility
+              </p>
+              <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
+                This patient has active SHA benefit packages at this facility. Check the benefits
+                section below for specific packages, interventions, and utilization details.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      )}
+
       {/* Capitation Provider Validation */}
       {capitationWarning && (capitationWarning.details || !capitationWarning.is_valid) && (
         <CardContent className="py-3 border-t">
@@ -727,7 +749,28 @@ function CRResultCard({
           <BenefitsPanel
             crNumber={eligibility.sha_number}
             compact
+            onEmpty={() => { setBenefitsEmpty(true); setBenefitsChecked(true); }}
+            onHasBenefits={() => { setBenefitsEmpty(false); setBenefitsChecked(true); }}
           />
+        </CardContent>
+      )}
+
+      {/* SHA eligible but no benefits — cannot be treated at this facility */}
+      {eligibility?.is_eligible && benefitsEmpty && (
+        <CardContent className="py-3 border-t">
+          <div className="flex gap-2 rounded-md border border-red-300 bg-red-50 p-3 dark:border-red-700 dark:bg-red-950/40">
+            <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-red-800 dark:text-red-300">
+                Cannot Be Treated at This Facility
+              </p>
+              <p className="text-xs text-red-700 dark:text-red-400 mt-0.5">
+                This patient is enrolled in SHA but has no active benefit packages at this
+                facility. SHA claims cannot be submitted. The patient should be directed to
+                a facility compatible with their scheme/fund or registered as a private/cash patient.
+              </p>
+            </div>
+          </div>
         </CardContent>
       )}
 
