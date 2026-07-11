@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Save, X, AlertCircle, User, UserPlus, AlertTriangle, Sparkles, ChevronDown, CheckCircle2, Bed, Stethoscope, Shield, CreditCard, Baby } from 'lucide-react';
@@ -48,6 +48,8 @@ import {
 import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { useEncounters } from '@/lib/hooks/use-encounters';
 import { usePatient } from '@/lib/hooks/use-patients';
+import { SHAConsentStep } from '@/components/patients/sha-consent-step';
+import { shaApi } from '@/lib/api/sha';
 import { emptyDiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import { MultiDiagnosisInput, type DiagnosisEntry } from '@/components/shared/multi-diagnosis-input';
@@ -115,6 +117,53 @@ export default function NewAdmissionPage() {
     [ipdEncountersResponse]
   );
   const hasPendingItems = pendingRecs.length > 0 || ipdEncounters.length > 0;
+
+  // SHA eligibility check when payer type is SHA
+  const [shaEligibility, setShaEligibility] = useState<{
+    status: 'idle' | 'checking' | 'eligible' | 'ineligible' | 'blocked';
+    message?: string;
+  }>({ status: 'idle' });
+  const shaCheckAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (payerType !== 'SHA' || !patientId) {
+      setShaEligibility({ status: 'idle' });
+      return;
+    }
+
+    const controller = new AbortController();
+    shaCheckAbortRef.current = controller;
+
+    setShaEligibility({ status: 'checking' });
+
+    shaApi
+      .checkPatientEligibility(patientId)
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        if (!result.is_eligible) {
+          setShaEligibility({
+            status: 'ineligible',
+            message: 'Patient is not SHA-eligible. Claims will be rejected. Consider using Cash payment.',
+          });
+          return;
+        }
+        const coverageBlocked = (result as any).response_data?.coverage_blocked;
+        const coverageCaveat = (result as any).response_data?.coverage_caveat;
+        if (coverageBlocked && coverageCaveat) {
+          setShaEligibility({ status: 'blocked', message: coverageCaveat });
+        } else {
+          setShaEligibility({ status: 'eligible' });
+        }
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setShaEligibility({ status: 'idle' });
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [payerType, patientId]);
 
   // Fetch wards and beds
   const { data: wards } = useInpatientWards();
@@ -1183,6 +1232,35 @@ export default function NewAdmissionPage() {
                 <SelectItem value="CORPORATE">Corporate</SelectItem>
               </SelectContent>
             </Select>
+            {/* SHA eligibility check */}
+            {payerType === 'SHA' && shaEligibility.status === 'checking' && (
+              <p className="text-xs text-muted-foreground">Checking SHA eligibility...</p>
+            )}
+            {payerType === 'SHA' && shaEligibility.status === 'ineligible' && (
+              <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-700 dark:text-amber-300">
+                  {shaEligibility.message}
+                </AlertDescription>
+              </Alert>
+            )}
+            {payerType === 'SHA' && shaEligibility.status === 'blocked' && (
+              <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-700 dark:text-amber-300">
+                  {shaEligibility.message}
+                </AlertDescription>
+              </Alert>
+            )}
+            {/* SHA Consent Step — inline for SHA-eligible patients */}
+            {payerType === 'SHA' && patientId && (
+              <div className="pt-2">
+                <SHAConsentStep
+                  patientId={patientId}
+                  encounterId={encounterId}
+                />
+              </div>
+            )}
           </div>
 
           {/* Submit Button */}

@@ -325,7 +325,7 @@ class BillingAgentService:
 
     @classmethod
     def handle_admission_created(cls, admission) -> None:
-        """Auto-bill admission fee and first bed night.
+        """Auto-bill admission fee, first bed night, and create SHA claim if eligible.
 
         Called from inpatient signal when Admission is created.
         """
@@ -354,6 +354,9 @@ class BillingAgentService:
             admission.patient_id,
             invoice.invoice_number,
         )
+
+        # Auto-create SHA claim at admission time (updated later at discharge)
+        cls._maybe_create_sha_claim(invoice, encounter, admission=admission)
 
     @classmethod
     @transaction.atomic
@@ -514,7 +517,7 @@ class BillingAgentService:
 
         1. Add any remaining bed charges.
         2. Finalize the invoice (DRAFT → PENDING).
-        3. Create SHA claim if patient is SHA-eligible.
+        3. UPDATE existing SHA claim with discharge data (claim was created at admission).
         """
         admission = discharge.admission
         invoice = Invoice.objects.filter(
@@ -550,8 +553,8 @@ class BillingAgentService:
             invoice.total_amount,
         )
 
-        # Auto-create SHA claim if eligible
-        cls._maybe_create_sha_claim(invoice, admission.ipd_encounter)
+        # Update existing SHA claim with discharge data (instead of creating new one)
+        cls._update_sha_claim_on_discharge(invoice, admission.ipd_encounter, discharge)
 
     @classmethod
     def _add_bed_charge(cls, invoice: Invoice, admission, nights: int = 1) -> None:
@@ -585,8 +588,16 @@ class BillingAgentService:
     # ── SHA Automation ───────────────────────────────────────────
 
     @classmethod
-    def _maybe_create_sha_claim(cls, invoice: Invoice, encounter) -> SHAClaim | None:
-        """Create an SHA claim if the patient has active SHA coverage."""
+    def _maybe_create_sha_claim(
+        cls, invoice: Invoice, encounter, admission=None
+    ) -> SHAClaim | None:
+        """Create an SHA claim if the patient has active SHA coverage.
+
+        Args:
+            invoice: The draft invoice for this encounter.
+            encounter: The IPD encounter.
+            admission: Optional Admission instance (used for IPD diagnosis fallback).
+        """
         try:
             sha_member = SHAMember.objects.filter(
                 patient=invoice.patient,
@@ -606,6 +617,7 @@ class BillingAgentService:
                 encounter=encounter,
                 invoice=invoice,
                 user=_get_system_user(),
+                admission=admission,
             )
             logger.info(
                 "Billing agent: auto-created SHA claim %s for invoice %s",
@@ -619,6 +631,57 @@ class BillingAgentService:
                 invoice.invoice_number,
             )
             return None
+
+    @classmethod
+    def _update_sha_claim_on_discharge(cls, invoice, encounter, discharge) -> None:
+        """Update existing SHA claim with discharge data.
+
+        Called at discharge time to populate discharge_date, final diagnoses,
+        and refresh claim items from the finalized invoice.
+        """
+        from hmis.apps.billing.models import SHAClaim
+
+        claim = (
+            SHAClaim.objects.filter(
+                encounter=encounter,
+                claim_type=SHAClaim.ClaimType.INPATIENT,
+            )
+            .exclude(
+                status__in=[
+                    SHAClaim.ClaimStatus.SUBMITTED,
+                    SHAClaim.ClaimStatus.ACKNOWLEDGED,
+                    SHAClaim.ClaimStatus.UNDER_REVIEW,
+                    SHAClaim.ClaimStatus.APPROVED,
+                    SHAClaim.ClaimStatus.PAID,
+                ],
+            )
+            .first()
+        )
+
+        if not claim:
+            # Fallback: create claim if it doesn't exist (backward compat)
+            logger.warning(
+                "Billing agent: no existing SHA claim found for encounter %s at discharge, "
+                "attempting to create one",
+                getattr(encounter, "pk", None),
+            )
+            cls._maybe_create_sha_claim(invoice, encounter)
+            return
+
+        try:
+            from hmis.apps.billing.services.sha_claims import SHAClaimsService
+
+            service = SHAClaimsService()
+            service.update_claim_on_discharge(claim, discharge)
+            logger.info(
+                "Billing agent: updated SHA claim %s on discharge",
+                claim.claim_number,
+            )
+        except Exception:
+            logger.exception(
+                "Billing agent: SHA claim update failed on discharge for claim %s",
+                claim.claim_number,
+            )
 
     # ── Batch Operations (called from Celery tasks) ──────────────
 

@@ -4,8 +4,8 @@ Billing signals for Vitora HMIS.
 
 This module contains Django signals for billing integration:
 - Auto-create draft invoice when encounter is created
-- Auto-finalize invoice and create SHA claim on discharge
-- Auto-bill admission fee on inpatient admission
+- Auto-bill admission fee and create SHA claim on inpatient admission
+- Finalize invoice and update SHA claim with discharge data on discharge
 - Update invoice totals when items are added/modified
 - Broadcast real-time WebSocket events for billing updates
 - Publish domain events for cross-cutting observability
@@ -232,7 +232,7 @@ def handle_discharge_billing(sender, instance, created, **kwargs):
 
 
 def handle_admission_billing(sender, instance, created, **kwargs):
-    """Auto-bill admission fee and first bed night on admission."""
+    """Auto-bill admission fee, first bed night, and create SHA claim on admission."""
     if not created:
         return
 
@@ -243,6 +243,13 @@ def handle_admission_billing(sender, instance, created, **kwargs):
         from hmis.apps.billing.agent import BillingAgentService
 
         BillingAgentService.handle_admission_created(instance)
+
+        # Verify SHA eligibility for inpatient admissions with SHA payer
+        if getattr(instance, "payer_type", "") == "SHA":
+            trigger_sha_eligibility_verification(
+                instance.patient_id,
+                getattr(instance, "facility_id", None),
+            )
 
         publish_event(
             event_type=BillingEvents.ADMISSION_BILLING,

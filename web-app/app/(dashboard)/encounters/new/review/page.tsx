@@ -23,6 +23,7 @@ import {
   SendHorizontal,
   Save,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -737,6 +738,23 @@ export default function NewEncounterReviewPage() {
                   <span className="text-destructive">Ward and bed not selected</span>
                 )}
               </SummarySection>
+            )}
+
+            {/* SHA Consent Section (IPD only) — shown inline since triage modal is skipped */}
+            {isIPD && patientData?.id && admission.payerType === 'SHA' && (
+              <div className="border rounded-lg p-3 sm:p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="font-medium text-sm sm:text-base">SHA Insurance Consent</h3>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Verify eligibility and obtain consent for SHA claim submission.
+                </p>
+                <SHAConsentStep
+                  patientId={patientData.id}
+                  encounterId={createdEncounterId}
+                />
+              </div>
             )}
           </CardContent>
         </Card>
