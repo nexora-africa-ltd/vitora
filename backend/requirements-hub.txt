@@ -26,7 +26,7 @@ colored==2.3.1
 constantly==23.10.4
 crypto==1.4.1
 cryptography==44.0.3
-daphne==4.2.1
+daphne==4.2.2
 dj-database-url==3.1.2
 django-cors-headers==4.9.0
 django-extensions==3.2.3
