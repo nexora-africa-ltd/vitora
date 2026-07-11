@@ -68,6 +68,8 @@ function toCrId(value: string): string {
 // Types
 // ============================================================================
 
+export type BenefitsEmptyReason = 'no_coverage' | 'no_benefits';
+
 interface BenefitsPanelProps {
   /** DHA Client Registry number (patient_id for ILM calls) */
   crNumber: string;
@@ -79,6 +81,10 @@ interface BenefitsPanelProps {
   className?: string;
   /** Compact layout (no card wrapper) */
   compact?: boolean;
+  /** Called when benefits are empty (no coverage or zero benefit packages) */
+  onEmpty?: (reason: BenefitsEmptyReason) => void;
+  /** Called when benefits data is available (non-empty) */
+  onHasBenefits?: () => void;
 }
 
 /** Benefit package from is_unique_benefit=true response */
@@ -196,6 +202,8 @@ export function BenefitsPanel({
   shaMemberId,
   className,
   compact = false,
+  onEmpty,
+  onHasBenefits,
 }: BenefitsPanelProps) {
   // Normalize SHA-XXX-N → CRXXX-N for ILM calls.
   const lookupId = toCrId(crNumber);
@@ -223,6 +231,17 @@ export function BenefitsPanel({
 
   const benefits = extractItems<BenefitPackageItem>(benefitsResponse?.data);
   const noCoverage = isError && isNoCoverageError(error);
+
+  useEffect(() => {
+    if (isLoading || isFetching) return;
+    if (noCoverage) {
+      onEmpty?.('no_coverage');
+    } else if (benefits.length === 0) {
+      onEmpty?.('no_benefits');
+    } else {
+      onHasBenefits?.();
+    }
+  }, [noCoverage, benefits.length, isLoading, isFetching, onEmpty, onHasBenefits]);
 
   if (isLoading) {
     return <BenefitsSkeleton compact={compact} className={className} />;
