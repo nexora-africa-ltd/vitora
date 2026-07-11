@@ -226,11 +226,17 @@ export interface EligibilityCheckRequest {
 
 export interface EligibilityCheckResponse {
   is_eligible: boolean;
+  result?: string;
+  eligible_until?: string;
+  benefit_balance?: number | null;
+  ineligibility_reason?: string;
+  sha_number?: string | null;
+  membership_type?: string;
   coverage_end_date?: string;
-  copay_percentage: number;
+  copay_percentage?: number;
   scheme_category?: SchemeCategory;
   verified_name?: string;
-  checked_at: string;
+  checked_at?: string;
   message?: string;
   // Facility-aware coverage (DHA HIE).
   // `eligible_schemes` lists the schemes the member is actively covered under
@@ -241,6 +247,11 @@ export interface EligibilityCheckResponse {
   billable_schemes?: string[];
   coverage_caveat?: string;
   coverage_blocked?: boolean;
+  // PFMS
+  is_pfms_eligible?: boolean;
+  pfms_category?: string | null;
+  pfms_category_display?: string | null;
+  pfms_verified?: boolean;
 }
 
 // Direct eligibility check (without SHAMember record)

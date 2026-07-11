@@ -242,17 +242,28 @@ export type SHAMemberSchemaType = z.infer<typeof SHAMemberSchema>;
 
 export const EligibilityCheckResponseSchema = z.object({
   is_eligible: z.boolean(),
+  result: z.string().optional(),
+  eligible_until: z.string().optional(),
+  benefit_balance: z.number().nullable().optional(),
+  ineligibility_reason: z.string().optional(),
+  sha_number: z.string().nullable().optional(),
+  membership_type: z.string().optional(),
   coverage_end_date: z.string().optional(),
-  copay_percentage: z.number(),
+  copay_percentage: z.number().optional(),
   scheme_category: SchemeCategorySchema.optional(),
   verified_name: z.string().optional(),
-  checked_at: z.string(),
+  checked_at: z.string().optional(),
   message: z.string().optional(),
   // Facility-aware coverage (DHA HIE).
   eligible_schemes: z.array(z.string()).optional(),
   billable_schemes: z.array(z.string()).optional(),
   coverage_caveat: z.string().optional(),
   coverage_blocked: z.boolean().optional(),
+  // PFMS
+  is_pfms_eligible: z.boolean().optional(),
+  pfms_category: z.string().nullable().optional(),
+  pfms_category_display: z.string().nullable().optional(),
+  pfms_verified: z.boolean().optional(),
 });
 
 export type EligibilityCheckResponseSchemaType = z.infer<typeof EligibilityCheckResponseSchema>;

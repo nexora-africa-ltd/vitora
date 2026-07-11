@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Save, X, AlertCircle, User, UserPlus, AlertTriangle, Sparkles, ChevronDown, CheckCircle2, Bed, Stethoscope, Shield, CreditCard, Baby } from 'lucide-react';
+import { Save, X, AlertCircle, User, UserPlus, AlertTriangle, Sparkles, ChevronDown, CheckCircle2, Bed, Stethoscope, Shield, ShieldCheck, CreditCard, Baby } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
@@ -49,6 +49,8 @@ import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters'
 import { useEncounters } from '@/lib/hooks/use-encounters';
 import { usePatient } from '@/lib/hooks/use-patients';
 import { SHAConsentStep } from '@/components/patients/sha-consent-step';
+import { SHABenefitsAlert } from '@/components/billing/sha';
+import { useBenefitsAvailable, deriveBenefitsState } from '@/lib/hooks/use-sha';
 import { shaApi } from '@/lib/api/sha';
 import { emptyDiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
@@ -122,6 +124,7 @@ export default function NewAdmissionPage() {
   const [shaEligibility, setShaEligibility] = useState<{
     status: 'idle' | 'checking' | 'eligible' | 'ineligible' | 'blocked';
     message?: string;
+    shaNumber?: string;
   }>({ status: 'idle' });
   const shaCheckAbortRef = useRef<AbortController | null>(null);
 
@@ -149,10 +152,11 @@ export default function NewAdmissionPage() {
         }
         const coverageBlocked = (result as any).response_data?.coverage_blocked;
         const coverageCaveat = (result as any).response_data?.coverage_caveat;
+        const shaNumber = (result as any).sha_number || patientData?.sha_number || undefined;
         if (coverageBlocked && coverageCaveat) {
-          setShaEligibility({ status: 'blocked', message: coverageCaveat });
+          setShaEligibility({ status: 'blocked', message: coverageCaveat, shaNumber });
         } else {
-          setShaEligibility({ status: 'eligible' });
+          setShaEligibility({ status: 'eligible', shaNumber });
         }
       })
       .catch(() => {
@@ -164,6 +168,19 @@ export default function NewAdmissionPage() {
       controller.abort();
     };
   }, [payerType, patientId]);
+
+  // Benefits check — run when SHA eligible and we have a SHA/CR number
+  const shaNumber = shaEligibility.shaNumber ?? patientData?.sha_number ?? undefined;
+  const {
+    data: benefitsData,
+    isLoading: benefitsLoading,
+    isError: benefitsError,
+    error: benefitsErr,
+  } = useBenefitsAvailable(shaNumber, shaEligibility.status === 'eligible');
+  const benefitsState = useMemo(
+    () => deriveBenefitsState(benefitsData, benefitsLoading, benefitsError, benefitsErr as Error | null),
+    [benefitsData, benefitsLoading, benefitsError, benefitsErr],
+  );
 
   // Fetch wards and beds
   const { data: wards } = useInpatientWards();
@@ -1252,14 +1269,12 @@ export default function NewAdmissionPage() {
                 </AlertDescription>
               </Alert>
             )}
-            {/* SHA Consent Step — inline for SHA-eligible patients */}
-            {payerType === 'SHA' && patientId && (
-              <div className="pt-2">
-                <SHAConsentStep
-                  patientId={patientId}
-                  encounterId={encounterId}
-                />
-              </div>
+            {/* SHA benefits coverage alert */}
+            {shaEligibility.status === 'eligible' && (
+              <SHABenefitsAlert
+                shaEligible
+                benefitsState={benefitsState}
+              />
             )}
           </div>
 
@@ -1439,6 +1454,27 @@ export default function NewAdmissionPage() {
                     Reason: {overrideReason}
                   </AlertDescription>
                 </Alert>
+              </>
+            )}
+
+            {/* SHA Consent — shown for SHA payer before confirming admission */}
+            {payerType === 'SHA' && patientId && (
+              <>
+                <Separator />
+                <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-primary/10 mt-0.5">
+                    <ShieldCheck className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      SHA Insurance Consent
+                    </p>
+                    <SHAConsentStep
+                      patientId={patientId}
+                      encounterId={encounterId}
+                    />
+                  </div>
+                </div>
               </>
             )}
           </div>

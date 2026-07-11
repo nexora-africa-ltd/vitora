@@ -4,6 +4,7 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { shaApi } from '@/lib/api/sha';
+import { toCrId } from '@/lib/sha/ilm-parsers';
 import type {
   ClaimListParams,
   ClaimCreateRequest,
@@ -32,6 +33,10 @@ export const shaQueryKeys = {
   // Eligibility
   eligibility: () => [...shaQueryKeys.all, 'eligibility'] as const,
   patientEligibility: (patientId: number) => [...shaQueryKeys.eligibility(), 'patient', patientId] as const,
+
+  // Benefits
+  benefits: () => [...shaQueryKeys.all, 'benefits'] as const,
+  patientBenefits: (crNumber: string) => [...shaQueryKeys.benefits(), crNumber] as const,
 
   // Claims
   claims: () => [...shaQueryKeys.all, 'claims'] as const,
@@ -439,4 +444,90 @@ export function usePendingPreauths(options?: { enabled?: boolean }) {
     queryFn: () => shaApi.getPendingPreauths(),
     enabled: options?.enabled,
   });
+}
+
+// ============================================================================
+// Benefits Hooks
+// ============================================================================
+
+export type BenefitsAvailableState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'available' }
+  | { status: 'empty'; reason: 'no_coverage' | 'no_benefits' }
+  | { status: 'error'; message: string };
+
+/**
+ * Check whether a patient has active SHA benefit packages at the current facility.
+ *
+ * Uses `shaApi.ilmBenefits({ is_unique_benefit: true })` and normalizes the
+ * CR number (SHA-XXX-N → CRXXX-N) automatically.
+ */
+export function useBenefitsAvailable(crNumber: string | null | undefined, enabled = true) {
+  return useQuery({
+    queryKey: shaQueryKeys.patientBenefits(crNumber ?? ''),
+    queryFn: async () => {
+      if (!crNumber) throw new Error('No CR number');
+      const normalized = toCrId(crNumber);
+      return shaApi.ilmBenefits({
+        patient_id: normalized,
+        is_unique_benefit: true,
+      });
+    },
+    enabled: !!crNumber && enabled,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    meta: { skipGlobalErrorHandler: true },
+    retry: false,
+  });
+}
+
+/**
+ * Derive a simplified state from `useBenefitsAvailable` query result.
+ */
+export function deriveBenefitsState(
+  data: unknown,
+  isLoading: boolean,
+  isError: boolean,
+  error: Error | null,
+): BenefitsAvailableState {
+  if (isLoading) return { status: 'loading' };
+  if (isError) {
+    const axiosErr = error as { response?: { status?: number; data?: { message?: string; detail?: string } } } | null;
+    if (axiosErr?.response?.status === 400) {
+      const text = `${axiosErr.response.data?.message ?? ''} ${axiosErr.response.data?.detail ?? ''}`.toLowerCase();
+      if (text.includes('no result found')) {
+        return { status: 'empty', reason: 'no_coverage' };
+      }
+    }
+    return { status: 'error', message: error?.message ?? 'Unknown error' };
+  }
+  const items = extractBenefitsItems(data);
+  if (items.length === 0) return { status: 'empty', reason: 'no_benefits' };
+  return { status: 'available' };
+}
+
+// Mirrors the extractItems logic from BenefitsPanel
+function extractBenefitsItems(data: unknown): unknown[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (typeof data === 'object' && data !== null) {
+    const obj = data as Record<string, unknown>;
+    if (Array.isArray(obj.data)) return obj.data;
+    if (Array.isArray(obj.results)) {
+      const results = obj.results as unknown[];
+      if (
+        results.length === 1 &&
+        typeof results[0] === 'object' &&
+        results[0] !== null &&
+        Array.isArray((results[0] as Record<string, unknown>).results)
+      ) {
+        return (results[0] as Record<string, unknown>).results as unknown[];
+      }
+      return results;
+    }
+    if (Array.isArray(obj.benefits)) return obj.benefits;
+    if (Object.keys(obj).length > 0 && !obj.error) return [obj];
+  }
+  return [];
 }
