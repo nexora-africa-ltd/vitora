@@ -73,7 +73,7 @@ export function SHAStatusIndicator({
       const result = await shaApi.checkPatientEligibility(patientId);
       setEligibilityData({
         is_eligible: result.is_eligible,
-        copay_percentage: result.copay_percentage,
+        copay_percentage: result.copay_percentage ?? 0,
         coverage_end_date: result.coverage_end_date ?? null,
         full_name: result.verified_name ?? null,
         sha_number: null,

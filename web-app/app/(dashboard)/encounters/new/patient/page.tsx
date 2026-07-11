@@ -9,7 +9,7 @@
  */
 'use client';
 
-import { useCallback, useMemo, useEffect } from 'react';
+import { useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Activity, AlertTriangle, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -31,6 +31,8 @@ import {
 import { PatientSelector } from '@/components/encounters/patient-selector';
 import { VitalsForm } from '@/components/encounters/vitals-form';
 import { SHAStatusIndicator } from '@/components/patients/sha-status-indicator';
+import { SHABenefitsAlert } from '@/components/billing/sha';
+import { useBenefitsAvailable, deriveBenefitsState } from '@/lib/hooks/use-sha';
 import { useNewEncounterStore, type NewEncounterVitals } from '@/lib/stores/new-encounter-store';
 import type { Patient } from '@/lib/types/patient';
 import type { EncounterFormData } from '@/lib/types/encounter-form';
@@ -103,6 +105,19 @@ export default function NewEncounterPatientPage() {
       markSectionComplete('vitals');
     }
   }, [recordVitalsNow, vitalsRecorded, markSectionComplete]);
+
+  // Benefits check — when we have a patient with a SHA number
+  const shaNumber = selectedPatient?.sha_number ?? undefined;
+  const {
+    data: benefitsData,
+    isLoading: benefitsLoading,
+    isError: benefitsError,
+    error: benefitsErr,
+  } = useBenefitsAvailable(shaNumber, !!shaNumber);
+  const benefitsState = useMemo(
+    () => deriveBenefitsState(benefitsData, benefitsLoading, benefitsError, benefitsErr as Error | null),
+    [benefitsData, benefitsLoading, benefitsError, benefitsErr],
+  );
 
   // Build EncounterFormData for VitalsForm component
   const formData = useMemo((): EncounterFormData => ({
@@ -299,11 +314,18 @@ export default function NewEncounterPatientPage() {
               onChange={handlePatientChange}
             />
             {patientId && selectedPatient && (
-              <div className="mt-3">
+              <div className="mt-3 space-y-2">
                 <SHAStatusIndicator
                   patientId={patientId}
                   identificationNumber={selectedPatient.identification_number}
                 />
+                {/* SHA benefits coverage alert */}
+                {shaNumber && (
+                  <SHABenefitsAlert
+                    shaEligible
+                    benefitsState={benefitsState}
+                  />
+                )}
               </div>
             )}
           </CardContent>

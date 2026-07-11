@@ -50,6 +50,10 @@ export { DependentsView } from './DependentsView';
 export { BenefitsPanel } from './BenefitsPanel';
 export type { BenefitsEmptyReason } from './BenefitsPanel';
 
+// SHA Benefits Alert (reusable across encounter, admission, lookup)
+export { SHABenefitsAlert } from './SHABenefitsAlert';
+export type { SHABenefitsAlertProps } from './SHABenefitsAlert';
+
 // Facility & Practitioner Validation
 export {
   FacilityValidation,
