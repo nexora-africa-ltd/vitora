@@ -482,6 +482,45 @@ export function useBenefitsAvailable(crNumber: string | null | undefined, enable
   });
 }
 
+/** Benefit package item from ILM benefits response (is_unique_benefit=true) */
+export interface BenefitPackageItem {
+  parentBenefit?: string;
+  parentBenefitCode?: string;
+  code?: string;
+  name?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Fetch the patient's eligible benefit packages from DHA ILM middleware.
+ *
+ * Returns the raw parsed list so consumers can display each package and
+ * optionally drill into sub-benefits / interventions via `ilmSubBenefits`
+ * and `ilmBenefitInterventions`.
+ */
+export function usePatientBenefitPackages(
+  crNumber: string | null | undefined,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: [...shaQueryKeys.patientBenefits(crNumber ?? ''), 'packages'],
+    queryFn: async () => {
+      if (!crNumber) throw new Error('No CR number');
+      const normalized = toCrId(crNumber);
+      const resp = await shaApi.ilmBenefits({
+        patient_id: normalized,
+        is_unique_benefit: true,
+      });
+      return extractBenefitsItems(resp?.data) as BenefitPackageItem[];
+    },
+    enabled: !!crNumber && enabled,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    meta: { skipGlobalErrorHandler: true },
+    retry: false,
+  });
+}
+
 /**
  * Derive a simplified state from `useBenefitsAvailable` query result.
  */

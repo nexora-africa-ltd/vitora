@@ -21,9 +21,6 @@ import {
   ShieldCheck,
   ShieldAlert,
   SkipForward,
-  ChevronsUpDown,
-  Search,
-  Check,
   X,
   AlertTriangle,
   Fingerprint,
@@ -32,23 +29,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
 import { getApiErrorMessage } from '@/lib/api/client';
-import { useSendConsentOTP, useStartVisit } from '@/lib/hooks/use-sha';
-import { useDebounce } from '@/lib/hooks';
+import { useSendConsentOTP, useStartVisit, usePatientBenefitPackages } from '@/lib/hooks/use-sha';
+import type { BenefitPackageItem } from '@/lib/hooks/use-sha';
 import { useFacility } from '@/lib/context/facility-context';
 import { OtpWhitelistRequestSheet, WhitelistStatusBadge } from './otp-whitelist-request-sheet';
 import { ContactPicker } from './contact-picker';
@@ -86,72 +71,23 @@ type StepState =
   | 'done'             // Consent obtained
   | 'skipped';         // User chose to skip
 
-interface InterventionOption {
-  code: string;
-  name: string;
-  category?: string;
-  price?: number;
-  access_point?: string;
-}
-
-/** Known SHA benefit packages — shown as defaults when terminology API is unreachable. */
-const SHA_BENEFIT_PACKAGES: InterventionOption[] = [
-  { code: 'SHA-12-001', name: 'Outpatient Consultation', category: 'Outpatient', access_point: 'OP' },
-  { code: 'SHA-12-002', name: 'Outpatient Specialized Consultation', category: 'Outpatient', access_point: 'OP' },
-  { code: 'SHA-07-001', name: 'Inpatient Admission (General Ward)', category: 'Inpatient', access_point: 'IP' },
-  { code: 'SHA-01-001', name: 'Ambulance Services (Intra-metro)', category: 'Emergency', access_point: 'OP and IP' },
-  { code: 'SHA-08-001', name: 'Antenatal Care Visit', category: 'Maternity', access_point: 'IP' },
-  { code: 'SHA-19-001', name: 'Minor Surgical Procedure', category: 'Surgical', access_point: 'IP' },
-  { code: 'SHA-09-001', name: 'Medical Imaging (X-Ray)', category: 'Diagnostics', access_point: 'OP and IP' },
-  { code: 'SHA-05-001', name: 'Optical Consultation', category: 'Outpatient', access_point: 'OP' },
-  { code: 'SHA-10-001', name: 'Mental Health Consultation', category: 'Outpatient', access_point: 'IP' },
-  { code: 'SHA-16-001', name: 'Renal Dialysis Session', category: 'Specialized', access_point: 'OP and IP' },
-];
-
 /**
  * Derive the DHA service_type from the selected intervention's access_point.
  * - "IP" → INPATIENT
  * - "OP" → OUTPATIENT
  * - "OP and IP" or missing → use code prefix heuristic
  */
-function deriveServiceType(intervention: InterventionOption | null): 'INPATIENT' | 'OUTPATIENT' {
+function deriveServiceType(intervention: BenefitPackageItem | null): 'INPATIENT' | 'OUTPATIENT' {
   if (!intervention) return 'OUTPATIENT';
-  const ap = intervention.access_point;
+  const ap = intervention.access_point as string | undefined;
   if (ap === 'IP') return 'INPATIENT';
   if (ap === 'OP') return 'OUTPATIENT';
   // Fallback: infer from code prefix for "OP and IP" or unknown
-  const prefix = intervention.code.split('-').slice(0, 2).join('-');
+  const code = intervention.code ?? '';
+  const prefix = code.split('-').slice(0, 2).join('-');
   const inpatientPrefixes = ['SHA-07', 'SHA-19', 'SHA-03', 'SHA-13', 'SHA-20'];
   if (inpatientPrefixes.includes(prefix)) return 'INPATIENT';
   return 'OUTPATIENT';
-}
-
-/**
- * SHA facility level restrictions:
- * - Level 2/3: Basic outpatient, maternity (SHA-12-001, SHA-08-001)
- * - Level 4+: Inpatient, specialized, surgical, diagnostics
- * - Level 5/6: All interventions including renal, complex surgical
- *
- * Level 4B specifically cannot provide SHA-12-xxx (Outpatient) interventions
- * under SHA rules — they handle inpatient, surgical, specialized services.
- */
-const FACILITY_LEVEL_ALLOWED_PREFIXES: Record<string, string[]> = {
-  '1': ['SHA-12'],                                               // Dispensaries: basic outpatient only
-  '2': ['SHA-12', 'SHA-08', 'SHA-05', 'SHA-10'],                 // Health centres: outpatient + maternity + optical + mental
-  '3': ['SHA-12', 'SHA-08', 'SHA-05', 'SHA-10', 'SHA-09'],       // Sub-county hospitals: + imaging
-  '4': ['SHA-07', 'SHA-01', 'SHA-08', 'SHA-19', 'SHA-09', 'SHA-10', 'SHA-16'], // County/Level 4: inpatient, emergency, surgical, diagnostics
-  '5': ['SHA-07', 'SHA-01', 'SHA-08', 'SHA-19', 'SHA-09', 'SHA-10', 'SHA-16', 'SHA-12', 'SHA-05'], // Referral hospitals: all
-  '6': ['SHA-07', 'SHA-01', 'SHA-08', 'SHA-19', 'SHA-09', 'SHA-10', 'SHA-16', 'SHA-12', 'SHA-05'], // National referral: all
-};
-
-/** Filter interventions by facility level */
-function filterByFacilityLevel(interventions: InterventionOption[], level: string | undefined): InterventionOption[] {
-  if (!level) return interventions; // No level info — show all
-  // Normalize: "4B" → "4", "3A" → "3"
-  const numericLevel = level.replace(/[^0-9]/g, '');
-  const allowed = FACILITY_LEVEL_ALLOWED_PREFIXES[numericLevel];
-  if (!allowed) return interventions; // Unknown level — show all
-  return interventions.filter((i) => allowed.some((prefix) => i.code.startsWith(prefix)));
 }
 
 /**
@@ -209,14 +145,8 @@ export function SHAConsentStep({
   const [error, setError] = useState<string | null>(null);
   const [isCreatingMember, setIsCreatingMember] = useState(false);
 
-  // Intervention combobox state
-  const [selectedIntervention, setSelectedIntervention] = useState<InterventionOption | null>(null);
-  const [interventionOpen, setInterventionOpen] = useState(false);
-  const [interventionSearch, setInterventionSearch] = useState('');
-  const debouncedInterventionSearch = useDebounce(interventionSearch, 300);
-  const [interventionResults, setInterventionResults] = useState<InterventionOption[]>([]);
-  const [interventionLoading, setInterventionLoading] = useState(false);
-  const useLocalFallbackRef = useRef(false);
+  // Intervention selection — populated from ILM benefit packages
+  const [selectedIntervention, setSelectedIntervention] = useState<BenefitPackageItem | null>(null);
 
   // OTP resend countdown (seconds)
   const [resendCountdown, setResendCountdown] = useState(0);
@@ -244,6 +174,13 @@ export function SHAConsentStep({
   const facilityLevel = facilityDetail?.level;
   const facilityAgentNationalId = facilityDetail?.biometrics_agent_national_id || '';
   const hasCheckedRef = useRef(false);
+
+  // Fetch patient's eligible benefit packages from ILM middleware
+  const crNumber = shaMember?.sha_member_number || shaMember?.sha_number || null;
+  const {
+    data: benefitPackages = [],
+    isLoading: benefitsLoading,
+  } = usePatientBenefitPackages(crNumber, !!crNumber);
 
   // Biometric consent is primary for Level 4+ facilities
   const isBiometricPrimary = useMemo(() => {
@@ -343,60 +280,6 @@ export function SHAConsentStep({
     };
   }, []);
 
-  // Filter packages by facility level
-  const allowedPackages = useMemo(
-    () => filterByFacilityLevel(SHA_BENEFIT_PACKAGES, facilityLevel),
-    [facilityLevel]
-  );
-
-  // Search interventions when combobox query changes
-  useEffect(() => {
-    // When using local fallback, filter the static list client-side
-    if (useLocalFallbackRef.current) {
-      if (debouncedInterventionSearch.length < 1) {
-        setInterventionResults(allowedPackages);
-      } else {
-        const q = debouncedInterventionSearch.toLowerCase();
-        setInterventionResults(
-          allowedPackages.filter(
-            (i) => i.code.toLowerCase().includes(q) || i.name.toLowerCase().includes(q)
-          )
-        );
-      }
-      return;
-    }
-
-    // Try live API search
-    if (debouncedInterventionSearch.length < 2) {
-      setInterventionResults([]);
-      return;
-    }
-    let cancelled = false;
-    setInterventionLoading(true);
-    shaApi
-      .searchInterventionCodes(debouncedInterventionSearch, 20, facilityLevel ? parseInt(facilityLevel.replace(/[^0-9]/g, '')) : undefined)
-      .then((results) => {
-        if (!cancelled) setInterventionResults(filterByFacilityLevel(results, facilityLevel));
-      })
-      .catch(() => {
-        // API failed — switch to local fallback permanently for this session
-        if (!cancelled) {
-          useLocalFallbackRef.current = true;
-          const q = debouncedInterventionSearch.toLowerCase();
-          setInterventionResults(
-            allowedPackages.filter(
-              (i) => i.code.toLowerCase().includes(q) || i.name.toLowerCase().includes(q)
-            )
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setInterventionLoading(false);
-      });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedInterventionSearch, facilityLevel]);
-
   const handleSendOTP = async () => {
     setError(null);
 
@@ -425,7 +308,7 @@ export function SHAConsentStep({
     sendOTP.mutate(
       {
         sha_member_id: memberId,
-        ...(selectedIntervention ? { intervention_codes: [selectedIntervention.code] } : {}),
+        ...(selectedIntervention?.code ? { intervention_codes: [selectedIntervention.code] } : {}),
         ...(selectedContactId ? { beneficiary_contact_id: selectedContactId } : {}),
       },
       {
@@ -468,7 +351,7 @@ export function SHAConsentStep({
         consent_id: consentId,
         otp_code: otpCode.trim(),
         service_type: deriveServiceType(selectedIntervention),
-        ...(selectedIntervention ? { intervention_codes: [selectedIntervention.code] } : {}),
+        ...(selectedIntervention?.code ? { intervention_codes: [selectedIntervention.code] } : {}),
         ...(encounterId ? { encounter_id: encounterId } : {}),
       },
       {
@@ -573,7 +456,7 @@ export function SHAConsentStep({
         consent_id: result.consentId,
         auth_guid: result.authGuid,
         service_type: deriveServiceType(selectedIntervention),
-        ...(selectedIntervention ? { intervention_codes: [selectedIntervention.code] } : {}),
+        ...(selectedIntervention?.code ? { intervention_codes: [selectedIntervention.code] } : {}),
         ...(encounterId ? { encounter_id: encounterId } : {}),
       },
       {
@@ -684,107 +567,35 @@ export function SHAConsentStep({
             )}
           </p>
 
-          {/* Intervention selector */}
+          {/* Intervention selector from ILM benefits */}
           <div className="space-y-1">
             <Label className="text-xs font-medium">Intervention</Label>
-            <Popover open={interventionOpen} onOpenChange={(open) => {
-              setInterventionOpen(open);
-              // Show default packages when opening with no search text
-              if (open && !interventionSearch && interventionResults.length === 0) {
-                setInterventionResults(allowedPackages);
-              }
-            }}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={interventionOpen}
-                  className={cn(
-                    'w-full justify-between h-9 text-xs font-normal',
-                    !selectedIntervention && 'text-muted-foreground'
-                  )}
-                >
-                  {selectedIntervention ? (
-                    <span className="truncate">
-                      {selectedIntervention.code} — {selectedIntervention.name}
-                    </span>
-                  ) : (
-                    'Select intervention...'
-                  )}
-                  <div className="flex items-center gap-1 ml-2 shrink-0">
-                    {selectedIntervention && (
-                      <X
-                        className="h-3.5 w-3.5 opacity-50 hover:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedIntervention(null);
-                        }}
-                      />
-                    )}
-                    <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
-                  </div>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start" onWheel={(e) => e.stopPropagation()}>
-                <Command shouldFilter={false}>
-                  <div className="flex items-center border-b px-2">
-                    <Search className="mr-1.5 h-3.5 w-3.5 shrink-0 opacity-50" />
-                    <input
-                      value={interventionSearch}
-                      onChange={(e) => setInterventionSearch(e.target.value)}
-                      placeholder="Search interventions..."
-                      className="flex h-9 w-full bg-transparent py-2 text-xs outline-none placeholder:text-muted-foreground"
-                    />
-                    {interventionLoading && (
-                      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin opacity-50" />
-                    )}
-                  </div>
-                  <CommandList className="max-h-[200px] overflow-y-auto">
-                    <CommandEmpty className="py-4 text-center text-xs text-muted-foreground">
-                      {interventionLoading
-                        ? 'Searching...'
-                        : 'No interventions found'}
-                    </CommandEmpty>
-                    {interventionResults.length > 0 && (
-                      <CommandGroup>
-                        {interventionResults.map((item) => (
-                          <CommandItem
-                            key={item.code}
-                            value={item.code}
-                            onSelect={() => {
-                              setSelectedIntervention(item);
-                              setInterventionOpen(false);
-                              setInterventionSearch('');
-                            }}
-                            className="text-xs"
-                          >
-                            <Check
-                              className={cn(
-                                'mr-2 h-3.5 w-3.5 shrink-0',
-                                selectedIntervention?.code === item.code
-                                  ? 'opacity-100'
-                                  : 'opacity-0'
-                              )}
-                            />
-                            <div className="flex flex-col gap-0.5 min-w-0">
-                              <span className="font-medium truncate">{item.code}</span>
-                              <span className="text-muted-foreground truncate">{item.name}</span>
-                              {(item.category || item.price != null) && (
-                                <span className="text-[10px] text-muted-foreground/70">
-                                  {item.category && <>{item.category}</>}
-                                  {item.category && item.price != null && ' • '}
-                                  {item.price != null && <>KES {item.price.toLocaleString()}</>}
-                                </span>
-                              )}
-                            </div>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    )}
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            {benefitsLoading ? (
+              <div className="flex items-center gap-2 h-9 px-3 border rounded-md">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span className="text-xs text-muted-foreground">Loading eligible benefits...</span>
+              </div>
+            ) : benefitPackages.length > 0 ? (
+              <select
+                value={selectedIntervention?.code ?? ''}
+                onChange={(e) => {
+                  const selected = benefitPackages.find((b) => b.code === e.target.value);
+                  setSelectedIntervention(selected ?? null);
+                }}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
+              >
+                <option value="">Select intervention...</option>
+                {benefitPackages.map((pkg) => (
+                  <option key={pkg.code} value={pkg.code}>
+                    {pkg.code} — {(pkg as Record<string, unknown>).parentBenefit as string || pkg.name || 'Unknown'}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-xs text-muted-foreground py-2">
+                No eligible benefit packages found. OTP can still be sent.
+              </p>
+            )}
           </div>
 
           {/* Contact picker (for OTP target) — only show when not biometric primary */}
