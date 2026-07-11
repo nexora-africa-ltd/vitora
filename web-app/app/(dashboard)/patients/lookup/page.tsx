@@ -6,12 +6,14 @@ import {
   Search, User, ExternalLink, Globe, Database, Loader2,
   Shield, ShieldCheck, ShieldX, Users, UserPlus, ChevronDown, ChevronUp,
   Fingerprint, Accessibility, AlertTriangle, CheckCircle2,
+  Briefcase,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/shared/page-header';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
@@ -401,6 +403,9 @@ function CRResultCard({
   const hasDemographics = client.citizenship || client.civil_status || client.employment_type || client.place_of_birth || client.is_person_with_disability;
   const hasDetailSection = hasExtraLocation || hasContactInfo || hasDemographics || principalIds.length > 0;
 
+  const totalDependantsDisplay = totalDependants || eligibility?.dependents_covered || 0;
+  const showDependentsSection = totalDependantsDisplay > 0;
+
   return (
     <Card className="border-primary/30 overflow-hidden">
       {/* Main patient info */}
@@ -511,7 +516,7 @@ function CRResultCard({
         )}
         {eligibility && (
           <div className="space-y-2">
-            {/* Status badge */}
+            {/* Status badge row */}
             <div className="flex items-center gap-2 flex-wrap">
               {eligibility.is_eligible ? (
                 <Badge variant="default" className="bg-green-600 hover:bg-green-700 gap-1">
@@ -539,51 +544,139 @@ function CRResultCard({
                   Expires: {eligibility.coverage_end_date}
                 </span>
               )}
+              {eligibility.whitelisted_for_otp && (
+                <Badge variant="outline" size="sm" className="border-green-300 text-green-600 dark:text-green-400">OTP Whitelisted</Badge>
+              )}
             </div>
+
+            {/* Reason (ineligible) */}
             {eligibility.reason && !eligibility.is_eligible && (
               <p className="text-xs text-muted-foreground">{eligibility.reason}</p>
             )}
 
-            {/* Schemes */}
+            {/* Possible solution */}
+            {eligibility.possible_solution && (
+              <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-2">
+                <p className="text-xs text-blue-700 dark:text-blue-300">{eligibility.possible_solution}</p>
+              </div>
+            )}
+
+            {/* Verified name + demographics from SHA */}
+            {(eligibility.full_name || eligibility.gender || eligibility.date_of_birth) && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                {eligibility.full_name && (
+                  <span className="font-medium text-foreground">{eligibility.full_name}</span>
+                )}
+                {eligibility.gender && (
+                  <span>{eligibility.gender === 'M' ? 'Male' : eligibility.gender === 'F' ? 'Female' : eligibility.gender}</span>
+                )}
+                {eligibility.date_of_birth && (
+                  <span>DOB: {eligibility.date_of_birth}</span>
+                )}
+                {eligibility.age != null && <span>{eligibility.age}y</span>}
+              </div>
+            )}
+
+            {/* Member CR + status codes */}
+            {(eligibility.member_cr_number || eligibility.status_code) && (
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                {eligibility.member_cr_number && (
+                  <Badge variant="outline" size="sm" className="font-mono text-[10px]">CR: {eligibility.member_cr_number}</Badge>
+                )}
+                {eligibility.status_code && (
+                  <Badge variant="outline" size="sm" className="text-[10px]">
+                    Status: {eligibility.status_code}{eligibility.status_desc ? ` — ${eligibility.status_desc}` : ''}
+                  </Badge>
+                )}
+                {eligibility.nhif_transition_status && (
+                  <Badge variant="outline" size="sm" className="text-[10px] border-amber-300 text-amber-700 dark:text-amber-400">
+                    NHIF: {eligibility.nhif_transition_status}
+                  </Badge>
+                )}
+              </div>
+            )}
+
+            {/* Schemes — expanded with coverage dates */}
             {eligibility.schemes && eligibility.schemes.length > 0 && (
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <p className="text-xs font-medium text-muted-foreground">Coverage Schemes:</p>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="space-y-1">
                   {eligibility.schemes.map((scheme, i) => (
-                    <Badge
+                    <div
                       key={i}
-                      variant="outline"
-                      size="sm"
-                      className={
+                      className={cn(
+                        'rounded-md border px-2.5 py-1.5 text-xs',
                         scheme.coverage?.status === 'ACTIVE'
-                          ? 'border-green-300 bg-green-50 text-green-800 dark:border-green-700 dark:bg-green-950 dark:text-green-300'
-                          : ''
-                      }
+                          ? 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20'
+                          : 'border-muted bg-muted/20'
+                      )}
                     >
-                      {scheme.schemeName || `Scheme ${i + 1}`}
-                      {scheme.memberType && ` (${scheme.memberType})`}
-                    </Badge>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">{scheme.schemeName || `Scheme ${i + 1}`}</span>
+                        {scheme.memberType && (
+                          <Badge variant="secondary" className="text-[10px]">{scheme.memberType}</Badge>
+                        )}
+                        {scheme.coverage?.status && (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              'text-[10px]',
+                              scheme.coverage.status === 'ACTIVE'
+                                ? 'border-green-300 text-green-700 dark:text-green-400'
+                                : 'text-muted-foreground'
+                            )}
+                          >
+                            {typeof scheme.coverage.status === 'string'
+                              ? scheme.coverage.status
+                              : String(scheme.coverage.status)}
+                          </Badge>
+                        )}
+                      </div>
+                      {(scheme.policy?.startDate || scheme.policy?.endDate || scheme.policy?.number) && (
+                        <div className="mt-0.5 text-[10px] text-muted-foreground">
+                          {scheme.policy.startDate && <>From: {scheme.policy.startDate}</>}
+                          {scheme.policy.endDate && <> • To: {scheme.policy.endDate}</>}
+                          {scheme.policy.number && <> • #{scheme.policy.number}</>}
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Employment info */}
+            {/* Employment */}
             {eligibility.employer_name && (
               <p className="text-xs text-muted-foreground">
-                Employer: {eligibility.employer_name}
-                {eligibility.employment_type && ` (${eligibility.employment_type})`}
+                <Briefcase className="h-3 w-3 inline mr-1" />
+                {eligibility.is_employed ? 'Employed' : 'Unemployed'}
+                {eligibility.employer_name && <> • Employer: {eligibility.employer_name}</>}
+                {eligibility.employment_type && <> ({eligibility.employment_type})</>}
               </p>
             )}
 
-            {/* Means testing */}
+            {/* Means testing — expanded */}
             {eligibility.means_testing && eligibility.means_testing.monthly_contribution != null && (
-              <p className="text-xs text-muted-foreground">
-                Monthly contribution: KES {eligibility.means_testing.monthly_contribution.toLocaleString()}
-                {eligibility.means_testing.income_prediction_category && (
-                  <> • Category: {eligibility.means_testing.income_prediction_category}</>
-                )}
-              </p>
+              <div className="rounded-md border bg-muted/20 px-2.5 py-1.5 text-xs space-y-1">
+                <p className="font-medium text-muted-foreground">Means Testing</p>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-muted-foreground">
+                  {eligibility.means_testing.monthly_contribution != null && (
+                    <span>Monthly: <span className="font-medium text-foreground">KES {eligibility.means_testing.monthly_contribution.toLocaleString()}</span></span>
+                  )}
+                  {eligibility.means_testing.annual_contribution != null && (
+                    <span>Annual: <span className="font-medium text-foreground">KES {eligibility.means_testing.annual_contribution.toLocaleString()}</span></span>
+                  )}
+                  {eligibility.means_testing.income_prediction_category && (
+                    <span>Category: <span className="font-medium text-foreground">{eligibility.means_testing.income_prediction_category}</span></span>
+                  )}
+                  {eligibility.means_testing.mt_date && (
+                    <span>Date: {eligibility.means_testing.mt_date}</span>
+                  )}
+                  {eligibility.means_testing.appeal_status && (
+                    <span>Appeal: {eligibility.means_testing.appeal_status}</span>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -639,7 +732,7 @@ function CRResultCard({
       )}
 
       {/* Dependants */}
-      {totalDependants > 0 && (
+      {showDependentsSection && (
         <CardContent className="py-3 border-t">
           <button
             type="button"
@@ -648,7 +741,7 @@ function CRResultCard({
           >
             <Users className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">
-              Dependants ({totalDependants})
+              Dependants ({totalDependantsDisplay})
             </span>
             {showDependants ? (
               <ChevronUp className="h-4 w-4 text-muted-foreground ml-auto" />

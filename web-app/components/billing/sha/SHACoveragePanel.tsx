@@ -1,25 +1,25 @@
 /**
- * SHA Benefits & Interventions Panel
+ * SHA Coverage & Utilization Panel
  *
- * Architecture (per DHA docs - Benefits & Intervention Codes):
- *   Level 1: Benefit Package (SHA-XX) — 14 broad categories
- *   Level 2: Intervention (SHA-XX-YYY) — specific billable services
+ * Compact panel shown during IPD admission when payer is SHA.
+ * Fetches benefit packages, inpatient interventions, and per-intervention
+ * utilization data from the DHA HIE Middleware (ILM).
  *
- * Flow:
- *   1. Fetch benefit packages via ilmBenefits (is_unique_benefit=true)
- *   2. On expand, fetch interventions via ilmBenefitInterventions(sub_benefit_code=SHA-XX)
+ * Architecture:
+ *   1. Fetch benefit packages (ilmBenefits with is_unique_benefit=true)
+ *   2. On expand, fetch sub-benefits → interventions per benefit
+ *   3. For IP-accessible interventions, fetch utilization data
  *
- * Used on: Patient detail page (below EligibilityBanner), Lookup page
+ * Used on: encounters/new/admission, admissions/new, encounters/new/review
  */
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ChevronDown,
   ChevronRight,
   Loader2,
   Package,
-  Layers,
   Activity,
   AlertCircle,
   RefreshCw,
@@ -36,52 +36,27 @@ import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
 import { parseUtilization } from '@/lib/sha/ilm-parsers';
 import type { ParsedUtilizationEntry } from '@/lib/sha/ilm-parsers';
-import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-
-/**
- * DHA returns HTTP 400 with "No result found for ID ... ClientRegistry ID"
- * whenever a patient has no benefits coverage on file. That is an expected
- * empty state for many patients, not a real error — render it accordingly
- * and don't pollute the console via the global query error handler.
- */
-function isNoCoverageError(err: unknown): boolean {
-  if (!(err instanceof AxiosError)) return false;
-  if (err.response?.status !== 400) return false;
-  const data = err.response?.data as { message?: string; detail?: string } | undefined;
-  const text = `${data?.message ?? ''} ${data?.detail ?? ''}`.toLowerCase();
-  return text.includes('no result found');
-}
-
-/**
- * Normalize an internal SHA member number to the DHA Client Registry id.
- * Local convention stores numbers as `SHA-XXXXX-N`; DHA expects `CRXXXXX-N`.
- * Already-CR ids and other shapes are returned unchanged.
- */
-function toCrId(value: string): string {
-  if (!value) return value;
-  if (value.startsWith('SHA-')) return `CR${value.slice(4)}`;
-  return value;
-}
 
 // ============================================================================
 // Types
 // ============================================================================
 
-interface BenefitsPanelProps {
+interface SHACoveragePanelProps {
   /** DHA Client Registry number (patient_id for ILM calls) */
   crNumber: string;
   /** Local patient PK (for snapshot audit) */
   patientPk?: number;
   /** SHA member ID (for snapshot audit) */
   shaMemberId?: number;
-  /** Custom className */
-  className?: string;
   /** Compact layout (no card wrapper) */
   compact?: boolean;
+  /** Custom className */
+  className?: string;
+  /** Filter to inpatient-only interventions (default: true for IPD) */
+  inpatientOnly?: boolean;
 }
 
-/** Benefit package from is_unique_benefit=true response */
 interface BenefitPackageItem {
   parentBenefit?: string;
   parentBenefitCode?: string;
@@ -90,7 +65,6 @@ interface BenefitPackageItem {
   [key: string]: unknown;
 }
 
-/** Sub-benefit from sub-benefits endpoint */
 interface SubBenefitItem {
   code?: string;
   name?: string;
@@ -102,7 +76,6 @@ interface SubBenefitItem {
   [key: string]: unknown;
 }
 
-/** Intervention from benefit-interventions endpoint */
 interface InterventionItem {
   code?: string;
   name?: string;
@@ -122,11 +95,20 @@ interface InterventionItem {
 // Helpers
 // ============================================================================
 
-/**
- * Extract array items from DHA/ILM response payloads.
- * Handles: direct array, { results: [...] }, { data: [...] },
- * and the double-nested { results: [{ results: [...] }] } from is_unique_benefit.
- */
+function isNoCoverageError(err: unknown): boolean {
+  if (!(err instanceof AxiosError)) return false;
+  if (err.response?.status !== 400) return false;
+  const data = err.response?.data as { message?: string; detail?: string } | undefined;
+  const text = `${data?.message ?? ''} ${data?.detail ?? ''}`.toLowerCase();
+  return text.includes('no result found');
+}
+
+function toCrId(value: string): string {
+  if (!value) return value;
+  if (value.startsWith('SHA-')) return `CR${value.slice(4)}`;
+  return value;
+}
+
 function extractItems<T>(data: unknown): T[] {
   if (!data) return [];
   if (Array.isArray(data)) return data as T[];
@@ -135,7 +117,6 @@ function extractItems<T>(data: unknown): T[] {
     if (Array.isArray(obj.data)) return obj.data as T[];
     if (Array.isArray(obj.results)) {
       const results = obj.results as unknown[];
-      // Handle double-nested: { results: [{ results: [...] }] }
       if (
         results.length === 1 &&
         typeof results[0] === 'object' &&
@@ -161,82 +142,82 @@ function getField(item: Record<string, unknown>, ...keys: string[]): string {
   return '';
 }
 
-/**
- * When DHA returns an intervention object whose standard name fields are all empty,
- * scan remaining string values for something displayable.
- * Common in sparse responses for sub-benefits that have no active interventions.
- */
-function inferNameFromKeys(item: Record<string, unknown>): string {
-  // Skip keys that are clearly not names
-  const skipKeys = new Set(['code', 'interventionCode', 'intervention_code', 'benefitCode', 'benefit_code', 'status', 'active', 'accessPoint', 'access_point', 'paymentMechanism', 'payment_mechanism']);
-  for (const [key, val] of Object.entries(item)) {
-    if (skipKeys.has(key)) continue;
-    if (typeof val === 'string' && val.trim().length > 3 && val.trim().length < 200) {
-      return val.trim();
-    }
-  }
-  return '';
-}
-
 function getBenefitCode(item: BenefitPackageItem): string {
   return getField(item, 'parentBenefitCode', 'parent_benefit_code', 'code');
 }
 
 function getBenefitName(item: BenefitPackageItem): string {
-  return getField(item, 'parentBenefit', 'parent_benefit', 'name') || getBenefitCode(item) || 'Unknown Benefit';
+  return getField(item, 'parentBenefit', 'parent_benefit', 'name') || getBenefitCode(item) || 'Unknown';
+}
+
+function isIPIntervention(item: InterventionItem): boolean {
+  const ap = getField(item as Record<string, unknown>, 'accessPoint', 'access_point');
+  if (!ap) return false;
+  const lower = ap.toLowerCase();
+  return lower.includes('ip') || lower === 'inpatient';
 }
 
 // ============================================================================
 // Main Component
 // ============================================================================
 
-export function BenefitsPanel({
+export function SHACoveragePanel({
   crNumber,
   patientPk,
   shaMemberId,
-  className,
   compact = false,
-}: BenefitsPanelProps) {
-  // Normalize SHA-XXX-N → CRXXX-N for ILM calls.
+  className,
+  inpatientOnly = true,
+}: SHACoveragePanelProps) {
   const lookupId = toCrId(crNumber);
-  const {
-    data: benefitsResponse,
-    isLoading,
-    isError,
-    error,
-    refetch,
-    isFetching,
-  } = useQuery({
-    queryKey: ['sha-benefits', lookupId, patientPk],
-    queryFn: () =>
-      shaApi.ilmBenefits({
+
+  const [benefits, setBenefits] = useState<BenefitPackageItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const fetchBenefits = useCallback(async () => {
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const resp = await shaApi.ilmBenefits({
         patient_id: lookupId,
         is_unique_benefit: true,
         patient_pk: patientPk,
         sha_member_id: shaMemberId,
-      }),
-    enabled: !!lookupId,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-    meta: { skipGlobalErrorHandler: true },
-  });
+      });
+      setBenefits(extractItems<BenefitPackageItem>(resp.data));
+    } catch (err) {
+      if (isNoCoverageError(err)) {
+        setBenefits([]);
+      } else {
+        setFetchError(err instanceof Error ? err.message : 'Failed to load benefits');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [lookupId, patientPk, shaMemberId]);
 
-  const benefits = extractItems<BenefitPackageItem>(benefitsResponse?.data);
-  const noCoverage = isError && isNoCoverageError(error);
+  useEffect(() => {
+    if (lookupId) fetchBenefits();
+  }, [lookupId, fetchBenefits]);
 
-  if (isLoading) {
-    return <BenefitsSkeleton compact={compact} className={className} />;
+  const noCoverage = !loading && benefits.length === 0 && !fetchError;
+
+  if (loading) {
+    return <CoverageSkeleton compact={compact} className={className} />;
   }
 
-  if (isError && !noCoverage) {
+  if (fetchError) {
     return (
       <Alert variant="destructive" className={className}>
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Failed to load benefits: {error instanceof Error ? error.message : 'Unknown error'}
-        </AlertDescription>
+        <AlertDescription>{fetchError}</AlertDescription>
       </Alert>
     );
+  }
+
+  if (noCoverage) {
+    return null;
   }
 
   const content = (
@@ -245,43 +226,32 @@ export function BenefitsPanel({
         <div className="flex items-center gap-2">
           <Package className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">
-            Benefits, Interventions &amp; Utilizations
-            {benefits.length > 0 && <> ({benefits.length} package{benefits.length !== 1 ? 's' : ''})</>}
+            SHA Benefits & Utilization ({benefits.length} package{benefits.length !== 1 ? 's' : ''})
           </span>
         </div>
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => refetch()}
-          disabled={isFetching}
+          onClick={() => fetchBenefits()}
+          disabled={loading}
           className="h-7 w-7 p-0"
         >
-          <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} />
+          <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
         </Button>
       </div>
 
-      {(noCoverage || benefits.length === 0) && (
-        <div className="rounded-md border border-dashed p-4 text-center">
-          <Package className="mx-auto h-6 w-6 text-muted-foreground/30" />
-          <p className="mt-1 text-xs text-muted-foreground">
-            No eligible benefits found for this patient at this facility.
-          </p>
-        </div>
-      )}
-
-      {benefits.length > 0 && (
-        <div className="space-y-1.5">
-          {benefits.map((benefit, idx) => (
-            <BenefitAccordion
-              key={getBenefitCode(benefit) || idx}
-              benefit={benefit}
-              crNumber={lookupId}
-              patientPk={patientPk}
-              shaMemberId={shaMemberId}
-            />
-          ))}
-        </div>
-      )}
+      <div className="space-y-1.5">
+        {benefits.map((benefit, idx) => (
+          <BenefitCoverageRow
+            key={getBenefitCode(benefit) || idx}
+            benefit={benefit}
+            crNumber={lookupId}
+            patientPk={patientPk}
+            shaMemberId={shaMemberId}
+            inpatientOnly={inpatientOnly}
+          />
+        ))}
+      </div>
     </div>
   );
 
@@ -291,52 +261,58 @@ export function BenefitsPanel({
 
   return (
     <Card className={className}>
-      <CardContent className="py-4">
-        {content}
-      </CardContent>
+      <CardContent className="py-4">{content}</CardContent>
     </Card>
   );
 }
 
 // ============================================================================
-// Benefit Accordion — expands to fetch sub-benefits, each with interventions
+// Benefit Row — expandable, fetches sub-benefits → interventions → utilization
 // ============================================================================
 
-function BenefitAccordion({
+function BenefitCoverageRow({
   benefit,
   crNumber,
   patientPk,
   shaMemberId,
+  inpatientOnly,
 }: {
   benefit: BenefitPackageItem;
   crNumber: string;
   patientPk?: number;
   shaMemberId?: number;
+  inpatientOnly: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const code = getBenefitCode(benefit);
   const name = getBenefitName(benefit);
 
-  // Fetch sub-benefits filtered by this parent benefit code
-  const {
-    data: subBenefitsResponse,
-    isLoading,
-  } = useQuery({
-    queryKey: ['sha-sub-benefits', crNumber, code, patientPk],
-    queryFn: () =>
-      shaApi.ilmSubBenefits({
+  // Manual fetch for sub-benefits
+  const [subBenefits, setSubBenefits] = useState<SubBenefitItem[]>([]);
+  const [subLoading, setSubLoading] = useState(false);
+
+  useEffect(() => {
+    if (!expanded || !crNumber || !code) return;
+    let cancelled = false;
+    setSubLoading(true);
+    shaApi
+      .ilmSubBenefits({
         patient_id: crNumber,
         parent_benefit_code: code,
         patient_pk: patientPk,
         sha_member_id: shaMemberId,
-      }),
-    enabled: expanded && !!crNumber && !!code,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const subBenefits = expanded
-    ? extractItems<SubBenefitItem>(subBenefitsResponse?.data)
-    : [];
+      })
+      .then((resp) => {
+        if (!cancelled) setSubBenefits(extractItems<SubBenefitItem>(resp.data));
+      })
+      .catch(() => {
+        if (!cancelled) setSubBenefits([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSubLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [expanded, crNumber, code, patientPk, shaMemberId]);
 
   return (
     <div className="rounded-md border bg-muted/20">
@@ -350,7 +326,7 @@ function BenefitAccordion({
         ) : (
           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         )}
-        <Layers className="h-3.5 w-3.5 text-primary shrink-0" />
+        <Package className="h-3.5 w-3.5 text-primary shrink-0" />
         <span className="text-sm font-medium truncate flex-1">{name}</span>
         {code && (
           <Badge variant="outline" size="sm" className="font-mono shrink-0">
@@ -361,27 +337,25 @@ function BenefitAccordion({
 
       {expanded && (
         <div className="px-3 pb-2 pt-1 border-t border-border/50">
-          {isLoading ? (
+          {subLoading ? (
             <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
               <Loader2 className="h-3 w-3 animate-spin" />
               Loading sub-benefits...
             </div>
           ) : subBenefits.length === 0 ? (
             <p className="text-xs text-muted-foreground py-1">
-              No sub-benefits available for this package.
+              No sub-benefits available.
             </p>
           ) : (
             <div className="space-y-1.5">
-              <p className="text-[10px] text-muted-foreground mb-1">
-                {subBenefits.length} sub-benefit{subBenefits.length !== 1 ? 's' : ''}
-              </p>
               {subBenefits.map((sub, idx) => (
-                <SubBenefitAccordion
+                <SubBenefitCoverageRow
                   key={sub.code || idx}
                   subBenefit={sub}
                   crNumber={crNumber}
                   patientPk={patientPk}
                   shaMemberId={shaMemberId}
+                  inpatientOnly={inpatientOnly}
                 />
               ))}
             </div>
@@ -393,23 +367,25 @@ function BenefitAccordion({
 }
 
 // ============================================================================
-// Sub-Benefit Accordion — expands to fetch interventions
+// Sub-Benefit Row — expandable, fetches interventions + utilization
 // ============================================================================
 
-function SubBenefitAccordion({
+function SubBenefitCoverageRow({
   subBenefit,
   crNumber,
   patientPk,
   shaMemberId,
+  inpatientOnly,
 }: {
   subBenefit: SubBenefitItem;
   crNumber: string;
   patientPk?: number;
   shaMemberId?: number;
+  inpatientOnly: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const code = getField(subBenefit as Record<string, unknown>, 'code', 'benefit_code', 'benefitCode');
-  const name = getField(subBenefit as Record<string, unknown>, 'name', 'benefit_name', 'benefitName') || code || 'Unknown Sub-Benefit';
+  const name = getField(subBenefit as Record<string, unknown>, 'name', 'benefit_name', 'benefitName') || code || 'Unknown';
 
   const [interventions, setInterventions] = useState<InterventionItem[]>([]);
   const [utilizations, setUtilizations] = useState<Map<string, ParsedUtilizationEntry[]>>(new Map());
@@ -430,15 +406,17 @@ function SubBenefitAccordion({
         if (cancelled) return;
         const items = extractItems<InterventionItem>(resp.data).filter((i) => {
           const item = i as Record<string, unknown>;
-          const hasCode = !!getField(item, 'code', 'intervention_code', 'interventionCode', 'benefitCode');
-          const hasName = !!getField(item, 'name', 'intervention_name', 'interventionName', 'benefit_name', 'benefitName', 'display_name', 'displayName');
+          const hasCode = !!getField(item, 'code', 'intervention_code', 'interventionCode');
+          const hasName = !!getField(item, 'name', 'intervention_name', 'interventionName');
           return hasCode || hasName;
         });
-        setInterventions(items);
+
+        const filtered = inpatientOnly ? items.filter(isIPIntervention) : items;
+        setInterventions(filtered);
 
         // Fetch utilization for each intervention (sequential to respect rate limits)
         const utilMap = new Map<string, ParsedUtilizationEntry[]>();
-        for (const intervention of items) {
+        for (const intervention of filtered) {
           if (cancelled) break;
           const iCode = getField(intervention as Record<string, unknown>, 'code', 'intervention_code', 'interventionCode');
           if (!iCode) continue;
@@ -467,7 +445,7 @@ function SubBenefitAccordion({
       });
 
     return () => { cancelled = true; };
-  }, [expanded, crNumber, code, patientPk, shaMemberId]);
+  }, [expanded, crNumber, code, patientPk, shaMemberId, inpatientOnly]);
 
   return (
     <div className="rounded border border-border/50 bg-background">
@@ -492,19 +470,19 @@ function SubBenefitAccordion({
           {loading ? (
             <div className="flex items-center gap-2 py-1 text-xs text-muted-foreground">
               <Loader2 className="h-3 w-3 animate-spin" />
-              Loading interventions &amp; utilization...
+              Loading interventions & utilization...
             </div>
           ) : interventions.length === 0 ? (
             <p className="text-xs text-muted-foreground py-1">
-              No interventions available.
+              No inpatient interventions available.
             </p>
           ) : (
             <div className="space-y-1">
               {interventions.map((intervention, idx) => {
-                const iCode = getField(intervention as Record<string, unknown>, 'code', 'intervention_code', 'interventionCode', 'benefitCode');
+                const iCode = getField(intervention as Record<string, unknown>, 'code', 'intervention_code', 'interventionCode');
                 const utilEntries = iCode ? utilizations.get(iCode) : undefined;
                 return (
-                  <InterventionRow
+                  <InterventionCoverageRow
                     key={iCode || idx}
                     intervention={intervention}
                     utilization={utilEntries}
@@ -520,10 +498,10 @@ function SubBenefitAccordion({
 }
 
 // ============================================================================
-// Intervention Row
+// Intervention Row with inline utilization
 // ============================================================================
 
-function InterventionRow({
+function InterventionCoverageRow({
   intervention,
   utilization,
 }: {
@@ -531,7 +509,7 @@ function InterventionRow({
   utilization?: ParsedUtilizationEntry[];
 }) {
   const item = intervention as Record<string, unknown>;
-  const code = getField(item, 'code', 'intervention_code', 'interventionCode', 'benefitCode', 'benefit_code');
+  const code = getField(item, 'code', 'intervention_code', 'interventionCode', 'benefitCode');
   const name = getField(
     item,
     'name',
@@ -541,13 +519,12 @@ function InterventionRow({
     'benefitName',
     'description',
     'display_name',
-    'displayName',
-  ) || code || inferNameFromKeys(item) || 'Unknown Intervention';
-  const paymentMech = getField(item, 'paymentMechanism', 'payment_mechanism');
+  ) || code || 'Unknown';
   const tariff = (item.overallTariff ?? item.overall_tariff) as number | undefined;
   const needsPreauth = (item.needsPreauth ?? item.needs_preauth) as boolean | undefined;
 
-  const util = utilization && utilization.length > 0 ? utilization[0] : null;
+  const hasUtil = utilization && utilization.length > 0;
+  const util = hasUtil ? utilization[0] : null;
 
   return (
     <div className="rounded px-2 py-1.5 hover:bg-muted/20 text-xs space-y-1">
@@ -560,11 +537,6 @@ function InterventionRow({
         {needsPreauth && (
           <Badge variant="outline" size="sm" className="text-[10px] h-4 shrink-0 border-amber-400 text-amber-600 dark:text-amber-400">
             Preauth
-          </Badge>
-        )}
-        {paymentMech && (
-          <Badge variant="outline" size="sm" className="text-[10px] h-4 shrink-0">
-            {paymentMech === 'FEE_FOR_SERVICE' ? 'FFS' : paymentMech === 'PER_DIEM' ? 'Per Diem' : paymentMech}
           </Badge>
         )}
         {tariff != null && tariff > 0 && (
@@ -612,7 +584,7 @@ function InterventionRow({
 // Skeleton
 // ============================================================================
 
-function BenefitsSkeleton({ compact, className }: { compact?: boolean; className?: string }) {
+function CoverageSkeleton({ compact, className }: { compact?: boolean; className?: string }) {
   const content = (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -627,10 +599,7 @@ function BenefitsSkeleton({ compact, className }: { compact?: boolean; className
     </div>
   );
 
-  if (compact) {
-    return <div className={className}>{content}</div>;
-  }
-
+  if (compact) return <div className={className}>{content}</div>;
   return (
     <Card className={className}>
       <CardContent className="py-4">{content}</CardContent>
@@ -638,4 +607,4 @@ function BenefitsSkeleton({ compact, className }: { compact?: boolean; className
   );
 }
 
-export default BenefitsPanel;
+export default SHACoveragePanel;
