@@ -2822,7 +2822,7 @@ class FacilityKBSearchResponseSerializer(serializers.Serializer):
 
 
 class FacilityKBUploadResponseSerializer(serializers.Serializer):
-    """Response for POST /api/ai/facility/knowledge-base/upload/"""
+    """Response for POST /api/ai/facility/knowledge-base/documents/"""
 
     id = serializers.CharField()
     filename = serializers.CharField()

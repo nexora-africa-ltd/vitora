@@ -898,11 +898,19 @@ export const FacilityKBSearchResponseSchema = z.object({
   total: z.number().optional().default(0),
 });
 
-export const FacilityKBUploadResponseSchema = z.object({
+export const FacilityKBUploadDocumentSchema = z.object({
   id: z.string(),
   filename: z.string(),
   status: z.string().optional().default('processing'),
+  chunk_count: z.number().optional().default(0),
   size_bytes: z.number().optional().default(0),
+});
+
+export const FacilityKBUploadResponseSchema = z.object({
+  facility_id: z.string(),
+  documents: z.array(FacilityKBUploadDocumentSchema),
+  total_chunks: z.number().optional().default(0),
+  total_size_bytes: z.number().optional().default(0),
 });
 
 export const FacilityKBDocumentDeleteResponseSchema = z.object({

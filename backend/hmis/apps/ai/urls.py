@@ -323,7 +323,7 @@ urlpatterns = [
         name="facility-kb-info",
     ),
     path(
-        "facility/knowledge-base/upload/",
+        "facility/knowledge-base/documents/",
         FacilityKBUploadView.as_view(),
         name="facility-kb-upload",
     ),

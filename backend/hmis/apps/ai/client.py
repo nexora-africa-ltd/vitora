@@ -1290,7 +1290,7 @@ class TibaBotClient:
         """
         import io
 
-        url = f"{self.base_url.rstrip('/')}/facility/knowledge-base/upload"
+        url = f"{self.base_url.rstrip('/')}/facility/knowledge-base/documents"
         headers: dict[str, str] = {}
         user = _get_current_user()
         if user is not None:
