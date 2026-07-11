@@ -1614,11 +1614,19 @@ export interface FacilityKBSearchResponse {
   total?: number;
 }
 
-export interface FacilityKBUploadResponse {
+export interface FacilityKBUploadDocument {
   id: string;
   filename: string;
   status?: string;
+  chunk_count?: number;
   size_bytes?: number;
+}
+
+export interface FacilityKBUploadResponse {
+  facility_id: string;
+  documents: FacilityKBUploadDocument[];
+  total_chunks?: number;
+  total_size_bytes?: number;
 }
 
 export interface FacilityKBDocumentDeleteResponse {

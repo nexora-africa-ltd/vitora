@@ -43,7 +43,7 @@ class TestFacilityKBFeatureFlags:
 
     @override_settings(TIBABOT_ENABLED=False)
     def test_upload_404_when_feature_disabled(self, authenticated_client):
-        response = authenticated_client.post("/api/ai/facility/knowledge-base/upload/")
+        response = authenticated_client.post("/api/ai/facility/knowledge-base/documents/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @override_settings(TIBABOT_ENABLED=False)
@@ -66,7 +66,7 @@ class TestFacilityKBAuth:
 
     @override_settings(TIBABOT_ENABLED=True)
     def test_upload_unauthenticated_rejected(self, api_client):
-        response = api_client.post("/api/ai/facility/knowledge-base/upload/")
+        response = api_client.post("/api/ai/facility/knowledge-base/documents/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -135,7 +135,7 @@ class TestFacilityKBUpload:
 
         pdf_content = b"%PDF-1.4 test pdf content"
         response = authenticated_client.post(
-            "/api/ai/facility/knowledge-base/upload/",
+            "/api/ai/facility/knowledge-base/documents/",
             {"file": io.BytesIO(pdf_content)},
             format="multipart",
         )
@@ -147,7 +147,7 @@ class TestFacilityKBUpload:
     @override_settings(TIBABOT_ENABLED=True)
     def test_upload_no_file(self, authenticated_client, mock_tibabot):
         response = authenticated_client.post(
-            "/api/ai/facility/knowledge-base/upload/",
+            "/api/ai/facility/knowledge-base/documents/",
             {},
             format="multipart",
         )
@@ -161,7 +161,7 @@ class TestFacilityKBUpload:
 
         pdf_content = b"%PDF-1.4 test content"
         response = authenticated_client.post(
-            "/api/ai/facility/knowledge-base/upload/",
+            "/api/ai/facility/knowledge-base/documents/",
             {"file": io.BytesIO(pdf_content)},
             format="multipart",
         )
@@ -173,7 +173,7 @@ class TestFacilityKBUpload:
         """Files over 20 MB should be rejected before reaching TibaBot."""
         large_content = b"x" * (21 * 1024 * 1024)  # 21 MB
         response = authenticated_client.post(
-            "/api/ai/facility/knowledge-base/upload/",
+            "/api/ai/facility/knowledge-base/documents/",
             {"file": io.BytesIO(large_content)},
             format="multipart",
         )

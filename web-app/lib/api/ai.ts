@@ -885,7 +885,7 @@ export const aiApi = {
   uploadToFacilityKB: async (file: File): Promise<FacilityKBUploadResponse> => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await apiClient.post('/api/ai/facility/knowledge-base/upload/', formData, {
+    const response = await apiClient.post('/api/ai/facility/knowledge-base/documents/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return parseResponse(FacilityKBUploadResponseSchema, response.data, {

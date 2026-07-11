@@ -669,7 +669,7 @@ affected endpoints. Pin your integration to a specific build by checking the
 | Endpoint | Auth | Description |
 |----------|------|-------------|
 | `GET /facility/knowledge-base` | Key | KB info and document list |
-| `POST /facility/knowledge-base/upload` | Key | Upload KB document |
+| `POST /facility/knowledge-base/documents` | Key | Upload KB document |
 | `DELETE /facility/knowledge-base/documents/{id}` | Key | Delete KB document |
 | `GET /facility/knowledge-base/search` | Key | Search facility KB |
 

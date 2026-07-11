@@ -3811,7 +3811,7 @@ class FacilityKBUploadView(AIFeatureGatedMixin, APIView):
     """
     Upload a document to the facility knowledge base.
 
-    POST /api/ai/facility/knowledge-base/upload/
+    POST /api/ai/facility/knowledge-base/documents/
 
     Accepts multipart/form-data with a single ``file`` field.
     """
