@@ -17,10 +17,8 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   AlertTriangle,
-  Check,
   CheckCircle2,
   ChevronRight,
-  ChevronsUpDown,
   CircleDashed,
   Fingerprint,
   Loader2,
@@ -57,19 +55,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { shaApi } from '@/lib/api/sha';
 import { useAuth } from '@/lib/auth/context';
@@ -86,6 +71,10 @@ import {
   INTERVENTION_COMBINATION_RULES,
 } from '@/lib/sha/combination-rules';
 import { toCrId } from '@/lib/sha/ilm-parsers';
+import {
+  useBenefitInterventions,
+  type InterventionOption,
+} from '@/lib/hooks/use-benefit-interventions';
 import { format, parseISO } from 'date-fns';
 
 // =============================================================================
@@ -197,7 +186,7 @@ function derivePractitionerFields(
     return {
       practitioner_identification_number: source.national_id,
       practitioner_identification_type: 'National ID',
-      practitioner_regulation_body: source.licensing_body || 'KMPDC',
+      practitioner_regulation_body: source.licensing_body || undefined,
     };
   }
   // Fallback: use license number with National ID type (DHA resolves internally)
@@ -205,7 +194,7 @@ function derivePractitionerFields(
     return {
       practitioner_identification_number: source.license_number,
       practitioner_identification_type: 'National ID',
-      practitioner_regulation_body: source.licensing_body || 'KMPDC',
+      practitioner_regulation_body: source.licensing_body || undefined,
     };
   }
   return {};
@@ -236,59 +225,6 @@ function formatErr(e: unknown): string {
       .join('; ');
   }
   return err?.message ?? 'Request failed';
-}
-
-interface LiveInterventionItem {
-  code: string;
-  name: string;
-  paymentMechanism?: string;
-  tariff?: number;
-}
-
-/**
- * Extract intervention items from the DHA `ilmBenefitInterventions` response.
- * DHA returns deeply nested payloads — this normalizes across known shapes.
- */
-function extractLiveInterventionItems(data: unknown): LiveInterventionItem[] {
-  if (!data) return [];
-  const items: LiveInterventionItem[] = [];
-
-  function extract(obj: unknown): void {
-    if (!obj) return;
-    if (Array.isArray(obj)) {
-      for (const item of obj) extract(item);
-      return;
-    }
-    if (typeof obj !== 'object') return;
-    const rec = obj as Record<string, unknown>;
-
-    // If this object has `code` or `interventionCode`, it's likely an intervention
-    const code = String(rec.code || rec.interventionCode || rec.intervention_code || '');
-    const name = String(
-      rec.name || rec.interventionName || rec.intervention_name ||
-      rec.benefit_name || rec.benefitName || rec.description || ''
-    );
-    if (code) {
-      items.push({
-        code,
-        name: name || code,
-        paymentMechanism: String(rec.paymentMechanism || rec.payment_mechanism || ''),
-        tariff: typeof rec.overallTariff === 'number' ? rec.overallTariff
-          : typeof rec.overall_tariff === 'number' ? rec.overall_tariff
-          : undefined,
-      });
-      return;
-    }
-
-    // Recurse into nested arrays
-    if (Array.isArray(rec.results)) extract(rec.results);
-    if (Array.isArray(rec.data)) extract(rec.data);
-    if (Array.isArray(rec.interventions)) extract(rec.interventions);
-    if (Array.isArray(rec.benefits)) extract(rec.benefits);
-  }
-
-  extract(data);
-  return items;
 }
 
 // =============================================================================
@@ -329,86 +265,28 @@ export function ClaimILMPanel({
   const { facilityDetail } = useFacility();
   const claimId = claim.id;
 
-  // ---- Intervention selection: live DHA → static catalog fallback ----
-  // Per DHA docs (Scenario 6), we MUST call ilmBenefitInterventions to get
-  // what this patient + facility can actually bill. The static catalog is only
-  // a fallback when DHA is unreachable.
-  const facilityLevel = facilityDetail?.level
-    ? parseInt(facilityDetail.level.replace(/[^0-9]/g, ''), 10)
-    : undefined;
-  const facilityLevelKnown = typeof facilityLevel === 'number' && !Number.isNaN(facilityLevel);
-  const isPhcLevel = facilityLevelKnown && facilityLevel! <= 3;
-
-  // Patient CR ID (needed for ilmBenefitInterventions)
-  const derivedPatientCrId =
-    claim.dha_external_id ||
-    toCrId(claim.sha_member_number ?? '') ||
-    '';
-
-  // Step 1: Live DHA benefit-interventions — authoritative source.
-  const { data: liveInterventionsResp } = useQuery({
-    queryKey: ['sha-live-benefit-interventions-ilm', derivedPatientCrId],
-    queryFn: () =>
-      shaApi.ilmBenefitInterventions({
-        patient_id: derivedPatientCrId,
-        sub_benefit_code: 'SHA-12-SC-01',
-      }),
-    enabled: !!derivedPatientCrId,
-    staleTime: 5 * 60 * 1000,
-    retry: 1,
-    meta: { skipGlobalErrorHandler: true },
-  });
-
-  const liveOutpatientOptions = useMemo(() => {
-    if (!liveInterventionsResp?.data) return [];
-    const items = extractLiveInterventionItems(liveInterventionsResp.data);
-    return items
-      .filter((i) => i.code && i.name)
-      .map((i) => ({
-        code: i.code,
-        name: i.name,
-        category: i.paymentMechanism || undefined,
-        price: i.tariff,
-        schemes: undefined as string[] | undefined,
-      }));
-  }, [liveInterventionsResp]);
-
-  // Step 2: Static catalog fallback (FFS + OP + active + level-filtered).
-  const { data: fallbackInterventions } = useQuery({
-    queryKey: ['ilm-fallback-outpatient-interventions', facilityLevel],
-    queryFn: () =>
-      shaApi.searchInterventionCodes('', 100, facilityLevel, {
-        paymentMechanism: isPhcLevel ? 'FEE FOR SERVICE,FIXED FEE FOR SERVICE,CAPITATION' : 'FEE FOR SERVICE',
-        accessPoint: 'OP',
-        activeOnly: true,
-      }),
-    enabled: facilityLevelKnown && liveOutpatientOptions.length === 0,
-    staleTime: 60 * 60 * 1000,
-  });
-  const staticOutpatientOptions = useMemo(() => {
-    if (!fallbackInterventions?.length) return [];
-    return fallbackInterventions.map((i) => ({
-      code: i.code,
-      name: i.name,
-      category: i.category,
-      price: i.price,
-      schemes: i.schemes,
-    }));
-  }, [fallbackInterventions]);
-
-  // Use live DHA results when available, otherwise static catalog.
-  const outpatientOptions = liveOutpatientOptions.length > 0
-    ? liveOutpatientOptions
-    : staticOutpatientOptions;
-
   // ---- Derived context from claim + auth ----
   const visitStarted = !!claim.dha_visit_started_at;
-  // Patient CR ID: prefer dha_external_id (set after DHA interaction), fall back
-  // to deriving from SHA member number (e.g. SHA-12345 → CR12345)
   const patientCrId =
     claim.dha_external_id ||
     toCrId(claim.sha_member_number ?? '') ||
     '';
+
+  // ---- Shared cascading benefit-package → intervention fetch ----
+  const {
+    benefitPackageOptions,
+    benefitPackagesLoading,
+    selectedBenefitPkgCode,
+    setSelectedBenefitPkgCode,
+    interventionOptions,
+    interventionsLoading,
+    selectedIntervention,
+    setSelectedInterventionCode,
+  } = useBenefitInterventions({
+    patientCrId,
+    enabled: !!patientCrId,
+  });
+
   const invoiceNumber = claim.invoice_number ?? '';
   const activeInterventions = useMemo(
     () => (claim.claim_interventions ?? []).filter((i) => i.status === 'active'),
@@ -416,10 +294,6 @@ export function ClaimILMPanel({
   );
   const interventionCodes = useMemo(
     () => activeInterventions.map((i) => i.intervention_code),
-    [activeInterventions],
-  );
-  const serviceType = useMemo(
-    () => deriveServiceType(activeInterventions),
     [activeInterventions],
   );
   const practitionerFields = useMemo(
@@ -505,10 +379,33 @@ export function ClaimILMPanel({
   // hardcoded fallbacks (e.g. SHA-12-001 not supported for OUTPATIENT).
   const [manualInterventionCode, setManualInterventionCode] = useState('');
 
+  // Effective intervention code that will be sent on start_visit — used to
+  // enable/disable the button, satisfy the prereqs, and give the user visibility
+  // into what will be sent.
+  const effectiveInterventionCode = useMemo(
+    () => interventionCodes[0] || consentInterventionCode || manualInterventionCode || '',
+    [interventionCodes, consentInterventionCode, manualInterventionCode],
+  );
+
+  // Service type derived from active interventions on the claim, falling back
+  // to the manually selected intervention when the claim has none yet.
+  const serviceType = useMemo((): 'INPATIENT' | 'OUTPATIENT' => {
+    if (activeInterventions.length > 0) return deriveServiceType(activeInterventions);
+    if (selectedIntervention) {
+      if (selectedIntervention.accessPoint === 'IP') return 'INPATIENT';
+      if (selectedIntervention.accessPoint === 'OP') return 'OUTPATIENT';
+    }
+    const code = effectiveInterventionCode;
+    if (!code) return 'OUTPATIENT';
+    const prefix = code.split('-').slice(0, 2).join('-');
+    if (INPATIENT_PREFIXES.includes(prefix)) return 'INPATIENT';
+    return 'OUTPATIENT';
+  }, [activeInterventions, selectedIntervention, effectiveInterventionCode]);
+
   // Add intervention / diagnosis dialogs
   const [addInterventionOpen, setAddInterventionOpen] = useState(false);
+  const [addDialogPkgCode, setAddDialogPkgCode] = useState('');
   const [newInterventionCode, setNewInterventionCode] = useState('');
-  const [interventionComboboxOpen, setInterventionComboboxOpen] = useState(false);
   const [addDiagnosisOpen, setAddDiagnosisOpen] = useState(false);
   const [newIcdCode, setNewIcdCode] = useState('');
   const [diagnosisAnchorCode, setDiagnosisAnchorCode] = useState('');
@@ -615,9 +512,17 @@ export function ClaimILMPanel({
   async function openVisit() {
     if (!patientCrId) return;
     if (visitStarted) return;
-    const credential = startAuthGuid
-      ? { auth_guid: startAuthGuid }
-      : { otp: startOtp };
+    // Credential priority: biometric auth_guid → manual OTP entry → consent OTP → consent token
+    const credential: Record<string, string> = {};
+    if (startAuthGuid) {
+      credential.auth_guid = startAuthGuid;
+    } else if (startOtp) {
+      credential.otp = startOtp;
+    } else if (consentCredential?.otp) {
+      credential.otp = consentCredential.otp;
+    } else if (consentToken) {
+      credential.otp = consentToken;
+    }
     // DHA start_visit requires at least one valid intervention code.
     // Priority: (1) interventions already on the claim,
     //           (2) intervention selected during consent (same one used to validate OTP),
@@ -726,12 +631,6 @@ export function ClaimILMPanel({
     setCancelText('');
   }
 
-  // Effective intervention code that will be sent on start_visit — used to
-  // enable/disable the button, satisfy the prereqs, and give the user visibility
-  // into what will be sent.
-  const effectiveInterventionCode =
-    interventionCodes[0] || consentInterventionCode || manualInterventionCode || '';
-
   // ---- Prerequisites ----
   // For opening a visit, the DHA start_visit endpoint validates the OTP directly
   // (no pre-validated consent token needed). The consent token is only required
@@ -791,6 +690,8 @@ export function ClaimILMPanel({
   const panelTitle = flow
     ? `DHA HIE Workflow - ${flow.badgeLabel}`
     : 'DHA HIE Workflow';
+
+  const isStartingVisit = busy !== null && busy === 'startVisit';
 
   // =============================================================================
   // Render
@@ -858,170 +759,223 @@ export function ClaimILMPanel({
                 intervention on start_visit. Capitation and inactive codes are
                 filtered out server-side. */}
             {activeInterventions.length === 0 && !consentInterventionCode && !manualInterventionCode && (
-              <div className="space-y-1 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
-                <Label htmlFor="ilm-manual-intervention" className="text-xs font-medium text-amber-900 dark:text-amber-100">
+              <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+                <Label className="text-xs font-medium text-amber-900 dark:text-amber-100">
                   Select intervention for this visit
                 </Label>
                 <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                  Consent didn&apos;t include one. Pick a fee-for-service outpatient intervention your facility is entitled to bill.
-                  {facilityLevelKnown ? ` (filtered to KEPH Level ${facilityLevel})` : ''}
+                  Consent didn&apos;t include one. Pick a benefit package and intervention your facility is entitled to bill.
                 </p>
-                {!facilityLevelKnown ? (
-                  <p className="text-[11px] text-red-700 dark:text-red-300">
-                    Your facility&apos;s KEPH level is not set. Please contact your admin to configure it before selecting an intervention.
-                  </p>
-                ) : (
+                {benefitPackagesLoading ? (
+                  <div className="flex items-center gap-2 h-9 px-3 border rounded-md bg-background">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span className="text-xs text-muted-foreground">Loading benefit packages…</span>
+                  </div>
+                ) : benefitPackageOptions.length > 0 ? (
                   <>
-                    <Select
-                      value={manualInterventionCode}
-                      onValueChange={(value) => {
-                        setManualInterventionCode(value);
-                        // Clear the stale "select an intervention" error once the user picks one.
-                        if (error === 'Select an intervention below before opening the visit.') {
-                          setError(null);
-                        }
-                      }}
-                    >
-                      <SelectTrigger id="ilm-manual-intervention" className="bg-background">
-                        <SelectValue placeholder={outpatientOptions.length > 0 ? 'Choose an intervention…' : 'Loading eligible interventions…'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {outpatientOptions.map((opt) => (
-                          <SelectItem key={opt.code} value={opt.code}>
-                            <span className="font-mono text-xs">{opt.code}</span>
-                            {' — '}
-                            {opt.name}
-                            {opt.category ? ` · ${opt.category}` : ''}
-                            {opt.schemes && opt.schemes.length > 0 ? ` · ${opt.schemes.join(', ')}` : ''}
-                            {opt.price ? ` · KES ${Number(opt.price).toLocaleString()}` : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {outpatientOptions.length === 0 && (
-                      <p className="text-[11px] text-amber-800 dark:text-amber-200">
-                        No fee-for-service outpatient interventions found for a Level {facilityLevel} facility.
-                        Basic outpatient (SHA-12) is paid via capitation and cannot be billed per visit.
-                      </p>
+                    <div className="space-y-1">
+                      <Label htmlFor="ilm-manual-package" className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                        Benefit Package
+                      </Label>
+                      <Select
+                        value={selectedBenefitPkgCode}
+                        onValueChange={(value) => {
+                          setSelectedBenefitPkgCode(value);
+                          setManualInterventionCode('');
+                          if (error === 'Select an intervention below before opening the visit.') {
+                            setError(null);
+                          }
+                        }}
+                      >
+                        <SelectTrigger id="ilm-manual-package" className="bg-background">
+                          <SelectValue placeholder="Select benefit package…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {benefitPackageOptions.map((pkg) => (
+                            <SelectItem key={pkg.code} value={pkg.code}>
+                              {pkg.code} — {pkg.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {selectedBenefitPkgCode && (
+                      <div className="space-y-1">
+                        <Label htmlFor="ilm-manual-intervention" className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                          Intervention
+                        </Label>
+                        {interventionsLoading ? (
+                          <div className="flex items-center gap-2 h-9 px-3 border rounded-md bg-background">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            <span className="text-xs text-muted-foreground">Loading interventions…</span>
+                          </div>
+                        ) : interventionOptions.length > 0 ? (
+                          <Select
+                            value={manualInterventionCode}
+                            onValueChange={(value) => {
+                              setManualInterventionCode(value);
+                              if (error === 'Select an intervention below before opening the visit.') {
+                                setError(null);
+                              }
+                            }}
+                          >
+                            <SelectTrigger id="ilm-manual-intervention" className="bg-background">
+                              <SelectValue placeholder="Choose an intervention…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {interventionOptions.map((opt) => (
+                                <SelectItem key={opt.code} value={opt.code}>
+                                  <span className="font-mono text-xs">{opt.code}</span>
+                                  {' — '}
+                                  {opt.name}
+                                  {opt.category ? ` · ${opt.category}` : ''}
+                                  {opt.price ? ` · KES ${Number(opt.price).toLocaleString()}` : ''}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <p className="text-xs text-muted-foreground py-2">
+                            No interventions found for this package.
+                          </p>
+                        )}
+                      </div>
                     )}
                   </>
+                ) : (
+                  <p className="text-xs text-amber-700 dark:text-amber-300 py-1">
+                    No eligible benefit packages found for this patient. DHA may not recognise their enrollment.
+                  </p>
                 )}
               </div>
             )}
 
-            {/* OTP / auth GUID input — only shown if not auto-populated */}
-            {requiresConsent && !startAuthGuid && (
-              <div className="space-y-2">
-                {busy === 'startVisit' && consentCredential?.otp ? (
-                  /* Auto-open in progress — show clean loading state */
-                  <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-4 py-3">
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    <div className="text-sm">
-                      <span className="font-medium">Opening visit</span>
-                      <span className="text-muted-foreground">
-                        {' · '}validating consent &amp; starting DHA session…
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-                    <div className="space-y-1">
-                      <Label htmlFor="ilm-start-otp" className="text-xs">
-                        OTP from patient
-                        {consentCredential?.otp && (
-                          <span className="ml-2 text-emerald-600 dark:text-emerald-400">
-                            · auto-filled from consent
+            {/*
+              Consent flows: only show OTP / biometric prompts when consent has not
+              been obtained yet. Once we have a validated consent token (from the
+              ConsentPanel above), the prerequisite grid shows green and we expose
+              the "Open Visit" button directly — no need to re-prompt for OTP.
+            */}
+            {requiresConsent && (
+              <>
+                {consentToken ? (
+                  /* Consent already validated — direct Open Visit */
+                  <div className="space-y-1">
+                    {isStartingVisit ? (
+                      <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-4 py-3">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <div className="text-sm">
+                          <span className="font-medium">Opening visit</span>
+                          <span className="text-muted-foreground">
+                            {' · '}validating consent &amp; starting DHA session…
                           </span>
-                        )}
-                      </Label>
-                      <Input
-                        id="ilm-start-otp"
-                        value={startOtp}
-                        onChange={(e) => setStartOtp(e.target.value)}
-                        placeholder="Enter OTP received by patient"
-                      />
-                    </div>
-                    {/* When OTP is entered: show "Open visit" (validates OTP + starts visit in one DHA call) */}
-                    {/* When OTP is empty: show "Send/Resend OTP" to get a fresh code */}
-                    {startOtp ? (
+                        </div>
+                      </div>
+                    ) : (
                       <Button
                         onClick={openVisit}
-                        disabled={!canAttemptVisit || busy !== null}
-                        className="w-full sm:w-auto"
+                        disabled={!canOpenVisit || busy !== null}
                       >
-                        {busy === 'startVisit' ? (
+                        {busy !== null && isStartingVisit ? (
                           <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                         ) : (
                           <Play className="mr-2 h-3 w-3" />
                         )}
-                        Validate &amp; Open Visit
+                        Open Visit
                       </Button>
-                  ) : (
+                    )}
+                  </div>
+                ) : startAuthGuid ? (
+                  /* Biometric path — auth GUID already obtained, just need to open */
+                  <Button onClick={openVisit} disabled={!canOpenVisit || busy !== null}>
+                    {isStartingVisit ? (
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    ) : (
+                      <Play className="mr-2 h-3 w-3" />
+                    )}
+                    Open visit (biometric)
+                  </Button>
+                ) : (
+                  /* No consent yet — show OTP entry + Send OTP + Biometric */
+                  <div className="space-y-2">
+                    <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+                      <div className="space-y-1">
+                        <Label htmlFor="ilm-start-otp" className="text-xs">
+                          OTP from patient
+                        </Label>
+                        <Input
+                          id="ilm-start-otp"
+                          value={startOtp}
+                          onChange={(e) => setStartOtp(e.target.value)}
+                          placeholder="Enter OTP received by patient"
+                        />
+                      </div>
+                      {startOtp ? (
+                        <Button
+                          onClick={openVisit}
+                          disabled={!canAttemptVisit || busy !== null}
+                          className="w-full sm:w-auto"
+                        >
+                          {isStartingVisit ? (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          ) : (
+                            <Play className="mr-2 h-3 w-3" />
+                          )}
+                          Validate &amp; Open Visit
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleResendOtp}
+                          disabled={busy === 'resendOtp' || !claim.sha_member}
+                          className="w-full sm:w-auto"
+                        >
+                          {busy === 'resendOtp' ? (
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          ) : (
+                            <Send className="mr-1 h-3 w-3" />
+                          )}
+                          Send OTP
+                        </Button>
+                      )}
+                    </div>
+                    {!startOtp && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Ask the patient for the OTP sent to their phone. If they didn&apos;t receive it or it expired, click &quot;Send OTP&quot;.
+                      </p>
+                    )}
+                    <div className="relative py-1">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-card px-2 text-muted-foreground">or</span>
+                      </div>
+                    </div>
                     <Button
                       variant="outline"
-                      size="sm"
-                      onClick={handleResendOtp}
-                      disabled={busy === 'resendOtp' || !claim.sha_member}
-                      className="w-full sm:w-auto"
-                      title="Send a fresh OTP to the patient's phone"
+                      onClick={handleStartBiometric}
+                      disabled={biometricBusy || busy !== null}
+                      className="w-full"
                     >
-                      {busy === 'resendOtp' ? (
-                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      {biometricBusy ? (
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                       ) : (
-                        <Send className="mr-1 h-3 w-3" />
+                        <Fingerprint className="mr-2 h-3 w-3" />
                       )}
-                      Send OTP
+                      Biometric consent
                     </Button>
-                  )}
-                </div>
-              )}
-              {!startOtp && (
-                  <p className="text-[11px] text-muted-foreground">
-                    Ask the patient for the OTP sent to their phone. If they didn&apos;t receive it or it expired, click &quot;Send OTP&quot;.
-                  </p>
-                )}
-
-                <div className="relative py-1">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
                   </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">or</span>
-                  </div>
-                </div>
-
-                <Button
-                  variant="outline"
-                  onClick={handleStartBiometric}
-                  disabled={biometricBusy || busy !== null}
-                  className="w-full"
-                >
-                  {biometricBusy ? (
-                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                  ) : (
-                    <Fingerprint className="mr-2 h-3 w-3" />
-                  )}
-                  Biometric consent
-                </Button>
-              </div>
-            )}
-
-            {/* Biometric path — no OTP input, just the action button */}
-            {startAuthGuid && (
-              <Button onClick={openVisit} disabled={!canOpenVisit || busy !== null}>
-                {busy === 'startVisit' ? (
-                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                ) : (
-                  <Play className="mr-2 h-3 w-3" />
                 )}
-                Open visit (biometric)
-              </Button>
+              </>
             )}
 
             {/* Emergency (ECCIF) — no consent required */}
             {!requiresConsent && (
               <Button onClick={openVisit} disabled={!canOpenVisit || busy !== null}>
-                {busy === 'startVisit' ? (
+                {isStartingVisit ? (
                   <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                 ) : (
                   <Play className="mr-2 h-3 w-3" />
@@ -1180,7 +1134,16 @@ export function ClaimILMPanel({
       {/* =================== Dialogs =================== */}
 
       {/* Add intervention */}
-      <Dialog open={addInterventionOpen} onOpenChange={setAddInterventionOpen}>
+      <Dialog
+        open={addInterventionOpen}
+        onOpenChange={(open) => {
+          setAddInterventionOpen(open);
+          if (!open) {
+            setAddDialogPkgCode('');
+            setNewInterventionCode('');
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add intervention</DialogTitle>
@@ -1190,66 +1153,71 @@ export function ClaimILMPanel({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            {/* Benefit package selector */}
             <div className="space-y-1">
-              <Label className="text-xs">
-                Intervention
-              </Label>
-              <Popover open={interventionComboboxOpen} onOpenChange={setInterventionComboboxOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className="w-full justify-between font-mono text-xs h-9"
-                  >
-                    {newInterventionCode
-                      ? (() => {
-                          const opt = outpatientOptions.find((o) => o.code === newInterventionCode);
-                          return opt
-                            ? `${opt.code} — ${opt.name}${opt.price ? ` · KES ${Number(opt.price).toLocaleString()}` : ''}`
-                            : newInterventionCode;
-                        })()
-                      : 'Select intervention…'}
-                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                  <Command filter={(value, search) => {
-                    const opt = outpatientOptions.find((o) => o.code === value);
-                    if (!opt) return 0;
-                    const haystack = `${opt.code} ${opt.name} ${opt.category ?? ''}`.toLowerCase();
-                    return haystack.includes(search.toLowerCase()) ? 1 : 0;
-                  }}>
-                    <CommandInput placeholder="Search by code or name…" className="h-9" />
-                    <CommandList>
-                      <CommandEmpty>No matching intervention found.</CommandEmpty>
-                      <CommandGroup>
-                        {outpatientOptions.map((opt) => (
-                          <CommandItem
-                            key={opt.code}
-                            value={opt.code}
-                            onSelect={(value) => {
-                              setNewInterventionCode(value.toUpperCase());
-                              setInterventionComboboxOpen(false);
-                            }}
-                          >
-                            <Check
-                              className={`mr-2 h-3 w-3 ${newInterventionCode === opt.code ? 'opacity-100' : 'opacity-0'}`}
-                            />
-                            <div className="flex flex-col">
-                              <span className="font-mono text-xs">{opt.code}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {opt.name}
-                                {opt.category ? ` · ${opt.category}` : ''}
-                                {opt.price ? ` · KES ${Number(opt.price).toLocaleString()}` : ''}
-                              </span>
-                            </div>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <Label className="text-xs">Benefit Package</Label>
+              {benefitPackagesLoading ? (
+                <div className="flex items-center gap-2 h-9 px-3 border rounded-md bg-background">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span className="text-xs text-muted-foreground">Loading packages…</span>
+                </div>
+              ) : (
+                <Select
+                  value={addDialogPkgCode}
+                  onValueChange={(code) => {
+                    setAddDialogPkgCode(code);
+                    setNewInterventionCode('');
+                  }}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Select benefit package…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {benefitPackageOptions.map((pkg) => (
+                      <SelectItem key={pkg.code} value={pkg.code}>
+                        {pkg.code} — {pkg.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Intervention selector — shown after package is selected */}
+            <div className="space-y-1">
+              <Label className="text-xs">Intervention</Label>
+              {interventionsLoading ? (
+                <div className="flex items-center gap-2 h-9 px-3 border rounded-md bg-background">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span className="text-xs text-muted-foreground">Loading interventions…</span>
+                </div>
+              ) : interventionOptions.length > 0 ? (
+                <Select
+                  value={newInterventionCode}
+                  onValueChange={(value) => setNewInterventionCode(value)}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Select intervention…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {interventionOptions.map((opt) => (
+                      <SelectItem key={opt.code} value={opt.code}>
+                        <span className="font-mono text-xs">{opt.code}</span>
+                        {' — '}
+                        {opt.name}
+                        {opt.category ? ` · ${opt.category}` : ''}
+                        {opt.price ? ` · KES ${Number(opt.price).toLocaleString()}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-xs text-muted-foreground py-2">
+                  {addDialogPkgCode
+                    ? 'No interventions found for this package.'
+                    : 'Select a benefit package above to see available interventions.'}
+                </p>
+              )}
             </div>
             <CombinationGuard
               newCode={newInterventionCode}
