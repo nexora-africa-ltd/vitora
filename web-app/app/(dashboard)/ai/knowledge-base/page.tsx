@@ -279,7 +279,7 @@ export default function KnowledgeBasePage() {
         {uploadMutation.isSuccess && (
           <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
             <FileUp className="h-4 w-4 shrink-0" />
-            &ldquo;{uploadMutation.data.filename}&rdquo; uploaded successfully
+            &ldquo;{uploadMutation.data.documents[0]?.filename}&rdquo; uploaded successfully
           </div>
         )}
 
