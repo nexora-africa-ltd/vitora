@@ -673,8 +673,14 @@ class SHAConsentService:
 
     def _persist_consent_token(self, consent: ConsentToken, response_data: dict[str, Any]) -> None:
         """Persist a consent token returned by DHA, if any."""
-        returned_token = response_data.get("consent_token") or response_data.get("token", "")
-        if returned_token and not consent.consent_token:
+        # DHA returns the visit token in 'authorization_code' (primary)
+        # but some endpoints may use 'consent_token' or 'token'.
+        returned_token = (
+            response_data.get("authorization_code")
+            or response_data.get("consent_token")
+            or response_data.get("token", "")
+        )
+        if returned_token:
             expires_in = int(response_data.get("expires_in", 3600))
             consent.mark_validated(token=returned_token, expires_in_seconds=expires_in)
         elif consent.status == ConsentToken.ConsentStatus.PENDING:

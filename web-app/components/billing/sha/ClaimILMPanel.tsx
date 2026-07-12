@@ -69,6 +69,8 @@ import {
   validateInterventionCombination,
   getBenefitCode,
   INTERVENTION_COMBINATION_RULES,
+  getAllowedCombinations,
+  isAlonePackage,
 } from '@/lib/sha/combination-rules';
 import { toCrId } from '@/lib/sha/ilm-parsers';
 import {
@@ -296,6 +298,32 @@ export function ClaimILMPanel({
     () => activeInterventions.map((i) => i.intervention_code),
     [activeInterventions],
   );
+
+  // ---- Combination-aware benefit-package filtering ----
+  // When interventions already exist on the claim, only show benefit
+  // packages that are allowed to be combined (or show all if no
+  // interventions yet).  Also detect whether the claim is locked
+  // (primary has allowedCombinations === 'ALONE').
+  const primaryBenefitCode = useMemo(
+    () => (interventionCodes.length > 0 ? getBenefitCode(interventionCodes[0]!) : null),
+    [interventionCodes],
+  );
+  const combinableBenefitCodes = useMemo(
+    () => (primaryBenefitCode ? getAllowedCombinations(primaryBenefitCode) : null),
+    [primaryBenefitCode],
+  );
+  const aloneClaim = useMemo(
+    () => (primaryBenefitCode ? isAlonePackage(primaryBenefitCode) : false),
+    [primaryBenefitCode],
+  );
+  const allowedBenefitPackageOptions = useMemo(() => {
+    if (!primaryBenefitCode) return null; // no restriction
+    if (combinableBenefitCodes === null) return null;
+    return benefitPackageOptions.filter((pkg) => combinableBenefitCodes.includes(pkg.code));
+  }, [benefitPackageOptions, primaryBenefitCode, combinableBenefitCodes]);
+  const effectiveBenefitPackageOptions =
+    allowedBenefitPackageOptions ?? benefitPackageOptions;
+
   const practitionerFields = useMemo(
     () => derivePractitionerFields(claim.encounter_clinician, user),
     [claim.encounter_clinician, user],
@@ -454,6 +482,9 @@ export function ClaimILMPanel({
       const code = (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
       if (code === 'consent_token_expired') {
         toast.error('Consent token has expired. Please re-consent the patient.');
+        // Re-fetch claim data so dha_visit_started_at (which the backend cleared)
+        // is reflected in the UI, unblocking the consent + start-visit flow.
+        onChange?.();
       } else if (code === 'consent_token_not_found') {
         toast.error('No validated consent token for this claim. Please complete the consent flow.');
       }
@@ -1057,7 +1088,7 @@ export function ClaimILMPanel({
                   size="sm"
                   variant="outline"
                   onClick={() => setAddInterventionOpen(true)}
-                  disabled={busy !== null}
+                  disabled={busy !== null || aloneClaim}
                 >
                   Add intervention
                 </Button>
@@ -1198,11 +1229,12 @@ export function ClaimILMPanel({
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   <span className="text-xs text-muted-foreground">Loading packages…</span>
                 </div>
-              ) : (
+              ) : effectiveBenefitPackageOptions.length > 0 ? (
                 <Select
                   value={addDialogPkgCode}
                   onValueChange={(code) => {
                     setAddDialogPkgCode(code);
+                    setSelectedBenefitPkgCode(code);
                     setNewInterventionCode('');
                   }}
                 >
@@ -1210,13 +1242,23 @@ export function ClaimILMPanel({
                     <SelectValue placeholder="Select benefit package…" />
                   </SelectTrigger>
                   <SelectContent>
-                    {benefitPackageOptions.map((pkg) => (
+                    {effectiveBenefitPackageOptions.map((pkg) => (
                       <SelectItem key={pkg.code} value={pkg.code}>
                         {pkg.code} — {pkg.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+              ) : aloneClaim ? (
+                <p className="text-xs text-amber-600 py-2">
+                  This claim&apos;s primary intervention must be reported alone and cannot be combined
+                  with any other benefit package.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground py-2">
+                  No compatible benefit packages are available to combine with the existing
+                  interventions on this claim.
+                </p>
               )}
             </div>
 
