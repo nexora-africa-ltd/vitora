@@ -2390,7 +2390,11 @@ class SHAClaim(FacilityScopedModel):
     preauth_valid_until = models.DateField(null=True, blank=True)
 
     # Facility details
-    facility_code = models.CharField(max_length=20, help_text="MFL (Master Facility List) code")
+    facility_code = models.CharField(
+        max_length=50,
+        help_text="DHA Facility Registry (FR) code — used in FHIR bundles and claim submissions. "
+        "Resolved from billing_config.sha_facility_fr_code > dha_fr_code > settings fallback.",
+    )
     facility_level = models.CharField(max_length=5, choices=SHATariff.TariffLevel.choices)
 
     # Audit
@@ -2491,12 +2495,26 @@ class SHAClaim(FacilityScopedModel):
                     self.facility_id = enc.facility_id
             except Exception:  # noqa: S110
                 pass  # Encounter may not be loaded yet during migrations
-        # Backfill facility_code from facility FK if not set
+        # Backfill facility_code from facility FK if not set.
+        # Priority: billing_config.sha_facility_fr_code > dha_fr_code > mfl_code (last resort)
         if self.facility and not self.facility_code:
-            self.facility_code = self.facility.mfl_code or ""
+            fr_code = None
+            try:
+                bc = getattr(self.facility, "billing_config", None)
+                if bc:
+                    fr_code = getattr(bc, "sha_facility_fr_code", None) or None
+            except Exception:
+                fr_code = None
+            if not fr_code:
+                fr_code = getattr(self.facility, "dha_fr_code", None) or None
+            self.facility_code = fr_code or getattr(self.facility, "mfl_code", "") or ""
         # Backfill facility_level from facility FK if not set
         if self.facility and not self.facility_level:
-            self.facility_level = getattr(self.facility, "level", "") or ""
+            level_raw = getattr(self.facility, "level", "") or ""
+            # Normalize to "L{n}" format expected by SHATariff.TariffLevel choices
+            if level_raw and not str(level_raw).upper().startswith("L"):
+                level_raw = f"L{level_raw}"
+            self.facility_level = level_raw
         self.full_clean()
         super().save(*args, **kwargs)
 

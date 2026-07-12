@@ -915,7 +915,10 @@ SHA_WEBHOOK_SECRET = os.getenv(
     "SHA_WEBHOOK_SECRET", ""
 )  # Optional HMAC secret for webhook verification
 
-# Facility identification (for SHA claims)
+# Facility identification (for non-DHA internal use: DHIS2, PRC numbers, etc.)
+# NOTE: For DHA-facing operations (claims, FHIR bundles, consent, remittance),
+# SHA_FACILITY_FR_CODE is used. The FR (Facility Registry) code is different
+# from the MFL (Master Facility List) code.
 FACILITY_MFL_CODE = os.getenv("FACILITY_MFL_CODE", "TEST-001")  # Master Facility List code
 
 # =============================================================================

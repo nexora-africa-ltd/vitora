@@ -61,11 +61,41 @@ class SHAClaimsService:
         ...     response = service.submit_claim(claim, user)
     """
 
-    def __init__(self):
-        """Initialize SHAClaimsService with settings from Django config."""
+    def __init__(self, facility=None):
+        """Initialize SHAClaimsService.
+
+        Args:
+            facility: Optional Facility instance. When provided, resolves
+                      the DHA Facility Registry code (fr_code) from:
+                      1. facility.billing_config.sha_facility_fr_code
+                      2. facility.dha_fr_code
+                      3. settings.SHA_FACILITY_FR_CODE (global fallback)
+        """
         self.api_base_url = settings.SHA_API_BASE_URL.rstrip("/")
         self.auth_service = SHAAuthService()
-        self.facility_code = settings.FACILITY_MFL_CODE
+
+        # Resolve DHA Facility Registry code (fr_code) — used in FHIR bundles,
+        # claim submissions, and DHA API requests. This is NOT the MFL code.
+        if facility is not None:
+            fr_code = None
+            try:
+                bc = getattr(facility, "billing_config", None)
+                if bc:
+                    fr_code = getattr(bc, "sha_facility_fr_code", None) or None
+            except Exception:
+                fr_code = None
+            if not fr_code:
+                fr_code = getattr(facility, "dha_fr_code", None) or None
+            self.facility_code = (
+                fr_code
+                or getattr(settings, "SHA_FACILITY_FR_CODE", "")
+                or getattr(settings, "FACILITY_MFL_CODE", "")
+            )
+        else:
+            self.facility_code = getattr(settings, "SHA_FACILITY_FR_CODE", "") or getattr(
+                settings, "FACILITY_MFL_CODE", ""
+            )
+
         self.facility_level = settings.FACILITY_LEVEL
         self.facility_name = getattr(settings, "FACILITY_NAME", "Healthcare Facility")
 
@@ -204,10 +234,30 @@ class SHAClaimsService:
                                         secondary_diagnosis_codes.append(dd.code)
 
         # Build claim data - always include required fields even if empty (model validation will catch)
-        # Resolve facility info from the encounter's facility, falling back to global settings
+        # Resolve DHA Facility Registry code (fr_code) from the encounter's facility.
+        # Priority: billing_config.sha_facility_fr_code > dha_fr_code > self.facility_code (init fallback)
         encounter_facility = getattr(encounter, "facility", None)
-        facility_code = getattr(encounter_facility, "mfl_code", None) or self.facility_code
+        if encounter_facility is not None:
+            fr_code = None
+            try:
+                bc = getattr(encounter_facility, "billing_config", None)
+                if bc:
+                    fr_code = getattr(bc, "sha_facility_fr_code", None) or None
+            except Exception:
+                fr_code = None
+            if not fr_code:
+                fr_code = getattr(encounter_facility, "dha_fr_code", None) or None
+            facility_code = fr_code or self.facility_code
+        else:
+            facility_code = self.facility_code
         facility_level = getattr(encounter_facility, "level", None) or self.facility_level
+        # Normalize to "L{n}" format expected by SHATariff.TariffLevel choices
+        if (
+            facility_level
+            and isinstance(facility_level, (str, int))
+            and not str(facility_level).upper().startswith("L")
+        ):
+            facility_level = f"L{facility_level}"
 
         claim_data = {
             "patient": patient,
@@ -241,6 +291,13 @@ class SHAClaimsService:
                 admission_rel = getattr(encounter, "admission", None)
                 if admission_rel is not None:
                     admission_dt = getattr(admission_rel, "admission_date", None)
+                    if admission_dt:
+                        claim_data["admission_date"] = (
+                            admission_dt.date() if hasattr(admission_dt, "date") else admission_dt
+                        )
+                # Fallback: try encounter's own admission_date field
+                if "admission_date" not in claim_data:
+                    admission_dt = getattr(encounter, "admission_date", None)
                     if admission_dt:
                         claim_data["admission_date"] = (
                             admission_dt.date() if hasattr(admission_dt, "date") else admission_dt

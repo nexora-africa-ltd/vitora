@@ -612,7 +612,7 @@ class BillingAgentService:
         try:
             from hmis.apps.billing.services.sha_claims import SHAClaimsService
 
-            service = SHAClaimsService()
+            service = SHAClaimsService(facility=getattr(encounter, "facility", None))
             claim = service.create_claim_from_encounter(
                 encounter=encounter,
                 invoice=invoice,
