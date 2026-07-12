@@ -32,12 +32,12 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
 import { getApiErrorMessage } from '@/lib/api/client';
-import { useSendConsentOTP, useStartVisit, usePatientBenefitPackages } from '@/lib/hooks/use-sha';
-import type { BenefitPackageItem } from '@/lib/hooks/use-sha';
+import { useSendConsentOTP, useStartVisit } from '@/lib/hooks/use-sha';
 import { useFacility } from '@/lib/context/facility-context';
 import { OtpWhitelistRequestSheet, WhitelistStatusBadge } from './otp-whitelist-request-sheet';
 import { ContactPicker } from './contact-picker';
 import type { SHAMember } from '@/lib/types/sha';
+import { toCrId } from '@/lib/sha/ilm-parsers';
 
 // ============================================================================
 // Types
@@ -72,18 +72,67 @@ type StepState =
   | 'skipped';         // User chose to skip
 
 /**
+ * Get the first matching value from one of several possible field names.
+ * DHA responses sometimes use camelCase (`parentBenefitCode`), sometimes
+ * snake_case (`parent_benefit_code`) — try all of them.
+ */
+function getField(item: Record<string, unknown>, ...keys: string[]): string {
+  for (const key of keys) {
+    const v = item[key];
+    if (typeof v === 'string' && v.trim() !== '') return v.trim();
+  }
+  return '';
+}
+
+/**
+ * Extract array items from DHA/ILM response payloads.
+ * Handles: direct array, { results: [...] }, { data: [...] },
+ * and the double-nested { results: [{ results: [...] }] } wrapper.
+ */
+function extractItems<T>(data: unknown): T[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data as T[];
+  if (typeof data === 'object' && data !== null) {
+    const obj = data as Record<string, unknown>;
+    if (Array.isArray(obj.data)) return obj.data as T[];
+    if (Array.isArray(obj.results)) {
+      const results = obj.results as unknown[];
+      if (
+        results.length === 1 &&
+        typeof results[0] === 'object' &&
+        results[0] !== null &&
+        Array.isArray((results[0] as Record<string, unknown>).results)
+      ) {
+        return (results[0] as Record<string, unknown>).results as T[];
+      }
+      return results as T[];
+    }
+    if (Array.isArray(obj.benefits)) return obj.benefits as T[];
+    if (Array.isArray(obj.interventions)) return obj.interventions as T[];
+    if (Object.keys(obj).length > 0 && !obj.error) return [obj as T];
+  }
+  return [];
+}
+
+/** Extract the intervention code from an intervention item. */
+function getInterventionCode(item: Record<string, unknown> | null): string {
+  if (!item) return '';
+  return getField(item, 'code', 'interventionCode', 'intervention_code');
+}
+
+/**
  * Derive the DHA service_type from the selected intervention's access_point.
  * - "IP" → INPATIENT
  * - "OP" → OUTPATIENT
  * - "OP and IP" or missing → use code prefix heuristic
  */
-function deriveServiceType(intervention: BenefitPackageItem | null): 'INPATIENT' | 'OUTPATIENT' {
+function deriveServiceType(intervention: Record<string, unknown> | null): 'INPATIENT' | 'OUTPATIENT' {
   if (!intervention) return 'OUTPATIENT';
-  const ap = intervention.access_point as string | undefined;
+  const ap = getField(intervention, 'access_point', 'accessPoint');
   if (ap === 'IP') return 'INPATIENT';
   if (ap === 'OP') return 'OUTPATIENT';
   // Fallback: infer from code prefix for "OP and IP" or unknown
-  const code = intervention.code ?? '';
+  const code = getInterventionCode(intervention);
   const prefix = code.split('-').slice(0, 2).join('-');
   const inpatientPrefixes = ['SHA-07', 'SHA-19', 'SHA-03', 'SHA-13', 'SHA-20'];
   if (inpatientPrefixes.includes(prefix)) return 'INPATIENT';
@@ -145,8 +194,14 @@ export function SHAConsentStep({
   const [error, setError] = useState<string | null>(null);
   const [isCreatingMember, setIsCreatingMember] = useState(false);
 
-  // Intervention selection — populated from ILM benefit packages
-  const [selectedIntervention, setSelectedIntervention] = useState<BenefitPackageItem | null>(null);
+  // Intervention selection — two-step lazy select
+  const [selectedIntervention, setSelectedIntervention] = useState<Record<string, unknown> | null>(null);
+  const [benefitPackageOptions, setBenefitPackageOptions] = useState<Record<string, unknown>[]>([]);
+  const [benefitPackagesLoading, setBenefitPackagesLoading] = useState(false);
+
+  const [selectedBenefitPkgCode, setSelectedBenefitPkgCode] = useState<string>('');
+  const [interventionOptions, setInterventionOptions] = useState<Record<string, unknown>[]>([]);
+  const [interventionsLoading, setInterventionsLoading] = useState(false);
 
   // OTP resend countdown (seconds)
   const [resendCountdown, setResendCountdown] = useState(0);
@@ -175,12 +230,98 @@ export function SHAConsentStep({
   const facilityAgentNationalId = facilityDetail?.biometrics_agent_national_id || '';
   const hasCheckedRef = useRef(false);
 
-  // Fetch patient's eligible benefit packages from ILM middleware
-  const crNumber = shaMember?.sha_member_number || shaMember?.sha_number || null;
-  const {
-    data: benefitPackages = [],
-    isLoading: benefitsLoading,
-  } = usePatientBenefitPackages(crNumber, !!crNumber);
+  // Step 1: Fetch benefit packages on shaMember change (fast — 1 API call)
+  useEffect(() => {
+    if (!shaMember) return;
+
+    const crId = toCrId(shaMember.sha_member_number || shaMember.sha_number || '');
+    if (!crId) return;
+
+    let cancelled = false;
+    setBenefitPackagesLoading(true);
+
+    shaApi.ilmBenefits({ patient_id: crId, is_unique_benefit: true })
+      .then((resp) => {
+        if (cancelled) return;
+        const packages = extractItems<Record<string, unknown>>(resp?.data).filter((pkg) => {
+          const code = getField(pkg, 'parentBenefitCode', 'parent_benefit_code', 'code');
+          return !!code;
+        });
+        if (!cancelled) {
+          setBenefitPackageOptions(packages);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setBenefitPackageOptions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setBenefitPackagesLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [shaMember]);
+
+  // Step 2: When user selects a benefit package, fetch interventions (2-3 API calls)
+  useEffect(() => {
+    if (!selectedBenefitPkgCode || !shaMember) {
+      setInterventionOptions([]);
+      setSelectedIntervention(null);
+      return;
+    }
+
+    const crId = toCrId(shaMember.sha_member_number || shaMember.sha_number || '');
+    if (!crId) return;
+
+    let cancelled = false;
+    setInterventionsLoading(true);
+
+    (async () => {
+      const allInterventions: Record<string, unknown>[] = [];
+
+      try {
+        const subResponse = await shaApi.ilmSubBenefits({
+          patient_id: crId,
+          parent_benefit_code: selectedBenefitPkgCode,
+        });
+        const subItems = extractItems<Record<string, unknown>>(subResponse?.data);
+
+        for (const sub of subItems) {
+          if (cancelled) return;
+          const subKey = getField(sub, 'code', 'subBenefitCode', 'sub_benefit_code');
+          if (!subKey) continue;
+
+          try {
+            const intResponse = await shaApi.ilmBenefitInterventions({
+              patient_id: crId,
+              sub_benefit_code: subKey,
+            });
+            const interventions = extractItems<Record<string, unknown>>(intResponse?.data).filter((i) => {
+              const code = getField(i, 'code', 'interventionCode', 'intervention_code');
+              const name = getField(i, 'name', 'interventionName', 'intervention_name');
+              return !!code || !!name;
+            });
+            if (interventions.length > 0) {
+              allInterventions.push(...interventions);
+            }
+          } catch {
+            // Individual sub-benefit fetch failure is non-fatal
+          }
+        }
+      } catch {
+        // Benefit package fetch failure is non-fatal
+      }
+
+      if (!cancelled) {
+        setInterventionOptions(allInterventions);
+      }
+    })().catch(() => {
+      if (!cancelled) setInterventionOptions([]);
+    }).finally(() => {
+      if (!cancelled) setInterventionsLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [selectedBenefitPkgCode, shaMember]);
 
   // Biometric consent is primary for Level 4+ facilities
   const isBiometricPrimary = useMemo(() => {
@@ -305,10 +446,11 @@ export function SHAConsentStep({
       setIsCreatingMember(false);
     }
 
+    const interventionCode = getInterventionCode(selectedIntervention);
     sendOTP.mutate(
       {
         sha_member_id: memberId,
-        ...(selectedIntervention?.code ? { intervention_codes: [selectedIntervention.code] } : {}),
+        ...(interventionCode ? { intervention_codes: [interventionCode] } : {}),
         ...(selectedContactId ? { beneficiary_contact_id: selectedContactId } : {}),
       },
       {
@@ -346,12 +488,13 @@ export function SHAConsentStep({
     setError(null);
     setStep('validating');
 
+    const interventionCode = getInterventionCode(selectedIntervention);
     startVisit.mutate(
       {
         consent_id: consentId,
         otp_code: otpCode.trim(),
         service_type: deriveServiceType(selectedIntervention),
-        ...(selectedIntervention?.code ? { intervention_codes: [selectedIntervention.code] } : {}),
+        ...(interventionCode ? { intervention_codes: [interventionCode] } : {}),
         ...(encounterId ? { encounter_id: encounterId } : {}),
       },
       {
@@ -451,12 +594,13 @@ export function SHAConsentStep({
     setStep('validating');
 
     // Start visit using auth_guid (no OTP needed)
+    const interventionCode = getInterventionCode(selectedIntervention);
     startVisit.mutate(
       {
         consent_id: result.consentId,
         auth_guid: result.authGuid,
         service_type: deriveServiceType(selectedIntervention),
-        ...(selectedIntervention?.code ? { intervention_codes: [selectedIntervention.code] } : {}),
+        ...(interventionCode ? { intervention_codes: [interventionCode] } : {}),
         ...(encounterId ? { encounter_id: encounterId } : {}),
       },
       {
@@ -567,29 +711,33 @@ export function SHAConsentStep({
             )}
           </p>
 
-          {/* Intervention selector from ILM benefits */}
+          {/* Benefit package selector (step 1) */}
           <div className="space-y-1">
-            <Label className="text-xs font-medium">Intervention</Label>
-            {benefitsLoading ? (
+            <Label className="text-xs font-medium">Benefit Package</Label>
+            {benefitPackagesLoading ? (
               <div className="flex items-center gap-2 h-9 px-3 border rounded-md">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span className="text-xs text-muted-foreground">Loading eligible benefits...</span>
+                <span className="text-xs text-muted-foreground">Loading packages...</span>
               </div>
-            ) : benefitPackages.length > 0 ? (
+            ) : benefitPackageOptions.length > 0 ? (
               <select
-                value={selectedIntervention?.code ?? ''}
+                value={selectedBenefitPkgCode}
                 onChange={(e) => {
-                  const selected = benefitPackages.find((b) => b.code === e.target.value);
-                  setSelectedIntervention(selected ?? null);
+                  setSelectedBenefitPkgCode(e.target.value);
+                  setSelectedIntervention(null);
                 }}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
               >
-                <option value="">Select intervention...</option>
-                {benefitPackages.map((pkg) => (
-                  <option key={pkg.code} value={pkg.code}>
-                    {pkg.code} — {(pkg as Record<string, unknown>).parentBenefit as string || pkg.name || 'Unknown'}
-                  </option>
-                ))}
+                <option value="">Select benefit package...</option>
+                {benefitPackageOptions.map((pkg) => {
+                  const code = getField(pkg, 'parentBenefitCode', 'parent_benefit_code', 'code');
+                  const name = getField(pkg, 'parentBenefit', 'parent_benefit', 'name');
+                  return (
+                    <option key={code} value={code}>
+                      {code} — {name || 'Unknown'}
+                    </option>
+                  );
+                })}
               </select>
             ) : (
               <p className="text-xs text-muted-foreground py-2">
@@ -597,6 +745,45 @@ export function SHAConsentStep({
               </p>
             )}
           </div>
+
+          {/* Intervention selector (step 2 — shown after benefit package is selected) */}
+          {selectedBenefitPkgCode && (
+            <div className="space-y-1">
+              <Label className="text-xs font-medium">Intervention</Label>
+              {interventionsLoading ? (
+                <div className="flex items-center gap-2 h-9 px-3 border rounded-md">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span className="text-xs text-muted-foreground">Loading interventions...</span>
+                </div>
+              ) : interventionOptions.length > 0 ? (
+                <select
+                  value={getInterventionCode(selectedIntervention)}
+                  onChange={(e) => {
+                    const selected = interventionOptions.find((i) => getInterventionCode(i) === e.target.value);
+                    setSelectedIntervention(selected ?? null);
+                  }}
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
+                >
+                  <option value="">Select intervention...</option>
+                  {interventionOptions.map((item) => {
+                    const code = getInterventionCode(item);
+                    const name = getField(item, 'name', 'interventionName', 'intervention_name');
+                    const paymentMech = getField(item, 'paymentMechanism', 'payment_mechanism');
+                    const extra = paymentMech ? ` (${paymentMech})` : '';
+                    return (
+                      <option key={code} value={code}>
+                        {code} — {name || 'Unknown'}{extra}
+                      </option>
+                    );
+                  })}
+                </select>
+              ) : (
+                <p className="text-xs text-muted-foreground py-2">
+                  No interventions found for this package.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Contact picker (for OTP target) — only show when not biometric primary */}
           {!isBiometricPrimary && shaMember?.sha_member_number && (
