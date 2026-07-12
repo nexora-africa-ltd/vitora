@@ -128,6 +128,14 @@ export default function NewStaffPage() {
     license_expiry: undefined as Date | undefined,
     licensing_body: '',
     specialization: '',
+    practice_type: '',
+    subspecialty: '',
+    discipline_name: '',
+    educational_qualifications: '',
+    hwr_status: '',
+    hwr_salutation: '',
+    identification_type: '',
+    postal_address: '',
     hwr_national_id: '',
     hire_date: new Date(),
     password: '',
@@ -323,6 +331,40 @@ export default function NewStaffPage() {
         }
       }
 
+      // New HWR fields - always populate
+      if (practitioner.professional_details.practice_type) {
+        newData.practice_type = practitioner.professional_details.practice_type;
+        fieldsPopulated++;
+      }
+      if (practitioner.professional_details.subspecialty) {
+        newData.subspecialty = practitioner.professional_details.subspecialty;
+        fieldsPopulated++;
+      }
+      if (practitioner.professional_details.discipline_name) {
+        newData.discipline_name = practitioner.professional_details.discipline_name;
+        fieldsPopulated++;
+      }
+      if (practitioner.professional_details.educational_qualifications) {
+        newData.educational_qualifications = practitioner.professional_details.educational_qualifications;
+        fieldsPopulated++;
+      }
+      if (practitioner.membership.status) {
+        newData.hwr_status = practitioner.membership.status;
+        fieldsPopulated++;
+      }
+      if (practitioner.membership.salutation) {
+        newData.hwr_salutation = practitioner.membership.salutation;
+        fieldsPopulated++;
+      }
+      if (practitioner.identifiers?.identification_type) {
+        newData.identification_type = practitioner.identifiers.identification_type;
+        fieldsPopulated++;
+      }
+      if (practitioner.contacts.postal_address) {
+        newData.postal_address = practitioner.contacts.postal_address;
+        fieldsPopulated++;
+      }
+
       return newData;
     });
 
@@ -419,6 +461,14 @@ export default function NewStaffPage() {
         license_expiry: formData.license_expiry?.toISOString().split('T')[0],
         licensing_body: formData.licensing_body || undefined,
         specialization: formData.specialization || undefined,
+        practice_type: formData.practice_type || undefined,
+        subspecialty: formData.subspecialty || undefined,
+        discipline_name: formData.discipline_name || undefined,
+        educational_qualifications: formData.educational_qualifications || undefined,
+        hwr_status: formData.hwr_status || undefined,
+        hwr_salutation: formData.hwr_salutation || undefined,
+        identification_type: formData.identification_type || undefined,
+        postal_address: formData.postal_address || undefined,
         hwr_national_id: formData.hwr_national_id || undefined,
         hire_date: formData.hire_date?.toISOString().split('T')[0],
         password: formData.password || undefined,

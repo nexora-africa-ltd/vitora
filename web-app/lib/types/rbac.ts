@@ -215,6 +215,14 @@ export interface StaffProfile {
   licensing_body?: string | null;
   is_license_valid?: boolean;
   specialization?: string | null;
+  practice_type?: string | null;
+  subspecialty?: string | null;
+  discipline_name?: string | null;
+  educational_qualifications?: string | null;
+  hwr_status?: string | null;
+  hwr_salutation?: string | null;
+  identification_type?: string | null;
+  postal_address?: string | null;
   hwr_national_id?: string | null;
   hwr_last_verified_at?: string | null;
   phone_number?: string | null;
@@ -263,6 +271,14 @@ export interface StaffProfileCreateData {
   license_expiry?: string;
   licensing_body?: string;
   specialization?: string;
+  practice_type?: string;
+  subspecialty?: string;
+  discipline_name?: string;
+  educational_qualifications?: string;
+  hwr_status?: string;
+  hwr_salutation?: string;
+  identification_type?: string;
+  postal_address?: string;
   hwr_national_id?: string;
   hire_date?: string;
   must_change_password?: boolean; // Defaults to true; ignored when password is auto-generated

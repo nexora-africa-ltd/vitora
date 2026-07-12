@@ -97,15 +97,26 @@ export default function EditStaffPage() {
   const [formData, setFormData] = useState({
     email: '',
     first_name: '',
+    middle_name: '',
     last_name: '',
     employee_id: '',
     department: '',
     role: '',
     primary_facility: '',
     phone_number: '',
+    hwr_id: '',
     license_number: '',
     license_expiry: '',
+    licensing_body: '',
     specialization: '',
+    practice_type: '',
+    subspecialty: '',
+    discipline_name: '',
+    educational_qualifications: '',
+    hwr_status: '',
+    hwr_salutation: '',
+    identification_type: '',
+    postal_address: '',
     hwr_national_id: '',
   });
 
@@ -146,15 +157,26 @@ export default function EditStaffPage() {
       setFormData({
         email: staff.user_email || '',
         first_name: staff.user_first_name || '',
+        middle_name: staff.middle_name || '',
         last_name: staff.user_last_name || '',
         employee_id: staff.employee_id || '',
         department: staff.primary_department?.toString() || '',
         role: staff.primary_role?.toString() || '',
         primary_facility: staff.primary_facility?.toString() || '',
         phone_number: staff.phone_number || '',
+        hwr_id: staff.hwr_id || '',
         license_number: staff.license_number || '',
         license_expiry: staff.license_expiry || '',
+        licensing_body: staff.licensing_body || '',
         specialization: staff.specialization || '',
+        practice_type: staff.practice_type || '',
+        subspecialty: staff.subspecialty || '',
+        discipline_name: staff.discipline_name || '',
+        educational_qualifications: staff.educational_qualifications || '',
+        hwr_status: staff.hwr_status || '',
+        hwr_salutation: staff.hwr_salutation || '',
+        identification_type: staff.identification_type || '',
+        postal_address: staff.postal_address || '',
         hwr_national_id: staff.hwr_national_id || '',
       });
       setSecondaryDepartments(
@@ -265,14 +287,25 @@ export default function EditStaffPage() {
           email: formData.email,
           first_name: formData.first_name,
           last_name: formData.last_name,
+          middle_name: formData.middle_name || undefined,
           employee_id: formData.employee_id,
           department: parseInt(formData.department),
           role: parseInt(formData.role),
           primary_facility: parseInt(formData.primary_facility),
           phone_number: formData.phone_number || undefined,
+          hwr_id: formData.hwr_id || undefined,
           license_number: formData.license_number || undefined,
           license_expiry: formData.license_expiry || undefined,
+          licensing_body: formData.licensing_body || undefined,
           specialization: formData.specialization || undefined,
+          practice_type: formData.practice_type || undefined,
+          subspecialty: formData.subspecialty || undefined,
+          discipline_name: formData.discipline_name || undefined,
+          educational_qualifications: formData.educational_qualifications || undefined,
+          hwr_status: formData.hwr_status || undefined,
+          hwr_salutation: formData.hwr_salutation || undefined,
+          identification_type: formData.identification_type || undefined,
+          postal_address: formData.postal_address || undefined,
           hwr_national_id: formData.hwr_national_id || undefined,
           secondary_departments: secondaryDepartments.map(Number),
           secondary_facilities: secondaryFacilities.map(Number),
@@ -759,6 +792,17 @@ export default function EditStaffPage() {
                       <p className="text-sm text-destructive">{formErrors.last_name}</p>
                     )}
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="middle_name">Middle Name</Label>
+                    <Input
+                      autoComplete="additional-name"
+                      id="middle_name"
+                      name="middle_name"
+                      value={formData.middle_name}
+                      onChange={(e) => handleChange('middle_name', e.target.value)}
+                      placeholder="Middle name…"
+                    />
+                  </div>
                 </div>
                 <Separator />
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -1130,7 +1174,7 @@ export default function EditStaffPage() {
             <Card>
               <CardContent className="space-y-4 pt-6">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium flex items-center gap-2">
+                  <div className="text-sm font-medium flex items-center gap-2">
                     DHA Health Worker Registry Lookup
                     {hwrPopulated && (
                       <Badge variant="secondary" className="ml-1">
@@ -1138,7 +1182,7 @@ export default function EditStaffPage() {
                         Auto-populated
                       </Badge>
                     )}
-                  </p>
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Search by National ID to verify and update professional details from the DHA registry
                   </p>
@@ -1159,11 +1203,24 @@ export default function EditStaffPage() {
 
                     setFormData(prev => ({
                       ...prev,
+                      first_name: practitioner.membership.first_name || prev.first_name,
+                      middle_name: practitioner.membership.middle_name || prev.middle_name,
+                      last_name: practitioner.membership.last_name || prev.last_name,
+                      email: practitioner.contacts?.email?.toLowerCase() || prev.email,
+                      phone_number: practitioner.contacts?.phone || prev.phone_number,
+                      hwr_id: practitioner.membership.registration_id || practitioner.membership.id,
                       license_number: currentLicense?.external_reference_id || prev.license_number,
                       license_expiry: licenseExpiry || prev.license_expiry,
+                      licensing_body: practitioner.membership.licensing_body || prev.licensing_body,
                       specialization: practitioner.professional_details?.professional_cadre || practitioner.professional_details?.specialty || practitioner.membership?.specialty || prev.specialization,
-                      phone_number: practitioner.contacts?.phone || prev.phone_number,
-                      email: practitioner.contacts?.email?.toLowerCase() || prev.email,
+                      practice_type: practitioner.professional_details?.practice_type || prev.practice_type,
+                      subspecialty: practitioner.professional_details?.subspecialty || prev.subspecialty,
+                      discipline_name: practitioner.professional_details?.discipline_name || prev.discipline_name,
+                      educational_qualifications: practitioner.professional_details?.educational_qualifications || prev.educational_qualifications,
+                      hwr_status: practitioner.membership.status || prev.hwr_status,
+                      hwr_salutation: practitioner.membership.salutation || prev.hwr_salutation,
+                      identification_type: practitioner.identifiers?.identification_type || prev.identification_type,
+                      postal_address: practitioner.contacts?.postal_address || prev.postal_address,
                       hwr_national_id: practitioner.identifiers?.identification_number || prev.hwr_national_id,
                     }));
                     setHwrPopulated(true);
@@ -1175,6 +1232,46 @@ export default function EditStaffPage() {
                 />
                 <Separator />
                 <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="hwr_id">HWR Registration ID</Label>
+                    <Input
+                      autoComplete="off"
+                      id="hwr_id"
+                      name="hwr_id"
+                      spellCheck={false}
+                      value={formData.hwr_id}
+                      onChange={(e) => handleChange('hwr_id', e.target.value)}
+                      placeholder="PUID-XXXXXXX-X"
+                      className={hwrPopulated && formData.hwr_id ? 'bg-muted' : ''}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="hwr_status">HWR Status</Label>
+                    <Input
+                      autoComplete="off"
+                      id="hwr_status"
+                      name="hwr_status"
+                      spellCheck={false}
+                      value={formData.hwr_status}
+                      onChange={(e) => handleChange('hwr_status', e.target.value)}
+                      placeholder="e.g., Licensed"
+                      className={hwrPopulated && formData.hwr_status ? 'bg-muted' : ''}
+                      readOnly
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="licensing_body">Licensing Body</Label>
+                    <Input
+                      autoComplete="off"
+                      id="licensing_body"
+                      name="licensing_body"
+                      spellCheck={false}
+                      value={formData.licensing_body}
+                      onChange={(e) => handleChange('licensing_body', e.target.value)}
+                      placeholder="e.g., Clinical Officers Council"
+                      className={hwrPopulated && formData.licensing_body ? 'bg-muted' : ''}
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="license_number">License Number</Label>
                     <Input
@@ -1198,16 +1295,115 @@ export default function EditStaffPage() {
                   </div>
                 </div>
                 <Separator />
-                <div className="max-w-sm space-y-2">
-                  <Label htmlFor="specialization">Specialization</Label>
-                  <Input
-                    id="specialization"
-                    name="specialization"
-                    value={formData.specialization}
-                    onChange={(e) => handleChange('specialization', e.target.value)}
-                    placeholder="e.g., Internal Medicine…"
-                    className={hwrPopulated && formData.specialization ? 'bg-muted' : ''}
-                  />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="specialization">Specialization</Label>
+                    <Input
+                      id="specialization"
+                      name="specialization"
+                      value={formData.specialization}
+                      onChange={(e) => handleChange('specialization', e.target.value)}
+                      placeholder="e.g., Internal Medicine…"
+                      className={hwrPopulated && formData.specialization ? 'bg-muted' : ''}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="practice_type">Practice Type</Label>
+                    <Input
+                      id="practice_type"
+                      name="practice_type"
+                      value={formData.practice_type}
+                      onChange={(e) => handleChange('practice_type', e.target.value)}
+                      placeholder="e.g., Clinical Officer"
+                      className={hwrPopulated && formData.practice_type ? 'bg-muted' : ''}
+                      readOnly
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="subspecialty">Sub-specialty</Label>
+                    <Input
+                      id="subspecialty"
+                      name="subspecialty"
+                      value={formData.subspecialty}
+                      onChange={(e) => handleChange('subspecialty', e.target.value)}
+                      placeholder="e.g., Pediatrics"
+                      className={hwrPopulated && formData.subspecialty ? 'bg-muted' : ''}
+                      readOnly
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="discipline_name">Discipline</Label>
+                    <Input
+                      id="discipline_name"
+                      name="discipline_name"
+                      value={formData.discipline_name}
+                      onChange={(e) => handleChange('discipline_name', e.target.value)}
+                      placeholder="e.g., Clinical Officer"
+                      className={hwrPopulated && formData.discipline_name ? 'bg-muted' : ''}
+                      readOnly
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="educational_qualifications">Educational Qualifications</Label>
+                    <Input
+                      id="educational_qualifications"
+                      name="educational_qualifications"
+                      value={formData.educational_qualifications}
+                      onChange={(e) => handleChange('educational_qualifications', e.target.value)}
+                      placeholder="e.g., DIPLOMA - CLINICAL MEDICINE & SURGERY"
+                      className={hwrPopulated && formData.educational_qualifications ? 'bg-muted' : ''}
+                      readOnly
+                    />
+                  </div>
+                </div>
+                <Separator />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="hwr_national_id">National ID (HWR)</Label>
+                    <Input
+                      id="hwr_national_id"
+                      name="hwr_national_id"
+                      value={formData.hwr_national_id}
+                      onChange={(e) => handleChange('hwr_national_id', e.target.value)}
+                      placeholder="e.g., 34221265"
+                      className={hwrPopulated && formData.hwr_national_id ? 'bg-muted' : ''}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="identification_type">ID Type</Label>
+                    <Input
+                      id="identification_type"
+                      name="identification_type"
+                      value={formData.identification_type}
+                      onChange={(e) => handleChange('identification_type', e.target.value)}
+                      placeholder="e.g., National ID"
+                      className={hwrPopulated && formData.identification_type ? 'bg-muted' : ''}
+                      readOnly
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="hwr_salutation">Salutation</Label>
+                    <Input
+                      id="hwr_salutation"
+                      name="hwr_salutation"
+                      value={formData.hwr_salutation}
+                      onChange={(e) => handleChange('hwr_salutation', e.target.value)}
+                      placeholder="e.g., Dr."
+                      className={hwrPopulated && formData.hwr_salutation ? 'bg-muted' : ''}
+                      readOnly
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="postal_address">Postal Address</Label>
+                    <Input
+                      id="postal_address"
+                      name="postal_address"
+                      value={formData.postal_address}
+                      onChange={(e) => handleChange('postal_address', e.target.value)}
+                      placeholder="e.g., P O BOX 221-20303 OL KALAU"
+                      className={hwrPopulated && formData.postal_address ? 'bg-muted' : ''}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>

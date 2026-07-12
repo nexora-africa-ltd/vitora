@@ -1513,6 +1513,46 @@ class StaffProfile(SyncOriginMixin, models.Model):
         blank=True,
         help_text="Medical specialization",
     )
+    practice_type = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Practice type from DHA registry (e.g., Clinical Officer)",
+    )
+    subspecialty = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Sub-specialty from DHA registry",
+    )
+    discipline_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Discipline name from DHA registry",
+    )
+    educational_qualifications = models.CharField(
+        max_length=300,
+        blank=True,
+        help_text="Educational qualifications from DHA registry",
+    )
+    hwr_status = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="HWR practitioner status (e.g., Licensed)",
+    )
+    hwr_salutation = models.CharField(
+        max_length=30,
+        blank=True,
+        help_text="Salutation from DHA registry (e.g., Dr., Prof., Mr.)",
+    )
+    identification_type = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Identification document type from DHA registry (e.g., National ID)",
+    )
+    postal_address = models.CharField(
+        max_length=300,
+        blank=True,
+        help_text="Postal address from DHA registry",
+    )
     hwr_national_id_encrypted = models.TextField(default="", blank=True)
     hwr_national_id_hmac = models.CharField(max_length=64, default="", blank=True, db_index=True)
     hwr_national_id = encrypted_pii_property("hwr_national_id")
