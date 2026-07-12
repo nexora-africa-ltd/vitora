@@ -614,6 +614,8 @@ class StaffProfileAdmin(admin.ModelAdmin):
                     "user",
                     "employee_id",
                     "title",
+                    "middle_name",
+                    "hwr_salutation",
                 )
             },
         ),
@@ -640,14 +642,25 @@ class StaffProfileAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "Professional Details (Kenya)",
+            "Professional Details (HWR Registry)",
             {
                 "fields": (
+                    "hwr_id",
+                    "hwr_status",
+                    "hwr_national_id",
+                    "identification_type",
+                    "licensing_body",
                     "license_number",
                     "license_expiry",
                     "license_verified",
+                    "hwr_last_verified_at",
                     "is_license_valid_display",
                     "specialization",
+                    "practice_type",
+                    "subspecialty",
+                    "discipline_name",
+                    "educational_qualifications",
+                    "postal_address",
                 )
             },
         ),

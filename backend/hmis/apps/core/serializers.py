@@ -363,6 +363,14 @@ class StaffProfileSerializer(serializers.ModelSerializer):
             "licensing_body",
             "is_license_valid",
             "specialization",
+            "practice_type",
+            "subspecialty",
+            "discipline_name",
+            "educational_qualifications",
+            "hwr_status",
+            "hwr_salutation",
+            "identification_type",
+            "postal_address",
             "hwr_national_id",
             "hwr_last_verified_at",
             "phone_number",
@@ -442,6 +450,14 @@ class StaffProfileUpdateSerializer(serializers.ModelSerializer):
             "license_verified",
             "licensing_body",
             "specialization",
+            "practice_type",
+            "subspecialty",
+            "discipline_name",
+            "educational_qualifications",
+            "hwr_status",
+            "hwr_salutation",
+            "identification_type",
+            "postal_address",
             "hwr_national_id",
             "phone_number",
             "emergency_contact_name",
@@ -469,6 +485,14 @@ class StaffProfileUpdateSerializer(serializers.ModelSerializer):
                         )
                     }
                 )
+
+        # Auto-set license_verified when HWR data is being populated
+        if attrs.get("hwr_id") or attrs.get("hwr_national_id") or attrs.get("license_number"):
+            attrs["license_verified"] = True
+            from django.utils import timezone
+
+            attrs["hwr_last_verified_at"] = timezone.now()
+
         return attrs
 
     def validate_email(self, value):
@@ -544,6 +568,16 @@ class StaffProfileCreateSerializer(serializers.Serializer):
     license_expiry = serializers.DateField(required=False, allow_null=True)
     licensing_body = serializers.CharField(max_length=100, required=False, allow_blank=True)
     specialization = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    practice_type = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    subspecialty = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    discipline_name = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    educational_qualifications = serializers.CharField(
+        max_length=300, required=False, allow_blank=True
+    )
+    hwr_status = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    hwr_salutation = serializers.CharField(max_length=30, required=False, allow_blank=True)
+    identification_type = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    postal_address = serializers.CharField(max_length=300, required=False, allow_blank=True)
     hwr_national_id = serializers.CharField(max_length=30, required=False, allow_blank=True)
 
     hire_date = serializers.DateField(required=False, allow_null=True, source="date_joined")

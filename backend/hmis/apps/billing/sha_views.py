@@ -807,9 +807,14 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 },
                 status=status.HTTP_401_UNAUTHORIZED,
             )
-        logger.exception("Unexpected ILM error")
+        if isinstance(exc, ValueError):
+            return Response(
+                {"error": str(exc), "code": "invalid_request"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        logger.exception("Unexpected ILM error: %s", exc)
         return Response(
-            {"error": "Internal error during DHA HIE call"},
+            {"error": str(exc) or "Internal error during DHA HIE call"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
