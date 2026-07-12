@@ -393,8 +393,30 @@ export const SHAInterventionSchema = z.object({
   requires_preauthorization: z.boolean().optional().default(false),
   is_active: z.boolean().optional().default(true),
   // DHA routing flags
-  payment_mechanism: z.enum(['PER_DIEM', 'FEE_FOR_SERVICE', 'CAPITATION']).optional(),
-  access_point: z.enum(['IP', 'OP', 'BOTH']).optional(),
+  payment_mechanism: z.preprocess(
+    (v) => {
+      if (v === '' || v === null) return undefined;
+      if (typeof v === 'string') {
+        const normalised = v.toUpperCase().replace(/\s+/g, '_');
+        if (normalised === 'FIXED_FEE_FOR_SERVICE') return 'FEE_FOR_SERVICE';
+        return normalised;
+      }
+      return v;
+    },
+    z.enum(['PER_DIEM', 'FEE_FOR_SERVICE', 'CAPITATION']).optional(),
+  ),
+  access_point: z.preprocess(
+    (v) => {
+      if (v === '' || v === null) return undefined;
+      if (typeof v === 'string') {
+        const normalised = v.toUpperCase().replace(/\s+/g, '_');
+        if (normalised === 'OP_AND_IP') return 'BOTH';
+        return normalised;
+      }
+      return v;
+    },
+    z.enum(['IP', 'OP', 'BOTH']).optional(),
+  ),
   needs_preauth: z.boolean().optional(),
   needs_manual_preauth_approval: z.boolean().optional(),
   is_surgical_preauth: z.boolean().optional(),
@@ -612,8 +634,30 @@ export const ClaimSchema = z.object({
     dha_intervention_id: z.string().optional().default(''),
     tariff_amount: z.string().nullable().optional(),
     // DHA routing flags
-    payment_mechanism: z.enum(['PER_DIEM', 'FEE_FOR_SERVICE', 'CAPITATION']).optional(),
-    access_point: z.enum(['IP', 'OP', 'BOTH']).optional(),
+payment_mechanism: z.preprocess(
+    (v) => {
+      if (v === '' || v === null) return undefined;
+      if (typeof v === 'string') {
+        const normalised = v.toUpperCase().replace(/\s+/g, '_');
+        if (normalised === 'FIXED_FEE_FOR_SERVICE') return 'FEE_FOR_SERVICE';
+        return normalised;
+      }
+      return v;
+    },
+    z.enum(['PER_DIEM', 'FEE_FOR_SERVICE', 'CAPITATION']).optional(),
+  ),
+access_point: z.preprocess(
+    (v) => {
+      if (v === '' || v === null) return undefined;
+      if (typeof v === 'string') {
+        const normalised = v.toUpperCase().replace(/\s+/g, '_');
+        if (normalised === 'OP_AND_IP') return 'BOTH';
+        return normalised;
+      }
+      return v;
+    },
+    z.enum(['IP', 'OP', 'BOTH']).optional(),
+  ),
     needs_preauth: z.boolean().optional(),
     needs_manual_preauth_approval: z.boolean().optional(),
     is_surgical_preauth: z.boolean().optional(),
