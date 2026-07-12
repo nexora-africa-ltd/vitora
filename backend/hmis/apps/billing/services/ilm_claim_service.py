@@ -28,9 +28,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from django.conf import settings
+from django.db import models
 from django.utils import timezone
 
-from .consent_token_resolver import resolve_for_claim
+from .consent_token_resolver import ConsentTokenExpiredError, resolve_for_claim
+from .dha_errors import DHAValidationError
 from .ilm_client import IlmClient, IlmResponse
 from .multipart_builder import MultipartFile, build_multipart
 
@@ -764,13 +766,36 @@ class IlmClaimService:
     ) -> IlmClaimResult:
         consent = resolve_for_claim(claim)
         merged = {"consent_token": consent.token, **body}
-        response = self.client.post(
-            path,
-            json_body=merged,
-            consent_token=consent.token,
-            facility=getattr(claim, "facility", None),
-            user=user,
-        )
+        try:
+            response = self.client.post(
+                path,
+                json_body=merged,
+                consent_token=consent.token,
+                facility=getattr(claim, "facility", None),
+                user=user,
+            )
+        except DHAValidationError as exc:
+            msg = (exc.message or "").lower()
+            if (
+                "no valid active" in msg
+                and ("visit" in msg or "claim" in msg)
+                and ("submitted" in msg or "closed" in msg or "doesn't exist" in msg)
+            ):
+                # DHA no longer recognizes this consent token as having an
+                # active visit. Clear our local visit-started flag so the
+                # frontend re-shows the consent + start-visit flow.
+                if getattr(claim, "dha_visit_started_at", None) is not None:
+                    claim.dha_visit_started_at = None
+                    claim.save(update_fields=["dha_visit_started_at"])
+                    logger.info(
+                        "Cleared dha_visit_started_at for claim %s — DHA visit no longer active",
+                        getattr(claim, "pk", None),
+                    )
+                raise ConsentTokenExpiredError(
+                    "The consent token for this visit is no longer valid on DHA's side. "
+                    "Please restart the visit to obtain a fresh authorization token."
+                ) from exc
+            raise
         return IlmClaimResult(response=response, payload=response.json)
 
     # -----------------------------------------------------------------
@@ -1035,7 +1060,10 @@ class IlmClaimService:
                     patient=claim.patient,
                     sha_member=claim.sha_member,
                     consent_method=ConsentToken.ConsentMethod.OTP,
-                    status=ConsentToken.ConsentStatus.PENDING,
+                )
+                .filter(
+                    models.Q(status=ConsentToken.ConsentStatus.PENDING)
+                    | models.Q(status=ConsentToken.ConsentStatus.VALIDATED)
                 )
                 .order_by("-created_at")
                 .first()
@@ -1046,14 +1074,21 @@ class IlmClaimService:
             )
 
         if consent:
+            update_fields: list[str] = []
             if consent.status != ConsentToken.ConsentStatus.VALIDATED:
                 consent.status = ConsentToken.ConsentStatus.VALIDATED
-                # For OTP the returned token is the consent token;
-                # for biometric keep the original consent_token.
-                if not consent.consent_token:
-                    consent.consent_token = token
+                update_fields.append("status")
+            # OTP: the authorization_code returned by start_visit becomes
+            # the consent_token for all subsequent calls (add_intervention,
+            # submit, etc.). Always store the latest token from DHA.
+            if token and consent.consent_token != token:
+                consent.consent_token = token
+                update_fields.append("consent_token")
+            if not consent.validated_at:
                 consent.validated_at = timezone.now()
-                consent.save(update_fields=["status", "consent_token", "validated_at"])
+                update_fields.append("validated_at")
+            if update_fields:
+                consent.save(update_fields=update_fields)
             if consent.encounter_id != encounter.pk:
                 consent.encounter = encounter
                 consent.save(update_fields=["encounter"])
