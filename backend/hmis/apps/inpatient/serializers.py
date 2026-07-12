@@ -408,15 +408,20 @@ class AdmissionSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """Create an admission and auto-create the linked IPD encounter."""
         patient = validated_data["patient"]
-        # opd_encounter is stored for reference but auto-creating IPD encounter
-        validated_data.get("opd_encounter")
+        organization = validated_data.get("organization")
+        facility = validated_data.get("facility")
 
         # Auto-create IPD encounter (Track D requirement)
-        ipd_encounter = Encounter.objects.create(
-            patient=patient,
-            encounter_type="IPD",
-            chief_complaint="Admitted for inpatient care",
-        )
+        ipd_encounter_kwargs: dict = {
+            "patient": patient,
+            "encounter_type": "IPD",
+            "chief_complaint": "Admitted for inpatient care",
+        }
+        if organization:
+            ipd_encounter_kwargs["organization"] = organization
+        if facility:
+            ipd_encounter_kwargs["facility"] = facility
+        ipd_encounter = Encounter.objects.create(**ipd_encounter_kwargs)
         validated_data["ipd_encounter"] = ipd_encounter
 
         admission = super().create(validated_data)

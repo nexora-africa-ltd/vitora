@@ -86,9 +86,11 @@ class BillingAgentService:
                 invoice.save(update_fields=["encounter", "updated_at"])
             return invoice
 
+        facility = getattr(encounter, "facility", None) if encounter else None
         return Invoice.objects.create(
             patient=patient,
             encounter=encounter,
+            facility=facility,
             invoice_date=date.today(),
             due_date=date.today()
             + timedelta(days=getattr(settings, "BILLING_DEFAULT_DUE_DAYS", 30)),
