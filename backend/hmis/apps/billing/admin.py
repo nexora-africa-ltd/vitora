@@ -556,6 +556,7 @@ from .models import (  # noqa: E402
     PatientContact,
     SHAClaim,
     SHAClaimAttachment,
+    SHAClaimIntervention,
     SHAClaimItem,
     SHACoverageSnapshot,
 )
@@ -566,6 +567,21 @@ class SHAClaimItemInline(admin.TabularInline):
     extra = 0
     fields = ("description", "quantity", "unit_price", "claimed_amount")
     readonly_fields = ("claimed_amount",)
+
+
+class SHAClaimInterventionInline(admin.TabularInline):
+    model = SHAClaimIntervention
+    extra = 0
+    fields = (
+        "intervention_code",
+        "intervention_name",
+        "benefit_code",
+        "status",
+        "payment_mechanism",
+        "access_point",
+        "tariff_amount",
+    )
+    readonly_fields = fields
 
 
 class SHAClaimAttachmentInline(admin.TabularInline):
@@ -629,7 +645,7 @@ class SHAClaimAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
-    inlines = [SHAClaimItemInline, SHAClaimAttachmentInline]
+    inlines = [SHAClaimInterventionInline, SHAClaimItemInline, SHAClaimAttachmentInline]
     fieldsets = (
         (
             "Identifiers",
