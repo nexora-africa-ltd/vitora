@@ -1233,19 +1233,19 @@ export default function NewAdmissionPage() {
           <MultiDiagnosisInput
             value={diagnosisEntries}
             onChange={setDiagnosisEntries}
-            label="Admitting Diagnoses"
+            label="Admitting Diagnoses *"
           />
 
           {/* Payer Type */}
           <div className="space-y-2">
-            <Label>Payer Type</Label>
+            <Label>Payer Type *</Label>
             <Select value={payerType} onValueChange={(v) => setPayerType(v as any)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="CASH">Cash</SelectItem>
-                <SelectItem value="SHA">SHA Insurance</SelectItem>
+                <SelectItem value="SHA">SHA</SelectItem>
                 <SelectItem value="CORPORATE">Corporate</SelectItem>
               </SelectContent>
             </Select>

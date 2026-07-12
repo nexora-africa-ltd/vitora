@@ -457,6 +457,7 @@ export function ClaimILMPanel({
 
   useEffect(() => {
     if (autoOpenStarted.current) return;
+    if (visitStarted) return;
     if (!consentCredential || (!consentCredential.otp && !consentCredential.authGuid)) return;
     if (!patientCrId) return;
     const code = consentInterventionCode || interventionCodes[0] || '';
@@ -613,6 +614,7 @@ export function ClaimILMPanel({
 
   async function openVisit() {
     if (!patientCrId) return;
+    if (visitStarted) return;
     const credential = startAuthGuid
       ? { auth_guid: startAuthGuid }
       : { otp: startOtp };

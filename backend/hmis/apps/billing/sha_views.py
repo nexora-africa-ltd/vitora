@@ -3857,6 +3857,57 @@ class ConsentLatestView(APIView):
         return Response({**serializer.data, "exists": True})
 
 
+def _persist_consent_interventions(*, patient, facility, intervention_codes: list[str]) -> None:
+    """Persist interventions from consent flow to the patient's draft claim.
+
+    Called after consent start_visit succeeds. Finds the most recent draft
+    SHA claim for this patient + facility + today and attaches the
+    intervention codes so the claim immediately reflects active interventions
+    without waiting for a second DHA call from the ILM panel.
+
+    Also stamps dha_visit_started_at on the claim so the frontend's
+    ClaimILMPanel knows the visit was already started and avoids a
+    duplicate DHA start_visit call.
+    """
+    if not intervention_codes or not patient:
+        return
+    from datetime import date
+
+    from django.utils import timezone
+
+    from hmis.apps.billing.models import SHAClaim, SHAClaimIntervention
+
+    claim = (
+        SHAClaim.objects.filter(
+            patient=patient,
+            facility=facility,
+            service_date=date.today(),
+            status=SHAClaim.ClaimStatus.DRAFT,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+    if not claim:
+        return
+
+    for code in intervention_codes:
+        SHAClaimIntervention.objects.update_or_create(
+            claim=claim,
+            intervention_code=code,
+            defaults={
+                "intervention_name": "",
+                "benefit_code": code.rsplit("-", 1)[0] if "-" in code else "",
+                "status": "active",
+            },
+        )
+
+    # Stamp the claim so the frontend knows a visit was started via consent
+    # and the ILM panel won't try a second (duplicate) DHA start_visit.
+    if not claim.dha_visit_started_at:
+        claim.dha_visit_started_at = timezone.now()
+        claim.save(update_fields=["dha_visit_started_at"])
+
+
 class StartVisitView(APIView):
     """
     Start a visit with DHA (combined OTP validation + visit start).
@@ -4024,7 +4075,7 @@ class StartVisitView(APIView):
 
             active_admission = Admission.objects.filter(
                 patient=consent.patient,
-                status="ACTIVE",
+                admission_status="ACTIVE",
             ).exists()
             if active_admission:
                 return Response(
@@ -4059,6 +4110,19 @@ class StartVisitView(APIView):
             )
 
             consent.refresh_from_db()
+
+            # Persist intervention codes to the patient's draft claim for
+            # today (auto-created by the billing agent or encounter signal).
+            # This ensures the claim reflects the interventions selected during
+            # consent even if the ILM panel's auto-open visit call fails
+            # (e.g. duplicate DHA start_visit).
+            if intervention_codes:
+                _persist_consent_interventions(
+                    patient=consent.patient,
+                    facility=facility,
+                    intervention_codes=intervention_codes,
+                )
+
             return Response(
                 {
                     "id": consent.id,

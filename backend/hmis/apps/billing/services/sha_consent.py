@@ -638,11 +638,26 @@ class SHAConsentService:
         self._persist_consent_token(consent, response_data)
 
         # Persist intervention codes locally so the claim reflects active interventions
-        if codes and consent.encounter_id:
+        if codes:
+            from datetime import date as _date
+
             from hmis.apps.billing.models import SHAClaim
             from hmis.apps.billing.services.ilm_claim_service import IlmClaimResult, IlmClaimService
 
-            claim = SHAClaim.objects.filter(encounter=consent.encounter).first()
+            claim = None
+            if consent.encounter_id:
+                claim = SHAClaim.objects.filter(encounter=consent.encounter).first()
+            if not claim and consent.patient_id:
+                claim = (
+                    SHAClaim.objects.filter(
+                        patient_id=consent.patient_id,
+                        facility=consent.facility,
+                        service_date=_date.today(),
+                        status=SHAClaim.ClaimStatus.DRAFT,
+                    )
+                    .order_by("-created_at")
+                    .first()
+                )
             if claim and response.status_code < 400:
                 ilm_service = IlmClaimService(facility=getattr(claim, "facility", None))
                 ilm_result = IlmClaimResult(response=response, payload=response_data)
