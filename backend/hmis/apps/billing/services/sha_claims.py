@@ -204,6 +204,11 @@ class SHAClaimsService:
                                         secondary_diagnosis_codes.append(dd.code)
 
         # Build claim data - always include required fields even if empty (model validation will catch)
+        # Resolve facility info from the encounter's facility, falling back to global settings
+        encounter_facility = getattr(encounter, "facility", None)
+        facility_code = getattr(encounter_facility, "mfl_code", None) or self.facility_code
+        facility_level = getattr(encounter_facility, "level", None) or self.facility_level
+
         claim_data = {
             "patient": patient,
             "sha_member": sha_member,
@@ -211,8 +216,8 @@ class SHAClaimsService:
             "invoice": invoice,
             "claim_type": claim_type,
             "service_date": encounter.encounter_date,
-            "facility_code": self.facility_code,
-            "facility_level": self.facility_level,
+            "facility_code": facility_code,
+            "facility_level": facility_level,
             "created_by": user,
         }
 

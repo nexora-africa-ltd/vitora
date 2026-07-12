@@ -2494,6 +2494,9 @@ class SHAClaim(FacilityScopedModel):
         # Backfill facility_code from facility FK if not set
         if self.facility and not self.facility_code:
             self.facility_code = self.facility.mfl_code or ""
+        # Backfill facility_level from facility FK if not set
+        if self.facility and not self.facility_level:
+            self.facility_level = getattr(self.facility, "level", "") or ""
         self.full_clean()
         super().save(*args, **kwargs)
 
