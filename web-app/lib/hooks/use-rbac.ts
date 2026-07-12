@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * RBAC React Query Hooks
  * Sprint 1.1-1.2 Track C: RBAC Foundation
