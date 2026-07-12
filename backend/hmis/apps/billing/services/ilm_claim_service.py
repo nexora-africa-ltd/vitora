@@ -36,6 +36,20 @@ from .multipart_builder import MultipartFile, build_multipart
 
 logger = logging.getLogger(__name__)
 
+# Values the DHA API accepts for practitioner_regulation_body
+_DHA_VALID_REGULATORS = frozenset({"KMPDC", "COC", "PPB", "NCK", "KMLTTB", "KNDI"})
+
+
+def _normalise_regulator(raw: str, default: str = "KMPDC") -> str:
+    """Convert a full licensing-body name into the abbreviation DHA expects."""
+    if not raw:
+        return default
+    stripped = raw.strip()
+    if stripped in _DHA_VALID_REGULATORS:
+        return stripped
+    mapping: dict[str, str] = getattr(settings, "_DHA_REGULATOR_FULL_TO_ABBREV", {})
+    return mapping.get(stripped, default)
+
 
 def _publish_safe(event_type: str, payload: dict) -> None:
     """Publish a billing event without ever breaking the calling request."""
@@ -227,7 +241,9 @@ class IlmClaimService:
             body["practitioner_identification_type"] = (
                 params.practitioner_identification_type or "National ID"
             )
-            body["practitioner_regulation_body"] = params.practitioner_regulation_body or "KMPDC"
+            body["practitioner_regulation_body"] = _normalise_regulator(
+                params.practitioner_regulation_body
+            )
 
         # Sandbox biometric — skip DHA call, create a mock session locally.
         # In sandbox the biometric auth_guid is randomly generated (not from DHA),
@@ -476,7 +492,9 @@ class IlmClaimService:
             body["practitioner_identification_type"] = (
                 practitioner_identification_type or "National ID"
             )
-            body["practitioner_regulation_body"] = practitioner_regulation_body or "KMPDC"
+            body["practitioner_regulation_body"] = _normalise_regulator(
+                practitioner_regulation_body
+            )
         result = self._post_with_consent(
             claim,
             DIAGNOSES_PATH,
@@ -532,7 +550,9 @@ class IlmClaimService:
             body["practitioner_identification_type"] = (
                 practitioner_identification_type or "National ID"
             )
-            body["practitioner_regulation_body"] = practitioner_regulation_body or "KMPDC"
+            body["practitioner_regulation_body"] = _normalise_regulator(
+                practitioner_regulation_body
+            )
         result = self._post_with_consent(claim, LINES_PATH, body, user=user)
         self._emit_line_event(
             claim, result, action="added", intervention_code=line.intervention_code
@@ -686,7 +706,9 @@ class IlmClaimService:
             body["practitioner_identification_type"] = (
                 practitioner_identification_type or "National ID"
             )
-            body["practitioner_regulation_body"] = practitioner_regulation_body or "KMPDC"
+            body["practitioner_regulation_body"] = _normalise_regulator(
+                practitioner_regulation_body
+            )
         result = self._post_with_consent(claim, SUBMIT_PATH, body, user=user)
         self._apply_submit_response(claim, result, user=user)
         from hmis.apps.core.events import BillingEvents

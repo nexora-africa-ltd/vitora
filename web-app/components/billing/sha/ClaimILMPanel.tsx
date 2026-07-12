@@ -441,7 +441,16 @@ export function ClaimILMPanel({
       return r;
     } catch (e: unknown) {
       const msg = formatErr(e);
-      setError(msg);
+      const lower = msg.toLowerCase();
+      // DHA rejects OTP for patients registered with biometrics — guide to biometric path
+      if (lower.includes('restricted to biometric') || lower.includes('biometric') && (lower.includes('required') || lower.includes('restrict'))) {
+        setError(
+          'This patient requires biometric consent. DHA does not allow OTP for this patient. ' +
+            'Use the "Biometric consent" button below to capture their fingerprint.'
+        );
+      } else {
+        setError(msg);
+      }
       const code = (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
       if (code === 'consent_token_expired') {
         toast.error('Consent token has expired. Please re-consent the patient.');
@@ -512,7 +521,9 @@ export function ClaimILMPanel({
   async function openVisit() {
     if (!patientCrId) return;
     if (visitStarted) return;
-    // Credential priority: biometric auth_guid → manual OTP entry → consent OTP → consent token
+    // DHA start_visit accepts either otp (6-digit code) or auth_guid (biometric).
+    // The consent token is the OUTPUT of start_visit, never an input.
+    // Priority: biometric auth_guid → manually entered OTP → OTP from consent flow.
     const credential: Record<string, string> = {};
     if (startAuthGuid) {
       credential.auth_guid = startAuthGuid;
@@ -520,8 +531,10 @@ export function ClaimILMPanel({
       credential.otp = startOtp;
     } else if (consentCredential?.otp) {
       credential.otp = consentCredential.otp;
-    } else if (consentToken) {
-      credential.otp = consentToken;
+    }
+    if (Object.keys(credential).length === 0) {
+      setError('Enter the OTP sent to the patient, or use biometric consent.');
+      return;
     }
     // DHA start_visit requires at least one valid intervention code.
     // Priority: (1) interventions already on the claim,
@@ -545,6 +558,9 @@ export function ClaimILMPanel({
         patient_id: patientCrId,
         intervention_codes: codes,
         service_type: serviceType,
+        ...(serviceType === 'INPATIENT' && claim.admission_date
+          ? { admission_date: claim.admission_date }
+          : {}),
         ...(hasPractitioner ? practitionerFields : {}),
       }),
     );
@@ -852,15 +868,42 @@ export function ClaimILMPanel({
             )}
 
             {/*
-              Consent flows: only show OTP / biometric prompts when consent has not
-              been obtained yet. Once we have a validated consent token (from the
-              ConsentPanel above), the prerequisite grid shows green and we expose
-              the "Open Visit" button directly — no need to re-prompt for OTP.
+              DHA start_visit requires either:
+                - otp (6-digit code sent to patient's phone)
+                - auth_guid (from a completed biometric fingerprint match)
+              The consent token is the OUTPUT of start_visit, never an input.
+              Patients who aren't OTP-whitelisted MUST use the biometric path.
             */}
             {requiresConsent && (
               <>
-                {consentToken ? (
-                  /* Consent already validated — direct Open Visit */
+                {startAuthGuid ? (
+                  /* Biometric path — auth GUID already obtained, just need to open */
+                  <div className="space-y-2">
+                    {isStartingVisit ? (
+                      <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-4 py-3">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <div className="text-sm">
+                          <span className="font-medium">Opening visit</span>
+                          <span className="text-muted-foreground">
+                            {' · '}validating biometric consent &amp; starting DHA session…
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={openVisit}
+                        disabled={!canOpenVisit || busy !== null}
+                      >
+                        <Play className="mr-2 h-3 w-3" />
+                        Open visit (biometric)
+                      </Button>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Biometric fingerprint verified — ready to open the DHA visit.
+                    </p>
+                  </div>
+                ) : consentCredential?.otp ? (
+                  /* Fresh OTP from consent flow — single click to open */
                   <div className="space-y-1">
                     {isStartingVisit ? (
                       <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-4 py-3">
@@ -877,38 +920,32 @@ export function ClaimILMPanel({
                         onClick={openVisit}
                         disabled={!canOpenVisit || busy !== null}
                       >
-                        {busy !== null && isStartingVisit ? (
-                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                        ) : (
-                          <Play className="mr-2 h-3 w-3" />
-                        )}
+                        <Play className="mr-2 h-3 w-3" />
                         Open Visit
                       </Button>
                     )}
+                    <p className="text-xs text-green-600 dark:text-green-400">
+                      OTP validated — ready to open the DHA visit.
+                    </p>
                   </div>
-                ) : startAuthGuid ? (
-                  /* Biometric path — auth GUID already obtained, just need to open */
-                  <Button onClick={openVisit} disabled={!canOpenVisit || busy !== null}>
-                    {isStartingVisit ? (
-                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                    ) : (
-                      <Play className="mr-2 h-3 w-3" />
-                    )}
-                    Open visit (biometric)
-                  </Button>
                 ) : (
-                  /* No consent yet — show OTP entry + Send OTP + Biometric */
+                  /* No credential yet — show OTP entry + Send OTP + Biometric */
                   <div className="space-y-2">
                     <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
                       <div className="space-y-1">
                         <Label htmlFor="ilm-start-otp" className="text-xs">
                           OTP from patient
+                          {startOtp && (
+                            <span className="ml-2 text-emerald-600 dark:text-emerald-400">
+                              · entered
+                            </span>
+                          )}
                         </Label>
                         <Input
                           id="ilm-start-otp"
                           value={startOtp}
                           onChange={(e) => setStartOtp(e.target.value)}
-                          placeholder="Enter OTP received by patient"
+                          placeholder="Enter 6-digit OTP received by patient"
                         />
                       </div>
                       {startOtp ? (

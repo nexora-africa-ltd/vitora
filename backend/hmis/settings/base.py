@@ -668,6 +668,19 @@ KENYA_LICENSE_BODIES = {
     "COC": "Clinical Officers Council",
 }
 
+# Reverse mapping: full name -> DHA abbreviation code
+# DHA API only accepts the abbreviation codes (KMPDC, COC, PPB, NCK) but
+# StaffProfile.licensing_body stores full names. This mapping normalises
+# full names back to the abbreviation DHA expects.
+_DHA_REGULATOR_FULL_TO_ABBREV = {
+    "Kenya Medical Practitioners and Dentists Board": "KMPDC",
+    "Kenya Medical Practitioners and Dentists Council": "KMPDC",
+    "Clinical Officers Council": "COC",
+    "Pharmacy and Poisons Board": "PPB",
+    "Nursing Council of Kenya": "NCK",
+    "Kenya Medical Laboratory Technicians and Technologists Board": "KMLTTB",
+}
+
 # RBAC Hierarchy Levels
 # Lower numbers = higher authority
 # Used for permission inheritance and organizational structure
