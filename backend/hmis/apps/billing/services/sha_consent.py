@@ -478,11 +478,18 @@ class SHAConsentService:
 
         is_sandbox = getattr(settings, "ENVIRONMENT", "development") != "production"
         if is_sandbox and auth_guid and consent.status == ConsentToken.ConsentStatus.VALIDATED:
-            return {
-                "status": "validated",
-                "consent_token": consent.consent_token,
-                "message": "Sandbox mode — visit started locally",
-            }
+            # In local dev (no DHA connectivity), skip the real call entirely.
+            # In UAT, fall through to the real DHA start_visit — the biometric
+            # auth_guid may be rejected but OTP flows will work.
+            import os
+
+            is_uat = os.environ.get("DHA_HIE_IS_UAT", "").lower() in ("1", "true", "yes")
+            if not is_uat:
+                return {
+                    "status": "validated",
+                    "consent_token": consent.consent_token,
+                    "message": "Sandbox mode — visit started locally",
+                }
 
         endpoint = self._get_endpoint("start_visit")
         if not endpoint:
@@ -729,42 +736,49 @@ class SHAConsentService:
         is_sandbox = getattr(settings, "ENVIRONMENT", "development") != "production"
 
         if is_sandbox:
-            # In sandbox, mock the biometric flow entirely — no DHA call
-            auth_guid = str(uuid.uuid4())
-            iframe_url = "about:blank"
-            token = str(uuid.uuid4())
-            consent = ConsentToken.objects.create(
-                patient=sha_member.patient,
-                sha_member=sha_member,
-                consent_method=ConsentToken.ConsentMethod.BIOMETRIC,
-                status=ConsentToken.ConsentStatus.VALIDATED,
-                otp_reference=auth_guid,
-                auth_guid=auth_guid,
-                consent_token=token,
-                validated_at=timezone.now(),
-                expires_at=timezone.now() + timedelta(hours=24),
-                iframe_url=iframe_url,
-                iframe_expires_at=timezone.now() + timedelta(minutes=10),
-                identification_number=agent_national_id,
-                created_by=user,
-                facility=facility,
-                organization=facility.organization if hasattr(facility, "organization") else None,
-            )
-            logger.info(
-                "Sandbox biometric authorization for consent %s (auth_guid: %s, token: %s)",
-                consent.id,
-                auth_guid,
-                token,
-            )
-            return {
-                "consent_id": consent.id,
-                "auth_guid": auth_guid,
-                "iframe_url": iframe_url,
-                "iframe_expires_at": consent.iframe_expires_at.isoformat(),
-                "status": "AUTHORIZED",
-                "consent_token": token,
-                "sandbox_mode": True,
-            }
+            import os
+
+            is_uat = os.environ.get("DHA_HIE_IS_UAT", "").lower() in ("1", "true", "yes")
+            if not is_uat:
+                # Local dev — mock the biometric flow entirely (no DHA connectivity)
+                auth_guid = str(uuid.uuid4())
+                iframe_url = "about:blank"
+                token = str(uuid.uuid4())
+                consent = ConsentToken.objects.create(
+                    patient=sha_member.patient,
+                    sha_member=sha_member,
+                    consent_method=ConsentToken.ConsentMethod.BIOMETRIC,
+                    status=ConsentToken.ConsentStatus.VALIDATED,
+                    otp_reference=auth_guid,
+                    auth_guid=auth_guid,
+                    consent_token=token,
+                    validated_at=timezone.now(),
+                    expires_at=timezone.now() + timedelta(hours=24),
+                    iframe_url=iframe_url,
+                    iframe_expires_at=timezone.now() + timedelta(minutes=10),
+                    identification_number=agent_national_id,
+                    created_by=user,
+                    facility=facility,
+                    organization=facility.organization
+                    if hasattr(facility, "organization")
+                    else None,
+                )
+                logger.info(
+                    "Sandbox biometric authorization for consent %s (auth_guid: %s, token: %s)",
+                    consent.id,
+                    auth_guid,
+                    token,
+                )
+                return {
+                    "consent_id": consent.id,
+                    "auth_guid": auth_guid,
+                    "iframe_url": iframe_url,
+                    "iframe_expires_at": consent.iframe_expires_at.isoformat(),
+                    "status": "AUTHORIZED",
+                    "consent_token": token,
+                    "sandbox_mode": True,
+                }
+            # UAT mode — fall through to real DHA authorize call below
 
         endpoint = self._get_endpoint("authorize_biometric")
         if not endpoint:
@@ -845,28 +859,33 @@ class SHAConsentService:
         is_sandbox = getattr(settings, "ENVIRONMENT", "development") != "production"
 
         if is_sandbox:
-            consent = ConsentToken.objects.filter(
-                auth_guid=auth_guid,
-                consent_method=ConsentToken.ConsentMethod.BIOMETRIC,
-            ).first()
-            if consent and consent.status == ConsentToken.ConsentStatus.PENDING:
-                token = str(uuid.uuid4())
-                consent.mark_validated(token=token, expires_in_seconds=3600)
-                logger.info(
-                    "Sandbox biometric consent %s auto-authorized (auth_guid: %s)",
-                    consent.id,
-                    auth_guid,
-                )
+            import os
+
+            is_uat = os.environ.get("DHA_HIE_IS_UAT", "").lower() in ("1", "true", "yes")
+            if not is_uat:
+                consent = ConsentToken.objects.filter(
+                    auth_guid=auth_guid,
+                    consent_method=ConsentToken.ConsentMethod.BIOMETRIC,
+                ).first()
+                if consent and consent.status == ConsentToken.ConsentStatus.PENDING:
+                    token = str(uuid.uuid4())
+                    consent.mark_validated(token=token, expires_in_seconds=3600)
+                    logger.info(
+                        "Sandbox biometric consent %s auto-authorized (auth_guid: %s)",
+                        consent.id,
+                        auth_guid,
+                    )
+                    return {
+                        "auth_guid": auth_guid,
+                        "status": "AUTHORIZED",
+                        "consent_token": token,
+                    }
                 return {
                     "auth_guid": auth_guid,
-                    "status": "AUTHORIZED",
-                    "consent_token": token,
+                    "status": consent.status if consent else "PENDING",
+                    "consent_token": consent.consent_token if consent else "",
                 }
-            return {
-                "auth_guid": auth_guid,
-                "status": consent.status if consent else "PENDING",
-                "consent_token": consent.consent_token if consent else "",
-            }
+            # UAT mode — fall through to real DHA poll call below
 
         endpoint = self._get_endpoint("authorize_biometric")
         if not endpoint:

@@ -255,40 +255,66 @@ class IlmClaimService:
             params.auth_guid and getattr(settings, "ENVIRONMENT", "development") != "production"
         )
         if is_sandbox_biometric:
+            # In non-production environments biometric auth_guid is randomly
+            # generated (no fingerprint scanner). We cannot call DHA with it
+            # because DHA has no matching biometric session. Instead, fall
+            # through to the real DHA call using OTP, or if no OTP is
+            # available, make a real call with the auth_guid anyway — DHA
+            # UAT may accept it.
+            import os
             import uuid
 
-            fake_auth_code = str(uuid.uuid4())
-            fake_response = IlmResponse(
-                status_code=200,
-                headers={},
-                json={"authorization_code": fake_auth_code, "status": "success"},
-                text=('{"authorization_code":"' + fake_auth_code + '","status":"success"}'),
-                elapsed_ms=0,
-            )
-            result = IlmClaimResult(response=fake_response, payload=fake_response.json)
-            self._apply_visit_response(claim, result, params=params, user=user)
-            # Persist the intervention codes locally so the claim reflects the
-            # active interventions immediately after visit start.
-            for code in codes:
-                self._persist_intervention(claim, code, result)
-            from hmis.apps.core.events import BillingEvents
+            is_uat = os.environ.get("DHA_HIE_IS_UAT", "").lower() in ("1", "true", "yes")
+            # In UAT with DHA connectivity, always attempt the real DHA call.
+            # The sandbox UUID shortcut was preventing real visit creation.
+            if is_uat and params.otp:
+                # OTP flow — call DHA with real OTP (validated earlier).
+                logger.info(
+                    "Sandbox biometric with OTP for claim %s — calling real DHA start_visit",
+                    getattr(claim, "pk", None),
+                )
+                # Fall through to the real DHA call below.
+            elif is_uat:
+                # Biometric-only in UAT — DHA may reject the fake auth_guid,
+                # but try anyway since OTP isn't available.
+                logger.warning(
+                    "Sandbox biometric without OTP for claim %s — "
+                    "attempting real DHA call with fake auth_guid (may fail)",
+                    getattr(claim, "pk", None),
+                )
+                # Fall through to the real DHA call below.
+            else:
+                # Local dev (no DHA connectivity) — mock the entire call.
+                fake_auth_code = str(uuid.uuid4())
+                fake_response = IlmResponse(
+                    status_code=200,
+                    headers={},
+                    json={"authorization_code": fake_auth_code, "status": "success"},
+                    text=('{"authorization_code":"' + fake_auth_code + '","status":"success"}'),
+                    elapsed_ms=0,
+                )
+                result = IlmClaimResult(response=fake_response, payload=fake_response.json)
+                self._apply_visit_response(claim, result, params=params, user=user)
+                for code in codes:
+                    self._persist_intervention(claim, code, result)
+                from hmis.apps.core.events import BillingEvents
 
-            _publish_safe(
-                BillingEvents.DHA_CLAIM_VISIT_STARTED,
-                _claim_event_payload(
-                    claim,
-                    result,
-                    service_type=params.service_type,
-                    intervention_codes=list(params.intervention_codes),
-                    authorization_code=fake_auth_code,
-                ),
-            )
-            logger.info(
-                "Sandbox start_visit for claim %s — auth_code=%s",
-                getattr(claim, "pk", None),
-                fake_auth_code,
-            )
-            return result
+                _publish_safe(
+                    BillingEvents.DHA_CLAIM_VISIT_STARTED,
+                    _claim_event_payload(
+                        claim,
+                        result,
+                        service_type=params.service_type,
+                        intervention_codes=list(params.intervention_codes),
+                        authorization_code=fake_auth_code,
+                    ),
+                )
+                logger.info(
+                    "Sandbox start_visit for claim %s — auth_code=%s",
+                    getattr(claim, "pk", None),
+                    fake_auth_code,
+                )
+                return result
 
         # Use the Keycloak OAuth2 Bearer token for start_visit; the ILM
         # middleware accepts it (unlike the self-signed HS256 JWT which
