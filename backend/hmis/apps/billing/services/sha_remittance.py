@@ -55,11 +55,12 @@ class SHARemittanceService:
         Fetch remittances from DHA for a facility.
 
         Calls GET /api/v1/claims/remittances with facility_id and facility_id_type.
-        Creates/updates SHARemittance records for each new remittance.
 
         Args:
-            facility_code: MFL facility code (fr-code type).
-            facility: Facility instance for scoping.
+            facility_code: DHA Facility Registry (FR) code. If facility is also
+                           passed and the code does not look like an FR code,
+                           it will be resolved from the facility instance.
+            facility: Facility instance for scoping and FR code resolution.
 
         Returns:
             List of SHARemittance objects (new or existing).
@@ -67,9 +68,22 @@ class SHARemittanceService:
         Raises:
             SHARemittanceError: If the API call fails.
         """
+        # If facility is provided, verify we have the FR code (not MFL code)
+        fr_code = facility_code
+        if facility is not None and fr_code:
+            try:
+                bc = getattr(facility, "billing_config", None)
+                alt = getattr(bc, "sha_facility_fr_code", None) if bc else None
+                if alt and alt != fr_code:
+                    fr_code = alt
+            except Exception:
+                pass
+            if fr_code == getattr(facility, "mfl_code", None):
+                fr_code = getattr(facility, "dha_fr_code", None) or fr_code
+
         endpoint = f"{self.api_base_url}/api/v1/claims/remittances"
         params = {
-            "facility_id": facility_code,
+            "facility_id": fr_code,
             "facility_id_type": "fr-code",
         }
 

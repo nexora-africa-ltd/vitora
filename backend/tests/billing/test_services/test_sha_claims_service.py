@@ -434,7 +434,12 @@ class TestSHAClaimsServiceCreateClaim:
         assert claim.encounter == claims_encounter_opd
         assert claim.invoice == claims_invoice
         assert claim.service_date == claims_encounter_opd.encounter_date
-        assert claim.facility_code == settings.FACILITY_MFL_CODE
+        # facility_code resolves via SHA_FACILITY_FR_CODE priority chain;
+        # sample_facility has no dha_fr_code/billing_config, so it falls to service fallback
+        expected_fr = getattr(settings, "SHA_FACILITY_FR_CODE", "") or getattr(
+            settings, "FACILITY_MFL_CODE", ""
+        )
+        assert claim.facility_code == expected_fr
         assert claim.facility_level == settings.FACILITY_LEVEL
         assert claim.created_by == test_user
 
@@ -1009,5 +1014,10 @@ class TestSHAClaimsServiceConfiguration:
 
         assert service.api_base_url == settings.SHA_API_BASE_URL.rstrip("/")
         assert service.api_key == settings.SHA_API_KEY
-        assert service.facility_code == settings.FACILITY_MFL_CODE
+        # facility_code now resolves via SHA_FACILITY_FR_CODE priority; when no facility
+        # is passed to __init__, it falls back to the env/SHA_FACILITY_FR_CODE setting.
+        expected_fr = getattr(settings, "SHA_FACILITY_FR_CODE", "") or getattr(
+            settings, "FACILITY_MFL_CODE", ""
+        )
+        assert service.facility_code == expected_fr
         assert service.facility_level == settings.FACILITY_LEVEL

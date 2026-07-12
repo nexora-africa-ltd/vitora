@@ -157,15 +157,26 @@ def _extract_provider_code(eligibility_response: dict) -> str | None:
 
 
 def _get_facility_codes(facility) -> list[str]:
-    """Get all identifying codes for a facility (MFL, SHA, etc.)."""
+    """Get all identifying codes for a facility (FR, DHA, MFL, SHA, etc.)."""
     codes = []
+    # DHA Facility Registry code (primary identifier for DHA-facing operations)
+    try:
+        bc = getattr(facility, "billing_config", None)
+        if bc:
+            fr_code = getattr(bc, "sha_facility_fr_code", None)
+            if fr_code:
+                codes.append(str(fr_code))
+    except Exception:
+        pass
+    dha_fr = getattr(facility, "dha_fr_code", None)
+    if dha_fr:
+        codes.append(str(dha_fr))
     mfl_code = getattr(facility, "mfl_code", None)
     if mfl_code:
         codes.append(str(mfl_code))
     sha_code = getattr(facility, "sha_facility_code", None)
     if sha_code:
         codes.append(str(sha_code))
-    # Some facilities use the pk as fallback identifier
     return codes
 
 

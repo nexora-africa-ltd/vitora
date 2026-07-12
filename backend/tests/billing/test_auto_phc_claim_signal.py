@@ -87,6 +87,7 @@ class TestAutoPhcClaimCreation:
             name="Level 2 Dispensary",
             level="2",
             mfl_code="88888",
+            dha_fr_code="88888",
             organization=sample_organization,
             county=sample_county,
             sub_county=sample_sub_county,

@@ -155,6 +155,20 @@ def _maybe_create_phc_claim(encounter):
 
         system_user = get_system_user()
 
+        fr_code = getattr(facility, "dha_fr_code", None) or None
+        if not fr_code:
+            try:
+                bc = getattr(facility, "billing_config", None)
+                if bc:
+                    fr_code = getattr(bc, "sha_facility_fr_code", None) or None
+            except Exception:
+                fr_code = None
+        facility_code = (
+            fr_code
+            or getattr(settings, "SHA_FACILITY_FR_CODE", "")
+            or getattr(settings, "FACILITY_MFL_CODE", "")
+        )
+
         claim = SHAClaim.objects.create(
             patient=encounter.patient,
             sha_member=sha_member,
@@ -164,7 +178,7 @@ def _maybe_create_phc_claim(encounter):
             claim_flow=SHAClaim.ClaimFlow.PHC,
             status=SHAClaim.ClaimStatus.DRAFT,
             service_date=encounter.encounter_date,
-            facility_code=getattr(settings, "FACILITY_MFL_CODE", ""),
+            facility_code=facility_code,
             facility_level=normalized_level,
             primary_diagnosis_code="PENDING",
             primary_diagnosis_description="Awaiting diagnosis",

@@ -25,6 +25,26 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
+def _resolve_fr_code(facility):
+    """Resolve the DHA Facility Registry (FR) code for a facility.
+
+    Priority: billing_config.sha_facility_fr_code > facility.dha_fr_code > fallback.
+    Returns an empty string if none can be resolved.
+    """
+    if facility is None:
+        return ""
+    fr_code = None
+    try:
+        bc = getattr(facility, "billing_config", None)
+        if bc:
+            fr_code = getattr(bc, "sha_facility_fr_code", None) or None
+    except Exception:
+        fr_code = None
+    if not fr_code:
+        fr_code = getattr(facility, "dha_fr_code", None) or None
+    return fr_code or ""
+
+
 class SHAClaimAutomationService:
     """
     Centralized service for SHA claim workflow automation.
@@ -92,9 +112,11 @@ class SHAClaimAutomationService:
 
             # Auto-send OTP
             service = SHAConsentService(facility=facility)
+            # Resolve DHA FR code for the agent payload
+            agent_code = _resolve_fr_code(facility) or facility.mfl_code or ""
             result = service.send_otp(
                 sha_member=sha_member,
-                facility_code=facility.mfl_code or "",
+                facility_code=agent_code,
                 user=None,
                 facility=facility,
             )
@@ -730,8 +752,10 @@ class SHAClaimAutomationService:
 
             for facility in facilities:
                 try:
+                    # Resolve DHA FR code for remittance fetch
+                    fr_code = _resolve_fr_code(facility) or facility.mfl_code or ""
                     remittances = service.fetch_remittances(
-                        facility_code=facility.mfl_code,
+                        facility_code=fr_code,
                         facility=facility,
                     )
                     result["facilities_processed"] += 1
@@ -883,7 +907,10 @@ class SHAClaimAutomationService:
             status=SHAClaim.ClaimStatus.DRAFT,
         ).select_related("patient", "encounter", "sha_member")
 
-        service = SHAClaimsService()
+        from hmis.apps.core.models import Facility
+
+        facility = Facility.objects.filter(pk=facility_id).first()
+        service = SHAClaimsService(facility=facility)
         ready = []
         invalid = []
         missing_docs = []
