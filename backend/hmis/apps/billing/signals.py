@@ -104,28 +104,29 @@ def create_invoice_for_encounter(sender, instance, created, **kwargs):
 
 def _maybe_create_phc_claim(encounter):
     """
-    Auto-create a draft SHA claim with claim_flow='phc' for outpatient encounters
-    at Level 2-3 (PHC-eligible) facilities when the patient has active SHA membership.
+    Auto-create a draft SHA claim for outpatient encounters at SHA-eligible
+    facilities when the patient has active SHA membership.
+
+    Uses the DHA HIE flow router (determine_flow) to set the correct claim_flow
+    (phc, shif, or eccif) based on encounter type, eligibility scheme, and
+    facility KEPH level.
 
     This closes the gap where outpatient visits don't go through a discharge event,
     so the existing discharge-triggered claim creation never fires for them.
     """
     from hmis.apps.billing.models import SHAClaim, SHAMember
+    from hmis.apps.billing.services.sha_flow_router import determine_flow
 
-    # Only for outpatient encounters
+    # Only for outpatient encounters (IPD goes through handle_admission_created)
     if getattr(encounter, "encounter_type", None) not in ("OPD", "EMERGENCY", "FOLLOW_UP"):
         return
 
-    # Check facility level is PHC-eligible (Level 2 or 3)
     facility = getattr(encounter, "facility", None)
     if not facility:
         return
-    level_num = str(facility.level or "").strip()
-    if level_num not in ("2", "3"):
-        return
 
-    # Normalize to "L{n}" format for the claim model (TariffLevel choices)
-    normalized_level = f"L{level_num}"
+    level_num = str(facility.level or "").strip()
+    normalized_level = f"L{level_num}" if level_num else ""
 
     # Check if patient has active SHA membership
     try:
@@ -139,11 +140,13 @@ def _maybe_create_phc_claim(encounter):
     if not sha_member:
         return
 
-    # Avoid duplicate: check if a PHC claim already exists for this encounter
-    existing = SHAClaim.objects.filter(
-        encounter=encounter,
-        claim_flow=SHAClaim.ClaimFlow.PHC,
-    ).exists()
+    # Determine the claim flow via the DHA HIE flow router
+    eligibility_data = getattr(sha_member, "eligibility_response", None) or None
+    claim_flow = determine_flow(encounter, facility, eligibility_data=eligibility_data)
+    is_emergency = claim_flow == SHAClaim.ClaimFlow.ECCIF
+
+    # Avoid duplicate: check if any SHA claim already exists for this encounter
+    existing = SHAClaim.objects.filter(encounter=encounter).exists()
     if existing:
         return
 
@@ -175,7 +178,8 @@ def _maybe_create_phc_claim(encounter):
             encounter=encounter,
             invoice=invoice,
             claim_type=SHAClaim.ClaimType.OUTPATIENT,
-            claim_flow=SHAClaim.ClaimFlow.PHC,
+            claim_flow=claim_flow,
+            is_emergency_claim=is_emergency,
             status=SHAClaim.ClaimStatus.DRAFT,
             service_date=encounter.encounter_date,
             facility_code=facility_code,
@@ -188,8 +192,9 @@ def _maybe_create_phc_claim(encounter):
         )
 
         logger.info(
-            "Auto-created PHC draft claim %s for OPD encounter %s",
+            "Auto-created draft claim %s (flow=%s) for encounter %s",
             claim.claim_number,
+            claim_flow,
             encounter.id,
         )
 
@@ -201,7 +206,7 @@ def _maybe_create_phc_claim(encounter):
                 "claim_number": claim.claim_number,
                 "encounter_id": encounter.id,
                 "patient_id": encounter.patient_id,
-                "claim_flow": "phc",
+                "claim_flow": claim_flow,
                 "trigger": "outpatient_encounter_created",
             },
             facility_id=getattr(encounter, "facility_id", None),
@@ -209,7 +214,7 @@ def _maybe_create_phc_claim(encounter):
         )
     except Exception:
         logger.exception(
-            "Auto PHC claim creation failed for encounter %s — queuing retry",
+            "Auto claim creation failed for encounter %s — queuing retry",
             encounter.id,
         )
         # Queue async retry so transient failures (e.g. SQLite locking) are recovered
@@ -615,17 +620,13 @@ def trigger_phc_claim_on_queue(patient_id: int, facility_id: int):
         if not sha_member:
             return
 
-        # Find today's OPD/EMERGENCY encounters for this patient without a PHC claim
+        # Find today's OPD/EMERGENCY encounters for this patient without any SHA claim
         encounters = Encounter.objects.filter(
             patient_id=patient_id,
             facility_id=facility_id,
             encounter_date=date.today(),
             encounter_type__in=("OPD", "EMERGENCY"),
-        ).exclude(
-            id__in=SHAClaim.objects.filter(
-                claim_flow=SHAClaim.ClaimFlow.PHC,
-            ).values_list("encounter_id", flat=True)
-        )
+        ).exclude(id__in=SHAClaim.objects.values_list("encounter_id", flat=True))
 
         for enc in encounters:
             _maybe_create_phc_claim(enc)

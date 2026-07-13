@@ -1,9 +1,9 @@
 """
-Tests for auto-PHC claim creation on outpatient encounter at Level 2-3 facilities.
+Tests for auto-creation of SHA claims on outpatient encounters.
 
-When an OPD encounter is created at a PHC-eligible facility (Level 2 or 3) and
-the patient has an active SHAMember record, a draft SHA claim with
-claim_flow='phc' should be automatically created.
+When an OPD/EMERGENCY/FOLLOW_UP encounter is created and the patient has an active
+SHAMember record, a draft SHA claim is automatically created with claim_flow set
+by the DHA HIE flow router (phc, shif, or eccif).
 """
 
 from datetime import date
@@ -109,10 +109,10 @@ class TestAutoPhcClaimCreation:
         assert claim.facility_level == "L2"  # Normalized to L prefix
 
     @override_settings(FACILITY_MFL_CODE="77777")
-    def test_level_4_does_not_create_phc_claim(
+    def test_level_4_opd_routes_to_shif_flow(
         self, phc_patient, phc_sha_member, sample_organization, sample_county, sample_sub_county
     ):
-        """Level 4+ facilities should NOT auto-create PHC claims."""
+        """Level 4+ OPD encounters route to SHIF flow via determine_flow."""
         from hmis.apps.core.models import Facility
 
         l4_facility = Facility.objects.create(
@@ -130,12 +130,10 @@ class TestAutoPhcClaimCreation:
             facility=l4_facility,
         )
 
-        claim = SHAClaim.objects.filter(
-            encounter=encounter,
-            claim_flow=SHAClaim.ClaimFlow.PHC,
-        ).first()
+        claim = SHAClaim.objects.filter(encounter=encounter).first()
 
-        assert claim is None
+        assert claim is not None
+        assert claim.claim_flow == SHAClaim.ClaimFlow.SHIF
 
     @override_settings(FACILITY_LEVEL="L3", FACILITY_MFL_CODE="99999")
     def test_ipd_encounter_does_not_create_phc_claim(
@@ -243,10 +241,10 @@ class TestAutoPhcClaimCreation:
         assert claim.invoice == invoice
 
     @override_settings(FACILITY_LEVEL="L3", FACILITY_MFL_CODE="99999")
-    def test_emergency_encounter_creates_phc_claim(
+    def test_emergency_encounter_creates_eccif_claim(
         self, phc_patient, phc_sha_member, sample_facility
     ):
-        """EMERGENCY encounters at PHC facilities should also get auto PHC claims."""
+        """EMERGENCY encounters route to ECCIF flow via determine_flow."""
         encounter = Encounter.objects.create(
             patient=phc_patient,
             encounter_type="EMERGENCY",
@@ -254,12 +252,11 @@ class TestAutoPhcClaimCreation:
             facility=sample_facility,
         )
 
-        claim = SHAClaim.objects.filter(
-            encounter=encounter,
-            claim_flow=SHAClaim.ClaimFlow.PHC,
-        ).first()
+        claim = SHAClaim.objects.filter(encounter=encounter).first()
 
         assert claim is not None
+        assert claim.claim_flow == SHAClaim.ClaimFlow.ECCIF
+        assert claim.is_emergency_claim is True
         assert claim.claim_type == SHAClaim.ClaimType.OUTPATIENT
 
     @override_settings(FACILITY_LEVEL="L3", FACILITY_MFL_CODE="99999")
