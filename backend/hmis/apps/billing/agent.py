@@ -611,6 +611,17 @@ class BillingAgentService:
         if not sha_member:
             return None
 
+        # Avoid duplicate: do not create a second claim if one already exists
+        from hmis.apps.billing.services.sha_flow_router import determine_flow
+
+        existing = SHAClaim.objects.filter(encounter=encounter).first()
+        if existing is not None:
+            logger.info(
+                "Billing agent: SHA claim already exists for encounter %s, skipping creation",
+                getattr(encounter, "pk", None),
+            )
+            return existing
+
         try:
             from hmis.apps.billing.services.sha_claims import SHAClaimsService
 
@@ -621,10 +632,21 @@ class BillingAgentService:
                 user=_get_system_user(),
                 admission=admission,
             )
+
+            # Set claim flow via DHA HIE flow router
+            facility = getattr(encounter, "facility", None)
+            eligibility_data = getattr(sha_member, "eligibility_response", None) or None
+            if facility:
+                flow = determine_flow(encounter, facility, eligibility_data=eligibility_data)
+                claim.claim_flow = flow
+                claim.is_emergency_claim = flow == SHAClaim.ClaimFlow.ECCIF
+                claim.save(update_fields=["claim_flow", "is_emergency_claim", "updated_at"])
+
             logger.info(
-                "Billing agent: auto-created SHA claim %s for invoice %s",
+                "Billing agent: auto-created SHA claim %s for invoice %s (flow=%s)",
                 claim.claim_number,
                 invoice.invoice_number,
+                getattr(claim, "claim_flow", "unknown"),
             )
             return claim
         except Exception:

@@ -30,6 +30,7 @@ from django.utils import timezone
 
 from hmis.apps.billing.models import SHAClaim, SHAClaimItem
 from hmis.apps.billing.services.sha_auth import SHAAuthError, SHAAuthService
+from hmis.apps.billing.services.sha_flow_router import determine_flow
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.sync import ConnectivityChecker, SyncManager
 
@@ -259,12 +260,23 @@ class SHAClaimsService:
         ):
             facility_level = f"L{facility_level}"
 
+        # Determine the DHA HIE claim flow based on encounter, facility, and scheme
+        facility = getattr(encounter, "facility", None)
+        eligibility_data = getattr(sha_member, "eligibility_response", None) or None
+        claim_flow = (
+            determine_flow(encounter, facility, eligibility_data=eligibility_data)
+            if facility
+            else SHAClaim.ClaimFlow.PHC
+        )
+
         claim_data = {
             "patient": patient,
             "sha_member": sha_member,
             "encounter": encounter,
             "invoice": invoice,
             "claim_type": claim_type,
+            "claim_flow": claim_flow,
+            "is_emergency_claim": claim_flow == SHAClaim.ClaimFlow.ECCIF,
             "service_date": encounter.encounter_date,
             "facility_code": facility_code,
             "facility_level": facility_level,
