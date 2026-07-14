@@ -31,7 +31,6 @@ class ImagingProcedureSerializer(serializers.ModelSerializer):
             "modality",
             "body_region",
             "cost",
-            "sha_claimable",
             "available_in_house",
             "is_active",
         ]
@@ -54,7 +53,6 @@ class ImagingProcedureCreateSerializer(serializers.ModelSerializer):
             "special_preparation",
             "turnaround_hours",
             "cost",
-            "sha_claimable",
             "sha_intervention_code",
             "is_active",
             "available_in_house",
@@ -79,7 +77,6 @@ class ImagingProcedureDetailSerializer(serializers.ModelSerializer):
             "special_preparation",
             "turnaround_hours",
             "cost",
-            "sha_claimable",
             "sha_intervention_code",
             "is_active",
             "available_in_house",

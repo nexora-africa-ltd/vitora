@@ -35,7 +35,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from '@/lib/hooks';
@@ -381,11 +380,6 @@ export function ImagingOrderForm({
                           <p className="font-medium text-sm sm:text-base">
                             KES {item.procedure.cost.toLocaleString()}
                           </p>
-                          {item.procedure.sha_claimable && (
-                            <Badge variant="outline" className="text-[10px] sm:text-xs">
-                              SHA
-                            </Badge>
-                          )}
                         </div>
                         <Button
                           type="button"

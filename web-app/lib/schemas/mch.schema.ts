@@ -165,7 +165,6 @@ export const MCHRegistrationSchema = MCHRegistrationListItemSchema.extend({
   all_babies_info: z.array(BabyInfoSchema),
   inter_pregnancy_interval_days: z.number().nullable(),
   risk_factors: z.string(),
-  sha_claimable: z.boolean(),
   gbv_related: z.boolean(),
   is_sensitive: z.boolean(),
   registered_by: z.number().nullable(),

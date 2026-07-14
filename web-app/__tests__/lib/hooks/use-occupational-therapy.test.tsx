@@ -217,7 +217,6 @@ const mockTreatmentType = {
   typical_duration_minutes: 60,
   recommended_sessions: 10,
   cost_per_session: '2500.00',
-  sha_claimable: true,
   is_active: true,
 };
 

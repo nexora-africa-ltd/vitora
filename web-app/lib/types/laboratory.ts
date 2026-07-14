@@ -18,7 +18,6 @@ export interface TestCatalogListItem {
   result_type: ResultType;
   result_unit?: string | null;
   cost: number;
-  sha_claimable: boolean;
   available_in_house: boolean;
   turnaround_hours?: number | null;
   requires_fasting: boolean;
@@ -45,7 +44,6 @@ export interface TestCatalog {
   normal_range_child?: string | null;
   result_options?: string[] | null;
   cost: number;
-  sha_claimable: boolean;
   available_in_house: boolean;
   external_lab_partner?: string | null;
   turnaround_hours?: number | null;
@@ -77,7 +75,6 @@ export interface TestCatalogCreateData {
   available_in_house?: boolean;
   external_lab_partner?: string;
   cost?: number;
-  sha_claimable?: boolean;
   result_type: ResultType;
   result_unit?: string;
   normal_range_male?: string;
@@ -498,7 +495,7 @@ export interface LabOrder {
   patient: number;
   patient_name?: string | null;
   patient_mrn?: string | null;
-  encounter: number;
+  encounter: number | null;
   admission?: number | null;
   ordered_by: number;
   ordered_by_name?: string | null;
@@ -546,6 +543,7 @@ export interface LabOrderItem {
   loinc_code?: string;
   is_panel: boolean;
   result_type: ResultType;
+  result_options?: string[];
   result_unit?: string;
   normal_range_male?: string;
   normal_range_female?: string;
@@ -691,7 +689,7 @@ export interface LabTechnician {
 // API request/response types
 export interface LabOrderCreateData {
   patient: number;
-  encounter: number;
+  encounter?: number;
   admission?: number;
   order_type?: OrderType;
   external_lab?: string;

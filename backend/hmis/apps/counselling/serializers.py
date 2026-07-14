@@ -31,7 +31,6 @@ class CounsellingTypeSerializer(serializers.ModelSerializer):
             "recommended_sessions",
             "recommended_frequency",
             "cost_per_session",
-            "sha_claimable",
             "sha_intervention_code",
             "requires_privacy",
             "requires_referral",
@@ -59,7 +58,6 @@ class CounsellingTypeListSerializer(serializers.ModelSerializer):
             "category",
             "category_display",
             "cost_per_session",
-            "sha_claimable",
             "is_active",
         ]
 

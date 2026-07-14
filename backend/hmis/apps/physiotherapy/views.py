@@ -40,12 +40,11 @@ class PhysiotherapyTreatmentTypeFilter(django_filters.FilterSet):
     """Filter for PhysiotherapyTreatmentType."""
 
     category = django_filters.CharFilter(lookup_expr="iexact")
-    sha_claimable = django_filters.BooleanFilter()
     is_active = django_filters.BooleanFilter()
 
     class Meta:
         model = PhysiotherapyTreatmentType
-        fields = ["category", "sha_claimable", "is_active"]
+        fields = ["category", "is_active"]
 
 
 class PhysiotherapyTreatmentTypeViewSet(viewsets.ModelViewSet):

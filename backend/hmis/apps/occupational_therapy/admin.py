@@ -21,10 +21,9 @@ class OTTreatmentTypeAdmin(admin.ModelAdmin):
         "name",
         "category",
         "cost_per_session",
-        "sha_claimable",
         "is_active",
     ]
-    list_filter = ["category", "sha_claimable", "is_active"]
+    list_filter = ["category", "is_active"]
     search_fields = ["code", "name", "description"]
     ordering = ["category", "name"]
     fieldsets = [
@@ -45,11 +44,10 @@ class OTTreatmentTypeAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "Pricing & SHA",
+            "Pricing & Billing",
             {
                 "fields": [
                     "cost_per_session",
-                    "sha_claimable",
                     "sha_intervention_code",
                 ],
             },

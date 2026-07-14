@@ -76,7 +76,6 @@ export const OTTreatmentTypeSchema = z.object({
   recommended_sessions: z.number(),
   recommended_frequency: z.string(),
   cost_per_session: z.string(),
-  sha_claimable: z.boolean(),
   sha_intervention_code: z.string(),
   requires_equipment: z.boolean(),
   equipment_needed: z.string(),
@@ -94,7 +93,6 @@ export const OTTreatmentTypeListItemSchema = z.object({
   category: OTCategorySchema,
   category_display: z.string().optional(),
   cost_per_session: z.string(),
-  sha_claimable: z.boolean(),
   is_active: z.boolean(),
 });
 

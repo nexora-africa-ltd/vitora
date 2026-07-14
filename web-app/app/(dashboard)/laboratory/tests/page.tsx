@@ -24,7 +24,7 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
-import { Plus, FlaskConical, DollarSign, Clock, Download, Link2 } from 'lucide-react';
+import { Plus, FlaskConical, Clock, Download, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const EMPTY_TESTS: TestCatalogListItem[] = [];
@@ -105,8 +105,6 @@ export default function LaboratoryTestsPage() {
   // Compute stats
   const totalTests = tests.length;
   const inHouseCount = tests.filter((t) => t.available_in_house).length;
-  const shaClaimableCount = tests.filter((t) => t.sha_claimable).length;
-
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
       <div className="space-y-6">
@@ -131,7 +129,7 @@ export default function LaboratoryTestsPage() {
         />
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <Card className="relative overflow-hidden">
             <div
               className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
@@ -156,19 +154,6 @@ export default function LaboratoryTestsPage() {
                 <p className="text-xs text-muted-foreground">In-House</p>
               </div>
               <p className="text-xl sm:text-2xl font-bold mt-1">{inHouseCount}</p>
-            </CardContent>
-          </Card>
-          <Card className="relative overflow-hidden col-span-2 sm:col-span-1">
-            <div
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
-              aria-hidden="true"
-            />
-            <CardContent className="relative p-3 sm:p-4">
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">SHA Claimable</p>
-              </div>
-              <p className="text-xl sm:text-2xl font-bold mt-1">{shaClaimableCount}</p>
             </CardContent>
           </Card>
         </div>
@@ -291,12 +276,7 @@ export default function LaboratoryTestsPage() {
                     sortType: 'number' as const,
                     hideOnMobile: true,
                     cell: (t) => (
-                      <div className="text-sm">
-                        {formatCurrency(t.cost)}
-                        {t.sha_claimable && (
-                          <Badge variant="secondary" className="ml-1 text-xs">SHA</Badge>
-                        )}
-                      </div>
+                      <div className="text-sm">{formatCurrency(t.cost)}</div>
                     ),
                   },
                   {
@@ -328,7 +308,6 @@ export default function LaboratoryTestsPage() {
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span>{t.specimen_type}</span>
                       <span>{formatCurrency(t.cost)}</span>
-                      {t.sha_claimable && <Badge variant="secondary" className="text-xs">SHA</Badge>}
                       {t.requires_fasting && <Badge variant="outline" className="text-xs">Fasting</Badge>}
                     </div>
                   </Card>

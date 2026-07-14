@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -225,6 +225,17 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
     },
   });
 
+  const effectiveResultType = activeItem?.result_type || catalogTest?.result_type;
+  const availableResultOptions = useMemo(() => {
+    const itemOptions = activeItem?.result_options || [];
+    const catalogOptions = catalogTest?.result_options || [];
+    const merged = [...itemOptions, ...catalogOptions]
+      .map((option) => option?.trim())
+      .filter((option): option is string => Boolean(option));
+
+    return Array.from(new Set(merged));
+  }, [activeItem?.result_options, catalogTest?.result_options]);
+
   // Auto-populate form from item data (immediate) or catalog (async fallback)
   useEffect(() => {
     if (!activeItem || activeItem.has_result) return;
@@ -241,24 +252,24 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
       equipment: '',
       is_critical_result: false,
     });
-    // Use item's result_unit directly (available from order response)
-    const unit = activeItem.result_unit || catalogTest?.result_unit || '';
-    const refRange = getPatientReferenceRange();
-    const parsed = parseRange(refRange);
-    form.setValue('result_unit', unit);
-    form.setValue('reference_range_text', refRange);
-    if (parsed) {
-      form.setValue('reference_low', parsed[0]);
-      form.setValue('reference_high', parsed[1]);
+    if (effectiveResultType === 'NUMERIC') {
+      const unit = activeItem.result_unit || catalogTest?.result_unit || '';
+      const refRange = getPatientReferenceRange();
+      const parsed = parseRange(refRange);
+      form.setValue('result_unit', unit);
+      form.setValue('reference_range_text', refRange);
+      if (parsed) {
+        form.setValue('reference_low', parsed[0]);
+        form.setValue('reference_high', parsed[1]);
+      }
     }
-  }, [activeItem, catalogTest, getPatientReferenceRange, parseRange, form]);
+  }, [activeItem, catalogTest, effectiveResultType, getPatientReferenceRange, parseRange, form]);
 
   const resultFlag = form.watch('result_flag');
   const numericValue = form.watch('numeric_value');
   const referenceRangeText = form.watch('reference_range_text');
 
   // Auto-compute flag when numeric value changes
-  const effectiveResultType = activeItem?.result_type || catalogTest?.result_type;
   useEffect(() => {
     if (effectiveResultType !== 'NUMERIC') return;
     if (numericValue === undefined || numericValue === null) return;
@@ -287,18 +298,23 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
     try {
       const resultData: LabResultCreateData = {
         order_item: activeItem.id,
-        numeric_value: data.numeric_value,
-        text_value: data.text_value,
-        option_value: data.option_value,
-        result_unit: data.result_unit,
-        reference_low: data.reference_low,
-        reference_high: data.reference_high,
-        reference_range_text: data.reference_range_text,
         result_flag: data.result_flag as ResultFlag,
         interpretation: data.interpretation,
         method: data.method,
         equipment: data.equipment,
       };
+
+      if (effectiveResultType === 'NUMERIC') {
+        resultData.numeric_value = data.numeric_value;
+        resultData.result_unit = data.result_unit;
+        resultData.reference_low = data.reference_low;
+        resultData.reference_high = data.reference_high;
+        resultData.reference_range_text = data.reference_range_text;
+      } else if (effectiveResultType === 'OPTIONS') {
+        resultData.option_value = data.option_value;
+      } else {
+        resultData.text_value = data.text_value;
+      }
 
       await addResult.mutateAsync({ orderNumber, data: resultData });
 
@@ -462,81 +478,138 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {/* Result Value */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="numeric_value"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Numeric Value</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="Enter value"
-                            value={field.value ?? ''}
-                            onChange={(e) => field.onChange(
-                              e.target.value ? parseFloat(e.target.value) : undefined
-                            )}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                {effectiveResultType === 'NUMERIC' && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="numeric_value"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Numeric Value</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="Enter value"
+                              value={field.value ?? ''}
+                              onChange={(e) => field.onChange(
+                                e.target.value ? parseFloat(e.target.value) : undefined
+                              )}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
+                    <FormField
+                      control={form.control}
+                      name="result_unit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Unit</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., g/dL"
+                              {...field}
+                              readOnly={!!field.value}
+                              className={field.value ? 'bg-muted/50' : ''}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="reference_range_text"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Reference Range</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., 4.0-11.0" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {effectiveResultType === 'TEXT' && (
                   <FormField
                     control={form.control}
-                    name="result_unit"
+                    name="text_value"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Unit</FormLabel>
+                        <FormLabel>Text Value</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="e.g., g/dL"
+                          <Textarea
+                            placeholder="Enter text result"
+                            className="min-h-[60px]"
                             {...field}
-                            readOnly={!!field.value}
-                            className={field.value ? 'bg-muted/50' : ''}
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                )}
 
+                {effectiveResultType === 'OPTIONS' && (
                   <FormField
                     control={form.control}
-                    name="reference_range_text"
+                    name="option_value"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Reference Range</FormLabel>
+                        <FormLabel>Result Option</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || undefined}
+                          disabled={availableResultOptions.length === 0}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select result" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {availableResultOptions.map((option) => (
+                              <SelectItem key={option} value={option}>{option}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {availableResultOptions.length === 0 && (
+                          <FormDescription>
+                            No result options are configured for this test.
+                          </FormDescription>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {!effectiveResultType && (
+                  <FormField
+                    control={form.control}
+                    name="text_value"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Result Value</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., 4.0-11.0" {...field} />
+                          <Textarea
+                            placeholder="Enter result value"
+                            className="min-h-[60px]"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-
-                {/* Text Value */}
-                <FormField
-                  control={form.control}
-                  name="text_value"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Text Value (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Enter text result or additional details"
-                          className="min-h-[60px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                )}
 
                 {/* Result Flag */}
                 <FormField

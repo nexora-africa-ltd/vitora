@@ -54,7 +54,6 @@ export const PhysiotherapyTreatmentTypeSchema = z.object({
   contraindications: z.string(),
   precautions: z.string(),
   sha_intervention_code: z.string(),
-  sha_claimable: z.boolean(),
   cost_per_session: z.string(),
   is_active: z.boolean(),
   created_at: z.string(),

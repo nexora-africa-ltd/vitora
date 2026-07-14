@@ -127,7 +127,6 @@ class TestCatalog(FacilityScopedModel):
 
     # Pricing
     cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    sha_claimable = models.BooleanField(default=True, help_text="Covered by Kenya SHA")
 
     # Result configuration
     result_type = models.CharField(max_length=20, choices=RESULT_TYPES, default="NUMERIC")

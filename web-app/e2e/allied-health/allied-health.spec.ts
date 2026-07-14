@@ -140,7 +140,6 @@ const mockPhysioOrderDetail = {
     category: 'POST_SURGICAL',
     typical_duration_minutes: 45,
     cost_per_session: '2000.00',
-    sha_claimable: true,
   },
   treatment_type_id: 1,
   ordered_by: {
@@ -176,7 +175,6 @@ const mockPhysioOrderDetail = {
   clinical_notes: 'Good progress observed',
   is_sensitive: false,
   sha_code: 'PT001',
-  sha_claimable: true,
   created_at: '2026-02-10T10:00:00Z',
   updated_at: '2026-02-26T14:00:00Z',
 };
@@ -194,7 +192,6 @@ const mockTreatmentTypes = {
       typical_duration_minutes: 45,
       recommended_sessions: 12,
       cost_per_session: '2000.00',
-      sha_claimable: true,
       is_active: true,
     },
     {
@@ -205,7 +202,6 @@ const mockTreatmentTypes = {
       typical_duration_minutes: 60,
       recommended_sessions: 8,
       cost_per_session: '2500.00',
-      sha_claimable: true,
       is_active: true,
     },
   ],

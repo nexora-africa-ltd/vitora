@@ -238,7 +238,6 @@ export interface NutritionConsultation {
   age?: number | null;
   diet_plan_count?: number;
   // SHA
-  sha_claimable: boolean;
   sha_intervention_code: string;
   invoice: number | null;
   // Timestamps

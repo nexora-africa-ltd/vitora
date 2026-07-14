@@ -48,7 +48,6 @@ export interface PhysiotherapyTreatmentType {
   contraindications: string;
   precautions: string;
   sha_intervention_code: string;
-  sha_claimable: boolean;
   cost_per_session: string;
   is_active: boolean;
   created_at: string;
@@ -269,5 +268,4 @@ export interface PhysiotherapyTreatmentTypeListParams {
   search?: string;
   category?: PhysiotherapyCategory;
   is_active?: boolean;
-  sha_claimable?: boolean;
 }

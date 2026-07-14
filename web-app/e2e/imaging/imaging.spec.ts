@@ -27,7 +27,6 @@ const mockProcedure = (overrides: Record<string, unknown> = {}) => ({
   modality: 'XR',
   body_region: 'CHEST',
   cost: 1500,
-  sha_claimable: true,
   available_in_house: true,
   is_active: true,
   cpt_code: '71045',

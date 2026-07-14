@@ -98,7 +98,6 @@ describe('Imaging Zod Schemas', () => {
       modality: 'XR',
       body_region: 'CHEST',
       cost: 1500,
-      sha_claimable: true,
       available_in_house: true,
       is_active: true,
     };
@@ -134,7 +133,6 @@ describe('Imaging Zod Schemas', () => {
       modality: 'XR',
       body_region: 'CHEST',
       cost: 1500,
-      sha_claimable: true,
       available_in_house: true,
       is_active: true,
       radlex_code: 'RID12345',
@@ -267,7 +265,6 @@ describe('Imaging Zod Schemas', () => {
             modality: 'XR',
             body_region: 'CHEST',
             cost: 1500,
-            sha_claimable: true,
             available_in_house: true,
             is_active: true,
           },

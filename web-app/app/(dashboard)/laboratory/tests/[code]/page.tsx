@@ -84,7 +84,6 @@ const editSchema = z.object({
   normal_range_child: z.string().optional(),
   result_options: z.string().optional(), // comma-separated, parsed before submit
   cost: z.coerce.number().min(0, 'Cost must be positive'),
-  sha_claimable: z.boolean(),
   turnaround_hours: z.coerce.number().min(1).optional(),
   requires_fasting: z.boolean(),
   requires_clinical_signoff: z.boolean(),
@@ -134,7 +133,6 @@ export default function TestCatalogDetailPage() {
       specimen_type: '',
       result_type: 'NUMERIC',
       cost: 0,
-      sha_claimable: true,
       turnaround_hours: 24,
       requires_fasting: false,
       requires_clinical_signoff: false,
@@ -159,7 +157,6 @@ export default function TestCatalogDetailPage() {
       normal_range_child: test.normal_range_child || '',
       result_options: test.result_options?.join(', ') || '',
       cost: test.cost,
-      sha_claimable: test.sha_claimable,
       turnaround_hours: test.turnaround_hours || 24,
       requires_fasting: test.requires_fasting,
       requires_clinical_signoff: test.requires_clinical_signoff,
@@ -255,7 +252,6 @@ export default function TestCatalogDetailPage() {
           <Badge variant={test.is_active ? 'default' : 'secondary'}>
             {test.is_active ? 'Active' : 'Inactive'}
           </Badge>
-          {test.sha_claimable && <Badge variant="outline">SHA Claimable</Badge>}
           {test.requires_fasting && <Badge variant="outline">Fasting Required</Badge>}
           {test.requires_clinical_signoff && (
             <Badge variant="outline">Pathologist Sign-off</Badge>
@@ -494,7 +490,7 @@ export default function TestCatalogDetailPage() {
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <CardTitle className="text-base">Billing & Availability</CardTitle>
-                  <HelpPopover content="Configure pricing, SHA claimability, and facility availability." />
+                  <HelpPopover content="Configure pricing and facility availability." />
                 </div>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -534,21 +530,6 @@ export default function TestCatalogDetailPage() {
                         <Input placeholder="Lab name if external" {...field} />
                       </FormControl>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="sha_claimable"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center gap-2 space-y-0 pt-2">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormLabel className="font-normal">SHA Claimable</FormLabel>
                     </FormItem>
                   )}
                 />
@@ -793,12 +774,6 @@ export default function TestCatalogDetailPage() {
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Cost</p>
                   <p className="font-medium text-lg">{formatCurrency(test.cost)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">SHA Claimable</p>
-                  <Badge variant={test.sha_claimable ? 'default' : 'secondary'}>
-                    {test.sha_claimable ? 'Yes' : 'No'}
-                  </Badge>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">In-House</p>

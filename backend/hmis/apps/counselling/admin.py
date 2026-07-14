@@ -18,11 +18,10 @@ class CounsellingTypeAdmin(admin.ModelAdmin):
         "name",
         "category",
         "cost_per_session",
-        "sha_claimable",
         "requires_privacy",
         "is_active",
     ]
-    list_filter = ["category", "sha_claimable", "requires_privacy", "is_active"]
+    list_filter = ["category", "requires_privacy", "is_active"]
     search_fields = ["code", "name", "description"]
     ordering = ["category", "name"]
     readonly_fields = ["created_at", "updated_at"]
@@ -40,8 +39,8 @@ class CounsellingTypeAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "Pricing & SHA",
-            {"fields": ["cost_per_session", "sha_claimable", "sha_intervention_code"]},
+            "Pricing & Billing",
+            {"fields": ["cost_per_session", "sha_intervention_code"]},
         ),
         (
             "Requirements",

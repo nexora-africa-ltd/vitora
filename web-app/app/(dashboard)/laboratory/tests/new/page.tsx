@@ -83,7 +83,6 @@ const createSchema = z.object({
   normal_range_child: z.string().optional(),
   result_options: z.string().optional(),
   cost: z.coerce.number().min(0, 'Cost must be positive'),
-  sha_claimable: z.boolean(),
   turnaround_hours: z.coerce.number().min(1).optional(),
   requires_fasting: z.boolean(),
   requires_clinical_signoff: z.boolean(),
@@ -118,7 +117,6 @@ export default function NewTestCatalogPage() {
       normal_range_child: '',
       result_options: '',
       cost: 0,
-      sha_claimable: true,
       turnaround_hours: 24,
       requires_fasting: false,
       requires_clinical_signoff: false,
@@ -412,7 +410,7 @@ export default function NewTestCatalogPage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <CardTitle className="text-base">Billing & Availability</CardTitle>
-                <HelpPopover content="Configure pricing, SHA claimability, and facility availability. Cost maps to billing invoice items." />
+                <HelpPopover content="Configure pricing and facility availability. Cost maps to billing invoice items." />
               </div>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -452,18 +450,6 @@ export default function NewTestCatalogPage() {
                       <Input placeholder="Lab name if external" {...field} />
                     </FormControl>
                     <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="sha_claimable"
-                render={({ field }) => (
-                  <FormItem className="flex items-center gap-2 space-y-0 pt-2">
-                    <FormControl>
-                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                    <FormLabel className="font-normal">SHA Claimable</FormLabel>
                   </FormItem>
                 )}
               />

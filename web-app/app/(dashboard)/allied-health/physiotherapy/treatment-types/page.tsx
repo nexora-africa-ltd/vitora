@@ -74,7 +74,6 @@ export default function TreatmentTypesPage() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<PhysiotherapyCategory | ''>('');
   const [isActive, setIsActive] = useState<boolean | ''>('');
-  const [shaClaimable, setShaClaimable] = useState<boolean | ''>('');
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [selectedType, setSelectedType] = useState<PhysiotherapyTreatmentType | null>(null);
@@ -86,7 +85,6 @@ export default function TreatmentTypesPage() {
     ...(search && { search }),
     ...(category && { category }),
     ...(typeof isActive === 'boolean' && { is_active: isActive }),
-    ...(typeof shaClaimable === 'boolean' && { sha_claimable: shaClaimable }),
   };
 
   const { data, isLoading, error } = usePhysioTreatmentTypes(params);
@@ -139,7 +137,7 @@ export default function TreatmentTypesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2">
               <label className="text-sm font-medium">Search</label>
               <div className="relative">
@@ -195,25 +193,6 @@ export default function TreatmentTypesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">SHA Claimable</label>
-              <Select
-                value={typeof shaClaimable === 'boolean' ? (shaClaimable ? 'true' : 'false') : ''}
-                onValueChange={(v) => {
-                  setShaClaimable(v === '' ? '' : v === 'true');
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All</SelectItem>
-                  <SelectItem value="true">Yes</SelectItem>
-                  <SelectItem value="false">No</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -245,7 +224,6 @@ export default function TreatmentTypesPage() {
                     <TableHead>Category</TableHead>
                     <TableHead>Duration</TableHead>
                     <TableHead>Sessions</TableHead>
-                    <TableHead>SHA</TableHead>
                     <TableHead>Price</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
@@ -262,15 +240,6 @@ export default function TreatmentTypesPage() {
                       <TableCell>{getCategoryBadge(type.category)}</TableCell>
                       <TableCell>{type.typical_duration_minutes} min</TableCell>
                       <TableCell>{type.recommended_sessions}</TableCell>
-                      <TableCell>
-                        {type.sha_claimable ? (
-                          <Badge variant="outline" className="text-green-600 border-green-300">
-                            {type.sha_intervention_code || 'Yes'}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
                       <TableCell>
                         <span className="font-medium">
                           KES {parseFloat(type.cost_per_session).toLocaleString()}
@@ -324,11 +293,6 @@ export default function TreatmentTypesPage() {
                         KES {parseFloat(type.cost_per_session).toLocaleString()}
                       </span>
                       <div className="flex gap-1">
-                        {type.sha_claimable && (
-                          <Badge variant="outline" className="text-green-600 border-green-300 text-xs">
-                            SHA
-                          </Badge>
-                        )}
                         <Badge variant={type.is_active ? 'default' : 'secondary'} className="text-xs">
                           {type.is_active ? 'Active' : 'Inactive'}
                         </Badge>
@@ -422,10 +386,8 @@ export default function TreatmentTypesPage() {
                         KES {parseFloat(selectedType.cost_per_session).toLocaleString()}
                       </div>
                     </div>
-                    {selectedType.sha_claimable && (
-                      <Badge className="bg-green-100 text-green-800">
-                        SHA Claimable: {selectedType.sha_intervention_code}
-                      </Badge>
+                    {selectedType.sha_intervention_code && (
+                      <Badge variant="outline">SHA Code: {selectedType.sha_intervention_code}</Badge>
                     )}
                   </div>
                 </div>

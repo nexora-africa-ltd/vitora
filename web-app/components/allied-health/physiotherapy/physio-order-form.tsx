@@ -52,7 +52,6 @@ import {
   AlertCircle,
   Check,
   ChevronsUpDown,
-  Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -550,12 +549,6 @@ export function PhysioOrderForm({
               {/* Treatment Type Info (SHA Claimable & Cost) */}
               {selectedTreatmentType && (
                 <div className="flex flex-wrap gap-2 items-center">
-                  {selectedTreatmentType.sha_claimable && (
-                    <Badge variant="secondary" className="gap-1">
-                      <Shield className="h-3 w-3" />
-                      SHA Claimable
-                    </Badge>
-                  )}
                   <Badge variant="outline">
                     KES {Number(selectedTreatmentType.cost_per_session).toLocaleString()}/session
                   </Badge>

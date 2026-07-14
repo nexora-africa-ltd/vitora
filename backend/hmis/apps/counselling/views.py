@@ -40,13 +40,12 @@ class CounsellingTypeFilter(django_filters.FilterSet):
     """Filter for CounsellingType."""
 
     category = django_filters.CharFilter(lookup_expr="iexact")
-    sha_claimable = django_filters.BooleanFilter()
     is_active = django_filters.BooleanFilter()
     requires_privacy = django_filters.BooleanFilter()
 
     class Meta:
         model = CounsellingType
-        fields = ["category", "sha_claimable", "is_active", "requires_privacy"]
+        fields = ["category", "is_active", "requires_privacy"]
 
 
 class CounsellingTypeViewSet(viewsets.ModelViewSet):

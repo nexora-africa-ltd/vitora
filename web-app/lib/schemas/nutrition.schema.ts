@@ -171,7 +171,6 @@ export const NutritionConsultationSchema = z.object({
   age: z.number().nullable().optional(),
   diet_plan_count: z.number().optional(),
   // SHA
-  sha_claimable: z.boolean(),
   sha_intervention_code: z.string(),
   invoice: z.number().nullable(),
   // Timestamps

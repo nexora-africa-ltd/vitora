@@ -34,8 +34,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Search,
-  CheckCircle2,
-  XCircle,
   DollarSign,
   Plus,
   MoreHorizontal,
@@ -102,7 +100,6 @@ export default function ImagingProceduresCatalogPage() {
       modality: 'XR',
       body_region: 'CHEST',
       cost: 0,
-      sha_claimable: true,
       available_in_house: true,
       requires_contrast: false,
       requires_sedation: false,
@@ -120,7 +117,6 @@ export default function ImagingProceduresCatalogPage() {
       modality: proc.modality,
       body_region: proc.body_region,
       cost: Number(proc.cost),
-      sha_claimable: proc.sha_claimable,
       available_in_house: proc.available_in_house,
     });
     setDialogOpen(true);
@@ -337,23 +333,6 @@ export default function ImagingProceduresCatalogPage() {
                   ),
                 },
                 {
-                  key: 'sha_claimable',
-                  header: 'SHA',
-                  sortable: true,
-                  cell: (item: ImagingProcedure) =>
-                    item.sha_claimable ? (
-                      <Badge variant="outline" className="text-emerald-700 border-emerald-300 dark:text-emerald-400 dark:border-emerald-700 shrink-0 w-fit">
-                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                        Claimable
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-muted-foreground shrink-0 w-fit">
-                        <XCircle className="h-3 w-3 mr-1" />
-                        N/A
-                      </Badge>
-                    ),
-                },
-                {
                   key: 'actions',
                   header: '',
                   cell: (item: ImagingProcedure) => canManageCatalog ? (
@@ -393,17 +372,12 @@ export default function ImagingProceduresCatalogPage() {
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="text-sm font-medium">
-                          KES {Number(item.cost).toLocaleString()}
-                        </span>
-                        {item.sha_claimable && (
-                          <Badge variant="outline" className="text-emerald-700 border-emerald-300 dark:text-emerald-400 text-xs">
-                            SHA
-                          </Badge>
-                        )}
-                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-sm font-medium">
+                            KES {Number(item.cost).toLocaleString()}
+                          </span>
+                        </div>
                       {canManageCatalog && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -552,14 +526,6 @@ export default function ImagingProceduresCatalogPage() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-6 pt-2">
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="sha_claimable"
-                    checked={formData.sha_claimable ?? true}
-                    onCheckedChange={(v) => setFormData({ ...formData, sha_claimable: v })}
-                  />
-                  <Label htmlFor="sha_claimable" className="text-sm">SHA Claimable</Label>
-                </div>
                 <div className="flex items-center gap-2">
                   <Switch
                     id="available_in_house"

@@ -157,7 +157,6 @@ describe('Imaging Contract Tests', () => {
         'modality',
         'body_region',
         'cost',
-        'sha_claimable',
         'available_in_house',
         'is_active',
       ];
