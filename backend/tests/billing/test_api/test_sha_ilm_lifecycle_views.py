@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 from io import BytesIO
 from unittest.mock import patch
 
@@ -157,6 +158,116 @@ class TestOtpWhitelistRequestEndpoint:
             assert r.status_code == 201
             assert r.data["record_id"] == 99
 
+    def test_parses_stringified_attachments_in_multipart(self, sha_client):
+        with patch(LF_SVC) as M:
+            M.return_value.request_otp_whitelist.return_value = _ok({"guid": "wh-1"}, record_id=99)
+            uploaded = SimpleUploadedFile("support.pdf", b"hello", content_type="application/pdf")
+            r = sha_client.post(
+                self.URL,
+                {
+                    "beneficiary_cr_id": "CR-1",
+                    "facility_fr_code": "FR-1",
+                    "biometric_attempts": "3",
+                    "attachments": json.dumps(
+                        [
+                            {
+                                "document_title": "Support Doc",
+                                "document_type": "SUPPORT_DOCUMENT",
+                                "file_field_name": "attachments_file_blob",
+                            }
+                        ]
+                    ),
+                    "attachments_file_blob": uploaded,
+                },
+                format="multipart",
+            )
+            assert r.status_code == 201
+
+            args = M.return_value.request_otp_whitelist.call_args.kwargs
+            assert args["params"].attachments
+            assert args["params"].attachments[0].file_field_name == "attachments_file_blob"
+            assert args["files"]
+            assert args["files"][0].field_name == "attachments_file_blob"
+
+    def test_rejects_invalid_attachment_document_type(self, sha_client):
+        with patch(LF_SVC) as M:
+            uploaded = SimpleUploadedFile("support.pdf", b"hello", content_type="application/pdf")
+            r = sha_client.post(
+                self.URL,
+                {
+                    "beneficiary_cr_id": "CR-1",
+                    "facility_fr_code": "FR-1",
+                    "biometric_attempts": "3",
+                    "attachments": json.dumps(
+                        [
+                            {
+                                "document_title": "Support Doc",
+                                "document_type": "MEDICAL_REPORT",
+                                "file_field_name": "attachments_file_blob",
+                            }
+                        ]
+                    ),
+                    "attachments_file_blob": uploaded,
+                },
+                format="multipart",
+            )
+            assert r.status_code == 400
+            assert "document_type" in str(r.data.get("error", ""))
+            M.return_value.request_otp_whitelist.assert_not_called()
+
+    def test_rejects_invalid_attachment_file_type(self, sha_client):
+        with patch(LF_SVC) as M:
+            uploaded = SimpleUploadedFile(
+                "support.exe", b"hello", content_type="application/octet-stream"
+            )
+            r = sha_client.post(
+                self.URL,
+                {
+                    "beneficiary_cr_id": "CR-1",
+                    "facility_fr_code": "FR-1",
+                    "biometric_attempts": "3",
+                    "attachments": json.dumps(
+                        [
+                            {
+                                "document_title": "Support Doc",
+                                "document_type": "SUPPORT_DOCUMENT",
+                                "file_field_name": "attachments_file_blob",
+                            }
+                        ]
+                    ),
+                    "attachments_file_blob": uploaded,
+                },
+                format="multipart",
+            )
+            assert r.status_code == 400
+            assert "extension" in str(r.data.get("error", "")).lower()
+            M.return_value.request_otp_whitelist.assert_not_called()
+
+    def test_records_local_pending_when_dha_reports_existing_pending(
+        self, sha_client, sample_facility
+    ):
+        with patch(LF_SVC) as M:
+            M.return_value.request_otp_whitelist.side_effect = DHAValidationError(
+                "failed to initiate OTP whitelist request: There is an already existing pending request",
+                status_code=400,
+                response_body={"message": "already pending"},
+            )
+            r = sha_client.post(
+                self.URL,
+                {
+                    "beneficiary_cr_id": "CR-1",
+                    "facility_fr_code": "FR-1",
+                    "biometric_attempts": "3",
+                    "reason_type": "BIOMETRIC_FAILURE",
+                    "reason": "Multiple failed attempts",
+                },
+                format="json",
+            )
+            assert r.status_code == 400
+            row = SHAOtpWhitelistRequest.objects.get(beneficiary_cr_id="CR-1")
+            assert row.status == SHAOtpWhitelistRequest.Status.REQUESTED
+            assert row.facility_id == sample_facility.id
+
 
 @pytest.mark.django_db
 class TestOtpWhitelistCallbackEndpoint:
@@ -170,6 +281,16 @@ class TestOtpWhitelistCallbackEndpoint:
             M.return_value.list_otp_whitelist_status.return_value = _ok({"results": []})
             r = sha_client.get(self.URL, {"beneficiary_cr_id": "CR-1"})
             assert r.status_code == 200
+
+    def test_passes_resolved_active_facility_to_service(self, sha_client, sample_facility):
+        with patch(LF_SVC) as M:
+            M.return_value.list_otp_whitelist_status.return_value = _ok({"results": []})
+            r = sha_client.get(self.URL, {"beneficiary_cr_id": "CR-1"})
+            assert r.status_code == 200
+
+            kwargs = M.return_value.list_otp_whitelist_status.call_args.kwargs
+            assert kwargs["facility"] is not None
+            assert kwargs["facility"].pk == sample_facility.pk
 
 
 # ===========================================================================

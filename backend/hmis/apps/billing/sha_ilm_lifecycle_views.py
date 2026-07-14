@@ -10,7 +10,9 @@ convention used elsewhere in the ILM module.
 from __future__ import annotations
 
 import contextlib
+import json
 import logging
+from pathlib import Path
 from typing import Any
 
 from django.conf import settings
@@ -50,6 +52,25 @@ from hmis.apps.core.permissions import WriteRequiresRolePermission
 from hmis.apps.patients.models import Patient
 
 logger = logging.getLogger(__name__)
+
+OTP_WHITELIST_ALLOWED_DOCUMENT_TYPES = {"SUPPORT_DOCUMENT"}
+OTP_WHITELIST_ALLOWED_FILE_EXTENSIONS = {
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".webp",
+}
+OTP_WHITELIST_ALLOWED_MIME_TYPES = {
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -91,7 +112,16 @@ def _ilm_handle_error(view_name: str, exc: DHAError, *, extra: dict | None = Non
 
 
 def _facility(request):
-    return getattr(request.user, "primary_facility", None)
+    facility = getattr(request, "facility", None)
+    if facility is not None:
+        return facility
+
+    user = getattr(request, "user", None)
+    profile = getattr(user, "staff_profile", None)
+    if profile is not None and getattr(profile, "primary_facility_id", None):
+        return getattr(profile, "primary_facility", None)
+
+    return getattr(user, "primary_facility", None)
 
 
 def _resolve_patient(request) -> Patient | None:
@@ -114,6 +144,51 @@ def _result_to_response(result, *, http_status: int = status.HTTP_200_OK) -> Res
             "correlation_id": getattr(result, "correlation_id", ""),
         },
         status=http_status,
+    )
+
+
+def _is_pending_whitelist_error(exc: DHAError) -> bool:
+    message = str(exc).lower()
+    return (
+        "already existing pending request" in message
+        or "kindly wait for an approval" in message
+        or "already pending request" in message
+    )
+
+
+def _record_pending_whitelist_from_error(
+    request,
+    *,
+    beneficiary_cr_id: str,
+    reason_type: str,
+    reason: str,
+    biometric_attempts: int,
+    response_body: Any,
+) -> None:
+    """Persist a local pending whitelist row when DHA rejects as already pending."""
+    facility = _facility(request)
+    existing = SHAOtpWhitelistRequest.objects.filter(
+        beneficiary_cr_id=beneficiary_cr_id,
+        status=SHAOtpWhitelistRequest.Status.REQUESTED,
+        facility=facility,
+    ).first()
+    if existing:
+        return
+
+    payload = response_body if isinstance(response_body, dict) else {}
+
+    SHAOtpWhitelistRequest.objects.create(
+        patient=_resolve_patient(request),
+        beneficiary_cr_id=beneficiary_cr_id,
+        reason_type=reason_type,
+        reason=reason,
+        biometric_attempts=biometric_attempts,
+        status=SHAOtpWhitelistRequest.Status.REQUESTED,
+        dha_guid="",
+        response_payload=payload,
+        correlation_id="",
+        requested_by=request.user,
+        facility=facility,
     )
 
 
@@ -311,7 +386,11 @@ class IlmOtpWhitelistRequestView(APIView):
             )
         attachments_meta = request.data.get("attachments") or []
         if isinstance(attachments_meta, str):
-            attachments_meta = []  # frontend should send JSON list
+            try:
+                parsed = json.loads(attachments_meta)
+            except (TypeError, ValueError):
+                parsed = []
+            attachments_meta = parsed if isinstance(parsed, list) else []
         attachments = []
         files: list[MultipartFile] = []
         for meta in attachments_meta or []:
@@ -320,15 +399,48 @@ class IlmOtpWhitelistRequestView(APIView):
             field_name = str(meta.get("file_field_name") or "")
             if not field_name:
                 continue
+            document_type = str(meta.get("document_type") or "SUPPORT_DOCUMENT")
+            if document_type not in OTP_WHITELIST_ALLOWED_DOCUMENT_TYPES:
+                return Response(
+                    {
+                        "error": (
+                            "Invalid attachment document_type. Allowed values: "
+                            + ", ".join(sorted(OTP_WHITELIST_ALLOWED_DOCUMENT_TYPES))
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             attachments.append(
                 OtpWhitelistAttachment(
                     document_title=str(meta.get("document_title") or ""),
-                    document_type=str(meta.get("document_type") or "SUPPORT_DOCUMENT"),
+                    document_type=document_type,
                     file_field_name=field_name,
                 )
             )
             uploaded = request.FILES.get(field_name)
             if uploaded is not None:
+                file_ext = Path(str(uploaded.name or "")).suffix.lower()
+                content_type = str(getattr(uploaded, "content_type", "") or "").lower()
+                if file_ext not in OTP_WHITELIST_ALLOWED_FILE_EXTENSIONS:
+                    return Response(
+                        {
+                            "error": (
+                                "Unsupported attachment file extension. Allowed: "
+                                + ", ".join(sorted(OTP_WHITELIST_ALLOWED_FILE_EXTENSIONS))
+                            )
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                if content_type and content_type not in OTP_WHITELIST_ALLOWED_MIME_TYPES:
+                    return Response(
+                        {
+                            "error": (
+                                "Unsupported attachment MIME type. Allowed: "
+                                + ", ".join(sorted(OTP_WHITELIST_ALLOWED_MIME_TYPES))
+                            )
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 files.append(
                     MultipartFile(
                         field_name=field_name,
@@ -361,6 +473,16 @@ class IlmOtpWhitelistRequestView(APIView):
                 user=request.user,
             )
         except DHAError as exc:
+            if _is_pending_whitelist_error(exc):
+                with contextlib.suppress(Exception):
+                    _record_pending_whitelist_from_error(
+                        request,
+                        beneficiary_cr_id=str(beneficiary_cr_id),
+                        reason_type=str(request.data.get("reason_type") or "BIOMETRIC_FAILURE"),
+                        reason=str(request.data.get("reason") or ""),
+                        biometric_attempts=biometric_attempts,
+                        response_body=getattr(exc, "response_body", None),
+                    )
             return _ilm_handle_error("otp_whitelist_request", exc)
         return _result_to_response(result, http_status=status.HTTP_201_CREATED)
 
