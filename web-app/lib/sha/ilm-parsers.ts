@@ -253,26 +253,133 @@ export interface ParsedUtilizationEntry {
   interventionName: string;
   visitCount: number;
   lastVisit: string;
+  periodStart?: string;
+  periodEnd?: string;
+  schemeCode?: string;
+  schemeName?: string;
+  status?: string;
+  benefitCode?: string;
+  benefitName?: string;
+  eligibility?: string;
   remainingQuota?: number;
   totalQuota?: number;
   amountUsed?: number;
   amountRemaining?: number;
   facilityName: string;
+  additionalDetails?: Array<{ key: string; value: string }>;
+}
+
+const UTILIZATION_KNOWN_KEYS = new Set([
+  'interventioncode', 'intervention_code', 'code',
+  'interventionname', 'intervention_name', 'name',
+  'visitcount', 'visit_count', 'count', 'utilisationcount',
+  'lastvisit', 'last_visit', 'lastvisitdate', 'servicedate',
+  'periodstart', 'period_start', 'startdate',
+  'periodend', 'period_end', 'enddate',
+  'schemecode', 'scheme_code',
+  'schemename', 'scheme_name',
+  'status', 'coverage_status', 'coveragestatus',
+  'benefitcode', 'benefit_code',
+  'benefitname', 'benefit_name',
+  'remainingquota', 'remaining_quota', 'remaining',
+  'totalquota', 'total_quota', 'quota', 'limit',
+  'amountused', 'amount_used', 'usedamount',
+  'amountremaining', 'amount_remaining', 'remainingamount',
+  'facilityname', 'facility_name', 'facility',
+]);
+
+function toDisplayValue(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return '';
+}
+
+function eligibilityFromValue(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'boolean') return value ? 'ELIGIBLE' : 'INELIGIBLE';
+  if (typeof value === 'number') {
+    if (value === 1) return 'ELIGIBLE';
+    if (value === 0) return 'INELIGIBLE';
+    return String(value);
+  }
+  if (typeof value === 'string') {
+    const v = value.trim();
+    if (!v) return '';
+    const upper = v.toUpperCase();
+    if (upper === '1' || upper === 'TRUE' || upper === 'ELIGIBLE' || upper === 'ACTIVE') return 'ELIGIBLE';
+    if (upper === '0' || upper === 'FALSE' || upper === 'INELIGIBLE' || upper === 'INACTIVE') return 'INELIGIBLE';
+    return upper;
+  }
+  return '';
+}
+
+function extractAdditionalDetails(item: Record<string, unknown>): Array<{ key: string; value: string }> {
+  const details: Array<{ key: string; value: string }> = [];
+  for (const [rawKey, rawValue] of Object.entries(item)) {
+    const key = rawKey.trim();
+    if (!key) continue;
+    const normalized = key.toLowerCase();
+    if (UTILIZATION_KNOWN_KEYS.has(normalized)) continue;
+    const value = toDisplayValue(rawValue);
+    if (!value) continue;
+    details.push({ key, value });
+    if (details.length >= 8) break;
+  }
+  return details;
+}
+
+function extractComputationalDetails(item: Record<string, unknown>): Array<{ key: string; value: string }> {
+  const computational = (item.computationalDetails ?? item.computational_details) as unknown;
+  if (!computational || typeof computational !== 'object' || Array.isArray(computational)) return [];
+  const details: Array<{ key: string; value: string }> = [];
+  for (const [rawKey, rawValue] of Object.entries(computational as Record<string, unknown>)) {
+    const key = rawKey.trim();
+    if (!key) continue;
+    const value = toDisplayValue(rawValue);
+    if (!value) continue;
+    details.push({ key: `computational.${key}`, value });
+    if (details.length >= 8) break;
+  }
+  return details;
 }
 
 export function parseUtilization(resp: IlmRegistryResponse | null | undefined): ParsedUtilizationEntry[] {
   const items = extractItems<Record<string, unknown>>(resp?.data);
-  return items.map((item) => ({
-    interventionCode: getString(item, 'interventionCode', 'intervention_code', 'code'),
-    interventionName: getString(item, 'interventionName', 'intervention_name', 'name'),
-    visitCount: getNumber(item, 'visitCount', 'visit_count', 'count', 'utilisationCount') ?? 0,
-    lastVisit: getString(item, 'lastVisit', 'last_visit', 'lastVisitDate', 'serviceDate'),
-    remainingQuota: getNumber(item, 'remainingQuota', 'remaining_quota', 'remaining'),
-    totalQuota: getNumber(item, 'totalQuota', 'total_quota', 'quota', 'limit'),
-    amountUsed: getNumber(item, 'amountUsed', 'amount_used', 'usedAmount'),
-    amountRemaining: getNumber(item, 'amountRemaining', 'amount_remaining', 'remainingAmount'),
-    facilityName: getString(item, 'facilityName', 'facility_name', 'facility'),
-  }));
+  return items.map((item) => {
+    const directEligibility = eligibilityFromValue(
+      item.eligibility ?? item.isEligible ?? item.is_eligible ?? item.coverageEligible
+    );
+    const computational = (item.computationalDetails ?? item.computational_details) as
+      | Record<string, unknown>
+      | undefined;
+    const computationalEligibility = eligibilityFromValue(
+      computational?.eligibility ?? computational?.isEligible ?? computational?.is_eligible
+    );
+    return {
+      interventionCode: getString(item, 'interventionCode', 'intervention_code', 'code'),
+      interventionName: getString(item, 'interventionName', 'intervention_name', 'name'),
+      visitCount: getNumber(item, 'visitCount', 'visit_count', 'count', 'utilisationCount') ?? 0,
+      lastVisit: getString(item, 'lastVisit', 'last_visit', 'lastVisitDate', 'serviceDate'),
+      periodStart: getString(item, 'periodStart', 'period_start', 'startDate'),
+      periodEnd: getString(item, 'periodEnd', 'period_end', 'endDate'),
+      schemeCode: getString(item, 'schemeCode', 'scheme_code'),
+      schemeName: getString(item, 'schemeName', 'scheme_name'),
+      status: getString(item, 'status', 'coverage_status', 'coverageStatus'),
+      benefitCode: getString(item, 'benefitCode', 'benefit_code'),
+      benefitName: getString(item, 'benefitName', 'benefit_name'),
+      eligibility: directEligibility || computationalEligibility,
+      remainingQuota: getNumber(item, 'remainingQuota', 'remaining_quota', 'remaining'),
+      totalQuota: getNumber(item, 'totalQuota', 'total_quota', 'quota', 'limit'),
+      amountUsed: getNumber(item, 'amountUsed', 'amount_used', 'usedAmount'),
+      amountRemaining: getNumber(item, 'amountRemaining', 'amount_remaining', 'remainingAmount'),
+      facilityName: getString(item, 'facilityName', 'facility_name', 'facility'),
+      additionalDetails: [
+        ...extractAdditionalDetails(item),
+        ...extractComputationalDetails(item),
+      ],
+    };
+  });
 }
 
 // ============================================================================
