@@ -51,7 +51,7 @@ export const pharmacyApi = {
     });
   },
 
-  async getPrescription(id: number): Promise<Prescription> {
+  async getPrescription(id: string | number): Promise<Prescription> {
     const response = await apiClient.get(`/api/pharmacy/prescriptions/${id}/`);
     return parseResponse(PrescriptionSchema, response.data, {
       context: 'pharmacy.getPrescription',
@@ -65,7 +65,7 @@ export const pharmacyApi = {
     });
   },
 
-  async cancelPrescription(id: number, reason: string): Promise<Prescription> {
+  async cancelPrescription(id: string | number, reason: string): Promise<Prescription> {
     const response = await apiClient.post(`/api/pharmacy/prescriptions/${id}/cancel/`, {
       reason,
     });

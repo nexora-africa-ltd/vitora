@@ -9,9 +9,23 @@ This module provides mixins for:
 2. Transaction-safe operations with row locking
 """
 
+import logging
+
 from django.db import models, transaction
+from django.shortcuts import get_object_or_404
+from prometheus_client import Counter
 from rest_framework import status
 from rest_framework.response import Response
+
+from hmis.apps.core.utils import resolve_model_pk_or_public_id
+
+logger = logging.getLogger(__name__)
+
+PUBLIC_ID_LOOKUP_COUNTER = Counter(
+    "vitora_public_id_lookup",
+    "Count of model lookups resolved by legacy int id or UUID public_id.",
+    ["viewset", "model", "lookup_kind", "method", "view_name", "route"],
+)
 
 
 class IdempotentCreateMixin:
@@ -628,3 +642,87 @@ class ReadOnCreateMixin:
         )
         headers = self.get_success_headers(read_serializer.data)  # type: ignore[attr-defined]
         return Response(read_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+class PublicIdLookupMixin:
+    """Resolve detail routes by either integer PK or UUID `public_id`.
+
+    This supports non-breaking migrations where clients can gradually move from
+    numeric identifiers to public UUID identifiers on the same endpoint.
+    """
+
+    public_id_lookup_field = "public_id"
+
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())  # type: ignore[attr-defined]
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field  # type: ignore[attr-defined]
+        lookup_value = self.kwargs.get(lookup_url_kwarg)
+
+        if lookup_value is None:
+            return super().get_object()
+
+        obj = None
+        lookup_kind = None
+        if isinstance(lookup_value, str):
+            model = queryset.model
+            try:
+                resolved, lookup_kind = resolve_model_pk_or_public_id(
+                    model,
+                    lookup_value,
+                    public_id_field=self.public_id_lookup_field,
+                )
+                obj = get_object_or_404(queryset, pk=resolved.pk)
+            except model.DoesNotExist:
+                obj = None
+
+        if obj is None:
+            return super().get_object()
+
+        if lookup_kind:
+            request = self.request  # type: ignore[attr-defined]
+            endpoint = getattr(request, "path", "")
+            method = getattr(request, "method", "")
+            resolver_match = (
+                getattr(request, "resolver_match", None) if request is not None else None
+            )
+            view_name = getattr(resolver_match, "view_name", "")
+            route = getattr(resolver_match, "route", "")
+
+            PUBLIC_ID_LOOKUP_COUNTER.labels(
+                viewset=self.__class__.__name__,
+                model=obj.__class__.__name__,
+                lookup_kind=lookup_kind,
+                method=method,
+                view_name=view_name,
+                route=route,
+            ).inc()
+            logger.info(
+                "public_id_lookup",
+                extra={
+                    "viewset": self.__class__.__name__,
+                    "model": obj.__class__.__name__,
+                    "lookup_kind": lookup_kind,
+                    "lookup_value": str(lookup_value),
+                    "endpoint": endpoint,
+                    "method": method,
+                    "view_name": view_name,
+                    "route": route,
+                },
+            )
+            if lookup_kind == "int":
+                logger.warning(
+                    "public_id_lookup_deprecation_int",
+                    extra={
+                        "viewset": self.__class__.__name__,
+                        "model": obj.__class__.__name__,
+                        "lookup_kind": lookup_kind,
+                        "lookup_value": str(lookup_value),
+                        "endpoint": endpoint,
+                        "method": method,
+                        "view_name": view_name,
+                        "route": route,
+                    },
+                )
+
+        self.check_object_permissions(self.request, obj)  # type: ignore[attr-defined]
+        return obj

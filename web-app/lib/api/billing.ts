@@ -117,6 +117,8 @@ import type {
   SHATariffItem,
 } from '@/lib/types/billing';
 
+type IdParam = string | number;
+
 // ============================================================================
 // Enum mapping helpers (Web UI <-> Backend)
 // ============================================================================
@@ -227,7 +229,7 @@ async function getInvoices(params?: InvoiceListParams): Promise<PaginatedInvoice
   return parseResponse(PaginatedInvoiceSchema, response.data, { context: 'billingApi.getInvoices' });
 }
 
-async function getInvoice(id: number): Promise<Invoice> {
+async function getInvoice(id: IdParam): Promise<Invoice> {
   const response = await apiClient.get(`/api/billing/invoices/${id}/`);
   return parseResponse(InvoiceSchema, response.data, { context: 'billingApi.getInvoice' });
 }
@@ -238,19 +240,19 @@ async function createInvoice(data: InvoiceCreateData): Promise<Invoice> {
 }
 
 async function updateInvoice(
-  id: number,
+  id: IdParam,
   data: InvoiceUpdateData
 ): Promise<Invoice> {
   const response = await apiClient.patch(`/api/billing/invoices/${id}/`, data);
   return parseResponse(InvoiceSchema, response.data, { context: 'billingApi.updateInvoice' });
 }
 
-async function finalizeInvoice(id: number): Promise<Invoice> {
+async function finalizeInvoice(id: IdParam): Promise<Invoice> {
   const response = await apiClient.post(`/api/billing/invoices/${id}/finalize/`);
   return parseResponse(InvoiceSchema, response.data, { context: 'billingApi.finalizeInvoice' });
 }
 
-async function cancelInvoice(id: number, reason: string): Promise<Invoice> {
+async function cancelInvoice(id: IdParam, reason: string): Promise<Invoice> {
   const response = await apiClient.post(`/api/billing/invoices/${id}/cancel/`, {
     reason,
   });
@@ -258,7 +260,7 @@ async function cancelInvoice(id: number, reason: string): Promise<Invoice> {
 }
 
 async function addInvoiceItem(
-  invoiceId: number,
+  invoiceId: IdParam,
   data: InvoiceItemCreateData
 ): Promise<InvoiceItem> {
   const response = await apiClient.post(
@@ -269,7 +271,7 @@ async function addInvoiceItem(
 }
 
 async function removeInvoiceItem(
-  invoiceId: number,
+  invoiceId: IdParam,
   itemId: number
 ): Promise<void> {
   await apiClient.delete(
@@ -278,7 +280,7 @@ async function removeInvoiceItem(
 }
 
 async function applyDiscount(
-  invoiceId: number,
+  invoiceId: IdParam,
   data: ApplyDiscountData
 ): Promise<Invoice> {
   const response = await apiClient.post(
@@ -310,7 +312,7 @@ async function getProformas(params?: InvoiceListParams): Promise<PaginatedInvoic
  * @param id - Proforma invoice ID
  * @returns The newly created Invoice
  */
-async function convertProforma(id: number): Promise<Invoice> {
+async function convertProforma(id: IdParam): Promise<Invoice> {
   const response = await apiClient.post(
     `/api/billing/invoices/${id}/convert/`
   );
@@ -324,7 +326,7 @@ async function convertProforma(id: number): Promise<Invoice> {
  * @returns The newly created Invoice
  */
 async function convertProformaItems(
-  id: number,
+  id: IdParam,
   itemIds: number[]
 ): Promise<Invoice> {
   const data: ProformaConvertRequest = { item_ids: itemIds };
@@ -342,7 +344,7 @@ async function convertProformaItems(
  * @returns The newly created proforma Invoice
  */
 async function renewProforma(
-  id: number,
+  id: IdParam,
   validityDays?: number
 ): Promise<Invoice> {
   const data: ProformaRenewRequest = validityDays ? { validity_days: validityDays } : {};

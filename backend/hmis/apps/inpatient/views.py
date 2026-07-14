@@ -14,7 +14,12 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import (
+    NestedTenantScopeMixin,
+    PublicIdLookupMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+)
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import WriteRequiresRolePermission, get_client_ip
 from hmis.apps.licensing.permissions import requires_feature
@@ -1394,7 +1399,7 @@ class AdmissionRecommendationViewSet(NestedTenantScopeMixin, viewsets.ModelViewS
         return Response(serializer.data)
 
 
-class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class AdmissionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for Admission model.
 

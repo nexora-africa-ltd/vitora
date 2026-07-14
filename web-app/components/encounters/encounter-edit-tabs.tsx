@@ -132,8 +132,9 @@ export function EncounterEditTabs() {
   const { encounter, isLoading } = useEncounterContext();
   const { getSectionCompletion } = useEncounterEditStore();
 
-  const encounterId = Number(params.id);
-  const completion = getSectionCompletion(encounterId);
+  const encounterRouteId = String(params.id);
+  const encounterStoreId = encounter?.id ?? 0;
+  const completion = getSectionCompletion(encounterStoreId);
 
   // When a clinical template is active, replace Notes with "Template" tab
   // Keep History since it captures allergies/meds that templates typically don't include
@@ -158,7 +159,7 @@ export function EncounterEditTabs() {
       ];
 
   // Base path for tab links
-  const basePath = `/encounters/${encounterId}/edit`;
+  const basePath = `/encounters/${encounterRouteId}/edit`;
 
   // Determine active tab from pathname
   const getActiveTab = () => {

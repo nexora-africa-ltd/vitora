@@ -78,7 +78,10 @@ export function useEncounters(params?: EncounterListParams) {
  * Hook for fetching a single encounter.
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
-export function useEncounter(id: number) {
+export function useEncounter(id: string | number) {
+  const numericId = typeof id === 'number' ? id : Number.parseInt(id, 10);
+  const localId = Number.isFinite(numericId) && numericId > 0 ? numericId : null;
+
   return useOfflineQuery<
     EncounterRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string },
     Encounter
@@ -87,7 +90,7 @@ export function useEncounter(id: number) {
       FROM encounters_encounter e
       LEFT JOIN patients_patient p ON e.patient_id = p.id
       WHERE e.id = ?`,
-    params: [String(id)],
+    params: [String(localId ?? 0)],
     transform: (rows) => {
       if (rows.length === 0) throw new Error(`Encounter ${id} not found`);
       return transformEncounterRow(rows[0]!) as unknown as Encounter;
@@ -100,14 +103,14 @@ export function useEncounter(id: number) {
     // Always use API: local record is missing computed fields (alerts, BMI,
     // assigned_clinician, patient demographics, vitals_summary, etc.)
     forceApi: true,
-    enabled: id > 0,
+    enabled: !!id,
   });
 }
 
 /**
  * Hook for fetching clinician-facing clinical snapshot for an encounter.
  */
-export function useEncounterClinicalSnapshot(encounterId: number) {
+export function useEncounterClinicalSnapshot(encounterId: string | number) {
   return useQuery({
     queryKey: ['encounters', encounterId, 'clinical-snapshot'],
     queryFn: () => encountersApi.getClinicalSnapshot(encounterId),
@@ -119,7 +122,13 @@ export function useEncounterClinicalSnapshot(encounterId: number) {
  * Hook for fetching encounter diagnoses.
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
-export function useEncounterDiagnoses(encounterId: number) {
+export function useEncounterDiagnoses(encounterId: string | number) {
+  const numericEncounterId =
+    typeof encounterId === 'number' ? encounterId : Number.parseInt(encounterId, 10);
+  const localEncounterId = Number.isFinite(numericEncounterId) && numericEncounterId > 0
+    ? numericEncounterId
+    : null;
+
   return useOfflineQuery<
     DiagnosisRow & { id: string; icd10_code_text?: string; icd10_short_description?: string },
     Diagnosis[]
@@ -129,7 +138,7 @@ export function useEncounterDiagnoses(encounterId: number) {
       LEFT JOIN encounters_icd10code i ON d.icd10_code_id = i.id
       WHERE d.encounter_id = ?
       ORDER BY d.created_at`,
-    params: [String(encounterId)],
+    params: [String(localEncounterId ?? 0)],
     transform: (rows) => rows.map(r => transformDiagnosisRow(r) as unknown as Diagnosis),
     queryKey: ['encounters', encounterId, 'diagnoses'],
     queryFn: () => encountersApi.getDiagnoses(encounterId),
@@ -137,7 +146,7 @@ export function useEncounterDiagnoses(encounterId: number) {
       networkMode: 'always',
     },
     forceApi: true,
-    enabled: encounterId > 0,
+    enabled: !!encounterId,
   });
 }
 
@@ -146,13 +155,19 @@ export function useEncounterDiagnoses(encounterId: number) {
  * Reads from local PowerSync SQLite when available, falls back to API.
  * Note: 404 is expected when no treatment plan exists - handled gracefully by returning null.
  */
-export function useEncounterTreatmentPlan(encounterId: number) {
+export function useEncounterTreatmentPlan(encounterId: string | number) {
+  const numericEncounterId =
+    typeof encounterId === 'number' ? encounterId : Number.parseInt(encounterId, 10);
+  const localEncounterId = Number.isFinite(numericEncounterId) && numericEncounterId > 0
+    ? numericEncounterId
+    : null;
+
   return useOfflineQuery<
     TreatmentPlanRow & { id: string },
     TreatmentPlan | null
   >({
     sql: `SELECT * FROM encounters_treatmentplan WHERE encounter_id = ? LIMIT 1`,
-    params: [String(encounterId)],
+    params: [String(localEncounterId ?? 0)],
     transform: (rows) => {
       if (rows.length === 0) return null;
       const local = transformTreatmentPlanRow(rows[0]!);
@@ -181,7 +196,7 @@ export function useEncounterTreatmentPlan(encounterId: number) {
       networkMode: 'always',
     },
     forceApi: true,
-    enabled: encounterId > 0,
+    enabled: !!encounterId,
   });
 }
 
@@ -263,10 +278,13 @@ export function useQuickConsultation() {
 export function useUpdateEncounter() {
   const queryClient = useQueryClient();
 
-  return useOfflineMutation<{ id: number; data: Partial<Encounter> }, Encounter>({
+  return useOfflineMutation<{ id: string | number; data: Partial<Encounter> }, Encounter>({
     table: 'encounters_encounter',
     operation: 'update',
-    getId: (input) => input.id,
+    getId: (input) => {
+      const numericId = typeof input.id === 'number' ? input.id : Number.parseInt(input.id, 10);
+      return Number.isFinite(numericId) && numericId > 0 ? numericId : 0;
+    },
     buildLocalData: ({ data }) => {
       const fields: Record<string, string | number | null> = {};
       if (data.chief_complaint !== undefined) fields.chief_complaint = data.chief_complaint;
@@ -301,7 +319,7 @@ export function useEditChiefComplaint() {
       encounterId,
       data,
     }: {
-      encounterId: number;
+      encounterId: string | number;
       data: {
         chief_complaint: string;
         edit_reason: string;
@@ -336,7 +354,7 @@ export function usePreTriageQueue(params?: PreTriageQueueParams) {
  * Hook for adding a diagnosis to an encounter.
  * Uses local PowerSync write when available, falls back to API.
  */
-export function useAddDiagnosis(encounterId: number) {
+export function useAddDiagnosis(encounterId: string | number) {
   const queryClient = useQueryClient();
 
   return useOfflineMutation<{
@@ -381,7 +399,7 @@ export function useAddDiagnosis(encounterId: number) {
  * Hook for deleting a diagnosis from an encounter.
  * Uses local PowerSync write when available, falls back to API.
  */
-export function useDeleteDiagnosis(encounterId: number) {
+export function useDeleteDiagnosis(encounterId: string | number) {
   const queryClient = useQueryClient();
 
   return useOfflineMutation<number, void>({
@@ -399,7 +417,7 @@ export function useDeleteDiagnosis(encounterId: number) {
  * Hook for updating a diagnosis (e.g., changing certainty after lab results).
  * Uses local PowerSync write when available, falls back to API.
  */
-export function useUpdateDiagnosis(encounterId: number) {
+export function useUpdateDiagnosis(encounterId: string | number) {
   const queryClient = useQueryClient();
 
   return useOfflineMutation<{

@@ -27,6 +27,8 @@ import {
   HptSearchResult,
   HptMapData,
 } from '@/lib/types/pharmacy';
+
+type IdParam = string | number;
 import { PaginatedResponse } from '@/lib/types';
 import { parseResponse } from '@/lib/schemas/validation';
 import { z } from 'zod';
@@ -253,7 +255,7 @@ export const pharmacyApi = {
   /**
    * Get a single prescription by ID.
    */
-  async getPrescription(id: number): Promise<Prescription> {
+  async getPrescription(id: IdParam): Promise<Prescription> {
     const response = await apiClient.get<Prescription>(`/api/pharmacy/prescriptions/${id}/`);
     return parseResponse(PrescriptionSchema, response.data, { context: 'pharmacyApi.getPrescription' });
   },
@@ -283,7 +285,7 @@ export const pharmacyApi = {
   /**
    * Get prescriptions for an admission (inpatient stay).
    */
-  async getAdmissionPrescriptions(admissionId: number): Promise<Prescription[]> {
+  async getAdmissionPrescriptions(admissionId: IdParam): Promise<Prescription[]> {
     const response = await apiClient.get<PaginatedResponse<Prescription>>('/api/pharmacy/prescriptions/', {
       params: { admission: admissionId, page_size: 100 },
     });
@@ -314,7 +316,7 @@ export const pharmacyApi = {
   /**
    * Cancel a prescription.
    */
-  async cancelPrescription(id: number, reason: string): Promise<Prescription> {
+  async cancelPrescription(id: IdParam, reason: string): Promise<Prescription> {
     const response = await apiClient.post<Prescription>(`/api/pharmacy/prescriptions/${id}/cancel/`, {
       reason,
     });
@@ -324,7 +326,7 @@ export const pharmacyApi = {
   /**
    * Update a prescription's discharge fields (dispensing_type, is_discharge_medication).
    */
-  async updatePrescription(id: number, data: { dispensing_type?: 'INTERNAL' | 'EXTERNAL'; is_discharge_medication?: boolean }): Promise<Prescription> {
+  async updatePrescription(id: IdParam, data: { dispensing_type?: 'INTERNAL' | 'EXTERNAL'; is_discharge_medication?: boolean }): Promise<Prescription> {
     const response = await apiClient.patch<Prescription>(`/api/pharmacy/prescriptions/${id}/`, data);
     return parseResponse(PrescriptionSchema, response.data, { context: 'pharmacyApi.updatePrescription' });
   },
@@ -344,7 +346,7 @@ export const pharmacyApi = {
   /**
    * Get a single dispensing record by ID.
    */
-  async getDispensing(id: number): Promise<Dispensing> {
+  async getDispensing(id: IdParam): Promise<Dispensing> {
     const response = await apiClient.get<Dispensing>(`/api/pharmacy/dispensings/${id}/`);
     return parseResponse(DispensingSchema, response.data, { context: 'pharmacyApi.getDispensing' });
   },
@@ -392,7 +394,7 @@ export const pharmacyApi = {
   /**
    * Return dispensed drugs.
    */
-  async returnDispensing(id: number, quantity: number, reason: string): Promise<Dispensing> {
+  async returnDispensing(id: IdParam, quantity: number, reason: string): Promise<Dispensing> {
     const response = await apiClient.post<Dispensing>(`/api/pharmacy/dispensings/${id}/return_stock/`, {
       quantity,
       reason,
@@ -403,7 +405,7 @@ export const pharmacyApi = {
   /**
    * Verify controlled drug dispensing (requires different user than dispenser).
    */
-  async verifyDispensing(id: number): Promise<Dispensing> {
+  async verifyDispensing(id: IdParam): Promise<Dispensing> {
     const response = await apiClient.post<Dispensing>(`/api/pharmacy/dispensings/${id}/verify/`);
     return parseResponse(DispensingSchema, response.data, { context: 'pharmacyApi.verifyDispensing' });
   },

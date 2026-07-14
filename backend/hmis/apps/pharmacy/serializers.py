@@ -381,6 +381,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
         model = Prescription
         fields = [
             "id",
+            "public_id",
             "prescription_number",
             "encounter",
             "admission",
@@ -414,6 +415,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "public_id",
             "prescription_number",
             "prescribed_by",
             "prescriber",
@@ -684,6 +686,7 @@ class DispensingSerializer(serializers.ModelSerializer):
         model = Dispensing
         fields = [
             "id",
+            "public_id",
             "prescription_item",
             "patient",
             "patient_name",
@@ -711,6 +714,7 @@ class DispensingSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "public_id",
             "quantity_returned",
             "dispensed_at",
             "verified_at",

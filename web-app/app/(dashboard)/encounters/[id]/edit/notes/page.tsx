@@ -42,14 +42,15 @@ export default function EncounterEditNotesPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const encounterId = Number(params.id);
+  const encounterRouteId = String(params.id);
 
   const { encounter, isLoading } = useEncounterContext();
+  const encounterStoreId = encounter?.id ?? 0;
   const { getNotes, setNotes, getSession, markSectionComplete, setDirty } = useEncounterEditStore();
   const updateEncounter = useUpdateEncounter();
 
-  const session = getSession(encounterId);
-  const notes = getNotes(encounterId);
+  const session = getSession(encounterStoreId);
+  const notes = getNotes(encounterStoreId);
 
   // Clinical template state
   const [selectedTemplate, setSelectedTemplate] = useState<ClinicalTemplate | null>(null);
@@ -115,9 +116,9 @@ export default function EncounterEditNotesPage() {
     ];
 
     if (notesFields.includes(field)) {
-      setNotes(encounterId, { [field]: value });
+      setNotes(encounterStoreId, { [field]: value });
     }
-  }, [encounterId, setNotes]);
+  }, [encounterStoreId, setNotes]);
 
   // Handle template selection
   const handleTemplateSelect = useCallback(async (template: ClinicalTemplate) => {
@@ -126,14 +127,14 @@ export default function EncounterEditNotesPage() {
     try {
       const { encountersApi } = await import('@/lib/api/encounters');
       const { populated_data } = await encountersApi.populateTemplate(
-        encounterId,
+        encounterRouteId,
         template.id,
         true
       );
 
       const typedData = (populated_data || {}) as Record<string, Record<string, unknown>>;
 
-      setNotes(encounterId, {
+      setNotes(encounterStoreId, {
         clinical_template: template.id,
         clinical_template_data: typedData,
       });
@@ -144,7 +145,7 @@ export default function EncounterEditNotesPage() {
       });
     } catch (error) {
       console.error('Failed to auto-populate template:', error);
-      setNotes(encounterId, {
+      setNotes(encounterStoreId, {
         clinical_template: template.id,
         clinical_template_data: notes?.clinical_template_data || {},
       });
@@ -154,12 +155,12 @@ export default function EncounterEditNotesPage() {
         description: `${template.name} has been applied to this encounter.`,
       });
     }
-  }, [encounterId, setNotes, notes, toast]);
+  }, [encounterRouteId, encounterStoreId, setNotes, notes, toast]);
 
   // Handle template data changes
   const handleTemplateDataChange = useCallback((data: Record<string, Record<string, unknown>>) => {
-    setNotes(encounterId, { clinical_template_data: data });
-  }, [encounterId, setNotes]);
+    setNotes(encounterStoreId, { clinical_template_data: data });
+  }, [encounterStoreId, setNotes]);
 
   // Build auto-save data
   const autoSaveData = useMemo(() => {
@@ -182,8 +183,8 @@ export default function EncounterEditNotesPage() {
   const autoSave = useAutoSave({
     data: autoSaveData,
     onSave: async (data) => {
-      if (!encounterId || !data) return;
-      await updateEncounter.mutateAsync({ id: encounterId, data });
+      if (!encounterRouteId || !data) return;
+      await updateEncounter.mutateAsync({ id: encounterRouteId, data });
     },
     debounceMs: 2000,
     enabled: isEditable && !!notes,
@@ -191,27 +192,27 @@ export default function EncounterEditNotesPage() {
       console.error('Auto-save failed:', error);
     },
     onSuccess: () => {
-      setDirty(encounterId, false);
+      setDirty(encounterStoreId, false);
     },
   });
 
   // Navigate to previous step
   const handlePrev = useCallback(() => {
-    router.push(`/encounters/${encounterId}/edit/history`);
-  }, [encounterId, router]);
+    router.push(`/encounters/${encounterRouteId}/edit/history`);
+  }, [encounterRouteId, router]);
 
   // Navigate to next step
   const handleNext = useCallback(() => {
-    markSectionComplete(encounterId, 'notes');
-    router.push(`/encounters/${encounterId}/edit/diagnosis`);
-  }, [encounterId, markSectionComplete, router]);
+    markSectionComplete(encounterStoreId, 'notes');
+    router.push(`/encounters/${encounterRouteId}/edit/diagnosis`);
+  }, [encounterStoreId, encounterRouteId, markSectionComplete, router]);
 
   // Manual save
   const handleSave = useCallback(async () => {
     if (!autoSaveData) return;
 
     try {
-      await updateEncounter.mutateAsync({ id: encounterId, data: autoSaveData });
+      await updateEncounter.mutateAsync({ id: encounterRouteId, data: autoSaveData });
       autoSave.reset();
       toast({
         title: 'Notes Saved',
@@ -224,7 +225,7 @@ export default function EncounterEditNotesPage() {
         variant: 'destructive',
       });
     }
-  }, [autoSaveData, encounterId, updateEncounter, autoSave, toast]);
+  }, [autoSaveData, encounterRouteId, updateEncounter, autoSave, toast]);
 
   if (isLoading || !session) {
     return null;
@@ -283,10 +284,10 @@ export default function EncounterEditNotesPage() {
                       .join('\n\n')
                   }
                   onAccept={(sections) => {
-                    if (sections.subjective) setNotes(encounterId, { history_of_present_illness: sections.subjective });
-                    if (sections.objective) setNotes(encounterId, { physical_examination: sections.objective });
-                    if (sections.assessment) setNotes(encounterId, { assessment: sections.assessment });
-                    if (sections.plan) setNotes(encounterId, { notes: sections.plan });
+                    if (sections.subjective) setNotes(encounterStoreId, { history_of_present_illness: sections.subjective });
+                    if (sections.objective) setNotes(encounterStoreId, { physical_examination: sections.objective });
+                    if (sections.assessment) setNotes(encounterStoreId, { assessment: sections.assessment });
+                    if (sections.plan) setNotes(encounterStoreId, { notes: sections.plan });
                   }}
                 />
               )}
@@ -325,7 +326,7 @@ export default function EncounterEditNotesPage() {
             />
           ) : (
             <ClinicalTemplateFormContent
-              encounterId={encounterId}
+              encounterId={encounterStoreId}
               encounterType={session.encounter_type}
               chiefComplaint={session.chief_complaint}
               selectedTemplate={selectedTemplate}

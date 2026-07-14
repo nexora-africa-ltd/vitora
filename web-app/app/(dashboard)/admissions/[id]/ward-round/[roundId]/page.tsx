@@ -41,10 +41,11 @@ function getVitalSigns(wardRound: WardRound) {
 export default function WardRoundDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const admissionId = Number(params.id);
+  const admissionRouteId = String(params.id);
   const roundId = Number(params.roundId);
 
-  const { data: admission, isLoading: admissionLoading } = useAdmission(admissionId);
+  const { data: admission, isLoading: admissionLoading } = useAdmission(admissionRouteId);
+  const admissionId = admission?.id ?? 0;
   const { data: wardRound, isLoading: wardRoundLoading } = useWardRound(roundId);
 
   const isLoading = admissionLoading || wardRoundLoading;

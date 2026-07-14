@@ -9,6 +9,7 @@ Sprint 1.1-1.2: Enhanced encounter management with diagnosis and treatment track
 """
 
 import re
+import uuid
 from datetime import date, timedelta
 
 from django.core.exceptions import ValidationError
@@ -142,6 +143,14 @@ class Encounter(HistoryMixin, FacilityScopedModel):
     # =========================================================================
     # Extended Encounter Type Choices (Phase 1 - Consultation Queue)
     # =========================================================================
+    public_id = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        db_index=True,
+        editable=False,
+        help_text="Stable public UUID for external APIs and links.",
+    )
+
     ENCOUNTER_TYPE_CHOICES = [
         # Existing (MANDATORY triage)
         ("OPD", "Outpatient Department"),

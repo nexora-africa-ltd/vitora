@@ -56,9 +56,10 @@ export default function TransferPage() {
   const router = useRouter();
   const user = useUser();
   const { toast } = useToast();
-  const admissionId = Number(params.id);
+  const admissionRouteId = String(params.id);
 
-  const { data: admission, isLoading } = useAdmission(admissionId);
+  const { data: admission, isLoading } = useAdmission(admissionRouteId);
+  const admissionId = admission?.id ?? 0;
   const { data: wards } = useInpatientWards();
   const { data: transfersData } = useTransfers({ admission: admissionId });
   const createTransfer = useCreateTransfer();

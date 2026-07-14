@@ -100,9 +100,10 @@ function EditLayoutLoading() {
 
 function EditLayoutContent({ children }: { children: React.ReactNode }) {
   const params = useParams();
-  const encounterId = Number(params.id);
+  const encounterRouteId = String(params.id);
   const { encounter, isLoading, error } = useEncounterContext();
-  const { data: existingDiagnoses } = useEncounterDiagnoses(encounterId);
+  const encounterStoreId = encounter?.id ?? 0;
+  const { data: existingDiagnoses } = useEncounterDiagnoses(encounterRouteId);
   const { initSession, getSession, setNotes } = useEncounterEditStore();
 
   // Initialize store session when encounter data is available
@@ -110,14 +111,14 @@ function EditLayoutContent({ children }: { children: React.ReactNode }) {
     if (!encounter || isLoading) return;
 
     // Check if session already exists
-    const existingSession = getSession(encounterId);
+    const existingSession = getSession(encounterStoreId);
     if (existingSession) {
       // Sync clinical_template_data if session is stale (was created before template was saved)
       if (
         !existingSession.notes.clinical_template_data &&
         encounter.clinical_template_data
       ) {
-        setNotes(encounterId, {
+          setNotes(encounterStoreId, {
           clinical_template: encounter.clinical_template || null,
           clinical_template_data: encounter.clinical_template_data,
         });
@@ -168,7 +169,7 @@ function EditLayoutContent({ children }: { children: React.ReactNode }) {
     });
 
     // Initialize session with encounter data
-    initSession(encounterId, encounter.patient, {
+    initSession(encounterStoreId, encounter.patient, {
       encounter_type: encounter.encounter_type,
       encounter_date: encounter.encounter_date,
       chief_complaint: encounter.chief_complaint || '',
@@ -197,7 +198,7 @@ function EditLayoutContent({ children }: { children: React.ReactNode }) {
       clinical_template: encounter.clinical_template || null,
       clinical_template_data: encounter.clinical_template_data || null,
     }, diagnoses);
-  }, [encounter, isLoading, encounterId, existingDiagnoses, initSession, getSession, setNotes]);
+  }, [encounter, isLoading, encounterStoreId, existingDiagnoses, initSession, getSession, setNotes]);
 
   if (isLoading) {
     return <EditLayoutLoading />;

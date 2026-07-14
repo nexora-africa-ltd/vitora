@@ -231,9 +231,45 @@ class TestEncounterAPIEndpoints:
         response = auth_client.get(f"/api/encounters/{encounter.id}/")
 
         assert response.status_code == status.HTTP_200_OK
+        assert response.data["public_id"] == str(encounter.public_id)
         assert response.data["encounter_type"] == "OPD"
         assert response.data["chief_complaint"] == "Headache"
         assert response.data["patient_mrn"] == sample_patient.mrn
+
+    def test_retrieve_encounter_by_public_id(self, auth_client, sample_patient, sample_facility):
+        """Test GET /api/encounters/{public_id}/ - Retrieve encounter by UUID."""
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="UUID route retrieval",
+            facility=sample_facility,
+        )
+
+        response = auth_client.get(f"/api/encounters/{encounter.public_id}/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == encounter.id
+        assert response.data["public_id"] == str(encounter.public_id)
+
+    def test_nested_diagnoses_route_accepts_encounter_public_id(
+        self, auth_client, sample_patient, sample_facility
+    ):
+        """Test nested diagnoses route supports encounter UUID path lookups."""
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Nested UUID route",
+            facility=sample_facility,
+        )
+
+        response = auth_client.get(f"/api/encounters/{encounter.public_id}/diagnoses/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["results"] == []
 
     def test_retrieve_nonexistent_encounter(self, auth_client):
         """Test GET /api/encounters/{id}/ - Fail when encounter doesn't exist."""

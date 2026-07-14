@@ -32,12 +32,12 @@ export const patientKeys = {
   lists: () => [...patientKeys.all, 'list'] as const,
   list: (params?: PatientListParams) => [...patientKeys.lists(), params] as const,
   details: () => [...patientKeys.all, 'detail'] as const,
-  detail: (id: number) => [...patientKeys.details(), id] as const,
-  emergencyContacts: (id: number) => [...patientKeys.detail(id), 'emergency-contacts'] as const,
-  encounters: (id: number) => [...patientKeys.detail(id), 'encounters'] as const,
-  qrCode: (id: number) => [...patientKeys.detail(id), 'qr-code'] as const,
+  detail: (id: string | number) => [...patientKeys.details(), id] as const,
+  emergencyContacts: (id: string | number) => [...patientKeys.detail(id), 'emergency-contacts'] as const,
+  encounters: (id: string | number) => [...patientKeys.detail(id), 'encounters'] as const,
+  qrCode: (id: string | number) => [...patientKeys.detail(id), 'qr-code'] as const,
   duplicateCheck: (params: DuplicateCheckParams) => [...patientKeys.all, 'duplicate-check', params] as const,
-  vitalsHistory: (id: number, range: string) => [...patientKeys.detail(id), 'vitals-history', range] as const,
+  vitalsHistory: (id: string | number, range: string) => [...patientKeys.detail(id), 'vitals-history', range] as const,
 };
 
 // =============================================================================
@@ -122,8 +122,9 @@ export function usePatients(params: PatientListParams = {}) {
  * Base data from PowerSync (offline-capable), PII fields from API (online-only).
  */
 export function usePatient(id: number | string) {
-  const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
-  const strId = String(numericId);
+  const parsedId = typeof id === 'string' ? Number.parseInt(id, 10) : id;
+  const numericId = Number.isFinite(parsedId) && parsedId > 0 ? parsedId : null;
+  const localId = numericId !== null ? String(numericId) : null;
 
   const baseResult = useOfflineQuery<
     PatientRow & { id: string; county_name?: string; sub_county_name?: string; ward_name?: string },
@@ -135,23 +136,23 @@ export function usePatient(id: number | string) {
       LEFT JOIN core_subcounty sc ON p.sub_county_id = sc.id
       LEFT JOIN core_ward w ON p.ward_id = w.id
       WHERE p.id = ?`,
-    params: [strId],
+    params: [localId ?? '0'],
     transform: (rows) => {
-      if (rows.length === 0) throw new Error(`Patient ${numericId} not found`);
-      return transformPatientRow(rows[0]!) as unknown as Patient;
-    },
-    queryKey: patientKeys.detail(numericId),
-    queryFn: () => patientsApi.getPatient(numericId),
-    forceApi: !id || isNaN(numericId),
-    enabled: numericId > 0 && !isNaN(numericId),
+        if (rows.length === 0) throw new Error(`Patient ${id} not found`);
+        return transformPatientRow(rows[0]!) as unknown as Patient;
+      },
+    queryKey: patientKeys.detail(id),
+    queryFn: () => patientsApi.getPatient(id),
+    forceApi: numericId === null,
+    enabled: !!id,
   });
 
   // Supplementary PII fetch — only when data came from local SQLite (PII fields
   // like national_id and phone_number are excluded from PowerSync sync-streams).
   const piiResult = useQuery({
-    queryKey: [...patientKeys.detail(numericId), 'pii'],
-    queryFn: () => patientsApi.getPatient(numericId),
-    enabled: baseResult.source === 'local' && !!baseResult.data && !isNaN(numericId),
+    queryKey: [...patientKeys.detail(id), 'pii'],
+    queryFn: () => patientsApi.getPatient(id),
+    enabled: baseResult.source === 'local' && !!baseResult.data,
     staleTime: 5 * 60 * 1000, // Cache PII for 5 minutes to avoid excessive requests
     select: (full) => ({
       national_id: full.national_id,
@@ -174,13 +175,19 @@ export function usePatient(id: number | string) {
  * Hook for fetching patient's emergency contacts.
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
-export function usePatientEmergencyContacts(patientId: number) {
+export function usePatientEmergencyContacts(patientId: string | number) {
+  const numericPatientId =
+    typeof patientId === 'number' ? patientId : Number.parseInt(String(patientId), 10);
+  const localPatientId = Number.isFinite(numericPatientId) && numericPatientId > 0
+    ? numericPatientId
+    : null;
+
   return useOfflineQuery<
     Record<string, unknown> & { id: string },
     EmergencyContact[]
   >({
     sql: 'SELECT * FROM patients_emergencycontact WHERE patient_id = ? ORDER BY created_at',
-    params: [String(patientId)],
+    params: [String(localPatientId ?? 0)],
     transform: (rows) => rows.map(row => ({
       id: parseInt(row.id, 10) || 0,
       full_name: (row.full_name as string) || '',
@@ -192,7 +199,7 @@ export function usePatientEmergencyContacts(patientId: number) {
     } as EmergencyContact)),
     queryKey: patientKeys.emergencyContacts(patientId),
     queryFn: () => patientsApi.getEmergencyContacts(patientId),
-    forceApi: !patientId,
+    forceApi: localPatientId === null,
   });
 }
 
@@ -200,7 +207,13 @@ export function usePatientEmergencyContacts(patientId: number) {
  * Hook for fetching patient's encounters.
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
-export function usePatientEncounters(patientId: number) {
+export function usePatientEncounters(patientId: string | number) {
+  const numericPatientId =
+    typeof patientId === 'number' ? patientId : Number.parseInt(String(patientId), 10);
+  const localPatientId = Number.isFinite(numericPatientId) && numericPatientId > 0
+    ? numericPatientId
+    : null;
+
   return useOfflineQuery<
     Record<string, unknown> & { id: string },
     PatientEncounter[]
@@ -209,7 +222,7 @@ export function usePatientEncounters(patientId: number) {
       FROM encounters_encounter
       WHERE patient_id = ?
       ORDER BY encounter_date DESC`,
-    params: [String(patientId)],
+    params: [String(localPatientId ?? 0)],
     transform: (rows) => rows.map(row => ({
       id: parseInt(row.id, 10) || 0,
       encounter_type: (row.encounter_type as string) || '',
@@ -220,7 +233,7 @@ export function usePatientEncounters(patientId: number) {
     })),
     queryKey: patientKeys.encounters(patientId),
     queryFn: () => patientsApi.getEncounters(patientId),
-    forceApi: !patientId,
+    forceApi: localPatientId === null,
   });
 }
 
@@ -290,13 +303,16 @@ export function useCreatePatient() {
 export function useUpdatePatient() {
   const queryClient = useQueryClient();
 
-  return useOfflineMutation<{ id: number; data: PatientUpdateData }, Patient>({
+  return useOfflineMutation<{ id: string | number; data: PatientUpdateData }, Patient>({
     table: 'patients_patient',
     operation: 'update',
     // Patient updates MUST go through the API directly because
     // PII fields (national_id, phone_number) are excluded from PowerSync schema.
     forceApi: true,
-    getId: (input) => input.id,
+    getId: (input) => {
+      const numericId = typeof input.id === 'number' ? input.id : Number.parseInt(input.id, 10);
+      return Number.isFinite(numericId) && numericId > 0 ? numericId : 0;
+    },
     buildLocalData: ({ data }) => {
       const fields: Record<string, string | number | null> = {};
       if (data.first_name !== undefined) fields.first_name = data.first_name;
@@ -330,10 +346,13 @@ export function useUpdatePatient() {
 export function useDeletePatient() {
   const queryClient = useQueryClient();
 
-  return useOfflineMutation<number, void>({
+  return useOfflineMutation<string | number, void>({
     table: 'patients_patient',
     operation: 'delete',
-    getId: (id) => id,
+    getId: (id) => {
+      const numericId = typeof id === 'number' ? id : Number.parseInt(id, 10);
+      return Number.isFinite(numericId) && numericId > 0 ? numericId : 0;
+    },
     mutationFn: (id) => patientsApi.deletePatient(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: patientKeys.lists() });
@@ -383,7 +402,7 @@ export function useDuplicateCheck(
  * Hook for fetching a patient's QR code.
  * Only fetches when enabled (e.g., when dialog is open).
  */
-export function usePatientQRCode(patientId: number, enabled = false) {
+export function usePatientQRCode(patientId: string | number, enabled = false) {
   return useQuery({
     queryKey: patientKeys.qrCode(patientId),
     queryFn: () => patientsApi.getQRCode(patientId),
@@ -396,7 +415,7 @@ export function usePatientQRCode(patientId: number, enabled = false) {
  * Hook for fetching aggregated vitals history for a patient.
  * Merges data from triage, encounters, and inpatient nursing sources.
  */
-export function usePatientVitalsHistory(patientId: number, range: TimeRange = 'all') {
+export function usePatientVitalsHistory(patientId: string | number, range: TimeRange = 'all') {
   return useQuery({
     queryKey: patientKeys.vitalsHistory(patientId, range),
     queryFn: () => patientsApi.getVitalsHistory(patientId, range),

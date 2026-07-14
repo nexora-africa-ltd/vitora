@@ -99,7 +99,7 @@ export default function KardexPage() {
   const searchParams = useSearchParams();
   const user = useUser();
   const { toast } = useToast();
-  const admissionId = Number(params.id);
+  const admissionRouteId = String(params.id);
   const aiEnabled = useAIEnabled();
   const { data: aiStatus } = useAIStatus();
 
@@ -112,7 +112,8 @@ export default function KardexPage() {
   // Auto-open shift note dialog from URL param
   const action = searchParams.get('action');
 
-  const { data: admission, isLoading: admissionLoading } = useAdmission(admissionId);
+  const { data: admission, isLoading: admissionLoading } = useAdmission(admissionRouteId);
+  const admissionId = admission?.id ?? 0;
   const { data: kardex, isLoading: kardexLoading, refetch } = useKardexByAdmission(admissionId);
   const updateKardex = useUpdateKardex();
   const addShiftNote = useAddKardexShiftNote();

@@ -84,14 +84,15 @@ export default function PrescriptionDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const prescriptionId = parseInt(params.id as string);
+  const prescriptionId = String(params.id);
 
   const { data: prescription, isLoading, error } = usePrescription(prescriptionId);
+  const prescriptionNumericId = prescription?.id ?? 0;
   const cancelMutation = useCancelPrescription();
   const { user } = useAuth();
   const { facility, facilityDetail } = useFacility();
   const { isAdmin } = usePermissions();
-  const commentCount = useCommentCount('prescription', prescriptionId);
+  const commentCount = useCommentCount('prescription', prescriptionNumericId);
 
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -295,7 +296,7 @@ export default function PrescriptionDetailPage() {
               <p className="text-sm text-muted-foreground">Digital Signature</p>
               <SignatureBadge
                 documentType="Prescription"
-                documentId={prescriptionId}
+                documentId={prescriptionNumericId}
                 canSign={true}
               />
             </div>
@@ -408,7 +409,7 @@ export default function PrescriptionDetailPage() {
         <CardContent>
           <CommentThread
             entityType="prescription"
-            entityId={prescriptionId}
+            entityId={prescriptionNumericId}
             currentUserId={user?.id}
             isAdmin={isAdmin}
           />

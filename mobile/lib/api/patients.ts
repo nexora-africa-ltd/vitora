@@ -10,7 +10,7 @@ export const patientsApi = {
     return parseResponse(PaginatedPatientSchema, response.data, { context: 'patients.list' });
   },
 
-  async get(id: number): Promise<Patient> {
+  async get(id: string | number): Promise<Patient> {
     const response = await apiClient.get(`/api/patients/${id}/`);
     return parseResponse(PatientSchema, response.data, { context: 'patients.get' });
   },
@@ -26,7 +26,7 @@ export const patientsApi = {
     return parsed.results;
   },
 
-  async getQRCode(patientId: number): Promise<{ qr_data_uri: string; qr_payload: string; mrn: string; patient_name: string }> {
+  async getQRCode(patientId: string | number): Promise<{ qr_data_uri: string; qr_payload: string; mrn: string; patient_name: string }> {
     const response = await apiClient.get(`/api/patients/${patientId}/qr-code/`);
     return response.data;
   },

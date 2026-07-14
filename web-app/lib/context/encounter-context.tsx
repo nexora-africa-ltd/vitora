@@ -46,7 +46,7 @@ export interface EncounterContextValue {
   /** Whether this is an active (non-completed, non-cancelled) encounter */
   isActiveEncounter: boolean;
   /** The encounter ID being fetched */
-  encounterId: number | null;
+  encounterId: string | number | null;
   /** The patient ID from the encounter */
   patientId: number | null;
   /** Current triage status */
@@ -69,7 +69,7 @@ const EncounterContext = createContext<EncounterContextValue | undefined>(undefi
 
 export interface EncounterProviderProps {
   /** The encounter ID to fetch */
-  encounterId: number | null;
+  encounterId: string | number | null;
   /** Child components that will have access to encounter context */
   children: ReactNode;
 }
@@ -98,7 +98,7 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
   } = useQuery({
     queryKey: ['encounter-context', encounterId],
     queryFn: () => encountersApi.get(encounterId!),
-    enabled: !!encounterId && encounterId > 0,
+    enabled: encounterId !== null && encounterId !== undefined && String(encounterId).length > 0,
     staleTime: 2 * 60 * 1000, // 2 minutes - encounters change more frequently
     gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
   });

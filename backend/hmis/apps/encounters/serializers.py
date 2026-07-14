@@ -374,6 +374,7 @@ class EncounterSerializer(serializers.ModelSerializer):
         model = Encounter
         fields = [
             "id",
+            "public_id",
             "patient",
             "patient_id",
             "patient_mrn",
@@ -478,6 +479,7 @@ class EncounterSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "public_id",
             "patient_id",
             "patient_mrn",
             "patient_name",
@@ -769,6 +771,7 @@ class EncounterListSerializer(serializers.ModelSerializer):
         model = Encounter
         fields = [
             "id",
+            "public_id",
             "patient",
             "patient_mrn",
             "patient_name",

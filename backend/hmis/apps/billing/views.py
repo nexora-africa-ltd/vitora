@@ -52,7 +52,12 @@ from hmis.apps.billing.serializers import (
     ServiceCategorySerializer,
     ServiceSerializer,
 )
-from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import (
+    NestedTenantScopeMixin,
+    PublicIdLookupMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+)
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import RequiresActiveShiftPermission, WriteRequiresRolePermission
 
@@ -97,7 +102,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
         instance.save()
 
 
-class InvoiceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class InvoiceViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for Invoice model.
 

@@ -139,10 +139,11 @@ const ENCOUNTER_QUICK_ACTIONS: AIQuickAction[] = [
 
 export default function EncounterDetailPage() {
   const params = useParams();
-  const encounterId = Number(params.id);
+  const encounterRouteId = String(params.id);
 
   // Use encounter context instead of independent fetch
   const { encounter, isLoading, error } = useEncounterContext();
+  const encounterId = encounter?.id ?? 0;
   const { data: diagnoses } = useEncounterDiagnoses(encounterId);
   const { data: treatmentPlan } = useEncounterTreatmentPlan(encounterId);
   const { data: labOrders } = useEncounterLabOrders(encounterId);
@@ -389,14 +390,14 @@ export default function EncounterDetailPage() {
       {/* Show "Continue Encounter" for active encounters, "View Details" for completed */}
       {encounter.status === 'CLOSED' || encounter.status === 'CANCELLED' ? (
         <Button variant="outline" className="w-full sm:w-auto" asChild>
-          <Link href={`/encounters/${encounter.id}/edit`}>
+          <Link href={`/encounters/${encounterRouteId}/edit`}>
             <Eye className="h-4 w-4 mr-2" />
             View Details
           </Link>
         </Button>
       ) : (
         <Button className="w-full sm:w-auto" asChild>
-          <Link href={`/encounters/${encounter.id}/edit`}>
+          <Link href={`/encounters/${encounterRouteId}/edit`}>
             <PlayCircle className="h-4 w-4 mr-2" />
             Continue Encounter
           </Link>

@@ -522,12 +522,12 @@ urlpatterns = [
     ),
     # Nested route for diagnoses under encounters
     path(
-        "api/encounters/<int:encounter_pk>/diagnoses/",
+        "api/encounters/<str:encounter_pk>/diagnoses/",
         DiagnosisViewSet.as_view({"get": "list", "post": "create"}),
         name="encounter-diagnoses-list",
     ),
     path(
-        "api/encounters/<int:encounter_pk>/diagnoses/<int:pk>/",
+        "api/encounters/<str:encounter_pk>/diagnoses/<int:pk>/",
         DiagnosisViewSet.as_view(
             {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
         ),
@@ -535,19 +535,19 @@ urlpatterns = [
     ),
     # Clinical comments nested under encounters
     path(
-        "api/encounters/<int:encounter_pk>/comments/",
+        "api/encounters/<str:encounter_pk>/comments/",
         ClinicalCommentViewSet.as_view({"get": "list", "post": "create"}),
         name="encounter-comments-list",
     ),
     path(
-        "api/encounters/<int:encounter_pk>/comments/<int:pk>/",
+        "api/encounters/<str:encounter_pk>/comments/<int:pk>/",
         ClinicalCommentViewSet.as_view(
             {"get": "retrieve", "patch": "partial_update", "delete": "destroy"}
         ),
         name="encounter-comments-detail",
     ),
     path(
-        "api/encounters/<int:encounter_pk>/comments/<int:pk>/react/",
+        "api/encounters/<str:encounter_pk>/comments/<int:pk>/react/",
         ClinicalCommentViewSet.as_view({"post": "react"}),
         name="encounter-comments-react",
     ),
@@ -559,24 +559,24 @@ urlpatterns = [
     ),
     # Treatment plan route (single per encounter)
     path(
-        "api/encounters/<int:encounter_pk>/treatment-plan/",
+        "api/encounters/<str:encounter_pk>/treatment-plan/",
         TreatmentPlanView.as_view(),
         name="encounter-treatment-plan",
     ),
     # Apply template to treatment plan
     path(
-        "api/encounters/<int:encounter_pk>/treatment-plan/apply-template/",
+        "api/encounters/<str:encounter_pk>/treatment-plan/apply-template/",
         ApplyTemplateView.as_view(),
         name="encounter-treatment-plan-apply-template",
     ),
     # Medications under treatment plan
     path(
-        "api/encounters/<int:encounter_pk>/treatment-plan/medications/",
+        "api/encounters/<str:encounter_pk>/treatment-plan/medications/",
         MedicationViewSet.as_view({"get": "list", "post": "create"}),
         name="encounter-medications-list",
     ),
     path(
-        "api/encounters/<int:encounter_pk>/treatment-plan/medications/<int:pk>/",
+        "api/encounters/<str:encounter_pk>/treatment-plan/medications/<int:pk>/",
         MedicationViewSet.as_view(
             {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
         ),
@@ -599,7 +599,7 @@ urlpatterns = [
     ),
     # Nested Lab routes under encounters
     path(
-        "api/encounters/<int:encounter_pk>/lab-orders/",
+        "api/encounters/<str:encounter_pk>/lab-orders/",
         EncounterLabOrderViewSet.as_view({"get": "list"}),
         name="encounter-lab-orders-list",
     ),

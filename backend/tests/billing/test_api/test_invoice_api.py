@@ -102,7 +102,16 @@ class TestInvoiceAPIEndpoints:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["id"] == sample_invoice.id
+        assert response.data["public_id"] == str(sample_invoice.public_id)
         assert "items" in response.data or "invoice_items" in response.data
+
+    def test_get_invoice_detail_by_public_id(self, authenticated_client, sample_invoice):
+        """Test GET /api/billing/invoices/{public_id}/ - Get invoice by UUID."""
+        response = authenticated_client.get(f"/api/billing/invoices/{sample_invoice.public_id}/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == sample_invoice.id
+        assert response.data["public_id"] == str(sample_invoice.public_id)
 
     def test_update_draft_invoice(self, authenticated_client, sample_invoice):
         """Test PATCH /api/billing/invoices/{id}/ - Modify draft invoice."""

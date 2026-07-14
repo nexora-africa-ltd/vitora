@@ -208,6 +208,76 @@
           "refId": "A"
         }
       ]
+    },
+    {
+      "title": "Public ID Lookup Rate by Kind (5m)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (lookup_kind) (rate(vitora_public_id_lookup_total[5m]))",
+          "legendFormat": "{{lookup_kind}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Legacy Int Lookup Ratio (%)",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(vitora_public_id_lookup_total{lookup_kind=\"int\"}[5m])) / clamp_min(sum(rate(vitora_public_id_lookup_total[5m])), 0.000001)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Legacy Int Lookups by Viewset (Top 10)",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (viewset) (increase(vitora_public_id_lookup_total{lookup_kind=\"int\"}[$__range])))",
+          "legendFormat": "{{viewset}}",
+          "refId": "A",
+          "format": "table",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "title": "Legacy Int Lookups by Route (Top 10)",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (route) (increase(vitora_public_id_lookup_total{lookup_kind=\"int\"}[$__range])))",
+          "legendFormat": "{{route}}",
+          "refId": "A",
+          "format": "table",
+          "instant": true
+        }
+      ]
     }
   ],
   "schemaVersion": 39,
@@ -218,5 +288,5 @@
   "timezone": "Africa/Nairobi",
   "title": "Vitora HMIS — Django API",
   "uid": "vitora-django-api",
-  "version": 1
+  "version": 2
 }

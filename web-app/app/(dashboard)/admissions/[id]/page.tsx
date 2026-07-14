@@ -170,9 +170,10 @@ export default function AdmissionDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { hasModule } = useFacility();
-  const admissionId = Number(params.id);
+  const admissionRouteId = String(params.id);
 
-  const { data: admission, isLoading, error } = useAdmission(admissionId);
+  const { data: admission, isLoading, error } = useAdmission(admissionRouteId);
+  const admissionId = admission?.id ?? 0;
   const admissionCommentCount = useCommentCount('admission', admissionId);
   const { data: wardRounds, isLoading: wardRoundsLoading } = useAdmissionWardRounds(admissionId);
   const sourceEncounterId = admission?.source_encounter ?? admission?.opd_encounter ?? 0;

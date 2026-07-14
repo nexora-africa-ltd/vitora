@@ -67,13 +67,14 @@ export default function NewWardRoundPage() {
   const searchParams = useSearchParams();
   const user = useUser();
   const { toast } = useToast();
-  const admissionId = Number(params.id);
+  const admissionRouteId = String(params.id);
 
   // Get review request ID and type from URL (when fulfilling a review request)
   const reviewRequestId = searchParams.get('review_request');
   const initialReviewType = searchParams.get('review_type') as ReviewType | null;
 
-  const { data: admission, isLoading } = useAdmission(admissionId);
+  const { data: admission, isLoading } = useAdmission(admissionRouteId);
+  const admissionId = admission?.id ?? 0;
   const createWardRound = useCreateWardRound();
   const ageGroup = useMemo(() => (admission?.patient_age != null ? getAgeGroupFromYears(admission.patient_age) : null), [admission?.patient_age]);
 

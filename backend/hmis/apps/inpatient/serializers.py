@@ -5,6 +5,7 @@ Serializers for the inpatient app.
 
 from rest_framework import serializers
 
+from hmis.apps.core.utils import resolve_model_pk_or_public_id
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.mch.services.postpartum_continuity import (
     route_registration_to_pnc_queue,
@@ -44,6 +45,26 @@ from .models import (
     Ward,
     WardRound,
 )
+
+
+class PublicIdOrPkRelatedField(serializers.PrimaryKeyRelatedField):
+    """Accept either integer PK or UUID `public_id` for related model fields."""
+
+    def to_internal_value(self, data):
+        queryset = self.get_queryset()
+        model = queryset.model if queryset is not None else None
+        if model is None:
+            return super().to_internal_value(data)
+
+        try:
+            instance, _lookup_kind = resolve_model_pk_or_public_id(model, data)
+        except model.DoesNotExist:
+            self.fail("does_not_exist", pk_value=data)
+
+        if queryset is not None and not queryset.filter(pk=instance.pk).exists():
+            self.fail("does_not_exist", pk_value=data)
+
+        return instance
 
 
 class InpatientWardSerializer(serializers.ModelSerializer):
@@ -230,6 +251,7 @@ class AdmissionSerializer(serializers.ModelSerializer):
         model = Admission
         fields = [
             "id",
+            "public_id",
             "admission_number",
             "patient",
             "patient_name",
@@ -269,6 +291,7 @@ class AdmissionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "public_id",
             "admission_number",
             "ipd_encounter",
             "admission_status",
@@ -457,6 +480,7 @@ class DischargeDiagnosisSerializer(serializers.ModelSerializer):
 class DischargeSerializer(serializers.ModelSerializer):
     """Serializer for Discharge model."""
 
+    admission = PublicIdOrPkRelatedField(queryset=Admission.objects.all())
     admission_number = serializers.CharField(source="admission.admission_number", read_only=True)
     patient_name = serializers.SerializerMethodField()
     diagnoses = DischargeDiagnosisSerializer(many=True, required=False)
@@ -805,6 +829,8 @@ class DischargeSerializer(serializers.ModelSerializer):
 class TransferSerializer(serializers.ModelSerializer):
     """Serializer for Transfer model."""
 
+    admission = PublicIdOrPkRelatedField(queryset=Admission.objects.all())
+
     admission_number = serializers.CharField(source="admission.admission_number", read_only=True)
     patient_name = serializers.SerializerMethodField()
     mch_registration = serializers.IntegerField(
@@ -1024,6 +1050,8 @@ class ReviewRequestCreateSerializer(serializers.ModelSerializer):
     Note: requested_by is set by the ViewSet, not in the serializer,
     to allow flexibility in both view-based and serializer-based usage.
     """
+
+    admission = PublicIdOrPkRelatedField(queryset=Admission.objects.all())
 
     class Meta:
         model = ReviewRequest
@@ -1528,6 +1556,8 @@ class TemperatureReadingSerializer(serializers.ModelSerializer):
 class TemperatureReadingCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating TPR readings."""
 
+    admission = PublicIdOrPkRelatedField(queryset=Admission.objects.all())
+
     class Meta:
         model = TemperatureReading
         fields = [
@@ -1586,6 +1616,8 @@ class FluidBalanceSheetSerializer(serializers.ModelSerializer):
 
 class FluidBalanceSheetCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating fluid balance sheets."""
+
+    admission = PublicIdOrPkRelatedField(queryset=Admission.objects.all())
 
     class Meta:
         model = FluidBalanceSheet
@@ -1741,6 +1773,8 @@ class BloodTransfusionSerializer(serializers.ModelSerializer):
 class BloodTransfusionCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating blood transfusion records."""
 
+    admission = PublicIdOrPkRelatedField(queryset=Admission.objects.all())
+
     class Meta:
         model = BloodTransfusionObservation
         fields = [
@@ -1794,6 +1828,8 @@ class BPMonitoringReadingSerializer(serializers.ModelSerializer):
 
 class BPMonitoringReadingCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating BP monitoring readings."""
+
+    admission = PublicIdOrPkRelatedField(queryset=Admission.objects.all())
 
     class Meta:
         model = BPMonitoringReading
@@ -1853,6 +1889,8 @@ class MedicationAdministrationSerializer(serializers.ModelSerializer):
 
 class MedicationAdministrationCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating MAR entries."""
+
+    admission = PublicIdOrPkRelatedField(queryset=Admission.objects.all())
 
     class Meta:
         model = MedicationAdministration

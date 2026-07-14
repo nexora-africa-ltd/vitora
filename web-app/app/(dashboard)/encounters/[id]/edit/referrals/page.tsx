@@ -34,20 +34,21 @@ import { AlertTriangle } from 'lucide-react';
 export default function EncounterEditReferralsPage() {
   const params = useParams();
   const router = useRouter();
-  const encounterId = Number(params.id);
+  const encounterRouteId = String(params.id);
 
   const { encounter, isLoading } = useEncounterContext();
+  const encounterStoreId = encounter?.id ?? 0;
   const { getSession, markSectionComplete } = useEncounterEditStore();
 
-  const session = getSession(encounterId);
+  const session = getSession(encounterStoreId);
 
   // Fetch referral counts
-  const { data: referralsList } = useEncounterReferrals(encounterId);
-  const { data: ahPhysio } = useEncounterPhysioOrders(encounterId);
-  const { data: ahNutrition } = useEncounterNutritionConsultations(encounterId);
-  const { data: ahOT } = useEncounterOTOrders(encounterId);
-  const { data: ahCounselling } = useEncounterCounsellingReferrals(encounterId);
-  const { data: ahSW } = useEncounterSWReferrals(encounterId);
+  const { data: referralsList } = useEncounterReferrals(encounterStoreId);
+  const { data: ahPhysio } = useEncounterPhysioOrders(encounterStoreId);
+  const { data: ahNutrition } = useEncounterNutritionConsultations(encounterStoreId);
+  const { data: ahOT } = useEncounterOTOrders(encounterStoreId);
+  const { data: ahCounselling } = useEncounterCounsellingReferrals(encounterStoreId);
+  const { data: ahSW } = useEncounterSWReferrals(encounterStoreId);
 
   const referralsCount = referralsList?.length || 0;
   const alliedHealthCount =
@@ -62,14 +63,14 @@ export default function EncounterEditReferralsPage() {
 
   // Navigate to previous step
   const handlePrev = useCallback(() => {
-    router.push(`/encounters/${encounterId}/edit/orders`);
-  }, [encounterId, router]);
+    router.push(`/encounters/${encounterRouteId}/edit/orders`);
+  }, [encounterRouteId, router]);
 
   // Navigate to next step
   const handleNext = useCallback(() => {
-    markSectionComplete(encounterId, 'referrals');
-    router.push(`/encounters/${encounterId}/edit/review`);
-  }, [encounterId, markSectionComplete, router]);
+    markSectionComplete(encounterStoreId, 'referrals');
+    router.push(`/encounters/${encounterRouteId}/edit/review`);
+  }, [encounterStoreId, encounterRouteId, markSectionComplete, router]);
 
   if (isLoading || !session) {
     return null;
@@ -101,7 +102,7 @@ export default function EncounterEditReferralsPage() {
       {isEditable && (
         <AlliedHealthReferralActions
           patientId={session.patientId}
-          encounterId={encounterId}
+          encounterId={encounterStoreId}
           disabled={!isEditable}
         />
       )}
@@ -116,7 +117,7 @@ export default function EncounterEditReferralsPage() {
         </CardHeader>
         <CardContent>
           <EncounterReferralsContent
-            encounterId={encounterId}
+            encounterId={encounterStoreId}
             patientId={session.patientId}
             disabled={!isEditable}
           />
@@ -133,7 +134,7 @@ export default function EncounterEditReferralsPage() {
         </CardHeader>
         <CardContent>
           <EncounterAlliedHealthContent
-            encounterId={encounterId}
+            encounterId={encounterStoreId}
             patientId={session.patientId}
             showActions={false}
             disabled={!isEditable}

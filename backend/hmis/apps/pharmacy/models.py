@@ -14,6 +14,7 @@ This module contains all pharmacy-related models including:
 All models follow TDD approach and Kenya healthcare requirements.
 """
 
+import uuid
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
@@ -619,6 +620,14 @@ class Prescription(HistoryMixin, FacilityScopedModel):
         INTERNAL = "INTERNAL", "Internal (Hospital Pharmacy)"
         EXTERNAL = "EXTERNAL", "External (Outside Pharmacy)"
 
+    public_id = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        db_index=True,
+        editable=False,
+        help_text="Stable public UUID for external APIs and links.",
+    )
+
     # Prescription number (auto-generated)
     prescription_number = models.CharField(
         max_length=50,
@@ -871,6 +880,14 @@ class PrescriptionItem(models.Model):
 
 class Dispensing(FacilityScopedModel):
     """Drug dispensing record."""
+
+    public_id = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        db_index=True,
+        editable=False,
+        help_text="Stable public UUID for external APIs and links.",
+    )
 
     prescription_item = models.ForeignKey(
         PrescriptionItem,

@@ -46,14 +46,16 @@ export default function PharmacyDetailScreen() {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const params = useLocalSearchParams<{ id: string }>();
-  const prescriptionId = Number(params.id);
+  const prescriptionLookupId = params.id;
   const [quantities, setQuantities] = useState<Record<number, string>>({});
 
   const prescriptionQuery = useQuery({
-    queryKey: ['prescription', prescriptionId],
-    queryFn: () => pharmacyApi.getPrescription(prescriptionId),
-    enabled: Number.isFinite(prescriptionId),
+    queryKey: ['prescription', prescriptionLookupId],
+    queryFn: () => pharmacyApi.getPrescription(prescriptionLookupId),
+    enabled: Boolean(prescriptionLookupId),
   });
+
+  const prescriptionId = prescriptionQuery.data?.id;
 
   const stockQuery = useQuery({
     queryKey: ['prescription-stock', prescriptionId],
@@ -97,7 +99,7 @@ export default function PharmacyDetailScreen() {
   });
 
   const cancelMutation = useMutation({
-    mutationFn: () => pharmacyApi.cancelPrescription(prescriptionId, 'Cancelled from mobile pharmacy workflow.'),
+    mutationFn: () => pharmacyApi.cancelPrescription(prescriptionLookupId, 'Cancelled from mobile pharmacy workflow.'),
     onSuccess: async (updatedPrescription) => {
       await invalidatePrescriptionQueries(updatedPrescription);
     },

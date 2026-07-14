@@ -14,6 +14,7 @@ This module contains all billing-related models including:
 All models follow TDD approach and Kenya healthcare billing requirements.
 """
 
+import uuid
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
@@ -173,6 +174,13 @@ class Invoice(FacilityScopedModel):
     DEFAULT_PROFORMA_VALIDITY_DAYS = 30
 
     id = models.BigAutoField(primary_key=True)
+    public_id = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        db_index=True,
+        editable=False,
+        help_text="Stable public UUID for external APIs and links.",
+    )
 
     # Invoice identification
     invoice_number = models.CharField(max_length=50, editable=False)

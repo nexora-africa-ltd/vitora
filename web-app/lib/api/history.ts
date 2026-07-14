@@ -22,12 +22,14 @@ import type {
  */
 export type HistoryModelType = 'patients' | 'encounters' | 'prescriptions' | 'diagnoses';
 
+type IdParam = string | number;
+
 export const historyApi = {
   /**
    * Get version history for a patient
    */
   async getPatientHistory(
-    patientId: number,
+    patientId: IdParam,
     params: HistoryParams = {}
   ): Promise<VersionHistoryItem[]> {
     const searchParams = new URLSearchParams();
@@ -44,7 +46,7 @@ export const historyApi = {
   /**
    * Get version count for a patient
    */
-  async getPatientHistoryCount(patientId: number): Promise<VersionCountResponse> {
+  async getPatientHistoryCount(patientId: IdParam): Promise<VersionCountResponse> {
     const response = await apiClient.get<VersionCountResponse>(
       `/api/patients/${patientId}/history-count/`
     );
@@ -58,7 +60,7 @@ export const historyApi = {
    * Get version history for an encounter
    */
   async getEncounterHistory(
-    encounterId: number,
+    encounterId: IdParam,
     params: HistoryParams = {}
   ): Promise<VersionHistoryItem[]> {
     const searchParams = new URLSearchParams();
@@ -75,7 +77,7 @@ export const historyApi = {
   /**
    * Get version count for an encounter
    */
-  async getEncounterHistoryCount(encounterId: number): Promise<VersionCountResponse> {
+  async getEncounterHistoryCount(encounterId: IdParam): Promise<VersionCountResponse> {
     const response = await apiClient.get<VersionCountResponse>(
       `/api/encounters/${encounterId}/history-count/`
     );
@@ -89,7 +91,7 @@ export const historyApi = {
    * Get version history for a prescription
    */
   async getPrescriptionHistory(
-    prescriptionId: number,
+    prescriptionId: IdParam,
     params: HistoryParams = {}
   ): Promise<VersionHistoryItem[]> {
     const searchParams = new URLSearchParams();

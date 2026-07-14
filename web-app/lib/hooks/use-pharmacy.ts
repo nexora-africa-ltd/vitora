@@ -289,14 +289,17 @@ export function usePrescriptions(params?: PrescriptionListParams) {
  * Hook for fetching a single prescription.
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
-export function usePrescription(id: number) {
+export function usePrescription(id: string | number) {
+  const numericId = typeof id === 'number' ? id : Number.parseInt(id, 10);
+  const localId = Number.isFinite(numericId) && numericId > 0 ? numericId : null;
+
   // Force API mode: prescriptions require nested items with medication names
   return useOfflineQuery<PrescriptionJoinedRow, Prescription>({
     sql: `SELECT rx.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
       FROM pharmacy_prescription rx
       LEFT JOIN patients_patient p ON rx.patient_id = p.id
       WHERE rx.id = ?`,
-    params: [String(id)],
+    params: [String(localId ?? 0)],
     transform: (rows) => {
       if (rows.length === 0) throw new Error(`Prescription ${id} not found`);
       return transformPrescriptionRow(rows[0]!) as unknown as Prescription;
@@ -304,7 +307,7 @@ export function usePrescription(id: number) {
     queryKey: ['prescriptions', id],
     queryFn: () => pharmacyApi.getPrescription(id),
     forceApi: true,
-    enabled: id > 0,
+    enabled: !!id,
   });
 }
 
@@ -363,7 +366,7 @@ export function usePendingPrescriptions() {
 /**
  * Hook for fetching prescriptions for an admission (inpatient stay).
  */
-export function useAdmissionPrescriptions(admissionId: number) {
+export function useAdmissionPrescriptions(admissionId: string | number) {
   return useQuery({
     queryKey: ['admissions', admissionId, 'prescriptions'],
     queryFn: () => pharmacyApi.getAdmissionPrescriptions(admissionId),
@@ -419,7 +422,7 @@ export function useCancelPrescription() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+    mutationFn: ({ id, reason }: { id: string | number; reason: string }) =>
       pharmacyApi.cancelPrescription(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
@@ -434,7 +437,7 @@ export function useUpdatePrescription() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { dispensing_type?: 'INTERNAL' | 'EXTERNAL'; is_discharge_medication?: boolean } }) =>
+    mutationFn: ({ id, data }: { id: string | number; data: { dispensing_type?: 'INTERNAL' | 'EXTERNAL'; is_discharge_medication?: boolean } }) =>
       pharmacyApi.updatePrescription(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prescriptions'] });

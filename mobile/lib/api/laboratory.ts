@@ -30,7 +30,7 @@ export const laboratoryApi = {
     });
   },
 
-  async listEncounterOrders(encounterId: number): Promise<LabOrder[]> {
+  async listEncounterOrders(encounterId: string | number): Promise<LabOrder[]> {
     const response = await apiClient.get(`/api/encounters/${encounterId}/lab-orders/`, {
       params: { page_size: 50 },
     });

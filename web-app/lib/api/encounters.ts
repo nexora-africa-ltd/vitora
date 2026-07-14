@@ -41,6 +41,8 @@ import {
 import type { ClinicalSnapshot } from '@/lib/types/checkin';
 import { PaginatedResponse } from '@/lib/types';
 
+type IdParam = string | number;
+
 export const encountersApi = {
   /**
    * Get paginated list of encounters.
@@ -55,7 +57,7 @@ export const encountersApi = {
   /**
    * Get a single encounter by ID.
    */
-  async get(id: number): Promise<Encounter> {
+  async get(id: IdParam): Promise<Encounter> {
     const response = await apiClient.get<Encounter>(`/api/encounters/${id}/`);
     return parseResponse(EncounterSchema, response.data, { context: 'encountersApi.get' });
   },
@@ -71,7 +73,7 @@ export const encountersApi = {
   /**
    * Update an encounter.
    */
-  async update(id: number, data: Partial<Encounter>): Promise<Encounter> {
+  async update(id: IdParam, data: Partial<Encounter>): Promise<Encounter> {
     const response = await apiClient.patch<Encounter>(`/api/encounters/${id}/`, data);
     return parseResponse(EncounterSchema, response.data, { context: 'encountersApi.update' });
   },
@@ -80,7 +82,7 @@ export const encountersApi = {
    * Finalize/complete an encounter.
    * Changes status to COMPLETED and records the finalizing user and timestamp.
    */
-  async finalize(id: number): Promise<Encounter> {
+  async finalize(id: IdParam): Promise<Encounter> {
     const response = await apiClient.post<Encounter>(`/api/encounters/${id}/finalize/`);
     return parseResponse(EncounterSchema, response.data, { context: 'encountersApi.finalize' });
   },
@@ -130,7 +132,7 @@ export const encountersApi = {
    * @returns Transition details including previous status and timestamp
    * @throws 400 Bad Request if the transition is invalid
    */
-  async transition(id: number, data: EncounterTransitionRequest): Promise<EncounterTransitionResponse> {
+  async transition(id: IdParam, data: EncounterTransitionRequest): Promise<EncounterTransitionResponse> {
     const response = await apiClient.post<EncounterTransitionResponse>(
       `/api/encounters/${id}/transition/`,
       data
@@ -148,7 +150,7 @@ export const encountersApi = {
    * @param id - The encounter ID
    * @returns List of related encounters
    */
-  async getRelated(id: number): Promise<RelatedEncounter[]> {
+  async getRelated(id: IdParam): Promise<RelatedEncounter[]> {
     const response = await apiClient.get<RelatedEncounter[]>(
       `/api/encounters/${id}/related/`
     );
@@ -164,7 +166,7 @@ export const encountersApi = {
    *
    * This reuses the same response shape as check-in clinical snapshots.
    */
-  async getClinicalSnapshot(id: number): Promise<ClinicalSnapshot> {
+  async getClinicalSnapshot(id: IdParam): Promise<ClinicalSnapshot> {
     const response = await apiClient.get<ClinicalSnapshot>(
       `/api/encounters/${id}/clinical-snapshot/`
     );
@@ -188,7 +190,7 @@ export const encountersApi = {
    * @throws 409 Conflict if already claimed by another clinician
    * @throws 400 Bad Request if encounter status is invalid
    */
-  async claim(id: number): Promise<EncounterClaimResponse> {
+  async claim(id: IdParam): Promise<EncounterClaimResponse> {
     const response = await apiClient.post<EncounterClaimResponse>(
       `/api/encounters/${id}/claim/`
     );
@@ -206,7 +208,7 @@ export const encountersApi = {
    * @throws 403 Forbidden if not the assigned clinician
    * @throws 400 Bad Request if encounter is completed/cancelled
    */
-  async release(id: number): Promise<EncounterReleaseResponse> {
+  async release(id: IdParam): Promise<EncounterReleaseResponse> {
     const response = await apiClient.post<EncounterReleaseResponse>(
       `/api/encounters/${id}/release/`
     );
@@ -251,7 +253,7 @@ export const encountersApi = {
   /**
    * Get diagnoses for an encounter.
    */
-  async getDiagnoses(encounterId: number): Promise<Diagnosis[]> {
+  async getDiagnoses(encounterId: IdParam): Promise<Diagnosis[]> {
     const response = await apiClient.get<PaginatedResponse<Diagnosis>>(
       `/api/encounters/${encounterId}/diagnoses/`
     );
@@ -264,7 +266,7 @@ export const encountersApi = {
   /**
    * Create a diagnosis for an encounter.
    */
-  async createDiagnosis(encounterId: number, data: CreateDiagnosisData): Promise<Diagnosis> {
+  async createDiagnosis(encounterId: IdParam, data: CreateDiagnosisData): Promise<Diagnosis> {
     const response = await apiClient.post<Diagnosis>(
       `/api/encounters/${encounterId}/diagnoses/`,
       data
@@ -275,14 +277,14 @@ export const encountersApi = {
   /**
    * Delete a diagnosis.
    */
-  async deleteDiagnosis(encounterId: number, diagnosisId: number): Promise<void> {
+  async deleteDiagnosis(encounterId: IdParam, diagnosisId: number): Promise<void> {
     await apiClient.delete(`/api/encounters/${encounterId}/diagnoses/${diagnosisId}/`);
   },
 
   /**
    * Update a diagnosis (e.g., change certainty after lab results).
    */
-  async updateDiagnosis(encounterId: number, diagnosisId: number, data: Partial<CreateDiagnosisData>): Promise<Diagnosis> {
+  async updateDiagnosis(encounterId: IdParam, diagnosisId: number, data: Partial<CreateDiagnosisData>): Promise<Diagnosis> {
     const response = await apiClient.patch<Diagnosis>(
       `/api/encounters/${encounterId}/diagnoses/${diagnosisId}/`,
       data
@@ -293,7 +295,7 @@ export const encountersApi = {
   /**
    * Get treatment plan for an encounter.
    */
-  async getTreatmentPlan(encounterId: number): Promise<TreatmentPlan | null> {
+  async getTreatmentPlan(encounterId: IdParam): Promise<TreatmentPlan | null> {
     try {
       const response = await apiClient.get<TreatmentPlan>(
         `/api/encounters/${encounterId}/treatment-plan/`
@@ -331,7 +333,7 @@ export const encountersApi = {
    * Only allowed for triaged encounters. Requires a reason for the edit.
    */
   async editChiefComplaint(
-    encounterId: number,
+    encounterId: IdParam,
     data: {
       chief_complaint: string;
       edit_reason: string;
@@ -354,7 +356,7 @@ export const encountersApi = {
    * Auto-fills template fields with matching encounter vitals and patient demographics.
    */
   async populateTemplate(
-    encounterId: number,
+    encounterId: IdParam,
     templateId: number,
     structureBySection?: boolean
   ): Promise<TemplatePopulateResponse> {
@@ -391,7 +393,7 @@ export const encountersApi = {
   /**
    * List template snapshots (attachments) for an encounter.
    */
-  async listTemplateSnapshots(encounterId: number): Promise<TemplateSnapshot[]> {
+  async listTemplateSnapshots(encounterId: IdParam): Promise<TemplateSnapshot[]> {
     const response = await apiClient.get<TemplateSnapshot[]>(
       `/api/encounters/${encounterId}/template-snapshots/`
     );
@@ -403,7 +405,7 @@ export const encountersApi = {
    * Snapshots are immutable records of completed template assessments.
    */
   async createTemplateSnapshot(
-    encounterId: number,
+    encounterId: IdParam,
     templateId: number,
     templateData: Record<string, unknown>
   ): Promise<TemplateSnapshot> {

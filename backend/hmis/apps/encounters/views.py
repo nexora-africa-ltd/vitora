@@ -15,13 +15,19 @@ from rest_framework.views import APIView
 
 from hmis.apps.checkin.serializers import ClinicalSnapshotSerializer
 from hmis.apps.core.history_views import ModelHistoryMixin
-from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import (
+    NestedTenantScopeMixin,
+    PublicIdLookupMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+)
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import (
     RequiresActiveShiftPermission,
     WriteRequiresRolePermission,
     get_client_ip,
 )
+from hmis.apps.core.utils import resolve_model_pk_or_public_id
 
 from .filters import EncounterFilter
 from .models import (
@@ -57,6 +63,11 @@ from .serializers import (
     TreatmentPlanSerializer,
     TreatmentPlanTemplateSerializer,
 )
+
+
+def resolve_encounter_lookup(lookup_value):
+    """Resolve encounter by integer primary key or UUID public_id."""
+    return resolve_model_pk_or_public_id(Encounter, lookup_value)[0]
 
 
 class ICD10CodeViewSet(viewsets.ReadOnlyModelViewSet):
@@ -173,13 +184,21 @@ class DiagnosisViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         """Filter diagnoses by encounter and tenant."""
         qs = super().get_queryset()
-        encounter_id = self.kwargs.get("encounter_pk")
-        return qs.filter(encounter_id=encounter_id).select_related("icd10_code")
+        encounter_lookup = self.kwargs.get("encounter_pk")
+        try:
+            encounter = resolve_encounter_lookup(encounter_lookup)
+        except Encounter.DoesNotExist:
+            return qs.none()
+        return qs.filter(encounter_id=encounter.id).select_related("icd10_code")
 
     def get_serializer_context(self):
         """Add encounter to serializer context."""
         context = super().get_serializer_context()
-        context["encounter_pk"] = self.kwargs.get("encounter_pk")
+        encounter_lookup = self.kwargs.get("encounter_pk")
+        try:
+            context["encounter_pk"] = resolve_encounter_lookup(encounter_lookup).id
+        except Encounter.DoesNotExist:
+            context["encounter_pk"] = encounter_lookup
         return context
 
     def create(self, request, *args, **kwargs):
@@ -188,7 +207,7 @@ class DiagnosisViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
         # Verify encounter exists
         try:
-            encounter = Encounter.objects.get(pk=encounter_pk)
+            encounter = resolve_encounter_lookup(encounter_pk)
         except Encounter.DoesNotExist:
             return Response(
                 {"detail": "Encounter not found."},
@@ -197,7 +216,7 @@ class DiagnosisViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
         # Add encounter to data
         data = request.data.copy()
-        data["encounter"] = encounter_pk
+        data["encounter"] = encounter.id
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -281,7 +300,12 @@ class DiagnosisViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         return self.update(request, *args, **kwargs)
 
 
-class EncounterViewSet(TenantScopedViewMixin, ModelHistoryMixin, viewsets.ModelViewSet):
+class EncounterViewSet(
+    PublicIdLookupMixin,
+    TenantScopedViewMixin,
+    ModelHistoryMixin,
+    viewsets.ModelViewSet,
+):
     """
     ViewSet for Encounter model.
 
@@ -1666,7 +1690,7 @@ class TreatmentPlanView(APIView):
     def _get_encounter(self, encounter_pk):
         """Get encounter or return 404."""
         try:
-            return Encounter.objects.get(pk=encounter_pk)
+            return resolve_encounter_lookup(encounter_pk)
         except Encounter.DoesNotExist:
             return None
 
@@ -1713,7 +1737,7 @@ class TreatmentPlanView(APIView):
             )
 
         data = request.data.copy()
-        data["encounter"] = encounter_pk
+        data["encounter"] = encounter.id
 
         serializer = TreatmentPlanSerializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -1802,7 +1826,7 @@ class ApplyTemplateView(APIView):
         """Apply template to treatment plan."""
         # Get encounter
         try:
-            encounter = Encounter.objects.get(pk=encounter_pk)
+            encounter = resolve_encounter_lookup(encounter_pk)
         except Encounter.DoesNotExist:
             return Response(
                 {"detail": "Encounter not found."},
@@ -1877,7 +1901,7 @@ class MedicationViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     def _get_treatment_plan(self, encounter_pk):
         """Get treatment plan for encounter."""
         try:
-            encounter = Encounter.objects.get(pk=encounter_pk)
+            encounter = resolve_encounter_lookup(encounter_pk)
             return TreatmentPlan.objects.get(encounter=encounter)
         except (Encounter.DoesNotExist, TreatmentPlan.DoesNotExist):
             return None

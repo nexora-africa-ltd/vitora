@@ -21,6 +21,8 @@ import type { Patient, PatientCreateData, PatientUpdateData, PatientListParams, 
 import type { PaginatedResponse } from '@/lib/types';
 import type { VitalsDataPoint, TimeRange } from '@/components/shared/vitals-trend-chart';
 
+type IdParam = string | number;
+
 export const patientsApi = {
   /**
    * Get paginated list of patients
@@ -54,7 +56,7 @@ export const patientsApi = {
   /**
    * Get a single patient by ID
    */
-  async getPatient(id: number): Promise<Patient> {
+  async getPatient(id: IdParam): Promise<Patient> {
     const response = await apiClient.get<Patient>(`/api/patients/${id}/`);
     return parseResponse(PatientSchema, response.data, {
       context: 'patientsApi.getPatient',
@@ -91,7 +93,7 @@ export const patientsApi = {
   /**
    * Update a patient
    */
-  async updatePatient(id: number, data: PatientUpdateData): Promise<Patient> {
+  async updatePatient(id: IdParam, data: PatientUpdateData): Promise<Patient> {
     const response = await apiClient.patch<Patient>(`/api/patients/${id}/`, data);
     return parseResponse(PatientSchema, response.data, {
       context: 'patientsApi.updatePatient',
@@ -101,14 +103,14 @@ export const patientsApi = {
   /**
    * Delete a patient
    */
-  async deletePatient(id: number): Promise<void> {
+  async deletePatient(id: IdParam): Promise<void> {
     await apiClient.delete(`/api/patients/${id}/`);
   },
 
   /**
    * Get patient's emergency contacts
    */
-  async getEmergencyContacts(patientId: number): Promise<EmergencyContact[]> {
+  async getEmergencyContacts(patientId: IdParam): Promise<EmergencyContact[]> {
     const response = await apiClient.get<EmergencyContact[]>(
       `/api/patients/${patientId}/emergency-contacts/`
     );
@@ -122,7 +124,7 @@ export const patientsApi = {
   /**
    * Get patient's encounters
    */
-  async getEncounters(patientId: number): Promise<PatientEncounter[]> {
+  async getEncounters(patientId: IdParam): Promise<PatientEncounter[]> {
     const response = await apiClient.get<{ results: PatientEncounter[] }>(
       `/api/encounters/?patient=${patientId}`
     );
@@ -195,7 +197,7 @@ export const patientsApi = {
    * Get QR code data URI for a patient (encodes MRN for scanning)
    */
   async getQRCode(
-    id: number
+    id: IdParam
   ): Promise<{ qr_data_uri: string; qr_payload: string; mrn: string; patient_name: string }> {
     const response = await apiClient.get(`/api/patients/${id}/qr-code/`);
     return parseResponse(PatientQRCodeSchema, response.data, {
@@ -208,7 +210,7 @@ export const patientsApi = {
    * (triage, encounters, inpatient nursing).
    */
   async getVitalsHistory(
-    id: number,
+    id: IdParam,
     range: TimeRange = 'all',
   ): Promise<VitalsDataPoint[]> {
     const response = await apiClient.get<VitalsDataPoint[]>(

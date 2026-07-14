@@ -18,6 +18,7 @@ from hmis.apps.core.history_views import ModelHistoryMixin
 from hmis.apps.core.mixins import (
     IdempotentCreateMixin,
     NestedTenantScopeMixin,
+    PublicIdLookupMixin,
     ReadOnCreateMixin,
     TenantScopedViewMixin,
 )
@@ -76,7 +77,11 @@ def _fire_sha_auto_verify(patient_id: int, facility_id: int | None = None) -> No
 
 
 class PatientViewSet(
-    TenantScopedViewMixin, ModelHistoryMixin, IdempotentCreateMixin, viewsets.ModelViewSet
+    PublicIdLookupMixin,
+    TenantScopedViewMixin,
+    ModelHistoryMixin,
+    IdempotentCreateMixin,
+    viewsets.ModelViewSet,
 ):
     tenant_scope = "organization"  # Patients are org-scoped (visible across facilities)
     """

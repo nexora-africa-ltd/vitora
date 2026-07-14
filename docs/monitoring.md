@@ -43,6 +43,7 @@
 | `django_http_responses_body_total_bytes` | Histogram | Response body sizes |
 | `django_db_new_connections_total` | Counter | New DB connections |
 | `django_db_errors_total` | Counter | DB query errors |
+| `vitora_public_id_lookup_total` | Counter | Public ID lookup usage by kind (`int`/`uuid`), viewset, route |
 
 ### Local Development
 
@@ -210,5 +211,8 @@ The pre-provisioned dashboard includes:
 | DB Query Errors | Database error rate |
 | Requests by View (Top 10) | Busiest API endpoints |
 | Request/Response Body Size | p95 payload sizes |
+| Public ID Lookup Rate by Kind | `int` vs `uuid` lookup rate over time |
+| Legacy Int Lookup Ratio (%) | Int lookup percentage (deprecation KPI) |
+| Legacy Int Lookups by Viewset/Route | Top legacy callers for cutoff planning |
 
 To add custom dashboards, drop JSON files into `monitoring/grafana/dashboards/`.

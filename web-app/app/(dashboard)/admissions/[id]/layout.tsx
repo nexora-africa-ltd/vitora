@@ -21,8 +21,8 @@ export default function AdmissionDetailLayout({
   children: React.ReactNode;
 }) {
   const params = useParams();
-  const admissionId = Number(params.id);
-  const { data: admission } = useAdmission(admissionId);
+  const admissionRouteId = String(params.id);
+  const { data: admission } = useAdmission(admissionRouteId);
   const syncFromAdmission = usePatientJourneyStore((s) => s.syncFromAdmission);
 
   // Sync journey stage from admission status whenever it changes

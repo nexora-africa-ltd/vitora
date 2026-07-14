@@ -15,6 +15,7 @@ Also provides:
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count
+from django.http import Http404
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -28,6 +29,7 @@ from hmis.apps.comments.serializers import (
 )
 from hmis.apps.comments.utils import parse_mentions
 from hmis.apps.comments.websockets import broadcast_comment_event
+from hmis.apps.core.utils import resolve_model_pk_or_public_id
 
 User = get_user_model()
 
@@ -56,7 +58,19 @@ class ClinicalCommentViewSet(viewsets.ModelViewSet):
         for kwarg_name, (app_label, model_name) in COMMENTABLE_MODELS.items():
             if kwarg_name in self.kwargs:
                 ct = ContentType.objects.get(app_label=app_label, model=model_name)
-                obj_id = int(self.kwargs[kwarg_name])
+                model_cls = ct.model_class()
+                if model_cls is None:
+                    raise Http404("Comment target model not found.")
+
+                try:
+                    target_obj, _lookup_kind = resolve_model_pk_or_public_id(
+                        model_cls,
+                        self.kwargs[kwarg_name],
+                    )
+                except model_cls.DoesNotExist as exc:
+                    raise Http404("Comment target not found.") from exc
+
+                obj_id = target_obj.pk
                 self._comment_content_type = ct
                 self._comment_object_id = obj_id
                 return ct, obj_id

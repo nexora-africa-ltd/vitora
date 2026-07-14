@@ -160,7 +160,7 @@ export default function EditEncounterScreen() {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const params = useLocalSearchParams<{ id: string }>();
-  const encounterId = Number(params.id);
+  const encounterLookupId = params.id;
   const [encounterForm, setEncounterForm] = useState<EncounterFormState | null>(null);
   const [diagnosisForm, setDiagnosisForm] = useState<DiagnosisFormState>(emptyDiagnosisForm);
   const [treatmentPlanForm, setTreatmentPlanForm] = useState<TreatmentPlanFormState>(emptyTreatmentPlanForm);
@@ -170,28 +170,35 @@ export default function EditEncounterScreen() {
   const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
 
   const encounterQuery = useQuery({
-    queryKey: ['encounter', encounterId],
-    queryFn: () => encountersApi.get(encounterId),
-    enabled: Number.isFinite(encounterId),
+    queryKey: ['encounter', encounterLookupId],
+    queryFn: () => encountersApi.get(encounterLookupId!),
+    enabled: Boolean(encounterLookupId),
   });
 
+  const resolvedEncounterId = encounterQuery.data?.id;
+
   const diagnosesQuery = useQuery({
-    queryKey: ['encounter-diagnoses', encounterId],
-    queryFn: () => encountersApi.getDiagnoses(encounterId),
-    enabled: Number.isFinite(encounterId),
+    queryKey: ['encounter-diagnoses', encounterLookupId],
+    queryFn: () => encountersApi.getDiagnoses(encounterLookupId!),
+    enabled: Boolean(encounterLookupId),
   });
 
   const treatmentPlanQuery = useQuery({
-    queryKey: ['encounter-treatment-plan', encounterId],
-    queryFn: () => encountersApi.getTreatmentPlan(encounterId),
-    enabled: Number.isFinite(encounterId),
+    queryKey: ['encounter-treatment-plan', encounterLookupId],
+    queryFn: () => encountersApi.getTreatmentPlan(encounterLookupId!),
+    enabled: Boolean(encounterLookupId),
   });
 
   useEffect(() => {
     let active = true;
 
     async function hydrateDraft() {
-      const draft = await getEditDraft<EditEncounterDraftState>(encounterId);
+      if (resolvedEncounterId == null) {
+        setIsDraftHydrated(true);
+        return;
+      }
+
+      const draft = await getEditDraft<EditEncounterDraftState>(resolvedEncounterId);
       if (!active) {
         return;
       }
@@ -213,7 +220,7 @@ export default function EditEncounterScreen() {
     return () => {
       active = false;
     };
-  }, [encounterId]);
+  }, [resolvedEncounterId]);
 
   useEffect(() => {
     if (!encounterQuery.data || didRestoreDraft) {
@@ -237,7 +244,11 @@ export default function EditEncounterScreen() {
     }
 
     const timeout = setTimeout(() => {
-      void saveEditDraft(encounterId, {
+      if (resolvedEncounterId == null) {
+        return;
+      }
+
+      void saveEditDraft(resolvedEncounterId, {
         encounterForm,
         diagnosisForm,
         treatmentPlanForm,
@@ -246,7 +257,7 @@ export default function EditEncounterScreen() {
     }, 250);
 
     return () => clearTimeout(timeout);
-  }, [diagnosisForm, encounterForm, encounterId, isDraftHydrated, selectedIcd10Code, treatmentPlanForm]);
+  }, [diagnosisForm, encounterForm, isDraftHydrated, resolvedEncounterId, selectedIcd10Code, treatmentPlanForm]);
 
   const saveEncounterMutation = useMutation({
     mutationFn: async () => {
@@ -254,7 +265,7 @@ export default function EditEncounterScreen() {
         throw new Error('Encounter form is not ready.');
       }
 
-      return encountersApi.update(encounterId, {
+      return encountersApi.update(encounterLookupId!, {
         encounter_type: encounterForm.encounterType,
         encounter_date: encounterForm.encounterDate,
         chief_complaint: encounterForm.chiefComplaint.trim(),
@@ -280,9 +291,11 @@ export default function EditEncounterScreen() {
       });
     },
     onSuccess: async () => {
-      await clearEditDraft(encounterId);
+      if (resolvedEncounterId != null) {
+        await clearEditDraft(resolvedEncounterId);
+      }
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['encounter', encounterId] }),
+        queryClient.invalidateQueries({ queryKey: ['encounter', encounterLookupId] }),
         queryClient.invalidateQueries({ queryKey: ['encounters'] }),
         queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] }),
       ]);
@@ -308,15 +321,15 @@ export default function EditEncounterScreen() {
       }
 
       if (diagnosisForm.id) {
-        return encountersApi.updateDiagnosis(encounterId, diagnosisForm.id, payload);
+        return encountersApi.updateDiagnosis(encounterLookupId!, diagnosisForm.id, payload);
       }
 
-      return encountersApi.createDiagnosis(encounterId, payload);
+      return encountersApi.createDiagnosis(encounterLookupId!, payload);
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['encounter-diagnoses', encounterId] }),
-        queryClient.invalidateQueries({ queryKey: ['encounter', encounterId] }),
+        queryClient.invalidateQueries({ queryKey: ['encounter-diagnoses', encounterLookupId] }),
+        queryClient.invalidateQueries({ queryKey: ['encounter', encounterLookupId] }),
       ]);
       setSelectedIcd10Code(null);
       setDiagnosisForm(emptyDiagnosisForm);
@@ -324,11 +337,11 @@ export default function EditEncounterScreen() {
   });
 
   const deleteDiagnosisMutation = useMutation({
-    mutationFn: (diagnosisId: number) => encountersApi.deleteDiagnosis(encounterId, diagnosisId),
+    mutationFn: (diagnosisId: number) => encountersApi.deleteDiagnosis(encounterLookupId!, diagnosisId),
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['encounter-diagnoses', encounterId] }),
-        queryClient.invalidateQueries({ queryKey: ['encounter', encounterId] }),
+        queryClient.invalidateQueries({ queryKey: ['encounter-diagnoses', encounterLookupId] }),
+        queryClient.invalidateQueries({ queryKey: ['encounter', encounterLookupId] }),
       ]);
     },
   });
@@ -350,13 +363,13 @@ export default function EditEncounterScreen() {
       };
 
       if (treatmentPlanQuery.data) {
-        return encountersApi.updateTreatmentPlan(encounterId, payload);
+        return encountersApi.updateTreatmentPlan(encounterLookupId!, payload);
       }
 
-      return encountersApi.createTreatmentPlan(encounterId, payload);
+      return encountersApi.createTreatmentPlan(encounterLookupId!, payload);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['encounter-treatment-plan', encounterId] });
+      await queryClient.invalidateQueries({ queryKey: ['encounter-treatment-plan', encounterLookupId] });
       Alert.alert('Treatment plan saved', 'Treatment plan changes have been recorded.');
     },
   });
@@ -405,7 +418,9 @@ export default function EditEncounterScreen() {
       return;
     }
 
-    await clearEditDraft(encounterId);
+    if (resolvedEncounterId != null) {
+      await clearEditDraft(resolvedEncounterId);
+    }
     setEncounterForm(buildEncounterFormState(encounterQuery.data));
     setTreatmentPlanForm(buildTreatmentPlanFormState(treatmentPlanQuery.data ?? null));
     setDiagnosisForm(emptyDiagnosisForm);
@@ -599,7 +614,7 @@ export default function EditEncounterScreen() {
       </SectionCard>
 
       <View style={styles.actions}>
-        <AppButton label="Back to encounter" variant="secondary" onPress={() => router.replace(`/encounters/${encounterId}` as never)} />
+        <AppButton label="Back to encounter" variant="secondary" onPress={() => router.replace(`/encounters/${encounterLookupId}` as never)} />
       </View>
     </ScreenContainer>
   );

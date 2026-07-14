@@ -53,14 +53,17 @@ export default function AdmissionDetailScreen() {
   // ── Data queries ──
   const admissionQuery = useQuery({
     queryKey: ['inpatient', 'admission', id],
-    queryFn: () => inpatientApi.getAdmission(Number(id)),
+    queryFn: () => inpatientApi.getAdmission(id),
     enabled: !!id,
   });
 
+  const admission = admissionQuery.data;
+  const admissionId = admission?.id;
+
   const roundsQuery = useQuery({
-    queryKey: ['inpatient', 'ward-rounds', id],
-    queryFn: () => nursingApi.listWardRounds({ admission: Number(id) }),
-    enabled: !!id,
+    queryKey: ['inpatient', 'ward-rounds', admissionId],
+    queryFn: () => nursingApi.listWardRounds({ admission: admissionId! }),
+    enabled: typeof admissionId === 'number',
   });
 
   // ── Discharge form ──
@@ -98,7 +101,7 @@ export default function AdmissionDetailScreen() {
   const transferMutation = useMutation({
     mutationFn: () =>
       inpatientApi.createTransfer({
-        admission: Number(id),
+        admission: admissionId!,
         destination_ward: transferWardId!,
         destination_bed: transferBedId ?? undefined,
         reason: transferReason,
@@ -120,7 +123,7 @@ export default function AdmissionDetailScreen() {
   const dischargeMutation = useMutation({
     mutationFn: () =>
       inpatientApi.createDischarge({
-        admission: Number(id),
+        admission: admissionId!,
         discharge_type: dischargeType,
         discharge_date: new Date().toISOString().slice(0, 10),
         treatment_summary: treatmentSummary,
@@ -139,7 +142,6 @@ export default function AdmissionDetailScreen() {
     },
   });
 
-  const admission = admissionQuery.data;
   const rounds = roundsQuery.data?.results ?? [];
 
   if (admissionQuery.isLoading) {
