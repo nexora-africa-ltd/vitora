@@ -193,11 +193,16 @@ class PatientViewSet(
         with transaction.atomic():
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
+            # Resolve tenant context after DRF authentication has populated request.user.
+            # This is required for token-auth flows where middleware cannot infer tenant.
+            self._resolve_tenant_context()
+            active_facility = getattr(request, "facility", None)
+            tenant_kwargs = self.get_tenant_save_kwargs()
             # Set registered_by to current user + tenant context
             patient = serializer.save(
                 registered_by=request.user,
-                registered_at_facility=getattr(request, "facility", None),
-                **self.get_tenant_save_kwargs(),
+                registered_at_facility=active_facility,
+                **tenant_kwargs,
             )
 
             # Create emergency contact if data provided
