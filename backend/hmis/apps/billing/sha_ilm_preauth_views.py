@@ -84,7 +84,16 @@ def _ilm_handle_error(view_name: str, exc: DHAError, *, extra: dict | None = Non
 
 
 def _facility(request):
-    return getattr(request.user, "primary_facility", None)
+    facility = getattr(request, "facility", None)
+    if facility is not None:
+        return facility
+
+    user = getattr(request, "user", None)
+    profile = getattr(user, "staff_profile", None)
+    if profile is not None and getattr(profile, "primary_facility_id", None):
+        return getattr(profile, "primary_facility", None)
+
+    return getattr(user, "primary_facility", None)
 
 
 def _resolve(model, request, key: str):

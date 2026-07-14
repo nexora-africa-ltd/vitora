@@ -31,7 +31,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
-import { getApiErrorMessage } from '@/lib/api/client';
 import { useSendConsentOTP, useStartVisit } from '@/lib/hooks/use-sha';
 import { useBenefitInterventions } from '@/lib/hooks/use-benefit-interventions';
 import type { InterventionOption } from '@/lib/hooks/use-benefit-interventions';
@@ -39,6 +38,7 @@ import { useFacility } from '@/lib/context/facility-context';
 import { OtpWhitelistRequestSheet, WhitelistStatusBadge } from './otp-whitelist-request-sheet';
 import { ContactPicker } from './contact-picker';
 import type { SHAMember } from '@/lib/types/sha';
+import { extractDHAErrorMessage } from '@/lib/sha/error-parser';
 import { toCrId } from '@/lib/sha/ilm-parsers';
 
 // ============================================================================
@@ -88,37 +88,6 @@ function deriveServiceType(intervention: InterventionOption | null): 'INPATIENT'
   const inpatientPrefixes = ['SHA-07', 'SHA-19', 'SHA-03', 'SHA-13', 'SHA-20'];
   if (inpatientPrefixes.includes(prefix)) return 'INPATIENT';
   return 'OUTPATIENT';
-}
-
-/**
- * Extract a human-readable error message from DHA API errors.
- * DHA errors have nested structures like:
- * { error: "DHA API error (400): failed to start visit for patient: {\"Edi Error\":{\"error\":\"...\"}}" }
- */
-function extractDHAError(err: unknown): string {
-  const raw = getApiErrorMessage(err);
-
-  // Try to extract the inner "Edi Error" message from DHA
-  const ediMatch = raw.match(/["']?Edi Error["']?\s*:\s*\{[^}]*["']?error["']?\s*:\s*["']([^"']+)["']/);
-  if (ediMatch?.[1]) {
-    return ediMatch[1];
-  }
-
-  // Try to extract message after "failed to start visit for patient:"
-  const visitMatch = raw.match(/failed to start visit for patient:\s*(.+)/);
-  if (visitMatch?.[1]) {
-    try {
-      const parsed = JSON.parse(visitMatch[1]);
-      if (parsed?.['Edi Error']?.error) return String(parsed['Edi Error'].error);
-    } catch {
-      // Not JSON — return as-is
-    }
-    return visitMatch[1];
-  }
-
-  // Strip "DHA API error (400): " prefix for cleaner display
-  const cleaned = raw.replace(/^DHA API error \(\d+\):\s*/i, '');
-  return cleaned || raw;
 }
 
 // ============================================================================
@@ -343,7 +312,7 @@ export function SHAConsentStep({
           }, 1000);
         },
         onError: (err: unknown) => {
-          const errorMsg = extractDHAError(err) || 'Failed to send OTP';
+          const errorMsg = extractDHAErrorMessage(err) || 'Failed to send OTP';
           setError(errorMsg);
           onError?.(errorMsg);
         },
@@ -372,7 +341,7 @@ export function SHAConsentStep({
           onComplete?.({ consented: true, consentId: response.id });
         },
         onError: (err: unknown) => {
-          const errorMsg = extractDHAError(err) || 'Failed to verify OTP';
+          const errorMsg = extractDHAErrorMessage(err) || 'Failed to verify OTP';
           setStep('otp_sent');
           setError(errorMsg);
           onError?.(errorMsg);
@@ -446,7 +415,7 @@ export function SHAConsentStep({
       startBiometricPolling(result.auth_guid, result.consent_id!);
     } catch (err: unknown) {
       setStep('ready');
-      const errorMsg = getApiErrorMessage(err) || 'Failed to initiate biometric auth';
+      const errorMsg = extractDHAErrorMessage(err) || 'Failed to initiate biometric auth';
       setError(errorMsg);
       onError?.(errorMsg);
     }
@@ -477,7 +446,7 @@ export function SHAConsentStep({
           onComplete?.({ consented: true, consentId: response.id });
         },
         onError: (err: unknown) => {
-          const errorMsg = extractDHAError(err) || 'Failed to start visit after biometric verification';
+          const errorMsg = extractDHAErrorMessage(err) || 'Failed to start visit after biometric verification';
           setStep('biometric_failed');
           setError(errorMsg);
           onError?.(errorMsg);

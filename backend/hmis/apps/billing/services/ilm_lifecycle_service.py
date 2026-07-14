@@ -346,11 +346,15 @@ class IlmLifecycleService:
         facility: Any = None,
         user: Any = None,
     ) -> IlmLifecycleResult:
+        reason = (params.reason or "").strip()
+        if not reason:
+            reason = f"Reason type: {params.reason_type}"
+
         data: dict[str, Any] = {
             "beneficiary_cr_id": params.beneficiary_cr_id,
             "facility_fr_code": params.facility_fr_code,
             "reason_type": params.reason_type,
-            "reason": params.reason,
+            "reason": reason,
             "biometric_attempts": str(params.biometric_attempts),
         }
         # DHA requires `attachments` metadata even when empty
@@ -421,14 +425,23 @@ class IlmLifecycleService:
         user: Any = None,
     ) -> IlmLifecycleResult:
         params: dict[str, Any] = {"beneficiary_cr_id": beneficiary_cr_id}
+        headers: dict[str, str] = {}
         if facility_fr_code:
+            # Some ILM deployments expect facility_fr_code while others use
+            # facility_id + facility_id_type. Send both for compatibility.
+            params["facility_fr_code"] = facility_fr_code
             params["facility_id"] = facility_fr_code
             params["facility_id_type"] = facility_id_type
+            headers = {
+                "X-Facility-Id": facility_fr_code,
+                "X-Facility-Id-Type": facility_id_type,
+            }
         if guid:
             params["guid"] = guid
         response = self.client.get(
             OTP_WHITELIST_CALLBACK_PATH,
             params=params,
+            headers=headers or None,
             facility=facility,
             user=user,
         )

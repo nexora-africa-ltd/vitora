@@ -150,8 +150,29 @@ class TestOtpWhitelist:
         )
         params = client.get.call_args.kwargs["params"]
         assert params["beneficiary_cr_id"] == "CR-1"
+        assert params["facility_fr_code"] == "FR-1"
         assert params["facility_id"] == "FR-1"
         assert params["facility_id_type"] == "fr-code"
+        headers = client.get.call_args.kwargs["headers"]
+        assert headers["X-Facility-Id"] == "FR-1"
+        assert headers["X-Facility-Id-Type"] == "fr-code"
+
+    def test_request_uses_reason_fallback_when_blank(self, client, sample_patient, sample_facility):
+        client.post.return_value = _resp(200, {"guid": "wh-2"})
+        svc = IlmLifecycleService(client=client)
+        svc.request_otp_whitelist(
+            params=OtpWhitelistParams(
+                beneficiary_cr_id="CR-2",
+                facility_fr_code="FR-1",
+                reason_type="MEDICAL_CONDITION",
+                reason="",
+                biometric_attempts=1,
+            ),
+            patient=sample_patient,
+            facility=sample_facility,
+        )
+        files_arg = client.post.call_args.kwargs["files"]
+        assert files_arg["reason"] == (None, "Reason type: MEDICAL_CONDITION")
 
 
 @pytest.mark.django_db

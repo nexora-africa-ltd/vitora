@@ -13,17 +13,22 @@ import {
   AlertTriangle,
   Search,
   RefreshCw,
+  Plus,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/page-header';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { OtpWhitelistRequestSheet } from '@/components/patients/otp-whitelist-request-sheet';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useFacility } from '@/lib/context/facility-context';
 import { shaApi } from '@/lib/api/sha';
 import type { SHAOtpWhitelistRow } from '@/lib/schemas/sha.schema';
 
@@ -77,7 +82,10 @@ function formatReasonType(type: string): string {
 export default function WhitelistRequestsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [openRequestsOnly, setOpenRequestsOnly] = useState(false);
+  const [isRequestSheetOpen, setIsRequestSheetOpen] = useState(false);
   const { refresh, isRefreshing } = usePageRefresh();
+  const { facilityDetail } = useFacility();
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -112,6 +120,10 @@ export default function WhitelistRequestsPage() {
     queryClient.invalidateQueries({ queryKey: ['sha', 'whitelist-requests'] });
   };
 
+  const handleSubmitted = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['sha', 'whitelist-requests'] });
+  };
+
   return (
     <PullToRefresh onRefresh={handleRefreshAll} isRefreshing={isRefreshing}>
       <div className="space-y-4 sm:space-y-6">
@@ -119,16 +131,25 @@ export default function WhitelistRequestsPage() {
           title="OTP Whitelist Requests"
           helpContent="View and track OTP whitelist requests submitted to DHA. Approved requests allow OTP-based consent for patients whose biometrics cannot be captured."
           actions={
-            <Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={isRefreshing}>
-              <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={() => setIsRequestSheetOpen(true)}>
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Request Whitelist
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={isRefreshing}>
+                <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
           }
         />
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Card className="cursor-pointer" onClick={() => setStatusFilter('')}>
+          <Card className="cursor-pointer" onClick={() => {
+            setStatusFilter('');
+            setOpenRequestsOnly(false);
+          }}>
             <CardContent className="p-3">
               <div className="flex items-center gap-2">
                 <ShieldAlert className="h-4 w-4 text-muted-foreground" />
@@ -139,7 +160,10 @@ export default function WhitelistRequestsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="cursor-pointer" onClick={() => setStatusFilter('requested')}>
+          <Card className="cursor-pointer" onClick={() => {
+            setStatusFilter('requested');
+            setOpenRequestsOnly(true);
+          }}>
             <CardContent className="p-3">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-amber-500" />
@@ -150,7 +174,10 @@ export default function WhitelistRequestsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="cursor-pointer" onClick={() => setStatusFilter('approved')}>
+          <Card className="cursor-pointer" onClick={() => {
+            setStatusFilter('approved');
+            setOpenRequestsOnly(false);
+          }}>
             <CardContent className="p-3">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -161,7 +188,10 @@ export default function WhitelistRequestsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="cursor-pointer" onClick={() => setStatusFilter('rejected')}>
+          <Card className="cursor-pointer" onClick={() => {
+            setStatusFilter('rejected');
+            setOpenRequestsOnly(false);
+          }}>
             <CardContent className="p-3">
               <div className="flex items-center gap-2">
                 <XCircle className="h-4 w-4 text-destructive" />
@@ -174,15 +204,30 @@ export default function WhitelistRequestsPage() {
           </Card>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by CR ID, reason, or GUID..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9"
-          />
+        {/* Search + quick filter */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by CR ID, reason, or GUID..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-9"
+            />
+          </div>
+          <div className="flex items-center gap-2 rounded-md border px-3 h-9">
+            <Switch
+              id="open-requests-only"
+              checked={openRequestsOnly}
+              onCheckedChange={(checked) => {
+                setOpenRequestsOnly(checked);
+                setStatusFilter(checked ? 'requested' : '');
+              }}
+            />
+            <Label htmlFor="open-requests-only" className="text-xs cursor-pointer">
+              Open Requests Only
+            </Label>
+          </div>
         </div>
 
         {/* Table */}
@@ -263,6 +308,14 @@ export default function WhitelistRequestsPage() {
               {getStatusBadge(row.status)}
             </div>
           )}
+        />
+
+        <OtpWhitelistRequestSheet
+          open={isRequestSheetOpen}
+          onOpenChange={setIsRequestSheetOpen}
+          shaNumber=""
+          facilityFrCode={facilityDetail?.sha_facility_code || ''}
+          onSubmitted={handleSubmitted}
         />
       </div>
     </PullToRefresh>

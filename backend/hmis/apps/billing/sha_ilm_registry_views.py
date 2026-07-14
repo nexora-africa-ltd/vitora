@@ -104,7 +104,16 @@ def _resolve_sha_member(request) -> SHAMember | None:
 
 
 def _facility(request):
-    return getattr(request.user, "primary_facility", None)
+    facility = getattr(request, "facility", None)
+    if facility is not None:
+        return facility
+
+    user = getattr(request, "user", None)
+    profile = getattr(user, "staff_profile", None)
+    if profile is not None and getattr(profile, "primary_facility_id", None):
+        return getattr(profile, "primary_facility", None)
+
+    return getattr(user, "primary_facility", None)
 
 
 _CR_NUMBER_RE = re.compile(r"^CR\d+-\d$")

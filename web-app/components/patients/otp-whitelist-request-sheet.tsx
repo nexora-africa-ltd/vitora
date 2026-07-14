@@ -29,7 +29,8 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { shaApi } from '@/lib/api/sha';
-import { getApiErrorMessage } from '@/lib/api/client';
+import { useToast } from '@/lib/hooks/use-toast';
+import { extractDHAErrorMessage, isPendingWhitelistError } from '@/lib/sha/error-parser';
 
 // ============================================================================
 // Types
@@ -46,6 +47,8 @@ interface OtpWhitelistRequestSheetProps {
   beneficiaryName?: string;
   /** Patient date of birth (ISO string) — used to auto-select CHILD_BELOW_7_YEARS */
   patientDateOfBirth?: string;
+  /** Optional callback fired after successful submission */
+  onSubmitted?: () => void | Promise<void>;
 }
 
 /**
@@ -75,6 +78,40 @@ const REASON_TYPES = [
   { value: 'OTHER', label: 'Other', hint: 'Specify in details' },
 ] as const;
 
+const OTP_WHITELIST_ALLOWED_DOCUMENT_TYPES = ['SUPPORT_DOCUMENT'] as const;
+const REASON_MAX_LENGTH = 500;
+const REASON_WARNING_THRESHOLD = 450;
+const OTP_WHITELIST_ALLOWED_FILE_EXTENSIONS = new Set([
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.webp',
+]);
+const OTP_WHITELIST_ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+]);
+
+function buildReasonFallback(reasonType: string): string {
+  const readable = reasonType.replace(/_/g, ' ').toLowerCase();
+  return `Reason type: ${readable}`;
+}
+
+function isAllowedOtpWhitelistFile(file: File): boolean {
+  const dot = file.name.lastIndexOf('.');
+  const ext = dot >= 0 ? file.name.slice(dot).toLowerCase() : '';
+  const hasValidExtension = OTP_WHITELIST_ALLOWED_FILE_EXTENSIONS.has(ext);
+  const hasValidMime = !file.type || OTP_WHITELIST_ALLOWED_MIME_TYPES.has(file.type);
+  return hasValidExtension && hasValidMime;
+}
+
 // ============================================================================
 // Component
 // ============================================================================
@@ -86,7 +123,9 @@ export function OtpWhitelistRequestSheet({
   facilityFrCode,
   beneficiaryName,
   patientDateOfBirth,
+  onSubmitted,
 }: OtpWhitelistRequestSheetProps) {
+  const { toast } = useToast();
   const [reasonType, setReasonType] = useState('BIOMETRIC_FAILURE');
   const [reason, setReason] = useState('');
   const [biometricAttempts, setBiometricAttempts] = useState('3');
@@ -101,6 +140,7 @@ export function OtpWhitelistRequestSheet({
   // Editable fields pre-populated from props
   const [crId, setCrId] = useState('');
   const [frCode, setFrCode] = useState('');
+  const selectedReasonMeta = REASON_TYPES.find((r) => r.value === reasonType);
 
   // Auto-select CHILD_BELOW_7_YEARS when patient is under 7
   useEffect(() => {
@@ -157,6 +197,15 @@ export function OtpWhitelistRequestSheet({
     }
   }, [crId, frCode]);
 
+  const runSubmittedCallback = useCallback(async () => {
+    if (!onSubmitted) return;
+    try {
+      await onSubmitted();
+    } catch {
+      // Parent refresh callback is best-effort; request flow should continue.
+    }
+  }, [onSubmitted]);
+
   const handleSubmit = async () => {
     setError(null);
 
@@ -168,38 +217,60 @@ export function OtpWhitelistRequestSheet({
       setError('Facility FR code is required.');
       return;
     }
+    if (!reason.trim()) {
+      setError('Reason is required.');
+      return;
+    }
+    if (reason.length > REASON_MAX_LENGTH) {
+      setError(`Reason cannot exceed ${REASON_MAX_LENGTH} characters.`);
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
       const formData = new FormData();
+      const reasonValue = reason.trim() || buildReasonFallback(reasonType);
       formData.append('beneficiary_cr_id', crId.trim());
       formData.append('facility_fr_code', frCode.trim());
       formData.append('reason_type', reasonType);
-      formData.append('reason', reason);
+      formData.append('reason', reasonValue);
       formData.append('biometric_attempts', biometricAttempts);
 
       if (attachment) {
         formData.append('attachments', JSON.stringify([
-          {
-            document_title: attachment.name,
-            document_type: 'SUPPORT_DOCUMENT',
-            file_field_name: 'attachments_file_blob',
-          },
+            {
+              document_title: attachment.name,
+              document_type: OTP_WHITELIST_ALLOWED_DOCUMENT_TYPES[0],
+              file_field_name: 'attachments_file_blob',
+            },
         ]));
         formData.append('attachments_file_blob', attachment);
       }
 
       await shaApi.ilmRequestOtpWhitelist(formData);
       setSuccess(true);
+      await runSubmittedCallback();
     } catch (err) {
-      const msg = getApiErrorMessage(err);
+      const msg = extractDHAErrorMessage(err);
       // DHA returns this when a whitelist request is already pending
-      if (msg.toLowerCase().includes('already existing pending request') || msg.toLowerCase().includes('kindly wait for an approval')) {
+      if (isPendingWhitelistError(msg)) {
         setAlreadyPending(true);
         setWhitelistStatus('PENDING');
+        setError(msg);
+        toast({
+          title: 'Request already pending',
+          description: msg,
+          variant: 'destructive',
+        });
+        await runSubmittedCallback();
       } else {
         setError(msg);
+        toast({
+          title: 'Whitelist request failed',
+          description: msg,
+          variant: 'destructive',
+        });
       }
     } finally {
       setIsSubmitting(false);
@@ -380,7 +451,7 @@ export function OtpWhitelistRequestSheet({
             <div className="grid grid-cols-[1fr_auto] gap-2">
               <div className="space-y-1">
                 <Label htmlFor="whitelist-reason-type" className="text-sm">
-                  Reason
+                  Reason Type
                 </Label>
                 <Select value={reasonType} onValueChange={setReasonType}>
                   <SelectTrigger id="whitelist-reason-type" className="h-9 text-sm">
@@ -389,16 +460,14 @@ export function OtpWhitelistRequestSheet({
                   <SelectContent>
                     {REASON_TYPES.map((r) => (
                       <SelectItem key={r.value} value={r.value}>
-                        <span>{r.label}</span>
-                        {r.hint && (
-                          <span className="text-[10px] text-muted-foreground ml-1 hidden sm:inline">
-                            — {r.hint}
-                          </span>
-                        )}
+                        {r.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {selectedReasonMeta?.hint && (
+                  <p className="text-[11px] text-muted-foreground">{selectedReasonMeta.hint}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label htmlFor="whitelist-attempts" className="text-sm">
@@ -419,15 +488,29 @@ export function OtpWhitelistRequestSheet({
             {/* Additional details */}
             <div className="space-y-1 flex-1 flex flex-col">
               <Label htmlFor="whitelist-reason" className="text-sm">
-                Details (optional)
+                Reason <span className="text-destructive">*</span>
               </Label>
               <Textarea
                 id="whitelist-reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Why biometric cannot be used..."
+                maxLength={REASON_MAX_LENGTH}
+                placeholder="Explain why biometric capture cannot be used for this beneficiary..."
                 className="text-sm resize-none flex-1 min-h-[60px]"
               />
+              <div className="flex justify-end">
+                <span
+                  className={`text-[11px] ${
+                    reason.length >= REASON_MAX_LENGTH
+                      ? 'text-destructive'
+                      : reason.length >= REASON_WARNING_THRESHOLD
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-muted-foreground'
+                  }`}
+                >
+                  {reason.length}/{REASON_MAX_LENGTH}
+                </span>
+              </div>
             </div>
 
             {/* File attachment — inline */}
@@ -450,9 +533,23 @@ export function OtpWhitelistRequestSheet({
               <input
                 id="whitelist-attachment"
                 type="file"
-                accept="image/*,.pdf,.doc,.docx"
+                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
                 className="hidden"
-                onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  const selected = e.target.files?.[0] ?? null;
+                  if (!selected) {
+                    setAttachment(null);
+                    return;
+                  }
+                  if (!isAllowedOtpWhitelistFile(selected)) {
+                    setAttachment(null);
+                    setError('Unsupported file type. Allowed: PDF, DOC, DOCX, PNG, JPG, JPEG, WEBP.');
+                    e.currentTarget.value = '';
+                    return;
+                  }
+                  setError(null);
+                  setAttachment(selected);
+                }}
               />
             </div>
 
@@ -473,7 +570,7 @@ export function OtpWhitelistRequestSheet({
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || !crId.trim() || !frCode.trim()}
+                disabled={isSubmitting || !crId.trim() || !frCode.trim() || !reason.trim()}
                 className="flex-1"
                 size="sm"
               >
