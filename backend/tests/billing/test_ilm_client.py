@@ -87,6 +87,28 @@ class TestIlmClientSuccess:
         assert payload["patient"]["otp"] == "***REDACTED***"
         assert payload["patient"]["first_name"] == "Jane"
 
+    def test_large_json_response_over_4kb_stays_structured(self, client):
+        long_name = "Dialysis package " + ("X" * 5200)
+        large_payload = {
+            "count": 1,
+            "results": [
+                {
+                    "id": 832,
+                    "name": long_name,
+                    "code": "SHA-16-007",
+                }
+            ],
+        }
+        with patch.object(
+            client._session, "request", return_value=_FakeResponse(200, large_payload)
+        ):
+            result = client.get("/api/v1/patients/benefits/utilization")
+
+        assert result.status_code == 200
+        assert isinstance(result.json, dict)
+        assert "raw" not in result.json
+        assert result.json["results"][0]["name"] == long_name
+
 
 @pytest.mark.django_db
 class TestIlmClientRetries:

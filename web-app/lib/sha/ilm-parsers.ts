@@ -57,6 +57,14 @@ export function extractItems<T>(data: unknown): T[] {
   if (Array.isArray(data)) return data as T[];
   if (typeof data === 'object' && data !== null) {
     const obj = data as Record<string, unknown>;
+    const raw = obj.raw;
+    if (typeof raw === 'string' && raw.trim()) {
+      try {
+        return extractItems<T>(JSON.parse(raw));
+      } catch {
+        // Keep existing fallbacks when raw is non-JSON/truncated.
+      }
+    }
     if (Array.isArray(obj.data)) return obj.data as T[];
     if (Array.isArray(obj.results)) {
       const results = obj.results as unknown[];
