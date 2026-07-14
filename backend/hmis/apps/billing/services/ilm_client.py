@@ -349,7 +349,7 @@ class IlmClient:
             return IlmResponse(
                 status_code=status_code,
                 headers=dict(response.headers),
-                json=response_excerpt if isinstance(response_excerpt, (dict, list)) else None,
+                json=_parse_response_payload(response),
                 text=response.text,
                 elapsed_ms=duration_ms,
                 audit_id=audit_row_id,
@@ -415,6 +415,28 @@ def _safe_response_excerpt(response: requests.Response, max_bytes: int = 4096) -
         except (ValueError, json.JSONDecodeError):
             return {"raw": text}
     return {"raw": text}
+
+
+def _parse_response_payload(response: requests.Response) -> Any:
+    """Parse full response payload for successful calls.
+
+    Unlike ``_safe_response_excerpt`` (audit-focused), this parser returns the
+    complete JSON body when possible so callers don't receive truncated
+    ``{"raw": ...}`` wrappers for large-but-valid payloads.
+    """
+    try:
+        return response.json()
+    except (ValueError, json.JSONDecodeError):
+        text = (response.text or "").strip()
+        if not text:
+            return None
+        # Some proxies return JSON with wrong content-type; attempt a best-effort parse.
+        if text.startswith("{") or text.startswith("["):
+            try:
+                return json.loads(text)
+            except json.JSONDecodeError:
+                pass
+        return {"raw": text[:4096]}
 
 
 def _extract_message(payload: Any, fallback: str) -> str:
