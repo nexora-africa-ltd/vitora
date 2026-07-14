@@ -28,6 +28,8 @@ from typing import Any
 import requests
 from django.conf import settings
 
+from hmis.apps.billing.facility_identifiers import resolve_fr_code
+
 from .dha_errors import DHAError, DHATimeoutError, DHATransportError, from_status
 from .sha_auth import SHAAuthError, SHAAuthService
 
@@ -202,17 +204,7 @@ class IlmClient:
 
         # DHA requires facility identification headers on all requests.
         # Priority: facility.billing_config.sha_facility_fr_code > facility.dha_fr_code > settings fallback
-        fr_code: str | None = None
-        if facility is not None:
-            try:
-                bc = facility.billing_config
-                fr_code = bc.sha_facility_fr_code if bc else None
-            except Exception:
-                fr_code = None
-            if not fr_code:
-                fr_code = getattr(facility, "dha_fr_code", None)
-        if not fr_code:
-            fr_code = getattr(settings, "SHA_FACILITY_FR_CODE", "")
+        fr_code = resolve_fr_code(facility).value
         if fr_code:
             merged_headers["X-Facility-Id"] = fr_code
             merged_headers["X-Facility-Id-Type"] = "fr-code"

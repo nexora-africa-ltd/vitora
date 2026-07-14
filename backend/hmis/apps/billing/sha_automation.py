@@ -22,6 +22,8 @@ from decimal import Decimal
 from django.db.models import Q, Sum
 from django.utils import timezone
 
+from hmis.apps.billing.facility_identifiers import resolve_fr_code
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,16 +35,7 @@ def _resolve_fr_code(facility):
     """
     if facility is None:
         return ""
-    fr_code = None
-    try:
-        bc = getattr(facility, "billing_config", None)
-        if bc:
-            fr_code = getattr(bc, "sha_facility_fr_code", None) or None
-    except Exception:
-        fr_code = None
-    if not fr_code:
-        fr_code = getattr(facility, "dha_fr_code", None) or None
-    return fr_code or ""
+    return resolve_fr_code(facility, allow_settings_fallback=False).value
 
 
 class SHAClaimAutomationService:

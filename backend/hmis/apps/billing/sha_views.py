@@ -34,6 +34,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
 from rest_framework.response import Response
 
+from hmis.apps.billing.facility_identifiers import resolve_fr_code
 from hmis.apps.billing.filters import SHAClaimFilter, SHAMemberFilter
 from hmis.apps.billing.models import (
     SHAClaim,
@@ -3550,11 +3551,7 @@ class ConsentSendOTPView(APIView):
             )
 
         # Validate facility has a DHA FR code configured
-        from django.conf import settings
-
-        facility_fr_code = getattr(facility, "dha_fr_code", "") or getattr(
-            settings, "SHA_FACILITY_FR_CODE", ""
-        )
+        facility_fr_code = resolve_fr_code(facility).value
         if not facility_fr_code:
             return Response(
                 {

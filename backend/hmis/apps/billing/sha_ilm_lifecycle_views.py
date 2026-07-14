@@ -15,13 +15,13 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from django.conf import settings
 from rest_framework import status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.billing.facility_identifiers import resolve_fr_code
 from hmis.apps.billing.models import SHAOtpRequest, SHAOtpWhitelistRequest, SHAUpload
 from hmis.apps.billing.services.dha_errors import (
     DHAClientError,
@@ -219,9 +219,7 @@ class IlmVisitOtpView(APIView):
             beneficiary_contact_id=str(request.data.get("beneficiary_contact_id") or ""),
         )
         facility = _facility(request)
-        fr_code = getattr(facility, "dha_fr_code", "") or getattr(
-            settings, "SHA_FACILITY_FR_CODE", ""
-        )
+        fr_code = resolve_fr_code(facility).value
         if not fr_code:
             return Response(
                 {

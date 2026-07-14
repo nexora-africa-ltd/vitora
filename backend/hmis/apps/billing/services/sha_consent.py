@@ -23,6 +23,7 @@ import requests
 from django.conf import settings
 from django.utils import timezone
 
+from hmis.apps.billing.facility_identifiers import resolve_fr_code
 from hmis.apps.billing.models import ConsentToken, SHAMember
 from hmis.apps.billing.services.dha_errors import DHAError
 from hmis.apps.billing.services.ilm_client import IlmClient
@@ -235,14 +236,9 @@ class SHAConsentService:
             # Resolve DHA FR code; the caller may still pass an MFL code for legacy compatibility
             _fr_code = facility_code
             if facility is not None:
-                try:
-                    bc = getattr(facility, "billing_config", None)
-                    if bc:
-                        _fr_code = getattr(bc, "sha_facility_fr_code", None) or facility_code
-                except Exception:
-                    pass
-                if _fr_code == facility_code:
-                    _fr_code = getattr(facility, "dha_fr_code", None) or facility_code
+                resolved_fr = resolve_fr_code(facility, allow_settings_fallback=False).value
+                if resolved_fr:
+                    _fr_code = resolved_fr
             payload = {
                 "identification_type": "National ID",
                 "identification_number": sha_member.national_id or "",
@@ -356,18 +352,9 @@ class SHAConsentService:
             )
 
         facility_obj = consent.facility
-        _fr_code = ""
-        if facility_obj is not None:
-            try:
-                bc = getattr(facility_obj, "billing_config", None)
-                if bc:
-                    _fr_code = getattr(bc, "sha_facility_fr_code", None) or ""
-            except Exception:
-                pass
-            if not _fr_code:
-                _fr_code = getattr(facility_obj, "dha_fr_code", None) or ""
-            if not _fr_code:
-                _fr_code = facility_obj.mfl_code or ""
+        _fr_code = resolve_fr_code(facility_obj, allow_settings_fallback=False).value
+        if not _fr_code and facility_obj is not None:
+            _fr_code = facility_obj.mfl_code or ""
 
         payload: dict[str, Any] = {
             "agent": _fr_code,

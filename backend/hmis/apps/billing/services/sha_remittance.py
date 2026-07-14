@@ -17,6 +17,7 @@ from typing import Any
 from django.conf import settings
 from django.utils import timezone
 
+from hmis.apps.billing.facility_identifiers import resolve_fr_code
 from hmis.apps.billing.models import SHAClaim, SHARemittance, SHARemittanceLine
 from hmis.apps.billing.services.sha_auth import SHAAuthService
 
@@ -69,17 +70,15 @@ class SHARemittanceService:
             SHARemittanceError: If the API call fails.
         """
         # If facility is provided, verify we have the FR code (not MFL code)
-        fr_code = facility_code
-        if facility is not None and fr_code:
-            try:
-                bc = getattr(facility, "billing_config", None)
-                alt = getattr(bc, "sha_facility_fr_code", None) if bc else None
-                if alt and alt != fr_code:
-                    fr_code = alt
-            except Exception:
-                pass
-            if fr_code == getattr(facility, "mfl_code", None):
-                fr_code = getattr(facility, "dha_fr_code", None) or fr_code
+        fr_code = (facility_code or "").strip()
+        if facility is not None:
+            resolved_fr = resolve_fr_code(facility, allow_settings_fallback=False).value
+            if resolved_fr and (
+                not fr_code
+                or fr_code != resolved_fr
+                or fr_code == getattr(facility, "mfl_code", None)
+            ):
+                fr_code = resolved_fr
 
         endpoint = f"{self.api_base_url}/api/v1/claims/remittances"
         params = {

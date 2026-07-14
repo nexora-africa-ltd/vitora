@@ -18,6 +18,7 @@ from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from hmis.apps.billing.facility_identifiers import resolve_fr_code
 from hmis.apps.billing.models import Invoice, Payment, SupplierBill, SupplierPayment
 from hmis.apps.core.events import BillingEvents, publish_event
 from hmis.apps.core.sync_context import is_sync_materialization_active
@@ -158,14 +159,7 @@ def _maybe_create_phc_claim(encounter):
 
         system_user = get_system_user()
 
-        fr_code = getattr(facility, "dha_fr_code", None) or None
-        if not fr_code:
-            try:
-                bc = getattr(facility, "billing_config", None)
-                if bc:
-                    fr_code = getattr(bc, "sha_facility_fr_code", None) or None
-            except Exception:
-                fr_code = None
+        fr_code = resolve_fr_code(facility, allow_settings_fallback=False).value
         facility_code = (
             fr_code
             or getattr(settings, "SHA_FACILITY_FR_CODE", "")

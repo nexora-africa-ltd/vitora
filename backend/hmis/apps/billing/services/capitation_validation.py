@@ -28,6 +28,8 @@ from typing import Any
 
 from django.db.models import Q
 
+from hmis.apps.billing.facility_identifiers import resolve_fr_code
+
 logger = logging.getLogger(__name__)
 
 
@@ -160,16 +162,11 @@ def _get_facility_codes(facility) -> list[str]:
     """Get all identifying codes for a facility (FR, DHA, MFL, SHA, etc.)."""
     codes = []
     # DHA Facility Registry code (primary identifier for DHA-facing operations)
-    try:
-        bc = getattr(facility, "billing_config", None)
-        if bc:
-            fr_code = getattr(bc, "sha_facility_fr_code", None)
-            if fr_code:
-                codes.append(str(fr_code))
-    except Exception:
-        pass
+    resolved_fr = resolve_fr_code(facility, allow_settings_fallback=False).value
+    if resolved_fr:
+        codes.append(str(resolved_fr))
     dha_fr = getattr(facility, "dha_fr_code", None)
-    if dha_fr:
+    if dha_fr and str(dha_fr) != str(resolved_fr):
         codes.append(str(dha_fr))
     mfl_code = getattr(facility, "mfl_code", None)
     if mfl_code:

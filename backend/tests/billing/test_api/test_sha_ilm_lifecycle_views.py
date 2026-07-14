@@ -11,7 +11,12 @@ from unittest.mock import patch
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from hmis.apps.billing.models import SHAOtpRequest, SHAOtpWhitelistRequest, SHAUpload
+from hmis.apps.billing.models import (
+    FacilityBillingConfig,
+    SHAOtpRequest,
+    SHAOtpWhitelistRequest,
+    SHAUpload,
+)
 from hmis.apps.billing.services.dha_errors import (
     DHANotFoundError,
     DHAUnauthorizedError,
@@ -68,6 +73,25 @@ class TestVisitOtpEndpoint:
             format="json",
         )
         assert r.status_code == 400
+
+    def test_accepts_billing_config_fr_code_for_guard(self, sha_client, sample_facility, settings):
+        sample_facility.dha_fr_code = ""
+        sample_facility.save(update_fields=["dha_fr_code"])
+        settings.SHA_FACILITY_FR_CODE = ""
+        FacilityBillingConfig.objects.create(
+            facility=sample_facility,
+            sha_facility_fr_code="FID-BILLING-1",
+        )
+
+        with patch(LF_SVC) as M:
+            M.return_value.send_visit_otp.return_value = _ok({"message": "sent"})
+            r = sha_client.post(
+                self.URL,
+                {"intervention_codes": ["INT-1"], "patient_id": "CR-1"},
+                format="json",
+            )
+
+        assert r.status_code == 200
 
 
 @pytest.mark.django_db
