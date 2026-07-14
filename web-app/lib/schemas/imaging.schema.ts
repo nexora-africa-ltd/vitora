@@ -64,7 +64,6 @@ export const ImagingProcedureSchema = z.object({
   cost: z.union([z.number(), z.string()]).transform((val) =>
     typeof val === 'string' ? parseFloat(val) : val
   ),
-  sha_claimable: z.boolean(),
   available_in_house: z.boolean(),
   is_active: z.boolean(),
 });

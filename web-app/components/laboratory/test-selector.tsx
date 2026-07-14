@@ -309,11 +309,6 @@ function TestCard({ test, onClick }: TestCardProps) {
         </div>
         <div className="text-right">
           <p className="font-medium">{formatCurrency(isNaN(cost) ? 0 : cost)}</p>
-          {test.sha_claimable && (
-            <Badge variant="secondary" className="text-xs mt-1">
-              SHA
-            </Badge>
-          )}
         </div>
       </div>
     </div>

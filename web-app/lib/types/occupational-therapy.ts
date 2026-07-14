@@ -61,7 +61,6 @@ export interface OTTreatmentType {
   recommended_sessions: number;
   recommended_frequency: string;
   cost_per_session: string;
-  sha_claimable: boolean;
   sha_intervention_code: string;
   requires_equipment: boolean;
   equipment_needed: string;
@@ -333,5 +332,4 @@ export interface OTTreatmentTypeListParams {
   search?: string;
   category?: OTCategory;
   is_active?: boolean;
-  sha_claimable?: boolean;
 }

@@ -74,7 +74,6 @@ export const BaseAlliedHealthOrderSchema = z.object({
   clinical_notes: z.string(),
   is_sensitive: z.boolean(),
   sha_code: z.string().nullable(),
-  sha_claimable: z.boolean(),
   created_at: z.string(),
   updated_at: z.string(),
 });

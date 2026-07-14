@@ -121,7 +121,6 @@ class NutritionConsultationSerializer(serializers.ModelSerializer):
             "age",
             "diet_plan_count",
             # SHA
-            "sha_claimable",
             "sha_intervention_code",
             "invoice",
             # Timestamps

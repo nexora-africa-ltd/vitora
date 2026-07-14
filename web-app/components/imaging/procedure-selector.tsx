@@ -23,7 +23,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Badge } from '@/components/ui/badge';
 import { useImagingProcedureSearch } from '@/lib/hooks/use-imaging';
 import { ImagingProcedure } from '@/lib/types/imaging';
 import { ModalityBadge } from './modality-badge';
@@ -144,14 +143,6 @@ export function ProcedureSelector({
                         <span>{procedure.code}</span>
                         <span>•</span>
                         <span>KES {procedure.cost.toLocaleString()}</span>
-                        {procedure.sha_claimable && (
-                          <>
-                            <span>•</span>
-                            <Badge variant="outline" className="h-3.5 sm:h-4 text-[8px] sm:text-[10px] px-1">
-                              SHA
-                            </Badge>
-                          </>
-                        )}
                       </div>
                     </div>
                 </CommandItem>

@@ -154,14 +154,13 @@ class CounsellingType(models.Model):
         help_text="Recommended session frequency (e.g., '1x per week', 'bi-weekly')",
     )
 
-    # Pricing & SHA
+    # Pricing
     cost_per_session = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=Decimal("0.00"),
         help_text="Cost per session in KES",
     )
-    sha_claimable = models.BooleanField(default=True, help_text="Covered by Kenya SHA")
     sha_intervention_code = models.CharField(
         max_length=50,
         blank=True,

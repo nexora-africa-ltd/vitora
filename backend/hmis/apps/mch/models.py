@@ -191,10 +191,6 @@ class MCHRegistration(HistoryMixin, FacilityScopedModel, TimeStampedModel):
     )
 
     # SHA / Linda Jamii
-    sha_claimable = models.BooleanField(
-        default=True,
-        help_text="Whether this registration is SHA claimable",
-    )
     linda_jamii_beneficiary = models.BooleanField(
         default=False,
         help_text="Whether the mother is a Linda Jamii beneficiary (free maternity)",

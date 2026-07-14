@@ -101,7 +101,6 @@ class TestCatalogSerializer(serializers.ModelSerializer):
             "result_type",
             "result_unit",
             "cost",
-            "sha_claimable",
             "available_in_house",
             "turnaround_hours",
             "requires_fasting",
@@ -140,7 +139,6 @@ class TestCatalogCreateSerializer(serializers.ModelSerializer):
             "available_in_house",
             "external_lab_partner",
             "cost",
-            "sha_claimable",
             "result_type",
             "result_unit",
             "normal_range_male",
@@ -270,6 +268,12 @@ class LabOrderItemSerializer(serializers.ModelSerializer):
     loinc_code = serializers.CharField(source="test.loinc_code", read_only=True, default="")
     is_panel = serializers.BooleanField(source="test.is_panel", read_only=True)
     result_type = serializers.CharField(source="test.result_type", read_only=True)
+    result_options = serializers.ListField(
+        source="test.result_options",
+        read_only=True,
+        child=serializers.CharField(),
+        default=list,
+    )
     result_unit = serializers.CharField(source="test.result_unit", read_only=True, default="")
     normal_range_male = serializers.CharField(
         source="test.normal_range_male", read_only=True, default=""
@@ -297,6 +301,7 @@ class LabOrderItemSerializer(serializers.ModelSerializer):
             "loinc_code",
             "is_panel",
             "result_type",
+            "result_options",
             "result_unit",
             "normal_range_male",
             "normal_range_female",

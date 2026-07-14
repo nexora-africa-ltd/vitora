@@ -111,7 +111,6 @@ export interface ImagingProcedure {
   modality: ImagingModality;
   body_region: ImagingBodyRegion;
   cost: number;
-  sha_claimable: boolean;
   available_in_house: boolean;
   is_active: boolean;
 }
@@ -146,7 +145,6 @@ export interface ImagingProcedureCreateData {
   special_preparation?: string;
   turnaround_hours?: number;
   cost: number;
-  sha_claimable?: boolean;
   sha_intervention_code?: string;
   is_active?: boolean;
   available_in_house?: boolean;

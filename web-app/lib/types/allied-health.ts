@@ -137,7 +137,6 @@ export interface BaseAlliedHealthOrder {
   clinical_notes: string;
   is_sensitive: boolean;
   sha_code: string | null;
-  sha_claimable: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -77,7 +77,6 @@ const mockTreatmentTypes = {
       typical_duration_minutes: 45,
       recommended_sessions: 12,
       cost_per_session: '2000.00',
-      sha_claimable: true,
       is_active: true,
     },
     {
@@ -88,7 +87,6 @@ const mockTreatmentTypes = {
       typical_duration_minutes: 60,
       recommended_sessions: 8,
       cost_per_session: '2500.00',
-      sha_claimable: true,
       is_active: true,
     },
     {
@@ -99,7 +97,6 @@ const mockTreatmentTypes = {
       typical_duration_minutes: 45,
       recommended_sessions: 20,
       cost_per_session: '3000.00',
-      sha_claimable: true,
       is_active: true,
     },
   ],

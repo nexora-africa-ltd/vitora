@@ -405,11 +405,6 @@ function ProcedureCatalogView() {
               <p className="font-medium">{procedure.name}</p>
               <div className="flex items-center justify-between mt-2 text-sm">
                 <span>KES {procedure.cost.toLocaleString()}</span>
-                {procedure.sha_claimable && (
-                  <span className="text-xs text-emerald-700 dark:text-emerald-400">
-                    SHA Covered
-                  </span>
-                )}
               </div>
             </div>
           ))

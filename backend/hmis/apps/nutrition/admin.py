@@ -177,10 +177,9 @@ class NutritionConsultationAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "SHA & Billing",
+            "Billing",
             {
                 "fields": (
-                    "sha_claimable",
                     "sha_intervention_code",
                     "invoice",
                 )

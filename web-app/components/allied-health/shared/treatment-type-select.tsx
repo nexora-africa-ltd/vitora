@@ -119,7 +119,6 @@ export interface TreatmentTypeSelectProps {
  * - Search by name, code, or category
  * - Category badges with color coding
  * - Duration and session info display
- * - SHA claimable indicator
  */
 export function TreatmentTypeSelect({
   module,
@@ -246,11 +245,6 @@ export function TreatmentTypeSelect({
                       <div className="flex items-center gap-4 pl-6 text-xs text-muted-foreground">
                         <span>{type.typical_duration_minutes} min</span>
                         <span>{type.recommended_sessions} sessions</span>
-                        {type.sha_claimable && (
-                          <Badge variant="outline" className="text-green-600 border-green-300 text-xs">
-                            SHA
-                          </Badge>
-                        )}
                       </div>
                     )}
                     {type.description && showDetails && (

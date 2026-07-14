@@ -100,7 +100,6 @@ export interface CounsellingType {
   recommended_sessions: number;
   recommended_frequency: string;
   cost_per_session: string;
-  sha_claimable: boolean;
   sha_intervention_code: string;
   requires_privacy: boolean;
   requires_referral: boolean;
@@ -335,5 +334,4 @@ export interface CounsellingTypeListParams {
   search?: string;
   category?: CounsellingCategory;
   is_active?: boolean;
-  sha_claimable?: boolean;
 }

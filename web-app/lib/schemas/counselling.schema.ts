@@ -56,7 +56,6 @@ export const CounsellingTypeSchema = z.object({
   recommended_sessions: z.number(),
   recommended_frequency: z.string(),
   cost_per_session: z.string(),
-  sha_claimable: z.boolean(),
   sha_intervention_code: z.string(),
   requires_privacy: z.boolean(),
   requires_referral: z.boolean(),
@@ -75,7 +74,6 @@ export const CounsellingTypeListItemSchema = z.object({
   category: CounsellingCategorySchema,
   category_display: z.string().optional(),
   cost_per_session: z.string(),
-  sha_claimable: z.boolean(),
   is_active: z.boolean(),
 });
 

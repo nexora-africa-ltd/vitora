@@ -316,7 +316,6 @@ export const LabTestCatalogListSchema = z.object({
   result_type: ResultTypeSchema,
   result_unit: z.string().nullable().optional(),
   cost: z.coerce.number(), // Backend returns DecimalField as string
-  sha_claimable: z.boolean(),
   available_in_house: z.boolean(),
   turnaround_hours: z.number().nullable().optional(),
   requires_fasting: z.boolean(),
@@ -345,7 +344,6 @@ export const LabTestCatalogSchema = z.object({
   normal_range_child: z.string().nullable().optional(),
   result_options: z.array(z.string()).nullable().optional(),
   cost: z.coerce.number(), // Backend returns DecimalField as string
-  sha_claimable: z.boolean(),
   available_in_house: z.boolean(),
   external_lab_partner: z.string().nullable().optional(),
   turnaround_hours: z.number().nullable().optional(),
@@ -376,6 +374,7 @@ export const LabOrderItemSchema = z.object({
   test_name: z.string(),
   is_panel: z.boolean(),
   result_type: ResultTypeSchema,
+  result_options: z.array(z.string()).optional().default([]),
   result_unit: z.string().optional().default(""),
   normal_range_male: z.string().optional().default(""),
   normal_range_female: z.string().optional().default(""),
@@ -401,7 +400,7 @@ export const LabOrderSchema = z.object({
   patient: z.number(),
   patient_name: z.string().nullable().optional(),
   patient_mrn: z.string().nullable().optional(),
-  encounter: z.number(),
+  encounter: z.number().nullable(),
   admission: z.number().nullable().optional(),
   ordered_by: z.number(),
   ordered_by_name: z.string().nullable().optional(),

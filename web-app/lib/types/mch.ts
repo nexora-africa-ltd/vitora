@@ -69,7 +69,6 @@ export interface MCHRegistration extends MCHRegistrationListItem {
   all_babies_info: BabyInfo[];
   inter_pregnancy_interval_days: number | null;
   risk_factors: string;
-  sha_claimable: boolean;
   gbv_related: boolean;
   is_sensitive: boolean;
   registered_by: number | null;
@@ -117,7 +116,6 @@ export interface MCHRegistrationCreateData {
   registration_date?: string;
   is_high_risk?: boolean;
   risk_factors?: string;
-  sha_claimable?: boolean;
   linda_jamii_beneficiary?: boolean;
   gbv_related?: boolean;
   notes?: string;

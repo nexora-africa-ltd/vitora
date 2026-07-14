@@ -72,7 +72,6 @@ const mockTreatmentType = {
   typical_duration_minutes: 45,
   recommended_sessions: 12,
   cost_per_session: '2000.00',
-  sha_claimable: true,
   sha_intervention_code: 'PT001',
   is_active: true,
 };
@@ -113,7 +112,6 @@ const mockOrder = {
   clinical_notes: 'Initial assessment needed',
   is_sensitive: false,
   sha_code: 'PT001',
-  sha_claimable: true,
   created_at: '2026-02-26T10:00:00Z',
   updated_at: '2026-02-26T10:00:00Z',
 };
@@ -552,7 +550,6 @@ const mockOTTreatmentType = {
   typical_duration_minutes: 60,
   recommended_sessions: 10,
   cost_per_session: '2500.00',
-  sha_claimable: true,
   sha_intervention_code: 'OT001',
   is_active: true,
 };

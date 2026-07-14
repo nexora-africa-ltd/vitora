@@ -496,8 +496,7 @@ class NutritionConsultation(HistoryMixin, FacilityScopedModel):
         related_name="nutrition_consultations",
     )
 
-    # SHA (Social Health Authority) claimability
-    sha_claimable = models.BooleanField(default=True)
+    # SHA (Social Health Authority)
     sha_intervention_code = models.CharField(
         max_length=50,
         blank=True,

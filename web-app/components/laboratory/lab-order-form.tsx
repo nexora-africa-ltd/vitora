@@ -38,7 +38,7 @@ import { ShiftGate } from '@/components/shared/shift-gate';
 
 const orderSchema = z.object({
   patient: z.number().positive('Patient is required'),
-  encounter: z.number().positive('Encounter is required'),
+  encounter: z.number().positive('Encounter is required').optional(),
   order_type: z.enum(['IN_HOUSE', 'EXTERNAL']).default('IN_HOUSE'),
   external_lab: z.string().optional(),
   priority: z.enum(['ROUTINE', 'URGENT', 'STAT']).default('ROUTINE'),
@@ -78,6 +78,8 @@ interface LabOrderFormProps {
   prefillClinicalNotes?: string;
   /** Pre-fill test search query (from AI suggestion name) */
   prefillTestSearch?: string;
+  /** Whether encounter selection is required for this order workflow */
+  encounterRequired?: boolean;
   onSuccess?: (orderNumber: string) => void;
   onCancel?: () => void;
 }
@@ -107,6 +109,7 @@ export function LabOrderForm({
   prefillPriority,
   prefillClinicalNotes,
   prefillTestSearch,
+  encounterRequired = true,
   onSuccess,
   onCancel,
 }: LabOrderFormProps) {
@@ -141,8 +144,6 @@ export function LabOrderForm({
   // Validation: both patient and encounter are required
   const hasPatient = !!patientId;
   const hasEncounter = !!encounterId;
-  const isValid = hasPatient && hasEncounter && canPlaceOrders;
-
   // Current date/time for "Requested At"
   const requestedAt = new Date();
 
@@ -157,7 +158,7 @@ export function LabOrderForm({
     resolver: zodResolver(orderSchema),
     defaultValues: {
       patient: patientId || 0,
-      encounter: encounterId || 0,
+      encounter: encounterId || undefined,
       order_type: 'IN_HOUSE',
       priority: prefillPriority || 'ROUTINE',
       clinical_notes: prefillClinicalNotes || '',
@@ -178,6 +179,19 @@ export function LabOrderForm({
 
   const orderType = form.watch('order_type');
   const items = form.watch('items');
+
+  // Keep external/context patient and encounter selection in sync with form state.
+  useEffect(() => {
+    form.setValue('patient', patientId || 0, { shouldValidate: true });
+  }, [patientId, form]);
+
+  useEffect(() => {
+    const nextEncounter = encounterId || undefined;
+    form.setValue('encounter', nextEncounter, { shouldValidate: encounterRequired });
+    if (nextEncounter) {
+      form.clearErrors('encounter');
+    }
+  }, [encounterId, encounterRequired, form]);
 
   // Auto-toggle bill_patient when order_type changes
   useEffect(() => {
@@ -255,10 +269,15 @@ export function LabOrderForm({
   }, [form, append, toast]);
 
   const onSubmit = async (data: OrderFormData) => {
+    if (encounterRequired && !data.encounter) {
+      form.setError('encounter', { type: 'manual', message: 'Encounter is required' });
+      return;
+    }
+
     try {
       const orderData: LabOrderCreateData = {
         patient: data.patient,
-        encounter: data.encounter,
+        ...(data.encounter ? { encounter: data.encounter } : {}),
         ...(admissionId ? { admission: admissionId } : {}),
         order_type: data.order_type as OrderType,
         external_lab: data.external_lab,
@@ -304,7 +323,7 @@ export function LabOrderForm({
   };
 
   // Show warning if no encounter context
-  if (!hasEncounter) {
+  if (encounterRequired && !hasEncounter) {
     return (
       <Alert variant="destructive">
         <AlertTriangle className="h-4 w-4" />

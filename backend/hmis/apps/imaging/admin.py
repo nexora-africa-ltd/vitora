@@ -73,7 +73,6 @@ class ImagingProcedureAdmin(admin.ModelAdmin):
         "modality",
         "body_region",
         "cost",
-        "sha_claimable",
         "is_active",
         "facility",
     )
@@ -84,7 +83,6 @@ class ImagingProcedureAdmin(admin.ModelAdmin):
         "is_active",
         "available_in_house",
         "requires_contrast",
-        "sha_claimable",
     )
     search_fields = ("code", "name", "radlex_code", "loinc_code", "sha_intervention_code")
     raw_id_fields = ("facility", "organization")
@@ -110,9 +108,9 @@ class ImagingProcedureAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "Pricing & SHA",
+            "Pricing & Billing",
             {
-                "fields": ("cost", "sha_claimable", "sha_intervention_code"),
+                "fields": ("cost", "sha_intervention_code"),
             },
         ),
         (
