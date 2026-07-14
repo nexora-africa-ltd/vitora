@@ -70,6 +70,12 @@ from hmis.apps.ai.serializers import (
     DischargeCriterionSerializer,
     EGFRCalculateRequestSerializer,
     EGFRCalculateResponseSerializer,
+    FacilityKBDocumentDeleteResponseSerializer,
+    FacilityKBDocumentSerializer,
+    FacilityKBInfoResponseSerializer,
+    FacilityKBSearchResponseSerializer,
+    FacilityKBSearchResultSerializer,
+    FacilityKBUploadResponseSerializer,
     ICD10SuggestionSerializer,
     ICD10SuggestRequestSerializer,
     ICD10SuggestResponseSerializer,
@@ -113,6 +119,12 @@ from hmis.apps.ai.serializers import (
     SurgicalProcedureDetailResponseSerializer,
     SurgicalProcedureListResponseSerializer,
     VitalsSnapshotSerializer,
+    WebhookDeliveryListResponseSerializer,
+    WebhookDeliverySerializer,
+    WebhookItemSerializer,
+    WebhookListResponseSerializer,
+    WebhookRegisterRequestSerializer,
+    WebhookUpdateRequestSerializer,
 )
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
@@ -913,6 +925,70 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        FacilityKBDocumentDeleteResponseSerializer,
+        frozenset(
+            {
+                "message",
+                "status",
+            }
+        ),
+    ),
+    (
+        FacilityKBDocumentSerializer,
+        frozenset(
+            {
+                "filename",
+                "id",
+                "size_bytes",
+                "status",
+                "uploaded_at",
+            }
+        ),
+    ),
+    (
+        FacilityKBInfoResponseSerializer,
+        frozenset(
+            {
+                "document_count",
+                "documents",
+                "facility_name",
+                "total_size_bytes",
+            }
+        ),
+    ),
+    (
+        FacilityKBSearchResponseSerializer,
+        frozenset(
+            {
+                "query",
+                "results",
+                "total",
+            }
+        ),
+    ),
+    (
+        FacilityKBSearchResultSerializer,
+        frozenset(
+            {
+                "filename",
+                "id",
+                "score",
+                "snippet",
+            }
+        ),
+    ),
+    (
+        FacilityKBUploadResponseSerializer,
+        frozenset(
+            {
+                "filename",
+                "id",
+                "size_bytes",
+                "status",
+            }
+        ),
+    ),
+    (
         ICD10SuggestRequestSerializer,
         frozenset(
             {
@@ -1528,6 +1604,66 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "systolic_bp",
                 "temperature",
                 "timestamp",
+            }
+        ),
+    ),
+    (
+        WebhookDeliveryListResponseSerializer,
+        frozenset(
+            {
+                "deliveries",
+            }
+        ),
+    ),
+    (
+        WebhookDeliverySerializer,
+        frozenset(
+            {
+                "attempted_at",
+                "id",
+                "response_body",
+                "status",
+                "status_code",
+            }
+        ),
+    ),
+    (
+        WebhookItemSerializer,
+        frozenset(
+            {
+                "created_at",
+                "events",
+                "id",
+                "is_active",
+                "url",
+            }
+        ),
+    ),
+    (
+        WebhookListResponseSerializer,
+        frozenset(
+            {
+                "webhooks",
+            }
+        ),
+    ),
+    (
+        WebhookRegisterRequestSerializer,
+        frozenset(
+            {
+                "events",
+                "secret",
+                "url",
+            }
+        ),
+    ),
+    (
+        WebhookUpdateRequestSerializer,
+        frozenset(
+            {
+                "events",
+                "secret",
+                "url",
             }
         ),
     ),
