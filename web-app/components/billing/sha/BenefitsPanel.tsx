@@ -85,6 +85,8 @@ interface BenefitsPanelProps {
   onEmpty?: (reason: BenefitsEmptyReason) => void;
   /** Called when benefits data is available (non-empty) */
   onHasBenefits?: () => void;
+  /** How to render utilization eligibility in summary rows */
+  utilizationEligibilityDisplay?: 'dot' | 'inline';
 }
 
 /** Benefit package from is_unique_benefit=true response */
@@ -204,6 +206,7 @@ export function BenefitsPanel({
   compact = false,
   onEmpty,
   onHasBenefits,
+  utilizationEligibilityDisplay = 'inline',
 }: BenefitsPanelProps) {
   // Normalize SHA-XXX-N → CRXXX-N for ILM calls.
   const lookupId = toCrId(crNumber);
@@ -291,15 +294,16 @@ export function BenefitsPanel({
       {benefits.length > 0 && (
         <div className="space-y-1.5">
           {benefits.map((benefit, idx) => (
-            <BenefitAccordion
-              key={getBenefitCode(benefit) || idx}
-              benefit={benefit}
-              crNumber={lookupId}
-              patientPk={patientPk}
-              shaMemberId={shaMemberId}
-            />
-          ))}
-        </div>
+              <BenefitAccordion
+                key={getBenefitCode(benefit) || idx}
+                benefit={benefit}
+                crNumber={lookupId}
+                patientPk={patientPk}
+                shaMemberId={shaMemberId}
+                utilizationEligibilityDisplay={utilizationEligibilityDisplay}
+              />
+            ))}
+          </div>
       )}
     </div>
   );
@@ -326,11 +330,13 @@ function BenefitAccordion({
   crNumber,
   patientPk,
   shaMemberId,
+  utilizationEligibilityDisplay,
 }: {
   benefit: BenefitPackageItem;
   crNumber: string;
   patientPk?: number;
   shaMemberId?: number;
+  utilizationEligibilityDisplay: 'dot' | 'inline';
 }) {
   const [expanded, setExpanded] = useState(false);
   const code = getBenefitCode(benefit);
@@ -401,6 +407,7 @@ function BenefitAccordion({
                   crNumber={crNumber}
                   patientPk={patientPk}
                   shaMemberId={shaMemberId}
+                  utilizationEligibilityDisplay={utilizationEligibilityDisplay}
                 />
               ))}
             </div>
@@ -420,11 +427,13 @@ function SubBenefitAccordion({
   crNumber,
   patientPk,
   shaMemberId,
+  utilizationEligibilityDisplay,
 }: {
   subBenefit: SubBenefitItem;
   crNumber: string;
   patientPk?: number;
   shaMemberId?: number;
+  utilizationEligibilityDisplay: 'dot' | 'inline';
 }) {
   const [expanded, setExpanded] = useState(false);
   const code = getField(subBenefit as Record<string, unknown>, 'code', 'benefit_code', 'benefitCode');
@@ -432,6 +441,7 @@ function SubBenefitAccordion({
 
   const [interventions, setInterventions] = useState<InterventionItem[]>([]);
   const [utilizations, setUtilizations] = useState<Map<string, ParsedUtilizationEntry[]>>(new Map());
+  const [loadingUtilCodes, setLoadingUtilCodes] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -445,38 +455,17 @@ function SubBenefitAccordion({
       patient_pk: patientPk,
       sha_member_id: shaMemberId,
     })
-      .then(async (resp) => {
+      .then((resp) => {
         if (cancelled) return;
-        const items = extractItems<InterventionItem>(resp.data).filter((i) => {
+        const rawItems = extractItems<InterventionItem>(resp.data);
+        const filteredItems = rawItems.filter((i) => {
           const item = i as Record<string, unknown>;
           const hasCode = !!getField(item, 'code', 'intervention_code', 'interventionCode', 'benefitCode');
           const hasName = !!getField(item, 'name', 'intervention_name', 'interventionName', 'benefit_name', 'benefitName', 'display_name', 'displayName');
           return hasCode || hasName;
         });
+        const items = filteredItems.length > 0 ? filteredItems : rawItems;
         setInterventions(items);
-
-        // Fetch utilization for each intervention (sequential to respect rate limits)
-        const utilMap = new Map<string, ParsedUtilizationEntry[]>();
-        for (const intervention of items) {
-          if (cancelled) break;
-          const iCode = getField(intervention as Record<string, unknown>, 'code', 'intervention_code', 'interventionCode');
-          if (!iCode) continue;
-          try {
-            const utilResp = await shaApi.ilmUtilization({
-              patient_id: crNumber,
-              intervention_code: iCode,
-              patient_pk: patientPk,
-              sha_member_id: shaMemberId,
-            });
-            const entries = parseUtilization(utilResp);
-            if (entries.length > 0) {
-              utilMap.set(iCode, entries);
-            }
-          } catch {
-            // Best effort — don't block on utilization errors
-          }
-        }
-        if (!cancelled) setUtilizations(utilMap);
       })
       .catch(() => {
         if (!cancelled) setInterventions([]);
@@ -487,6 +476,41 @@ function SubBenefitAccordion({
 
     return () => { cancelled = true; };
   }, [expanded, crNumber, code, patientPk, shaMemberId]);
+
+  const loadUtilizationForIntervention = useCallback(async (interventionCode: string) => {
+    if (!interventionCode) return;
+    if (utilizations.has(interventionCode)) return;
+    if (loadingUtilCodes.has(interventionCode)) return;
+
+    setLoadingUtilCodes((prev) => new Set(prev).add(interventionCode));
+    try {
+      const utilResp = await shaApi.ilmUtilization({
+        patient_id: crNumber,
+        intervention_code: interventionCode,
+        patient_pk: patientPk,
+        sha_member_id: shaMemberId,
+      });
+      const entries = parseUtilization(utilResp);
+      setUtilizations((prev) => {
+        const next = new Map(prev);
+        next.set(interventionCode, entries);
+        return next;
+      });
+    } catch {
+      // Best effort — leave empty entries when DHA utilization is unavailable.
+      setUtilizations((prev) => {
+        const next = new Map(prev);
+        next.set(interventionCode, []);
+        return next;
+      });
+    } finally {
+      setLoadingUtilCodes((prev) => {
+        const next = new Set(prev);
+        next.delete(interventionCode);
+        return next;
+      });
+    }
+  }, [crNumber, patientPk, shaMemberId, utilizations, loadingUtilCodes]);
 
   return (
     <div className="rounded border border-border/50 bg-background">
@@ -520,13 +544,19 @@ function SubBenefitAccordion({
           ) : (
             <div className="space-y-1">
               {interventions.map((intervention, idx) => {
-                const iCode = getField(intervention as Record<string, unknown>, 'code', 'intervention_code', 'interventionCode', 'benefitCode');
-                const utilEntries = iCode ? utilizations.get(iCode) : undefined;
+                const item = intervention as Record<string, unknown>;
+                const displayCode = getField(item, 'code', 'intervention_code', 'interventionCode', 'benefitCode');
+                // Utilization endpoint requires an intervention code (not benefit/sub-benefit code).
+                const utilizationCode = getField(item, 'code', 'intervention_code', 'interventionCode');
+                const utilEntries = utilizationCode ? utilizations.get(utilizationCode) : undefined;
                 return (
                   <InterventionRow
-                    key={iCode || idx}
+                    key={displayCode || idx}
                     intervention={intervention}
                     utilization={utilEntries}
+                    isUtilizationLoading={!!(utilizationCode && loadingUtilCodes.has(utilizationCode))}
+                    onLoadUtilization={utilizationCode ? () => loadUtilizationForIntervention(utilizationCode) : undefined}
+                    utilizationEligibilityDisplay={utilizationEligibilityDisplay}
                   />
                 );
               })}
@@ -545,10 +575,17 @@ function SubBenefitAccordion({
 function InterventionRow({
   intervention,
   utilization,
+  isUtilizationLoading,
+  onLoadUtilization,
+  utilizationEligibilityDisplay,
 }: {
   intervention: InterventionItem;
   utilization?: ParsedUtilizationEntry[];
+  isUtilizationLoading?: boolean;
+  onLoadUtilization?: () => void;
+  utilizationEligibilityDisplay: 'dot' | 'inline';
 }) {
+  const [showUtilizationDetails, setShowUtilizationDetails] = useState(false);
   const item = intervention as Record<string, unknown>;
   const code = getField(item, 'code', 'intervention_code', 'interventionCode', 'benefitCode', 'benefit_code');
   const name = getField(
@@ -566,7 +603,18 @@ function InterventionRow({
   const tariff = (item.overallTariff ?? item.overall_tariff) as number | undefined;
   const needsPreauth = (item.needsPreauth ?? item.needs_preauth) as boolean | undefined;
 
-  const util = utilization && utilization.length > 0 ? utilization[0] : null;
+  const utilEntries = utilization ?? [];
+  const util = utilEntries.length > 0 ? utilEntries[0] : null;
+  const hasMultipleUtilRecords = utilEntries.length > 1;
+  const utilEligibility = util?.eligibility || '';
+  const utilEligibilityState = utilEligibility.toUpperCase();
+  const showUtilEligibility = !!utilEligibility;
+
+  useEffect(() => {
+    if (showUtilizationDetails) {
+      onLoadUtilization?.();
+    }
+  }, [showUtilizationDetails, onLoadUtilization]);
 
   return (
     <div className="rounded px-2 py-1.5 hover:bg-muted/20 text-xs space-y-1">
@@ -593,34 +641,109 @@ function InterventionRow({
         )}
       </div>
 
-      {/* Inline utilization */}
-      {util && (
-        <div className="ml-5 flex items-center gap-3 text-[10px] text-muted-foreground">
+      {/* Inline utilization (compact summary) */}
+      <div className="ml-5 flex items-center gap-3 text-[10px] text-muted-foreground">
+        {util ? (
+          <>
+            <span className="flex items-center gap-1">
+              <BarChart3 className="h-2.5 w-2.5" />
+              {util.visitCount} visit{util.visitCount !== 1 ? 's' : ''}
+              {typeof util.totalQuota === 'number' ? ` / ${util.totalQuota}` : ''}
+            </span>
+            {util.lastVisit && (
+              <span className="flex items-center gap-1">
+                <Clock className="h-2.5 w-2.5" />
+                Last: {util.lastVisit}
+              </span>
+            )}
+            {typeof util.amountUsed === 'number' && (
+              <span>
+                KES {util.amountUsed.toLocaleString()} used
+                {typeof util.amountRemaining === 'number'
+                  ? ` (KES ${util.amountRemaining.toLocaleString()} left)`
+                  : ''}
+              </span>
+            )}
+            {typeof util.remainingQuota === 'number' && (
+              <span className="flex items-center gap-1">
+                <CheckCircle2 className="h-2.5 w-2.5" />
+                {util.remainingQuota} remaining
+              </span>
+            )}
+            {showUtilEligibility && (
+              <span className="flex items-center gap-1" title={`Eligibility: ${utilEligibility}`}>
+                <span
+                  className={cn(
+                    'inline-block h-1.5 w-1.5 rounded-full',
+                    utilEligibilityState === 'ELIGIBLE' && 'bg-green-500',
+                    utilEligibilityState === 'INELIGIBLE' && 'bg-red-500',
+                    utilEligibilityState !== 'ELIGIBLE' && utilEligibilityState !== 'INELIGIBLE' && 'bg-amber-500',
+                  )}
+                />
+                {utilizationEligibilityDisplay === 'inline' ? `Eligibility: ${utilEligibility}` : null}
+              </span>
+            )}
+            {hasMultipleUtilRecords && (
+              <span>{utilEntries.length} utilization records</span>
+            )}
+          </>
+        ) : (
           <span className="flex items-center gap-1">
             <BarChart3 className="h-2.5 w-2.5" />
-            {util.visitCount} visit{util.visitCount !== 1 ? 's' : ''}
-            {typeof util.totalQuota === 'number' ? ` / ${util.totalQuota}` : ''}
+            Utilization
           </span>
-          {util.lastVisit && (
-            <span className="flex items-center gap-1">
-              <Clock className="h-2.5 w-2.5" />
-              Last: {util.lastVisit}
-            </span>
-          )}
-          {typeof util.amountUsed === 'number' && (
-            <span>
-              KES {util.amountUsed.toLocaleString()} used
-              {typeof util.amountRemaining === 'number'
-                ? ` (KES ${util.amountRemaining.toLocaleString()} left)`
-                : ''}
-            </span>
-          )}
-          {typeof util.remainingQuota === 'number' && (
-            <span className="flex items-center gap-1">
-              <CheckCircle2 className="h-2.5 w-2.5" />
-              {util.remainingQuota} remaining
-            </span>
-          )}
+        )}
+        <button
+          type="button"
+          onClick={() => setShowUtilizationDetails((prev) => !prev)}
+          className="underline underline-offset-2 hover:text-foreground"
+        >
+          {showUtilizationDetails ? 'Hide details' : 'Details'}
+        </button>
+      </div>
+
+      {util && showUtilizationDetails && (
+        <div className="ml-5 mt-1.5 space-y-1.5">
+          {utilEntries.map((entry, index) => (
+            <div
+              key={`${entry.interventionCode || code || 'util'}-${index}`}
+              className="rounded border border-border/60 bg-muted/20 px-2 py-1.5 text-[10px] text-muted-foreground"
+            >
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
+                {entry.periodStart && <span>Period start: {entry.periodStart}</span>}
+                {entry.periodEnd && <span>Period end: {entry.periodEnd}</span>}
+                {entry.eligibility && <span>Eligibility: {entry.eligibility}</span>}
+                {entry.status && <span>Status: {entry.status}</span>}
+                {entry.schemeCode && <span>Scheme code: {entry.schemeCode}</span>}
+                {entry.schemeName && <span>Scheme: {entry.schemeName}</span>}
+                {entry.benefitCode && <span>Benefit code: {entry.benefitCode}</span>}
+                {entry.benefitName && <span>Benefit: {entry.benefitName}</span>}
+                {entry.facilityName && <span>Facility: {entry.facilityName}</span>}
+              </div>
+              {entry.additionalDetails && entry.additionalDetails.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                  {entry.additionalDetails.map((detail) => (
+                    <span key={`${detail.key}-${detail.value}`}>
+                      {detail.key}: {detail.value}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showUtilizationDetails && isUtilizationLoading && (
+        <div className="ml-5 mt-1.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+          <Loader2 className="h-2.5 w-2.5 animate-spin" />
+          Loading utilization details...
+        </div>
+      )}
+
+      {showUtilizationDetails && !isUtilizationLoading && utilEntries.length === 0 && (
+        <div className="ml-5 mt-1.5 text-[10px] text-muted-foreground">
+          No utilization details available for this intervention.
         </div>
       )}
     </div>
