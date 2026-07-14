@@ -28,6 +28,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
+from hmis.apps.billing.facility_identifiers import resolve_fr_code
 from hmis.apps.billing.models import SHAClaim, SHAClaimItem
 from hmis.apps.billing.services.sha_auth import SHAAuthError, SHAAuthService
 from hmis.apps.billing.services.sha_flow_router import determine_flow
@@ -78,15 +79,7 @@ class SHAClaimsService:
         # Resolve DHA Facility Registry code (fr_code) — used in FHIR bundles,
         # claim submissions, and DHA API requests. This is NOT the MFL code.
         if facility is not None:
-            fr_code = None
-            try:
-                bc = getattr(facility, "billing_config", None)
-                if bc:
-                    fr_code = getattr(bc, "sha_facility_fr_code", None) or None
-            except Exception:
-                fr_code = None
-            if not fr_code:
-                fr_code = getattr(facility, "dha_fr_code", None) or None
+            fr_code = resolve_fr_code(facility, allow_settings_fallback=False).value
             self.facility_code = (
                 fr_code
                 or getattr(settings, "SHA_FACILITY_FR_CODE", "")
@@ -239,15 +232,7 @@ class SHAClaimsService:
         # Priority: billing_config.sha_facility_fr_code > dha_fr_code > self.facility_code (init fallback)
         encounter_facility = getattr(encounter, "facility", None)
         if encounter_facility is not None:
-            fr_code = None
-            try:
-                bc = getattr(encounter_facility, "billing_config", None)
-                if bc:
-                    fr_code = getattr(bc, "sha_facility_fr_code", None) or None
-            except Exception:
-                fr_code = None
-            if not fr_code:
-                fr_code = getattr(encounter_facility, "dha_fr_code", None) or None
+            fr_code = resolve_fr_code(encounter_facility, allow_settings_fallback=False).value
             facility_code = fr_code or self.facility_code
         else:
             facility_code = self.facility_code

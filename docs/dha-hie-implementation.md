@@ -57,6 +57,27 @@
 - All new models use **FacilityScopedModel** for tenant isolation
 - Offline support: claim submission queues when DHA is unreachable
 
+### Facility FR Code Resolution (Canonical)
+
+To avoid drift between `sha_facility_code`, `dha_fr_code`, `facility_fr_code`, and
+`sha_facility_fr_code`, DHA-facing FR resolution is centralized in:
+
+- `backend/hmis/apps/billing/facility_identifiers.py`
+
+Use `resolve_fr_code(facility, allow_settings_fallback=True)` for all calls that
+need a Facility Registry (FR) code. The canonical precedence is:
+
+1. `facility.billing_config.sha_facility_fr_code`
+2. `facility.dha_fr_code`
+3. `settings.SHA_FACILITY_FR_CODE` (only when fallback is enabled)
+
+Notes:
+
+- `sha_facility_code` and `mfl_code` are still valid for registry lookup/search
+  flows, but are not the primary FR source for DHA request headers.
+- Keep external API parameter names (`facility_fr_code`, `facility_id`) unchanged
+  for backward compatibility; only internal resolution logic should be centralized.
+
 ---
 
 ## Phase 1 — Critical / Compliance Blockers

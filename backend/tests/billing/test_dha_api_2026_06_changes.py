@@ -16,7 +16,7 @@ import pytest
 from django.conf import settings
 from django.utils import timezone
 
-from hmis.apps.billing.models import ConsentToken, SHAClaim, SHAMember
+from hmis.apps.billing.models import ConsentToken, FacilityBillingConfig, SHAClaim, SHAMember
 from hmis.apps.billing.services.ilm_claim_service import (
     DIAGNOSES_PATH,
     LINES_PATH,
@@ -156,6 +156,25 @@ class TestFacilityIdHeaders:
 
         headers_sent = mock_req.call_args.kwargs["headers"]
         assert headers_sent["X-Facility-Id"] == "FID-01-23"
+        assert headers_sent["X-Facility-Id-Type"] == "fr-code"
+
+    def test_billing_config_fr_code_takes_precedence(self, ilm_client, sample_facility):
+        sample_facility.dha_fr_code = "FID-DHA-23"
+        sample_facility.save(update_fields=["dha_fr_code"])
+        FacilityBillingConfig.objects.create(
+            facility=sample_facility,
+            sha_facility_fr_code="FID-BILLING-23",
+        )
+
+        with patch.object(
+            ilm_client._session,
+            "request",
+            return_value=_FakeHTTPResponse(200, {"ok": True}),
+        ) as mock_req:
+            ilm_client.get("/api/v1/ping", facility=sample_facility)
+
+        headers_sent = mock_req.call_args.kwargs["headers"]
+        assert headers_sent["X-Facility-Id"] == "FID-BILLING-23"
         assert headers_sent["X-Facility-Id-Type"] == "fr-code"
 
     def test_falls_back_to_settings_when_facility_has_no_fr_code(self, ilm_client):
