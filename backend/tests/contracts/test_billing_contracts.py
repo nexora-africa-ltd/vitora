@@ -264,6 +264,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "patient_name",
                 "payers",
                 "payment_type",
+                "public_id",
                 "qr_code",
                 "sha_claim_number",
                 "status",

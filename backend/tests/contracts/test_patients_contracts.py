@@ -293,6 +293,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "phone_number",
                 "place_of_birth",
                 "principal_national_id",
+                "public_id",
                 "referral_source",
                 "referred_from_facility",
                 "registered_at_facility",

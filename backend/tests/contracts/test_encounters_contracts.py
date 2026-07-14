@@ -89,6 +89,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "patient",
                 "patient_mrn",
                 "patient_name",
+                "public_id",
                 "status",
                 "visit_reason",
             }
@@ -200,6 +201,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "patient",
                 "patient_mrn",
                 "patient_name",
+                "public_id",
                 "status",
                 "visit_reason",
             }
@@ -273,6 +275,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "patient_mrn",
                 "patient_name",
                 "physical_examination",
+                "public_id",
                 "pulse",
                 "respiratory_rate",
                 "social_history",
