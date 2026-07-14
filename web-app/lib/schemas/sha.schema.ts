@@ -215,7 +215,7 @@ export const SHAMemberSchema = z.object({
   sha_member_number: z.string().optional(),
   sha_number: z.string().optional(),
   scheme_category: SchemeCategorySchema.optional(),
-  coverage_start_date: z.string(),
+  coverage_start_date: z.string().nullable().optional(),
   coverage_end_date: z.string().optional().nullable(),
   is_active: z.boolean().optional(),
   membership_type: MembershipTypeSchema.optional(),

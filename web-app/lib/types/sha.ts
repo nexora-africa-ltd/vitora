@@ -199,7 +199,7 @@ export interface SHAMember {
   sha_member_number?: string;
   sha_number?: string;
   scheme_category?: SchemeCategory;
-  coverage_start_date: string;
+  coverage_start_date?: string | null;
   coverage_end_date?: string | null;
   is_active?: boolean;
   // Membership type (for dependents tracking)

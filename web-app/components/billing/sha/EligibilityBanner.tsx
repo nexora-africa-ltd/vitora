@@ -224,6 +224,7 @@ function FullEligibilityBanner({
   capitationWarning?: CapitationValidationResult | null;
 }) {
   const { status, copayPercentage, coverageEndDate, schemeCategory, memberName, checkedAt, errorMessage, member, coverageCaveat, eligibleSchemes, billableSchemes } = eligibility;
+  const copay = typeof copayPercentage === 'number' ? copayPercentage : 0;
 
   const getBannerStyles = () => {
     switch (status) {
@@ -384,7 +385,7 @@ function FullEligibilityBanner({
           {member && (
             <div className="mt-2">
               <Badge variant="outline" className="text-xs">
-                SHA Member: {member.sha_member_number}
+                SHA Member: {member.sha_member_number || member.sha_number || '—'}
               </Badge>
             </div>
           )}
@@ -412,13 +413,13 @@ function FullEligibilityBanner({
         <div className="flex flex-col items-end gap-2">
           {status === 'eligible' && (
             <Badge
-              variant={copayPercentage === 0 ? 'default' : 'secondary'}
+              variant={copay === 0 ? 'default' : 'secondary'}
               className={cn(
                 'text-sm px-3 py-1',
-                copayPercentage === 0 && 'bg-success text-success-foreground'
+                copay === 0 && 'bg-success text-success-foreground'
               )}
             >
-              {copayPercentage === 0 ? 'Full Coverage' : `${copayPercentage}% Copay`}
+              {copay === 0 ? 'Full Coverage' : `${copay}% Copay`}
             </Badge>
           )}
 
@@ -492,10 +493,10 @@ export function EligibilityBanner({
       }
 
       newState.member = response.member;
-      newState.coverageEndDate = response.coverage_end_date;
+      newState.coverageEndDate = response.coverage_end_date || response.member?.coverage_end_date || undefined;
       newState.copayPercentage = response.copay_percentage;
-      newState.schemeCategory = response.scheme_category;
-      newState.memberName = response.verified_name;
+      newState.schemeCategory = response.scheme_category || response.member?.scheme_category;
+      newState.memberName = response.verified_name || response.member?.patient_name;
       newState.checkedAt = response.checked_at;
       newState.coverageCaveat = response.coverage_caveat;
       newState.eligibleSchemes = response.eligible_schemes;
@@ -581,10 +582,10 @@ export function useEligibilityCheck(patientId?: number) {
       const newState: EligibilityState = {
         status,
         member: response.member,
-        coverageEndDate: response.coverage_end_date,
+        coverageEndDate: response.coverage_end_date || response.member?.coverage_end_date || undefined,
         copayPercentage: response.copay_percentage,
-        schemeCategory: response.scheme_category,
-        memberName: response.verified_name,
+        schemeCategory: response.scheme_category || response.member?.scheme_category,
+        memberName: response.verified_name || response.member?.patient_name,
         checkedAt: response.checked_at,
         coverageCaveat: response.coverage_caveat,
         eligibleSchemes: response.eligible_schemes,
