@@ -16,7 +16,7 @@ export default function EditPatientPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const patientId = Number(params.id);
+  const patientId = String(params.id);
 
   const { data: patient, isLoading, error } = usePatient(patientId);
   const updatePatient = useUpdatePatient();
@@ -58,10 +58,10 @@ export default function EditPatientPage() {
       }
 
       // If patient doesn't have CR number and has identification, register in CR
-      if (!patient?.cr_number && !data.cr_number && data.identification_number) {
+      if (patient && !patient.cr_number && !data.cr_number && data.identification_number) {
         try {
           const crResponse = await registerInCR.mutateAsync({
-            patient_id: patientId,
+            patient_id: patient.id,
           });
 
           if (crResponse.success && crResponse.client_number) {

@@ -109,7 +109,7 @@ export default function TriageAssessmentScreen() {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const params = useLocalSearchParams<{ id: string }>();
-  const encounterId = Number(params.id);
+  const encounterLookupId = params.id;
   const [form, setForm] = useState<TriageFormState>({
     chiefComplaint: '',
     chiefComplaintCategory: 'OTHER',
@@ -136,15 +136,17 @@ export default function TriageAssessmentScreen() {
   });
 
   const encounterQuery = useQuery({
-    queryKey: ['encounter', encounterId],
-    queryFn: () => encountersApi.get(encounterId),
-    enabled: Number.isFinite(encounterId),
+    queryKey: ['encounter', encounterLookupId],
+    queryFn: () => encountersApi.get(encounterLookupId!),
+    enabled: Boolean(encounterLookupId),
   });
 
+  const resolvedEncounterId = encounterQuery.data?.id;
+
   const triageQuery = useQuery({
-    queryKey: ['encounter-triage', encounterId],
-    queryFn: () => triageApi.getByEncounter(encounterId),
-    enabled: Number.isFinite(encounterId),
+    queryKey: ['encounter-triage', resolvedEncounterId],
+    queryFn: () => triageApi.getByEncounter(resolvedEncounterId!),
+    enabled: typeof resolvedEncounterId === 'number',
   });
 
   useEffect(() => {
@@ -168,7 +170,7 @@ export default function TriageAssessmentScreen() {
   const createTriageMutation = useMutation({
     mutationFn: async () => {
       const payload: TriageAssessmentCreateData = {
-        encounter: encounterId,
+        encounter: resolvedEncounterId!,
         chief_complaint: form.chiefComplaint.trim(),
         chief_complaint_category: form.chiefComplaintCategory,
         pain_score: toOptionalNumber(form.painScore),
@@ -198,12 +200,12 @@ export default function TriageAssessmentScreen() {
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['encounter-triage', encounterId] }),
-        queryClient.invalidateQueries({ queryKey: ['encounter', encounterId] }),
+        queryClient.invalidateQueries({ queryKey: ['encounter-triage', encounterLookupId] }),
+        queryClient.invalidateQueries({ queryKey: ['encounter', encounterLookupId] }),
         queryClient.invalidateQueries({ queryKey: ['encounters'] }),
         queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] }),
       ]);
-      router.replace(`/encounters/${encounterId}` as never);
+      router.replace(`/encounters/${encounterLookupId}` as never);
     },
   });
 
@@ -211,8 +213,8 @@ export default function TriageAssessmentScreen() {
     mutationFn: (triageId: number) => triageApi.complete(triageId),
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['encounter-triage', encounterId] }),
-        queryClient.invalidateQueries({ queryKey: ['encounter', encounterId] }),
+        queryClient.invalidateQueries({ queryKey: ['encounter-triage', encounterLookupId] }),
+        queryClient.invalidateQueries({ queryKey: ['encounter', encounterLookupId] }),
         queryClient.invalidateQueries({ queryKey: ['encounters'] }),
       ]);
     },
@@ -276,7 +278,7 @@ export default function TriageAssessmentScreen() {
     );
   }
 
-  if (!encounterQuery.data) {
+  if (!encounterQuery.data || !resolvedEncounterId) {
     return (
       <ScreenContainer>
         <LoadingState message="Encounter not found for triage." />
@@ -290,7 +292,7 @@ export default function TriageAssessmentScreen() {
     <ScreenContainer>
       <HeroCard
         eyebrow="Triage"
-        title={encounterQuery.data.patient_name || encounterQuery.data.patient_mrn || `Encounter #${encounterId}`}
+        title={encounterQuery.data.patient_name || encounterQuery.data.patient_mrn || `Encounter #${resolvedEncounterId}`}
         description="Capture KETA acuity, initial vitals, and routing from the encounter detail flow."
       >
         <Pill label={existingTriage ? existingTriage.triage_category : 'Pending triage'} tone={existingTriage ? 'danger' : 'warning'} />
@@ -318,7 +320,7 @@ export default function TriageAssessmentScreen() {
           ) : (
             <Text style={styles.helperText}>Completed {formatDateTime(existingTriage.triage_end_time)}</Text>
           )}
-          <AppButton label="Back to encounter" variant="secondary" onPress={() => router.replace(`/encounters/${encounterId}` as never)} />
+          <AppButton label="Back to encounter" variant="secondary" onPress={() => router.replace(`/encounters/${encounterLookupId}` as never)} />
         </SectionCard>
       ) : (
         <>
@@ -379,7 +381,7 @@ export default function TriageAssessmentScreen() {
             {form.triageCategory ? <AppTextInput label="Override reason (required if category differs from auto-calc)" value={form.categoryOverrideReason} onChangeText={(value) => setForm((current) => ({ ...current, categoryOverrideReason: value }))} multiline /> : null}
             <AppPicker label="Assigned area" selectedValue={form.assignedArea} onValueChange={(value) => setForm((current) => ({ ...current, assignedArea: value as TriageAssignedArea }))} items={assignedAreaItems as unknown as { label: string; value: string }[]} />
             <AppButton label={createTriageMutation.isPending ? 'Saving triage...' : 'Save triage assessment'} onPress={handleSaveTriage} disabled={createTriageMutation.isPending} />
-            <AppButton label="Back to encounter" variant="secondary" onPress={() => router.replace(`/encounters/${encounterId}` as never)} />
+            <AppButton label="Back to encounter" variant="secondary" onPress={() => router.replace(`/encounters/${encounterLookupId}` as never)} />
           </SectionCard>
         </>
       )}

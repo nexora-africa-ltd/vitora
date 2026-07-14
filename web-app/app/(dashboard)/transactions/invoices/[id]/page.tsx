@@ -42,7 +42,7 @@ export default function InvoiceDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
-  const invoiceId = Number(params.id);
+  const invoiceId = String(params.id);
 
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showPaymentSuccessDialog, setShowPaymentSuccessDialog] = useState(false);
@@ -64,12 +64,13 @@ export default function InvoiceDetailPage() {
   const [mpesaCheckoutRequestId, setMpesaCheckoutRequestId] = useState<string | null>(null);
 
   const { data: invoice, isLoading, refetch: refetchInvoice } = useInvoice(invoiceId);
+  const invoiceNumericId = invoice?.id ?? 0;
   const { data: servicesData } = useServices();
 
   // Only fetch SHA claims for insurance invoices (avoid unnecessary API calls for cash invoices)
   const isInsuranceInvoice = invoice?.payment_type === 'insurance' || !!invoice?.sha_claim_number;
   const { data: claimsData, refetch: refetchClaims } = useClaims(
-    { invoice: invoiceId },
+    { invoice: invoiceNumericId },
     { enabled: isInsuranceInvoice }
   );
   const linkedClaim = isInsuranceInvoice ? (claimsData?.results?.[0] || null) : null;
@@ -236,7 +237,7 @@ export default function InvoiceDetailPage() {
 
   const handleAddItemSubmit = async (data: InvoiceItemCreateData) => {
     try {
-      await addInvoiceItem.mutateAsync({ invoiceId, item: data });
+      await addInvoiceItem.mutateAsync({ invoiceId: invoiceNumericId, item: data });
       toast({
         title: 'Item added',
         description: 'Line item has been added to the invoice.',
@@ -275,7 +276,7 @@ export default function InvoiceDetailPage() {
 
   const handleApplyDiscountSubmit = async (data: ApplyDiscountData) => {
     try {
-      await applyDiscount.mutateAsync({ invoiceId, discount: data });
+      await applyDiscount.mutateAsync({ invoiceId: invoiceNumericId, discount: data });
       toast({
         title: 'Discount applied',
         description: 'Discount has been applied to the invoice.',

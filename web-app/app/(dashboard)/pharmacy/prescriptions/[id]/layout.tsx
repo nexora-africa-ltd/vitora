@@ -15,7 +15,7 @@ export default function PrescriptionDetailLayout({
   children: React.ReactNode;
 }) {
   const params = useParams();
-  const prescriptionId = Number(params.id);
+  const prescriptionId = String(params.id);
   const { data: prescription } = usePrescription(prescriptionId);
 
   return (

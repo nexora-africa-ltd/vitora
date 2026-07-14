@@ -91,35 +91,35 @@ import {
 export default function PatientDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const patientId = Number(params.id);
+  const patientId = String(params.id);
   const [showDependents, setShowDependents] = useState(false);
-
-  // Vitals history for trend chart
-  const { data: vitalsHistory, isLoading: isLoadingVitals } = usePatientVitalsHistory(patientId, 'all');
 
   // Use patient context instead of independent fetch
   const { patient, isLoading, error } = usePatientContext();
+
+  // Vitals history for trend chart
+  const { data: vitalsHistory, isLoading: isLoadingVitals } = usePatientVitalsHistory(patient?.id ?? patientId, 'all');
   const { canEditPatient } = usePermissions();
   const { hasModule } = useFacility();
-  const { data: emergencyContacts } = usePatientEmergencyContacts(patientId);
+  const { data: emergencyContacts } = usePatientEmergencyContacts(patient?.id ?? 0);
 
   // Pull-to-refresh support
   const { refresh, isRefreshing } = usePageRefresh();
 
   // Fetch prescriptions and lab orders
   const { data: prescriptionsData, isLoading: loadingPrescriptions } =
-    usePatientPrescriptions(patientId);
-  const { data: labOrdersData, isLoading: loadingLabOrders } = usePatientLabOrders(patientId);
-  const patientProcedureOrdersQuery = usePatientProcedureOrders(patientId);
+    usePatientPrescriptions(patient?.id ?? 0);
+  const { data: labOrdersData, isLoading: loadingLabOrders } = usePatientLabOrders(patient?.id ?? 0);
+  const patientProcedureOrdersQuery = usePatientProcedureOrders(patient?.id ?? 0);
   const procedureOrdersData: PaginatedResponse<ProcedureOrderListItem> | undefined =
     patientProcedureOrdersQuery.data as PaginatedResponse<ProcedureOrderListItem> | undefined;
   const loadingProcedureOrders = patientProcedureOrdersQuery.isLoading;
 
   // Fetch SHA member for this patient to check if they're a principal
   const { data: shaMembersData } = useQuery({
-    queryKey: ['sha-members', patientId],
-    queryFn: () => shaApi.getSHAMembers({ patient: patientId }),
-    enabled: !!patientId,
+    queryKey: ['sha-members', patient?.id],
+    queryFn: () => shaApi.getSHAMembers({ patient: patient!.id }),
+    enabled: !!patient?.id,
   });
 
   const shaMember = shaMembersData?.results?.[0];
@@ -259,13 +259,13 @@ export default function PatientDetailPage() {
         </div>
 
         {/* SHA Eligibility Banner */}
-        <EligibilityBanner patientId={patientId} />
+        <EligibilityBanner patientId={patient.id} />
 
         {/* SHA Benefits & Interventions Panel */}
         {shaMember?.sha_number && (
           <BenefitsPanel
             crNumber={shaMember.sha_number}
-            patientPk={patientId}
+            patientPk={patient.id}
             shaMemberId={shaMember.id}
           />
         )}
@@ -487,7 +487,7 @@ export default function PatientDetailPage() {
 
           {/* Encounters */}
           <TabsContent value="encounters">
-            <PatientEncounters patientId={patientId} />
+            <PatientEncounters patientId={patient.id} />
           </TabsContent>
 
           {/* Clinical — Vitals | Allergies | Emergency Contacts */}
@@ -519,7 +519,7 @@ export default function PatientDetailPage() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <EGFRTrendChart patientId={patientId} />
+                    <EGFRTrendChart patientId={patient.id} />
                 </AccordionContent>
               </AccordionItem>
 
@@ -531,7 +531,7 @@ export default function PatientDetailPage() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <PatientAllergiesTab patientId={patientId} />
+                  <PatientAllergiesTab patientId={patient.id} />
                 </AccordionContent>
               </AccordionItem>
 
@@ -543,7 +543,7 @@ export default function PatientDetailPage() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <PatientSocialHistoryTab patientId={patientId} />
+                  <PatientSocialHistoryTab patientId={patient.id} />
                 </AccordionContent>
               </AccordionItem>
 
@@ -555,7 +555,7 @@ export default function PatientDetailPage() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <PatientChronicConditionsTab patientId={patientId} />
+                  <PatientChronicConditionsTab patientId={patient.id} />
                 </AccordionContent>
               </AccordionItem>
 
@@ -567,7 +567,7 @@ export default function PatientDetailPage() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <PatientCurrentMedicationsTab patientId={patientId} />
+                  <PatientCurrentMedicationsTab patientId={patient.id} />
                 </AccordionContent>
               </AccordionItem>
 
@@ -579,7 +579,7 @@ export default function PatientDetailPage() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <PatientPastSurgeriesTab patientId={patientId} />
+                  <PatientPastSurgeriesTab patientId={patient.id} />
                 </AccordionContent>
               </AccordionItem>
 
@@ -591,7 +591,7 @@ export default function PatientDetailPage() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <PatientFamilyHistoryTab patientId={patientId} />
+                  <PatientFamilyHistoryTab patientId={patient.id} />
                 </AccordionContent>
               </AccordionItem>
 
@@ -629,7 +629,7 @@ export default function PatientDetailPage() {
                   <PatientPrescriptionsSection
                     prescriptions={prescriptions}
                     isLoading={loadingPrescriptions}
-                    patientId={patientId}
+                    patientId={patient.id}
                   />
                 </AccordionContent>
               </AccordionItem>
@@ -648,7 +648,7 @@ export default function PatientDetailPage() {
                   <PatientProceduresSection
                     procedureOrders={procedureOrders}
                     isLoading={loadingProcedureOrders}
-                    patientId={patientId}
+                    patientId={patient.id}
                   />
                 </AccordionContent>
               </AccordionItem>
@@ -667,7 +667,7 @@ export default function PatientDetailPage() {
                   <PatientLabResultsSection
                     labOrders={labOrders}
                     isLoading={loadingLabOrders}
-                    patientId={patientId}
+                    patientId={patient.id}
                   />
                 </AccordionContent>
               </AccordionItem>
@@ -680,7 +680,7 @@ export default function PatientDetailPage() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <PatientImagingSection patientId={patientId} />
+                  <PatientImagingSection patientId={patient.id} />
                 </AccordionContent>
               </AccordionItem>
 
@@ -693,7 +693,7 @@ export default function PatientDetailPage() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
-                    <PatientBloodRequestsSection patientId={patientId} />
+                    <PatientBloodRequestsSection patientId={patient.id} />
                   </AccordionContent>
                 </AccordionItem>
               )}
@@ -707,7 +707,7 @@ export default function PatientDetailPage() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
-                    <PatientDialysisOrdersSection patientId={patientId} />
+                    <PatientDialysisOrdersSection patientId={patient.id} />
                   </AccordionContent>
                 </AccordionItem>
               )}
@@ -725,7 +725,7 @@ export default function PatientDetailPage() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <PatientAlliedHealthTab patientId={patientId} />
+                  <PatientAlliedHealthTab patientId={patient.id} />
                 </AccordionContent>
               </AccordionItem>
 
@@ -737,7 +737,7 @@ export default function PatientDetailPage() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <PatientAuditTrail patientId={patientId} />
+                  <PatientAuditTrail patientId={patient.id} />
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

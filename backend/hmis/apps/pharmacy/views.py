@@ -16,7 +16,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, PublicIdLookupMixin, TenantScopedViewMixin
 from hmis.apps.core.permissions import RequiresActiveShiftPermission, WriteRequiresRolePermission
 from hmis.apps.pharmacy.models import (
     Dispensing,
@@ -273,7 +273,7 @@ class StockAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class PrescriptionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class PrescriptionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for Prescription model.
 
@@ -366,7 +366,7 @@ class PrescriptionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class DispensingViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class DispensingViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for Dispensing model.
 

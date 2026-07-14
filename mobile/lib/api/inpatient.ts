@@ -61,7 +61,7 @@ export const inpatientApi = {
     return parseResponse(PaginatedAdmissionSchema, response.data, { context: 'inpatient.listAdmissions' });
   },
 
-  async getAdmission(id: number): Promise<Admission> {
+  async getAdmission(id: string | number): Promise<Admission> {
     const response = await apiClient.get(`/api/inpatient/admissions/${id}/`);
     return parseResponse(AdmissionSchema, response.data, { context: 'inpatient.getAdmission' });
   },

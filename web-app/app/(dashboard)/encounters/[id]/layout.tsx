@@ -163,11 +163,8 @@ export default function EncounterLayout({
   children: React.ReactNode;
 }) {
   const params = useParams();
-  const idParam = params.id;
-
-  // Validate encounterId from params
-  const encounterId = typeof idParam === 'string' ? parseInt(idParam, 10) : null;
-  const isValidId = encounterId !== null && !isNaN(encounterId) && encounterId > 0;
+  const encounterId = typeof params.id === 'string' ? params.id : null;
+  const isValidId = !!encounterId;
 
   // Fetch encounter to get patientId (lightweight query just for routing)
   const {

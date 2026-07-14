@@ -11,7 +11,7 @@ import { usePatient } from '@/lib/hooks/use-patients';
 export default function PatientHistoryPage() {
   const params = useParams();
   const router = useRouter();
-  const patientId = Number(params.id);
+  const patientId = String(params.id);
 
   const { data: patient, isLoading: patientLoading, error } = usePatient(patientId);
 
@@ -83,7 +83,7 @@ export default function PatientHistoryPage() {
       </div>
 
       {/* Timeline */}
-      <PatientTimeline patientId={patientId} />
+      <PatientTimeline patientId={patient.id} />
     </div>
   );
 }

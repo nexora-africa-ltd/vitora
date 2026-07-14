@@ -83,6 +83,7 @@ class PatientSerializer(serializers.ModelSerializer):
         model = Patient
         fields = [
             "id",
+            "public_id",
             "mrn",
             # Client Registry
             "cr_number",
@@ -151,6 +152,7 @@ class PatientSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "public_id",
             "mrn",
             "created_at",
             "updated_at",

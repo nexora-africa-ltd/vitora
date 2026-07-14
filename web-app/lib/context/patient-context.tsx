@@ -46,7 +46,7 @@ export interface PatientContextValue {
   /** Whether this is a sensitive patient (HIV/GBV/Mental Health) */
   isSensitive: boolean;
   /** The patient ID being fetched */
-  patientId: number | null;
+  patientId: string | number | null;
   /** Refetch patient data (use sparingly) */
   refetch: () => void;
   /** Current patient journey stage (from zustand store) */
@@ -65,12 +65,14 @@ const PatientContext = createContext<PatientContextValue | undefined>(undefined)
 
 export interface PatientProviderProps {
   /** The patient ID to fetch */
-  patientId: number | null;
+  patientId: string | number | null;
   /** Child components that will have access to patient context */
   children: ReactNode;
 }
 
 export function PatientProvider({ patientId, children }: PatientProviderProps) {
+  const hasPatientId = patientId !== null && patientId !== undefined && String(patientId).length > 0;
+
   // Access patient journey store
   const {
     registerPatient,
@@ -88,16 +90,16 @@ export function PatientProvider({ patientId, children }: PatientProviderProps) {
   } = useQuery({
     queryKey: patientKeys.detail(patientId!),
     queryFn: () => patientsApi.getPatient(patientId!),
-    enabled: !!patientId && patientId > 0,
+    enabled: hasPatientId,
     staleTime: 5 * 60 * 1000, // 5 minutes - patient data doesn't change often
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
 
   // Sync patient to journey store when loaded
   useEffect(() => {
-    if (patient && patientId) {
+    if (patient && hasPatientId) {
       // Register/update patient in journey store if not already present
-      const journeyPatient = activePatients[patientId];
+      const journeyPatient = activePatients[patient.id];
       if (!journeyPatient) {
         registerPatient({
           id: patient.id,
@@ -109,17 +111,17 @@ export function PatientProvider({ patientId, children }: PatientProviderProps) {
         });
       }
       // Select this patient for UI operations
-      selectPatient(patientId);
+      selectPatient(patient.id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- Store actions are stable, only sync on patient changes
-  }, [patient?.id, patientId]);
+  }, [patient?.id, hasPatientId]);
 
   // Get journey stage for this patient
   const journeyStage = useMemo(() => {
-    if (!patientId) return null;
-    const journeyPatient = activePatients[patientId];
+    if (!patient?.id) return null;
+    const journeyPatient = activePatients[patient.id];
     return journeyPatient?.stage ?? null;
-  }, [patientId, activePatients]);
+  }, [patient?.id, activePatients]);
 
   // Derive verification status
   // Important: Check patient exists AND has the field with a truthy value

@@ -116,9 +116,10 @@ export default function DischargePage() {
   const router = useRouter();
   const user = useUser();
   const { toast } = useToast();
-  const admissionId = Number(params.id);
+  const admissionRouteId = String(params.id);
 
-  const { data: admission, isLoading } = useAdmission(admissionId);
+  const { data: admission, isLoading } = useAdmission(admissionRouteId);
+  const admissionId = admission?.id ?? 0;
   const { data: wardRounds } = useAdmissionWardRounds(admissionId);
   const { data: orders } = useAdmissionOrders(admissionId);
   const { data: kardex } = useKardexByAdmission(admissionId);

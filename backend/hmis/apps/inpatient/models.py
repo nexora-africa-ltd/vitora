@@ -18,6 +18,7 @@ This module implements the core IPD models including:
 
 from __future__ import annotations
 
+import uuid
 from datetime import timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -718,6 +719,14 @@ class Admission(FacilityScopedModel, TimeStampedModel):
         ("SHA", "SHA Insurance"),
         ("CORPORATE", "Corporate"),
     ]
+
+    public_id = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        db_index=True,
+        editable=False,
+        help_text="Stable public UUID for external APIs and links.",
+    )
 
     # Patient and encounter linkage
     patient = models.ForeignKey(

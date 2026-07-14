@@ -23,6 +23,8 @@ from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.permissions import RequiresActiveShiftPermission, WriteRequiresRolePermission
+from hmis.apps.core.utils import resolve_model_pk_or_public_id
+from hmis.apps.encounters.models import Encounter
 from hmis.apps.licensing.permissions import requires_feature
 
 from .models import (
@@ -1289,10 +1291,14 @@ class EncounterLabOrderViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelVie
 
     def get_queryset(self):
         encounter_pk = self.kwargs.get("encounter_pk")
+        try:
+            encounter_id = resolve_model_pk_or_public_id(Encounter, encounter_pk)[0].id
+        except Encounter.DoesNotExist:
+            return super().get_queryset().none()
         return (
             super()
             .get_queryset()
-            .filter(encounter_id=encounter_pk)
+            .filter(encounter_id=encounter_id)
             .select_related("patient", "encounter", "ordered_by")
         )
 

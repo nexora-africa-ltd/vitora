@@ -15,11 +15,11 @@ export function useLocalEncounters(options: { limit?: number; patientId?: number
   };
 }
 
-export function useLocalEncounter(id: number) {
+export function useLocalEncounter(id?: number | null) {
   const query = useQuery({
     queryKey: ['local-encounter', id],
-    queryFn: () => getLocalEncounter(id),
-    enabled: Number.isFinite(id),
+    queryFn: () => getLocalEncounter(id as number),
+    enabled: typeof id === 'number' && Number.isFinite(id),
   });
 
   return {

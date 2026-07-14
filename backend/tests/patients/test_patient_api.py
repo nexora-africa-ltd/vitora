@@ -141,6 +141,25 @@ class TestPatientAPIEndpoints:
         assert response.data["first_name"] == "John"
         assert response.data["last_name"] == "Doe"
         assert response.data["mrn"] == patient.mrn
+        assert response.data["public_id"] == str(patient.public_id)
+
+    def test_retrieve_patient_by_public_id(self, auth_client, sample_organization):
+        """Test GET /api/patients/{public_id}/ - Retrieve patient by UUID."""
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="Jane",
+            last_name="Doe",
+            date_of_birth=date(1992, 2, 2),
+            gender="F",
+            organization=sample_organization,
+        )
+
+        response = auth_client.get(f"/api/patients/{patient.public_id}/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == patient.id
+        assert response.data["public_id"] == str(patient.public_id)
 
     def test_retrieve_nonexistent_patient(self, auth_client):
         """Test GET /api/patients/{id}/ - Fail when patient doesn't exist."""

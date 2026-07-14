@@ -39,22 +39,23 @@ export default function EncounterEditReviewPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuth();
-  const encounterId = Number(params.id);
+  const encounterRouteId = String(params.id);
 
   const { encounter, isLoading } = useEncounterContext();
+  const encounterStoreId = encounter?.id ?? 0;
   const { getSession, getFormData, clearSession, getSectionCompletion } = useEncounterEditStore();
   const updateEncounter = useUpdateEncounter();
 
   // Fetch diagnoses, lab orders, prescriptions for SOAP summary
-  const { data: existingDiagnoses } = useEncounterDiagnoses(encounterId);
-  const { data: labOrders } = useEncounterLabOrders(encounterId);
-  const { data: prescriptions } = useEncounterPrescriptions(encounterId);
+  const { data: existingDiagnoses } = useEncounterDiagnoses(encounterRouteId);
+  const { data: labOrders } = useEncounterLabOrders(encounterStoreId);
+  const { data: prescriptions } = useEncounterPrescriptions(encounterStoreId);
 
-  const session = getSession(encounterId);
-  const completion = getSectionCompletion(encounterId);
+  const session = getSession(encounterStoreId);
+  const completion = getSectionCompletion(encounterStoreId);
 
   // CDS alerts — check for unresolved critical/high alerts
-  const { data: cdsData } = useEncounterCDSAlerts(encounterId);
+  const { data: cdsData } = useEncounterCDSAlerts(encounterStoreId);
   const [showCDSDialog, setShowCDSDialog] = useState(false);
   const hasUnresolvedCritical = useMemo(() => {
     const alerts = cdsData?.results || [];
@@ -73,9 +74,9 @@ export default function EncounterEditReviewPage() {
 
   // Build form data for SOAP summary
   const formData = useMemo((): EncounterFormData | null => {
-    return getFormData(encounterId);
+    return getFormData(encounterStoreId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [encounterId, getFormData, session]);
+  }, [encounterStoreId, getFormData, session]);
 
   // Convert diagnoses to form format
   const diagnosisFormData = useMemo((): DiagnosisFormData[] => {
@@ -129,8 +130,8 @@ export default function EncounterEditReviewPage() {
 
   // Navigate to previous step
   const handlePrev = useCallback(() => {
-    router.push(`/encounters/${encounterId}/edit/referrals`);
-  }, [encounterId, router]);
+    router.push(`/encounters/${encounterRouteId}/edit/referrals`);
+  }, [encounterRouteId, router]);
 
   // Save and stay
   const handleSave = useCallback(async () => {
@@ -142,7 +143,7 @@ export default function EncounterEditReviewPage() {
         : '';
 
       await updateEncounter.mutateAsync({
-        id: encounterId,
+        id: encounterRouteId,
         data: {
           encounter_type: formData.encounter_type,
           encounter_date: formData.encounter_date,
@@ -180,7 +181,7 @@ export default function EncounterEditReviewPage() {
         variant: 'destructive',
       });
     }
-  }, [formData, encounterId, updateEncounter, toast]);
+  }, [formData, encounterRouteId, updateEncounter, toast]);
 
   // Actual finalize logic
   const handleFinalize = useCallback(async () => {
@@ -194,7 +195,7 @@ export default function EncounterEditReviewPage() {
         : null;
 
       await updateEncounter.mutateAsync({
-        id: encounterId,
+        id: encounterRouteId,
         data: {
           encounter_type: formData.encounter_type,
           encounter_date: formData.encounter_date,
@@ -223,10 +224,10 @@ export default function EncounterEditReviewPage() {
 
       // Then finalize
       const { encountersApi } = await import('@/lib/api/encounters');
-      await encountersApi.finalize(encounterId);
+      await encountersApi.finalize(encounterRouteId);
 
       // Clear the edit session
-      clearSession(encounterId);
+      clearSession(encounterStoreId);
 
       toast({
         title: 'Encounter Finalized',
@@ -234,7 +235,7 @@ export default function EncounterEditReviewPage() {
       });
 
       // Navigate to encounter detail
-      router.push(`/encounters/${encounterId}`);
+      router.push(`/encounters/${encounterRouteId}`);
     } catch (err) {
       toast({
         title: 'Error',
@@ -242,7 +243,7 @@ export default function EncounterEditReviewPage() {
         variant: 'destructive',
       });
     }
-  }, [formData, encounterId, updateEncounter, clearSession, toast, router]);
+  }, [formData, encounterRouteId, encounterStoreId, updateEncounter, clearSession, toast, router]);
 
   // Finalize encounter — if unresolved critical alerts exist, show dialog first
   const handleFinalizeClick = useCallback(() => {
@@ -317,7 +318,7 @@ export default function EncounterEditReviewPage() {
       </Card>
 
       {/* CDS Alerts Panel — advisory alerts for this encounter */}
-      <CDSAlertsPanel encounterId={encounterId} />
+      <CDSAlertsPanel encounterId={encounterStoreId} />
 
       {/* SOAP Note Summary */}
       <Card>
@@ -387,7 +388,7 @@ export default function EncounterEditReviewPage() {
 
       {/* CDS Critical Alert Resolution Dialog */}
       <CDSCriticalDialog
-        encounterId={encounterId}
+        encounterId={encounterStoreId}
         open={showCDSDialog}
         onOpenChange={setShowCDSDialog}
         onProceed={handleFinalize}

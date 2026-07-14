@@ -36,22 +36,23 @@ import { AlertTriangle } from 'lucide-react';
 export default function EncounterEditOrdersPage() {
   const params = useParams();
   const router = useRouter();
-  const encounterId = Number(params.id);
+  const encounterRouteId = String(params.id);
 
   const { encounter, isLoading } = useEncounterContext();
+  const encounterStoreId = encounter?.id ?? 0;
   const { getSession, markSectionComplete } = useEncounterEditStore();
 
   // Fetch order counts for badges
-  const { data: labOrders } = useEncounterLabOrders(encounterId);
-  const { data: imagingOrders } = useEncounterImagingOrders(encounterId);
-  const { data: prescriptions } = useEncounterPrescriptions(encounterId);
+  const { data: labOrders } = useEncounterLabOrders(encounterStoreId);
+  const { data: imagingOrders } = useEncounterImagingOrders(encounterStoreId);
+  const { data: prescriptions } = useEncounterPrescriptions(encounterStoreId);
   const { data: procOrdersData } = useQuery({
-    queryKey: ['procedure-orders', { encounter: encounterId }],
-    queryFn: () => proceduresApi.listOrders({ encounter: String(encounterId), page_size: '50' }),
-    enabled: !!encounterId,
+    queryKey: ['procedure-orders', { encounter: encounterStoreId }],
+    queryFn: () => proceduresApi.listOrders({ encounter: String(encounterStoreId), page_size: '50' }),
+    enabled: !!encounterStoreId,
   });
 
-  const session = getSession(encounterId);
+  const session = getSession(encounterStoreId);
 
   const labCount = labOrders?.length || 0;
   const imagingCount = imagingOrders?.length || 0;
@@ -63,14 +64,14 @@ export default function EncounterEditOrdersPage() {
 
   // Navigate to previous step
   const handlePrev = useCallback(() => {
-    router.push(`/encounters/${encounterId}/edit/diagnosis`);
-  }, [encounterId, router]);
+    router.push(`/encounters/${encounterRouteId}/edit/diagnosis`);
+  }, [encounterRouteId, router]);
 
   // Navigate to next step (Review, skipping referrals — referrals accessible from Review)
   const handleNext = useCallback(() => {
-    markSectionComplete(encounterId, 'orders');
-    router.push(`/encounters/${encounterId}/edit/review`);
-  }, [encounterId, markSectionComplete, router]);
+    markSectionComplete(encounterStoreId, 'orders');
+    router.push(`/encounters/${encounterRouteId}/edit/review`);
+  }, [encounterStoreId, encounterRouteId, markSectionComplete, router]);
 
   if (isLoading || !session) {
     return null;
@@ -101,7 +102,7 @@ export default function EncounterEditOrdersPage() {
       {/* AI Investigation Suggestions — only show when diagnoses exist */}
       {session.diagnoses.length > 0 && (
         <InvestigationSuggestionsPanel
-          encounterId={encounterId}
+          encounterId={encounterStoreId}
           patientId={encounter?.patient}
           chiefComplaint={session.chief_complaint || encounter?.chief_complaint || undefined}
           diagnoses={session.diagnoses
@@ -167,7 +168,7 @@ export default function EncounterEditOrdersPage() {
 
         <TabsContent value="lab">
           <EncounterLabOrders
-            encounterId={encounterId}
+            encounterId={encounterStoreId}
             patientId={session.patientId}
             disabled={!isEditable}
             patientName={encounter?.patient_name ?? undefined}
@@ -186,7 +187,7 @@ export default function EncounterEditOrdersPage() {
 
         <TabsContent value="imaging">
           <EncounterImagingOrders
-            encounterId={encounterId}
+            encounterId={encounterStoreId}
             patientId={session.patientId}
             patientName={encounter?.patient_name ?? undefined}
             disabled={!isEditable}
@@ -195,7 +196,7 @@ export default function EncounterEditOrdersPage() {
 
         <TabsContent value="pharmacy">
           <EncounterPrescriptions
-            encounterId={encounterId}
+            encounterId={encounterStoreId}
             patientId={session.patientId}
             disabled={!isEditable}
           />
@@ -203,7 +204,7 @@ export default function EncounterEditOrdersPage() {
 
         <TabsContent value="procedures">
           <EncounterProcedureOrders
-            encounterId={encounterId}
+            encounterId={encounterStoreId}
             patientId={session.patientId}
             disabled={!isEditable}
           />
@@ -211,7 +212,7 @@ export default function EncounterEditOrdersPage() {
 
         <TabsContent value="referrals">
           <EncounterReferralsContent
-            encounterId={encounterId}
+            encounterId={encounterStoreId}
             patientId={session.patientId}
             disabled={!isEditable}
           />

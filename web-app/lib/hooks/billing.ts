@@ -66,7 +66,7 @@ export const billingKeys = {
   // Invoices
   invoices: () => [...billingKeys.all, 'invoices'] as const,
   invoicesList: (params?: InvoiceListParams) => [...billingKeys.invoices(), 'list', params] as const,
-  invoiceDetail: (id: number) => [...billingKeys.invoices(), 'detail', id] as const,
+  invoiceDetail: (id: string | number) => [...billingKeys.invoices(), 'detail', id] as const,
   invoicesOverdue: () => [...billingKeys.invoices(), 'overdue'] as const,
 
   // Proformas
@@ -188,14 +188,17 @@ export function useInvoices(params?: InvoiceListParams) {
  * Fetch single invoice by ID.
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
-export function useInvoice(id: number | undefined) {
+export function useInvoice(id: string | number | undefined) {
+  const numericId = typeof id === 'number' ? id : Number.parseInt(String(id), 10);
+  const localId = Number.isFinite(numericId) && numericId > 0 ? numericId : null;
+
   // Force API mode: invoices require nested line items with service/drug names
   return useOfflineQuery<InvoiceJoinedRow, Invoice>({
     sql: `SELECT inv.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
       FROM billing_invoice inv
       LEFT JOIN patients_patient p ON inv.patient_id = p.id
       WHERE inv.id = ?`,
-    params: [id !== undefined ? String(id) : '0'],
+    params: [localId !== null ? String(localId) : '0'],
     transform: (rows) => {
       if (rows.length === 0) throw new Error(`Invoice ${id} not found`);
       return transformInvoiceRow(rows[0]!) as unknown as Invoice;
@@ -203,7 +206,7 @@ export function useInvoice(id: number | undefined) {
     queryKey: billingKeys.invoiceDetail(id!),
     queryFn: () => billingApi.getInvoice(id!),
     forceApi: true,
-    enabled: id !== undefined && id > 0,
+    enabled: id !== undefined,
   });
 }
 

@@ -575,8 +575,16 @@ class TestPrescriptionAPI:
 
         response = authenticated_client.get(f"/api/pharmacy/prescriptions/{prescription.id}/")
         assert response.status_code == status.HTTP_200_OK
+        assert response.data["public_id"] == str(prescription.public_id)
         assert "items" in response.data
         assert len(response.data["items"]) == 1
+
+        uuid_response = authenticated_client.get(
+            f"/api/pharmacy/prescriptions/{prescription.public_id}/"
+        )
+        assert uuid_response.status_code == status.HTTP_200_OK
+        assert uuid_response.data["id"] == prescription.id
+        assert uuid_response.data["public_id"] == str(prescription.public_id)
 
     def test_cancel_prescription(
         self, authenticated_client, test_user, sample_organization, sample_facility
@@ -1146,7 +1154,15 @@ class TestDispensingAPI:
 
         response = authenticated_client.get(f"/api/pharmacy/dispensings/{dispensing.id}/")
         assert response.status_code == status.HTTP_200_OK
+        assert response.data["public_id"] == str(dispensing.public_id)
         assert "patient_name" in response.data
         assert "drug_name" in response.data
         assert "dispensed_by_name" in response.data
         assert "batch_number" in response.data
+
+        uuid_response = authenticated_client.get(
+            f"/api/pharmacy/dispensings/{dispensing.public_id}/"
+        )
+        assert uuid_response.status_code == status.HTTP_200_OK
+        assert uuid_response.data["id"] == dispensing.id
+        assert uuid_response.data["public_id"] == str(dispensing.public_id)

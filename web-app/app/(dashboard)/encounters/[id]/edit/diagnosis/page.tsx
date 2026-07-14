@@ -33,19 +33,20 @@ export default function EncounterEditDiagnosisPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const encounterId = Number(params.id);
+  const encounterRouteId = String(params.id);
 
   const { encounter, isLoading } = useEncounterContext();
+  const encounterStoreId = encounter?.id ?? 0;
   const { getSession, getDiagnoses, setDiagnoses, markSectionComplete } = useEncounterEditStore();
 
   // Use API hooks for diagnosis CRUD (saves immediately to backend)
-  const { data: existingDiagnoses, isLoading: isLoadingDiagnoses } = useEncounterDiagnoses(encounterId);
-  const addDiagnosis = useAddDiagnosis(encounterId);
-  const deleteDiagnosis = useDeleteDiagnosis(encounterId);
-  const updateDiagnosis = useUpdateDiagnosis(encounterId);
+  const { data: existingDiagnoses, isLoading: isLoadingDiagnoses } = useEncounterDiagnoses(encounterRouteId);
+  const addDiagnosis = useAddDiagnosis(encounterRouteId);
+  const deleteDiagnosis = useDeleteDiagnosis(encounterRouteId);
+  const updateDiagnosis = useUpdateDiagnosis(encounterRouteId);
 
-  const session = getSession(encounterId);
-  const storeDiagnoses = getDiagnoses(encounterId);
+  const session = getSession(encounterStoreId);
+  const storeDiagnoses = getDiagnoses(encounterStoreId);
 
   // Use existing diagnoses from API, fallback to store
   const diagnoses = useMemo((): DiagnosisFormData[] => {
@@ -92,7 +93,7 @@ export default function EncounterEditDiagnosisPage() {
 
       if (!savedDiagnosis) {
         // Local write — add input data to local store
-        setDiagnoses(encounterId, [
+        setDiagnoses(encounterStoreId, [
           ...diagnoses,
           {
             icd10_code: diagnosis.icd10_code,
@@ -111,7 +112,7 @@ export default function EncounterEditDiagnosisPage() {
       }
 
       // Update local store
-      setDiagnoses(encounterId, [
+      setDiagnoses(encounterStoreId, [
         ...diagnoses,
         {
           icd10_code: savedDiagnosis.icd10_code,
@@ -137,7 +138,7 @@ export default function EncounterEditDiagnosisPage() {
         variant: 'destructive',
       });
     }
-  }, [addDiagnosis, diagnoses, encounterId, setDiagnoses, toast]);
+  }, [addDiagnosis, diagnoses, encounterStoreId, setDiagnoses, toast]);
 
   // Handle removing a diagnosis
   const handleRemoveDiagnosis = useCallback(async (index: number) => {
@@ -149,7 +150,7 @@ export default function EncounterEditDiagnosisPage() {
     if (diagnosisToRemove?.id) {
       try {
         await deleteDiagnosis.mutateAsync(diagnosisToRemove.id);
-        setDiagnoses(encounterId, diagnoses.filter((_, i) => i !== index));
+        setDiagnoses(encounterStoreId, diagnoses.filter((_, i) => i !== index));
         toast({
           title: 'Diagnosis Removed',
           description: 'Diagnosis has been removed successfully.',
@@ -163,9 +164,9 @@ export default function EncounterEditDiagnosisPage() {
       }
     } else {
       // Local only, just remove from store
-      setDiagnoses(encounterId, diagnoses.filter((_, i) => i !== index));
+      setDiagnoses(encounterStoreId, diagnoses.filter((_, i) => i !== index));
     }
-  }, [existingDiagnoses, deleteDiagnosis, diagnoses, encounterId, setDiagnoses, toast]);
+  }, [existingDiagnoses, deleteDiagnosis, diagnoses, encounterStoreId, setDiagnoses, toast]);
 
   // Handle updating a diagnosis
   const handleUpdateDiagnosis = useCallback(async (index: number, diagnosis: DiagnosisFormData) => {
@@ -188,7 +189,7 @@ export default function EncounterEditDiagnosisPage() {
           },
         });
 
-        setDiagnoses(encounterId, diagnoses.map((d, i) => (i === index ? diagnosis : d)));
+        setDiagnoses(encounterStoreId, diagnoses.map((d, i) => (i === index ? diagnosis : d)));
 
         toast({
           title: 'Diagnosis Updated',
@@ -203,20 +204,20 @@ export default function EncounterEditDiagnosisPage() {
       }
     } else {
       // Local only
-      setDiagnoses(encounterId, diagnoses.map((d, i) => (i === index ? diagnosis : d)));
+      setDiagnoses(encounterStoreId, diagnoses.map((d, i) => (i === index ? diagnosis : d)));
     }
-  }, [existingDiagnoses, updateDiagnosis, diagnoses, encounterId, setDiagnoses, toast]);
+  }, [existingDiagnoses, updateDiagnosis, diagnoses, encounterStoreId, setDiagnoses, toast]);
 
   // Navigate to previous step
   const handlePrev = useCallback(() => {
-    router.push(`/encounters/${encounterId}/edit/notes`);
-  }, [encounterId, router]);
+    router.push(`/encounters/${encounterRouteId}/edit/notes`);
+  }, [encounterRouteId, router]);
 
   // Navigate to next step
   const handleNext = useCallback(() => {
-    markSectionComplete(encounterId, 'diagnosis');
-    router.push(`/encounters/${encounterId}/edit/orders`);
-  }, [encounterId, markSectionComplete, router]);
+    markSectionComplete(encounterStoreId, 'diagnosis');
+    router.push(`/encounters/${encounterRouteId}/edit/orders`);
+  }, [encounterStoreId, encounterRouteId, markSectionComplete, router]);
 
   if (isLoading || !session || isLoadingDiagnoses) {
     return null;

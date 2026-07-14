@@ -216,8 +216,19 @@ class TestAdmissionAPI:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["id"] == sample_admission.id
+        assert response.data["public_id"] == str(sample_admission.public_id)
         assert "length_of_stay" in response.data
         assert isinstance(response.data["length_of_stay"], int)
+
+    def test_retrieve_admission_by_public_id(self, authenticated_client, sample_admission):
+        """Should retrieve admission detail by UUID public_id."""
+        response = authenticated_client.get(
+            f"/api/inpatient/admissions/{sample_admission.public_id}/"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == sample_admission.id
+        assert response.data["public_id"] == str(sample_admission.public_id)
 
     def test_filter_admissions_by_ward(
         self, authenticated_client, sample_admission, sample_inpatient_ward

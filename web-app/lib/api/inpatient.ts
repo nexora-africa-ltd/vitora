@@ -150,6 +150,8 @@ import type {
   DischargeTemplateCreateData,
 } from '@/lib/types/inpatient';
 
+type IdParam = string | number;
+
 type Paginated<T> = { count: number; next: string | null; previous: string | null; results: T[] };
 
 /** Result from POST /api/inpatient/discharges/{id}/create-prescriptions/ */
@@ -311,7 +313,7 @@ export const inpatientApi = {
     return parseResponse(PaginatedAdmissionSchema, response.data, { context: 'inpatientApi.listAdmissions' });
   },
 
-  async getAdmission(admissionId: number): Promise<Admission> {
+  async getAdmission(admissionId: IdParam): Promise<Admission> {
     const response = await apiClient.get<Admission>(`/api/inpatient/admissions/${admissionId}/`);
     return parseResponse(AdmissionSchema, response.data, { context: 'inpatientApi.getAdmission' });
   },
@@ -321,12 +323,12 @@ export const inpatientApi = {
     return parseResponse(AdmissionSchema, response.data, { context: 'inpatientApi.createAdmission' });
   },
 
-  async updateAdmission(admissionId: number, data: Partial<Admission>): Promise<Admission> {
+  async updateAdmission(admissionId: IdParam, data: Partial<Admission>): Promise<Admission> {
     const response = await apiClient.patch<Admission>(`/api/inpatient/admissions/${admissionId}/`, data);
     return parseResponse(AdmissionSchema, response.data, { context: 'inpatientApi.updateAdmission' });
   },
 
-  async getClearanceStatus(admissionId: number): Promise<ClearanceStatus> {
+  async getClearanceStatus(admissionId: IdParam): Promise<ClearanceStatus> {
     const response = await apiClient.get<ClearanceStatus>(`/api/inpatient/admissions/${admissionId}/clearance-status/`);
     return parseResponse(ClearanceStatusSchema, response.data, { context: 'inpatientApi.getClearanceStatus' });
   },
@@ -460,7 +462,7 @@ export const inpatientApi = {
     return parseResponse(NursingKardexSchema, response.data, { context: 'inpatientApi.getKardex' });
   },
 
-  async getKardexByAdmission(admissionId: number): Promise<NursingKardex | null> {
+  async getKardexByAdmission(admissionId: IdParam): Promise<NursingKardex | null> {
     const response = await apiClient.get<KardexListResponse>('/api/inpatient/kardex/', {
       params: { admission: admissionId },
     });
@@ -635,7 +637,7 @@ export const inpatientApi = {
   /**
    * Get all medical orders for an admission (combined view).
    */
-  async getAdmissionOrders(admissionId: number): Promise<AdmissionOrdersResponse> {
+  async getAdmissionOrders(admissionId: IdParam): Promise<AdmissionOrdersResponse> {
     const response = await apiClient.get<AdmissionOrdersResponse>(
       `/api/inpatient/admissions/${admissionId}/orders/`
     );
@@ -645,7 +647,7 @@ export const inpatientApi = {
   /**
    * Get lab orders for an admission.
    */
-  async getAdmissionLabOrders(admissionId: number): Promise<LabOrder[]> {
+  async getAdmissionLabOrders(admissionId: IdParam): Promise<LabOrder[]> {
     const response = await apiClient.get<LabOrder[]>(
       `/api/inpatient/admissions/${admissionId}/lab-orders/`
     );
@@ -655,7 +657,7 @@ export const inpatientApi = {
   /**
    * Get imaging orders for an admission.
    */
-  async getAdmissionImagingOrders(admissionId: number): Promise<ImagingOrder[]> {
+  async getAdmissionImagingOrders(admissionId: IdParam): Promise<ImagingOrder[]> {
     const response = await apiClient.get<ImagingOrder[]>(
       `/api/inpatient/admissions/${admissionId}/imaging-orders/`
     );
@@ -665,7 +667,7 @@ export const inpatientApi = {
   /**
    * Get prescriptions for an admission.
    */
-  async getAdmissionPrescriptions(admissionId: number): Promise<Prescription[]> {
+  async getAdmissionPrescriptions(admissionId: IdParam): Promise<Prescription[]> {
     const response = await apiClient.get<Prescription[]>(
       `/api/inpatient/admissions/${admissionId}/prescriptions/`
     );
@@ -675,7 +677,7 @@ export const inpatientApi = {
   /**
    * Get recorded consumable usage for an admission.
    */
-  async getAdmissionConsumableUsage(admissionId: number): Promise<InpatientConsumableUsage[]> {
+  async getAdmissionConsumableUsage(admissionId: IdParam): Promise<InpatientConsumableUsage[]> {
     const response = await apiClient.get<InpatientConsumableUsage[]>(
       `/api/inpatient/admissions/${admissionId}/consumable-usage/`
     );
@@ -688,7 +690,7 @@ export const inpatientApi = {
    * Record consumable usage for an admission.
    */
   async recordAdmissionConsumableUsage(
-    admissionId: number,
+    admissionId: IdParam,
     data: InpatientConsumableUsageCreateData
   ): Promise<InpatientConsumableUsage> {
     const response = await apiClient.post<InpatientConsumableUsage>(
@@ -704,7 +706,7 @@ export const inpatientApi = {
    * Reverse a consumable usage record for an admission.
    */
   async reverseAdmissionConsumableUsage(
-    admissionId: number,
+    admissionId: IdParam,
     usageId: number,
     data: InpatientConsumableUsageReverseData
   ): Promise<InpatientConsumableUsage> {
@@ -928,7 +930,7 @@ export const inpatientApi = {
    * Logs the override to AssignmentOverride for audit.
    */
   async overrideBed(
-    admissionId: number,
+    admissionId: IdParam,
     data: BedOverrideRequest
   ): Promise<BedOverrideResponse> {
     const response = await apiClient.post(
@@ -996,7 +998,7 @@ export const inpatientApi = {
    * Used for bed planning and predictive discharge.
    */
   async setExpectedDischarge(
-    admissionId: number,
+    admissionId: IdParam,
     data: SetExpectedDischargeRequest
   ): Promise<SetExpectedDischargeResponse> {
     const response = await apiClient.post(

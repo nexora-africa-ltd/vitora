@@ -10,7 +10,7 @@ export const billingApi = {
     return parseResponse(PaginatedInvoiceSchema, response.data, { context: 'billing.listInvoices' });
   },
 
-  async getInvoice(id: number): Promise<Invoice> {
+  async getInvoice(id: string | number): Promise<Invoice> {
     const response = await apiClient.get(`/api/billing/invoices/${id}/`);
     return parseResponse(InvoiceSchema, response.data, { context: 'billing.getInvoice' });
   },

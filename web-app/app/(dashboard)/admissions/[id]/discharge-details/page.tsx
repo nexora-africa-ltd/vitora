@@ -79,9 +79,10 @@ function InfoRow({ label, value, icon }: { label: string; value: React.ReactNode
 export default function DischargeDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const admissionId = Number(params.id);
+  const admissionRouteId = String(params.id);
 
-  const { data: admission, isLoading: admissionLoading } = useAdmission(admissionId);
+  const { data: admission, isLoading: admissionLoading } = useAdmission(admissionRouteId);
+  const admissionId = admission?.id ?? 0;
   const { data: discharge, isLoading: dischargeLoading } = useDischargeByAdmission(admissionId);
   const { facility, facilityDetail } = useFacility();
   const { data: defaultTemplate } = useDefaultDischargeTemplate();

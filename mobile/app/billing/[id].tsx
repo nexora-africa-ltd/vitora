@@ -27,18 +27,20 @@ export default function BillingDetailScreen() {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const params = useLocalSearchParams<{ id: string }>();
-  const invoiceId = Number(params.id);
+  const invoiceLookupId = params.id;
 
   const invoiceQuery = useQuery({
-    queryKey: ['billing-invoice', invoiceId],
-    queryFn: () => billingApi.getInvoice(invoiceId),
-    enabled: Number.isFinite(invoiceId),
+    queryKey: ['billing-invoice', invoiceLookupId],
+    queryFn: () => billingApi.getInvoice(invoiceLookupId),
+    enabled: Boolean(invoiceLookupId),
   });
+
+  const invoiceId = invoiceQuery.data?.id;
 
   const paymentsQuery = useQuery({
     queryKey: ['billing-payments', invoiceId],
     queryFn: () => billingApi.listPayments({ invoice: invoiceId, page_size: 50 }),
-    enabled: Number.isFinite(invoiceId),
+    enabled: typeof invoiceId === 'number',
   });
 
   if (invoiceQuery.isLoading) {

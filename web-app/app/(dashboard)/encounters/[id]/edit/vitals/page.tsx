@@ -30,14 +30,15 @@ export default function EncounterEditVitalsPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const encounterId = Number(params.id);
+  const encounterRouteId = String(params.id);
 
   const { encounter, isLoading } = useEncounterContext();
+  const encounterStoreId = encounter?.id ?? 0;
   const { getVitals, setVitals, getSession, markSectionComplete, setDirty } = useEncounterEditStore();
   const updateEncounter = useUpdateEncounter();
 
-  const session = getSession(encounterId);
-  const vitals = getVitals(encounterId);
+  const session = getSession(encounterStoreId);
+  const vitals = getVitals(encounterStoreId);
 
   // Build form data from store for VitalsForm component
   const formData = useMemo((): EncounterFormData => ({
@@ -76,9 +77,9 @@ export default function EncounterEditVitalsPage() {
     ];
 
     if (vitalFields.includes(field)) {
-      setVitals(encounterId, { [field]: value });
+      setVitals(encounterStoreId, { [field]: value });
     }
-  }, [encounterId, setVitals]);
+  }, [encounterStoreId, setVitals]);
 
   // Build auto-save data
   const autoSaveData = useMemo(() => {
@@ -109,8 +110,8 @@ export default function EncounterEditVitalsPage() {
   const autoSave = useAutoSave({
     data: autoSaveData,
     onSave: async (data) => {
-      if (!encounterId || !data) return;
-      await updateEncounter.mutateAsync({ id: encounterId, data });
+      if (!encounterRouteId || !data) return;
+      await updateEncounter.mutateAsync({ id: encounterRouteId, data });
     },
     debounceMs: 2000,
     enabled: isEditable && !!vitals,
@@ -118,24 +119,24 @@ export default function EncounterEditVitalsPage() {
       console.error('Auto-save failed:', error);
     },
     onSuccess: () => {
-      setDirty(encounterId, false);
+      setDirty(encounterStoreId, false);
     },
   });
 
   // Navigate to next step
   const handleNext = useCallback(() => {
     // Mark section as complete
-    markSectionComplete(encounterId, 'vitals');
+    markSectionComplete(encounterStoreId, 'vitals');
     // Always go to History (present in both template and free-text flows)
-    router.push(`/encounters/${encounterId}/edit/history`);
-  }, [encounterId, markSectionComplete, router]);
+    router.push(`/encounters/${encounterRouteId}/edit/history`);
+  }, [encounterStoreId, encounterRouteId, markSectionComplete, router]);
 
   // Manual save
   const handleSave = useCallback(async () => {
     if (!autoSaveData) return;
 
     try {
-      await updateEncounter.mutateAsync({ id: encounterId, data: autoSaveData });
+      await updateEncounter.mutateAsync({ id: encounterRouteId, data: autoSaveData });
       autoSave.reset();
       toast({
         title: 'Vitals Saved',
@@ -148,7 +149,7 @@ export default function EncounterEditVitalsPage() {
         variant: 'destructive',
       });
     }
-  }, [autoSaveData, encounterId, updateEncounter, autoSave, toast]);
+  }, [autoSaveData, encounterRouteId, updateEncounter, autoSave, toast]);
 
   if (isLoading || !session) {
     return null; // Layout shows loading

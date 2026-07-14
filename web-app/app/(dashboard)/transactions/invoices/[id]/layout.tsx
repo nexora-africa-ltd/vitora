@@ -16,7 +16,7 @@ export default function InvoiceDetailLayout({
   children: React.ReactNode;
 }) {
   const params = useParams();
-  const invoiceId = Number(params.id);
+  const invoiceId = String(params.id);
   const { data: invoice } = useInvoice(invoiceId);
 
   return (

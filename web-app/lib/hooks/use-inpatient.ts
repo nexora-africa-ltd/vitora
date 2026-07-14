@@ -83,7 +83,7 @@ export const inpatientQueryKeys = {
   pendingAdmissions: () => [...inpatientQueryKeys.all, 'pending-admissions'] as const,
   admissions: (params?: AdmissionListParams) =>
     [...inpatientQueryKeys.all, 'admissions', params] as const,
-  admission: (id: number) => [...inpatientQueryKeys.all, 'admissions', id] as const,
+  admission: (id: string | number) => [...inpatientQueryKeys.all, 'admissions', id] as const,
   discharges: (params?: DischargeListParams) =>
     [...inpatientQueryKeys.all, 'discharges', params] as const,
   discharge: (id: number) => [...inpatientQueryKeys.all, 'discharges', id] as const,
@@ -99,27 +99,27 @@ export const inpatientQueryKeys = {
   kardex: (params?: KardexListParams) =>
     [...inpatientQueryKeys.all, 'kardex', params] as const,
   kardexById: (id: number) => [...inpatientQueryKeys.all, 'kardex', id] as const,
-  kardexByAdmission: (admissionId: number) =>
+  kardexByAdmission: (admissionId: string | number) =>
     [...inpatientQueryKeys.all, 'kardex', 'admission', admissionId] as const,
-  admissionClearanceStatus: (admissionId: number) =>
+  admissionClearanceStatus: (admissionId: string | number) =>
     [...inpatientQueryKeys.admission(admissionId), 'clearance-status'] as const,
-  admissionConsumableUsage: (admissionId: number) =>
+  admissionConsumableUsage: (admissionId: string | number) =>
     [...inpatientQueryKeys.admission(admissionId), 'consumable-usage'] as const,
   shiftHandovers: (params?: ShiftHandoverListParams) =>
     [...inpatientQueryKeys.all, 'shift-handovers', params] as const,
   shiftHandover: (id: number) => [...inpatientQueryKeys.all, 'shift-handovers', id] as const,
-  temperatureReadings: (admissionId: number) =>
+  temperatureReadings: (admissionId: string | number) =>
     [...inpatientQueryKeys.all, 'temperature-readings', admissionId] as const,
   fluidBalanceSheets: (params?: { admission?: number; chart_date?: string; page?: number; page_size?: number }) =>
     [...inpatientQueryKeys.all, 'fluid-balance-sheets', params] as const,
   fluidBalanceSheet: (id: number) => [...inpatientQueryKeys.all, 'fluid-balance-sheets', id] as const,
   fluidBalanceEntries: (params?: { fluid_balance_sheet?: number; entry_type?: string; page?: number; page_size?: number }) =>
     [...inpatientQueryKeys.all, 'fluid-balance-entries', params] as const,
-  bloodTransfusions: (admissionId: number) =>
+  bloodTransfusions: (admissionId: string | number) =>
     [...inpatientQueryKeys.all, 'blood-transfusions', admissionId] as const,
   bloodTransfusion: (id: number) =>
     [...inpatientQueryKeys.all, 'blood-transfusions', 'detail', id] as const,
-  bpReadings: (admissionId: number) =>
+  bpReadings: (admissionId: string | number) =>
     [...inpatientQueryKeys.all, 'bp-readings', admissionId] as const,
   atrReports: (params?: { transfusion__admission?: number; status?: string }) =>
     [...inpatientQueryKeys.all, 'atr-reports', params] as const,
@@ -405,11 +405,11 @@ export function useAdmissions(params?: AdmissionListParams) {
   });
 }
 
-export function useAdmission(admissionId: number | undefined) {
+export function useAdmission(admissionId: string | number | undefined) {
   return useQuery({
     queryKey: inpatientQueryKeys.admission(admissionId!),
-    enabled: typeof admissionId === 'number',
-    queryFn: () => inpatientApi.getAdmission(admissionId as number),
+    enabled: admissionId !== undefined,
+    queryFn: () => inpatientApi.getAdmission(admissionId!),
   });
 }
 
@@ -479,11 +479,11 @@ export function useSetExpectedDischarge() {
 // Discharge Hooks
 // ============================================================================
 
-export function useClearanceStatus(admissionId: number | undefined) {
+export function useClearanceStatus(admissionId: string | number | undefined) {
   return useQuery({
     queryKey: inpatientQueryKeys.admissionClearanceStatus(admissionId!),
     queryFn: () => inpatientApi.getClearanceStatus(admissionId!),
-    enabled: typeof admissionId === 'number' && admissionId > 0,
+    enabled: admissionId !== undefined,
     refetchInterval: 30_000,
   });
 }
@@ -503,10 +503,10 @@ export function useDischarge(dischargeId: number | undefined) {
   });
 }
 
-export function useDischargeByAdmission(admissionId: number | undefined) {
+export function useDischargeByAdmission(admissionId: string | number | undefined) {
   return useQuery({
     queryKey: [...inpatientQueryKeys.discharges(), 'by-admission', admissionId],
-    enabled: typeof admissionId === 'number',
+    enabled: admissionId !== undefined,
     queryFn: async () => {
       const result = await inpatientApi.listDischarges({ admission: admissionId!, page_size: 1 });
       return result.results[0] ?? null;
@@ -592,10 +592,10 @@ export function useWardRound(wardRoundId: number | undefined) {
   });
 }
 
-export function useAdmissionWardRounds(admissionId: number | undefined) {
+export function useAdmissionWardRounds(admissionId: string | number | undefined) {
   return useQuery({
     queryKey: inpatientQueryKeys.wardRounds({ admission: admissionId }),
-    enabled: typeof admissionId === 'number',
+    enabled: admissionId !== undefined,
     queryFn: () => inpatientApi.listWardRounds({ admission: admissionId }),
   });
 }
@@ -642,10 +642,10 @@ export function useReviewRequest(requestId: number | undefined) {
   });
 }
 
-export function useAdmissionReviewRequests(admissionId: number | undefined) {
+export function useAdmissionReviewRequests(admissionId: string | number | undefined) {
   return useQuery({
     queryKey: inpatientQueryKeys.reviewRequests({ admission: admissionId }),
-    enabled: typeof admissionId === 'number',
+    enabled: admissionId !== undefined,
     queryFn: () => inpatientApi.listReviewRequests({ admission: admissionId }),
   });
 }
@@ -721,10 +721,10 @@ export function useKardex(kardexId: number | undefined) {
   });
 }
 
-export function useKardexByAdmission(admissionId: number | undefined) {
+export function useKardexByAdmission(admissionId: string | number | undefined) {
   return useQuery({
     queryKey: inpatientQueryKeys.kardexByAdmission(admissionId!),
-    enabled: typeof admissionId === 'number',
+    enabled: admissionId !== undefined,
     queryFn: () => inpatientApi.getKardexByAdmission(admissionId!),
   });
 }
@@ -861,43 +861,43 @@ export function useAutoPopulateShiftHandover() {
 // Admission Orders Hooks
 // ============================================================================
 
-export function useAdmissionOrders(admissionId: number | undefined) {
+export function useAdmissionOrders(admissionId: string | number | undefined) {
   return useQuery({
     queryKey: [...inpatientQueryKeys.admission(admissionId!), 'orders'] as const,
     queryFn: () => inpatientApi.getAdmissionOrders(admissionId!),
-    enabled: typeof admissionId === 'number',
+    enabled: admissionId !== undefined,
   });
 }
 
-export function useAdmissionLabOrders(admissionId: number | undefined) {
+export function useAdmissionLabOrders(admissionId: string | number | undefined) {
   return useQuery({
     queryKey: [...inpatientQueryKeys.admission(admissionId!), 'lab-orders'] as const,
     queryFn: () => inpatientApi.getAdmissionLabOrders(admissionId!),
-    enabled: typeof admissionId === 'number',
+    enabled: admissionId !== undefined,
   });
 }
 
-export function useAdmissionImagingOrders(admissionId: number | undefined) {
+export function useAdmissionImagingOrders(admissionId: string | number | undefined) {
   return useQuery({
     queryKey: [...inpatientQueryKeys.admission(admissionId!), 'imaging-orders'] as const,
     queryFn: () => inpatientApi.getAdmissionImagingOrders(admissionId!),
-    enabled: typeof admissionId === 'number',
+    enabled: admissionId !== undefined,
   });
 }
 
-export function useAdmissionPrescriptions(admissionId: number | undefined) {
+export function useAdmissionPrescriptions(admissionId: string | number | undefined) {
   return useQuery({
     queryKey: [...inpatientQueryKeys.admission(admissionId!), 'prescriptions'] as const,
     queryFn: () => inpatientApi.getAdmissionPrescriptions(admissionId!),
-    enabled: typeof admissionId === 'number',
+    enabled: admissionId !== undefined,
   });
 }
 
-export function useAdmissionConsumableUsage(admissionId: number | undefined) {
+export function useAdmissionConsumableUsage(admissionId: string | number | undefined) {
   return useQuery({
     queryKey: inpatientQueryKeys.admissionConsumableUsage(admissionId!),
     queryFn: () => inpatientApi.getAdmissionConsumableUsage(admissionId!),
-    enabled: typeof admissionId === 'number',
+    enabled: admissionId !== undefined,
   });
 }
 

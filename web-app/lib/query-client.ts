@@ -7,30 +7,61 @@ import { ZodError } from 'zod';
  * Global error handler for queries and mutations.
  * Handles Axios errors, Zod validation errors, and other errors consistently.
  */
-function handleGlobalError(error: Error): void {
+function handleGlobalError(error: unknown): void {
   if (process.env.NODE_ENV !== 'development') return;
 
   if (error instanceof AxiosError) {
-    const apiError = transformAxiosError(error);
-    console.error('[Query Error] API:', {
-      message: apiError.message,
-      status: apiError.status,
-      code: apiError.code,
-      details: apiError.details,
-    });
+    if (error.code === 'ERR_CANCELED') return;
+
+    let apiError;
+    try {
+      apiError = transformAxiosError(error);
+    } catch (transformError) {
+      const transformMessage =
+        transformError instanceof Error ? transformError.message : String(transformError);
+      apiError = {
+        message: error.message || 'Failed to parse API error response',
+        status:
+          typeof error.response?.status === 'number'
+            ? error.response.status
+            : 0,
+        code: error.code || 'ERROR_TRANSFORM_FAILED',
+        details: { transformError: [transformMessage] },
+      };
+    }
+    const payload = {
+      message: apiError.message || 'Unknown API error',
+      status: Number.isFinite(apiError.status) ? apiError.status : -1,
+      code: apiError.code || 'UNKNOWN_ERROR',
+      method: error.config?.method?.toUpperCase(),
+      url: error.config?.url,
+      details:
+        apiError.details && Object.keys(apiError.details).length > 0
+          ? apiError.details
+          : undefined,
+    };
+
+    // React Query often surfaces expected 4xx states during UI flows.
+    // Keep those as warnings to avoid noisy Next.js dev overlays.
+    if (payload.status >= 500) {
+      console.error('[Query Error] API:', payload);
+    } else {
+      console.warn('[Query Error] API:', payload);
+    }
   } else if (error instanceof ZodError) {
     const context = (error as ZodError & { context?: string }).context;
     const issues = error.issues.map((i) => `${i.path.join('.') || 'root'}: ${i.message}`).join(', ');
-    console.error(`[Query Error] Validation failed (${context || 'unknown'}):`, issues);
+    console.warn(`[Query Error] Validation failed (${context || 'unknown'}):`, issues);
     // Log first few issues in detail for debugging
     if (error.issues.length > 0) {
-      console.error('[Query Error] Issue details:', error.issues.slice(0, 3));
+      console.warn('[Query Error] Issue details:', error.issues.slice(0, 3));
     }
   } else {
+    const unknown = error instanceof Error ? error : new Error(String(error));
     console.error('[Query Error] Unknown:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack?.split('\n').slice(0, 3).join('\n'),
+      name: unknown.name,
+      message: unknown.message,
+      stack: unknown.stack?.split('\n').slice(0, 3).join('\n'),
     });
   }
 }

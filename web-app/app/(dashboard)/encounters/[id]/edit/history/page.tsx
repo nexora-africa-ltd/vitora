@@ -30,14 +30,15 @@ export default function EncounterEditHistoryPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const encounterId = Number(params.id);
+  const encounterRouteId = String(params.id);
 
   const { encounter, isLoading } = useEncounterContext();
+  const encounterStoreId = encounter?.id ?? 0;
   const { getHistory, setHistory, getSession, markSectionComplete, setDirty } = useEncounterEditStore();
   const updateEncounter = useUpdateEncounter();
 
-  const session = getSession(encounterId);
-  const history = getHistory(encounterId);
+  const session = getSession(encounterStoreId);
+  const history = getHistory(encounterStoreId);
 
   // Build form data from store for MedicalHistoryFormContent
   const formData = useMemo((): EncounterFormData => ({
@@ -77,9 +78,9 @@ export default function EncounterEditHistoryPage() {
     ];
 
     if (historyFields.includes(field)) {
-      setHistory(encounterId, { [field]: value as string });
+      setHistory(encounterStoreId, { [field]: value as string });
     }
-  }, [encounterId, setHistory]);
+  }, [encounterStoreId, setHistory]);
 
   // Build auto-save data
   const autoSaveData = useMemo(() => {
@@ -102,8 +103,8 @@ export default function EncounterEditHistoryPage() {
   const autoSave = useAutoSave({
     data: autoSaveData,
     onSave: async (data) => {
-      if (!encounterId || !data) return;
-      await updateEncounter.mutateAsync({ id: encounterId, data });
+      if (!encounterRouteId || !data) return;
+      await updateEncounter.mutateAsync({ id: encounterRouteId, data });
     },
     debounceMs: 2000,
     enabled: isEditable && !!history,
@@ -111,27 +112,27 @@ export default function EncounterEditHistoryPage() {
       console.error('Auto-save failed:', error);
     },
     onSuccess: () => {
-      setDirty(encounterId, false);
+      setDirty(encounterStoreId, false);
     },
   });
 
   // Navigate to previous step
   const handlePrev = useCallback(() => {
-    router.push(`/encounters/${encounterId}/edit/vitals`);
-  }, [encounterId, router]);
+    router.push(`/encounters/${encounterRouteId}/edit/vitals`);
+  }, [encounterRouteId, router]);
 
   // Navigate to next step
   const handleNext = useCallback(() => {
-    markSectionComplete(encounterId, 'history');
-    router.push(`/encounters/${encounterId}/edit/notes`);
-  }, [encounterId, markSectionComplete, router]);
+    markSectionComplete(encounterStoreId, 'history');
+    router.push(`/encounters/${encounterRouteId}/edit/notes`);
+  }, [encounterStoreId, encounterRouteId, markSectionComplete, router]);
 
   // Manual save
   const handleSave = useCallback(async () => {
     if (!autoSaveData) return;
 
     try {
-      await updateEncounter.mutateAsync({ id: encounterId, data: autoSaveData });
+      await updateEncounter.mutateAsync({ id: encounterRouteId, data: autoSaveData });
       autoSave.reset();
       toast({
         title: 'History Saved',
@@ -144,7 +145,7 @@ export default function EncounterEditHistoryPage() {
         variant: 'destructive',
       });
     }
-  }, [autoSaveData, encounterId, updateEncounter, autoSave, toast]);
+  }, [autoSaveData, encounterRouteId, updateEncounter, autoSave, toast]);
 
   if (isLoading || !session) {
     return null;

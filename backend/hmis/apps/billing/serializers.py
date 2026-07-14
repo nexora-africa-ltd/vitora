@@ -251,6 +251,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         model = Invoice
         fields = [
             "id",
+            "public_id",
             "invoice_number",
             "patient",
             "patient_name",
@@ -298,6 +299,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "public_id",
             "invoice_number",
             "subtotal",
             "discount_amount",

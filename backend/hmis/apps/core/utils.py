@@ -5,6 +5,7 @@ Core utility functions for Vitora HMIS.
 This module provides shared utility functions used across the application.
 """
 
+import uuid
 from datetime import datetime
 
 from django.conf import settings
@@ -152,3 +153,38 @@ def generate_case_number(prefix: str, facility_code: str | None = None) -> str:
     )
 
     return f"{full_prefix}{count + 1:04d}{suffix}"
+
+
+def resolve_model_pk_or_public_id(model, lookup_value, public_id_field: str = "public_id"):
+    """Resolve a model instance from either integer PK or UUID public_id string.
+
+    Returns:
+        tuple(instance, lookup_kind) where lookup_kind is "int" or "uuid".
+
+    Raises:
+        model.DoesNotExist: when lookup value cannot be resolved.
+    """
+    if lookup_value is None:
+        raise model.DoesNotExist()
+
+    if isinstance(lookup_value, int):
+        return model.objects.get(pk=lookup_value), "int"
+
+    lookup_text = str(lookup_value).strip()
+    if not lookup_text:
+        raise model.DoesNotExist()
+
+    try:
+        parsed_uuid = uuid.UUID(lookup_text)
+    except (ValueError, TypeError):
+        parsed_uuid = None
+
+    if parsed_uuid is not None:
+        if any(field.name == public_id_field for field in model._meta.fields):
+            return model.objects.get(**{public_id_field: parsed_uuid}), "uuid"
+        raise model.DoesNotExist()
+
+    if lookup_text.isdigit():
+        return model.objects.get(pk=int(lookup_text)), "int"
+
+    raise model.DoesNotExist()

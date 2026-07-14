@@ -723,7 +723,7 @@ export interface BedListParams {
 }
 
 export interface DischargeListParams {
-  admission?: number;
+  admission?: string | number;
   discharge_type?: DischargeType;
   pharmacy_cleared?: boolean;
   billing_cleared?: boolean;
@@ -733,7 +733,7 @@ export interface DischargeListParams {
 }
 
 export interface TransferListParams {
-  admission?: number;
+  admission?: string | number;
   source_ward?: number;
   destination_ward?: number;
   reason?: TransferReason;
@@ -743,7 +743,7 @@ export interface TransferListParams {
 }
 
 export interface WardRoundListParams {
-  admission?: number;
+  admission?: string | number;
   condition_status?: ConditionStatus;
   review_type?: ReviewType;
   requires_consultant_review?: boolean;
@@ -753,7 +753,7 @@ export interface WardRoundListParams {
 }
 
 export interface ReviewRequestListParams {
-  admission?: number;
+  admission?: string | number;
   review_type?: Exclude<ReviewType, 'WARD_ROUND'>;
   urgency?: ReviewUrgency;
   status?: ReviewRequestStatus;
@@ -765,7 +765,7 @@ export interface ReviewRequestListParams {
 }
 
 export interface KardexListParams {
-  admission?: number;
+  admission?: string | number;
   fall_risk?: RiskLevel;
   pressure_sore_risk?: RiskLevel;
   ordering?: string;

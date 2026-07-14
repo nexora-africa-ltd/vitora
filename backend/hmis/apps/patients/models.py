@@ -5,6 +5,7 @@ Patient model for Vitora HMIS.
 This module defines the Patient model and related functionality.
 """
 
+import uuid
 from datetime import date, datetime
 
 from django.core.exceptions import ValidationError
@@ -175,6 +176,13 @@ class Patient(HistoryMixin, models.Model):
     ]
 
     # Required fields
+    public_id = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        db_index=True,
+        editable=False,
+        help_text="Stable public UUID for external APIs and links.",
+    )
     organization = models.ForeignKey(
         "core.Organization",
         on_delete=models.CASCADE,

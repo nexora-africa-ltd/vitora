@@ -52,39 +52,54 @@ export default function EncounterDetailScreen() {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const params = useLocalSearchParams<{ id: string }>();
-  const encounterId = Number(params.id);
+  const encounterLookupId = params.id;
+  const numericEncounterId = encounterLookupId && /^\d+$/.test(encounterLookupId)
+    ? Number(encounterLookupId)
+    : null;
   const [hasLocalDraft, setHasLocalDraft] = useState(false);
-  const encounterQuery = useLocalEncounter(encounterId);
-  const encounter = encounterQuery.encounter;
-  const canLoadRemoteDependents = Boolean(encounter && encounterId > 0 && encounter.sync_state === 'synced');
+  const localEncounterQuery = useLocalEncounter(numericEncounterId);
+  const remoteEncounterQuery = useQuery({
+    queryKey: ['encounter', encounterLookupId],
+    queryFn: () => encountersApi.get(encounterLookupId!),
+    enabled: Boolean(encounterLookupId),
+  });
+  const encounter = localEncounterQuery.encounter ?? remoteEncounterQuery.data;
+  const resolvedEncounterId = encounter?.id;
+  const encounterRouteValue = encounterLookupId ?? (resolvedEncounterId != null ? String(resolvedEncounterId) : null);
+  const encounterSyncState = (encounter as { sync_state?: string } | undefined)?.sync_state;
+  const canLoadRemoteDependents = Boolean(
+    encounterRouteValue
+      && resolvedEncounterId
+      && (encounterSyncState ? encounterSyncState === 'synced' : true)
+  );
 
   const diagnosesQuery = useQuery({
-    queryKey: ['encounter-diagnoses', encounterId],
-    queryFn: () => encountersApi.getDiagnoses(encounterId),
+    queryKey: ['encounter-diagnoses', encounterRouteValue],
+    queryFn: () => encountersApi.getDiagnoses(encounterRouteValue!),
     enabled: canLoadRemoteDependents,
   });
 
   const treatmentPlanQuery = useQuery({
-    queryKey: ['encounter-treatment-plan', encounterId],
-    queryFn: () => encountersApi.getTreatmentPlan(encounterId),
+    queryKey: ['encounter-treatment-plan', encounterRouteValue],
+    queryFn: () => encountersApi.getTreatmentPlan(encounterRouteValue!),
     enabled: canLoadRemoteDependents,
   });
 
   const triageQuery = useQuery({
-    queryKey: ['encounter-triage', encounterId],
-    queryFn: () => triageApi.getByEncounter(encounterId),
+    queryKey: ['encounter-triage', resolvedEncounterId],
+    queryFn: () => triageApi.getByEncounter(resolvedEncounterId!),
     enabled: canLoadRemoteDependents,
   });
 
   const labOrdersQuery = useQuery({
-    queryKey: ['encounter-lab-orders', encounterId],
-    queryFn: () => laboratoryApi.listEncounterOrders(encounterId),
+    queryKey: ['encounter-lab-orders', encounterRouteValue],
+    queryFn: () => laboratoryApi.listEncounterOrders(encounterRouteValue!),
     enabled: canLoadRemoteDependents,
   });
 
   const prescriptionsQuery = useQuery({
-    queryKey: ['encounter-prescriptions', encounterId],
-    queryFn: () => pharmacyApi.listPrescriptions({ encounter: encounterId, page: 1, page_size: 50 }),
+    queryKey: ['encounter-prescriptions', encounterRouteValue],
+    queryFn: () => pharmacyApi.listPrescriptions({ encounter: resolvedEncounterId!, page: 1, page_size: 50 }),
     enabled: canLoadRemoteDependents,
   });
 
@@ -100,48 +115,56 @@ export default function EncounterDetailScreen() {
       let active = true;
 
       async function refreshDraftState() {
-        const exists = await hasEditDraft(encounterId);
+        if (resolvedEncounterId == null) {
+          return;
+        }
+
+        const exists = await hasEditDraft(resolvedEncounterId);
         if (active) {
           setHasLocalDraft(exists);
         }
       }
 
-      if (Number.isFinite(encounterId)) {
+      if (typeof resolvedEncounterId === 'number' && Number.isFinite(resolvedEncounterId)) {
         void refreshDraftState();
       }
 
       return () => {
         active = false;
       };
-    }, [encounterId])
+    }, [resolvedEncounterId])
   );
 
   const invalidateEncounterContext = useCallback(async (patientId?: number | null) => {
+    if (!encounterRouteValue) {
+      return;
+    }
+
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['encounter', encounterId] }),
+      queryClient.invalidateQueries({ queryKey: ['encounter', encounterRouteValue] }),
       queryClient.invalidateQueries({ queryKey: ['encounters'] }),
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] }),
-      queryClient.invalidateQueries({ queryKey: ['encounter-triage', encounterId] }),
+      queryClient.invalidateQueries({ queryKey: ['encounter-triage', encounterRouteValue] }),
       patientId ? queryClient.invalidateQueries({ queryKey: ['patient-encounters', patientId] }) : Promise.resolve(),
     ]);
-  }, [encounterId]);
+  }, [encounterRouteValue]);
 
   const startProgressMutation = useMutation({
-    mutationFn: () => encountersApi.startProgress(encounterId),
+    mutationFn: () => encountersApi.startProgress(encounterRouteValue!),
     onSuccess: async (updatedEncounter) => {
       await invalidateEncounterContext(updatedEncounter.patient);
     },
   });
 
   const finalizeMutation = useMutation({
-    mutationFn: () => encountersApi.finalize(encounterId),
+    mutationFn: () => encountersApi.finalize(encounterRouteValue!),
     onSuccess: async (updatedEncounter) => {
       await invalidateEncounterContext(updatedEncounter.patient);
     },
   });
 
   const cancelMutation = useMutation({
-    mutationFn: () => encountersApi.cancel(encounterId, 'Cancelled from mobile encounter workflow.'),
+    mutationFn: () => encountersApi.cancel(encounterRouteValue!, 'Cancelled from mobile encounter workflow.'),
     onSuccess: async (updatedEncounter) => {
       await invalidateEncounterContext(updatedEncounter.patient);
     },
@@ -157,7 +180,7 @@ export default function EncounterDetailScreen() {
     },
   });
 
-  if (encounterQuery.isLoading) {
+  if ((localEncounterQuery.isLoading || remoteEncounterQuery.isLoading) && !encounter) {
     return (
       <ScreenContainer scroll={false}>
         <LoadingState message="Loading encounter details..." fullScreen />
@@ -174,6 +197,8 @@ export default function EncounterDetailScreen() {
   }
 
   const triageAssessment = triageQuery.data;
+  const encounterRouteSegment = encounterRouteValue ?? String(encounter.id);
+  const syncState = encounterSyncState ?? 'synced';
   const finalizeGuidance = getFinalizeGuidance({
     hasDiagnosis: (diagnosesQuery.data?.length ?? 0) > 0,
     hasTreatmentPlan: Boolean(treatmentPlanQuery.data),
@@ -221,7 +246,7 @@ export default function EncounterDetailScreen() {
     if (!finalizeGuidance.ready) {
       Alert.alert(finalizeGuidance.title, `${finalizeGuidance.message} Open Edit Encounter to resolve this before retrying.`, [
         { text: 'Stay here', style: 'cancel' },
-        { text: 'Open edit', onPress: () => router.push(`/encounters/${encounterId}/edit` as never) },
+        { text: 'Open edit', onPress: () => router.push(`/encounters/${encounterRouteSegment}/edit` as never) },
       ]);
       return;
     }
@@ -271,22 +296,22 @@ export default function EncounterDetailScreen() {
         description={`${encounter.encounter_type_display || encounter.encounter_type} · ${encounter.patient_mrn || 'MRN pending'} · ${formatDate(encounter.encounter_date)}`}
       >
         <View style={styles.heroPills}>
-          {encounter.sync_state !== 'synced' ? <Pill label="Pending sync" tone={encounter.sync_state === 'conflict' ? 'danger' : 'warning'} /> : null}
+          {syncState !== 'synced' ? <Pill label="Pending sync" tone={syncState === 'conflict' ? 'danger' : 'warning'} /> : null}
           <Pill label={getEncounterStatusLabel(encounter.status)} tone={getEncounterPillTone(encounter)} />
         </View>
       </HeroCard>
 
-      {canLoadRemoteDependents ? <CDSAlertBanner encounterId={encounterId} /> : null}
+      {canLoadRemoteDependents && typeof resolvedEncounterId === 'number' ? <CDSAlertBanner encounterId={resolvedEncounterId} /> : null}
 
       {hasLocalDraft ? (
         <SectionCard title="Unsaved changes" subtitle="This encounter has a locally stored edit draft waiting to be applied or saved.">
-          <AppButton label="Resume draft" onPress={() => router.push(`/encounters/${encounter.id}/edit` as never)} />
+          <AppButton label="Resume draft" onPress={() => router.push(`/encounters/${encounterRouteSegment}/edit` as never)} />
         </SectionCard>
       ) : null}
 
       {!canLoadRemoteDependents ? (
         <SectionCard title="Awaiting sync" subtitle="This encounter is stored locally and will gain full downstream workflow actions after the server confirms it.">
-          <DataRow label="Sync state" value={encounter.sync_state.replace(/_/g, ' ')} />
+          <DataRow label="Sync state" value={syncState.replace(/_/g, ' ')} />
           <DataRow label="Chief complaint" value={encounter.chief_complaint} />
           <DataRow label="Created at" value={formatDateTime(encounter.created_at)} />
         </SectionCard>
@@ -295,12 +320,12 @@ export default function EncounterDetailScreen() {
       <SectionCard title="Finalize readiness" subtitle="Mobile close-out guidance based on the backend encounter validation rules.">
         <Pill label={finalizeGuidance.ready ? 'Ready to finalize' : 'Needs more documentation'} tone={finalizeGuidance.ready ? 'primary' : 'warning'} />
         <Text style={styles.bodyText}>{finalizeGuidance.message}</Text>
-        {!finalizeGuidance.ready ? <AppButton label="Update disposition or notes" variant="secondary" onPress={() => router.push(`/encounters/${encounter.id}/edit` as never)} disabled={!canLoadRemoteDependents} /> : null}
+        {!finalizeGuidance.ready ? <AppButton label="Update disposition or notes" variant="secondary" onPress={() => router.push(`/encounters/${encounterRouteSegment}/edit` as never)} disabled={!canLoadRemoteDependents} /> : null}
       </SectionCard>
 
       <SectionCard title="Encounter actions" subtitle="Continue this visit by updating documentation, diagnoses, treatment, and status workflow.">
-        <AppButton label="Edit encounter" onPress={() => router.push(`/encounters/${encounter.id}/edit` as never)} disabled={!canLoadRemoteDependents} />
-        {!triageAssessment ? <AppButton label="Record triage" variant="secondary" onPress={() => router.push(`/encounters/${encounter.id}/triage` as never)} disabled={!canLoadRemoteDependents} /> : null}
+        <AppButton label="Edit encounter" onPress={() => router.push(`/encounters/${encounterRouteSegment}/edit` as never)} disabled={!canLoadRemoteDependents} />
+        {!triageAssessment ? <AppButton label="Record triage" variant="secondary" onPress={() => router.push(`/encounters/${encounterRouteSegment}/triage` as never)} disabled={!canLoadRemoteDependents} /> : null}
         <AppButton label="Order labs" variant="secondary" onPress={() => router.push(`/laboratory/new?encounterId=${encounter.id}&patientId=${encounter.patient}` as never)} disabled={!canLoadRemoteDependents} />
         <AppButton label="Create prescription" variant="secondary" onPress={() => router.push(`/pharmacy/new?encounterId=${encounter.id}&patientId=${encounter.patient}` as never)} disabled={!canLoadRemoteDependents} />
         {canStartProgress(encounter.status) ? <AppButton label={startProgressMutation.isPending ? 'Starting progress...' : 'Start progress'} variant="secondary" onPress={confirmStartProgress} disabled={startProgressMutation.isPending || !canLoadRemoteDependents} /> : null}
