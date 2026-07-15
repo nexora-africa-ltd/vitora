@@ -29,7 +29,6 @@ def sample_imaging_procedure(db):
         modality="XR",
         body_region="CHEST",
         cost=Decimal("1500.00"),
-        sha_claimable=True,
         is_active=True,
     )
 

@@ -139,7 +139,6 @@ def sample_imaging_procedure(db):
         modality="XR",
         body_region="CHEST",
         cost=Decimal("1500.00"),
-        sha_claimable=True,
     )
 
 
@@ -488,7 +487,6 @@ class TestImagingOrderAutoBilling:
             modality="US",
             body_region="ABDOMEN",
             cost=Decimal("2000.00"),
-            sha_claimable=True,
         )
 
         initial_count = draft_invoice.items.count()

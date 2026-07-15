@@ -47,7 +47,6 @@ class TestPhysiotherapyTreatmentType:
         assert treatment_type.name == "Manual Therapy - Spine"
         assert treatment_type.category == "MUSCULOSKELETAL"
         assert treatment_type.is_active is True
-        assert treatment_type.sha_claimable is True
 
     def test_treatment_type_code_uniqueness(self):
         """Treatment type code should be unique."""

@@ -131,7 +131,6 @@ def xray_procedure(db):
         modality="XR",
         body_region="CHEST",
         cost=Decimal("1500.00"),
-        sha_claimable=True,
         turnaround_hours=24,
     )
 
@@ -145,7 +144,6 @@ def ct_procedure(db):
         modality="CT",
         body_region="HEAD",
         cost=Decimal("8000.00"),
-        sha_claimable=True,
         turnaround_hours=48,
     )
 

@@ -44,7 +44,6 @@ class TestImagingProcedure:
         assert procedure.modality == "XR"
         assert procedure.body_region == "CHEST"
         assert procedure.is_active is True
-        assert procedure.sha_claimable is True
 
     def test_procedure_code_uniqueness(self, sample_facility):
         """Procedure code should be unique per facility."""
@@ -151,11 +150,9 @@ class TestImagingProcedure:
             modality="MRI",
             body_region="HEAD",
             cost=Decimal("15000.00"),
-            sha_claimable=True,
             sha_intervention_code="SHA-IMG-001",
         )
         assert procedure.cost == Decimal("15000.00")
-        assert procedure.sha_claimable is True
         assert procedure.sha_intervention_code == "SHA-IMG-001"
 
     def test_procedure_availability_flags(self):
