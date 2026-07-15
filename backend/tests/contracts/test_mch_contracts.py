@@ -546,7 +546,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "notes",
                 "registration_date",
                 "risk_factors",
-                "sha_claimable",
             }
         ),
     ),
@@ -609,7 +608,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "registered_by_name",
                 "registration_date",
                 "risk_factors",
-                "sha_claimable",
                 "status",
                 "trimester",
                 "updated_at",

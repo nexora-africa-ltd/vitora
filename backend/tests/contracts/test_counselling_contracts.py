@@ -257,7 +257,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "id",
                 "is_active",
                 "name",
-                "sha_claimable",
             }
         ),
     ),
@@ -281,7 +280,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "recommended_sessions",
                 "requires_privacy",
                 "requires_referral",
-                "sha_claimable",
                 "sha_intervention_code",
                 "typical_duration_minutes",
                 "updated_at",

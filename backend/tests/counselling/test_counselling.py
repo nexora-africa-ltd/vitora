@@ -45,7 +45,6 @@ def counselling_type(db):
         recommended_sessions=6,
         recommended_frequency="1x per week",
         cost_per_session=Decimal("1500.00"),
-        sha_claimable=True,
         sha_intervention_code="SH-COUNS-001",
         requires_privacy=False,  # Non-sensitive for general tests
         is_active=True,
@@ -64,7 +63,6 @@ def mental_health_counselling_type(db):
         recommended_sessions=6,
         recommended_frequency="1x per week",
         cost_per_session=Decimal("1500.00"),
-        sha_claimable=True,
         sha_intervention_code="SH-COUNS-002",
         requires_privacy=True,
         is_active=True,
@@ -83,7 +81,6 @@ def hiv_counselling_type(db):
         recommended_sessions=3,
         recommended_frequency="as needed",
         cost_per_session=Decimal("500.00"),
-        sha_claimable=True,
         requires_privacy=True,
         is_active=True,
     )
@@ -100,7 +97,6 @@ def family_planning_type(db):
         typical_duration_minutes=30,
         recommended_sessions=2,
         cost_per_session=Decimal("800.00"),
-        sha_claimable=True,
         requires_privacy=False,
         is_active=True,
     )
@@ -424,7 +420,6 @@ class TestCounsellingTypeAPI:
             "typical_duration_minutes": 45,
             "recommended_sessions": 4,
             "cost_per_session": "1000.00",
-            "sha_claimable": True,
             "is_active": True,
         }
         response = authenticated_client.post("/api/counselling/types/", data)

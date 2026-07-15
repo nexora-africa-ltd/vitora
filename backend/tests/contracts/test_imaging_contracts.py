@@ -332,7 +332,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "radlex_code",
                 "requires_contrast",
                 "requires_sedation",
-                "sha_claimable",
                 "sha_intervention_code",
                 "special_preparation",
                 "turnaround_hours",
@@ -356,7 +355,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "radlex_code",
                 "requires_contrast",
                 "requires_sedation",
-                "sha_claimable",
                 "sha_intervention_code",
                 "special_preparation",
                 "turnaround_hours",
@@ -376,7 +374,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "is_active",
                 "modality",
                 "name",
-                "sha_claimable",
             }
         ),
     ),

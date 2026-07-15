@@ -47,7 +47,6 @@ def imaging_procedure(db):
         modality="XR",
         body_region="CHEST",
         cost=500.00,
-        sha_claimable=True,
         available_in_house=True,
         is_active=True,
     )

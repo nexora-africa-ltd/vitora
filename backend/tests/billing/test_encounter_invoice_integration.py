@@ -113,7 +113,6 @@ def cbc_test(db):
         specimen_type="BLOOD",
         result_type="PANEL",
         cost=Decimal("1500.00"),
-        sha_claimable=True,
         loinc_code="58410-2",
     )
 
@@ -129,7 +128,6 @@ def urinalysis_test(db):
         specimen_type="URINE",
         result_type="PANEL",
         cost=Decimal("800.00"),
-        sha_claimable=True,
         loinc_code="24356-8",
     )
 

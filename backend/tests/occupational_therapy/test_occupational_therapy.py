@@ -42,7 +42,6 @@ def ot_treatment_type(db):
         recommended_sessions=8,
         recommended_frequency="2x per week",
         cost_per_session=Decimal("2500.00"),
-        sha_claimable=True,
         sha_intervention_code="SHA-OT-001",
         is_active=True,
     )
@@ -60,7 +59,6 @@ def ot_treatment_type_cognitive(db):
         recommended_sessions=12,
         recommended_frequency="3x per week",
         cost_per_session=Decimal("3000.00"),
-        sha_claimable=True,
         is_active=True,
     )
 
@@ -125,7 +123,6 @@ class TestOTTreatmentTypeModel:
         assert ot_treatment_type.name == "ADL Assessment & Training"
         assert ot_treatment_type.category == "ADL_TRAINING"
         assert ot_treatment_type.cost_per_session == Decimal("2500.00")
-        assert ot_treatment_type.sha_claimable is True
         assert ot_treatment_type.is_active is True
 
     def test_treatment_type_str(self, ot_treatment_type):
@@ -306,7 +303,6 @@ class TestOTTreatmentTypeAPI:
             "category": "HAND_THERAPY",
             "typical_duration_minutes": 45,
             "cost_per_session": "2000.00",
-            "sha_claimable": True,
         }
         response = authenticated_client.post("/api/occupational-therapy/treatment-types/", data)
         assert response.status_code == status.HTTP_201_CREATED

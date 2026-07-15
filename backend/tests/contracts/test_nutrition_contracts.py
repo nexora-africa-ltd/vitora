@@ -279,7 +279,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "referral_reason_display",
                 "referred_by",
                 "referred_by_name",
-                "sha_claimable",
                 "sha_intervention_code",
                 "snacks_per_day",
                 "status",

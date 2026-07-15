@@ -65,10 +65,7 @@ class TestStartVisitEndpoint:
         instance.start_visit.assert_called_once()
 
     def test_start_visit_invalid_payload(self, sha_client, sample_sha_claim):
-        # service_type=INPATIENT requires admission_date; constructor itself
-        # accepts it but the service raises ValueError. We trip an alternate
-        # validation by sending empty intervention_codes — accepted construction,
-        # but no service call should still occur unless the request reaches it.
+        # service_type=INPATIENT without admission_date is treated as a bad request.
         with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
             instance = svc.return_value
             instance.start_visit.side_effect = ValueError("admission_date is required")
@@ -82,8 +79,7 @@ class TestStartVisitEndpoint:
                 },
                 format="json",
             )
-        # ValueError isn't a DHAError → falls through to 500
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
 @pytest.mark.django_db

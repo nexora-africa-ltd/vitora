@@ -44,7 +44,6 @@ class TestTestCatalog:
         assert test.code == "CBC"
         assert test.name == "Complete Blood Count"
         assert test.is_active is True
-        assert test.sha_claimable is True
 
     def test_code_uniqueness(self, sample_facility, sample_organization):
         """Test code should be unique within a facility."""
@@ -245,10 +244,8 @@ class TestTestCatalog:
             specimen_type="BLOOD",
             result_type="NUMERIC",
             cost=Decimal("300.00"),
-            sha_claimable=True,
         )
         assert test.cost == Decimal("300.00")
-        assert test.sha_claimable is True
 
 
 @pytest.mark.django_db
