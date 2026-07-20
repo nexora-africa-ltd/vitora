@@ -9,19 +9,22 @@ def backfill_pharmacy_public_ids(apps, schema_editor):
     HistoricalPrescription = apps.get_model("pharmacy", "HistoricalPrescription")
     Prescription = apps.get_model("pharmacy", "Prescription")
 
-    for dispensing in Dispensing.objects.filter(public_id__isnull=True).iterator(chunk_size=1000):
-        dispensing.public_id = uuid.uuid4()
-        dispensing.save(update_fields=["public_id"])
-
-    for snapshot in HistoricalPrescription.objects.filter(public_id__isnull=True).iterator(
-        chunk_size=2000
+    for dispensing_id in Dispensing.objects.filter(public_id__isnull=True).values_list("id", flat=True).iterator(
+        chunk_size=1000
     ):
-        snapshot.public_id = uuid.uuid4()
-        snapshot.save(update_fields=["public_id"])
+        Dispensing.objects.filter(id=dispensing_id, public_id__isnull=True).update(public_id=uuid.uuid4())
 
-    for prescription in Prescription.objects.filter(public_id__isnull=True).iterator(chunk_size=1000):
-        prescription.public_id = uuid.uuid4()
-        prescription.save(update_fields=["public_id"])
+    for snapshot_id in HistoricalPrescription.objects.filter(public_id__isnull=True).values_list(
+        "id", flat=True
+    ).iterator(chunk_size=2000):
+        HistoricalPrescription.objects.filter(id=snapshot_id, public_id__isnull=True).update(
+            public_id=uuid.uuid4()
+        )
+
+    for prescription_id in Prescription.objects.filter(public_id__isnull=True).values_list(
+        "id", flat=True
+    ).iterator(chunk_size=1000):
+        Prescription.objects.filter(id=prescription_id, public_id__isnull=True).update(public_id=uuid.uuid4())
 
 
 class Migration(migrations.Migration):

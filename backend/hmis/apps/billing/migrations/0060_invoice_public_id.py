@@ -6,9 +6,12 @@ from django.db import migrations, models
 
 def backfill_invoice_public_ids(apps, schema_editor):
     Invoice = apps.get_model("billing", "Invoice")
-    for invoice in Invoice.objects.filter(public_id__isnull=True).iterator(chunk_size=1000):
-        invoice.public_id = uuid.uuid4()
-        invoice.save(update_fields=["public_id"])
+    for invoice_id in Invoice.objects.filter(public_id__isnull=True).values_list("id", flat=True).iterator(
+        chunk_size=1000
+    ):
+        # Use QuerySet.update() so post_save sync signals do not fire while this
+        # migration runs with historical model classes.
+        Invoice.objects.filter(id=invoice_id, public_id__isnull=True).update(public_id=uuid.uuid4())
 
 
 class Migration(migrations.Migration):

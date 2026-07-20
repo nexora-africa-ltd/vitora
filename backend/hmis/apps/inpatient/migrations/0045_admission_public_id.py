@@ -6,9 +6,10 @@ from django.db import migrations, models
 
 def backfill_admission_public_ids(apps, schema_editor):
     Admission = apps.get_model("inpatient", "Admission")
-    for admission in Admission.objects.filter(public_id__isnull=True).iterator(chunk_size=1000):
-        admission.public_id = uuid.uuid4()
-        admission.save(update_fields=["public_id"])
+    for admission_id in Admission.objects.filter(public_id__isnull=True).values_list("id", flat=True).iterator(
+        chunk_size=1000
+    ):
+        Admission.objects.filter(id=admission_id, public_id__isnull=True).update(public_id=uuid.uuid4())
 
 
 class Migration(migrations.Migration):

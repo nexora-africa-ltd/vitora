@@ -8,15 +8,17 @@ def backfill_encounter_public_ids(apps, schema_editor):
     Encounter = apps.get_model("encounters", "Encounter")
     HistoricalEncounter = apps.get_model("encounters", "HistoricalEncounter")
 
-    for encounter in Encounter.objects.filter(public_id__isnull=True).iterator(chunk_size=1000):
-        encounter.public_id = uuid.uuid4()
-        encounter.save(update_fields=["public_id"])
-
-    for snapshot in HistoricalEncounter.objects.filter(public_id__isnull=True).iterator(
-        chunk_size=2000
+    for encounter_id in Encounter.objects.filter(public_id__isnull=True).values_list("id", flat=True).iterator(
+        chunk_size=1000
     ):
-        snapshot.public_id = uuid.uuid4()
-        snapshot.save(update_fields=["public_id"])
+        Encounter.objects.filter(id=encounter_id, public_id__isnull=True).update(public_id=uuid.uuid4())
+
+    for snapshot_id in HistoricalEncounter.objects.filter(public_id__isnull=True).values_list(
+        "id", flat=True
+    ).iterator(chunk_size=2000):
+        HistoricalEncounter.objects.filter(id=snapshot_id, public_id__isnull=True).update(
+            public_id=uuid.uuid4()
+        )
 
 
 class Migration(migrations.Migration):
