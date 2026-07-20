@@ -681,7 +681,15 @@ staging-secrets:
 # Build, push, and deploy to STAGING ACA
 staging-deploy:
 	@echo "=== Building and deploying to STAGING ($(ACA_STAGING_NAME)) ==="
-	@TAG=$$(git rev-parse --short HEAD); \
+	@TAG="$(DEPLOY_TAG)"; \
+	if [ -z "$$TAG" ]; then \
+		BASE_TAG=$$(git rev-parse --short HEAD); \
+		if [ -n "$$(git status --porcelain)" ]; then \
+			TAG="$$BASE_TAG-dirty-$$(date +%Y%m%d%H%M%S)"; \
+		else \
+			TAG="$$BASE_TAG"; \
+		fi; \
+	fi; \
 	echo "Image tag: $$TAG"; \
 	docker build -t $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG -t $(ACR_NAME).azurecr.io/$(ACR_IMAGE):staging-latest . && \
 	az acr login --name $(ACR_NAME) && \

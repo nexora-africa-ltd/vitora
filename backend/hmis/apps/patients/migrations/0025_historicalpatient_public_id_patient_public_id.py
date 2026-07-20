@@ -8,13 +8,17 @@ def backfill_patient_public_ids(apps, schema_editor):
     Patient = apps.get_model("patients", "Patient")
     HistoricalPatient = apps.get_model("patients", "HistoricalPatient")
 
-    for patient in Patient.objects.filter(public_id__isnull=True).iterator(chunk_size=1000):
-        patient.public_id = uuid.uuid4()
-        patient.save(update_fields=["public_id"])
+    for patient_id in Patient.objects.filter(public_id__isnull=True).values_list("id", flat=True).iterator(
+        chunk_size=1000
+    ):
+        Patient.objects.filter(id=patient_id, public_id__isnull=True).update(public_id=uuid.uuid4())
 
-    for snapshot in HistoricalPatient.objects.filter(public_id__isnull=True).iterator(chunk_size=2000):
-        snapshot.public_id = uuid.uuid4()
-        snapshot.save(update_fields=["public_id"])
+    for snapshot_id in HistoricalPatient.objects.filter(public_id__isnull=True).values_list(
+        "id", flat=True
+    ).iterator(chunk_size=2000):
+        HistoricalPatient.objects.filter(id=snapshot_id, public_id__isnull=True).update(
+            public_id=uuid.uuid4()
+        )
 
 
 class Migration(migrations.Migration):
