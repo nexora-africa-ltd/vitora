@@ -26,6 +26,12 @@ from hmis.apps.core.cookie_auth import (
 )
 from hmis.apps.core.mfa.views import MFAAwareTokenRefreshView
 from hmis.apps.core.powersync_tokens import PowerSyncCredentialsView
+from hmis.apps.core.pricing import (
+    PricingQuoteSnapshotCreateView,
+    PricingQuoteSnapshotDetailView,
+    PricingQuoteView,
+    PricingResolvePlanView,
+)
 from hmis.apps.core.views import (
     AuditedTokenObtainPairView,
     AuditLogViewSet,
@@ -789,6 +795,27 @@ urlpatterns = [
     # OpenAPI schema & docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path("api/pricing/quote", PricingQuoteView.as_view(), name="pricing-quote"),
+    path("api/pricing/quote/", PricingQuoteView.as_view(), name="pricing-quote-slash"),
+    path("api/pricing/resolve-plan", PricingResolvePlanView.as_view(), name="pricing-resolve-plan"),
+    path(
+        "api/pricing/resolve-plan/",
+        PricingResolvePlanView.as_view(),
+        name="pricing-resolve-plan-slash",
+    ),
+    path(
+        "api/pricing/quotes", PricingQuoteSnapshotCreateView.as_view(), name="pricing-quotes-create"
+    ),
+    path(
+        "api/pricing/quotes/",
+        PricingQuoteSnapshotCreateView.as_view(),
+        name="pricing-quotes-create-slash",
+    ),
+    path(
+        "api/pricing/quotes/<uuid:quote_id>/",
+        PricingQuoteSnapshotDetailView.as_view(),
+        name="pricing-quotes-detail",
+    ),
     # Prometheus metrics (scraped by Prometheus, not public)
     path("", include("django_prometheus.urls")),
     # SMART on FHIR OAuth2 endpoints

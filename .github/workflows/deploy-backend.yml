@@ -161,6 +161,11 @@ jobs:
             DJANGO_LOG_LEVEL=INFO
             SMS_BACKEND=${{ env.DEPLOY_ENV == 'production' && 'hmis.apps.core.sms.backends.AfricasTalkingSMSBackend' || 'hmis.apps.core.sms.backends.MockSMSBackend' }}
             SMS_SENDER_ID=VitoraHMIS
+            PRICING_REQUIRE_SIGNED_NONCE=${{ env.DEPLOY_ENV == 'production' && 'true' || 'false' }}
+            PRICING_NONCE_SECRET=secretref:pricing-nonce-secret
+            PRICING_NONCE_TTL_SECONDS=${{ vars.PRICING_NONCE_TTL_SECONDS || '300' }}
+            PRICING_QUOTE_CACHE_TTL_SECONDS=${{ vars.PRICING_QUOTE_CACHE_TTL_SECONDS || '120' }}
+            PRICING_QUOTE_SNAPSHOT_TTL_DAYS=${{ vars.PRICING_QUOTE_SNAPSHOT_TTL_DAYS || '30' }}
             WEBAUTHN_RP_ID=${{ vars.WEBAUTHN_RP_ID || 'staging.vitora.digital' }}
             WEBAUTHN_ORIGIN=${{ vars.WEBAUTHN_ORIGIN || 'https://staging.vitora.digital' }}
             METABASE_SITE_URL=${{ vars.METABASE_SITE_URL || 'https://vitora-metabase.agreeabledune-6cc420cc.eastus.azurecontainerapps.io' }}
