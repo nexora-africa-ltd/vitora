@@ -253,6 +253,7 @@ REST_FRAMEWORK = {
         "license_check_in": "20/minute",  # Hub license check-ins/token refreshes
         "password_reset": "5/hour",  # Password reset requests
         "ai_proactive": "2/minute",  # Proactive insights - max 2 per minute per user
+        "pricing_quote": "60/minute",  # Public pricing calculator endpoint
     },
     "EXCEPTION_HANDLER": "hmis.apps.core.exception_handler.exception_handler",
 }
@@ -290,6 +291,13 @@ SUBSCRIPTION_EXPIRY_ENFORCEMENT = True
 # Subscription feature gate — when True, module-level access is restricted
 # based on the org's subscription plan feature flags.
 SUBSCRIPTION_FEATURE_ENFORCEMENT = True
+
+# Public pricing quote endpoint hardening.
+PRICING_REQUIRE_SIGNED_NONCE = os.getenv("PRICING_REQUIRE_SIGNED_NONCE", "false").lower() == "true"
+PRICING_NONCE_SECRET = os.getenv("PRICING_NONCE_SECRET", "")
+PRICING_NONCE_TTL_SECONDS = int(os.getenv("PRICING_NONCE_TTL_SECONDS", "300"))
+PRICING_QUOTE_CACHE_TTL_SECONDS = int(os.getenv("PRICING_QUOTE_CACHE_TTL_SECONDS", "120"))
+PRICING_QUOTE_SNAPSHOT_TTL_DAYS = int(os.getenv("PRICING_QUOTE_SNAPSHOT_TTL_DAYS", "30"))
 
 # WebAuthn / FIDO2 / Passkey settings
 # RP ID must match the domain the site is served from (no port, no scheme).

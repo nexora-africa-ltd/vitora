@@ -773,3 +773,7 @@ prod-status:
 prod-restart:
 	az containerapp revision restart -n $(ACA_PROD_NAME) -g $(ACA_RG) \
 		--revision $$(az containerapp revision list -n $(ACA_PROD_NAME) -g $(ACA_RG) --query "[0].name" -o tsv)
+
+gen-secret:
+	@echo "Generating a random 32-character secret..."
+	@python3 -c "import secrets; print(secrets.token_urlsafe(32))"

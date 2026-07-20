@@ -77,6 +77,7 @@ declare -A SECRETS=(
   ["license-signing-key"]="${LICENSE_SIGNING_KEY:-}"
   ["loinc-username"]="${LOINC_USERNAME:-}"
   ["loinc-password"]="${LOINC_PASSWORD:-}"
+  ["pricing-nonce-secret"]="${PRICING_NONCE_SECRET:-}"
 )
 
 SECRET_ARGS=()
@@ -201,6 +202,11 @@ az containerapp update \
     "DJANGO_LOG_LEVEL=${DJANGO_LOG_LEVEL:-INFO}" \
     "SMS_BACKEND=${SMS_BACKEND:-hmis.apps.core.sms.backends.MockSMSBackend}" \
     "SMS_SENDER_ID=${SMS_SENDER_ID:-VitoraHMIS}" \
+    "PRICING_REQUIRE_SIGNED_NONCE=${PRICING_REQUIRE_SIGNED_NONCE:-false}" \
+    "PRICING_NONCE_SECRET=secretref:pricing-nonce-secret" \
+    "PRICING_NONCE_TTL_SECONDS=${PRICING_NONCE_TTL_SECONDS:-300}" \
+    "PRICING_QUOTE_CACHE_TTL_SECONDS=${PRICING_QUOTE_CACHE_TTL_SECONDS:-120}" \
+    "PRICING_QUOTE_SNAPSHOT_TTL_DAYS=${PRICING_QUOTE_SNAPSHOT_TTL_DAYS:-30}" \
     "AT_API_KEY=secretref:at-api-key" \
     "AT_USERNAME=${AT_USERNAME:-sandbox}" \
     "WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID:-staging.vitora.digital}" \

@@ -9,6 +9,7 @@ and sync-related models for offline-first functionality.
 
 import hashlib
 import json
+import uuid
 from decimal import Decimal
 
 from django.conf import settings
@@ -2603,6 +2604,149 @@ class SubscriptionPlan(TimeStampedModel):
     def has_trial(self) -> bool:
         """Whether this plan offers a trial period."""
         return self.trial_period_days > 0
+
+
+class PriceBook(TimeStampedModel):
+    """Versioned catalog of sellable SKUs for cart-based pricing."""
+
+    code = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=120)
+    description = models.TextField(blank=True, default="")
+    currency = models.CharField(max_length=3, default="KES")
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "code"]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.code})"
+
+
+class SKU(TimeStampedModel):
+    """Sellable stock-keeping unit used in pricing cart calculations."""
+
+    class SKUType(models.TextChoices):
+        BASE = "BASE", "Base"
+        MODULE = "MODULE", "Module"
+        PLATFORM = "PLATFORM", "Platform"
+        STANDALONE = "STANDALONE", "Standalone"
+
+    price_book = models.ForeignKey("core.PriceBook", on_delete=models.CASCADE, related_name="skus")
+    code = models.CharField(max_length=64)
+    name = models.CharField(max_length=140)
+    description = models.TextField(blank=True, default="")
+    sku_type = models.CharField(max_length=20, choices=SKUType.choices, default=SKUType.MODULE)
+
+    # One SKU can enable one or many feature keys in SubscriptionPlan.features.
+    enabled_feature_keys = models.JSONField(default=list, blank=True)
+
+    monthly_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    annual_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    # Included usage quantities contributed by this SKU.
+    included_ai_tokens = models.PositiveIntegerField(default=0)
+    included_sms_messages = models.PositiveIntegerField(default=0)
+    included_api_calls = models.PositiveIntegerField(default=0)
+
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "code"]
+        constraints = [
+            models.UniqueConstraint(fields=["price_book", "code"], name="uniq_pricebook_sku_code")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.code} ({self.price_book.code})"
+
+
+class SKUDependency(TimeStampedModel):
+    """Dependency rule for a SKU based on resolved feature keys."""
+
+    class RuleType(models.TextChoices):
+        FEATURE_ALL = "FEATURE_ALL", "Feature All"
+        FEATURE_ANY = "FEATURE_ANY", "Feature Any"
+
+    sku = models.ForeignKey("core.SKU", on_delete=models.CASCADE, related_name="dependencies")
+    rule_type = models.CharField(
+        max_length=20, choices=RuleType.choices, default=RuleType.FEATURE_ALL
+    )
+    required_feature_keys = models.JSONField(default=list, blank=True)
+    error_message = models.CharField(max_length=255, blank=True, default="")
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["sku__code", "id"]
+
+    def __str__(self) -> str:
+        return f"{self.sku.code} dependency ({self.rule_type})"
+
+
+class Bundle(TimeStampedModel):
+    """Automatic discount bundle resolved from selected SKU sets."""
+
+    class DiscountType(models.TextChoices):
+        PERCENT = "PERCENT", "Percent"
+        FIXED = "FIXED", "Fixed"
+        NEGOTIATED = "NEGOTIATED", "Negotiated"
+
+    price_book = models.ForeignKey(
+        "core.PriceBook", on_delete=models.CASCADE, related_name="bundles"
+    )
+    code = models.CharField(max_length=64)
+    name = models.CharField(max_length=140)
+    description = models.TextField(blank=True, default="")
+    included_sku_codes = models.JSONField(default=list, blank=True)
+    discount_type = models.CharField(
+        max_length=20,
+        choices=DiscountType.choices,
+        default=DiscountType.PERCENT,
+    )
+    discount_value = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "code"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["price_book", "code"],
+                name="uniq_pricebook_bundle_code",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.code})"
+
+
+class PricingQuoteSnapshot(TimeStampedModel):
+    """Persisted pricing quote snapshot for lead forms and sales follow-up."""
+
+    class ResolvedPlan(models.TextChoices):
+        BASIC = "BASIC", "Basic"
+        PROFESSIONAL = "PROFESSIONAL", "Professional"
+        ENTERPRISE = "ENTERPRISE", "Enterprise"
+        CUSTOM = "CUSTOM", "Custom"
+
+    quote_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)
+    source = models.CharField(max_length=64, default="marketing_pricing_cart")
+    catalog_version = models.CharField(max_length=64, blank=True, default="")
+    resolved_plan = models.CharField(
+        max_length=20,
+        choices=ResolvedPlan.choices,
+        default=ResolvedPlan.CUSTOM,
+    )
+    request_payload = models.JSONField(default=dict, blank=True)
+    quote_payload = models.JSONField(default=dict, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"Quote {self.quote_id} ({self.resolved_plan})"
 
 
 # ============================================================================

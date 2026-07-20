@@ -1,0 +1,331 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vitora.digital/schemas/pricing-cart-rules.schema.json",
+  "title": "Vitora Pricing Cart Rules",
+  "description": "Schema for cart payload used by pricing engine and subscription feature gating.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "catalog_version",
+    "currency",
+    "billing_cycle",
+    "cart"
+  ],
+  "properties": {
+    "catalog_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version tag for pricebook and dependency rules."
+    },
+    "currency": {
+      "type": "string",
+      "const": "KES"
+    },
+    "billing_cycle": {
+      "type": "string",
+      "enum": [
+        "monthly",
+        "annual"
+      ]
+    },
+    "cart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_sku",
+        "feature_keys",
+        "quantities",
+        "usage_estimate"
+      ],
+      "properties": {
+        "base_sku": {
+          "type": "string",
+          "enum": [
+            "base_platform"
+          ]
+        },
+        "selected_skus": {
+          "type": "array",
+          "description": "Commercial SKU codes selected in cart.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "mod_emergency",
+              "mod_inpatient",
+              "mod_laboratory",
+              "mod_imaging",
+              "mod_theatre",
+              "mod_dialysis",
+              "mod_icu",
+              "mod_maternity",
+              "mod_mortuary",
+              "mod_blood_bank",
+              "mod_inventory",
+              "mod_scheduling",
+              "mod_triage",
+              "mod_surveillance",
+              "mod_immunizations",
+              "mod_allied_health",
+              "mod_quality",
+              "mod_private_insurance",
+              "mod_moh_reporting",
+              "plat_sha_claims",
+              "plat_dhis2_reporting",
+              "plat_ai_assistant",
+              "plat_analytics",
+              "plat_api_access",
+              "plat_custom_reports",
+              "plat_offline_sync",
+              "plat_sms_notifications",
+              "std_lis",
+              "std_pharmacy",
+              "std_imaging"
+            ]
+          },
+          "default": []
+        },
+        "feature_keys": {
+          "type": "array",
+          "description": "Resolved backend feature keys derived from SKU selection.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "outpatient",
+              "inpatient",
+              "emergency",
+              "pharmacy",
+              "laboratory",
+              "imaging",
+              "theatre",
+              "dialysis",
+              "icu",
+              "maternity",
+              "mortuary",
+              "blood_bank",
+              "inventory",
+              "billing",
+              "scheduling",
+              "triage",
+              "surveillance",
+              "immunizations",
+              "allied_health",
+              "quality",
+              "private_insurance",
+              "moh_reporting",
+              "lis_standalone",
+              "pharmacy_standalone",
+              "imaging_standalone",
+              "ai_assistant",
+              "sha_claims",
+              "dhis2_reporting",
+              "analytics",
+              "api_access",
+              "custom_reports",
+              "offline_sync",
+              "sms_notifications"
+            ]
+          }
+        },
+        "quantities": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "facilities",
+            "users"
+          ],
+          "properties": {
+            "facilities": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "users": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "patients": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        },
+        "usage_estimate": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ai_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "sms_messages": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "api_calls": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          "default": {}
+        },
+        "applied_bundle": {
+          "type": "string",
+          "enum": [
+            "none",
+            "clinic_bundle",
+            "hospital_bundle",
+            "enterprise_bundle"
+          ],
+          "default": "none"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "feature_keys": {
+                "contains": {
+                  "const": "sha_claims"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "feature_keys": {
+                "contains": {
+                  "const": "billing"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "feature_keys": {
+                "contains": {
+                  "const": "theatre"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "feature_keys": {
+                "contains": {
+                  "const": "inpatient"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "feature_keys": {
+                "contains": {
+                  "const": "dialysis"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "feature_keys": {
+                "contains": {
+                  "const": "inpatient"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "feature_keys": {
+                "contains": {
+                  "const": "blood_bank"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "feature_keys": {
+                "contains": {
+                  "const": "laboratory"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "feature_keys": {
+                "contains": {
+                  "const": "surveillance"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "feature_keys": {
+                "contains": {
+                  "const": "dhis2_reporting"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "feature_keys": {
+                "contains": {
+                  "const": "moh_reporting"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "feature_keys": {
+                "contains": {
+                  "const": "dhis2_reporting"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "feature_keys": {
+                "contains": {
+                  "const": "custom_reports"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "feature_keys": {
+                "contains": {
+                  "const": "analytics"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
