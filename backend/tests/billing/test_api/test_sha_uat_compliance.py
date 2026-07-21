@@ -254,6 +254,112 @@ class TestPreviewBeforeSubmit:
         assert item is not None
         assert item.tariff_id == upserted.id
 
+    def test_apply_preview_lines_auto_materializes_local_invoice(
+        self, sha_client, sample_sha_claim_for_uat
+    ):
+        """apply-preview-lines should create/link a local invoice and materialize invoice items."""
+        from hmis.apps.billing.models import Invoice
+
+        claim = sample_sha_claim_for_uat
+        payload = {
+            "invoices": [
+                {
+                    "invoice_number": "INV/DHA/MAT-001",
+                    "lines": [
+                        {
+                            "item_code": "SHA-03-101",
+                            "item_name": "Ward round",
+                            "quantity": 2,
+                            "unit_price": "1500.00",
+                        }
+                    ],
+                }
+            ]
+        }
+
+        response = sha_client.post(
+            f"/api/sha/claims/{claim.id}/ilm/apply-preview-lines/",
+            {"payload": payload, "replace_existing": True},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["invoice_linked"] is True
+        assert response.data["materialized_invoice_id"]
+        assert response.data["materialized_invoice_items_created"] == 1
+        assert response.data["materialized_invoice_items_replaced"] == 0
+        assert response.data["materialized_invoice_skipped_reason"] == ""
+        assert response.data["final_bill_attachment_id"]
+        assert response.data["final_bill_created"] is True
+        assert response.data["final_bill_skipped_reason"] == ""
+
+        claim.refresh_from_db()
+        assert claim.invoice_id == response.data["materialized_invoice_id"]
+        assert claim.invoice is not None
+        assert claim.invoice.items.count() == 1
+        assert (
+            claim.invoice.internal_notes
+            and "DHA_PREVIEW_MATERIALIZED" in claim.invoice.internal_notes
+        )
+        final_bill = claim.attachments.get(id=response.data["final_bill_attachment_id"])
+        assert final_bill.attachment_type == "invoice"
+        assert "Final Bill" in final_bill.name
+        assert "final_bill" in final_bill.original_filename
+
+        invoice = Invoice.objects.get(id=claim.invoice_id)
+        assert invoice.sha_claim_number == claim.claim_number
+
+    def test_materialize_preview_invoice_endpoint_creates_invoice_from_claim_items(
+        self, sha_client, sample_sha_claim_for_uat
+    ):
+        """Explicit materialize endpoint should create invoice records from existing claim items."""
+        from hmis.apps.billing.models import SHATariff
+
+        claim = sample_sha_claim_for_uat
+        tariff = SHATariff.objects.create(
+            code="SHA-02-222",
+            name="Xray Chest",
+            description="Xray Chest",
+            category=SHATariff.TariffCategory.LABORATORY,
+            facility_level=claim.facility_level,
+            sha_amount=Decimal("1800.00"),
+            effective_date=date.today(),
+            is_active=True,
+        )
+        claim.items.create(
+            tariff=tariff,
+            description="Xray Chest",
+            service_date=claim.service_date,
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("1800.00"),
+            claimed_amount=Decimal("1800.00"),
+        )
+
+        response = sha_client.post(
+            f"/api/sha/claims/{claim.id}/ilm/materialize-preview-invoice/",
+            {"invoice_number": "INV/DHA/MAT-EXPLICIT-001", "replace_existing": True},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["success"] is True
+        assert response.data["invoice_id"]
+        assert response.data["materialized"] is True
+        assert response.data["items_created"] == 1
+        assert response.data["items_replaced"] == 0
+        assert response.data["skipped_reason"] == ""
+        assert response.data["final_bill_attachment_id"]
+        assert response.data["final_bill_created"] is True
+        assert response.data["final_bill_skipped_reason"] == ""
+
+        claim.refresh_from_db()
+        assert claim.invoice_id == response.data["invoice_id"]
+        assert claim.invoice is not None
+        assert claim.invoice.items.count() == 1
+        final_bill = claim.attachments.get(id=response.data["final_bill_attachment_id"])
+        assert final_bill.attachment_type == "invoice"
+        assert "Final Bill" in final_bill.name
+
     def test_ilm_submit_returns_unresolved_lines_for_missing_tariff_items(
         self, sha_client, sample_sha_claim_for_uat, test_user
     ):  # noqa: F811
@@ -484,6 +590,63 @@ class TestDischargeNotFuture:
             )
         # Should not be 400 for future_discharge_date
         assert response.data.get("code") != "future_discharge_date"
+
+    def test_discharge_auto_generates_final_bill_attachment(
+        self, sha_client, sample_sha_claim_for_uat
+    ):
+        """Discharge should best-effort auto-generate a FINAL_BILL local attachment."""
+        from hmis.apps.billing.models import ConsentToken
+
+        claim = sample_sha_claim_for_uat
+        consent = ConsentToken.objects.create(
+            patient=claim.patient,
+            sha_member=claim.sha_member,
+            encounter=claim.encounter,
+            facility=claim.facility,
+            organization=claim.organization,
+            consent_method=ConsentToken.ConsentMethod.OTP,
+            status=ConsentToken.ConsentStatus.VALIDATED,
+            identification_type="CR Number",
+            identification_number="CR0001234567890-1",
+            consent_token="auto-final-bill-token",
+            created_by=claim.created_by,
+        )
+        assert consent.id is not None
+
+        with patch("hmis.apps.billing.sha_ilm_lifecycle_views.IlmLifecycleService") as svc:
+            with patch(
+                "hmis.apps.billing.services.final_bill_attachment_service.FinalBillAttachmentService.ensure_for_claim"
+            ) as ensure_final_bill:
+                mock_result = type(
+                    "Result",
+                    (),
+                    {
+                        "response": type("R", (), {"ok": True, "status_code": 200})(),
+                        "payload": {},
+                        "status_code": 200,
+                        "record_id": None,
+                        "dha_external_id": "",
+                        "correlation_id": "",
+                    },
+                )()
+                svc.return_value.discharge_inpatient.return_value = mock_result
+
+                response = sha_client.post(
+                    "/api/sha/ilm/lifecycle/discharge/",
+                    {
+                        "consent_token": "auto-final-bill-token",
+                        "discharge_date": date.today().isoformat(),
+                        "discharge_reason": "RECOVERED",
+                        "invoice_number": "INV-001",
+                        "otp": "123456",
+                    },
+                    format="json",
+                )
+
+        assert response.status_code == status.HTTP_200_OK
+        ensure_final_bill.assert_called_once()
+        called_claim = ensure_final_bill.call_args.kwargs["claim"]
+        assert called_claim.id == claim.id
 
 
 # =============================================================================

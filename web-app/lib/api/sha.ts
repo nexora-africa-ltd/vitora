@@ -1346,9 +1346,33 @@ export interface IlmApplyPreviewLinesResponse {
   created_item_count: number;
   detected_invoice_number?: string;
   invoice_linked?: boolean;
+  materialized_invoice_id?: number;
+  materialized_invoice_number?: string;
+  materialized_invoice_items_created?: number;
+  materialized_invoice_items_replaced?: number;
+  materialized_invoice_skipped_reason?: string;
+  final_bill_attachment_id?: number;
+  final_bill_created?: boolean;
+  final_bill_updated?: boolean;
+  final_bill_skipped_reason?: string;
   unmatched_tariff_codes: string[];
   parse_errors: string[];
   claimed_amount: string;
+}
+
+export interface IlmMaterializePreviewInvoiceResponse {
+  success: boolean;
+  invoice_id?: number;
+  invoice_number?: string;
+  linked_existing_invoice?: boolean;
+  materialized?: boolean;
+  items_created?: number;
+  items_replaced?: number;
+  final_bill_attachment_id?: number;
+  final_bill_created?: boolean;
+  final_bill_updated?: boolean;
+  final_bill_skipped_reason?: string;
+  skipped_reason?: string;
 }
 
 async function ilmApplyPreviewLines(
@@ -1361,6 +1385,17 @@ async function ilmApplyPreviewLines(
     replace_existing: replaceExisting,
   });
   return response.data as IlmApplyPreviewLinesResponse;
+}
+
+async function ilmMaterializePreviewInvoice(
+  claimId: number,
+  body?: { invoice_number?: string; replace_existing?: boolean },
+): Promise<IlmMaterializePreviewInvoiceResponse> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/materialize-preview-invoice/`, {
+    replace_existing: body?.replace_existing ?? true,
+    ...(body?.invoice_number ? { invoice_number: body.invoice_number } : {}),
+  });
+  return response.data as IlmMaterializePreviewInvoiceResponse;
 }
 
 async function ilmPreviewPayerClaim(claimId: number): Promise<IlmCallResult> {
@@ -1963,6 +1998,7 @@ export const shaApi = {
   ilmAttachmentSyncStatus,
   ilmPreview,
   ilmApplyPreviewLines,
+  ilmMaterializePreviewInvoice,
   ilmPreviewPayerClaim,
   ilmSubmit,
   ilmClose,
