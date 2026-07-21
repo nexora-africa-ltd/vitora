@@ -2641,6 +2641,14 @@ class SHAClaim(FacilityScopedModel):
         if self.sha_member and not self.sha_member.is_eligible():
             errors.append(f"Member not eligible: {self.sha_member.get_ineligibility_reason()}")
 
+        # Inpatient claims must be discharged before submission.
+        # Discharge metadata is populated by the ILM discharge workflow.
+        if self.claim_type == self.ClaimType.INPATIENT and not self.discharge_date:
+            errors.append(
+                "Inpatient claim requires discharge completion before submission. "
+                "Use the Discharge panel to finalize discharge first."
+            )
+
         # Check has items
         if not self.items.exists():
             errors.append("Claim must have at least one item")
@@ -3496,6 +3504,10 @@ class SHAEligibilityCheck(models.Model):
             member.status = SHAMember.MembershipStatus.ACTIVE
             if self.eligible_until:
                 member.eligibility_valid_until = self.eligible_until
+                # Keep canonical coverage end-date in sync with the latest
+                # eligibility response so claim validation does not rely on
+                # stale locally-registered coverage dates.
+                member.coverage_end_date = self.eligible_until
         else:
             # Determine status based on ineligibility reason
             reason_lower = self.ineligibility_reason.lower()

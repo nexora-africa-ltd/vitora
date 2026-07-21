@@ -31,7 +31,7 @@ Reference: docs/sprint-2.1-2.2-sha-claims-integration-deliverables.md § Service
 
 from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest  # type: ignore
 from django.conf import settings
@@ -577,6 +577,44 @@ class TestSHAClaimsServiceValidation:
         # Valid claim should pass validation
         assert is_valid is True
         assert len(errors) == 0
+
+    @patch("hmis.apps.billing.services.sha_claims.SHAEligibilityService")
+    def test_validate_claim_refreshes_stale_ineligible_member(
+        self,
+        mock_eligibility_service,
+        valid_claim,
+        test_user,
+    ):
+        """Ineligible local cache should be rechecked before failing validation."""
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+
+        stale_member = valid_claim.sha_member
+        stale_member.coverage_end_date = date.today() - timedelta(days=5)
+        stale_member.status = SHAMember.MembershipStatus.ACTIVE
+        stale_member.save(update_fields=["coverage_end_date", "status", "updated_at"])
+
+        def _refresh_member(member, user, force_refresh=False, facility=None):
+            member.coverage_end_date = date.today() + timedelta(days=30)
+            member.eligibility_valid_until = date.today() + timedelta(days=30)
+            member.status = SHAMember.MembershipStatus.ACTIVE
+            member.save(
+                update_fields=[
+                    "coverage_end_date",
+                    "eligibility_valid_until",
+                    "status",
+                    "updated_at",
+                ]
+            )
+            return MagicMock()
+
+        mock_eligibility_service.return_value.check_eligibility.side_effect = _refresh_member
+
+        service = SHAClaimsService()
+        is_valid, errors = service.validate_claim(valid_claim, user=test_user)
+
+        assert is_valid is True
+        assert errors == []
+        mock_eligibility_service.return_value.check_eligibility.assert_called_once()
 
 
 @pytest.mark.django_db

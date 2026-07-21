@@ -182,6 +182,7 @@ class TestSHAEligibilityCheckUpdateMember:
 
         assert member.status == SHAMember.MembershipStatus.ACTIVE
         assert member.eligibility_valid_until == valid_check_data["eligible_until"]
+        assert member.coverage_end_date == valid_check_data["eligible_until"]
         assert member.last_eligibility_check is not None
         assert member.eligibility_response == valid_check_data["response_data"]
 

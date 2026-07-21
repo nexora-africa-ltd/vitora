@@ -84,9 +84,29 @@ class TestFacilityDhaRegistryModel:
 
     def test_update_from_dha_response_populates_non_pii(self, sample_facility, dha_response_data):
         """Non-PII columns should be populated from DHA response."""
-        sample_facility.update_from_dha_response(dha_response_data)
+        sample_facility.name = "Local Name"
+        sample_facility.level = "2"
+        sample_facility.ownership = "PRIVATE"
+        sample_facility.sha_facility_code = ""
+        sample_facility.sha_contracted = False
+        sample_facility.sha_contract_expiry = None
+        updated_fields = sample_facility.update_from_dha_response(dha_response_data)
         sample_facility.save()
         sample_facility.refresh_from_db()
+
+        assert "name" in updated_fields
+        assert "level" in updated_fields
+        assert "ownership" in updated_fields
+        assert "sha_facility_code" in updated_fields
+        assert "sha_contracted" in updated_fields
+        assert "sha_contract_expiry" in updated_fields
+
+        assert sample_facility.name == "Test Health Centre"
+        assert sample_facility.level == "3"
+        assert sample_facility.ownership == "GOK"
+        assert sample_facility.sha_facility_code == "FID-47-99999-1"
+        assert sample_facility.sha_contracted is True
+        assert str(sample_facility.sha_contract_expiry) == "2026-12-31"
 
         assert sample_facility.dha_fid_code == "FID-001"
         assert sample_facility.dha_fr_code == "FID-47-99999-1"
@@ -155,14 +175,32 @@ class TestFacilityDhaRegistryModel:
 
     def test_update_from_dha_response_handles_empty_data(self, sample_facility):
         """Should gracefully handle empty/missing DHA fields."""
-        sample_facility.update_from_dha_response({})
+        updated_fields = sample_facility.update_from_dha_response({})
         sample_facility.save()
         sample_facility.refresh_from_db()
 
+        assert updated_fields == []
         assert sample_facility.dha_fid_code == ""
         assert sample_facility.dha_total_beds == 0
         assert sample_facility.dha_admin_name == ""
         assert sample_facility.dha_registry_synced_at is not None
+
+    def test_update_from_dha_response_parses_level_subtype(
+        self, sample_facility, dha_response_data
+    ):
+        """DHA levels like 'Level 3B' should map to level=3 and subtype=B."""
+        sample_facility.level = "4"
+        sample_facility.level_subtype = ""
+
+        payload = {**dha_response_data, "kephLevel": "Level 3B"}
+        updated_fields = sample_facility.update_from_dha_response(payload)
+        sample_facility.save()
+        sample_facility.refresh_from_db()
+
+        assert "level" in updated_fields
+        assert "level_subtype" in updated_fields
+        assert sample_facility.level == "3"
+        assert sample_facility.level_subtype == "B"
 
 
 # ============================================================================
@@ -183,6 +221,14 @@ class TestSyncDhaRegistryAPI:
     @patch("hmis.apps.billing.services.ilm_registries_service.IlmRegistriesService")
     def test_sync_dha_registry_success(self, mock_service_class, dha_response_data):
         """Should fetch DHA data, cache it, and return updated facility."""
+        self.facility.name = "Old Local Name"
+        self.facility.level = "2"
+        self.facility.ownership = "PRIVATE"
+        self.facility.sha_contracted = False
+        self.facility.sha_facility_code = ""
+        self.facility.sha_contract_expiry = None
+        self.facility.save()
+
         mock_result = MagicMock()
         mock_result.status_code = 200
         mock_result.payload = dha_response_data
@@ -196,6 +242,12 @@ class TestSyncDhaRegistryAPI:
         assert response.data["dha_admin_name"] == "Dr. Jane Doe"
         assert response.data["dha_total_beds"] == 50
         assert response.data["dha_registry_synced_at"] is not None
+        assert response.data["name"] == "Test Health Centre"
+        assert response.data["level"] == "3"
+        assert response.data["ownership"] == "GOK"
+        assert response.data["sha_facility_code"] == "FID-47-99999-1"
+        assert response.data["sha_contracted"] is True
+        assert response.data["sha_contract_expiry"] == "2026-12-31"
 
     @patch("hmis.apps.billing.services.ilm_registries_service.IlmRegistriesService")
     def test_sync_dha_registry_wraps_array_response(self, mock_service_class, dha_response_data):

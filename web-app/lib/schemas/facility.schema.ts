@@ -39,6 +39,7 @@ export const FacilityListItemSchema = z.object({
   mfl_code: z.string(),
   name: z.string(),
   level: z.string(),
+  level_subtype: z.enum(['', 'A', 'B', 'C']).default(''),
   ownership: z.string(),
   county: z.number(),
   county_name: z.string(),

@@ -1123,6 +1123,32 @@ def _validate_facility_tier(serializer, attrs: dict, instance=None) -> None:
         raise serializers.ValidationError(errors)
 
 
+def _validate_facility_level_subtype(attrs: dict, instance=None) -> None:
+    """Ensure level subtype is only used for supported KEPH levels."""
+    level = attrs.get("level")
+    if level is None and instance is not None:
+        level = getattr(instance, "level", "")
+
+    subtype = attrs.get("level_subtype")
+    if subtype is None and instance is not None:
+        subtype = getattr(instance, "level_subtype", "")
+
+    subtype_value = str(subtype or "").strip().upper()
+    if not subtype_value:
+        return
+
+    if subtype_value not in {"A", "B", "C"}:
+        raise serializers.ValidationError(
+            {"level_subtype": "Level subtype must be one of A, B, or C."}
+        )
+
+    level_value = str(level or "").strip()
+    if level_value in {"1", "2"}:
+        raise serializers.ValidationError(
+            {"level_subtype": "Level subtype is only applicable to KEPH levels 3 and above."}
+        )
+
+
 class FacilityListSerializer(serializers.ModelSerializer):
     """
     Lightweight serializer for facility list views.
@@ -1151,6 +1177,7 @@ class FacilityListSerializer(serializers.ModelSerializer):
             "mfl_code",
             "name",
             "level",
+            "level_subtype",
             "ownership",
             "county",
             "county_name",
@@ -1214,6 +1241,7 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "mfl_code",
             "name",
             "level",
+            "level_subtype",
             "ownership",
             "is_headquarters",
             "branch_code",
@@ -1346,6 +1374,7 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
     def validate(self, attrs: dict) -> dict:
         """Subscription tier gating for module flags and operating_mode."""
         _validate_facility_tier(self, attrs, instance=self.instance)
+        _validate_facility_level_subtype(attrs, instance=self.instance)
         return attrs
 
     def to_representation(self, instance):
@@ -1396,6 +1425,7 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
             "mfl_code",
             "name",
             "level",
+            "level_subtype",
             "ownership",
             "is_headquarters",
             "branch_code",
@@ -1469,6 +1499,7 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
         # Subscription tier gating: reject modules / operating modes that
         # are not included in the org's plan.
         _validate_facility_tier(self, attrs, instance=None)
+        _validate_facility_level_subtype(attrs, instance=None)
 
         return attrs
 

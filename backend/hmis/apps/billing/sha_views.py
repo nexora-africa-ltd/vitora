@@ -69,6 +69,168 @@ from hmis.apps.licensing.permissions import requires_feature
 
 logger = logging.getLogger(__name__)
 
+_DHA_DOCUMENT_TYPE_MAP: dict[str, str] = {
+    "clinical_notes": "CASE_NOTE",
+    "lab_report": "LAB_RESULTS",
+    "radiology_report": "IMAGING_REPORT",
+    "prescription": "PRESCRIPTION",
+    "invoice": "INVOICE",
+    "discharge_summary": "DISCHARGE_SUMMARY",
+    "operative_notes": "THEATRE_NOTES",
+    "preauth_approval": "PREAUTH_FORM",
+    "other": "OTHER",
+}
+
+
+def _to_dha_document_type(
+    local_attachment_type: str,
+    *,
+    attachment_name: str = "",
+    original_filename: str = "",
+) -> str:
+    value = str(local_attachment_type or "").strip().lower()
+    mapped = _DHA_DOCUMENT_TYPE_MAP.get(value)
+    if mapped:
+        return mapped
+
+    haystack = _normalize_attachment_name(f"{attachment_name} {original_filename}")
+    if "critical care" in haystack or "icu" in haystack:
+        return "CRITICAL_CARE_UNIT_CASE"
+    if "final bill" in haystack:
+        return "FINAL_BILL"
+    if "claim form" in haystack:
+        return "CLAIM_FORM"
+    if "discharge summary" in haystack:
+        return "DISCHARGE_SUMMARY"
+    return "OTHER"
+
+
+def _normalize_attachment_name(value: str) -> str:
+    normalized = "".join(ch.lower() if ch.isalnum() else " " for ch in str(value or "").strip())
+    parts = [part for part in normalized.split() if part]
+    if (
+        parts
+        and len(parts[-1]) <= 5
+        and parts[-1]
+        in {
+            "pdf",
+            "jpg",
+            "jpeg",
+            "png",
+            "doc",
+            "docx",
+            "webp",
+            "tif",
+            "tiff",
+        }
+    ):
+        parts = parts[:-1]
+    return " ".join(parts)
+
+
+def _build_attachment_sync_status(claim: SHAClaim) -> dict:
+    from hmis.apps.billing.services.consent_token_resolver import resolve_for_claim
+    from hmis.apps.core.models import DHAOutboundCall
+
+    local_attachments = list(claim.attachments.all())
+    local_count = len(local_attachments)
+    if local_count == 0:
+        return {
+            "local_count": 0,
+            "matched": 0,
+            "total": 0,
+            "all_matched": True,
+            "missing": [],
+            "consent_token_present": False,
+        }
+
+    try:
+        consent = resolve_for_claim(claim)
+        consent_token = consent.token
+    except Exception:
+        consent_token = ""
+
+    if not consent_token:
+        return {
+            "local_count": local_count,
+            "matched": 0,
+            "total": local_count,
+            "all_matched": False,
+            "missing": [
+                {
+                    "attachment_id": att.id,
+                    "attachment_name": att.name,
+                    "attachment_type": _to_dha_document_type(
+                        att.attachment_type,
+                        attachment_name=att.name,
+                        original_filename=att.original_filename,
+                    ),
+                }
+                for att in local_attachments
+            ],
+            "consent_token_present": False,
+        }
+
+    calls = DHAOutboundCall.objects.filter(
+        path="/api/v1/claims/attachments",
+        consent_token=consent_token,
+        status=DHAOutboundCall.Status.SUCCESS,
+    ).order_by("created_at")
+
+    bucket: dict[tuple[str, str], int] = {}
+    for call in calls:
+        payload = call.request_payload if isinstance(call.request_payload, Mapping) else {}
+        doc_type = str(payload.get("document_type") or "").strip().upper()
+        doc_title = str(
+            payload.get("document_title")
+            or payload.get("attachment_name")
+            or payload.get("document_name")
+            or ""
+        ).strip()
+        if not doc_type:
+            continue
+        key = (doc_type, _normalize_attachment_name(doc_title))
+        bucket[key] = bucket.get(key, 0) + 1
+
+    matched = 0
+    missing: list[dict[str, str | int]] = []
+    for att in local_attachments:
+        doc_type = _to_dha_document_type(
+            att.attachment_type,
+            attachment_name=att.name,
+            original_filename=att.original_filename,
+        )
+        candidates = [
+            _normalize_attachment_name(att.name),
+            _normalize_attachment_name(att.original_filename),
+        ]
+        found = False
+        for name_key in candidates:
+            key = (doc_type, name_key)
+            count = bucket.get(key, 0)
+            if count > 0:
+                bucket[key] = count - 1
+                matched += 1
+                found = True
+                break
+        if not found:
+            missing.append(
+                {
+                    "attachment_id": att.id,
+                    "attachment_name": att.name,
+                    "attachment_type": doc_type,
+                }
+            )
+
+    return {
+        "local_count": local_count,
+        "matched": matched,
+        "total": local_count,
+        "all_matched": len(missing) == 0,
+        "missing": missing,
+        "consent_token_present": True,
+    }
+
 
 def _stringify_error(exc: Exception) -> str:
     """Extract the most useful client-safe error message from an exception."""
@@ -534,8 +696,10 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         will be queued for later submission.
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        from hmis.apps.core.models import SyncQueue
 
         claim = self.get_object()
+        was_queued_retry = claim.status == SHAClaim.ClaimStatus.PENDING_SUBMISSION
         force_online = request.data.get("force_online", False)
 
         try:
@@ -555,6 +719,16 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
             # Normal submission response
             claim.refresh_from_db()
+
+            # If this was a manual retry of a queued claim and it submitted
+            # successfully, close any stale pending queue entries for this claim.
+            if was_queued_retry and claim.status != SHAClaim.ClaimStatus.PENDING_SUBMISSION:
+                SyncQueue.objects.filter(
+                    model_name="SHAClaimSubmission",
+                    record_id=claim.id,
+                    status__in=["PENDING", "SYNCING"],
+                ).update(status="SYNCED", synced_at=timezone.now())
+
             serializer = SHAClaimSubmitSerializer(
                 {
                     "status": claim.status,
@@ -609,12 +783,12 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="resubmit")
     def resubmit(self, request, pk=None):
         """
-        Resubmit a rejected or queried claim.
+        Resubmit/retry a claim.
 
         POST /api/sha/claims/{id}/resubmit/
 
-        Resets the claim status to PENDING_SUBMISSION and re-triggers
-        submission to SHA. Only allowed for claims in REJECTED or QUERY status.
+        - REJECTED / QUERY claims are reset to PENDING_SUBMISSION first.
+        - PENDING_SUBMISSION claims trigger an immediate retry.
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
 
@@ -623,21 +797,23 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         allowed_statuses = [
             SHAClaim.ClaimStatus.REJECTED,
             SHAClaim.ClaimStatus.QUERY,
+            SHAClaim.ClaimStatus.PENDING_SUBMISSION,
         ]
         if claim.status not in allowed_statuses:
             return Response(
                 {
                     "error": (
                         f"Cannot resubmit claim in '{claim.get_status_display()}' status. "
-                        "Only rejected or queried claims can be resubmitted."
+                        "Only rejected, queried, or queued claims can be resubmitted."
                     )
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Reset status so submit_claim validation passes
-        claim.status = SHAClaim.ClaimStatus.PENDING_SUBMISSION
-        claim.save(update_fields=["status", "updated_at"])
+        # Reset status so submit_claim validation passes for rejected/query claims.
+        if claim.status in [SHAClaim.ClaimStatus.REJECTED, SHAClaim.ClaimStatus.QUERY]:
+            claim.status = SHAClaim.ClaimStatus.PENDING_SUBMISSION
+            claim.save(update_fields=["status", "updated_at"])
 
         try:
             service = SHAClaimsService()
@@ -1323,7 +1499,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         multipart_files = [
             MultipartFile(
-                field_name="files",
+                field_name="file_blob",
                 filename=f.name,
                 content=f.read(),
                 content_type=f.content_type or "application/octet-stream",
@@ -1331,6 +1507,12 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             for f in files_in
         ]
         extra = {k: v for k, v in request.data.items() if k not in ("files", "file")}
+        if not extra.get("intervention_code"):
+            active_intervention = (
+                claim.claim_interventions.filter(status="active").order_by("created_at").first()
+            )
+            if active_intervention:
+                extra["intervention_code"] = active_intervention.intervention_code
         try:
             result = self._ilm_service(facility=claim.facility).add_attachment(
                 claim,
@@ -1341,6 +1523,109 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         except Exception as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
+
+    @action(detail=True, methods=["post"], url_path="ilm/attachments/push-local")
+    def ilm_push_local_attachments(self, request, pk=None):
+        """Push existing local claim attachments to DHA ILM /claims/attachments."""
+        from hmis.apps.billing.services.multipart_builder import MultipartFile
+
+        claim = self.get_object()
+        local_attachments = list(claim.attachments.all())
+        if not local_attachments:
+            return Response(
+                {
+                    "error": "No local attachments found on this claim.",
+                    "local_count": 0,
+                    "uploaded": 0,
+                    "failed": 0,
+                },
+                status=400,
+            )
+
+        service = self._ilm_service(facility=claim.facility)
+        active_intervention = (
+            claim.claim_interventions.filter(status="active").order_by("created_at").first()
+        )
+        intervention_code = (
+            str(active_intervention.intervention_code).strip() if active_intervention else ""
+        )
+        uploaded = 0
+        failed = 0
+        errors: list[dict[str, str]] = []
+
+        for attachment in local_attachments:
+            try:
+                if not attachment.file:
+                    raise ValueError("Attachment file is missing")
+
+                attachment.file.open("rb")
+                try:
+                    content = attachment.file.read()
+                finally:
+                    attachment.file.close()
+
+                if not content:
+                    raise ValueError("Attachment file is empty")
+
+                filename = (
+                    attachment.original_filename
+                    or os.path.basename(getattr(attachment.file, "name", "") or "")
+                    or f"attachment-{attachment.id}.bin"
+                )
+
+                multipart_file = MultipartFile(
+                    field_name="file_blob",
+                    filename=filename,
+                    content=content,
+                    content_type=attachment.mime_type or "application/octet-stream",
+                )
+
+                document_type = _to_dha_document_type(
+                    attachment.attachment_type,
+                    attachment_name=attachment.name,
+                    original_filename=attachment.original_filename,
+                )
+                extra_fields: dict[str, str] = {
+                    "document_type": document_type,
+                    "document_title": attachment.name,
+                    "document_description": attachment.description or "",
+                }
+                if intervention_code:
+                    extra_fields["intervention_code"] = intervention_code
+                service.add_attachment(
+                    claim,
+                    [multipart_file],
+                    extra_fields=extra_fields,
+                    user=request.user,
+                )
+                uploaded += 1
+            except Exception as exc:  # noqa: BLE001 - collect and continue
+                failed += 1
+                errors.append(
+                    {
+                        "attachment_id": str(attachment.id),
+                        "attachment_name": attachment.name,
+                        "error": _stringify_error(exc),
+                    }
+                )
+
+        sync_status = _build_attachment_sync_status(claim)
+
+        return Response(
+            {
+                "local_count": len(local_attachments),
+                "uploaded": uploaded,
+                "failed": failed,
+                "errors": errors,
+                "sync_status": sync_status,
+            }
+        )
+
+    @action(detail=True, methods=["get"], url_path="ilm/attachments/sync-status")
+    def ilm_attachment_sync_status(self, request, pk=None):
+        """Return strict local-vs-DHA attachment sync status for this claim."""
+        claim = self.get_object()
+        return Response(_build_attachment_sync_status(claim))
 
     @action(detail=True, methods=["post"], url_path="ilm/attachments/remove")
     def ilm_remove_attachment(self, request, pk=None):
@@ -1688,7 +1973,12 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 preview_error = _stringify_error(exc)
 
         # Local pre-flight validation (DHA UAT: catch errors before DHA round-trip)
-        is_valid, errors = claim.validate_for_submission()
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+
+        is_valid, errors = SHAClaimsService(facility=claim.facility).validate_claim(
+            claim,
+            user=request.user,
+        )
         unresolved_lines = _collect_unresolved_claim_lines(claim)
         if preview_error:
             errors.append(f"Auto-preview failed: {preview_error}")

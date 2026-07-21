@@ -750,6 +750,23 @@ async function getClaimBundle(claimId: number): Promise<unknown> {
   return response.data;
 }
 
+async function getClaimAttachments(claimId: number): Promise<Array<{
+  id: number;
+  attachment_type: string;
+  name: string;
+  original_filename?: string | null;
+  description?: string | null;
+}>> {
+  const response = await apiClient.get(`/api/billing/claims/${claimId}/attachments/`);
+  return response.data as Array<{
+    id: number;
+    attachment_type: string;
+    name: string;
+    original_filename?: string | null;
+    description?: string | null;
+  }>;
+}
+
 // ============================================================================
 // Facility Validation API
 // ============================================================================
@@ -1286,6 +1303,36 @@ async function ilmRemoveAttachment(claimId: number, body: IlmRemoveAttachmentReq
   return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmRemoveAttachment' });
 }
 
+async function ilmPushLocalAttachments(claimId: number): Promise<{
+  local_count: number;
+  uploaded: number;
+  failed: number;
+  errors?: Array<{ attachment_id: string; attachment_name: string; error: string }>;
+  sync_status?: {
+    local_count: number;
+    matched: number;
+    total: number;
+    all_matched: boolean;
+    missing: Array<{ attachment_id: number; attachment_name: string; attachment_type: string }>;
+    consent_token_present: boolean;
+  };
+}> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/attachments/push-local/`, {});
+  return response.data;
+}
+
+async function ilmAttachmentSyncStatus(claimId: number): Promise<{
+  local_count: number;
+  matched: number;
+  total: number;
+  all_matched: boolean;
+  missing: Array<{ attachment_id: number; attachment_name: string; attachment_type: string }>;
+  consent_token_present: boolean;
+}> {
+  const response = await apiClient.get(`${ilmBase(claimId)}/attachments/sync-status/`);
+  return response.data;
+}
+
 async function ilmPreview(claimId: number): Promise<IlmCallResult> {
   const response = await apiClient.post(`${ilmBase(claimId)}/preview/`, {});
   return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmPreview' });
@@ -1363,7 +1410,7 @@ async function ilmPatientLookup(params: {
 async function ilmProfessionalSearch(params: {
   identification_number: string;
   identification_type: string;
-  regulator: string;
+  regulator?: string;
 }): Promise<IlmRegistryResponse> {
   const response = await apiClient.get(`${ILM_BASE}/registries/professional-search/`, { params });
   return parseResponse(IlmRegistryResponseSchema, response.data, {
@@ -1870,6 +1917,7 @@ export const shaApi = {
   resubmitClaim,
   cancelClaim,
   getClaimBundle,
+  getClaimAttachments,
 
   // Facility Validation
   validateFacility,
@@ -1911,6 +1959,8 @@ export const shaApi = {
   ilmRemoveLine,
   ilmAddAttachment,
   ilmRemoveAttachment,
+  ilmPushLocalAttachments,
+  ilmAttachmentSyncStatus,
   ilmPreview,
   ilmApplyPreviewLines,
   ilmPreviewPayerClaim,

@@ -3,7 +3,16 @@
 import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { AlertTriangle, MapPin, Pencil, ShieldCheck, Globe, Loader2, RefreshCw } from 'lucide-react';
+import {
+  AlertTriangle,
+  MapPin,
+  Pencil,
+  ShieldCheck,
+  Globe,
+  Loader2,
+  RefreshCw,
+  CheckCircle2,
+} from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,18 +22,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DhaResultCard } from '@/components/shared/dha-result-card';
 import { facilitiesApi } from '@/lib/api/facilities';
+import { formatFacilityLevel } from '@/lib/facility-level';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { FacilityInterventionsPanel } from '@/components/admin/facility-interventions-panel';
 import type { FacilityDetail } from '@/lib/types/facility';
-
-const levelLabels: Record<string, string> = {
-  '1': 'Level 1 – Community',
-  '2': 'Level 2 – Dispensary',
-  '3': 'Level 3 – Health Centre',
-  '4': 'Level 4 – Sub-County Hospital',
-  '5': 'Level 5 – County Referral Hospital',
-  '6': 'Level 6 – National Referral Hospital',
-};
 
 const ownershipLabels: Record<string, string> = {
   GOK: 'Government of Kenya',
@@ -103,6 +104,7 @@ export default function FacilityDetailPage() {
   const { isSuperuser } = usePermissions();
   const queryClient = useQueryClient();
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncSuccess, setSyncSuccess] = useState<string | null>(null);
 
   const { data: facility, isLoading, error } = useQuery({
     queryKey: ['facility', facilityId],
@@ -112,11 +114,37 @@ export default function FacilityDetailPage() {
 
   const syncDha = useMutation({
     mutationFn: () => facilitiesApi.syncDhaRegistry(facilityId),
-    onSuccess: () => {
+    onSuccess: (updatedFacility) => {
       setSyncError(null);
+      const changedFields: string[] = [];
+      if (facility) {
+        const comparisons: Array<[keyof FacilityDetail, string]> = [
+          ['name', 'name'],
+          ['level', 'level'],
+          ['level_subtype', 'level subtype'],
+          ['ownership', 'ownership'],
+          ['sha_facility_code', 'SHA facility code'],
+          ['sha_contracted', 'SHA contracted status'],
+          ['sha_contract_expiry', 'SHA contract expiry'],
+        ];
+        comparisons.forEach(([key, label]) => {
+          if (facility[key] !== updatedFacility[key]) {
+            changedFields.push(label);
+          }
+        });
+      }
+
+      const changedText =
+        changedFields.length > 0
+          ? `Updated local fields: ${changedFields.join(', ')}.`
+          : 'DHA data refreshed. No local identity fields changed.';
+      setSyncSuccess(changedText);
+      queryClient.setQueryData(['facility', facilityId], updatedFacility);
       queryClient.invalidateQueries({ queryKey: ['facility', facilityId] });
+      router.refresh();
     },
     onError: (err: Error) => {
+      setSyncSuccess(null);
       setSyncError(err.message || 'Failed to sync DHA registry');
     },
   });
@@ -172,7 +200,10 @@ export default function FacilityDetailPage() {
         <div className="min-w-0 space-y-1">
           <p className="truncate text-sm font-medium">
             {facility.mfl_code}
-            <span className="text-muted-foreground"> · {levelLabels[facility.level] ?? `Level ${facility.level}`}</span>
+            <span className="text-muted-foreground">
+              {' '}
+              · {formatFacilityLevel(facility.level, facility.level_subtype)}
+            </span>
           </p>
           <p className="text-xs sm:text-sm text-muted-foreground">
             <MapPin className="mr-1 inline h-3.5 w-3.5" />
@@ -203,7 +234,7 @@ export default function FacilityDetailPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Level</span>
-              <span>{levelLabels[facility.level] ?? facility.level}</span>
+              <span>{formatFacilityLevel(facility.level, facility.level_subtype)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Ownership</span>
@@ -296,7 +327,11 @@ export default function FacilityDetailPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => syncDha.mutate()}
+              onClick={() => {
+                setSyncError(null);
+                setSyncSuccess(null);
+                syncDha.mutate();
+              }}
               disabled={syncDha.isPending}
             >
               {syncDha.isPending ? (
@@ -307,6 +342,13 @@ export default function FacilityDetailPage() {
               {facility.dha_registry_synced_at ? 'Refresh' : 'Fetch from DHA'}
             </Button>
           </div>
+
+          {syncSuccess && (
+            <Alert>
+              <CheckCircle2 className="h-4 w-4" />
+              <AlertDescription>{syncSuccess}</AlertDescription>
+            </Alert>
+          )}
 
           {syncError && (
             <Alert variant="destructive">

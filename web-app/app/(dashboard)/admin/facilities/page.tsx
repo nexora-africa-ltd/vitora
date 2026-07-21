@@ -16,16 +16,8 @@ import { AdminStatCard } from '@/components/admin/admin-stat-card';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { facilitiesApi } from '@/lib/api/facilities';
+import { formatFacilityLevel } from '@/lib/facility-level';
 import type { FacilityListItem } from '@/lib/types/facility';
-
-const levelLabels: Record<string, string> = {
-  '1': 'Level 1',
-  '2': 'Level 2',
-  '3': 'Level 3',
-  '4': 'Level 4',
-  '5': 'Level 5',
-  '6': 'Level 6',
-};
 
 export default function FacilitiesPage() {
   const router = useRouter();
@@ -125,7 +117,7 @@ export default function FacilitiesPage() {
                 sortable: true,
                 cell: (f) => (
                   <Badge variant="outline">
-                    {levelLabels[f.level] ?? f.level}
+                    {formatFacilityLevel(f.level, f.level_subtype, true)}
                   </Badge>
                 ),
               },
@@ -182,7 +174,7 @@ export default function FacilitiesPage() {
                 <div className="min-w-0">
                   <p className="font-medium truncate">{f.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {f.mfl_code} · {levelLabels[f.level] ?? f.level} · {f.county_name}
+                    {f.mfl_code} · {formatFacilityLevel(f.level, f.level_subtype, true)} · {f.county_name}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

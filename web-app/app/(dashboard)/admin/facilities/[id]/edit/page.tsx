@@ -27,16 +27,18 @@ import { useCounties, useSubCounties, useWards } from '@/lib/hooks/use-locations
 import { facilitiesApi, toUserFacility } from '@/lib/api/facilities';
 import { useAuth } from '@/lib/auth/context';
 import { useFacility } from '@/lib/context/facility-context';
-import type { FacilityLevel, FacilityOwnership, FacilityOperatingMode, FacilityUpdateData } from '@/lib/types/facility';
-
-const LEVELS: { value: FacilityLevel; label: string }[] = [
-  { value: '1', label: 'Level 1 – Community Unit' },
-  { value: '2', label: 'Level 2 – Dispensary' },
-  { value: '3', label: 'Level 3 – Health Centre' },
-  { value: '4', label: 'Level 4 – Sub-County Hospital' },
-  { value: '5', label: 'Level 5 – County Referral Hospital' },
-  { value: '6', label: 'Level 6 – National Referral Hospital' },
-];
+import {
+  FACILITY_LEVEL_OPTIONS,
+  FACILITY_LEVEL_SUBTYPE_OPTIONS,
+  supportsFacilityLevelSubtype,
+} from '@/lib/facility-level';
+import type {
+  FacilityLevel,
+  FacilityLevelSubtype,
+  FacilityOwnership,
+  FacilityOperatingMode,
+  FacilityUpdateData,
+} from '@/lib/types/facility';
 
 const OWNERSHIPS: { value: FacilityOwnership; label: string }[] = [
   { value: 'GOK', label: 'Government of Kenya' },
@@ -117,6 +119,7 @@ export default function EditFacilityPage() {
     name: '',
     mfl_code: '',
     level: '' as string,
+    level_subtype: '' as FacilityLevelSubtype,
     ownership: '' as string,
     sha_contracted: false,
     sha_facility_code: '',
@@ -175,6 +178,7 @@ export default function EditFacilityPage() {
         name: facility.name,
         mfl_code: facility.mfl_code,
         level: facility.level,
+        level_subtype: facility.level_subtype || '',
         ownership: facility.ownership,
         sha_contracted: facility.sha_contracted,
         sha_facility_code: facility.sha_facility_code || '',
@@ -287,6 +291,7 @@ export default function EditFacilityPage() {
       name: formData.name,
       mfl_code: formData.mfl_code,
       level: formData.level as FacilityLevel,
+      level_subtype: formData.level_subtype || undefined,
       ownership: formData.ownership as FacilityOwnership,
       sha_contracted: formData.sha_contracted,
       sha_facility_code: formData.sha_facility_code || undefined,
@@ -369,13 +374,43 @@ export default function EditFacilityPage() {
             </div>
             <div className="space-y-2">
               <Label>KEPH Level *</Label>
-              <Select value={formData.level} onValueChange={(v) => handleChange('level', v)}>
+              <Select
+                value={formData.level}
+                onValueChange={(v) => {
+                  handleChange('level', v);
+                  if (!supportsFacilityLevelSubtype(v)) {
+                    handleChange('level_subtype', '');
+                  }
+                }}
+              >
                 <SelectTrigger><SelectValue placeholder="Select level" /></SelectTrigger>
                 <SelectContent>
-                  {LEVELS.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+                  {FACILITY_LEVEL_OPTIONS.map((l) => (
+                    <SelectItem key={l.value} value={l.value}>
+                      {l.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               {formErrors.level && <p className="text-xs text-destructive">{formErrors.level}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>Level Subtype</Label>
+              <Select
+                value={formData.level_subtype || '__NONE__'}
+                onValueChange={(v) =>
+                  handleChange('level_subtype', v === '__NONE__' ? '' : (v as FacilityLevelSubtype))
+                }
+                disabled={!supportsFacilityLevelSubtype(formData.level)}
+              >
+                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__NONE__">None</SelectItem>
+                  {FACILITY_LEVEL_SUBTYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Ownership *</Label>

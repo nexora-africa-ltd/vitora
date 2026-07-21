@@ -1,6 +1,7 @@
 import type { FacilityModules } from '@/lib/auth/context';
 
 export type FacilityLevel = '1' | '2' | '3' | '4' | '5' | '6';
+export type FacilityLevelSubtype = '' | 'A' | 'B' | 'C';
 export type FacilityOwnership = 'GOK' | 'FBO' | 'NGO' | 'PRIVATE';
 export type FacilityOperatingMode =
   | 'FULL_HMIS'
@@ -16,6 +17,7 @@ export interface FacilityListItem {
   mfl_code: string;
   name: string;
   level: string;
+  level_subtype: FacilityLevelSubtype;
   ownership: string;
   county: number;
   county_name: string;
@@ -107,6 +109,7 @@ export interface FacilityUpdateData {
   name?: string;
   mfl_code?: string;
   level?: FacilityLevel;
+  level_subtype?: FacilityLevelSubtype;
   ownership?: FacilityOwnership;
   sha_contracted?: boolean;
   sha_contract_expiry?: string | null;
@@ -153,6 +156,7 @@ export interface FacilityCreateData {
   mfl_code: string;
   name: string;
   level: FacilityLevel;
+  level_subtype?: FacilityLevelSubtype;
   ownership: FacilityOwnership;
   is_headquarters?: boolean;
   branch_code?: string;

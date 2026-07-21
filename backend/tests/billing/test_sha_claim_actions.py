@@ -87,6 +87,24 @@ class TestClaimResubmit:
 
         assert response.status_code == status.HTTP_200_OK
 
+    def test_retry_pending_submission_claim(self, authenticated_client, sha_claim):
+        """Should allow manual retry for queued (pending_submission) claims."""
+        from hmis.apps.billing.models import SHAClaim
+
+        sha_claim.status = SHAClaim.ClaimStatus.PENDING_SUBMISSION
+        sha_claim.save(update_fields=["status"])
+
+        with patch(
+            "hmis.apps.billing.services.sha_claims.SHAClaimsService.submit_claim"
+        ) as mock_submit:
+            mock_submit.return_value = {"status": "submitted"}
+            response = authenticated_client.post(f"/api/billing/claims/{sha_claim.id}/resubmit/")
+
+        assert response.status_code == status.HTTP_200_OK
+        mock_submit.assert_called_once()
+        _, call_kwargs = mock_submit.call_args
+        assert call_kwargs.get("force_online") is True
+
     def test_resubmit_draft_claim_fails(self, authenticated_client, sha_claim):
         """Should reject resubmission of draft claims."""
         response = authenticated_client.post(f"/api/billing/claims/{sha_claim.id}/resubmit/")

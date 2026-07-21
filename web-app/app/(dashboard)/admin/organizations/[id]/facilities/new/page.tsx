@@ -25,16 +25,17 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { useCounties, useSubCounties, useWards } from '@/lib/hooks/use-locations';
 import { facilitiesApi } from '@/lib/api/facilities';
 import { organizationsApi } from '@/lib/api/organizations';
-import type { FacilityCreateData, FacilityLevel, FacilityOwnership } from '@/lib/types/facility';
-
-const LEVELS: { value: FacilityLevel; label: string }[] = [
-  { value: '1', label: 'Level 1 – Community Unit' },
-  { value: '2', label: 'Level 2 – Dispensary' },
-  { value: '3', label: 'Level 3 – Health Centre' },
-  { value: '4', label: 'Level 4 – Sub-County Hospital' },
-  { value: '5', label: 'Level 5 – County Referral Hospital' },
-  { value: '6', label: 'Level 6 – National Referral Hospital' },
-];
+import {
+  FACILITY_LEVEL_OPTIONS,
+  FACILITY_LEVEL_SUBTYPE_OPTIONS,
+  supportsFacilityLevelSubtype,
+} from '@/lib/facility-level';
+import type {
+  FacilityCreateData,
+  FacilityLevel,
+  FacilityLevelSubtype,
+  FacilityOwnership,
+} from '@/lib/types/facility';
 
 const OWNERSHIPS: { value: FacilityOwnership; label: string }[] = [
   { value: 'GOK', label: 'Government of Kenya' },
@@ -60,6 +61,7 @@ export default function NewFacilityPage() {
     mfl_code: '',
     name: '',
     level: '' as string,
+    level_subtype: '' as FacilityLevelSubtype,
     ownership: '' as string,
     is_headquarters: false,
     branch_code: '',
@@ -143,6 +145,7 @@ export default function NewFacilityPage() {
       mfl_code: formData.mfl_code,
       name: formData.name,
       level: formData.level as FacilityLevel,
+      level_subtype: formData.level_subtype || undefined,
       ownership: formData.ownership as FacilityOwnership,
       is_headquarters: formData.is_headquarters,
       branch_code: formData.branch_code || undefined,
@@ -194,17 +197,45 @@ export default function NewFacilityPage() {
             </div>
             <div className="space-y-2">
               <Label>KEPH Level *</Label>
-              <Select value={formData.level} onValueChange={(v) => handleChange('level', v)}>
+              <Select
+                value={formData.level}
+                onValueChange={(v) => {
+                  handleChange('level', v);
+                  if (!supportsFacilityLevelSubtype(v)) {
+                    handleChange('level_subtype', '');
+                  }
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select level" />
                 </SelectTrigger>
                 <SelectContent>
-                  {LEVELS.map((l) => (
+                  {FACILITY_LEVEL_OPTIONS.map((l) => (
                     <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {formErrors.level && <p className="text-xs text-destructive">{formErrors.level}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>Level Subtype</Label>
+              <Select
+                value={formData.level_subtype || '__NONE__'}
+                onValueChange={(v) =>
+                  handleChange('level_subtype', v === '__NONE__' ? '' : (v as FacilityLevelSubtype))
+                }
+                disabled={!supportsFacilityLevelSubtype(formData.level)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__NONE__">None</SelectItem>
+                  {FACILITY_LEVEL_SUBTYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Ownership *</Label>

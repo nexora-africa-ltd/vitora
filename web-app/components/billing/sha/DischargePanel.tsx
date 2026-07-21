@@ -23,7 +23,7 @@ import { shaApi } from '@/lib/api/sha';
 import { billingApi } from '@/lib/api/billing';
 import { inpatientApi } from '@/lib/api/inpatient';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useFacility } from '@/lib/context/facility-context';
 
 const DISCHARGE_REASONS = [
@@ -35,6 +35,71 @@ const DISCHARGE_REASONS = [
   { value: 'ABSCONDED', label: 'Absconded' },
   { value: 'OTHER', label: 'Other' },
 ] as const;
+
+const REQUIRED_DHA_DISCHARGE_DOCS: Array<{
+  code: string;
+  label: string;
+  what: string;
+  sourceHint: string;
+}> = [
+  {
+    code: 'CRITICAL_CARE_UNIT_CASE',
+    label: 'Critical care unit case notes',
+    what: 'ICU/HDU case narrative or critical care chart for this admission.',
+    sourceHint: 'Use ICU/HDU notes, nursing kardex extracts, or compiled critical-care notes PDF.',
+  },
+  {
+    code: 'FINAL_BILL',
+    label: 'Final bill',
+    what: 'Finalized invoice document for the claim/admission.',
+    sourceHint: 'Use the final invoice PDF/printout from Billing (not a draft bill).',
+  },
+  {
+    code: 'CLAIM_FORM',
+    label: 'Claim form',
+    what: 'Provider claim cover/summary form submitted with billing evidence.',
+    sourceHint: 'Use facility claim summary form PDF (or claim cover sheet export where available).',
+  },
+  {
+    code: 'DISCHARGE_SUMMARY',
+    label: 'Discharge summary',
+    what: 'Clinical discharge summary with diagnosis, treatment, and outcome.',
+    sourceHint: 'Use discharge summary generated from inpatient discharge workflow.',
+  },
+];
+
+function normalizeText(value: string): string {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function inferDhaDocumentTypeFromLocalAttachment(attachment: {
+  attachment_type: string;
+  name: string;
+  original_filename?: string | null;
+}): string {
+  const type = String(attachment.attachment_type || '').trim().toLowerCase();
+  const haystack = normalizeText(`${attachment.name} ${attachment.original_filename || ''}`);
+
+  if (type === 'discharge_summary' || haystack.includes('discharge summary')) {
+    return 'DISCHARGE_SUMMARY';
+  }
+  if (haystack.includes('claim form')) {
+    return 'CLAIM_FORM';
+  }
+  if (haystack.includes('final bill')) {
+    return 'FINAL_BILL';
+  }
+  if (haystack.includes('critical care') || haystack.includes('icu')) {
+    return 'CRITICAL_CARE_UNIT_CASE';
+  }
+  if (type === 'invoice') {
+    return 'INVOICE';
+  }
+  return 'OTHER';
+}
 
 interface DischargePanelProps {
   claimId: number;
@@ -99,6 +164,7 @@ export function DischargePanel({
   const [otpServerMessage, setOtpServerMessage] = useState('');
   const [biometricInfo, setBiometricInfo] = useState('');
   const [biometricStatus, setBiometricStatus] = useState<'idle' | 'pending' | 'authorized' | 'failed' | 'expired'>('idle');
+  const [docFiles, setDocFiles] = useState<Record<string, File | null>>({});
   const biometricPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { facilityDetail } = useFacility();
@@ -110,6 +176,52 @@ export function DischargePanel({
     queryFn: () => billingApi.getInvoice(invoiceId!),
     enabled: !hasInvoiceNumber && typeof invoiceId === 'number',
     staleTime: 60_000,
+  });
+
+  const {
+    data: localAttachments = [],
+    refetch: refetchLocalAttachments,
+    isFetching: fetchingLocalAttachments,
+  } = useQuery({
+    queryKey: ['discharge-local-attachments', claimId],
+    queryFn: () => shaApi.getClaimAttachments(claimId),
+    staleTime: 0,
+  });
+
+  const presentDhaDocTypes = useMemo(() => {
+    const set = new Set<string>();
+    for (const attachment of localAttachments) {
+      set.add(inferDhaDocumentTypeFromLocalAttachment(attachment));
+    }
+    return set;
+  }, [localAttachments]);
+
+  const missingRequiredDischargeDocs = useMemo(
+    () => REQUIRED_DHA_DISCHARGE_DOCS.filter((doc) => !presentDhaDocTypes.has(doc.code)),
+    [presentDhaDocTypes],
+  );
+  const hasMissingRequiredDischargeDocs = missingRequiredDischargeDocs.length > 0;
+
+  const uploadDocMutation = useMutation({
+    mutationFn: async ({ docType, file }: { docType: string; file: File }) => {
+      const fallbackInterventionCode = activeInterventions[0]?.intervention_code;
+      await shaApi.ilmAddAttachment(claimId, [file], {
+        document_type: docType,
+        document_title: file.name,
+        document_description: `${docType.replace(/_/g, ' ')} uploaded from discharge panel`,
+        ...(fallbackInterventionCode ? { intervention_code: fallbackInterventionCode } : {}),
+      });
+      return { docType, fileName: file.name };
+    },
+    onSuccess: async (result) => {
+      setError(null);
+      setDocFiles((prev) => ({ ...prev, [result.docType]: null }));
+      await refetchLocalAttachments();
+      onChange?.();
+    },
+    onError: (e: any) => {
+      setError(e?.response?.data?.error ?? e?.message ?? 'Attachment upload failed');
+    },
   });
 
   useEffect(() => {
@@ -227,6 +339,12 @@ export function DischargePanel({
   if (!flow.supportsInpatientDischarge) return null;
 
   async function sendDischargeOtp() {
+    if (hasMissingRequiredDischargeDocs) {
+      setError(
+        `Upload required DHA discharge documents first: ${missingRequiredDischargeDocs.map((d) => d.label).join(', ')}.`,
+      );
+      return;
+    }
     if (!token) {
       setError('Consent token is required. Complete the consent step first.');
       return;
@@ -267,6 +385,12 @@ export function DischargePanel({
   }
 
   async function startBiometricVerification() {
+    if (hasMissingRequiredDischargeDocs) {
+      setError(
+        `Upload required DHA discharge documents first: ${missingRequiredDischargeDocs.map((d) => d.label).join(', ')}.`,
+      );
+      return;
+    }
     if (!shaMemberId) {
       setError('SHA member is required to start biometric verification.');
       return;
@@ -309,6 +433,12 @@ export function DischargePanel({
   }
 
   async function submitDischarge() {
+    if (hasMissingRequiredDischargeDocs) {
+      setError(
+        `Cannot submit discharge: missing DHA documents: ${missingRequiredDischargeDocs.map((d) => d.label).join(', ')}.`,
+      );
+      return;
+    }
     if (hasMissingPerDiemTariffs) {
       const levelText = facilityLevel ? `Level ${facilityLevel}` : 'current facility level';
       setError(
@@ -379,6 +509,57 @@ export function DischargePanel({
               {`Cannot proceed with discharge submission. No Level ${facilityLevel} per-diem tariff is configured for: ${missingPerDiemTariffs.join(', ')}.`}
             </AlertDescription>
           </Alert>
+        )}
+
+        <Alert variant={hasMissingRequiredDischargeDocs ? 'destructive' : 'default'}>
+          <AlertTitle>Required DHA discharge documents</AlertTitle>
+          <AlertDescription>
+            {hasMissingRequiredDischargeDocs
+              ? `Missing: ${missingRequiredDischargeDocs.map((d) => d.label).join(', ')}`
+              : 'All required discharge document categories are present locally.'}
+          </AlertDescription>
+        </Alert>
+
+        {hasMissingRequiredDischargeDocs && (
+          <div className="rounded-md border p-3 space-y-3">
+            <p className="text-sm font-medium">Upload missing documents now</p>
+            {missingRequiredDischargeDocs.map((doc) => (
+              <div key={doc.code} className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor={`doc-${doc.code}`}>{doc.label}</Label>
+                    <HelpPopover
+                      content={`What this is: ${doc.what}\n\nRecommended source: ${doc.sourceHint}`}
+                    />
+                  </div>
+                  <Input
+                    id={`doc-${doc.code}`}
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setDocFiles((prev) => ({ ...prev, [doc.code]: file }));
+                    }}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!docFiles[doc.code] || uploadDocMutation.isPending || fetchingLocalAttachments}
+                  onClick={() => {
+                    const selected = docFiles[doc.code];
+                    if (!selected) return;
+                    uploadDocMutation.mutate({ docType: doc.code, file: selected });
+                  }}
+                >
+                  {uploadDocMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : null}
+                  Upload
+                </Button>
+              </div>
+            ))}
+          </div>
         )}
 
         <div className="rounded-md border bg-muted/20 p-3 space-y-2">
@@ -516,7 +697,7 @@ export function DischargePanel({
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Button
                 onClick={sendDischargeOtp}
-                disabled={busy || !token || hasMissingPerDiemTariffs}
+                disabled={busy || !token || hasMissingPerDiemTariffs || hasMissingRequiredDischargeDocs}
               >
                 {busy && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                 Send Discharge OTP
@@ -525,7 +706,13 @@ export function DischargePanel({
               <Button
                 variant="outline"
                 onClick={startBiometricVerification}
-                disabled={busy || !token || hasMissingPerDiemTariffs || !shaMemberId}
+                disabled={
+                  busy
+                  || !token
+                  || hasMissingPerDiemTariffs
+                  || hasMissingRequiredDischargeDocs
+                  || !shaMemberId
+                }
               >
                 {busy && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                 <Fingerprint className="mr-2 h-4 w-4" />

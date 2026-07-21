@@ -68,6 +68,19 @@ class TestConnectivityCheckerExtended:
         assert checker.is_online is False
 
     @patch("hmis.apps.core.sync.requests.get")
+    def test_check_treats_non_5xx_as_reachable(self, mock_get):
+        """Should be online when /health/ is unavailable but host is reachable."""
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_get.return_value = mock_response
+
+        checker = ConnectivityChecker(server_url="http://test.example.com")
+        result = checker.check()
+
+        assert result is True
+        assert checker.is_online is True
+
+    @patch("hmis.apps.core.sync.requests.get")
     def test_check_connection_timeout(self, mock_get):
         """Should return False on connection timeout."""
         mock_get.side_effect = requests.exceptions.Timeout()
