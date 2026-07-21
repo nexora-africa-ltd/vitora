@@ -253,6 +253,23 @@ export const AdmissionSchema = z.object({
 
 export type AdmissionSchemaType = z.infer<typeof AdmissionSchema>;
 
+export const AdmissionClinicalSummaryEntrySchema = z.object({
+  timestamp: z.string(),
+  source: z.string(),
+  author: z.string(),
+  content: z.string(),
+});
+
+export const AdmissionClinicalSummarySchema = z.object({
+  admission_id: z.number(),
+  admission_number: z.string(),
+  generated_at: z.string(),
+  entries: z.array(AdmissionClinicalSummaryEntrySchema),
+  rendered_text: z.string(),
+});
+
+export type AdmissionClinicalSummarySchemaType = z.infer<typeof AdmissionClinicalSummarySchema>;
+
 // =============================================================================
 // DISCHARGE SCHEMAS
 // =============================================================================

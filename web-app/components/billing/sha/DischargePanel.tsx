@@ -21,6 +21,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { shaApi } from '@/lib/api/sha';
 import { billingApi } from '@/lib/api/billing';
+import { inpatientApi } from '@/lib/api/inpatient';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
 import { useQuery } from '@tanstack/react-query';
 
@@ -37,6 +38,8 @@ const DISCHARGE_REASONS = [
 interface DischargePanelProps {
   claimId: number;
   flow: ClaimFlowInfo;
+  claimPatientId?: number;
+  claimEncounterId?: number;
   consentToken?: string;
   patientExternalId?: string;
   invoiceNumber?: string;
@@ -59,6 +62,8 @@ type Step = 'details' | 'otp_sent' | 'complete';
 export function DischargePanel({
   claimId,
   flow,
+  claimPatientId,
+  claimEncounterId,
   consentToken = '',
   patientExternalId = '',
   invoiceNumber: initialInvoice = '',
@@ -132,6 +137,35 @@ export function DischargePanel({
 
   const hasMissingPerDiemTariffs = missingPerDiemTariffs.length > 0;
   const contextComplete = !!token && !!patientId && hasInvoiceNumber;
+
+  const { data: resolvedAdmission } = useQuery({
+    queryKey: ['discharge-admission-lookup', claimPatientId, claimEncounterId],
+    enabled: typeof claimPatientId === 'number' && typeof claimEncounterId === 'number',
+    staleTime: 60_000,
+    queryFn: async () => {
+      const response = await inpatientApi.listAdmissions({
+        patient: claimPatientId,
+        admission_status: 'ACTIVE',
+        page_size: 100,
+      });
+      return response.results.find((admission) => admission.ipd_encounter === claimEncounterId) || null;
+    },
+  });
+
+  const admissionIdForPreview = resolvedAdmission?.id;
+
+  const {
+    data: clinicalSummary,
+    isLoading: loadingClinicalSummary,
+    isFetching: fetchingClinicalSummary,
+    isError: clinicalSummaryError,
+    refetch: refetchClinicalSummary,
+  } = useQuery({
+    queryKey: ['admission-clinical-summary', admissionIdForPreview],
+    enabled: typeof admissionIdForPreview === 'number',
+    staleTime: 30_000,
+    queryFn: () => inpatientApi.getAdmissionClinicalSummary(admissionIdForPreview!),
+  });
 
   // Don't render if flow doesn't support inpatient discharge
   if (!flow.supportsInpatientDischarge) return null;
@@ -228,6 +262,48 @@ export function DischargePanel({
             </AlertDescription>
           </Alert>
         )}
+
+        <div className="rounded-md border bg-muted/20 p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">Clinical timeline preview</p>
+            {typeof admissionIdForPreview === 'number' ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => void refetchClinicalSummary()}
+                disabled={loadingClinicalSummary || fetchingClinicalSummary}
+              >
+                {fetchingClinicalSummary ? 'Refreshing…' : 'Refresh'}
+              </Button>
+            ) : null}
+          </div>
+
+          {typeof admissionIdForPreview !== 'number' ? (
+            <p className="text-xs text-muted-foreground">
+              Clinical timeline will appear once the active admission is resolved from this claim.
+            </p>
+          ) : loadingClinicalSummary ? (
+            <p className="text-xs text-muted-foreground">Loading clinical timeline…</p>
+          ) : clinicalSummaryError ? (
+            <p className="text-xs text-destructive">
+              Failed to load clinical timeline preview. You can still continue discharge.
+            </p>
+          ) : clinicalSummary ? (
+            <>
+              <p className="text-xs text-muted-foreground">
+                {clinicalSummary.entries.length} timeline entr{clinicalSummary.entries.length === 1 ? 'y' : 'ies'} from ward rounds, kardex shift notes, and handover notes.
+              </p>
+              <details className="rounded border bg-background p-2 text-xs">
+                <summary className="cursor-pointer text-muted-foreground">Preview rendered narrative</summary>
+                <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded bg-muted p-2 font-mono text-[11px]">
+                  {clinicalSummary.rendered_text || 'No timeline notes available.'}
+                </pre>
+              </details>
+            </>
+          ) : null}
+        </div>
 
         {/* Step 1: Discharge details + send OTP */}
         {step === 'details' && (

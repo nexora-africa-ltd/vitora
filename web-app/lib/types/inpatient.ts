@@ -143,6 +143,21 @@ export interface Admission {
   updated_at?: string;
 }
 
+export interface AdmissionClinicalSummaryEntry {
+  timestamp: string;
+  source: string;
+  author: string;
+  content: string;
+}
+
+export interface AdmissionClinicalSummary {
+  admission_id: number;
+  admission_number: string;
+  generated_at: string;
+  entries: AdmissionClinicalSummaryEntry[];
+  rendered_text: string;
+}
+
 /**
  * Input type for creating an admission.
  * Includes auto_assign_bed flag for automatic bed assignment.

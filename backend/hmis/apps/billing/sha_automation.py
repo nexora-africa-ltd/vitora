@@ -697,8 +697,83 @@ class SHAClaimAutomationService:
         """Render clinical notes as structured text for SHA attachment."""
         chief_complaint = encounter.chief_complaint or ""
         clinical_notes = getattr(encounter, "clinical_notes", "") or ""
+        encounter_notes = getattr(encounter, "notes", "") or ""
+        inpatient_summary = ""
+        discharge_summary = ""
 
-        if not chief_complaint and not clinical_notes:
+        if getattr(encounter, "encounter_type", "") == "IPD":
+            try:
+                from hmis.apps.inpatient.services.clinical_summary import (
+                    compose_inpatient_clinical_summary_text,
+                )
+
+                inpatient_summary = compose_inpatient_clinical_summary_text(encounter)
+            except Exception:  # noqa: S110 - best effort summary enrichment
+                inpatient_summary = ""
+
+            discharge = getattr(getattr(encounter, "admission", None), "discharge", None)
+            if discharge is not None:
+                discharge_lines = ["DISCHARGE SUMMARY", "-" * 50]
+                discharge_date = getattr(discharge, "discharge_date", None)
+                if discharge_date is not None:
+                    discharge_lines.append(f"Discharge date: {discharge_date}")
+
+                discharge_type = ""
+                if hasattr(discharge, "get_discharge_type_display"):
+                    discharge_type = discharge.get_discharge_type_display() or ""
+                if discharge_type:
+                    discharge_lines.append(f"Discharge type: {discharge_type}")
+
+                final_dx = getattr(discharge, "final_diagnosis_text", "") or getattr(
+                    discharge, "final_diagnosis", ""
+                )
+                if final_dx:
+                    discharge_lines.append(f"Final diagnosis: {final_dx}")
+
+                treatment_summary = getattr(discharge, "treatment_summary", "") or ""
+                if treatment_summary:
+                    discharge_lines.append("")
+                    discharge_lines.append("Treatment summary:")
+                    discharge_lines.append(treatment_summary)
+
+                procedures = getattr(discharge, "procedures_performed", "") or ""
+                if procedures:
+                    discharge_lines.append("")
+                    discharge_lines.append("Procedures performed:")
+                    discharge_lines.append(procedures)
+
+                discharge_meds = getattr(discharge, "discharge_medications", []) or []
+                if isinstance(discharge_meds, list) and discharge_meds:
+                    discharge_lines.append("")
+                    discharge_lines.append("Discharge medications:")
+                    for med in discharge_meds[:20]:
+                        if not isinstance(med, dict):
+                            continue
+                        drug_name = str(med.get("drug_name") or "").strip()
+                        dosage = str(med.get("dosage") or "").strip()
+                        frequency = str(med.get("frequency") or "").strip()
+                        duration = str(med.get("duration") or "").strip()
+                        med_line = drug_name or "Medication"
+                        details = ", ".join(x for x in [dosage, frequency, duration] if x)
+                        if details:
+                            med_line = f"{med_line} ({details})"
+                        discharge_lines.append(f"- {med_line}")
+
+                patient_instructions = getattr(discharge, "patient_instructions", "") or ""
+                if patient_instructions:
+                    discharge_lines.append("")
+                    discharge_lines.append("Patient instructions:")
+                    discharge_lines.append(patient_instructions)
+
+                discharge_summary = "\n".join(discharge_lines).strip()
+
+        if (
+            not chief_complaint
+            and not clinical_notes
+            and not encounter_notes
+            and not inpatient_summary
+            and not discharge_summary
+        ):
             return None
 
         lines = [
@@ -718,6 +793,19 @@ class SHAClaimAutomationService:
         if clinical_notes:
             lines.append("Clinical Notes:")
             lines.append(clinical_notes)
+            lines.append("")
+
+        if encounter_notes:
+            lines.append("Encounter Notes:")
+            lines.append(encounter_notes)
+            lines.append("")
+
+        if inpatient_summary:
+            lines.append(inpatient_summary)
+            lines.append("")
+
+        if discharge_summary:
+            lines.append(discharge_summary)
             lines.append("")
 
         # Include diagnoses if available
