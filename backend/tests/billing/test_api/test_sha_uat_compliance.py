@@ -204,6 +204,56 @@ class TestPreviewBeforeSubmit:
         assert item is not None
         assert item.tariff_id == tariff.id
 
+    def test_apply_preview_lines_auto_upserts_missing_tariff_from_preview_code(
+        self, sha_client, sample_sha_claim_for_uat
+    ):
+        """apply-preview-lines should auto-create a local SHATariff when preview code is unknown."""
+        from hmis.apps.billing.models import SHATariff
+
+        claim = sample_sha_claim_for_uat
+        payload = {
+            "invoices": [
+                {
+                    "invoice_number": "INV/DHA/UPSERT-001",
+                    "lines": [
+                        {
+                            "item_code": "SHA-03-001",
+                            "item_name": "ICU CARE",
+                            "quantity": 1,
+                            "unit_price": "28000.00",
+                        }
+                    ],
+                }
+            ]
+        }
+
+        # Ensure this tariff does not already exist for a deterministic assertion.
+        SHATariff.objects.filter(code="SHA-03-001").delete()
+
+        response = sha_client.post(
+            f"/api/sha/claims/{claim.id}/ilm/apply-preview-lines/",
+            {"payload": payload, "replace_existing": True},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "SHA-03-001" in response.data["auto_upserted_tariff_codes"]
+
+        upserted = SHATariff.objects.get(code="SHA-03-001")
+        assert upserted.name == "ICU CARE"
+        assert str(upserted.sha_amount) == "28000.00"
+        expected_level = (
+            f"L{claim.facility.level}"
+            if claim.facility and claim.facility.level
+            else claim.facility_level
+        )
+        assert upserted.facility_level == expected_level
+
+        claim.refresh_from_db()
+        item = claim.items.first()
+        assert item is not None
+        assert item.tariff_id == upserted.id
+
     def test_ilm_submit_returns_unresolved_lines_for_missing_tariff_items(
         self, sha_client, sample_sha_claim_for_uat, test_user
     ):  # noqa: F811
@@ -252,6 +302,18 @@ class TestPreviewBeforeSubmit:
         assert response.data["missing_tariff_count"] == 1
         assert len(response.data["unresolved_lines"]) == 1
         assert response.data["unresolved_lines"][0]["description"] == "Unmapped lab item"
+
+    def test_validate_reports_specific_member_ineligibility_reason(self, sample_sha_claim_for_uat):
+        """Validation should show concrete eligibility expiry reason instead of generic status label."""
+        claim = sample_sha_claim_for_uat
+        claim.sha_member.status = claim.sha_member.MembershipStatus.ACTIVE
+        claim.sha_member.coverage_end_date = date.today() - timedelta(days=1)
+        claim.sha_member.save()
+
+        is_valid, errors = claim.validate_for_submission()
+
+        assert is_valid is False
+        assert any("Member not eligible: coverage expired on" in error for error in errors)
 
 
 # =============================================================================

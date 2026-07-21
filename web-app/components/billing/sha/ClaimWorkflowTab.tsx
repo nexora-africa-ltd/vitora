@@ -24,6 +24,7 @@ import { shaApi } from '@/lib/api/sha';
 import { toCrId } from '@/lib/sha/ilm-parsers';
 import type { Claim } from '@/lib/types/sha';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
+import { useQuery } from '@tanstack/react-query';
 
 interface ClaimWorkflowTabProps {
   claim: Claim;
@@ -105,6 +106,19 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
 
   const missing = claim.missing_document_types ?? [];
 
+  const { data: submitValidation } = useQuery({
+    queryKey: ['sha-claim-validate-summary', claim.id, claim.updated_at],
+    queryFn: () => shaApi.validateClaimSubmission(claim.id),
+    enabled: !isTerminal,
+    staleTime: 0,
+  });
+
+  const coreAttachmentErrors =
+    submitValidation?.errors?.filter((error) => /Missing required attachment:/i.test(error)) ?? [];
+  const tariffMappingErrors =
+    submitValidation?.errors?.filter((error) => /missing SHA tariff code/i.test(error)) ?? [];
+  const showRequiredDocumentsCard = missing.length > 0 || coreAttachmentErrors.length > 0;
+
   if (isTerminal) {
     return (
       <Alert>
@@ -129,7 +143,7 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
       />
 
       {/* Missing documents (advisory) */}
-      {missing.length > 0 && (
+      {showRequiredDocumentsCard && (
         <Card className="border-amber-200 dark:border-amber-800/60">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -140,27 +154,51 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
             </div>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p className="text-muted-foreground">
-              SHA requires the following documents before this claim can be submitted.
-            </p>
-            {missing.map((entry, i) => (
-              <div key={i} className="flex flex-col gap-1">
-                <span className="font-medium">
-                  {entry.intervention_name || entry.intervention_code}
-                </span>
-                <div className="flex flex-wrap gap-1">
-                  {entry.missing.map((docType, j) => (
-                    <Badge
-                      key={j}
-                      variant="outline"
-                      className="bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-800"
-                    >
-                      {docType.replace(/_/g, ' ')}
-                    </Badge>
-                  ))}
-                </div>
+            {coreAttachmentErrors.length > 0 && (
+              <div className="rounded border border-amber-300 bg-amber-50/70 p-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                <p className="font-medium">Core attachments still missing</p>
+                <p className="text-amber-800/90 dark:text-amber-300/90">
+                  {coreAttachmentErrors.join(' · ').replaceAll('Missing required attachment: ', '')}
+                </p>
               </div>
-            ))}
+            )}
+
+            {missing.length > 0 ? (
+              <>
+                <p className="text-muted-foreground">
+                  SHA requires the following intervention-specific documents before submission.
+                </p>
+                {missing.map((entry, i) => (
+                  <div key={i} className="flex flex-col gap-1">
+                    <span className="font-medium">
+                      {entry.intervention_name || entry.intervention_code}
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {entry.missing.map((docType, j) => (
+                        <Badge
+                          key={j}
+                          variant="outline"
+                          className="bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-800"
+                        >
+                          {docType.replace(/_/g, ' ')}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <p className="text-muted-foreground">
+                Use auto-attach to generate local core attachments (clinical notes + invoice) for submit readiness.
+              </p>
+            )}
+
+            {tariffMappingErrors.length > 0 && (
+              <div className="rounded border border-amber-300 bg-amber-50/70 p-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                <p className="font-medium">Tariff mapping required</p>
+                <p className="text-amber-800/90 dark:text-amber-300/90">{tariffMappingErrors.join(' · ')}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

@@ -559,6 +559,7 @@ from .models import (  # noqa: E402
     SHAClaimIntervention,
     SHAClaimItem,
     SHACoverageSnapshot,
+    SHATariff,
 )
 
 
@@ -589,6 +590,25 @@ class SHAClaimAttachmentInline(admin.TabularInline):
     extra = 0
     fields = ("attachment_type", "name", "uploaded_by", "created_at")
     readonly_fields = ("created_at",)
+
+
+@admin.register(SHATariff)
+class SHATariffAdmin(admin.ModelAdmin):
+    """Admin for local SHA tariff catalog used for claim-line mapping."""
+
+    list_display = (
+        "code",
+        "name",
+        "category",
+        "facility_level",
+        "sha_amount",
+        "is_active",
+        "effective_date",
+    )
+    list_filter = ("category", "facility_level", "is_active")
+    search_fields = ("code", "name", "description")
+    ordering = ("code",)
+    autocomplete_fields = ("internal_service",)
 
 
 @admin.register(SHAClaim)

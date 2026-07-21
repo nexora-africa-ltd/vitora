@@ -165,6 +165,15 @@ def _collect_unresolved_claim_lines(claim: SHAClaim) -> list[dict[str, object]]:
     return unresolved
 
 
+def _infer_tariff_category_from_code(tariff_code: str) -> str:
+    """Best-effort category inference for preview-driven tariff upserts."""
+    prefix = "-".join(str(tariff_code or "").upper().split("-")[:2])
+    inpatient_prefixes = {"SHA-03", "SHA-07", "SHA-13", "SHA-19", "SHA-20"}
+    if prefix in inpatient_prefixes:
+        return SHATariff.TariffCategory.INPATIENT
+    return SHATariff.TariffCategory.OTHER
+
+
 class SHAPagination(PageNumberPagination):
     """Custom pagination for SHA endpoints supporting page_size parameter."""
 
@@ -1423,6 +1432,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         unmatched_tariff_codes = set()
         unresolved_lines = []
         description_resolved_count = 0
+        auto_upserted_tariff_codes = set()
         detected_invoice_number = ""
         preview_claim_reference = _extract_preview_claim_reference(payload)
 
@@ -1500,6 +1510,32 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                     if tariff is not None:
                         description_resolved_count += 1
 
+                if tariff is None and tariff_code:
+                    facility_level_raw = getattr(getattr(claim, "facility", None), "level", "")
+                    if facility_level_raw:
+                        fallback_level = f"L{facility_level_raw}"
+                    else:
+                        fallback_level = claim.facility_level or SHATariff.TariffLevel.LEVEL_3
+                    if isinstance(fallback_level, str) and not fallback_level.upper().startswith(
+                        "L"
+                    ):
+                        fallback_level = f"L{fallback_level}"
+                    tariff, created = SHATariff.objects.get_or_create(
+                        code=tariff_code,
+                        defaults={
+                            "name": description or tariff_code,
+                            "description": f"Auto-imported from DHA preview for claim {claim.claim_number}",
+                            "category": _infer_tariff_category_from_code(tariff_code),
+                            "facility_level": fallback_level,
+                            "sha_amount": unit_price,
+                            "effective_date": date.today(),
+                            "is_active": True,
+                            "max_quantity_per_claim": 99,
+                        },
+                    )
+                    if created:
+                        auto_upserted_tariff_codes.add(tariff_code)
+
                 if tariff is None:
                     if tariff_code:
                         unmatched_tariff_codes.add(tariff_code)
@@ -1576,6 +1612,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "description_resolved_count": description_resolved_count,
                 "unresolved_lines": unresolved_lines,
                 "parse_errors": parse_errors,
+                "auto_upserted_tariff_codes": sorted(auto_upserted_tariff_codes),
             },
         )
 
@@ -1592,6 +1629,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "description_resolved_count": description_resolved_count,
                 "unresolved_lines": unresolved_lines,
                 "parse_errors": parse_errors,
+                "auto_upserted_tariff_codes": sorted(auto_upserted_tariff_codes),
                 "claimed_amount": str(claim.claimed_amount),
             }
         )
