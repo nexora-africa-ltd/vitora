@@ -157,8 +157,15 @@ function interventionLine(code: string, id: number) {
 // Mock Setup
 // =============================================================================
 
-async function setupMocks(page: Page) {
-  let claimState = buildClaimResponse();
+async function setupMocks(page: Page, options?: { visitStarted?: boolean }) {
+  let claimState = buildClaimResponse(
+    options?.visitStarted
+      ? {
+          dha_visit_started_at: '2026-07-05T08:35:00Z',
+          claim_interventions: [interventionLine(INTERVENTIONS.consultation.code, 1)],
+        }
+      : {},
+  );
   let nextIntervId = 1;
 
   // Catch-all for any unmocked API routes
@@ -319,7 +326,77 @@ async function setupMocks(page: Page) {
       );
       await route.fulfill({
         status: 200, contentType: 'application/json',
-        body: JSON.stringify({ success: true, status_code: 200, payload: { total } }),
+        body: JSON.stringify({
+          success: true,
+          status_code: 200,
+          payload: {
+            total,
+            invoices: [
+              {
+                invoice_number: 'INV/DHA/APPLY-001',
+                lines: [
+                  {
+                    item_code: INTERVENTIONS.consultation.code,
+                    item_name: INTERVENTIONS.consultation.name,
+                    quantity: 1,
+                    unit_price: `${INTERVENTIONS.consultation.price}.00`,
+                  },
+                  {
+                    item_code: INTERVENTIONS.lab.code,
+                    item_name: INTERVENTIONS.lab.name,
+                    quantity: 1,
+                    unit_price: `${INTERVENTIONS.lab.price}.00`,
+                  },
+                ],
+              },
+            ],
+          },
+        }),
+      });
+    } else if (url.includes('/apply-preview-lines/')) {
+      claimState = {
+        ...claimState,
+        claimed_amount: '1300.00',
+        dha_invoice_number: 'INV/DHA/APPLY-001',
+      };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          message: 'Preview lines applied to local claim items.',
+          replace_existing: true,
+          previous_item_count: 0,
+          created_item_count: 2,
+          detected_invoice_number: 'INV/DHA/APPLY-001',
+          invoice_linked: true,
+          final_bill_attachment_id: 901,
+          final_bill_created: true,
+          final_bill_updated: false,
+          final_bill_skipped_reason: '',
+          unmatched_tariff_codes: [],
+          parse_errors: [],
+          claimed_amount: '1300.00',
+        }),
+      });
+    } else if (url.includes('/materialize-preview-invoice/')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          invoice_id: 2001,
+          invoice_number: 'INV-20260705-0001',
+          linked_existing_invoice: false,
+          materialized: true,
+          items_created: 2,
+          items_replaced: 0,
+          final_bill_attachment_id: 901,
+          final_bill_created: false,
+          final_bill_updated: true,
+          final_bill_skipped_reason: '',
+          skipped_reason: '',
+        }),
       });
     } else if (url.includes('/submit/')) {
       claimState = {
@@ -435,5 +512,32 @@ test.describe('SHA PHC Claim Journey — Level 2 Facility', () => {
     await expect(page.locator(`text=${INTERVENTIONS.consultation.name}`)).toBeVisible();
     await expect(page.locator(`text=${INTERVENTIONS.lab.name}`)).toBeVisible();
     await expect(page.locator(`text=${INTERVENTIONS.pharmacy.name}`)).toBeVisible();
+  });
+
+  test('preview apply materializes invoice details in lifecycle feedback', async ({ page }) => {
+    test.setTimeout(60_000);
+    await setupMocks(page, { visitStarted: true });
+    await login(page, TEST_USER.username, TEST_USER.password);
+
+    await page.goto(`/transactions/sha-claims/${CLAIM_ID}#workflow`);
+    await page.waitForSelector('text=Lifecycle', { timeout: 15000 });
+
+    await page.getByRole('button', { name: 'Preview claim' }).click();
+    await expect(page.getByRole('button', { name: 'Apply preview lines locally' })).toBeEnabled();
+
+    await page.getByRole('button', { name: 'Apply preview lines locally' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Preview lines applied' })).toBeVisible();
+    await expect(page.getByText('Created 2 item(s) after replacing 0 existing item(s). Claimed amount is now KES 1300.00.')).toBeVisible();
+    await expect(page.getByText('Preview invoice: INV/DHA/APPLY-001 (linked to local invoice).')).toBeVisible();
+    await expect(page.getByText('Final Bill auto-generated (attachment #901).')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Materialize preview invoice' }).click();
+    await expect(page.getByRole('heading', { name: 'Preview invoice materialized' })).toBeVisible();
+    await expect(page.getByText('Invoice INV-20260705-0001 (#2001) is linked to this claim.')).toBeVisible();
+    await expect(page.getByText('Created 2 item(s) after replacing 0 item(s).')).toBeVisible();
+    await expect(
+      page.getByText('Final Bill auto-generated (attachment #901) and refreshed from latest invoice data.')
+    ).toBeVisible();
   });
 });

@@ -58,7 +58,10 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { shaApi } from '@/lib/api/sha';
-import type { IlmApplyPreviewLinesResponse } from '@/lib/api/sha';
+import type {
+  IlmApplyPreviewLinesResponse,
+  IlmMaterializePreviewInvoiceResponse,
+} from '@/lib/api/sha';
 import { useAuth } from '@/lib/auth/context';
 import { useFacility } from '@/lib/context/facility-context';
 import { useQuery } from '@tanstack/react-query';
@@ -125,6 +128,7 @@ type ActionKey =
   | 'addDiagnosis'
   | 'preview'
   | 'applyPreviewLines'
+  | 'materializePreviewInvoice'
   | 'sendDischargeOtp'
   | 'submit'
   | 'close';
@@ -427,6 +431,8 @@ export function ClaimILMPanel({
   const [lastResult, setLastResult] = useState<IlmCallResult | null>(null);
   const [previewResult, setPreviewResult] = useState<IlmCallResult | null>(null);
   const [applyPreviewResult, setApplyPreviewResult] = useState<IlmApplyPreviewLinesResponse | null>(null);
+  const [materializePreviewResult, setMaterializePreviewResult] =
+    useState<IlmMaterializePreviewInvoiceResponse | null>(null);
   const [replacePreviewLines, setReplacePreviewLines] = useState(true);
 
   const { data: latestConsentToken } = useQuery({
@@ -942,6 +948,7 @@ export function ClaimILMPanel({
         });
       }
       setApplyPreviewResult(null);
+      setMaterializePreviewResult(null);
       if (visitStarted) {
         void refetchPreSubmitValidation();
       }
@@ -958,6 +965,7 @@ export function ClaimILMPanel({
     setBusy('applyPreviewLines');
     setError(null);
     setApplyPreviewResult(null);
+    setMaterializePreviewResult(null);
     try {
       const result = await shaApi.ilmApplyPreviewLines(
         claimId,
@@ -973,6 +981,29 @@ export function ClaimILMPanel({
       if (visitStarted) {
         void refetchPreSubmitValidation();
       }
+    } catch (e: unknown) {
+      setError(formatErr(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function materializePreviewInvoice() {
+    setBusy('materializePreviewInvoice');
+    setError(null);
+    setMaterializePreviewResult(null);
+    try {
+      const result = await shaApi.ilmMaterializePreviewInvoice(claimId, {
+        replace_existing: replacePreviewLines,
+        invoice_number:
+          applyPreviewResult?.detected_invoice_number ||
+          previewDhaInvoiceNumber ||
+          claim.dha_invoice_number ||
+          undefined,
+      });
+      setMaterializePreviewResult(result);
+      toast.success('Preview invoice materialization completed.');
+      onChange?.();
     } catch (e: unknown) {
       setError(formatErr(e));
     } finally {
@@ -1555,6 +1586,19 @@ export function ClaimILMPanel({
                 )}
                 Apply preview lines locally
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={materializePreviewInvoice}
+                disabled={busy !== null || (!previewResult?.payload && !applyPreviewResult?.success)}
+              >
+                {busy === 'materializePreviewInvoice' ? (
+                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="mr-2 h-3 w-3" />
+                )}
+                Materialize preview invoice
+              </Button>
             </div>
 
             <div className="grid gap-2 text-xs sm:grid-cols-2">
@@ -1568,7 +1612,7 @@ export function ClaimILMPanel({
               </div>
             </div>
 
-            {previewResult?.payload && (
+            {!!previewResult?.payload && (
               <ClaimPreviewPanel payload={previewResult.payload} />
             )}
 
@@ -1589,6 +1633,20 @@ export function ClaimILMPanel({
                       {applyPreviewResult.invoice_linked ? ' (linked to local invoice)' : ''}.
                     </p>
                   )}
+                  {(applyPreviewResult.final_bill_created || applyPreviewResult.final_bill_updated) && (
+                    <p>
+                      Final Bill auto-generated
+                      {applyPreviewResult.final_bill_attachment_id
+                        ? ` (attachment #${applyPreviewResult.final_bill_attachment_id})`
+                        : ''}
+                      {applyPreviewResult.final_bill_updated ? ' and refreshed from latest invoice data.' : '.'}
+                    </p>
+                  )}
+                  {applyPreviewResult.final_bill_skipped_reason && (
+                    <p>
+                      Final Bill auto-generation skipped: {applyPreviewResult.final_bill_skipped_reason}.
+                    </p>
+                  )}
                   {applyPreviewResult.unmatched_tariff_codes.length > 0 && (
                     <p>
                       Unmatched tariff codes: {applyPreviewResult.unmatched_tariff_codes.join(', ')}
@@ -1597,6 +1655,46 @@ export function ClaimILMPanel({
                   {applyPreviewResult.parse_errors.length > 0 && (
                     <p>
                       Skipped lines: {applyPreviewResult.parse_errors.join(' | ')}
+                    </p>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {materializePreviewResult?.success && (
+              <Alert>
+                <AlertTitle className="text-sm">Preview invoice materialized</AlertTitle>
+                <AlertDescription className="text-xs space-y-1">
+                  <p>
+                    Invoice {materializePreviewResult.invoice_number || 'N/A'}
+                    {materializePreviewResult.invoice_id
+                      ? ` (#${materializePreviewResult.invoice_id})`
+                      : ''}
+                    {' '}
+                    {materializePreviewResult.linked_existing_invoice
+                      ? 'linked from an existing claim.'
+                      : 'is linked to this claim.'}
+                  </p>
+                  <p>
+                    {materializePreviewResult.materialized
+                      ? `Created ${materializePreviewResult.items_created || 0} item(s)${typeof materializePreviewResult.items_replaced === 'number' ? ` after replacing ${materializePreviewResult.items_replaced} item(s)` : ''}.`
+                      : `Skipped: ${materializePreviewResult.skipped_reason || 'not materialized'}.`}
+                  </p>
+                  {(materializePreviewResult.final_bill_created ||
+                    materializePreviewResult.final_bill_updated) && (
+                    <p>
+                      Final Bill auto-generated
+                      {materializePreviewResult.final_bill_attachment_id
+                        ? ` (attachment #${materializePreviewResult.final_bill_attachment_id})`
+                        : ''}
+                      {materializePreviewResult.final_bill_updated
+                        ? ' and refreshed from latest invoice data.'
+                        : '.'}
+                    </p>
+                  )}
+                  {materializePreviewResult.final_bill_skipped_reason && (
+                    <p>
+                      Final Bill auto-generation skipped: {materializePreviewResult.final_bill_skipped_reason}.
                     </p>
                   )}
                 </AlertDescription>

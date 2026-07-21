@@ -306,38 +306,46 @@ class IlmDischargeView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        consent_token_val = str(request.data["consent_token"])
+        from hmis.apps.billing.models import ConsentToken as CT
+        from hmis.apps.billing.models import SHAClaim
+
+        consent_obj = CT.objects.filter(consent_token=consent_token_val).first()
+        claim = None
+        if consent_obj and consent_obj.encounter_id:
+            claim = SHAClaim.objects.filter(encounter=consent_obj.encounter).first()
+
         # If discharge reason is DECEASED, warn if death notification attachment is missing
         discharge_reason = str(request.data["discharge_reason"])
-        if discharge_reason.upper() == "DECEASED":
-            consent_token_val = str(request.data["consent_token"])
-            from hmis.apps.billing.models import ConsentToken as CT
-            from hmis.apps.billing.models import SHAClaim
+        if discharge_reason.upper() == "DECEASED" and claim:
+            has_death_notification = claim.attachments.filter(
+                attachment_type__icontains="death",
+            ).exists()
+            if not has_death_notification:
+                return Response(
+                    {
+                        "error": (
+                            "Discharge reason is DECEASED but no death notification "
+                            "attachment found on the claim. Please upload a death "
+                            "notification document before discharging."
+                        ),
+                        "code": "missing_death_notification",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-            # Find the claim associated with this consent token
-            consent_obj = CT.objects.filter(
-                consent_token=consent_token_val,
-            ).first()
-            claim = None
-            if consent_obj and consent_obj.encounter_id:
-                claim = SHAClaim.objects.filter(
-                    encounter=consent_obj.encounter,
-                ).first()
-            if claim:
-                has_death_notification = claim.attachments.filter(
-                    attachment_type__icontains="death",
-                ).exists()
-                if not has_death_notification:
-                    return Response(
-                        {
-                            "error": (
-                                "Discharge reason is DECEASED but no death notification "
-                                "attachment found on the claim. Please upload a death "
-                                "notification document before discharging."
-                            ),
-                            "code": "missing_death_notification",
-                        },
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
+        if claim is not None:
+            try:
+                from hmis.apps.billing.services.final_bill_attachment_service import (
+                    FinalBillAttachmentService,
+                )
+
+                FinalBillAttachmentService.ensure_for_claim(claim=claim, user=request.user)
+            except Exception:  # noqa: BLE001 - best-effort guardrail
+                logger.exception(
+                    "Failed to auto-generate final bill attachment for claim %s during discharge",
+                    claim.id,
+                )
 
         otp = str(request.data.get("otp", ""))
         auth_guid = str(request.data.get("auth_guid", ""))
@@ -357,6 +365,7 @@ class IlmDischargeView(APIView):
         try:
             result = IlmLifecycleService(facility=_facility(request)).discharge_inpatient(
                 params=params,
+                claim=claim,
                 facility=_facility(request),
                 user=request.user,
             )

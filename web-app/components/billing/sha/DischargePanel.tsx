@@ -128,7 +128,7 @@ type Step = 'details' | 'otp_sent' | 'complete';
 
 function extractOtpFromMessage(message: string): string {
   const match = message.match(/\b(\d{4,8})\b/);
-  return match ? match[1] : '';
+  return match?.[1] ?? '';
 }
 
 export function DischargePanel({

@@ -88,11 +88,6 @@ def _to_dha_document_type(
     attachment_name: str = "",
     original_filename: str = "",
 ) -> str:
-    value = str(local_attachment_type or "").strip().lower()
-    mapped = _DHA_DOCUMENT_TYPE_MAP.get(value)
-    if mapped:
-        return mapped
-
     haystack = _normalize_attachment_name(f"{attachment_name} {original_filename}")
     if "critical care" in haystack or "icu" in haystack:
         return "CRITICAL_CARE_UNIT_CASE"
@@ -102,6 +97,11 @@ def _to_dha_document_type(
         return "CLAIM_FORM"
     if "discharge summary" in haystack:
         return "DISCHARGE_SUMMARY"
+
+    value = str(local_attachment_type or "").strip().lower()
+    mapped = _DHA_DOCUMENT_TYPE_MAP.get(value)
+    if mapped:
+        return mapped
     return "OTHER"
 
 
@@ -1701,6 +1701,10 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         """Backfill local claim items from an ILM preview payload (manual, auditable)."""
         from django.db import transaction
 
+        from hmis.apps.billing.services.preview_invoice_materializer import (
+            PreviewInvoiceMaterializer,
+        )
+
         claim = self.get_object()
         payload = request.data.get("payload")
         replace_existing = bool(request.data.get("replace_existing", True))
@@ -1881,6 +1885,14 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
             claim.calculate_claimed_amount()
 
+        invoice_materialization = PreviewInvoiceMaterializer.materialize(
+            claim=claim,
+            parsed_lines=parsed_lines,
+            detected_invoice_number=detected_invoice_number,
+            user=request.user,
+            replace_existing=replace_existing,
+        )
+
         AuditLog.log(
             action="sha_claim_apply_preview_lines",
             user=request.user,
@@ -1892,7 +1904,16 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "created_item_count": created_count,
                 "incoming_line_count": len(parsed_lines),
                 "detected_invoice_number": detected_invoice_number,
-                "invoice_linked": False,
+                "invoice_linked": bool(invoice_materialization.invoice_id),
+                "materialized_invoice_id": invoice_materialization.invoice_id,
+                "materialized_invoice_number": invoice_materialization.invoice_number,
+                "materialized_invoice_items_created": invoice_materialization.items_created,
+                "materialized_invoice_items_replaced": invoice_materialization.items_replaced,
+                "materialized_invoice_skipped_reason": invoice_materialization.skipped_reason,
+                "final_bill_attachment_id": invoice_materialization.final_bill_attachment_id,
+                "final_bill_created": invoice_materialization.final_bill_created,
+                "final_bill_updated": invoice_materialization.final_bill_updated,
+                "final_bill_skipped_reason": invoice_materialization.final_bill_skipped_reason,
                 "unmatched_tariff_codes": sorted(unmatched_tariff_codes),
                 "description_resolved_count": description_resolved_count,
                 "unresolved_lines": unresolved_lines,
@@ -1909,13 +1930,83 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "previous_item_count": previous_count,
                 "created_item_count": created_count,
                 "detected_invoice_number": detected_invoice_number,
-                "invoice_linked": False,
+                "invoice_linked": bool(invoice_materialization.invoice_id),
+                "materialized_invoice_id": invoice_materialization.invoice_id,
+                "materialized_invoice_number": invoice_materialization.invoice_number,
+                "materialized_invoice_items_created": invoice_materialization.items_created,
+                "materialized_invoice_items_replaced": invoice_materialization.items_replaced,
+                "materialized_invoice_skipped_reason": invoice_materialization.skipped_reason,
+                "final_bill_attachment_id": invoice_materialization.final_bill_attachment_id,
+                "final_bill_created": invoice_materialization.final_bill_created,
+                "final_bill_updated": invoice_materialization.final_bill_updated,
+                "final_bill_skipped_reason": invoice_materialization.final_bill_skipped_reason,
                 "unmatched_tariff_codes": sorted(unmatched_tariff_codes),
                 "description_resolved_count": description_resolved_count,
                 "unresolved_lines": unresolved_lines,
                 "parse_errors": parse_errors,
                 "auto_upserted_tariff_codes": sorted(auto_upserted_tariff_codes),
                 "claimed_amount": str(claim.claimed_amount),
+            }
+        )
+
+    @action(detail=True, methods=["post"], url_path="ilm/materialize-preview-invoice")
+    def ilm_materialize_preview_invoice(self, request, pk=None):
+        """Materialize/link a local invoice from current claim preview-derived lines."""
+        from hmis.apps.billing.services.preview_invoice_materializer import (
+            PreviewInvoiceMaterializer,
+        )
+
+        claim = self.get_object()
+        replace_existing = bool(request.data.get("replace_existing", True))
+        detected_invoice_number = str(
+            request.data.get("invoice_number") or claim.dha_invoice_number or ""
+        ).strip()
+
+        claim_items = list(claim.items.select_related("tariff").all())
+        if not claim_items:
+            return Response(
+                {
+                    "error": (
+                        "No local claim items found. Apply preview lines first via "
+                        "POST /api/billing/claims/{id}/ilm/apply-preview-lines/."
+                    )
+                },
+                status=400,
+            )
+
+        parsed_lines = [
+            {
+                "tariff": item.tariff,
+                "tariff_code": item.tariff.code if item.tariff else "",
+                "description": item.description,
+                "quantity": item.quantity,
+                "unit_price": item.unit_price,
+            }
+            for item in claim_items
+        ]
+
+        result = PreviewInvoiceMaterializer.materialize(
+            claim=claim,
+            parsed_lines=parsed_lines,
+            detected_invoice_number=detected_invoice_number,
+            user=request.user,
+            replace_existing=replace_existing,
+        )
+
+        return Response(
+            {
+                "success": True,
+                "invoice_id": result.invoice_id,
+                "invoice_number": result.invoice_number,
+                "linked_existing_invoice": result.linked_existing_invoice,
+                "materialized": result.materialized,
+                "items_created": result.items_created,
+                "items_replaced": result.items_replaced,
+                "final_bill_attachment_id": result.final_bill_attachment_id,
+                "final_bill_created": result.final_bill_created,
+                "final_bill_updated": result.final_bill_updated,
+                "final_bill_skipped_reason": result.final_bill_skipped_reason,
+                "skipped_reason": result.skipped_reason,
             }
         )
 
