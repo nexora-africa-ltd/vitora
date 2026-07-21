@@ -1984,6 +1984,21 @@ class SHAMember(models.Model):
         # Check eligibility validity
         return not (self.eligibility_valid_until and self.eligibility_valid_until < today)
 
+    def get_ineligibility_reason(self) -> str:
+        """Return a concrete reason when the member is currently ineligible."""
+        today = date.today()
+
+        if self.status != self.MembershipStatus.ACTIVE:
+            return f"membership status is {self.get_status_display()}"
+
+        if self.coverage_end_date and self.coverage_end_date < today:
+            return f"coverage expired on {self.coverage_end_date.isoformat()}"
+
+        if self.eligibility_valid_until and self.eligibility_valid_until < today:
+            return f"eligibility validity expired on {self.eligibility_valid_until.isoformat()}"
+
+        return "member not currently eligible"
+
     def needs_eligibility_check(self) -> bool:
         """
         Determine if eligibility should be re-verified.
@@ -2003,7 +2018,7 @@ class SHAMember(models.Model):
         """Return human-readable eligibility status."""
         if self.is_eligible():
             return "Eligible"
-        return f"Not Eligible ({self.get_status_display()})"
+        return f"Not Eligible ({self.get_ineligibility_reason()})"
 
 
 class SHATariff(models.Model):
@@ -2624,7 +2639,7 @@ class SHAClaim(FacilityScopedModel):
 
         # Check SHA member eligibility
         if self.sha_member and not self.sha_member.is_eligible():
-            errors.append(f"Member not eligible: {self.sha_member.get_eligibility_display()}")
+            errors.append(f"Member not eligible: {self.sha_member.get_ineligibility_reason()}")
 
         # Check has items
         if not self.items.exists():
