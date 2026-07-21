@@ -278,6 +278,19 @@ class BillingAgentService:
 
     # ── Event Handlers (called from signals) ─────────────────────
 
+    @staticmethod
+    def _has_active_ipd_per_diem_intervention(encounter) -> bool:
+        """Return True when this IPD encounter has an active PER_DIEM intervention."""
+        if encounter is None or getattr(encounter, "encounter_type", "") != "IPD":
+            return False
+
+        return SHAClaim.objects.filter(
+            encounter=encounter,
+            claim_type=SHAClaim.ClaimType.INPATIENT,
+            claim_interventions__status="active",
+            claim_interventions__payment_mechanism="PER_DIEM",
+        ).exists()
+
     @classmethod
     def handle_lab_order_confirmed(cls, lab_order) -> None:
         """Auto-bill lab tests when order is confirmed.
@@ -286,6 +299,19 @@ class BillingAgentService:
         Looks up billing Service by matching TestCatalog.code → Service.code.
         """
         encounter = lab_order.encounter
+
+        # IPD per-diem guard: when a PER_DIEM intervention is active for this
+        # encounter, lab lines are expected to be covered within the per-diem
+        # mechanism and should not be billed separately as LAB invoice items.
+        if cls._has_active_ipd_per_diem_intervention(encounter):
+            logger.info(
+                "Billing agent: skipped separate lab billing for lab order %s on IPD encounter %s "
+                "because an active PER_DIEM intervention exists",
+                getattr(lab_order, "id", None),
+                getattr(encounter, "id", None),
+            )
+            return
+
         invoice = cls.get_or_create_draft_invoice(encounter.patient, encounter)
 
         for item in lab_order.items.select_related("test"):

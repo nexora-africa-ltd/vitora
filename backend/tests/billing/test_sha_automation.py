@@ -365,6 +365,60 @@ class TestAutoAttachDocuments:
         assert "Treatment summary:" in notes
         assert "Discharge medications:" in notes
 
+    def test_render_invoice_text_falls_back_to_claim_items_and_dha_invoice(self, sha_claim_draft):
+        """Invoice renderer should produce content without linked local invoice when DHA/local are decoupled."""
+        from hmis.apps.billing.models import SHAClaimItem
+        from hmis.apps.billing.sha_automation import SHAClaimAutomationService
+
+        sha_claim_draft.invoice = None
+        sha_claim_draft.dha_invoice_number = "INV/DHA/123456"
+        sha_claim_draft.save(update_fields=["invoice", "dha_invoice_number", "updated_at"])
+
+        SHAClaimItem.objects.create(
+            claim=sha_claim_draft,
+            description="Chest X-ray",
+            service_date=sha_claim_draft.service_date,
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("1200.00"),
+            claimed_amount=Decimal("1200.00"),
+        )
+
+        invoice_text = SHAClaimAutomationService._render_invoice_text(sha_claim_draft)
+
+        assert invoice_text is not None
+        assert "INVOICE SUMMARY (AUTO-GENERATED)" in invoice_text
+        assert "DHA Invoice Number: INV/DHA/123456" in invoice_text
+        assert "Chest X-ray" in invoice_text
+
+    def test_auto_attach_documents_generates_invoice_from_claim_items_without_local_invoice(
+        self, sha_claim_draft
+    ):
+        """Auto-attach should create invoice attachment using fallback content when local invoice is absent."""
+        from hmis.apps.billing.models import SHAClaimAttachment, SHAClaimItem
+        from hmis.apps.billing.sha_automation import SHAClaimAutomationService
+
+        sha_claim_draft.invoice = None
+        sha_claim_draft.dha_invoice_number = "INV/DHA/ATTACH-001"
+        sha_claim_draft.save(update_fields=["invoice", "dha_invoice_number", "updated_at"])
+
+        SHAClaimItem.objects.create(
+            claim=sha_claim_draft,
+            description="Inpatient daily package",
+            service_date=sha_claim_draft.service_date,
+            quantity=Decimal("2.00"),
+            unit_price=Decimal("2500.00"),
+            claimed_amount=Decimal("5000.00"),
+        )
+
+        result = SHAClaimAutomationService.auto_attach_documents(sha_claim_draft.pk)
+        attachment = SHAClaimAttachment.objects.filter(
+            claim=sha_claim_draft,
+            attachment_type=SHAClaimAttachment.AttachmentType.INVOICE,
+        ).first()
+
+        assert "error" not in result
+        assert attachment is not None
+
 
 class TestInterventionSuggestions:
     """Tests for auto-populating interventions from clinical actions."""

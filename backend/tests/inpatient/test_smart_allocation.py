@@ -22,7 +22,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from hmis.apps.encounters.models import Encounter
+from hmis.apps.encounters.models import Diagnosis, Encounter, ICD10Code
 from hmis.apps.inpatient.models import Admission, Bed, Discharge, NursingKardex, ShiftHandover, Ward
 from hmis.apps.inpatient.services.bed_smart import (
     SmartBedAllocationService,
@@ -408,6 +408,41 @@ class TestCohortGrouping:
         # Score depends on whether we can find the patient's diagnosis
         # With no encounters, should be 0 (can't match without diagnosis)
         assert isinstance(score, float)
+
+    def test_handles_icd10_model_instance_for_patient_diagnosis(
+        self, smart_service, general_ward, female_patient, male_patient, test_user
+    ):
+        """Cohort scoring should handle Encounter.Diagnosis.icd10_code FK model values."""
+        _create_admission(
+            male_patient,
+            general_ward,
+            test_user,
+            admitting_diagnosis="J18.9",
+        )
+
+        icd = ICD10Code.objects.create(
+            code="J18.9",
+            short_description="Pneumonia",
+            description="Pneumonia, unspecified organism",
+            long_description="Pneumonia, unspecified organism",
+            category="Diseases of the respiratory system",
+            chapter=10,
+        )
+        encounter = Encounter.objects.create(
+            patient=female_patient,
+            encounter_type="OPD",
+            chief_complaint="Cough and fever",
+            facility=general_ward.facility,
+        )
+        Diagnosis.objects.create(
+            encounter=encounter,
+            icd10_code=icd,
+            diagnosis_type="PRIMARY",
+            diagnosed_by=test_user,
+        )
+
+        score = smart_service.calculate_cohort_score(female_patient, general_ward)
+        assert score == 100.0
 
     def test_different_diagnosis_chapters(
         self, smart_service, general_ward, female_patient, male_patient, test_user

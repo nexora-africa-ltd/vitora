@@ -417,13 +417,18 @@ class SmartBedAllocationService:
         if not patient_diagnosis:
             return 0.0
 
-        patient_chapter = patient_diagnosis[0].upper() if patient_diagnosis else ""
+        patient_code = self._extract_icd_code(patient_diagnosis)
+        patient_chapter = patient_code[0].upper() if patient_code else ""
 
         if not patient_chapter:
             return 0.0
 
         # Count matching chapters
-        matching = sum(1 for d in ward_diagnoses if d and d[0].upper() == patient_chapter)
+        matching = 0
+        for diagnosis in ward_diagnoses:
+            code = self._extract_icd_code(diagnosis)
+            if code and code[0].upper() == patient_chapter:
+                matching += 1
         total = len(ward_diagnoses)
 
         # Score: proportion of ward patients with same ICD-10 chapter
@@ -712,7 +717,16 @@ class SmartBedAllocationService:
                 diagnoses = getattr(latest, "diagnoses", None)
                 if diagnoses and diagnoses.exists():
                     first_dx = diagnoses.first()
-                    return first_dx.icd10_code if first_dx else None
+                    if first_dx:
+                        icd10_value = getattr(first_dx, "icd10_code", None)
+                        normalized = self._extract_icd_code(icd10_value)
+                        if normalized:
+                            return normalized
+                        fallback = self._extract_icd_code(
+                            getattr(first_dx, "free_text_diagnosis", None)
+                        )
+                        if fallback:
+                            return fallback
         except Exception:
             pass
 
@@ -732,6 +746,24 @@ class SmartBedAllocationService:
             pass
 
         return None
+
+    @staticmethod
+    def _extract_icd_code(value: object) -> str:
+        """Normalize ICD-like values to a code string.
+
+        Accepts raw strings and ICD model instances (e.g. ICD10Code).
+        """
+        if value is None:
+            return ""
+
+        if isinstance(value, str):
+            return value.strip()
+
+        code = getattr(value, "code", None)
+        if isinstance(code, str):
+            return code.strip()
+
+        return str(value).strip() if value else ""
 
     # ------------------------------------------------------------------ #
     #  Smart Ward Recommendation

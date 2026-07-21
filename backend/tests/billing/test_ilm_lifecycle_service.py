@@ -98,6 +98,24 @@ class TestDischarge:
         body = client.post.call_args.kwargs["json_body"]
         assert body["discharge_reason"] == "RECOVERED"
         assert body["invoice_number"] == "INV-1"
+        assert body["discharge_date"] == "2026-04-30T00:00:00Z"
+
+    def test_keeps_rfc3339_discharge_datetime(self, client, sample_facility):
+        client.post.return_value = _resp(200, {"ok": True})
+        svc = IlmLifecycleService(client=client)
+        svc.discharge_inpatient(
+            params=DischargeParams(
+                consent_token="c-1",
+                discharge_date="2026-04-30T10:15:00Z",
+                discharge_reason="RECOVERED",
+                invoice_number="INV-1",
+                otp="123456",
+            ),
+            facility=sample_facility,
+        )
+
+        body = client.post.call_args.kwargs["json_body"]
+        assert body["discharge_date"] == "2026-04-30T10:15:00Z"
 
 
 @pytest.mark.django_db
