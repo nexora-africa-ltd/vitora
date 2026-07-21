@@ -236,6 +236,7 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
           flow={flow}
           claimPatientId={typeof claim.patient === 'number' ? claim.patient : undefined}
           claimEncounterId={typeof claim.encounter === 'number' ? claim.encounter : undefined}
+          shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
           consentToken={consentTokenStr || previewAuthorizationCode}
           patientExternalId={previewMemberNumber || claim.dha_external_id || ''}
           invoiceNumber={claim.dha_invoice_number || previewDhaInvoiceNumber || claim.invoice_number || ''}

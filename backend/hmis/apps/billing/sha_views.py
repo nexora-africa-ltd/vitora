@@ -141,6 +141,30 @@ def _extract_preview_claim_reference(payload: object) -> str:
     return candidate
 
 
+def _collect_unresolved_claim_lines(claim: SHAClaim) -> list[dict[str, object]]:
+    """Return claim item details for lines still missing tariff mapping."""
+    unresolved = []
+    items_without_tariff = claim.items.filter(tariff__isnull=True).select_related(
+        "invoice_item__service"
+    )
+    for item in items_without_tariff:
+        invoice_item = getattr(item, "invoice_item", None)
+        service = getattr(invoice_item, "service", None)
+        unresolved.append(
+            {
+                "claim_item_id": item.id,
+                "description": item.description,
+                "quantity": str(item.quantity),
+                "unit_price": str(item.unit_price),
+                "claimed_amount": str(item.claimed_amount),
+                "invoice_item_id": getattr(invoice_item, "id", None),
+                "service_id": getattr(service, "id", None),
+                "service_name": getattr(service, "name", "") if service else "",
+            }
+        )
+    return unresolved
+
+
 class SHAPagination(PageNumberPagination):
     """Custom pagination for SHA endpoints supporting page_size parameter."""
 
@@ -1397,6 +1421,8 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         parsed_lines = []
         parse_errors = []
         unmatched_tariff_codes = set()
+        unresolved_lines = []
+        description_resolved_count = 0
         detected_invoice_number = ""
         preview_claim_reference = _extract_preview_claim_reference(payload)
 
@@ -1421,6 +1447,8 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 tariff_code = str(
                     raw_line.get("item_code") or raw_line.get("intervention_code") or ""
                 ).strip()
+                if tariff_code:
+                    tariff_code = tariff_code.upper()
                 description = str(
                     raw_line.get("item_name") or tariff_code or "Preview line"
                 ).strip()
@@ -1449,8 +1477,38 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 tariff = None
                 if tariff_code:
                     tariff = SHATariff.objects.filter(code=tariff_code, is_active=True).first()
+
+                if tariff is None and description:
+                    tariff = (
+                        SHATariff.get_active_tariffs(facility_level=claim.facility_level)
+                        .filter(
+                            models.Q(name__iexact=description)
+                            | models.Q(description__iexact=description)
+                        )
+                        .first()
+                    )
                     if tariff is None:
+                        tariff = (
+                            SHATariff.get_active_tariffs(facility_level=claim.facility_level)
+                            .filter(
+                                models.Q(name__icontains=description)
+                                | models.Q(description__icontains=description)
+                            )
+                            .order_by("code")
+                            .first()
+                        )
+                    if tariff is not None:
+                        description_resolved_count += 1
+
+                if tariff is None:
+                    if tariff_code:
                         unmatched_tariff_codes.add(tariff_code)
+                    unresolved_lines.append(
+                        {
+                            "description": description,
+                            "tariff_code": tariff_code,
+                        }
+                    )
 
                 parsed_lines.append(
                     {
@@ -1515,6 +1573,8 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "detected_invoice_number": detected_invoice_number,
                 "invoice_linked": False,
                 "unmatched_tariff_codes": sorted(unmatched_tariff_codes),
+                "description_resolved_count": description_resolved_count,
+                "unresolved_lines": unresolved_lines,
                 "parse_errors": parse_errors,
             },
         )
@@ -1529,6 +1589,8 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "detected_invoice_number": detected_invoice_number,
                 "invoice_linked": False,
                 "unmatched_tariff_codes": sorted(unmatched_tariff_codes),
+                "description_resolved_count": description_resolved_count,
+                "unresolved_lines": unresolved_lines,
                 "parse_errors": parse_errors,
                 "claimed_amount": str(claim.claimed_amount),
             }
@@ -1589,16 +1651,22 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         # Local pre-flight validation (DHA UAT: catch errors before DHA round-trip)
         is_valid, errors = claim.validate_for_submission()
+        unresolved_lines = _collect_unresolved_claim_lines(claim)
         if preview_error:
             errors.append(f"Auto-preview failed: {preview_error}")
             is_valid = False
         if not is_valid:
+            response_data = {
+                "error": "Claim failed local pre-submission validation.",
+                "code": "local_validation_failed",
+                "validation_errors": errors,
+            }
+            if unresolved_lines:
+                response_data["unresolved_lines"] = unresolved_lines
+                response_data["missing_tariff_count"] = len(unresolved_lines)
+
             return Response(
-                {
-                    "error": "Claim failed local pre-submission validation.",
-                    "code": "local_validation_failed",
-                    "validation_errors": errors,
-                },
+                response_data,
                 status=400,
             )
 

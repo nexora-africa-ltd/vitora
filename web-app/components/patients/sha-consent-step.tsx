@@ -111,6 +111,8 @@ export function SHAConsentStep({
   } | null>(null);
   const [consentId, setConsentId] = useState<number | null>(null);
   const [otpCode, setOtpCode] = useState('');
+  const [otpServerMessage, setOtpServerMessage] = useState<string | null>(null);
+  const [isReusedConsent, setIsReusedConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCreatingMember, setIsCreatingMember] = useState(false);
 
@@ -260,6 +262,8 @@ export function SHAConsentStep({
 
   const handleSendOTP = async () => {
     setError(null);
+    setOtpServerMessage(null);
+    setIsReusedConsent(false);
 
     // If we don't have an SHAMember yet, create one on-demand
     let memberId = shaMember?.id;
@@ -293,9 +297,21 @@ export function SHAConsentStep({
       {
         onSuccess: (response) => {
           setConsentId(response.consent_id);
+          const responseMessage = response.message?.trim();
+          if (responseMessage) {
+            setOtpServerMessage(responseMessage);
+          }
+
+          const reusedByMessage = (responseMessage || '').toLowerCase().includes('reused');
+          const reusedByStatus = String(response.status || '').toUpperCase() === 'VALIDATED';
+          const reused = reusedByMessage || reusedByStatus;
+          setIsReusedConsent(reused);
+
           // In sandbox/UAT, DHA returns the OTP in the response — auto-fill for convenience
-          if (response.sandbox_otp) {
+          if (!reused && response.sandbox_otp) {
             setOtpCode(response.sandbox_otp);
+          } else if (reused) {
+            setOtpCode('');
           }
           setStep('otp_sent');
           // Start 60s resend countdown
@@ -336,6 +352,8 @@ export function SHAConsentStep({
       },
       {
         onSuccess: (response) => {
+          setIsReusedConsent(false);
+          setOtpServerMessage(null);
           setStep('done');
           setOtpCode('');
           onComplete?.({ consented: true, consentId: response.id });
@@ -661,6 +679,16 @@ export function SHAConsentStep({
           <p className="text-xs text-muted-foreground">
             Enter the 6-digit code sent to the patient&apos;s phone.
           </p>
+          {isReusedConsent && (
+            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-900/20">
+              <p className="text-xs text-emerald-800 dark:text-emerald-300">
+                {otpServerMessage || 'An active consent token for today was found and reused.'}
+              </p>
+              <p className="mt-1 text-xs text-emerald-700/90 dark:text-emerald-300/90">
+                No OTP entry is required. Proceed to continue with this visit.
+              </p>
+            </div>
+          )}
           <div className="flex gap-2">
             <div className="space-y-1 flex-1">
               <Label htmlFor="sha-otp-checkin" className="sr-only">OTP Code</Label>
@@ -668,15 +696,24 @@ export function SHAConsentStep({
                 id="sha-otp-checkin"
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value)}
-                placeholder="6-digit code"
+                placeholder={isReusedConsent ? 'OTP not required' : '6-digit code'}
                 maxLength={6}
                 className="font-mono h-9"
-                disabled={step === 'validating'}
+                disabled={step === 'validating' || isReusedConsent}
               />
             </div>
             <Button
-              onClick={handleValidateOTP}
-              disabled={step === 'validating' || otpCode.length < 4}
+              onClick={() => {
+                if (isReusedConsent) {
+                  if (consentId) {
+                    setStep('done');
+                    onComplete?.({ consented: true, consentId });
+                  }
+                  return;
+                }
+                handleValidateOTP();
+              }}
+              disabled={step === 'validating' || (!isReusedConsent && otpCode.length < 4)}
               size="sm"
               className="h-9"
             >
@@ -685,7 +722,7 @@ export function SHAConsentStep({
               ) : (
                 <KeyRound className="mr-1.5 h-3.5 w-3.5" />
               )}
-              Verify
+              {isReusedConsent ? 'Proceed' : 'Verify'}
             </Button>
           </div>
           {error && (() => {
@@ -751,7 +788,7 @@ export function SHAConsentStep({
               variant="ghost"
               size="sm"
               onClick={handleSendOTP}
-              disabled={sendOTP.isPending || resendCountdown > 0}
+              disabled={sendOTP.isPending || resendCountdown > 0 || isReusedConsent}
               className="text-xs h-7"
             >
               {sendOTP.isPending ? (

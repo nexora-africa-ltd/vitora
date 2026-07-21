@@ -110,7 +110,7 @@ class TestPreviewBeforeSubmit:
             mock_result = MagicMock()
             mock_result.response.ok = True
             mock_result.status_code = 200
-            mock_result.payload = {}
+            mock_result.payload = {"claim_diagnoses": [{"icd_code": "J06.9"}]}
             svc.return_value.preview.return_value = mock_result
             response = sha_client.post(f"/api/sha/claims/{claim.id}/ilm/preview/")
 
@@ -154,6 +154,104 @@ class TestPreviewBeforeSubmit:
             intervention_code="SHA-01-001",
             user=ANY,
         )
+
+    def test_apply_preview_lines_resolves_tariff_by_description_when_code_missing(
+        self, sha_client, sample_sha_claim_for_uat
+    ):
+        """apply-preview-lines should map unresolved codes by description as fallback."""
+        from hmis.apps.billing.models import SHATariff
+
+        claim = sample_sha_claim_for_uat
+        tariff = SHATariff.objects.create(
+            code="SHA-LAB-991",
+            name="Complete blood count",
+            description="Complete blood count",
+            category=SHATariff.TariffCategory.LABORATORY,
+            facility_level=claim.facility_level,
+            sha_amount=Decimal("850.00"),
+            effective_date=date.today(),
+            is_active=True,
+        )
+
+        payload = {
+            "invoices": [
+                {
+                    "invoice_number": "INV/DHA/RESOLVE-001",
+                    "lines": [
+                        {
+                            "item_code": "sha-missing-001",
+                            "item_name": "Complete blood count",
+                            "quantity": 1,
+                            "unit_price": "850.00",
+                        }
+                    ],
+                }
+            ]
+        }
+
+        response = sha_client.post(
+            f"/api/sha/claims/{claim.id}/ilm/apply-preview-lines/",
+            {"payload": payload, "replace_existing": True},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["description_resolved_count"] == 1
+        assert response.data["unresolved_lines"] == []
+
+        claim.refresh_from_db()
+        item = claim.items.first()
+        assert item is not None
+        assert item.tariff_id == tariff.id
+
+    def test_ilm_submit_returns_unresolved_lines_for_missing_tariff_items(
+        self, sha_client, sample_sha_claim_for_uat, test_user
+    ):  # noqa: F811
+        """Submit preflight should expose unresolved claim lines when tariff mapping is missing."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from hmis.apps.billing.models import SHAClaimAttachment, SHAClaimItem
+
+        claim = sample_sha_claim_for_uat
+        claim.previewed_at = timezone.now()
+        claim.save(update_fields=["previewed_at", "updated_at"])
+
+        SHAClaimItem.objects.create(
+            claim=claim,
+            tariff=None,
+            description="Unmapped lab item",
+            service_date=claim.service_date,
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("300.00"),
+            claimed_amount=Decimal("300.00"),
+        )
+
+        for att_type in ["clinical_notes", "invoice"]:
+            SHAClaimAttachment.objects.get_or_create(
+                claim=claim,
+                attachment_type=att_type,
+                defaults={
+                    "name": att_type,
+                    "file": SimpleUploadedFile(f"{att_type}.pdf", b"%PDF-1.4", "application/pdf"),
+                    "file_size": 7,
+                    "mime_type": "application/pdf",
+                    "checksum": "a" * 32,
+                    "original_filename": f"{att_type}.pdf",
+                    "uploaded_by": test_user,
+                },
+            )
+
+        response = sha_client.post(
+            f"/api/sha/claims/{claim.id}/ilm/submit/",
+            {"invoice_number": "INV/DHA/TARIFF-MISS-001"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["code"] == "local_validation_failed"
+        assert response.data["missing_tariff_count"] == 1
+        assert len(response.data["unresolved_lines"]) == 1
+        assert response.data["unresolved_lines"][0]["description"] == "Unmapped lab item"
 
 
 # =============================================================================

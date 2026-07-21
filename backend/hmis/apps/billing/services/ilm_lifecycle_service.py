@@ -32,6 +32,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
+from datetime import date as date_cls
 from typing import Any
 
 from django.utils import timezone
@@ -299,9 +300,10 @@ class IlmLifecycleService:
         facility: Any = None,
         user: Any = None,
     ) -> IlmLifecycleResult:
+        normalized_discharge_date = self._normalize_discharge_datetime(params.discharge_date)
         body: dict[str, str] = {
             "consent_token": params.consent_token,
-            "discharge_date": params.discharge_date,
+            "discharge_date": normalized_discharge_date,
             "discharge_reason": params.discharge_reason,
             "invoice_number": params.invoice_number,
         }
@@ -332,6 +334,30 @@ class IlmLifecycleService:
             },
         )
         return result
+
+    @staticmethod
+    def _normalize_discharge_datetime(value: str) -> str:
+        """Normalize discharge date to RFC3339 datetime expected by DHA.
+
+        Accepts either:
+        - ISO date: YYYY-MM-DD
+        - ISO datetime: YYYY-MM-DDTHH:MM:SS[Z|±HH:MM]
+
+        Returns RFC3339 datetime string, using UTC midnight for date-only inputs.
+        """
+        raw = str(value or "").strip()
+        if not raw:
+            return raw
+
+        if "T" in raw:
+            return raw
+
+        try:
+            parsed_date = date_cls.fromisoformat(raw)
+        except ValueError:
+            return raw
+
+        return f"{parsed_date.isoformat()}T00:00:00Z"
 
     # =====================================================================
     # OTP whitelist

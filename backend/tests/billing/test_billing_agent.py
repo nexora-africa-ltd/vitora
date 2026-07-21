@@ -299,6 +299,77 @@ class TestHandleLabOrderConfirmed:
         item = invoice.items.first()
         assert item.lab_order == sample_lab_order
 
+    def test_skips_ipd_lab_billing_when_per_diem_intervention_active(
+        self,
+        db,
+        sample_admission,
+        sample_test_catalog,
+        lab_billing_service,
+        sha_member,
+        test_user,
+    ):
+        """Should not bill lab lines separately for IPD encounters with active PER_DIEM intervention."""
+        from hmis.apps.billing.agent import BillingAgentService
+        from hmis.apps.billing.models import SHAClaimIntervention
+        from hmis.apps.laboratory.models import LabOrder, LabOrderItem
+
+        claim = SHAClaim.objects.create(
+            patient=sample_admission.patient,
+            sha_member=sha_member,
+            encounter=sample_admission.ipd_encounter,
+            claim_type=SHAClaim.ClaimType.INPATIENT,
+            status=SHAClaim.ClaimStatus.DRAFT,
+            service_date=date.today(),
+            admission_date=date.today(),
+            primary_diagnosis_code="J18.9",
+            primary_diagnosis_description="Pneumonia",
+            facility_code="TEST-001",
+            facility_level="L3",
+            created_by=test_user,
+            facility=sample_admission.facility,
+            organization=sample_admission.organization,
+        )
+        SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-07-001",
+            intervention_name="Inpatient General Medical Care",
+            status=SHAClaimIntervention.InterventionStatus.ACTIVE,
+            payment_mechanism=SHAClaimIntervention.PaymentMechanism.PER_DIEM,
+            access_point=SHAClaimIntervention.AccessPoint.IP,
+        )
+
+        lab_order = LabOrder.objects.create(
+            patient=sample_admission.patient,
+            encounter=sample_admission.ipd_encounter,
+            admission=sample_admission,
+            ordered_by=test_user,
+            order_type="IN_HOUSE",
+            status="ORDERED",
+            priority="ROUTINE",
+            facility=sample_admission.facility,
+            organization=sample_admission.organization,
+        )
+        LabOrderItem.objects.create(
+            lab_order=lab_order,
+            test=sample_test_catalog,
+            unit_cost=sample_test_catalog.cost,
+        )
+
+        BillingAgentService.handle_lab_order_confirmed(lab_order)
+
+        invoice = Invoice.objects.filter(
+            patient=sample_admission.patient,
+            encounter=sample_admission.ipd_encounter,
+            status=Invoice.Status.DRAFT,
+        ).first()
+
+        if invoice is None:
+            assert True
+        else:
+            assert not invoice.items.filter(
+                item_type=InvoiceItem.ItemType.LAB, lab_order=lab_order
+            ).exists()
+
 
 # ============================================================================
 # Test: handle_admission_created

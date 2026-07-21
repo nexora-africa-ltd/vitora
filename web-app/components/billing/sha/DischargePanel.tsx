@@ -11,8 +11,8 @@
  */
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { Loader2, LogOut } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Fingerprint, Loader2, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ import { billingApi } from '@/lib/api/billing';
 import { inpatientApi } from '@/lib/api/inpatient';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
 import { useQuery } from '@tanstack/react-query';
+import { useFacility } from '@/lib/context/facility-context';
 
 const DISCHARGE_REASONS = [
   { value: 'RECOVERED', label: 'Recovered' },
@@ -40,6 +41,7 @@ interface DischargePanelProps {
   flow: ClaimFlowInfo;
   claimPatientId?: number;
   claimEncounterId?: number;
+  shaMemberId?: number;
   consentToken?: string;
   patientExternalId?: string;
   invoiceNumber?: string;
@@ -59,11 +61,17 @@ interface DischargePanelProps {
 
 type Step = 'details' | 'otp_sent' | 'complete';
 
+function extractOtpFromMessage(message: string): string {
+  const match = message.match(/\b(\d{4,8})\b/);
+  return match ? match[1] : '';
+}
+
 export function DischargePanel({
   claimId,
   flow,
   claimPatientId,
   claimEncounterId,
+  shaMemberId,
   consentToken = '',
   patientExternalId = '',
   invoiceNumber: initialInvoice = '',
@@ -88,6 +96,12 @@ export function DischargePanel({
   const [authGuid, setAuthGuid] = useState('');
   const [useBiometric, setUseBiometric] = useState(false);
   const [editContextFields, setEditContextFields] = useState(false);
+  const [otpServerMessage, setOtpServerMessage] = useState('');
+  const [biometricInfo, setBiometricInfo] = useState('');
+  const [biometricStatus, setBiometricStatus] = useState<'idle' | 'pending' | 'authorized' | 'failed' | 'expired'>('idle');
+  const biometricPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const { facilityDetail } = useFacility();
 
   const hasInvoiceNumber = invoiceNumber.trim().length > 0;
 
@@ -116,6 +130,48 @@ export function DischargePanel({
       setInvoiceNumber(fallbackNumber);
     }
   }, [fallbackInvoice?.invoice_number, hasInvoiceNumber]);
+
+  function stopBiometricPolling() {
+    if (biometricPollRef.current) {
+      clearInterval(biometricPollRef.current);
+      biometricPollRef.current = null;
+    }
+  }
+
+  function startBiometricPolling(guid: string) {
+    stopBiometricPolling();
+    setBiometricStatus('pending');
+    biometricPollRef.current = setInterval(async () => {
+      try {
+        const result = await shaApi.getBiometricAuthStatus(guid);
+        const statusUpper = String(result?.status || '').toUpperCase();
+
+        if (statusUpper === 'AUTHORIZED') {
+          stopBiometricPolling();
+          setBiometricStatus('authorized');
+          setBiometricInfo('Biometric verification successful. You can now discharge and submit the claim.');
+        } else if (statusUpper === 'FAILED' || statusUpper === 'REJECTED') {
+          stopBiometricPolling();
+          setBiometricStatus('failed');
+          setBiometricInfo('Biometric verification failed. Retry biometric verification or switch to OTP.');
+          setAuthGuid('');
+        } else if (statusUpper === 'EXPIRED') {
+          stopBiometricPolling();
+          setBiometricStatus('expired');
+          setBiometricInfo('Biometric session expired. Retry biometric verification or switch to OTP.');
+          setAuthGuid('');
+        }
+      } catch {
+        // Keep polling on transient network errors.
+      }
+    }, 3000);
+  }
+
+  useEffect(() => {
+    return () => {
+      stopBiometricPolling();
+    };
+  }, []);
 
   const missingPerDiemTariffs = useMemo(() => {
     if (!facilityLevel) return [] as string[];
@@ -177,14 +233,76 @@ export function DischargePanel({
     }
     setBusy(true);
     setError(null);
+    setOtpServerMessage('');
+    setBiometricInfo('');
+    setBiometricStatus('idle');
+    stopBiometricPolling();
     try {
-      await shaApi.ilmSendDischargeOtp({
+      const response = await shaApi.ilmSendDischargeOtp({
         consent_token: token,
         patient_id: patientId,
       });
+
+      const data = (response?.data ?? {}) as Record<string, unknown>;
+      const payloadMessage = typeof data.message === 'string' ? data.message : '';
+      if (payloadMessage) {
+        setOtpServerMessage(payloadMessage);
+      }
+
+      const sandboxOtp =
+        (typeof data.sandbox_otp === 'string' && data.sandbox_otp) ||
+        (typeof data.otp === 'string' && data.otp) ||
+        extractOtpFromMessage(payloadMessage);
+      if (sandboxOtp) {
+        setOtp(sandboxOtp);
+      }
+
+      setUseBiometric(false);
       setStep('otp_sent');
     } catch (e: any) {
       setError(e?.response?.data?.error ?? e?.message ?? 'Failed to send discharge OTP');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function startBiometricVerification() {
+    if (!shaMemberId) {
+      setError('SHA member is required to start biometric verification.');
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setBiometricInfo('');
+    setBiometricStatus('pending');
+    setOtpServerMessage('');
+    stopBiometricPolling();
+    try {
+      const result = await shaApi.authorizeBiometric({
+        sha_member_id: shaMemberId,
+        workstation_id: facilityDetail?.workstation_id || 'WS-001',
+        agent_national_id: facilityDetail?.biometrics_agent_national_id || '',
+      });
+
+      setAuthGuid(result.auth_guid || '');
+      setUseBiometric(true);
+      setStep('otp_sent');
+      setOtp('');
+
+      if (result.sandbox_mode) {
+        stopBiometricPolling();
+        setBiometricStatus('authorized');
+        setBiometricInfo('Biometric verification accepted in sandbox mode. You can proceed to discharge.');
+      } else {
+        setBiometricInfo('Complete fingerprint verification, then proceed with discharge using the generated auth GUID.');
+        startBiometricPolling(result.auth_guid);
+        if (result.iframe_url && typeof window !== 'undefined') {
+          window.open(result.iframe_url, '_blank', 'noopener,noreferrer');
+        }
+      }
+    } catch (e: any) {
+      setError(e?.response?.data?.error ?? e?.message ?? 'Failed to initiate biometric verification');
     } finally {
       setBusy(false);
     }
@@ -402,6 +520,16 @@ export function DischargePanel({
               {busy && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
               Send Discharge OTP
             </Button>
+
+            <Button
+              variant="outline"
+              onClick={startBiometricVerification}
+              disabled={busy || !token || hasMissingPerDiemTariffs || !shaMemberId}
+            >
+              {busy && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+              <Fingerprint className="mr-2 h-4 w-4" />
+              Verify Biometrics
+            </Button>
           </div>
         )}
 
@@ -415,6 +543,29 @@ export function DischargePanel({
                 Enter it below, or use the biometric auth GUID if patient authenticated via biometrics.
               </AlertDescription>
             </Alert>
+
+            {otpServerMessage ? (
+              <Alert>
+                <AlertTitle>DHA response</AlertTitle>
+                <AlertDescription>{otpServerMessage}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            {biometricInfo ? (
+              <Alert>
+                <AlertTitle>Biometric verification</AlertTitle>
+                <AlertDescription>{biometricInfo}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            {useBiometric && biometricStatus === 'pending' ? (
+              <Alert>
+                <AlertTitle>Waiting for fingerprint verification</AlertTitle>
+                <AlertDescription>
+                  We are polling DHA for biometric status. Keep this panel open while the patient completes fingerprint verification.
+                </AlertDescription>
+              </Alert>
+            ) : null}
 
             <div className="flex flex-col gap-3">
               {!useBiometric ? (
@@ -450,9 +601,21 @@ export function DischargePanel({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setUseBiometric(false)}
+                    onClick={() => {
+                      stopBiometricPolling();
+                      setBiometricStatus('idle');
+                      setUseBiometric(false);
+                    }}
                   >
                     Use OTP instead
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={startBiometricVerification}
+                    disabled={busy || !shaMemberId}
+                  >
+                    Retry biometric
                   </Button>
                 </div>
               )}
@@ -461,7 +624,7 @@ export function DischargePanel({
             <div className="flex gap-2">
               <Button
                 onClick={submitDischarge}
-                disabled={busy || (!otp && !authGuid) || hasMissingPerDiemTariffs}
+                disabled={busy || (!otp && !authGuid) || hasMissingPerDiemTariffs || (useBiometric && biometricStatus === 'pending')}
               >
                 {busy && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                 Discharge &amp; Submit Claim
@@ -469,7 +632,11 @@ export function DischargePanel({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setStep('details')}
+                onClick={() => {
+                  stopBiometricPolling();
+                  setBiometricStatus('idle');
+                  setStep('details');
+                }}
               >
                 ← Back to details
               </Button>

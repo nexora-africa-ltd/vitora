@@ -513,6 +513,7 @@ class SHAClaimAutomationService:
                         file_size=len(pdf_bytes),
                         mime_type="application/pdf",
                         original_filename=f"lab_results_{claim.claim_number}.pdf",
+                        uploaded_by=claim.created_by,
                     )
                     attached += 1
             else:
@@ -536,6 +537,7 @@ class SHAClaimAutomationService:
                         file_size=len(pdf_bytes),
                         mime_type="application/pdf",
                         original_filename=f"clinical_notes_{claim.claim_number}.pdf",
+                        uploaded_by=claim.created_by,
                     )
                     attached += 1
             else:
@@ -556,6 +558,7 @@ class SHAClaimAutomationService:
                         file_size=len(pdf_bytes),
                         mime_type="application/pdf",
                         original_filename=f"invoice_{claim.claim_number}.pdf",
+                        uploaded_by=claim.created_by,
                     )
                     attached += 1
             else:
@@ -579,6 +582,7 @@ class SHAClaimAutomationService:
                         file_size=len(pdf_bytes),
                         mime_type="application/pdf",
                         original_filename=f"prescriptions_{claim.claim_number}.pdf",
+                        uploaded_by=claim.created_by,
                     )
                     attached += 1
             else:
@@ -625,37 +629,81 @@ class SHAClaimAutomationService:
 
     @classmethod
     def _render_invoice_text(cls, claim) -> str | None:
-        """Render linked invoice details as text content for required invoice attachment."""
+        """Render invoice summary text for required invoice attachment.
+
+        Preferred source: linked local invoice.
+        Fallback source: SHA claim items + DHA invoice number.
+        """
         invoice = getattr(claim, "invoice", None)
-        if not invoice:
+        if invoice:
+            lines = [
+                "INVOICE SUMMARY",
+                f"Claim: {claim.claim_number}",
+                f"Invoice Number: {invoice.invoice_number or ''}",
+                f"Invoice Date: {invoice.invoice_date or ''}",
+                f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}",
+                "-" * 50,
+                "",
+            ]
+
+            items = list(invoice.items.all()) if hasattr(invoice, "items") else []
+            if items:
+                for item in items:
+                    description = getattr(item, "description", "") or getattr(
+                        item, "service_name", ""
+                    )
+                    quantity = getattr(item, "quantity", "")
+                    unit_price = getattr(item, "unit_price", "")
+                    line_total = getattr(item, "line_total", "")
+                    lines.append(
+                        f"- {description} | Qty: {quantity} | Unit: {unit_price} | Total: {line_total}"
+                    )
+            else:
+                lines.append("No invoice line items found.")
+
+            total_amount = getattr(invoice, "total_amount", None)
+            if total_amount is not None:
+                lines.extend(["", f"Invoice Total: {total_amount}"])
+
+            return "\n".join(lines)
+
+        # Fallback: render from claim items + DHA invoice number.
+        claim_items = (
+            list(claim.items.select_related("tariff").all()) if hasattr(claim, "items") else []
+        )
+        dha_invoice_number = getattr(claim, "dha_invoice_number", "") or ""
+
+        if not claim_items and not dha_invoice_number:
             return None
 
         lines = [
-            "INVOICE SUMMARY",
+            "INVOICE SUMMARY (AUTO-GENERATED)",
             f"Claim: {claim.claim_number}",
-            f"Invoice Number: {invoice.invoice_number or ''}",
-            f"Invoice Date: {invoice.invoice_date or ''}",
+            f"DHA Invoice Number: {dha_invoice_number}",
+            f"Service Date: {getattr(claim, 'service_date', '')}",
             f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}",
+            "Source: SHA claim items (no linked local invoice)",
             "-" * 50,
             "",
         ]
 
-        items = list(invoice.items.all()) if hasattr(invoice, "items") else []
-        if items:
-            for item in items:
-                description = getattr(item, "description", "") or getattr(item, "service_name", "")
+        if claim_items:
+            for item in claim_items:
+                tariff_code = getattr(getattr(item, "tariff", None), "code", "") or ""
+                description = getattr(item, "description", "") or ""
                 quantity = getattr(item, "quantity", "")
                 unit_price = getattr(item, "unit_price", "")
-                line_total = getattr(item, "line_total", "")
+                line_total = getattr(item, "claimed_amount", "")
+                code_prefix = f"[{tariff_code}] " if tariff_code else ""
                 lines.append(
-                    f"- {description} | Qty: {quantity} | Unit: {unit_price} | Total: {line_total}"
+                    f"- {code_prefix}{description} | Qty: {quantity} | Unit: {unit_price} | Total: {line_total}"
                 )
         else:
-            lines.append("No invoice line items found.")
+            lines.append("No SHA claim items found.")
 
-        total_amount = getattr(invoice, "total_amount", None)
-        if total_amount is not None:
-            lines.extend(["", f"Invoice Total: {total_amount}"])
+        claimed_total = getattr(claim, "claimed_amount", None)
+        if claimed_total is not None:
+            lines.extend(["", f"Claim Total: {claimed_total}"])
 
         return "\n".join(lines)
 
