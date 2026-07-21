@@ -98,7 +98,7 @@ class TestDischarge:
         body = client.post.call_args.kwargs["json_body"]
         assert body["discharge_reason"] == "RECOVERED"
         assert body["invoice_number"] == "INV-1"
-        assert body["discharge_date"] == "2026-04-30T00:00:00Z"
+        assert body["discharge_date"] == "2026-04-30T23:59:59Z"
 
     def test_keeps_rfc3339_discharge_datetime(self, client, sample_facility):
         client.post.return_value = _resp(200, {"ok": True})

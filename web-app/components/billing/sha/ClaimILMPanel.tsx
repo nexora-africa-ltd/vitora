@@ -626,7 +626,11 @@ export function ClaimILMPanel({
   const [newIcdCode, setNewIcdCode] = useState('');
   const [diagnosisAnchorCode, setDiagnosisAnchorCode] = useState('');
 
-  const { data: preSubmitValidation, isFetching: preSubmitValidationLoading } = useQuery({
+  const {
+    data: preSubmitValidation,
+    isFetching: preSubmitValidationLoading,
+    refetch: refetchPreSubmitValidation,
+  } = useQuery({
     queryKey: ['sha-claim-submit-validation', claimId, claim.updated_at],
     queryFn: () => shaApi.validateClaimSubmission(claimId),
     enabled: !!claimId && visitStarted,
@@ -895,6 +899,9 @@ export function ClaimILMPanel({
         });
       }
       setApplyPreviewResult(null);
+      if (visitStarted) {
+        void refetchPreSubmitValidation();
+      }
     }
   }
 
@@ -920,6 +927,9 @@ export function ClaimILMPanel({
       }
       toast.success(result.message || 'Preview lines applied to local claim items.');
       onChange?.();
+      if (visitStarted) {
+        void refetchPreSubmitValidation();
+      }
     } catch (e: unknown) {
       setError(formatErr(e));
     } finally {
@@ -1460,11 +1470,14 @@ export function ClaimILMPanel({
           <section className="space-y-3">
             <StepHeader index={3} title="Lifecycle" />
 
-            <PreSubmitChecklistBox
-              loading={preSubmitValidationLoading}
-              items={preSubmitChecklist}
-              autoFixedIds={autoFixedChecklistIds}
-            />
+      <PreSubmitChecklistBox
+        loading={preSubmitValidationLoading}
+        items={preSubmitChecklist}
+        autoFixedIds={autoFixedChecklistIds}
+        onRefresh={() => {
+          void refetchPreSubmitValidation();
+        }}
+      />
 
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={preview} disabled={busy !== null}>
@@ -1962,10 +1975,12 @@ function PreSubmitChecklistBox({
   loading,
   items,
   autoFixedIds,
+  onRefresh,
 }: {
   loading: boolean;
   items: PreSubmitChecklistItem[];
   autoFixedIds: string[];
+  onRefresh: () => void;
 }) {
   if (items.length === 0) return null;
 
@@ -1973,12 +1988,25 @@ function PreSubmitChecklistBox({
     <div className="rounded-md border bg-muted/20 p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium">Pre-submit checklist</p>
-        {loading ? (
-          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Checking…
-          </span>
-        ) : null}
+        <div className="inline-flex items-center gap-2">
+          {loading ? (
+            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Checking…
+            </span>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-[11px]"
+            onClick={onRefresh}
+            disabled={loading}
+          >
+            <RefreshCw className="mr-1 h-3 w-3" />
+            Refresh
+          </Button>
+        </div>
       </div>
       <div className="space-y-1.5">
         {items.map((item) => {

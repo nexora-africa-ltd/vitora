@@ -513,23 +513,25 @@ export function DischargePanel({
               </Button>
             )}
 
-            <Button
-              onClick={sendDischargeOtp}
-              disabled={busy || !token || hasMissingPerDiemTariffs}
-            >
-              {busy && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-              Send Discharge OTP
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Button
+                onClick={sendDischargeOtp}
+                disabled={busy || !token || hasMissingPerDiemTariffs}
+              >
+                {busy && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                Send Discharge OTP
+              </Button>
 
-            <Button
-              variant="outline"
-              onClick={startBiometricVerification}
-              disabled={busy || !token || hasMissingPerDiemTariffs || !shaMemberId}
-            >
-              {busy && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-              <Fingerprint className="mr-2 h-4 w-4" />
-              Verify Biometrics
-            </Button>
+              <Button
+                variant="outline"
+                onClick={startBiometricVerification}
+                disabled={busy || !token || hasMissingPerDiemTariffs || !shaMemberId}
+              >
+                {busy && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                <Fingerprint className="mr-2 h-4 w-4" />
+                Verify Biometrics
+              </Button>
+            </div>
           </div>
         )}
 
