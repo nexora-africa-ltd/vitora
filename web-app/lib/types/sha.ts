@@ -727,6 +727,7 @@ export interface Claim {
   patient_name?: string | null;
   patient_mrn?: string | null;
   invoice_number?: string | null;
+  dha_invoice_number?: string | null;
   submitted_by_username?: string | null;
 
   // Claim details
@@ -886,7 +887,7 @@ export interface ClaimItem {
 }
 
 export interface ClaimCreateRequest {
-  invoice_id: number;
+  invoice_id?: number;
   encounter_id: number;
 }
 

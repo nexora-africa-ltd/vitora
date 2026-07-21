@@ -502,19 +502,17 @@ class SHAClaimAutomationService:
             if "lab_report" not in existing_types:
                 lab_content = cls._render_lab_results_text(encounter)
                 if lab_content:
-                    file_obj = ContentFile(
-                        lab_content.encode("utf-8"),
-                        name=f"lab_results_{claim.claim_number}.txt",
-                    )
+                    pdf_bytes = cls._render_text_pdf_bytes(lab_content)
+                    file_obj = ContentFile(pdf_bytes, name=f"lab_results_{claim.claim_number}.pdf")
                     SHAClaimAttachment.objects.create(
                         claim=claim,
                         attachment_type="lab_report",
                         name=f"Lab Results - {claim.claim_number}",
                         description="Auto-generated from verified lab results",
                         file=file_obj,
-                        file_size=len(lab_content),
-                        mime_type="text/plain",
-                        original_filename=f"lab_results_{claim.claim_number}.txt",
+                        file_size=len(pdf_bytes),
+                        mime_type="application/pdf",
+                        original_filename=f"lab_results_{claim.claim_number}.pdf",
                     )
                     attached += 1
             else:
@@ -524,9 +522,10 @@ class SHAClaimAutomationService:
             if "clinical_notes" not in existing_types:
                 notes_content = cls._render_clinical_notes_text(encounter, claim.patient)
                 if notes_content:
+                    pdf_bytes = cls._render_text_pdf_bytes(notes_content)
                     file_obj = ContentFile(
-                        notes_content.encode("utf-8"),
-                        name=f"clinical_notes_{claim.claim_number}.txt",
+                        pdf_bytes,
+                        name=f"clinical_notes_{claim.claim_number}.pdf",
                     )
                     SHAClaimAttachment.objects.create(
                         claim=claim,
@@ -534,9 +533,29 @@ class SHAClaimAutomationService:
                         name=f"Clinical Notes - {claim.claim_number}",
                         description="Auto-generated from encounter clinical data",
                         file=file_obj,
-                        file_size=len(notes_content),
-                        mime_type="text/plain",
-                        original_filename=f"clinical_notes_{claim.claim_number}.txt",
+                        file_size=len(pdf_bytes),
+                        mime_type="application/pdf",
+                        original_filename=f"clinical_notes_{claim.claim_number}.pdf",
+                    )
+                    attached += 1
+            else:
+                already_attached += 1
+
+            # --- Invoice summary → invoice (required for submission validation) ---
+            if "invoice" not in existing_types:
+                invoice_content = cls._render_invoice_text(claim)
+                if invoice_content:
+                    pdf_bytes = cls._render_text_pdf_bytes(invoice_content)
+                    file_obj = ContentFile(pdf_bytes, name=f"invoice_{claim.claim_number}.pdf")
+                    SHAClaimAttachment.objects.create(
+                        claim=claim,
+                        attachment_type="invoice",
+                        name=f"Invoice - {claim.claim_number}",
+                        description="Auto-generated from linked invoice line items",
+                        file=file_obj,
+                        file_size=len(pdf_bytes),
+                        mime_type="application/pdf",
+                        original_filename=f"invoice_{claim.claim_number}.pdf",
                     )
                     attached += 1
             else:
@@ -546,9 +565,10 @@ class SHAClaimAutomationService:
             if "prescription" not in existing_types:
                 rx_content = cls._render_prescriptions_text(encounter)
                 if rx_content:
+                    pdf_bytes = cls._render_text_pdf_bytes(rx_content)
                     file_obj = ContentFile(
-                        rx_content.encode("utf-8"),
-                        name=f"prescriptions_{claim.claim_number}.txt",
+                        pdf_bytes,
+                        name=f"prescriptions_{claim.claim_number}.pdf",
                     )
                     SHAClaimAttachment.objects.create(
                         claim=claim,
@@ -556,9 +576,9 @@ class SHAClaimAutomationService:
                         name=f"Prescriptions - {claim.claim_number}",
                         description="Auto-generated from encounter prescriptions",
                         file=file_obj,
-                        file_size=len(rx_content),
-                        mime_type="text/plain",
-                        original_filename=f"prescriptions_{claim.claim_number}.txt",
+                        file_size=len(pdf_bytes),
+                        mime_type="application/pdf",
+                        original_filename=f"prescriptions_{claim.claim_number}.pdf",
                     )
                     attached += 1
             else:
@@ -569,6 +589,75 @@ class SHAClaimAutomationService:
         except Exception as e:
             logger.exception("Auto-attach documents failed for claim %s", claim_id)
             return {"attached": 0, "error": str(e)}
+
+    @classmethod
+    def _render_text_pdf_bytes(cls, content: str) -> bytes:
+        """Render plain text into a simple PDF byte stream for SHA attachments."""
+        from io import BytesIO
+
+        from reportlab.lib.pagesizes import A4
+        from reportlab.pdfgen import canvas
+
+        buffer = BytesIO()
+        pdf = canvas.Canvas(buffer, pagesize=A4)
+        width, height = A4
+        x = 40
+        y = height - 40
+        max_width = width - 80
+        line_height = 14
+
+        for raw_line in content.splitlines() or [""]:
+            line = raw_line or " "
+            while line:
+                chunk = line
+                while pdf.stringWidth(chunk, "Helvetica", 10) > max_width and len(chunk) > 1:
+                    chunk = chunk[:-1]
+                pdf.setFont("Helvetica", 10)
+                pdf.drawString(x, y, chunk)
+                y -= line_height
+                line = line[len(chunk) :]
+                if y < 50:
+                    pdf.showPage()
+                    y = height - 40
+
+        pdf.save()
+        return buffer.getvalue()
+
+    @classmethod
+    def _render_invoice_text(cls, claim) -> str | None:
+        """Render linked invoice details as text content for required invoice attachment."""
+        invoice = getattr(claim, "invoice", None)
+        if not invoice:
+            return None
+
+        lines = [
+            "INVOICE SUMMARY",
+            f"Claim: {claim.claim_number}",
+            f"Invoice Number: {invoice.invoice_number or ''}",
+            f"Invoice Date: {invoice.invoice_date or ''}",
+            f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}",
+            "-" * 50,
+            "",
+        ]
+
+        items = list(invoice.items.all()) if hasattr(invoice, "items") else []
+        if items:
+            for item in items:
+                description = getattr(item, "description", "") or getattr(item, "service_name", "")
+                quantity = getattr(item, "quantity", "")
+                unit_price = getattr(item, "unit_price", "")
+                line_total = getattr(item, "line_total", "")
+                lines.append(
+                    f"- {description} | Qty: {quantity} | Unit: {unit_price} | Total: {line_total}"
+                )
+        else:
+            lines.append("No invoice line items found.")
+
+        total_amount = getattr(invoice, "total_amount", None)
+        if total_amount is not None:
+            lines.extend(["", f"Invoice Total: {total_amount}"])
+
+        return "\n".join(lines)
 
     @classmethod
     def _render_lab_results_text(cls, encounter) -> str | None:

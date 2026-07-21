@@ -46,10 +46,29 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { shaApi } from '@/lib/api/sha';
 import { formatCurrency } from '@/lib/utils/format';
 import type { Claim, ClaimStatus } from '@/lib/types/sha';
 import { format, parseISO } from 'date-fns';
+
+function extractShaErrorMessage(error: unknown): string {
+  const baseMessage = getApiErrorMessage(error);
+  const start = baseMessage.indexOf('{');
+  if (start >= 0) {
+    try {
+      const parsed = JSON.parse(baseMessage.slice(start)) as Record<string, unknown>;
+      const ediError = parsed['EDI ERROR'] as Record<string, unknown> | undefined;
+      const combo = ediError?.['Intervention Combination'];
+      if (typeof combo === 'string' && combo.trim()) {
+        return combo;
+      }
+    } catch {
+      // fall through to base message
+    }
+  }
+  return baseMessage;
+}
 
 // ============================================================================
 // Types
@@ -283,7 +302,7 @@ export function ClaimSubmissionButton({
       onSuccess?.(updatedClaim);
       setShowConfirm(false);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      const errorMessage = extractShaErrorMessage(err);
       setError(errorMessage);
       onError?.(err instanceof Error ? err : new Error(errorMessage));
     } finally {

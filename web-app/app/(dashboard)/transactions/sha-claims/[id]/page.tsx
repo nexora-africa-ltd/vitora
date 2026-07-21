@@ -9,7 +9,7 @@
 
 import React, { useCallback, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, RefreshCw, RotateCcw, Send } from 'lucide-react';
+import { Copy, Loader2, RefreshCw, RotateCcw, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -17,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { getApiErrorMessage } from '@/lib/api/client';
 
 import { useClaim, useSubmitClaim, useResubmitClaim } from '@/lib/hooks/use-sha';
 import { useClaimFlow } from '@/lib/hooks/use-claim-flow';
@@ -31,6 +32,24 @@ import { ClaimAdjudicationTab } from '@/components/billing/sha/ClaimAdjudication
 import { InterventionsList } from '@/components/billing/sha/InterventionsList';
 
 type TabId = 'overview' | 'workflow' | 'interventions' | 'adjudication';
+
+function extractShaInlineError(error: unknown): string {
+  const baseMessage = getApiErrorMessage(error);
+  const start = baseMessage.indexOf('{');
+  if (start >= 0) {
+    try {
+      const parsed = JSON.parse(baseMessage.slice(start)) as Record<string, unknown>;
+      const ediError = parsed['EDI ERROR'] as Record<string, unknown> | undefined;
+      const combo = ediError?.['Intervention Combination'];
+      if (typeof combo === 'string' && combo.trim()) {
+        return combo;
+      }
+    } catch {
+      // no-op; fall back to base message
+    }
+  }
+  return baseMessage;
+}
 
 function ClaimDetailSkeleton() {
   return (
@@ -63,6 +82,21 @@ export default function ClaimDetailPage() {
   const nextStep = useClaimNextStep(claim ?? null, flow ?? null);
 
   const [activeTab, setActiveTab] = React.useState<TabId>('overview');
+  const [actionError, setActionError] = React.useState<string | null>(null);
+
+  const handleCopyActionError = useCallback(async () => {
+    if (!actionError) return;
+    try {
+      await navigator.clipboard.writeText(actionError);
+      toast({ title: 'Copied', description: 'Error details copied to clipboard.' });
+    } catch {
+      toast({
+        title: 'Copy failed',
+        description: 'Could not copy error details. Please copy manually.',
+        variant: 'destructive',
+      });
+    }
+  }, [actionError, toast]);
 
   // Sync URL hash with active tab so direct links (and the next-step CTA) work.
   useEffect(() => {
@@ -81,28 +115,54 @@ export default function ClaimDetailPage() {
   }, []);
 
   const handleSubmit = useCallback(async () => {
+    setActionError(null);
     try {
-      await submitMutation.mutateAsync(claimId);
-      toast({ title: 'Claim submitted', description: 'Sent to SHA for processing.' });
+      const result = await submitMutation.mutateAsync(claimId);
+      const statusValue = String(result?.status || '').toLowerCase();
+      if (statusValue === 'draft' || statusValue === 'validated' || statusValue === 'failed') {
+        throw new Error(result?.message || 'Claim submission failed.');
+      }
+      toast({
+        title: result?.status === 'queued' ? 'Claim queued' : 'Claim submitted',
+        description:
+          result?.status === 'queued'
+            ? result?.message || 'Queued for submission when online.'
+            : 'Sent to SHA for processing.',
+      });
       refetch();
     } catch (e) {
+      const errorMessage = extractShaInlineError(e);
+      setActionError(errorMessage);
       toast({
         title: 'Submission failed',
-        description: e instanceof Error ? e.message : 'Could not submit claim.',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
   }, [claimId, submitMutation, refetch, toast]);
 
   const handleResubmit = useCallback(async () => {
+    setActionError(null);
     try {
-      await resubmitMutation.mutateAsync(claimId);
-      toast({ title: 'Resubmitted', description: 'Claim resubmitted to SHA.' });
+      const result = await resubmitMutation.mutateAsync(claimId);
+      const statusValue = String(result?.status || '').toLowerCase();
+      if (statusValue === 'draft' || statusValue === 'validated' || statusValue === 'failed') {
+        throw new Error(result?.message || 'Claim resubmission failed.');
+      }
+      toast({
+        title: result?.status === 'queued' ? 'Resubmission queued' : 'Resubmitted',
+        description:
+          result?.status === 'queued'
+            ? result?.message || 'Queued for submission when online.'
+            : 'Claim resubmitted to SHA.',
+      });
       refetch();
     } catch (e) {
+      const errorMessage = extractShaInlineError(e);
+      setActionError(errorMessage);
       toast({
         title: 'Resubmit failed',
-        description: e instanceof Error ? e.message : 'Could not resubmit claim.',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
@@ -222,6 +282,25 @@ export default function ClaimDetailPage() {
           onCtaClick={handleNextStepCta}
           isBusy={isMutating}
         />
+
+        {actionError && (
+          <Alert variant="destructive">
+            <AlertTitle>SHA action failed</AlertTitle>
+            <AlertDescription className="flex items-start justify-between gap-3">
+              <span className="flex-1">{actionError}</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCopyActionError}
+                className="h-6 px-2 text-[11px]"
+              >
+                <Copy className="h-3 w-3 mr-1" />
+                Copy
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Tabbed workspace */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">

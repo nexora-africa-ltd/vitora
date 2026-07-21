@@ -28,6 +28,7 @@ export type {
   Service,
   InvoiceItem,
   Invoice,
+  DHAInvoiceRow,
   PaymentPoint,
   Payment,
   ReceiptLineItem,
@@ -49,6 +50,7 @@ export type {
   PaginatedServiceCategories,
   PaginatedServices,
   PaginatedInvoices,
+  PaginatedDHAInvoices,
   PaginatedPayments,
   PaginatedPaymentPoints,
   PaginatedCreditNotes,
@@ -239,6 +241,7 @@ export interface InvoiceListParams {
   page?: number;
   page_size?: number;
   search?: string;
+  source?: 'local' | 'dha';
   status?: 'PROFORMA' | 'DRAFT' | 'PENDING' | 'PARTIAL' | 'PAID' | 'CANCELLED' | 'OVERDUE' | 'WRITTEN_OFF';
   status__in?: string;
   payment_type?: 'CASH' | 'MPESA' | 'INSURANCE' | 'CORPORATE' | 'MIXED';

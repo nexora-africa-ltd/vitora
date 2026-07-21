@@ -196,6 +196,24 @@ export const InvoiceSchema = z.object({
 
 export type InvoiceSchemaType = z.infer<typeof InvoiceSchema>;
 
+export const DHAInvoiceRowSchema = z.object({
+  id: z.number(),
+  source: z.literal('dha'),
+  invoice_number: z.string(),
+  claim_id: z.number(),
+  claim_number: z.string().optional().nullable(),
+  claim_status: z.string(),
+  patient_id: z.number().optional().nullable(),
+  patient_name: z.string().optional().nullable(),
+  patient_mrn: z.string().optional().nullable(),
+  invoice_date: z.string().nullable().optional(),
+  total_amount: z.string(),
+  local_invoice_id: z.number().nullable().optional(),
+  local_invoice_number: z.string().nullable().optional(),
+});
+
+export type DHAInvoiceRowSchemaType = z.infer<typeof DHAInvoiceRowSchema>;
+
 // =============================================================================
 // PAYMENT POINT SCHEMA
 // =============================================================================
@@ -550,6 +568,13 @@ export const PaginatedInvoiceSchema = z.object({
   results: z.array(InvoiceSchema),
 });
 
+export const PaginatedDHAInvoiceSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(DHAInvoiceRowSchema),
+});
+
 export const PaginatedPaymentSchema = z.object({
   count: z.number(),
   next: z.string().nullable(),
@@ -696,6 +721,7 @@ export type ServiceCategory = z.infer<typeof ServiceCategorySchema>;
 export type Service = z.infer<typeof ServiceSchema>;
 export type InvoiceItem = z.infer<typeof InvoiceItemSchema>;
 export type Invoice = z.infer<typeof InvoiceSchema>;
+export type DHAInvoiceRow = z.infer<typeof DHAInvoiceRowSchema>;
 export type PaymentPoint = z.infer<typeof PaymentPointSchema>;
 export type Payment = z.infer<typeof PaymentSchema>;
 export type ReceiptLineItem = z.infer<typeof ReceiptLineItemSchema>;
@@ -720,6 +746,7 @@ export type SHAServiceLevel = z.infer<typeof SHAServiceLevelSchema>;
 export type PaginatedServiceCategories = z.infer<typeof PaginatedServiceCategorySchema>;
 export type PaginatedServices = z.infer<typeof PaginatedServiceSchema>;
 export type PaginatedInvoices = z.infer<typeof PaginatedInvoiceSchema>;
+export type PaginatedDHAInvoices = z.infer<typeof PaginatedDHAInvoiceSchema>;
 export type PaginatedPayments = z.infer<typeof PaginatedPaymentSchema>;
 export type PaginatedPaymentPoints = z.infer<typeof PaginatedPaymentPointSchema>;
 export type PaginatedCreditNotes = z.infer<typeof PaginatedCreditNoteSchema>;

@@ -431,6 +431,7 @@ class AdmissionSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """Create an admission and auto-create the linked IPD encounter."""
         patient = validated_data["patient"]
+        opd_encounter = validated_data.get("opd_encounter")
         organization = validated_data.get("organization")
         facility = validated_data.get("facility")
 
@@ -457,7 +458,72 @@ class AdmissionSerializer(serializers.ModelSerializer):
             except ValueError:
                 pass
 
+        self._sync_ipd_encounter_diagnoses(admission, source_encounter=opd_encounter)
+
         return admission
+
+    def _sync_ipd_encounter_diagnoses(
+        self, admission: Admission, source_encounter: Encounter | None
+    ):
+        """Carry forward diagnoses into the newly created IPD encounter."""
+        from hmis.apps.encounters.models import Diagnosis, ICD10Code
+
+        ipd_encounter = admission.ipd_encounter
+
+        # 1) Carry forward all diagnoses from the source OPD encounter, if available.
+        if source_encounter is not None:
+            for source in source_encounter.diagnoses.all():
+                Diagnosis.objects.create(
+                    encounter=ipd_encounter,
+                    icd10_code=source.icd10_code,
+                    icd11_code=source.icd11_code,
+                    icd11_display=source.icd11_display,
+                    snomed_code=source.snomed_code,
+                    snomed_display=source.snomed_display,
+                    diagnosis_type=source.diagnosis_type,
+                    free_text_diagnosis=source.free_text_diagnosis,
+                    notes=source.notes,
+                    is_confirmed=source.is_confirmed,
+                    certainty=source.certainty,
+                    diagnosed_by=source.diagnosed_by,
+                )
+
+        # 2) Ensure admission diagnosis is reflected as IPD PRIMARY diagnosis.
+        # If a primary exists (copied from OPD), update it. Otherwise create one.
+        admission_code = (admission.admitting_diagnosis or "").strip()
+        admission_text = (admission.admitting_diagnosis_text or "").strip()
+        if not admission_code and not admission_text:
+            return
+
+        icd10_obj = None
+        if admission_code:
+            icd10_obj = ICD10Code.objects.filter(code=admission_code, is_active=True).first()
+
+        primary = Diagnosis.objects.filter(
+            encounter=ipd_encounter, diagnosis_type="PRIMARY"
+        ).first()
+        free_text = "" if icd10_obj else (admission_text or admission_code)
+
+        if primary is not None:
+            primary.icd10_code = icd10_obj
+            primary.free_text_diagnosis = free_text
+            primary.is_confirmed = True
+            primary.certainty = "confirmed"
+            primary.diagnosed_by = admission.attending_doctor or admission.admitting_officer
+            primary.notes = admission_text if admission_text else primary.notes
+            primary.save()
+            return
+
+        Diagnosis.objects.create(
+            encounter=ipd_encounter,
+            icd10_code=icd10_obj,
+            diagnosis_type="PRIMARY",
+            free_text_diagnosis=free_text,
+            notes=admission_text,
+            is_confirmed=True,
+            certainty="confirmed",
+            diagnosed_by=admission.attending_doctor or admission.admitting_officer,
+        )
 
 
 class DischargeDiagnosisSerializer(serializers.ModelSerializer):

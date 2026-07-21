@@ -9,6 +9,7 @@ import csv
 import hashlib
 import logging
 import os
+from collections.abc import Mapping
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
@@ -62,10 +63,82 @@ from hmis.apps.billing.sha_serializers import (
 )
 from hmis.apps.core.kms import get_kms_provider
 from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import SHAPermission, WriteRequiresRolePermission
 from hmis.apps.licensing.permissions import requires_feature
 
 logger = logging.getLogger(__name__)
+
+
+def _stringify_error(exc: Exception) -> str:
+    """Extract the most useful client-safe error message from an exception."""
+    if isinstance(exc, serializers.ValidationError):
+        detail = getattr(exc, "detail", None)
+        if isinstance(detail, list):
+            return "; ".join(str(item) for item in detail if item)
+        if isinstance(detail, Mapping):
+            parts: list[str] = []
+            for field, msgs in detail.items():
+                if isinstance(msgs, list):
+                    joined = ", ".join(str(m) for m in msgs if m)
+                else:
+                    joined = str(msgs)
+                if joined:
+                    parts.append(f"{field}: {joined}")
+            if parts:
+                return "; ".join(parts)
+        if detail:
+            return str(detail)
+
+    message_dict = getattr(exc, "message_dict", None)
+    if isinstance(message_dict, Mapping) and message_dict:
+        parts = []
+        for field, msgs in message_dict.items():
+            joined = ", ".join(str(m) for m in msgs if m) if isinstance(msgs, list) else str(msgs)
+            if joined:
+                parts.append(f"{field}: {joined}")
+        if parts:
+            return "; ".join(parts)
+
+    messages = getattr(exc, "messages", None)
+    if isinstance(messages, list) and messages:
+        return "; ".join(str(m) for m in messages if m)
+
+    raw = str(exc).strip()
+    if raw:
+        return raw
+    return f"{exc.__class__.__name__}"
+
+
+def _extract_dha_invoice_number(payload: object) -> str:
+    """Extract DHA invoice identifier from an ILM preview-style payload."""
+    if not isinstance(payload, Mapping):
+        return ""
+    invoices = payload.get("invoices")
+    if not isinstance(invoices, list):
+        return ""
+    for invoice in invoices:
+        if not isinstance(invoice, Mapping):
+            continue
+        candidate = str(
+            invoice.get("invoice_number")
+            or invoice.get("invoice_no")
+            or invoice.get("invoice")
+            or ""
+        ).strip()
+        if candidate:
+            return candidate
+    return ""
+
+
+def _extract_preview_claim_reference(payload: object) -> str:
+    """Extract DHA claim UUID/reference from an ILM preview-style payload."""
+    if not isinstance(payload, Mapping):
+        return ""
+    candidate = str(
+        payload.get("claim") or payload.get("claim_id") or payload.get("id") or ""
+    ).strip()
+    return candidate
 
 
 class SHAPagination(PageNumberPagination):
@@ -460,10 +533,10 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
             return Response(serializer.data)
 
-        except Exception:
+        except Exception as exc:
             logger.exception("SHA claim submission failed for claim %s", pk)
             return Response(
-                {"error": "Claim submission failed. Please try again."},
+                {"error": _stringify_error(exc)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -493,10 +566,10 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             serializer = SHAClaimSerializer(appeal_claim, context={"request": request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        except Exception:
+        except Exception as exc:
             logger.exception("SHA claim appeal failed for claim %s", pk)
             return Response(
-                {"error": "Appeal creation failed. Please try again."},
+                {"error": _stringify_error(exc)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -558,10 +631,10 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             )
             return Response(serializer.data)
 
-        except Exception:
+        except Exception as exc:
             logger.exception("SHA claim resubmission failed for claim %s", pk)
             return Response(
-                {"error": "Claim resubmission failed. Please try again."},
+                {"error": _stringify_error(exc)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -818,6 +891,78 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             {"error": str(exc) or "Internal error during DHA HIE call"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+    def _preview_payload_has_diagnoses(self, payload: object) -> bool:
+        if not isinstance(payload, Mapping):
+            return False
+        claim_diagnoses = payload.get("claim_diagnoses")
+        return isinstance(claim_diagnoses, list) and len(claim_diagnoses) > 0
+
+    def _collect_local_diagnosis_codes(self, claim: SHAClaim) -> list[str]:
+        codes: list[str] = []
+
+        primary_code = str(claim.primary_diagnosis_code or "").strip()
+        if primary_code:
+            codes.append(primary_code)
+
+        for secondary_code in claim.secondary_diagnosis_codes or []:
+            candidate = str(secondary_code or "").strip()
+            if candidate and candidate not in codes:
+                codes.append(candidate)
+
+        return codes
+
+    def _resolve_diagnosis_intervention_code(self, claim: SHAClaim) -> str:
+        intervention_code = (
+            claim.claim_interventions.filter(status="active")
+            .values_list("intervention_code", flat=True)
+            .first()
+        )
+        if intervention_code:
+            return str(intervention_code).strip()
+
+        tariff_code = (
+            claim.items.filter(tariff__isnull=False).values_list("tariff__code", flat=True).first()
+        )
+        if tariff_code:
+            return str(tariff_code).strip()
+
+        if claim.claim_type == SHAClaim.ClaimType.INPATIENT:
+            return "SHA-07-001"
+        return "SHA-01-001"
+
+    def _sync_claim_diagnoses_to_dha(self, claim: SHAClaim, *, user) -> int:
+        diagnosis_codes = self._collect_local_diagnosis_codes(claim)
+        if not diagnosis_codes:
+            return 0
+
+        intervention_code = self._resolve_diagnosis_intervention_code(claim)
+        if not intervention_code:
+            return 0
+
+        synced = 0
+        ilm_service = self._ilm_service(facility=claim.facility)
+        for diagnosis_code in diagnosis_codes:
+            try:
+                result = ilm_service.add_diagnosis(
+                    claim,
+                    icd_code=diagnosis_code,
+                    intervention_code=intervention_code,
+                    user=user,
+                )
+            except Exception as exc:  # noqa: BLE001 - best effort before preview
+                logger.warning(
+                    "Failed to sync diagnosis %s to DHA for claim %s: %s",
+                    diagnosis_code,
+                    claim.id,
+                    _stringify_error(exc),
+                )
+                continue
+
+            if result.status_code < 400:
+                synced += 1
+
+        return synced
 
     @action(detail=True, methods=["post"], url_path="ilm/start-visit")
     def ilm_start_visit(self, request, pk=None):
@@ -1181,16 +1326,44 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="ilm/preview")
     def ilm_preview(self, request, pk=None):
         claim = self.get_object()
+        ilm_service = self._ilm_service(facility=claim.facility)
         try:
-            result = self._ilm_service(facility=claim.facility).preview(claim, user=request.user)
+            result = ilm_service.preview(claim, user=request.user)
         except Exception as exc:
             return self._ilm_handle_error(exc)
+
+        if result.status_code < 400 and not self._preview_payload_has_diagnoses(result.payload):
+            synced_count = self._sync_claim_diagnoses_to_dha(claim, user=request.user)
+            if synced_count:
+                try:
+                    refreshed_result = ilm_service.preview(claim, user=request.user)
+                    if refreshed_result.status_code < 400:
+                        result = refreshed_result
+                except Exception as exc:  # noqa: BLE001 - keep first preview result
+                    logger.warning(
+                        "Failed to re-preview claim %s after diagnosis sync: %s",
+                        claim.id,
+                        _stringify_error(exc),
+                    )
+
         # Stamp previewed_at on success (DHA UAT: preview required before submit)
-        if result.response and result.response.ok:
+        if result.response and result.status_code < 400:
             from django.utils import timezone as tz
 
             claim.previewed_at = tz.now()
-            claim.save(update_fields=["previewed_at", "updated_at"])
+            dha_invoice_number = _extract_dha_invoice_number(result.payload)
+            preview_claim_reference = _extract_preview_claim_reference(result.payload)
+            if dha_invoice_number:
+                claim.dha_invoice_number = dha_invoice_number
+            if preview_claim_reference:
+                claim.sha_claim_reference = preview_claim_reference
+
+            update_fields = ["previewed_at", "updated_at"]
+            if dha_invoice_number:
+                update_fields.append("dha_invoice_number")
+            if preview_claim_reference:
+                update_fields.append("sha_claim_reference")
+            claim.save(update_fields=update_fields)
         return self._ilm_response(result)
 
     @action(detail=True, methods=["post"], url_path="ilm/preview-payer")
@@ -1205,16 +1378,220 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
 
+    @action(detail=True, methods=["post"], url_path="ilm/apply-preview-lines")
+    def ilm_apply_preview_lines(self, request, pk=None):
+        """Backfill local claim items from an ILM preview payload (manual, auditable)."""
+        from django.db import transaction
+
+        claim = self.get_object()
+        payload = request.data.get("payload")
+        replace_existing = bool(request.data.get("replace_existing", True))
+
+        if not isinstance(payload, dict):
+            return Response({"error": "payload object is required"}, status=400)
+
+        invoices = payload.get("invoices")
+        if not isinstance(invoices, list) or not invoices:
+            return Response({"error": "payload.invoices must be a non-empty array"}, status=400)
+
+        parsed_lines = []
+        parse_errors = []
+        unmatched_tariff_codes = set()
+        detected_invoice_number = ""
+        preview_claim_reference = _extract_preview_claim_reference(payload)
+
+        for invoice in invoices:
+            if not isinstance(invoice, dict):
+                continue
+            if not detected_invoice_number:
+                detected_invoice_number = str(
+                    invoice.get("invoice_number")
+                    or invoice.get("invoice_no")
+                    or invoice.get("invoice")
+                    or ""
+                ).strip()
+            lines = invoice.get("lines")
+            if not isinstance(lines, list):
+                continue
+
+            for raw_line in lines:
+                if not isinstance(raw_line, dict):
+                    continue
+
+                tariff_code = str(
+                    raw_line.get("item_code") or raw_line.get("intervention_code") or ""
+                ).strip()
+                description = str(
+                    raw_line.get("item_name") or tariff_code or "Preview line"
+                ).strip()
+
+                quantity_raw = raw_line.get("quantity", 1)
+                unit_price_raw = raw_line.get("unit_price")
+                if unit_price_raw in (None, ""):
+                    unit_price_raw = raw_line.get("line_net_amount") or raw_line.get(
+                        "line_total_amount"
+                    )
+
+                try:
+                    quantity = Decimal(str(quantity_raw or "1"))
+                    unit_price = Decimal(str(unit_price_raw or "0"))
+                except (InvalidOperation, TypeError, ValueError):
+                    parse_errors.append(f"Invalid numeric values for line '{description}'")
+                    continue
+
+                if quantity <= 0:
+                    parse_errors.append(f"Quantity must be > 0 for line '{description}'")
+                    continue
+                if unit_price <= 0:
+                    parse_errors.append(f"Unit price must be > 0 for line '{description}'")
+                    continue
+
+                tariff = None
+                if tariff_code:
+                    tariff = SHATariff.objects.filter(code=tariff_code, is_active=True).first()
+                    if tariff is None:
+                        unmatched_tariff_codes.add(tariff_code)
+
+                parsed_lines.append(
+                    {
+                        "tariff": tariff,
+                        "tariff_code": tariff_code,
+                        "description": description,
+                        "quantity": quantity,
+                        "unit_price": unit_price,
+                    }
+                )
+
+        if not parsed_lines:
+            return Response(
+                {
+                    "error": "No valid preview lines found to apply.",
+                    "parse_errors": parse_errors,
+                },
+                status=400,
+            )
+
+        previous_count = claim.items.count()
+        created_count = 0
+        with transaction.atomic():
+            if replace_existing:
+                claim.items.all().delete()
+
+            for line in parsed_lines:
+                SHAClaimItem.objects.create(
+                    claim=claim,
+                    tariff=line["tariff"],
+                    description=line["description"],
+                    service_date=claim.service_date,
+                    quantity=line["quantity"],
+                    unit_price=line["unit_price"],
+                )
+                created_count += 1
+
+            if detected_invoice_number:
+                claim.dha_invoice_number = detected_invoice_number
+            if preview_claim_reference:
+                claim.sha_claim_reference = preview_claim_reference
+
+            update_fields = ["updated_at"]
+            if detected_invoice_number:
+                update_fields.append("dha_invoice_number")
+            if preview_claim_reference:
+                update_fields.append("sha_claim_reference")
+            claim.save(update_fields=update_fields)
+
+            claim.calculate_claimed_amount()
+
+        AuditLog.log(
+            action="sha_claim_apply_preview_lines",
+            user=request.user,
+            resource_type="SHAClaim",
+            resource_id=claim.id,
+            details={
+                "replace_existing": replace_existing,
+                "previous_item_count": previous_count,
+                "created_item_count": created_count,
+                "incoming_line_count": len(parsed_lines),
+                "detected_invoice_number": detected_invoice_number,
+                "invoice_linked": False,
+                "unmatched_tariff_codes": sorted(unmatched_tariff_codes),
+                "parse_errors": parse_errors,
+            },
+        )
+
+        return Response(
+            {
+                "success": True,
+                "message": "Preview lines applied to local claim items.",
+                "replace_existing": replace_existing,
+                "previous_item_count": previous_count,
+                "created_item_count": created_count,
+                "detected_invoice_number": detected_invoice_number,
+                "invoice_linked": False,
+                "unmatched_tariff_codes": sorted(unmatched_tariff_codes),
+                "parse_errors": parse_errors,
+                "claimed_amount": str(claim.claimed_amount),
+            }
+        )
+
     @action(detail=True, methods=["post"], url_path="ilm/submit")
     def ilm_submit(self, request, pk=None):
+        from hmis.apps.billing.sha_automation import SHAClaimAutomationService
+
         claim = self.get_object()
         d = request.data
-        invoice_number = d.get("invoice_number")
+        invoice_number = d.get("invoice_number") or claim.dha_invoice_number
         if not invoice_number:
-            return Response({"error": "invoice_number required"}, status=400)
+            return Response(
+                {
+                    "error": (
+                        "DHA invoice number is required. Run claim preview first "
+                        "to fetch the DHA invoice number."
+                    )
+                },
+                status=400,
+            )
+
+        invoice_number = str(invoice_number).strip()
+        if invoice_number and claim.dha_invoice_number != invoice_number:
+            claim.dha_invoice_number = invoice_number
+            claim.save(update_fields=["dha_invoice_number", "updated_at"])
+
+        # Ensure claim items exist from invoice when available.
+        if not claim.items.exists() and claim.invoice_id and claim.invoice:
+            for invoice_item in claim.invoice.items.all():
+                SHAClaimItem.create_from_invoice_item(claim, invoice_item)
+            claim.calculate_claimed_amount()
+
+        # Best-effort auto-attach of core digital documents before validation.
+        # This includes clinical notes and invoice summary attachment generation.
+        SHAClaimAutomationService.auto_attach_documents(claim.id)
+
+        # Best-effort auto-preview if this claim has never been previewed.
+        # DHA UAT requires preview before submit; doing it here removes a common
+        # operator failure mode while keeping explicit Preview available in UI.
+        preview_error = None
+        if not claim.previewed_at:
+            try:
+                preview_result = self._ilm_service(facility=claim.facility).preview(
+                    claim,
+                    user=request.user,
+                )
+                if preview_result.status_code < 400:
+                    from django.utils import timezone as tz
+
+                    claim.previewed_at = tz.now()
+                    claim.save(update_fields=["previewed_at", "updated_at"])
+                else:
+                    preview_error = str(preview_result.payload) if preview_result.payload else None
+            except Exception as exc:
+                preview_error = _stringify_error(exc)
 
         # Local pre-flight validation (DHA UAT: catch errors before DHA round-trip)
         is_valid, errors = claim.validate_for_submission()
+        if preview_error:
+            errors.append(f"Auto-preview failed: {preview_error}")
+            is_valid = False
         if not is_valid:
             return Response(
                 {
@@ -1755,10 +2132,10 @@ class TerminologySearchView(APIView):
                 {"error": str(e), "status_code": e.status_code},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except Exception:
+        except Exception as exc:
             logger.exception("ICD terminology search failed")
             return Response(
-                {"error": "Terminology search failed. Please try again."},
+                {"error": _stringify_error(exc)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -2061,10 +2438,10 @@ class ClientRegistryView(APIView):
             return Response(
                 {"error": str(e), "found": False}, status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
-        except Exception:
+        except Exception as exc:
             logger.exception("Client Registry lookup failed")
             return Response(
-                {"error": "Client Registry lookup failed. Please try again.", "found": False},
+                {"error": _stringify_error(exc), "found": False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -2189,10 +2566,10 @@ class ClientRegistryView(APIView):
 
         except ClientRegistryError as e:
             return Response({"error": str(e), "success": False}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception:
+        except Exception as exc:
             logger.exception("Client Registry registration failed")
             return Response(
-                {"error": "Client registration failed. Please try again.", "success": False},
+                {"error": _stringify_error(exc), "success": False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -2286,10 +2663,10 @@ class ClientRegistryView(APIView):
             return Response({"error": str(e), "success": False}, status=status.HTTP_404_NOT_FOUND)
         except ClientRegistryError as e:
             return Response({"error": str(e), "success": False}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception:
+        except Exception as exc:
             logger.exception("Client Registry update failed")
             return Response(
-                {"error": "Client update failed. Please try again.", "success": False},
+                {"error": _stringify_error(exc), "success": False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -2481,10 +2858,10 @@ class FacilitySearchView(APIView):
             return Response(
                 {"error": str(e), "found": False}, status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
-        except Exception:
+        except Exception as exc:
             logger.exception("Facility search failed")
             return Response(
-                {"error": "Facility search failed. Please try again.", "found": False},
+                {"error": _stringify_error(exc), "found": False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -2840,10 +3217,10 @@ class EligibilityCheckView(APIView):
                 }
             )
 
-        except Exception:
+        except Exception as exc:
             logger.exception("SHA eligibility check failed")
             return Response(
-                {"error": "Eligibility check failed. Please try again.", "is_eligible": False},
+                {"error": _stringify_error(exc), "is_eligible": False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -2957,12 +3334,12 @@ class DirectEligibilityCheckView(APIView):
 
             return Response(result)
 
-        except Exception:
+        except Exception as exc:
             logger.exception("Direct SHA eligibility check failed")
             return Response(
                 {
                     "is_eligible": False,
-                    "error": "Eligibility check failed. Please try again.",
+                    "error": _stringify_error(exc),
                     "sha_number": None,
                     "full_name": None,
                     "coverage_end_date": None,

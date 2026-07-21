@@ -47,6 +47,7 @@ import type {
   ServiceUtilization,
   PaymentMethodAnalysis,
   PaginatedInvoices,
+  PaginatedDHAInvoices,
   PaginatedPayments,
   PaginatedServices,
   PaginatedServiceCategories,
@@ -181,6 +182,16 @@ export function useInvoices(params?: InvoiceListParams) {
     queryKey: billingKeys.invoicesList(params),
     queryFn: () => billingApi.getInvoices(params),
     forceApi: true,
+  });
+}
+
+/**
+ * Fetch DHA invoice references derived from SHA claims.
+ */
+export function useDhaInvoices(params?: InvoiceListParams) {
+  return useQuery<PaginatedDHAInvoices>({
+    queryKey: [...billingKeys.invoices(), 'dha', params],
+    queryFn: () => billingApi.getDhaInvoices(params),
   });
 }
 

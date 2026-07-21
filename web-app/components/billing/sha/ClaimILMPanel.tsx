@@ -55,8 +55,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { shaApi } from '@/lib/api/sha';
+import type { IlmApplyPreviewLinesResponse } from '@/lib/api/sha';
 import { useAuth } from '@/lib/auth/context';
 import { useFacility } from '@/lib/context/facility-context';
 import { useQuery } from '@tanstack/react-query';
@@ -78,6 +80,7 @@ import {
   type InterventionOption,
 } from '@/lib/hooks/use-benefit-interventions';
 import { format, parseISO } from 'date-fns';
+import { ClaimPreviewPanel } from './ClaimPreviewPanel';
 
 // =============================================================================
 // Constants
@@ -121,9 +124,20 @@ type ActionKey =
   | 'addVirtualClaimLine'
   | 'addDiagnosis'
   | 'preview'
+  | 'applyPreviewLines'
   | 'sendDischargeOtp'
   | 'submit'
   | 'close';
+
+type ChecklistMode = 'auto' | 'manual';
+
+interface PreSubmitChecklistItem {
+  id: string;
+  label: string;
+  mode: ChecklistMode;
+  complete: boolean;
+  detail?: string;
+}
 
 // =============================================================================
 // Helpers
@@ -229,6 +243,68 @@ function formatErr(e: unknown): string {
   return err?.message ?? 'Request failed';
 }
 
+function extractInterventionCombinationError(e: unknown): string | null {
+  const data = (e as { response?: { data?: { error?: unknown; message?: unknown } } })?.response?.data;
+  const rawError =
+    typeof data?.error === 'string'
+      ? data.error
+      : typeof data?.message === 'string'
+        ? data.message
+        : '';
+
+  if (!rawError) return null;
+
+  const tryExtractFromObject = (value: unknown): string | null => {
+    if (!value || typeof value !== 'object') return null;
+    const edi = (value as Record<string, unknown>)['EDI ERROR'];
+    if (!edi || typeof edi !== 'object') return null;
+    const combo = (edi as Record<string, unknown>)['Intervention Combination'];
+    return typeof combo === 'string' ? combo : null;
+  };
+
+  const trimmed = rawError.trim();
+
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    const fromDirectJson = tryExtractFromObject(parsed);
+    if (fromDirectJson) return fromDirectJson;
+  } catch {
+    // ignore; rawError may be plain text with embedded JSON payload
+  }
+
+  const embeddedJsonStart = trimmed.indexOf('{');
+  if (embeddedJsonStart >= 0) {
+    const embeddedJson = trimmed.slice(embeddedJsonStart);
+    try {
+      const parsed = JSON.parse(embeddedJson) as unknown;
+      const fromEmbeddedJson = tryExtractFromObject(parsed);
+      if (fromEmbeddedJson) return fromEmbeddedJson;
+    } catch {
+      // ignore; fall back to null
+    }
+  }
+
+  return null;
+}
+
+function extractPreviewInvoiceNumber(payload: unknown): string {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return '';
+  const invoices = (payload as { invoices?: unknown }).invoices;
+  if (!Array.isArray(invoices)) return '';
+  for (const invoice of invoices) {
+    if (!invoice || typeof invoice !== 'object' || Array.isArray(invoice)) continue;
+    const invoiceRecord = invoice as Record<string, unknown>;
+    const value =
+      (invoiceRecord.invoice_number as string | undefined) ||
+      (invoiceRecord.invoice_no as string | undefined) ||
+      (invoiceRecord.invoice as string | undefined) ||
+      '';
+    const normalized = String(value).trim();
+    if (normalized) return normalized;
+  }
+  return '';
+}
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -249,6 +325,12 @@ interface ClaimILMPanelProps {
   consentInterventionCode?: string;
   /** Called after any action finishes so the parent can refetch the claim. */
   onChange?: () => void;
+  /** Emits context parsed from preview payload for sibling workflow panels. */
+  onPreviewContext?: (ctx: {
+    authorizationCode?: string;
+    memberNumber?: string;
+    dhaInvoiceNumber?: string;
+  }) => void;
 }
 
 // =============================================================================
@@ -262,6 +344,7 @@ export function ClaimILMPanel({
   consentCredential,
   consentInterventionCode = '',
   onChange,
+  onPreviewContext,
 }: ClaimILMPanelProps) {
   const { user } = useAuth();
   const { facilityDetail } = useFacility();
@@ -289,7 +372,9 @@ export function ClaimILMPanel({
     enabled: !!patientCrId,
   });
 
-  const invoiceNumber = claim.invoice_number ?? '';
+  const [previewDhaInvoiceNumber, setPreviewDhaInvoiceNumber] = useState('');
+  const localInvoiceNumber = (claim.invoice_number || '').trim();
+  const dhaInvoiceNumber = (claim.dha_invoice_number || previewDhaInvoiceNumber || '').trim();
   const activeInterventions = useMemo(
     () => (claim.claim_interventions ?? []).filter((i) => i.status === 'active'),
     [claim.claim_interventions],
@@ -340,6 +425,108 @@ export function ClaimILMPanel({
   const [busy, setBusy] = useState<ActionKey | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<IlmCallResult | null>(null);
+  const [previewResult, setPreviewResult] = useState<IlmCallResult | null>(null);
+  const [applyPreviewResult, setApplyPreviewResult] = useState<IlmApplyPreviewLinesResponse | null>(null);
+  const [replacePreviewLines, setReplacePreviewLines] = useState(true);
+
+  const { data: latestConsentToken } = useQuery({
+    queryKey: ['sha-latest-consent-for-workflow', claim.sha_member, claim.updated_at],
+    enabled: typeof claim.sha_member === 'number' && !!flow?.requiresConsent,
+    queryFn: async () => {
+      try {
+        if (typeof claim.sha_member !== 'number') return null;
+        return await shaApi.getLatestConsent(claim.sha_member);
+      } catch (e: unknown) {
+        const statusCode = (e as { response?: { status?: number } })?.response?.status;
+        if (statusCode === 404) return null;
+        throw e;
+      }
+    },
+    staleTime: 30_000,
+  });
+
+  const tokenStatus = useMemo(() => {
+    if (!requiresConsent) {
+      return {
+        label: 'Token not required',
+        detail: 'Emergency flow',
+        badgeClass: 'border-slate-300 text-slate-700',
+      };
+    }
+
+    const tokenValue = latestConsentToken?.consent_token || consentToken || '';
+    const expiresAt = latestConsentToken?.expires_at || null;
+    const now = Date.now();
+
+    if (visitStarted && tokenValue) {
+      const suffix = expiresAt ? ` · expires ${format(parseISO(expiresAt), 'dd MMM HH:mm')}` : '';
+      return {
+        label: 'Token active',
+        detail: `${tokenValue.slice(0, 10)}${tokenValue.length > 10 ? '...' : ''}${suffix}`,
+        badgeClass: 'border-emerald-300 text-emerald-700',
+      };
+    }
+
+    if (visitStarted && !tokenValue) {
+      return {
+        label: 'Visit active',
+        detail: 'Session is open at DHA',
+        badgeClass: 'border-emerald-300 text-emerald-700',
+      };
+    }
+
+    if (!tokenValue) {
+      return {
+        label: 'No token',
+        detail: 'Run consent to generate one',
+        badgeClass: 'border-amber-300 text-amber-700',
+      };
+    }
+
+    if (!expiresAt) {
+      return {
+        label: 'Token present',
+        detail: `${tokenValue.slice(0, 10)}${tokenValue.length > 10 ? '...' : ''}`,
+        badgeClass: 'border-emerald-300 text-emerald-700',
+      };
+    }
+
+    let expiresTs = 0;
+    try {
+      expiresTs = parseISO(expiresAt).getTime();
+    } catch {
+      expiresTs = 0;
+    }
+
+    if (expiresTs > 0 && expiresTs <= now) {
+      return {
+        label: 'Token expired',
+        detail: `Expired ${format(parseISO(expiresAt), 'dd MMM HH:mm')}`,
+        badgeClass: 'border-destructive text-destructive',
+      };
+    }
+
+    const minutesLeft = expiresTs > 0 ? Math.floor((expiresTs - now) / 60_000) : null;
+    if (minutesLeft !== null && minutesLeft <= 10) {
+      return {
+        label: 'Token expiring',
+        detail: `${minutesLeft} min left · ${format(parseISO(expiresAt), 'dd MMM HH:mm')}`,
+        badgeClass: 'border-amber-300 text-amber-700',
+      };
+    }
+
+    return {
+      label: 'Token valid',
+      detail: `Expires ${format(parseISO(expiresAt), 'dd MMM HH:mm')}`,
+      badgeClass: 'border-emerald-300 text-emerald-700',
+    };
+  }, [
+    latestConsentToken?.consent_token,
+    latestConsentToken?.expires_at,
+    consentToken,
+    requiresConsent,
+    visitStarted,
+  ]);
 
   // OTP for start_visit — auto-filled from consent credential
   const [startOtp, setStartOtp] = useState(consentCredential?.otp ?? '');
@@ -434,9 +621,99 @@ export function ClaimILMPanel({
   const [addInterventionOpen, setAddInterventionOpen] = useState(false);
   const [addDialogPkgCode, setAddDialogPkgCode] = useState('');
   const [newInterventionCode, setNewInterventionCode] = useState('');
+  const [addInterventionInlineError, setAddInterventionInlineError] = useState<string | null>(null);
   const [addDiagnosisOpen, setAddDiagnosisOpen] = useState(false);
   const [newIcdCode, setNewIcdCode] = useState('');
   const [diagnosisAnchorCode, setDiagnosisAnchorCode] = useState('');
+
+  const { data: preSubmitValidation, isFetching: preSubmitValidationLoading } = useQuery({
+    queryKey: ['sha-claim-submit-validation', claimId, claim.updated_at],
+    queryFn: () => shaApi.validateClaimSubmission(claimId),
+    enabled: !!claimId && visitStarted,
+    staleTime: 0,
+  });
+
+  const preSubmitChecklist = useMemo<PreSubmitChecklistItem[]>(() => {
+    const preSubmitErrors = preSubmitValidation?.errors ?? [];
+    const hasError = (matcher: (error: string) => boolean) => preSubmitErrors.some(matcher);
+
+    return [
+      {
+        id: 'items',
+        label: 'Claim has billable items',
+        mode: 'auto',
+        complete: !hasError((error) => /at least one item|missing SHA tariff code/i.test(error)),
+      },
+      {
+        id: 'attachments',
+        label: 'Required core attachments (clinical notes + invoice)',
+        mode: 'auto',
+        complete: !hasError((error) => /Missing required attachment:/i.test(error)),
+      },
+      {
+        id: 'amount',
+        label: 'Claimed amount is greater than zero',
+        mode: 'auto',
+        complete: !hasError((error) => /Claimed amount must be greater than zero/i.test(error)),
+      },
+      {
+        id: 'preview',
+        label: 'Claim preview completed',
+        mode: 'auto',
+        complete: !hasError((error) => /Claim must be previewed before submission/i.test(error)),
+      },
+      {
+        id: 'docs-by-intervention',
+        label: 'Intervention-specific required documents uploaded',
+        mode: 'manual',
+        complete: !hasError((error) => /Missing required document '/i.test(error)),
+      },
+      {
+        id: 'consent',
+        label: 'Consent token / visit authorization valid',
+        mode: 'manual',
+        complete: !hasError((error) => /validated consent token|start visit flow/i.test(error)),
+      },
+      {
+        id: 'preauth',
+        label: 'All required pre-authorizations approved',
+        mode: 'manual',
+        complete: !hasError((error) => /pre-authorization|preauth|must be approved/i.test(error)),
+      },
+    ];
+  }, [preSubmitValidation?.errors]);
+
+  const [autoFixedChecklistIds, setAutoFixedChecklistIds] = useState<string[]>([]);
+  const previousChecklistStateRef = useRef<Record<string, boolean> | null>(null);
+  useEffect(() => {
+    if (!visitStarted || preSubmitChecklist.length === 0) return;
+    const autoFixableIds = new Set(['items', 'attachments', 'amount', 'preview']);
+    const currentMap = Object.fromEntries(preSubmitChecklist.map((item) => [item.id, item.complete]));
+    const previousMap = previousChecklistStateRef.current;
+
+    if (previousMap) {
+      const newlyAutoFixed = preSubmitChecklist
+        .filter((item) => autoFixableIds.has(item.id))
+        .filter((item) => previousMap[item.id] === false && item.complete)
+        .map((item) => item.id);
+
+      if (newlyAutoFixed.length > 0) {
+        setAutoFixedChecklistIds((prev) => Array.from(new Set([...prev, ...newlyAutoFixed])));
+      }
+    }
+
+    previousChecklistStateRef.current = currentMap;
+  }, [preSubmitChecklist, visitStarted]);
+
+  const allChecklistItemsComplete = preSubmitChecklist.every((item) => item.complete);
+  const preSubmitChecklistBlocking = visitStarted && (
+    preSubmitValidationLoading || (preSubmitValidation ? !allChecklistItemsComplete : false)
+  );
+
+  const addInterventionValidation = useMemo(
+    () => validateInterventionCombination(interventionCodes, newInterventionCode),
+    [interventionCodes, newInterventionCode],
+  );
 
   // ---- Capitation provider validation (PHC flow only) ----
   const [capitationWarning, setCapitationWarning] = useState<CapitationValidationResult | null>(
@@ -602,7 +879,52 @@ export function ClaimILMPanel({
   openVisitRef.current = openVisit;
 
   async function preview() {
-    await run('preview', () => shaApi.ilmPreview(claimId));
+    const result = await run('preview', () => shaApi.ilmPreview(claimId));
+    if (result) {
+      setPreviewResult(result);
+      setPreviewDhaInvoiceNumber(extractPreviewInvoiceNumber(result.payload));
+      if (result.payload && typeof result.payload === 'object' && !Array.isArray(result.payload)) {
+        const payload = result.payload as Record<string, unknown>;
+        const authorizationCode = String(payload.authorization_code || '').trim();
+        const memberNumber = String(payload.member_number || '').trim();
+        const dhaInvoiceNumber = extractPreviewInvoiceNumber(result.payload);
+        onPreviewContext?.({
+          authorizationCode: authorizationCode || undefined,
+          memberNumber: memberNumber || undefined,
+          dhaInvoiceNumber: dhaInvoiceNumber || undefined,
+        });
+      }
+      setApplyPreviewResult(null);
+    }
+  }
+
+  async function applyPreviewLines() {
+    const payload = previewResult?.payload;
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      setError('Run preview first before applying preview lines.');
+      return;
+    }
+
+    setBusy('applyPreviewLines');
+    setError(null);
+    setApplyPreviewResult(null);
+    try {
+      const result = await shaApi.ilmApplyPreviewLines(
+        claimId,
+        payload as Record<string, unknown>,
+        replacePreviewLines,
+      );
+      setApplyPreviewResult(result);
+      if (!claim.dha_invoice_number && result.detected_invoice_number) {
+        setPreviewDhaInvoiceNumber(result.detected_invoice_number);
+      }
+      toast.success(result.message || 'Preview lines applied to local claim items.');
+      onChange?.();
+    } catch (e: unknown) {
+      setError(formatErr(e));
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function requestFreshDischargeOtp() {
@@ -624,10 +946,10 @@ export function ClaimILMPanel({
   }
 
   async function submitOutpatient() {
-    if (!invoiceNumber || (!dischargeOtp && !startAuthGuid)) return;
+    if (!dhaInvoiceNumber || (!dischargeOtp && !startAuthGuid)) return;
     await run('submit', () =>
       shaApi.ilmSubmit(claimId, {
-        invoice_number: invoiceNumber,
+        invoice_number: dhaInvoiceNumber,
         ...(dischargeOtp ? { otp: dischargeOtp } : { discharge_auth_guid: startAuthGuid }),
         discharge_reason: dischargeReason,
         ...(dischargeNotes ? { notes: dischargeNotes } : {}),
@@ -638,8 +960,17 @@ export function ClaimILMPanel({
 
   async function addIntervention() {
     if (!newInterventionCode) return;
+    setAddInterventionInlineError(null);
     if (interventionCodes.includes(newInterventionCode)) {
-      setError(`Intervention ${newInterventionCode} is already on the claim.`);
+      const duplicateMessage = `Intervention ${newInterventionCode} is already on the claim.`;
+      setError(duplicateMessage);
+      setAddInterventionInlineError(duplicateMessage);
+      return;
+    }
+    if (!addInterventionValidation.valid) {
+      const reason = addInterventionValidation.reason ?? 'This intervention combination is not allowed.';
+      setError(reason);
+      setAddInterventionInlineError(reason);
       return;
     }
     const fn = useVirtualLine
@@ -648,9 +979,17 @@ export function ClaimILMPanel({
             intervention_code: newInterventionCode,
           })
       : () => shaApi.ilmAddIntervention(claimId, { intervention_code: newInterventionCode });
-    await run(useVirtualLine ? 'addVirtualClaimLine' : 'addIntervention', fn);
-    setAddInterventionOpen(false);
-    setNewInterventionCode('');
+    try {
+      await run(useVirtualLine ? 'addVirtualClaimLine' : 'addIntervention', fn);
+      setAddInterventionOpen(false);
+      setNewInterventionCode('');
+      setAddInterventionInlineError(null);
+    } catch (e: unknown) {
+      const inlineMessage = extractInterventionCombinationError(e);
+      if (inlineMessage) {
+        setAddInterventionInlineError(inlineMessage);
+      }
+    }
   }
 
   async function addDiagnosis() {
@@ -753,6 +1092,12 @@ export function ClaimILMPanel({
             {flow && (
               <p className="text-xs text-muted-foreground mt-0.5">{flow.description}</p>
             )}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className={`text-[10px] ${tokenStatus.badgeClass}`}>
+                Token: {tokenStatus.label}
+              </Badge>
+              <span className="text-[11px] text-muted-foreground">{tokenStatus.detail}</span>
+            </div>
           </div>
           <VisitStatusPill visitStarted={visitStarted} startedAt={claim.dha_visit_started_at} />
         </div>
@@ -1115,6 +1460,12 @@ export function ClaimILMPanel({
           <section className="space-y-3">
             <StepHeader index={3} title="Lifecycle" />
 
+            <PreSubmitChecklistBox
+              loading={preSubmitValidationLoading}
+              items={preSubmitChecklist}
+              autoFixedIds={autoFixedChecklistIds}
+            />
+
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={preview} disabled={busy !== null}>
                 {busy === 'preview' ? (
@@ -1124,7 +1475,77 @@ export function ClaimILMPanel({
                 )}
                 Preview claim
               </Button>
+              <div className="flex items-center gap-2 rounded-md border px-2 py-1">
+                <Label htmlFor="replace-preview-lines" className="text-xs text-muted-foreground">
+                  Replace existing items
+                </Label>
+                <Switch
+                  id="replace-preview-lines"
+                  checked={replacePreviewLines}
+                  onCheckedChange={setReplacePreviewLines}
+                  disabled={busy !== null}
+                />
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={applyPreviewLines}
+                disabled={busy !== null || !previewResult?.payload}
+              >
+                {busy === 'applyPreviewLines' ? (
+                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="mr-2 h-3 w-3" />
+                )}
+                Apply preview lines locally
+              </Button>
             </div>
+
+            <div className="grid gap-2 text-xs sm:grid-cols-2">
+              <div className="rounded border p-2">
+                <p className="text-muted-foreground">DHA invoice</p>
+                <p className="font-medium">{dhaInvoiceNumber || 'Not available yet (run preview)'}</p>
+              </div>
+              <div className="rounded border p-2">
+                <p className="text-muted-foreground">Local invoice</p>
+                <p className="font-medium">{localInvoiceNumber || 'Not linked'}</p>
+              </div>
+            </div>
+
+            {previewResult?.payload && (
+              <ClaimPreviewPanel payload={previewResult.payload} />
+            )}
+
+            {applyPreviewResult?.success && (
+              <Alert>
+                <AlertTitle className="text-sm">Preview lines applied</AlertTitle>
+                <AlertDescription className="text-xs space-y-1">
+                  <p>
+                    Created {applyPreviewResult.created_item_count} item(s)
+                    {applyPreviewResult.replace_existing
+                      ? ` after replacing ${applyPreviewResult.previous_item_count} existing item(s)`
+                      : ''}
+                    . Claimed amount is now KES {applyPreviewResult.claimed_amount}.
+                  </p>
+                  {applyPreviewResult.detected_invoice_number && (
+                    <p>
+                      Preview invoice: {applyPreviewResult.detected_invoice_number}
+                      {applyPreviewResult.invoice_linked ? ' (linked to local invoice)' : ''}.
+                    </p>
+                  )}
+                  {applyPreviewResult.unmatched_tariff_codes.length > 0 && (
+                    <p>
+                      Unmatched tariff codes: {applyPreviewResult.unmatched_tariff_codes.join(', ')}
+                    </p>
+                  )}
+                  {applyPreviewResult.parse_errors.length > 0 && (
+                    <p>
+                      Skipped lines: {applyPreviewResult.parse_errors.join(' | ')}
+                    </p>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Submit — inpatient defers to DischargePanel */}
             {isInpatientFlow ? (
@@ -1136,7 +1557,8 @@ export function ClaimILMPanel({
               </Alert>
             ) : (
               <OutpatientSubmitBlock
-                invoiceNumber={invoiceNumber}
+                dhaInvoiceNumber={dhaInvoiceNumber}
+                localInvoiceNumber={localInvoiceNumber}
                 consentToken={consentToken}
                 patientCrId={patientCrId}
                 hasBiometric={!!startAuthGuid}
@@ -1149,6 +1571,7 @@ export function ClaimILMPanel({
                 otpPrefilledFromConsent={
                   !!consentCredential?.otp && !dischargeOtpRefreshed
                 }
+                preSubmitChecklistBlocking={preSubmitChecklistBlocking}
                 busy={busy}
                 onRequestFreshOtp={requestFreshDischargeOtp}
                 onSubmit={submitOutpatient}
@@ -1212,7 +1635,7 @@ export function ClaimILMPanel({
           }
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-xl overflow-visible">
           <DialogHeader>
             <DialogTitle>Add intervention</DialogTitle>
             <DialogDescription>
@@ -1236,14 +1659,15 @@ export function ClaimILMPanel({
                     setAddDialogPkgCode(code);
                     setSelectedBenefitPkgCode(code);
                     setNewInterventionCode('');
+                    setAddInterventionInlineError(null);
                   }}
                 >
                   <SelectTrigger className="bg-background">
                     <SelectValue placeholder="Select benefit package…" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-64">
                     {effectiveBenefitPackageOptions.map((pkg) => (
-                      <SelectItem key={pkg.code} value={pkg.code}>
+                      <SelectItem key={pkg.code} value={pkg.code} className="whitespace-normal leading-snug">
                         {pkg.code} — {pkg.name}
                       </SelectItem>
                     ))}
@@ -1273,14 +1697,17 @@ export function ClaimILMPanel({
               ) : interventionOptions.length > 0 ? (
                 <Select
                   value={newInterventionCode}
-                  onValueChange={(value) => setNewInterventionCode(value)}
+                  onValueChange={(value) => {
+                    setNewInterventionCode(value);
+                    setAddInterventionInlineError(null);
+                  }}
                 >
                   <SelectTrigger className="bg-background">
                     <SelectValue placeholder="Select intervention…" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-64">
                     {interventionOptions.map((opt) => (
-                      <SelectItem key={opt.code} value={opt.code}>
+                      <SelectItem key={opt.code} value={opt.code} className="whitespace-normal leading-snug">
                         <span className="font-mono text-xs">{opt.code}</span>
                         {' — '}
                         {opt.name}
@@ -1302,6 +1729,11 @@ export function ClaimILMPanel({
               newCode={newInterventionCode}
               existing={interventionCodes}
             />
+            {addInterventionInlineError && (
+              <Alert variant="destructive" className="py-2">
+                <AlertDescription className="text-xs">{addInterventionInlineError}</AlertDescription>
+              </Alert>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -1313,7 +1745,12 @@ export function ClaimILMPanel({
             </Button>
             <Button
               onClick={addIntervention}
-              disabled={!newInterventionCode || interventionCodes.includes(newInterventionCode) || busy !== null}
+              disabled={
+                !newInterventionCode ||
+                interventionCodes.includes(newInterventionCode) ||
+                !addInterventionValidation.valid ||
+                busy !== null
+              }
             >
               {(busy === 'addIntervention' || busy === 'addVirtualClaimLine') && (
                 <Loader2 className="mr-2 h-3 w-3 animate-spin" />
@@ -1521,6 +1958,60 @@ function PrereqGrid({
   );
 }
 
+function PreSubmitChecklistBox({
+  loading,
+  items,
+  autoFixedIds,
+}: {
+  loading: boolean;
+  items: PreSubmitChecklistItem[];
+  autoFixedIds: string[];
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className="rounded-md border bg-muted/20 p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-medium">Pre-submit checklist</p>
+        {loading ? (
+          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Checking…
+          </span>
+        ) : null}
+      </div>
+      <div className="space-y-1.5">
+        {items.map((item) => {
+          const autoFixed = autoFixedIds.includes(item.id);
+          return (
+            <div key={item.id} className="flex items-start justify-between gap-2 text-xs">
+              <div className="flex items-start gap-2">
+                {item.complete ? (
+                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                ) : (
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                )}
+                <span>{item.label}</span>
+              </div>
+              {item.complete ? (
+                autoFixed ? (
+                  <Badge variant="outline" className="h-5 text-[10px]">Auto-fixed</Badge>
+                ) : (
+                  <Badge variant="outline" className="h-5 text-[10px]">Complete</Badge>
+                )
+              ) : item.mode === 'auto' ? (
+                <Badge variant="outline" className="h-5 text-[10px]">Auto-fix ready</Badge>
+              ) : (
+                <Badge variant="outline" className="h-5 text-[10px]">Manual action</Badge>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function CombinationGuard({
   newCode,
   existing,
@@ -1567,7 +2058,8 @@ function CombinationGuard({
 }
 
 interface OutpatientSubmitBlockProps {
-  invoiceNumber: string;
+  dhaInvoiceNumber: string;
+  localInvoiceNumber: string;
   consentToken: string;
   patientCrId: string;
   hasBiometric: boolean;
@@ -1579,6 +2071,7 @@ interface OutpatientSubmitBlockProps {
   setDischargeNotes: (v: string) => void;
   /** True when `dischargeOtp` was prefilled from the consent OTP (not a fresh discharge OTP). */
   otpPrefilledFromConsent: boolean;
+  preSubmitChecklistBlocking: boolean;
   busy: ActionKey | null;
   onRequestFreshOtp: () => Promise<void>;
   onSubmit: () => Promise<void>;
@@ -1586,7 +2079,8 @@ interface OutpatientSubmitBlockProps {
 
 function OutpatientSubmitBlock(props: OutpatientSubmitBlockProps) {
   const {
-    invoiceNumber,
+    dhaInvoiceNumber,
+    localInvoiceNumber,
     consentToken,
     patientCrId,
     hasBiometric,
@@ -1597,13 +2091,14 @@ function OutpatientSubmitBlock(props: OutpatientSubmitBlockProps) {
     dischargeNotes,
     setDischargeNotes,
     otpPrefilledFromConsent,
+    preSubmitChecklistBlocking,
     busy,
     onRequestFreshOtp,
     onSubmit,
   } = props;
 
   const missing: string[] = [];
-  if (!invoiceNumber) missing.push('invoice number');
+  if (!dhaInvoiceNumber) missing.push('DHA invoice number');
   if (!consentToken) missing.push('consent token');
   if (!patientCrId) missing.push('patient CR ID');
 
@@ -1624,7 +2119,9 @@ function OutpatientSubmitBlock(props: OutpatientSubmitBlockProps) {
         <div className="text-xs">
           <p className="font-medium">Submit claim</p>
           <p className="text-muted-foreground">
-            Invoice {invoiceNumber} · biometric consent on file.
+            DHA invoice {dhaInvoiceNumber}
+            {localInvoiceNumber ? ` · local invoice ${localInvoiceNumber}` : ''}
+            {' · '}biometric consent on file.
           </p>
         </div>
         <Button onClick={onSubmit} disabled={busy !== null} size="sm">
@@ -1644,7 +2141,9 @@ function OutpatientSubmitBlock(props: OutpatientSubmitBlockProps) {
       <div className="text-xs">
         <p className="font-medium">Submit claim</p>
         <p className="text-muted-foreground">
-          Invoice {invoiceNumber} · discharge consent required.
+          DHA invoice {dhaInvoiceNumber}
+          {localInvoiceNumber ? ` · local invoice ${localInvoiceNumber}` : ''}
+          {' · '}discharge consent required.
         </p>
       </div>
 
@@ -1706,7 +2205,11 @@ function OutpatientSubmitBlock(props: OutpatientSubmitBlockProps) {
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={onSubmit} disabled={busy !== null || !dischargeOtp} size="sm">
+        <Button
+          onClick={onSubmit}
+          disabled={busy !== null || !dischargeOtp || preSubmitChecklistBlocking}
+          size="sm"
+        >
           {busy === 'submit' ? (
             <Loader2 className="mr-2 h-3 w-3 animate-spin" />
           ) : (
@@ -1714,6 +2217,11 @@ function OutpatientSubmitBlock(props: OutpatientSubmitBlockProps) {
           )}
           Submit claim
         </Button>
+        {preSubmitChecklistBlocking && (
+          <span className="text-[11px] text-amber-700 dark:text-amber-300">
+            Complete all checklist items above to enable submission.
+          </span>
+        )}
         <Button
           variant="ghost"
           size="sm"

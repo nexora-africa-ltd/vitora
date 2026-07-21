@@ -716,6 +716,17 @@ async function submitClaim(claimId: number): Promise<ClaimSubmitResponse> {
   return parseResponse(ClaimSubmitResponseSchema, response.data, { context: 'shaApi.submitClaim' });
 }
 
+async function validateClaimSubmission(claimId: number): Promise<{ is_valid: boolean; errors: string[] }> {
+  const response = await apiClient.post(`/api/billing/claims/${claimId}/validate/`);
+  const raw = response.data as { is_valid?: unknown; errors?: unknown };
+  return {
+    is_valid: raw?.is_valid === true,
+    errors: Array.isArray(raw?.errors)
+      ? raw.errors.filter((v): v is string => typeof v === 'string')
+      : [],
+  };
+}
+
 /**
  * Resubmit a rejected claim
  */
@@ -1280,6 +1291,31 @@ async function ilmPreview(claimId: number): Promise<IlmCallResult> {
   return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmPreview' });
 }
 
+export interface IlmApplyPreviewLinesResponse {
+  success: boolean;
+  message: string;
+  replace_existing: boolean;
+  previous_item_count: number;
+  created_item_count: number;
+  detected_invoice_number?: string;
+  invoice_linked?: boolean;
+  unmatched_tariff_codes: string[];
+  parse_errors: string[];
+  claimed_amount: string;
+}
+
+async function ilmApplyPreviewLines(
+  claimId: number,
+  payload: Record<string, unknown>,
+  replaceExisting = true,
+): Promise<IlmApplyPreviewLinesResponse> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/apply-preview-lines/`, {
+    payload,
+    replace_existing: replaceExisting,
+  });
+  return response.data as IlmApplyPreviewLinesResponse;
+}
+
 async function ilmPreviewPayerClaim(claimId: number): Promise<IlmCallResult> {
   const response = await apiClient.post(`${ilmBase(claimId)}/preview-payer/`, {});
   return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmPreviewPayerClaim' });
@@ -1830,6 +1866,7 @@ export const shaApi = {
   getClaim,
   createClaim,
   submitClaim,
+  validateClaimSubmission,
   resubmitClaim,
   cancelClaim,
   getClaimBundle,
@@ -1875,6 +1912,7 @@ export const shaApi = {
   ilmAddAttachment,
   ilmRemoveAttachment,
   ilmPreview,
+  ilmApplyPreviewLines,
   ilmPreviewPayerClaim,
   ilmSubmit,
   ilmClose,
