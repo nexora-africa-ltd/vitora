@@ -14,7 +14,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
 
-from hmis.apps.inpatient.models import AdmissionRecommendation
+from hmis.apps.inpatient.models import Admission, AdmissionRecommendation
 
 User = get_user_model()
 
@@ -180,6 +180,80 @@ class TestAdmissionAPI:
         # Verify bed status updated
         sample_bed.refresh_from_db()
         assert sample_bed.status == "OCCUPIED"
+
+    def test_create_admission_carries_opd_diagnoses_to_ipd_encounter(
+        self,
+        authenticated_client,
+        test_user,
+        sample_patient,
+        sample_encounter,
+        sample_inpatient_ward,
+        sample_bed,
+        sample_icd10_code,
+    ):
+        """Admission create path should copy OPD diagnoses and enforce admission PRIMARY."""
+        from hmis.apps.encounters.models import Diagnosis, ICD10Code
+
+        secondary_code = ICD10Code.objects.create(
+            code="B01",
+            description="Varicella",
+            short_description="Varicella",
+            category="Infectious diseases",
+            chapter=1,
+        )
+        admission_primary_code = ICD10Code.objects.create(
+            code="J18.9",
+            description="Pneumonia, unspecified organism",
+            short_description="Pneumonia",
+            category="Diseases of the respiratory system",
+            chapter=10,
+        )
+
+        Diagnosis.objects.create(
+            encounter=sample_encounter,
+            icd10_code=sample_icd10_code,
+            diagnosis_type="PRIMARY",
+            is_confirmed=True,
+            certainty="confirmed",
+            diagnosed_by=test_user,
+        )
+        Diagnosis.objects.create(
+            encounter=sample_encounter,
+            icd10_code=secondary_code,
+            diagnosis_type="SECONDARY",
+            is_confirmed=True,
+            certainty="confirmed",
+            diagnosed_by=test_user,
+        )
+
+        data = {
+            "patient": sample_patient.id,
+            "opd_encounter": sample_encounter.id,
+            "admission_date": timezone.now().isoformat(),
+            "admitting_diagnosis": admission_primary_code.code,
+            "admitting_diagnosis_text": admission_primary_code.description,
+            "admitting_officer": test_user.id,
+            "attending_doctor": test_user.id,
+            "ward": sample_inpatient_ward.id,
+            "bed": sample_bed.id,
+            "payer_type": "CASH",
+        }
+
+        response = authenticated_client.post("/api/inpatient/admissions/", data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        admission = Admission.objects.get(id=response.data["id"])
+        ipd_encounter = admission.ipd_encounter
+
+        primary = ipd_encounter.diagnoses.get(diagnosis_type="PRIMARY")
+        assert primary.icd10_code.code == admission_primary_code.code
+        assert primary.is_confirmed is True
+        assert primary.certainty == "confirmed"
+
+        secondaries = ipd_encounter.diagnoses.filter(diagnosis_type="SECONDARY")
+        assert secondaries.count() == 1
+        assert secondaries.first().icd10_code.code == secondary_code.code
 
     def test_create_admission_accepts_source_encounter_alias(
         self,

@@ -545,6 +545,7 @@ export const ClaimSchema = z.object({
   patient_name: z.string().nullable().optional(),
   patient_mrn: z.string().nullable().optional(),
   invoice_number: z.string().nullable().optional(),
+  dha_invoice_number: z.string().nullable().optional(),
   submitted_by_username: z.string().nullable().optional(),
 
   // Claim details

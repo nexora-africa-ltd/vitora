@@ -38,6 +38,7 @@ from hmis.apps.billing.models import (
     Receipt,
     Service,
     ServiceCategory,
+    SHAClaim,
 )
 from hmis.apps.billing.serializers import (
     CreditNoteSerializer,
@@ -153,6 +154,75 @@ class InvoiceViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.ModelV
             ).distinct()
 
         return queryset
+
+    @action(detail=False, methods=["get"], url_path="dha")
+    def dha(self, request):
+        """List DHA invoice references derived from SHA claims."""
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+
+        queryset = (
+            SHAClaim.objects.select_related("patient", "invoice")
+            .filter(dha_invoice_number__isnull=False)
+            .exclude(dha_invoice_number="")
+        )
+        if facility is not None:
+            queryset = queryset.filter(facility=facility)
+        elif organization is not None:
+            queryset = queryset.filter(organization=organization)
+        elif not getattr(request.user, "is_superuser", False):
+            queryset = queryset.none()
+
+        search = (request.query_params.get("search") or "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(dha_invoice_number__icontains=search)
+                | Q(claim_number__icontains=search)
+                | Q(patient__first_name__icontains=search)
+                | Q(patient__last_name__icontains=search)
+                | Q(patient__mrn__icontains=search)
+            )
+
+        start_date = request.query_params.get("start_date")
+        end_date = request.query_params.get("end_date")
+        if start_date:
+            queryset = queryset.filter(service_date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(service_date__lte=end_date)
+
+        queryset = queryset.order_by("-last_dha_payload_at", "-updated_at")
+
+        page = self.paginate_queryset(queryset)
+        rows = page if page is not None else queryset
+
+        results = []
+        for claim in rows:
+            patient_name = f"{getattr(claim.patient, 'first_name', '')} {getattr(claim.patient, 'last_name', '')}".strip()
+            local_invoice = getattr(claim, "invoice", None)
+            results.append(
+                {
+                    "id": claim.id,
+                    "source": "dha",
+                    "invoice_number": claim.dha_invoice_number,
+                    "claim_id": claim.id,
+                    "claim_number": claim.claim_number,
+                    "claim_status": claim.status,
+                    "patient_id": claim.patient_id,
+                    "patient_name": patient_name,
+                    "patient_mrn": getattr(claim.patient, "mrn", "") or "",
+                    "invoice_date": claim.service_date,
+                    "total_amount": str(claim.claimed_amount),
+                    "local_invoice_id": claim.invoice_id,
+                    "local_invoice_number": getattr(local_invoice, "invoice_number", "")
+                    if local_invoice
+                    else "",
+                }
+            )
+
+        if page is not None:
+            return self.get_paginated_response(results)
+        return Response({"count": len(results), "next": None, "previous": None, "results": results})
 
     def update(self, request, *args, **kwargs):
         """Only allow updates to draft invoices."""

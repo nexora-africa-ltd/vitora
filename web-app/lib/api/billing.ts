@@ -35,6 +35,7 @@ import {
   PaginatedServiceCategorySchema,
   PaginatedServiceSchema,
   PaginatedInvoiceSchema,
+  PaginatedDHAInvoiceSchema,
   PaginatedPaymentSchema,
   PaginatedPaymentPointSchema,
   PaginatedCreditNoteSchema,
@@ -66,6 +67,7 @@ import type {
   InvoiceListParams,
   ApplyDiscountData,
   PaginatedInvoices,
+  PaginatedDHAInvoices,
   ProformaCreateData,
   ProformaConvertRequest,
   ProformaRenewRequest,
@@ -227,6 +229,13 @@ async function getInvoices(params?: InvoiceListParams): Promise<PaginatedInvoice
   const url = `/api/billing/invoices/?${queryString}`;
   const response = await apiClient.get(url);
   return parseResponse(PaginatedInvoiceSchema, response.data, { context: 'billingApi.getInvoices' });
+}
+
+async function getDhaInvoices(params?: InvoiceListParams): Promise<PaginatedDHAInvoices> {
+  const queryString = params ? buildQueryString(params) : '';
+  const url = `/api/billing/invoices/dha/?${queryString}`;
+  const response = await apiClient.get(url);
+  return parseResponse(PaginatedDHAInvoiceSchema, response.data, { context: 'billingApi.getDhaInvoices' });
 }
 
 async function getInvoice(id: IdParam): Promise<Invoice> {
@@ -706,6 +715,7 @@ export const billingApi = {
 
   // Invoices
   getInvoices,
+  getDhaInvoices,
   getInvoice,
   createInvoice,
   updateInvoice,

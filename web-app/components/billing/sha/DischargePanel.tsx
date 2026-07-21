@@ -11,7 +11,7 @@
  */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +20,9 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { shaApi } from '@/lib/api/sha';
+import { billingApi } from '@/lib/api/billing';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
+import { useQuery } from '@tanstack/react-query';
 
 const DISCHARGE_REASONS = [
   { value: 'RECOVERED', label: 'Recovered' },
@@ -38,6 +40,17 @@ interface DischargePanelProps {
   consentToken?: string;
   patientExternalId?: string;
   invoiceNumber?: string;
+  invoiceId?: number | null;
+  facilityLevel?: number;
+  activeInterventions?: Array<{
+    intervention_code: string;
+    is_per_diem?: boolean;
+    level2_tariff?: string | null;
+    level3_tariff?: string | null;
+    level4_tariff?: string | null;
+    level5_tariff?: string | null;
+    level6_tariff?: string | null;
+  }>;
   onChange?: () => void;
 }
 
@@ -49,6 +62,9 @@ export function DischargePanel({
   consentToken = '',
   patientExternalId = '',
   invoiceNumber: initialInvoice = '',
+  invoiceId,
+  facilityLevel,
+  activeInterventions = [],
   onChange,
 }: DischargePanelProps) {
   const [step, setStep] = useState<Step>('details');
@@ -66,6 +82,56 @@ export function DischargePanel({
   const [otp, setOtp] = useState('');
   const [authGuid, setAuthGuid] = useState('');
   const [useBiometric, setUseBiometric] = useState(false);
+  const [editContextFields, setEditContextFields] = useState(false);
+
+  const hasInvoiceNumber = invoiceNumber.trim().length > 0;
+
+  const { data: fallbackInvoice } = useQuery({
+    queryKey: ['discharge-invoice-number', invoiceId],
+    queryFn: () => billingApi.getInvoice(invoiceId!),
+    enabled: !hasInvoiceNumber && typeof invoiceId === 'number',
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    if (consentToken) setToken(consentToken);
+  }, [consentToken]);
+
+  useEffect(() => {
+    if (patientExternalId) setPatientId(patientExternalId);
+  }, [patientExternalId]);
+
+  useEffect(() => {
+    if (initialInvoice) setInvoiceNumber(initialInvoice);
+  }, [initialInvoice]);
+
+  useEffect(() => {
+    const fallbackNumber = fallbackInvoice?.invoice_number;
+    if (!hasInvoiceNumber && fallbackNumber) {
+      setInvoiceNumber(fallbackNumber);
+    }
+  }, [fallbackInvoice?.invoice_number, hasInvoiceNumber]);
+
+  const missingPerDiemTariffs = useMemo(() => {
+    if (!facilityLevel) return [] as string[];
+
+    return activeInterventions
+      .filter((intervention) => intervention.is_per_diem)
+      .filter((intervention) => {
+        const tariffMap: Record<number, string | null | undefined> = {
+          2: intervention.level2_tariff,
+          3: intervention.level3_tariff,
+          4: intervention.level4_tariff,
+          5: intervention.level5_tariff,
+          6: intervention.level6_tariff,
+        };
+        return !tariffMap[facilityLevel];
+      })
+      .map((intervention) => intervention.intervention_code);
+  }, [activeInterventions, facilityLevel]);
+
+  const hasMissingPerDiemTariffs = missingPerDiemTariffs.length > 0;
+  const contextComplete = !!token && !!patientId && hasInvoiceNumber;
 
   // Don't render if flow doesn't support inpatient discharge
   if (!flow.supportsInpatientDischarge) return null;
@@ -91,6 +157,13 @@ export function DischargePanel({
   }
 
   async function submitDischarge() {
+    if (hasMissingPerDiemTariffs) {
+      const levelText = facilityLevel ? `Level ${facilityLevel}` : 'current facility level';
+      setError(
+        `Cannot submit discharge: missing per-diem tariff for ${levelText} on ${missingPerDiemTariffs.join(', ')}.`
+      );
+      return;
+    }
     if (!otp && !authGuid) {
       setError('Enter the discharge OTP or provide a biometric auth GUID.');
       return;
@@ -147,30 +220,57 @@ export function DischargePanel({
           </Alert>
         )}
 
+        {hasMissingPerDiemTariffs && (
+          <Alert variant="destructive">
+            <AlertTitle>Per-diem tariff missing</AlertTitle>
+            <AlertDescription>
+              {`Cannot proceed with discharge submission. No Level ${facilityLevel} per-diem tariff is configured for: ${missingPerDiemTariffs.join(', ')}.`}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Step 1: Discharge details + send OTP */}
         {step === 'details' && (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="discharge-token">Consent token</Label>
-                <Input
-                  id="discharge-token"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  placeholder="From start-visit step"
-                />
+            {contextComplete && !editContextFields ? (
+              <div className="rounded-md border bg-muted/20 p-3 text-xs space-y-1">
+                <p className="font-medium">Using pre-filled claim context</p>
+                <p className="text-muted-foreground">Consent token and patient ID are already available from visit flow.</p>
+                <p><span className="font-medium">Patient ID:</span> {patientId}</p>
+                <p><span className="font-medium">Invoice:</span> {invoiceNumber}</p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEditContextFields(true)}
+                  className="h-7 px-2 text-xs"
+                >
+                  Edit these fields
+                </Button>
               </div>
-              <div>
-                <Label htmlFor="discharge-patient-id">DHA patient_id</Label>
-                <Input
-                  id="discharge-patient-id"
-                  value={patientId}
-                  onChange={(e) => setPatientId(e.target.value)}
-                />
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="discharge-token">Consent token</Label>
+                  <Input
+                    id="discharge-token"
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                    placeholder="From start-visit step"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="discharge-patient-id">DHA patient_id</Label>
+                  <Input
+                    id="discharge-patient-id"
+                    value={patientId}
+                    onChange={(e) => setPatientId(e.target.value)}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="discharge-date">Discharge date</Label>
                 <Input
@@ -195,19 +295,33 @@ export function DischargePanel({
                   ))}
                 </select>
               </div>
-              <div>
-                <Label htmlFor="discharge-invoice">Invoice number</Label>
-                <Input
-                  id="discharge-invoice"
-                  value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
-                />
-              </div>
+              {(editContextFields || !invoiceNumber) && (
+                <div>
+                  <Label htmlFor="discharge-invoice">Invoice number</Label>
+                  <Input
+                    id="discharge-invoice"
+                    value={invoiceNumber}
+                    onChange={(e) => setInvoiceNumber(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
+
+            {contextComplete && editContextFields && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditContextFields(false)}
+                className="h-7 px-2 text-xs"
+              >
+                Use compact pre-filled view
+              </Button>
+            )}
 
             <Button
               onClick={sendDischargeOtp}
-              disabled={busy || !token}
+              disabled={busy || !token || hasMissingPerDiemTariffs}
             >
               {busy && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
               Send Discharge OTP
@@ -271,7 +385,7 @@ export function DischargePanel({
             <div className="flex gap-2">
               <Button
                 onClick={submitDischarge}
-                disabled={busy || (!otp && !authGuid)}
+                disabled={busy || (!otp && !authGuid) || hasMissingPerDiemTariffs}
               >
                 {busy && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                 Discharge &amp; Submit Claim

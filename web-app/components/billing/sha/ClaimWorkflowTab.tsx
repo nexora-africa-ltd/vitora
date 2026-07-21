@@ -39,6 +39,9 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
   const [consentCredential, setConsentCredential] = useState<ConsentCredential>({});
   // Intervention code selected during consent — reused by ClaimILMPanel for start_visit
   const [consentInterventionCode, setConsentInterventionCode] = useState<string>('');
+  const [previewAuthorizationCode, setPreviewAuthorizationCode] = useState('');
+  const [previewMemberNumber, setPreviewMemberNumber] = useState('');
+  const [previewDhaInvoiceNumber, setPreviewDhaInvoiceNumber] = useState('');
 
   // Derive patient CR ID for DHA API calls (intervention lookup, etc.)
   const patientCrId = claim.dha_external_id || toCrId(claim.sha_member_number ?? '') || '';
@@ -49,6 +52,18 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
     () => (claim.claim_interventions ?? []).filter((i) => i.status === 'active').map((i) => i.intervention_code),
     [claim.claim_interventions],
   );
+
+  const activeInterventions = useMemo(
+    () => (claim.claim_interventions ?? []).filter((i) => i.status === 'active'),
+    [claim.claim_interventions],
+  );
+
+  const facilityLevel = useMemo(() => {
+    const raw = claim.facility_level;
+    if (!raw) return undefined;
+    const parsed = parseInt(String(raw).replace(/[^0-9]/g, ''), 10);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }, [claim.facility_level]);
 
   const isTerminal = TERMINAL_STATUSES.has(claim.status);
   const isDraft = claim.status === 'draft';
@@ -79,7 +94,7 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
   const consentObtained = !!consentTokenStr || !!claim.consent_obtained;
 
   const showConsent =
-    flow.requiresConsent && !!claim.sha_member && !consentObtained && !isTerminal;
+    flow.requiresConsent && !!claim.sha_member && !consentObtained && !visitStarted && !isTerminal;
   const showPreauth = flow.requiresPreauth && !!claim.sha_member && !isTerminal;
   const showIlm = !isTerminal;
   const showDischarge =
@@ -205,6 +220,11 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
           consentToken={consentTokenStr}
           consentCredential={consentCredential}
           consentInterventionCode={consentInterventionCode}
+          onPreviewContext={(ctx) => {
+            if (ctx.authorizationCode) setPreviewAuthorizationCode(ctx.authorizationCode);
+            if (ctx.memberNumber) setPreviewMemberNumber(ctx.memberNumber);
+            if (ctx.dhaInvoiceNumber) setPreviewDhaInvoiceNumber(ctx.dhaInvoiceNumber);
+          }}
           onChange={onChange}
         />
       )}
@@ -214,9 +234,12 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
         <DischargePanel
           claimId={claim.id}
           flow={flow}
-          consentToken={consentTokenStr}
-          patientExternalId={claim.dha_external_id ?? ''}
-          invoiceNumber={claim.invoice_number ?? ''}
+          consentToken={consentTokenStr || previewAuthorizationCode}
+          patientExternalId={previewMemberNumber || claim.dha_external_id || ''}
+          invoiceNumber={claim.dha_invoice_number || previewDhaInvoiceNumber || claim.invoice_number || ''}
+          invoiceId={typeof claim.invoice === 'number' ? claim.invoice : null}
+          facilityLevel={facilityLevel}
+          activeInterventions={activeInterventions}
           onChange={onChange}
         />
       )}

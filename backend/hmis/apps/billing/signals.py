@@ -151,9 +151,6 @@ def _maybe_create_phc_claim(encounter):
     if existing:
         return
 
-    # Get or create invoice for this encounter
-    invoice = Invoice.objects.filter(encounter=encounter).first()
-
     try:
         from hmis.apps.core.utils import get_system_user
 
@@ -170,7 +167,7 @@ def _maybe_create_phc_claim(encounter):
             patient=encounter.patient,
             sha_member=sha_member,
             encounter=encounter,
-            invoice=invoice,
+            invoice=None,
             claim_type=SHAClaim.ClaimType.OUTPATIENT,
             claim_flow=claim_flow,
             is_emergency_claim=is_emergency,

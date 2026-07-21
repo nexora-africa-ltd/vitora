@@ -14,7 +14,7 @@ PHC/SHIF/ECCIF UAT checklists:
 
 from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest  # type: ignore
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -117,6 +117,43 @@ class TestPreviewBeforeSubmit:
         assert response.status_code == status.HTTP_200_OK
         claim.refresh_from_db()
         assert claim.previewed_at is not None
+
+    def test_ilm_preview_syncs_local_diagnosis_when_preview_has_none(
+        self, sha_client, sample_sha_claim_for_uat
+    ):  # noqa: F811
+        """ilm_preview should backfill DHA diagnoses from local claim diagnosis codes."""
+        claim = sample_sha_claim_for_uat
+
+        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+            first_preview = MagicMock()
+            first_preview.response.ok = True
+            first_preview.status_code = 200
+            first_preview.payload = {"claim_diagnoses": []}
+
+            second_preview = MagicMock()
+            second_preview.response.ok = True
+            second_preview.status_code = 200
+            second_preview.payload = {
+                "claim_diagnoses": [{"icd_code": claim.primary_diagnosis_code}]
+            }
+
+            add_diag_result = MagicMock()
+            add_diag_result.status_code = 200
+            add_diag_result.payload = {}
+
+            svc.return_value.preview.side_effect = [first_preview, second_preview]
+            svc.return_value.add_diagnosis.return_value = add_diag_result
+
+            response = sha_client.post(f"/api/sha/claims/{claim.id}/ilm/preview/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["payload"]["claim_diagnoses"]
+        svc.return_value.add_diagnosis.assert_called_once_with(
+            claim,
+            icd_code=claim.primary_diagnosis_code,
+            intervention_code="SHA-01-001",
+            user=ANY,
+        )
 
 
 # =============================================================================

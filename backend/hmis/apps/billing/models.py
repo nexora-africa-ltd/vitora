@@ -2459,6 +2459,12 @@ class SHAClaim(FacilityScopedModel):
         blank=True,
         help_text="When /api/v1/claims/visit succeeded for this claim",
     )
+    dha_invoice_number = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="DHA-side invoice number from ILM preview (e.g. INV/12345/67890)",
+    )
     previewed_at = models.DateTimeField(
         null=True,
         blank=True,

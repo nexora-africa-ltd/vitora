@@ -266,6 +266,7 @@ class SHAClaimSerializer(serializers.ModelSerializer):
 
     patient_name = serializers.SerializerMethodField()
     sha_member_number = serializers.CharField(source="sha_member.sha_number", read_only=True)
+    invoice_number = serializers.CharField(source="invoice.invoice_number", read_only=True)
     items_count = serializers.SerializerMethodField()
     attachments_count = serializers.SerializerMethodField()
     submitted_by_username = serializers.CharField(
@@ -289,6 +290,7 @@ class SHAClaimSerializer(serializers.ModelSerializer):
             "sha_member_number",
             "encounter",
             "invoice",
+            "invoice_number",
             "claim_type",
             "status",
             "service_date",
@@ -327,6 +329,7 @@ class SHAClaimSerializer(serializers.ModelSerializer):
             "last_dha_status",
             "last_dha_payload_at",
             "dha_visit_started_at",
+            "dha_invoice_number",
             "time_barring_deadline",
             "is_time_barred",
             "hours_until_time_barred",
@@ -361,6 +364,7 @@ class SHAClaimSerializer(serializers.ModelSerializer):
             "last_dha_status",
             "last_dha_payload_at",
             "dha_visit_started_at",
+            "dha_invoice_number",
             "time_barring_deadline",
             "is_time_barred",
             "hours_until_time_barred",

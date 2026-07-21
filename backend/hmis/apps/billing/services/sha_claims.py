@@ -21,6 +21,7 @@ FHIR Bundle Requirements (SHA MIS):
 
 import logging
 import uuid
+from collections.abc import Mapping
 from datetime import date
 
 import requests
@@ -1683,7 +1684,8 @@ class SHAClaimsService:
             self.auth_service.clear_token_cache()
             raise SHAAuthError("Authentication failed during claim submission", status_code=401)
 
-        response.raise_for_status()
+        if not response.ok:
+            raise requests.RequestException(self._format_sha_submit_error(response))
 
         # Parse response - handle official wrapper format
         data = response.json()
@@ -1693,6 +1695,57 @@ class SHAClaimsService:
             return data["Data"]
 
         return data
+
+    def _format_sha_submit_error(self, response: requests.Response) -> str:
+        """Extract the most useful SHA/API error message from a failed response."""
+        body_message = ""
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = None
+
+        if isinstance(payload, Mapping):
+            # Common backend/API envelope keys.
+            for key in (
+                "error",
+                "detail",
+                "message",
+                "error_message",
+                "ErrorMessage",
+                "Message",
+            ):
+                value = payload.get(key)
+                if isinstance(value, str) and value.strip():
+                    body_message = value.strip()
+                    break
+
+            if not body_message:
+                errors = payload.get("errors")
+                if isinstance(errors, list) and errors:
+                    body_message = "; ".join(str(item) for item in errors if item)
+                elif isinstance(errors, Mapping) and errors:
+                    parts = []
+                    for field, msgs in errors.items():
+                        if isinstance(msgs, list):
+                            joined = ", ".join(str(m) for m in msgs if m)
+                        else:
+                            joined = str(msgs)
+                        if joined:
+                            parts.append(f"{field}: {joined}")
+                    if parts:
+                        body_message = "; ".join(parts)
+
+            # Some SHA failures return structured EDI payloads at top-level.
+            if not body_message and payload:
+                body_message = str(payload)
+        elif isinstance(payload, list) and payload:
+            body_message = "; ".join(str(item) for item in payload if item)
+
+        if not body_message:
+            text = (response.text or "").strip()
+            body_message = text[:500] if text else "No additional details provided by SHA"
+
+        return f"SHA submission failed ({response.status_code}): {body_message}"
 
     def get_claim_status(self, claim_id: str) -> dict:
         """
