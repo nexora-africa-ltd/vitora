@@ -6,6 +6,7 @@ Views for the inpatient app.
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import filters, serializers, status, viewsets
@@ -97,6 +98,7 @@ from .serializers import (
     WardUpdatesResponseSerializer,
 )
 from .services.bed_assignment import NoBedAvailableError, bed_assignment_service
+from .services.clinical_summary import InpatientClinicalSummaryComposer
 from .services.compatibility import ward_compatibility_service
 
 User = get_user_model()
@@ -1718,6 +1720,62 @@ class AdmissionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mode
                 "lab_orders": LabOrderSerializer(lab_orders, many=True).data,
                 "imaging_orders": ImagingOrderSerializer(imaging_orders, many=True).data,
                 "prescriptions": PrescriptionSerializer(prescriptions, many=True).data,
+            }
+        )
+
+    @extend_schema(
+        tags=["Inpatient - Admissions"],
+        summary="Get chronological clinical summary",
+        description=(
+            "Build a read-only, chronological timeline from ward rounds, kardex shift notes, "
+            "and kardex handover notes for preview before claim submission."
+        ),
+        responses={
+            200: inline_serializer(
+                name="AdmissionClinicalSummaryResponse",
+                fields={
+                    "admission_id": serializers.IntegerField(),
+                    "admission_number": serializers.CharField(),
+                    "generated_at": serializers.DateTimeField(),
+                    "entries": serializers.ListField(
+                        child=inline_serializer(
+                            name="AdmissionClinicalSummaryEntry",
+                            fields={
+                                "timestamp": serializers.DateTimeField(),
+                                "source": serializers.CharField(),
+                                "author": serializers.CharField(),
+                                "content": serializers.CharField(),
+                            },
+                        )
+                    ),
+                    "rendered_text": serializers.CharField(),
+                },
+            )
+        },
+    )
+    @action(detail=True, methods=["get"], url_path="clinical-summary")
+    def clinical_summary(self, request, pk=None):
+        """Return composed clinical timeline for this admission."""
+        admission = self.get_object()
+
+        entries = InpatientClinicalSummaryComposer.compose_for_admission(admission)
+        rendered_text = InpatientClinicalSummaryComposer.render_text(entries)
+
+        return Response(
+            {
+                "admission_id": admission.id,
+                "admission_number": admission.admission_number,
+                "generated_at": timezone.now(),
+                "entries": [
+                    {
+                        "timestamp": entry.timestamp,
+                        "source": entry.source,
+                        "author": entry.author,
+                        "content": entry.content,
+                    }
+                    for entry in entries
+                ],
+                "rendered_text": rendered_text,
             }
         )
 

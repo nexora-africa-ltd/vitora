@@ -294,6 +294,77 @@ class TestAutoAttachDocuments:
         # Encounter has chief_complaint so MEDICAL_REPORT should be attached
         assert result["attached"] >= 0  # At least no error
 
+    def test_render_clinical_notes_includes_inpatient_chronological_summary(
+        self, sample_admission, test_user
+    ):
+        """IPD clinical notes rendering should include chronological inpatient sections."""
+        from datetime import date, time
+
+        from hmis.apps.billing.sha_automation import SHAClaimAutomationService
+        from hmis.apps.inpatient.models import WardRound
+
+        WardRound.objects.create(
+            admission=sample_admission,
+            round_date=date.today(),
+            round_time=time(hour=9, minute=30),
+            conducted_by=test_user,
+            subjective="Cough improving.",
+            objective="No respiratory distress.",
+            assessment="Responding to treatment.",
+            plan="Continue treatment and review tomorrow.",
+            condition_status="IMPROVING",
+        )
+
+        notes = SHAClaimAutomationService._render_clinical_notes_text(
+            sample_admission.ipd_encounter,
+            sample_admission.patient,
+        )
+
+        assert notes is not None
+        assert "INPATIENT CLINICAL COURSE (Chronological)" in notes
+        assert "Ward Round" in notes
+
+    def test_render_clinical_notes_includes_discharge_summary_section(
+        self, sample_admission, test_user
+    ):
+        """IPD clinical notes rendering should include discharge synthesis when present."""
+        from hmis.apps.billing.sha_automation import SHAClaimAutomationService
+        from hmis.apps.inpatient.models import Discharge
+
+        Discharge.objects.create(
+            admission=sample_admission,
+            discharge_type="NORMAL",
+            discharge_date=timezone.now(),
+            discharged_by=test_user,
+            admission_diagnosis="J18.9",
+            final_diagnosis="J18.9",
+            final_diagnosis_text="Pneumonia, improved",
+            procedures_performed="Chest physiotherapy",
+            treatment_summary="Completed IV ceftriaxone and oxygen therapy.",
+            discharge_medications=[
+                {
+                    "drug_name": "Amoxicillin",
+                    "dosage": "500mg",
+                    "frequency": "TDS",
+                    "duration": "5 days",
+                }
+            ],
+            patient_instructions="Complete oral antibiotics and return if symptoms recur.",
+            pharmacy_cleared=True,
+            billing_cleared=True,
+            lab_results_acknowledged=True,
+        )
+
+        notes = SHAClaimAutomationService._render_clinical_notes_text(
+            sample_admission.ipd_encounter,
+            sample_admission.patient,
+        )
+
+        assert notes is not None
+        assert "DISCHARGE SUMMARY" in notes
+        assert "Treatment summary:" in notes
+        assert "Discharge medications:" in notes
+
 
 class TestInterventionSuggestions:
     """Tests for auto-populating interventions from clinical actions."""

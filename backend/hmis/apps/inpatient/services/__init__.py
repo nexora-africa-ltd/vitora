@@ -15,6 +15,11 @@ from hmis.apps.inpatient.services.bed_smart import (
     SmartBedAllocationService,
     smart_bed_allocation_service,
 )
+from hmis.apps.inpatient.services.clinical_summary import (
+    ClinicalSummaryEntry,
+    InpatientClinicalSummaryComposer,
+    compose_inpatient_clinical_summary_text,
+)
 from hmis.apps.inpatient.services.compatibility import (
     CompatibilityResult,
     CompatibilityViolation,
@@ -39,4 +44,8 @@ __all__ = [
     "CompatibilityViolation",
     "WardCompatibilityService",
     "ward_compatibility_service",
+    # Clinical summary
+    "ClinicalSummaryEntry",
+    "InpatientClinicalSummaryComposer",
+    "compose_inpatient_clinical_summary_text",
 ]

@@ -9,6 +9,7 @@ import {
   BedSchema,
   AdmissionRecommendationSchema,
   AdmissionSchema,
+  AdmissionClinicalSummarySchema,
   ClearanceStatusSchema,
   DischargeSchema,
   TransferSchema,
@@ -61,6 +62,7 @@ import type { ImagingOrder } from '@/lib/types/imaging';
 import type { Prescription } from '@/lib/types/pharmacy';
 import type {
   Admission,
+  AdmissionClinicalSummary,
   AdmissionCreateInput,
   AdmissionListParams,
   AdmissionListResponse,
@@ -316,6 +318,15 @@ export const inpatientApi = {
   async getAdmission(admissionId: IdParam): Promise<Admission> {
     const response = await apiClient.get<Admission>(`/api/inpatient/admissions/${admissionId}/`);
     return parseResponse(AdmissionSchema, response.data, { context: 'inpatientApi.getAdmission' });
+  },
+
+  async getAdmissionClinicalSummary(admissionId: IdParam): Promise<AdmissionClinicalSummary> {
+    const response = await apiClient.get<AdmissionClinicalSummary>(
+      `/api/inpatient/admissions/${admissionId}/clinical-summary/`
+    );
+    return parseResponse(AdmissionClinicalSummarySchema, response.data, {
+      context: 'inpatientApi.getAdmissionClinicalSummary',
+    });
   },
 
   async createAdmission(data: AdmissionCreateInput): Promise<Admission> {

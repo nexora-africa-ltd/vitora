@@ -304,6 +304,76 @@ class TestAdmissionAPI:
         assert response.data["id"] == sample_admission.id
         assert response.data["public_id"] == str(sample_admission.public_id)
 
+    def test_clinical_summary_endpoint_returns_chronological_timeline(
+        self, authenticated_client, sample_admission, test_user, another_user
+    ):
+        """Should expose composed clinical timeline for preview before claim submission."""
+        from datetime import date, datetime, time
+
+        from hmis.apps.inpatient.models import (
+            KardexHandoverNote,
+            KardexShiftNote,
+            NursingKardex,
+            WardRound,
+        )
+
+        kardex, _ = NursingKardex.objects.get_or_create(admission=sample_admission)
+
+        WardRound.objects.create(
+            admission=sample_admission,
+            round_date=date.today(),
+            round_time=time(hour=9, minute=0),
+            conducted_by=test_user,
+            subjective="Breathlessness reduced.",
+            objective="Sats 96% on room air.",
+            assessment="Improving.",
+            plan="Continue therapy.",
+            condition_status="IMPROVING",
+        )
+
+        shift_note = KardexShiftNote.objects.create(
+            kardex=kardex,
+            shift="DAY",
+            nurse=test_user,
+            content="Patient tolerated treatment during morning shift.",
+        )
+        KardexShiftNote.objects.filter(pk=shift_note.pk).update(
+            timestamp=timezone.make_aware(datetime.combine(date.today(), time(hour=10, minute=0)))
+        )
+
+        handover = KardexHandoverNote.objects.create(
+            kardex=kardex,
+            outgoing_nurse=test_user,
+            incoming_nurse=another_user,
+            shift_ending="DAY",
+            pending_tasks="Review oxygen requirements at noon.",
+            escalations="Escalate if SpO2 drops below 92%.",
+        )
+        KardexHandoverNote.objects.filter(pk=handover.pk).update(
+            created_at=timezone.make_aware(datetime.combine(date.today(), time(hour=11, minute=0)))
+        )
+
+        response = authenticated_client.get(
+            f"/api/inpatient/admissions/{sample_admission.id}/clinical-summary/"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["admission_id"] == sample_admission.id
+        assert response.data["admission_number"] == sample_admission.admission_number
+        assert "rendered_text" in response.data
+        assert "INPATIENT CLINICAL COURSE (Chronological)" in response.data["rendered_text"]
+
+        entries = response.data["entries"]
+        assert len(entries) >= 3
+
+        sources = [entry["source"] for entry in entries]
+        assert any(src.startswith("Ward Round") for src in sources)
+        assert any(src.startswith("Kardex Shift Note") for src in sources)
+        assert any(src.startswith("Kardex Handover") for src in sources)
+
+        timestamps = [entry["timestamp"] for entry in entries]
+        assert timestamps == sorted(timestamps)
+
     def test_filter_admissions_by_ward(
         self, authenticated_client, sample_admission, sample_inpatient_ward
     ):
