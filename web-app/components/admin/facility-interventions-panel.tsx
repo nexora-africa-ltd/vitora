@@ -1,8 +1,19 @@
 'use client';
 
-import { useState, useDeferredValue } from 'react';
+import { Fragment, useState, useDeferredValue } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { Search, FileText, AlertTriangle, ShieldAlert, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import {
+  Search,
+  FileText,
+  AlertTriangle,
+  ShieldAlert,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -18,6 +29,10 @@ interface Intervention {
   category: string;
   price: number | string;
   facility_level: number | string;
+  payment_mechanism?: string | null;
+  access_point?: string | null;
+  benefit_code?: string | null;
+  raw_data?: Record<string, unknown>;
   requires_preauthorization?: boolean;
   is_active: boolean;
   max_amount_per_test?: string | null;
@@ -30,27 +45,53 @@ interface Props {
 
 const PAGE_SIZE = 50;
 
+function paymentMechanismLabel(value?: string | null): string {
+  const raw = (value ?? '').trim();
+  if (!raw) return '—';
+  const normalized = raw.toLowerCase();
+  if (normalized.includes('capitation')) return 'Capitation';
+  if (normalized.includes('per diem') || normalized.includes('per_diem')) return 'Per Diem';
+  if (normalized.includes('fixed fee for service')) return 'POMSF';
+  if (normalized.includes('fee for service')) return 'FFS';
+  return raw;
+}
+
 export function FacilityInterventionsPanel({ facilityLevel }: Props) {
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [page, setPage] = useState(1);
+  const [expandedCodes, setExpandedCodes] = useState<Set<string>>(new Set());
   const level = parseInt(facilityLevel);
 
   // Reset page when search changes
   const handleSearchChange = (value: string) => {
     setSearch(value);
     setPage(1);
+    setExpandedCodes(new Set());
   };
 
-  const { data, isLoading, isFetching, error } = useQuery({
+  const toggleExpanded = (code: string) => {
+    setExpandedCodes((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) {
+        next.delete(code);
+      } else {
+        next.add(code);
+      }
+      return next;
+    });
+  };
+
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['facility-interventions', level, deferredSearch, page],
     queryFn: async () => {
+      const normalizedSearch = deferredSearch.trim();
       const params = new URLSearchParams();
       params.set('facility_level', String(level));
       params.set('limit', String(PAGE_SIZE));
       params.set('offset', String((page - 1) * PAGE_SIZE));
-      if (deferredSearch.length >= 2) {
-        params.set('search', deferredSearch);
+      if (normalizedSearch.length > 0) {
+        params.set('search', normalizedSearch);
       }
       const response = await apiClient.get(
         `/api/billing/terminology/interventions/?${params.toString()}`
@@ -89,11 +130,24 @@ export function FacilityInterventionsPanel({ facilityLevel }: Props) {
             <CardTitle className="text-base">SHA Interventions &amp; Tariffs</CardTitle>
             <HelpPopover content="SHA Benefits & Interventions available at this facility's KEPH level. Tariffs shown are the SHA reimbursement amounts." />
           </div>
-          {total > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              {total} available
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {total > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {total} available
+              </Badge>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void refetch();
+              }}
+              disabled={isFetching}
+            >
+              <RefreshCw className={`mr-1 h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -118,7 +172,7 @@ export function FacilityInterventionsPanel({ facilityLevel }: Props) {
           </div>
         ) : interventions.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
-            {search.length >= 2
+            {search.trim().length > 0
               ? 'No interventions match your search.'
               : 'No interventions available for this facility level.'}
           </p>
@@ -127,9 +181,11 @@ export function FacilityInterventionsPanel({ facilityLevel }: Props) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
+                  <th className="pb-2 pr-2 font-medium hidden md:table-cell w-[48px]">More</th>
                   <th className="pb-2 pr-4 font-medium">Code</th>
                   <th className="pb-2 pr-4 font-medium">Intervention</th>
                   <th className="pb-2 pr-4 font-medium hidden sm:table-cell">Category</th>
+                  <th className="pb-2 pr-4 font-medium hidden md:table-cell">Payment</th>
                   <th className="pb-2 pr-4 font-medium text-right">Tariff (KES)</th>
                   <th className="pb-2 pr-4 font-medium text-right hidden lg:table-cell">Max/Test</th>
                   <th className="pb-2 pr-4 font-medium text-right hidden lg:table-cell">Qty/Year</th>
@@ -138,39 +194,90 @@ export function FacilityInterventionsPanel({ facilityLevel }: Props) {
               </thead>
               <tbody className="divide-y">
                 {interventions.map((item) => (
-                  <tr key={item.code} className="hover:bg-muted/50">
-                    <td className="py-2 pr-4 font-mono text-xs">{item.code}</td>
-                    <td className="py-2 pr-4 max-w-[200px] sm:max-w-[300px] truncate">
-                      {item.name}
-                    </td>
-                    <td className="py-2 pr-4 hidden sm:table-cell">
-                      {item.category && (
+                  <Fragment key={item.code}>
+                    <tr key={item.code} className="hover:bg-muted/50">
+                      <td className="py-2 pr-2 hidden md:table-cell">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => toggleExpanded(item.code)}
+                          aria-label={expandedCodes.has(item.code) ? 'Collapse row' : 'Expand row'}
+                        >
+                          {expandedCodes.has(item.code) ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </td>
+                      <td className="py-2 pr-4 font-mono text-xs">{item.code}</td>
+                      <td className="py-2 pr-4 max-w-[200px] sm:max-w-[300px] truncate">
+                        {item.name}
+                      </td>
+                      <td className="py-2 pr-4 hidden sm:table-cell">
+                        {item.category && (
+                          <Badge variant="outline" className="text-xs">
+                            {item.category}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4 hidden md:table-cell">
                         <Badge variant="outline" className="text-xs">
-                          {item.category}
+                          {paymentMechanismLabel(item.payment_mechanism)}
                         </Badge>
-                      )}
-                    </td>
-                    <td className="py-2 pr-4 text-right font-medium tabular-nums">
-                      {item.price
-                        ? (typeof item.price === 'number'
-                            ? item.price.toLocaleString()
-                            : Number(item.price).toLocaleString())
-                        : '—'}
-                    </td>
-                    <td className="py-2 pr-4 text-right tabular-nums hidden lg:table-cell">
-                      {item.max_amount_per_test
-                        ? Number(item.max_amount_per_test).toLocaleString()
-                        : '—'}
-                    </td>
-                    <td className="py-2 pr-4 text-right tabular-nums hidden lg:table-cell">
-                      {item.quantity_per_year ?? '—'}
-                    </td>
-                    <td className="py-2 hidden md:table-cell">
-                      {item.requires_preauthorization && (
-                        <ShieldAlert className="h-4 w-4 text-amber-500" aria-label="Requires pre-authorization" />
-                      )}
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="py-2 pr-4 text-right font-medium tabular-nums">
+                        {item.price
+                          ? (typeof item.price === 'number'
+                              ? item.price.toLocaleString()
+                              : Number(item.price).toLocaleString())
+                          : '—'}
+                      </td>
+                      <td className="py-2 pr-4 text-right tabular-nums hidden lg:table-cell">
+                        {item.max_amount_per_test
+                          ? Number(item.max_amount_per_test).toLocaleString()
+                          : '—'}
+                      </td>
+                      <td className="py-2 pr-4 text-right tabular-nums hidden lg:table-cell">
+                        {item.quantity_per_year ?? '—'}
+                      </td>
+                      <td className="py-2 hidden md:table-cell">
+                        {item.requires_preauthorization && (
+                          <ShieldAlert className="h-4 w-4 text-amber-500" aria-label="Requires pre-authorization" />
+                        )}
+                      </td>
+                    </tr>
+                    {expandedCodes.has(item.code) && (
+                      <tr className="bg-muted/30 hidden md:table-row">
+                        <td colSpan={9} className="px-4 py-3">
+                          <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 text-xs">
+                            <div>
+                              <p className="text-muted-foreground">Description</p>
+                              <p className="font-medium break-words">{item.description || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Benefit Code</p>
+                              <p className="font-medium">{item.benefit_code || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Access Point</p>
+                              <p className="font-medium">{item.access_point || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Applicable Gender</p>
+                              <p className="font-medium">
+                                {typeof item.raw_data?.applicable_gender === 'string'
+                                  ? item.raw_data.applicable_gender
+                                  : 'ALL'}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

@@ -97,13 +97,43 @@ interface PreVisitChecksPanelProps {
   } | null;
 }
 
-const ID_TYPES = ['National ID', 'Passport', 'Birth Certificate', 'Alien ID', 'SHA Number'];
+const ID_TYPES = [
+  'National ID',
+  'Passport',
+  'License Number',
+  'Birth Certificate',
+  'Alien ID',
+  'SHA Number',
+];
 const FACILITY_ID_TYPES = [
   { value: 'mfl', label: 'MFL code' },
   { value: 'fr', label: 'FR code' },
   { value: 'uuid', label: 'UUID' },
 ];
 const REGULATORS = ['KMPDC', 'NCK', 'COC', 'PPB', 'KMLTTB', 'KNDI'];
+
+const REGULATOR_FULL_TO_ABBREV: Record<string, string> = {
+  'kenya medical practitioners and dentists council': 'KMPDC',
+  'clinical officers council': 'COC',
+  'pharmacy and poisons board': 'PPB',
+  'nursing council of kenya': 'NCK',
+  'kenya medical laboratory technicians and technologists board': 'KMLTTB',
+  'kenya nutritionists and dieticians institute': 'KNDI',
+};
+
+function normalizeRegulator(value: string | null | undefined): string {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const upper = raw.toUpperCase();
+  if (REGULATORS.includes(upper)) return upper;
+  return REGULATOR_FULL_TO_ABBREV[raw.toLowerCase()] || '';
+}
+
+function regulatorRequiredForIdType(idType: string): boolean {
+  const normalized = String(idType || '').trim().toLowerCase();
+  if (normalized === 'national id' || normalized === 'passport') return false;
+  return normalized.includes('license');
+}
 
 // ============================================================================
 // Status pill (used by every check card)
@@ -252,7 +282,7 @@ export function PreVisitChecksPanel({
     || '';
   // Prefer encounter clinician over logged-in user for the practitioner licence check.
   const licenseNumber = encounterClinician?.license_number || user?.license_number || '';
-  const regulator = encounterClinician?.licensing_body || user?.licensing_body || '';
+  const regulator = normalizeRegulator(encounterClinician?.licensing_body || user?.licensing_body || '');
   const practitionerIdNumber = encounterClinician?.national_id || user?.national_id || '';
 
   // -------------------------------------------------------------------------
@@ -297,14 +327,16 @@ export function PreVisitChecksPanel({
   // -------------------------------------------------------------------------
   // 4. Practitioner licence
   // -------------------------------------------------------------------------
-  const practitionerEnabled = !!licenseNumber && !!regulator && !!practitionerIdNumber;
+  const practitionerIdType = 'National ID';
+  const practitionerNeedsRegulator = regulatorRequiredForIdType(practitionerIdType);
+  const practitionerEnabled = !!practitionerIdNumber && (!practitionerNeedsRegulator || !!regulator);
   const practitionerQuery = useQuery({
-    queryKey: ['ilm-practitioner', practitionerIdNumber, regulator],
+    queryKey: ['ilm-practitioner', practitionerIdNumber, practitionerIdType, regulator],
     queryFn: () =>
       shaApi.ilmProfessionalSearch({
         identification_number: practitionerIdNumber,
-        identification_type: 'National ID',
-        regulator,
+        identification_type: practitionerIdType,
+        ...(practitionerNeedsRegulator && regulator ? { regulator } : {}),
       }),
     enabled: practitionerEnabled,
     staleTime: 60 * 60 * 1000,
@@ -528,7 +560,7 @@ export function PreVisitChecksPanel({
               ? 'No practitioner credentials on the encounter clinician profile'
               : parsedPractitioner?.fullName
                 ? `${parsedPractitioner.fullName} · ${parsedPractitioner.regulator || regulator}`
-                : `Verifying ${regulator} ${licenseNumber}…`
+                : `Verifying practitioner ${practitionerIdNumber}…`
           }
           status={practitionerStatus}
           statusLabel={
@@ -559,8 +591,7 @@ export function PreVisitChecksPanel({
             <p className="text-xs text-muted-foreground">No result yet.</p>
           ) : (
             <p className="text-xs text-muted-foreground">
-              Add a licence number and licensing body to the encounter clinician staff profile to
-              enable auto-verification.
+              Add a national ID on the encounter clinician profile to enable auto-verification.
             </p>
           )}
         </CheckCard>
@@ -886,10 +917,16 @@ function AdHocPractitionerLookup() {
     setBusy(true);
     setErr(null);
     try {
+      const needsRegulator = regulatorRequiredForIdType(idType);
+      const normalizedRegulator = normalizeRegulator(regulator);
+      if (needsRegulator && !normalizedRegulator) {
+        setErr(`Regulator is required for ${idType}. Use one of: ${REGULATORS.join(', ')}`);
+        return;
+      }
       const resp = await shaApi.ilmProfessionalSearch({
         identification_number: idNumber,
         identification_type: idType,
-        regulator,
+        ...(needsRegulator ? { regulator: normalizedRegulator } : {}),
       });
       setResult(parseProfessional(resp));
     } catch (e) {
@@ -933,21 +970,23 @@ function AdHocPractitionerLookup() {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label htmlFor="adhoc-pro-reg">Regulator</Label>
-            <Select value={regulator} onValueChange={setRegulator}>
-              <SelectTrigger id="adhoc-pro-reg">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {REGULATORS.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {r}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {regulatorRequiredForIdType(idType) ? (
+            <div>
+              <Label htmlFor="adhoc-pro-reg">Regulator</Label>
+              <Select value={regulator} onValueChange={setRegulator}>
+                <SelectTrigger id="adhoc-pro-reg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {REGULATORS.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {r}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
         </div>
         <Button size="sm" disabled={!idNumber || busy} onClick={run}>
           {busy ? (

@@ -58,31 +58,44 @@ class ConnectivityChecker:
             self._last_check = timezone.now()
             return False
 
-        try:
-            start_time = time.time()
-            response = requests.get(
-                f"{self.server_url}/health/",
-                timeout=self.timeout,
-            )
-            elapsed_ms = int((time.time() - start_time) * 1000)
+        base_url = self.server_url.rstrip("/")
+        probe_paths = ("/health/", "/")
 
-            self._is_online = response.status_code == 200
-            self._latency_ms = elapsed_ms
-            self._last_check = timezone.now()
+        for probe_path in probe_paths:
+            probe_url = f"{base_url}{probe_path}"
+            try:
+                start_time = time.time()
+                response = requests.get(probe_url, timeout=self.timeout)
+                elapsed_ms = int((time.time() - start_time) * 1000)
 
-            logger.debug(
-                f"Connectivity check: {'online' if self._is_online else 'offline'}, "
-                f"latency={elapsed_ms}ms"
-            )
+                # Treat any non-5xx response as reachable.
+                # Some upstreams don't expose /health/ and return 404/401.
+                is_reachable = response.status_code < 500
+                if is_reachable:
+                    self._is_online = True
+                    self._latency_ms = elapsed_ms
+                    self._last_check = timezone.now()
+                    logger.debug(
+                        "Connectivity check: online via %s (status=%s), latency=%sms",
+                        probe_path,
+                        response.status_code,
+                        elapsed_ms,
+                    )
+                    return True
 
-            return self._is_online
+                logger.debug(
+                    "Connectivity probe %s returned status=%s; trying next probe",
+                    probe_path,
+                    response.status_code,
+                )
+            except requests.exceptions.RequestException as e:
+                logger.debug("Connectivity probe %s failed: %s", probe_path, e)
 
-        except requests.exceptions.RequestException as e:
-            logger.debug(f"Connectivity check failed: {e}")
-            self._is_online = False
-            self._latency_ms = None
-            self._last_check = timezone.now()
-            return False
+        self._is_online = False
+        self._latency_ms = None
+        self._last_check = timezone.now()
+        logger.debug("Connectivity check: offline after all probes")
+        return False
 
     def _ping_server(self) -> tuple[bool, int | None]:
         """

@@ -41,14 +41,15 @@ export interface ClaimNextStep {
  * Compute the highest-priority next step for a claim. Priority order:
  *   1. Time-barred (blocked)
  *   2. Rejected → resubmit
- *   3. Query from insurer → respond
- *   4. Missing documents → upload
- *   5. Consent required → start consent
- *   6. Draft without interventions → add intervention
- *   7. Draft ready → submit
- *   8. Submitted/processing → no action (info)
- *   9. Approved → discharge / mark paid
- *  10. Paid → success
+ *   3. Queued submission → retry now
+ *   4. Query from insurer → respond
+ *   5. Missing documents → upload
+ *   6. Consent required → start consent
+ *   7. Draft without interventions → add intervention
+ *   8. Draft ready → submit
+ *   9. Submitted/processing → no action (info)
+ *  10. Approved → discharge / mark paid
+ *  11. Paid → success
  */
 export function useClaimNextStep(
   claim: Claim | null | undefined,
@@ -83,7 +84,19 @@ export function useClaimNextStep(
       };
     }
 
-    // 3. Query from insurer → respond
+    // 3. Queued submission → retry now
+    if (claim.status === 'pending_submission') {
+      return {
+        action: 'resubmit',
+        title: 'Claim submission is queued',
+        description: 'Retry now to submit this queued claim immediately.',
+        ctaLabel: 'Retry now',
+        targetTab: 'overview',
+        severity: 'warning',
+      };
+    }
+
+    // 4. Query from insurer → respond
     if (claim.status === 'query') {
       return {
         action: 'respond-query',
@@ -95,7 +108,7 @@ export function useClaimNextStep(
       };
     }
 
-    // 4. Missing documents → upload
+    // 5. Missing documents → upload
     const missing = claim.missing_document_types ?? [];
     if (missing.length > 0) {
       const count = missing.reduce((sum, entry) => sum + entry.missing.length, 0);
@@ -109,7 +122,7 @@ export function useClaimNextStep(
       };
     }
 
-    // 5. Consent required (SHIF/PHC flows)
+    // 6. Consent required (SHIF/PHC flows)
     // Show only if: flow requires consent, not emergency, visit not started,
     // AND no consent token (PENDING or VALIDATED) exists today.
     const needsConsent =
@@ -129,7 +142,7 @@ export function useClaimNextStep(
       };
     }
 
-    // 6. Draft without active interventions → add
+    // 7. Draft without active interventions → add
     const activeInterventions =
       claim.claim_interventions?.filter((i) => i.status === 'active') ?? [];
     if (claim.status === 'draft' && activeInterventions.length === 0) {
@@ -143,7 +156,25 @@ export function useClaimNextStep(
       };
     }
 
-    // 7. Draft ready → submit
+    // 8. Inpatient draft claims require discharge workflow first.
+    if (
+      claim.status === 'draft' &&
+      flow?.supportsInpatientDischarge &&
+      claim.claim_type === 'inpatient' &&
+      !claim.discharge_date
+    ) {
+      return {
+        action: 'discharge',
+        title: 'Complete inpatient discharge first',
+        description:
+          'Inpatient claims are submitted from the Discharge panel after discharge OTP/biometric authorization.',
+        ctaLabel: 'Open discharge',
+        targetTab: 'workflow',
+        severity: 'warning',
+      };
+    }
+
+    // 9. Draft ready → submit
     if (claim.status === 'draft') {
       return {
         action: 'submit',
@@ -155,7 +186,7 @@ export function useClaimNextStep(
       };
     }
 
-    // 8. Inpatient discharge pending
+    // 10. Inpatient discharge pending
     if (
       flow?.supportsInpatientDischarge &&
       claim.admission_date &&
@@ -172,7 +203,7 @@ export function useClaimNextStep(
       };
     }
 
-    // 9. Approved → record payment / view adjudication
+    // 11. Approved → record payment / view adjudication
     if (['approved', 'partially_approved'].includes(claim.status)) {
       return {
         action: 'view-payment',
@@ -184,7 +215,7 @@ export function useClaimNextStep(
       };
     }
 
-    // 10. Paid — nothing required
+    // 12. Paid — nothing required
     if (claim.status === 'paid' || claim.status === 'partial') {
       return {
         action: null,

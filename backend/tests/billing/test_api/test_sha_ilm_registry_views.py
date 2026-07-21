@@ -103,10 +103,19 @@ class TestPatientLookupEndpoint:
 class TestProfessionalSearchEndpoint:
     URL = "/api/sha/ilm/registries/professional-search/"
 
-    def test_requires_regulator(self, sha_client):
+    def test_national_id_does_not_require_regulator(self, sha_client):
+        with patch(ILM_SERVICE_PATH) as M:
+            M.return_value.search_professional.return_value = _ok_result({"message": {}})
+            resp = sha_client.get(
+                self.URL,
+                {"identification_number": "x", "identification_type": "National ID"},
+            )
+            assert resp.status_code == 200
+
+    def test_license_number_requires_regulator(self, sha_client):
         resp = sha_client.get(
             self.URL,
-            {"identification_number": "x", "identification_type": "National ID"},
+            {"identification_number": "x", "identification_type": "License Number"},
         )
         assert resp.status_code == 400
 
@@ -122,6 +131,21 @@ class TestProfessionalSearchEndpoint:
                 },
             )
             assert resp.status_code == 200
+
+    def test_normalizes_full_regulator_name(self, sha_client):
+        with patch(ILM_SERVICE_PATH) as M:
+            M.return_value.search_professional.return_value = _ok_result({"message": {}})
+            resp = sha_client.get(
+                self.URL,
+                {
+                    "identification_number": "DOC-1",
+                    "identification_type": "License Number",
+                    "regulator": "Clinical Officers Council",
+                },
+            )
+            assert resp.status_code == 200
+            kw = M.return_value.search_professional.call_args.kwargs
+            assert kw["regulator"] == "COC"
 
 
 # ---------------------------------------------------------------------------

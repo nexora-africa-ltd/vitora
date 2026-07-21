@@ -31,6 +31,7 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { organizationsApi } from '@/lib/api/organizations';
+import { formatFacilityLevel } from '@/lib/facility-level';
 import { API_BASE_URL } from '@/lib/utils/constants';
 import { formatDate } from '@/lib/utils/format';
 import type { SubscriptionTier } from '@/lib/types/organization';
@@ -40,15 +41,6 @@ const tierColors: Record<SubscriptionTier, string> = {
   BASIC: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
   PROFESSIONAL: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
   ENTERPRISE: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
-};
-
-const levelLabels: Record<string, string> = {
-  '1': 'Level 1 – Community Unit',
-  '2': 'Level 2 – Dispensary',
-  '3': 'Level 3 – Health Centre',
-  '4': 'Level 4 – Sub-County Hospital',
-  '5': 'Level 5 – County Referral Hospital',
-  '6': 'Level 6 – National Referral Hospital',
 };
 
 function tierLabel(tier: SubscriptionTier): string {
@@ -346,7 +338,7 @@ export default function OrganizationDetailPage() {
                     header: 'KEPH Level',
                     sortable: true,
                     cell: (f) => (
-                      <span className="text-sm">{levelLabels[f.level] ?? `Level ${f.level}`}</span>
+                      <span className="text-sm">{formatFacilityLevel(f.level, f.level_subtype)}</span>
                     ),
                     hideOnMobile: true,
                   },

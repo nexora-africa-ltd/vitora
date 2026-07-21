@@ -32,6 +32,7 @@ from django.utils import timezone
 from hmis.apps.billing.facility_identifiers import resolve_fr_code
 from hmis.apps.billing.models import SHAClaim, SHAClaimItem
 from hmis.apps.billing.services.sha_auth import SHAAuthError, SHAAuthService
+from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
 from hmis.apps.billing.services.sha_flow_router import determine_flow
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.sync import ConnectivityChecker, SyncManager
@@ -374,19 +375,50 @@ class SHAClaimsService:
             return SHAClaim.ClaimType.EMERGENCY
         return SHAClaim.ClaimType.OUTPATIENT
 
-    def validate_claim(self, claim: SHAClaim) -> tuple[bool, list[str]]:
+    def validate_claim(self, claim: SHAClaim, user=None) -> tuple[bool, list[str]]:
         """
         Comprehensive claim validation.
 
-        Delegates to model's validate_for_submission() method.
+        Validates using local claim checks and, when eligibility is the only
+        blocker, performs a forced eligibility refresh before returning.
 
         Args:
             claim: SHAClaim to validate
+            user: Optional user context for remote eligibility refresh
 
         Returns:
             Tuple of (is_valid, list_of_errors)
         """
-        return claim.validate_for_submission()
+        is_valid, errors = claim.validate_for_submission()
+        if is_valid:
+            return is_valid, errors
+
+        has_member_error = any(str(err).startswith("Member not eligible:") for err in errors)
+        if not has_member_error or not getattr(claim, "sha_member", None):
+            return is_valid, errors
+
+        refresh_user = (
+            user or getattr(claim, "created_by", None) or getattr(claim, "submitted_by", None)
+        )
+        if refresh_user is None:
+            return is_valid, errors
+
+        try:
+            SHAEligibilityService().check_eligibility(
+                claim.sha_member,
+                refresh_user,
+                force_refresh=True,
+                facility=getattr(claim, "facility", None),
+            )
+            claim.sha_member.refresh_from_db()
+            return claim.validate_for_submission()
+        except Exception as exc:  # pragma: no cover - defensive fallback
+            logger.warning(
+                "Eligibility refresh failed during claim validation for claim %s: %s",
+                claim.id,
+                exc,
+            )
+            return is_valid, errors
 
     def _get_practitioner_id(self, user) -> str:
         """
@@ -1398,7 +1430,7 @@ class SHAClaimsService:
             ValidationError: If claim is not valid for submission or API fails
         """
         # Validate first
-        is_valid, errors = self.validate_claim(claim)
+        is_valid, errors = self.validate_claim(claim, user=user)
         if not is_valid:
             raise ValidationError({"errors": errors})
 

@@ -688,6 +688,59 @@ class TestSHAClaimValidateForSubmission:
         assert is_valid is False
         assert any("eligible" in error.lower() for error in errors)
 
+    def test_validate_for_submission_inpatient_requires_discharge(
+        self, valid_claim_data, sha_tariff, test_user
+    ):
+        """Inpatient claims should not submit before discharge is completed."""
+        from hmis.apps.billing.models import SHAClaim, SHAClaimAttachment, SHAClaimItem
+
+        claim_data = {
+            **valid_claim_data,
+            "claim_type": "inpatient",
+            "admission_date": date.today() - timedelta(days=2),
+            "discharge_date": None,
+        }
+        claim = SHAClaim.objects.create(**claim_data)
+
+        SHAClaimItem.objects.create(
+            claim=claim,
+            tariff=sha_tariff,
+            description="Inpatient test",
+            quantity=1,
+            unit_price=Decimal("500.00"),
+            claimed_amount=Decimal("500.00"),
+        )
+        SHAClaimAttachment.objects.create(
+            claim=claim,
+            attachment_type="clinical_notes",
+            name="Clinical Notes",
+            file=SimpleUploadedFile("notes.pdf", b"%PDF-1.4 test", content_type="application/pdf"),
+            file_size=1024,
+            mime_type="application/pdf",
+            checksum="a" * 64,
+            original_filename="notes.pdf",
+            uploaded_by=test_user,
+        )
+        SHAClaimAttachment.objects.create(
+            claim=claim,
+            attachment_type="invoice",
+            name="Invoice",
+            file=SimpleUploadedFile(
+                "invoice.pdf", b"%PDF-1.4 test", content_type="application/pdf"
+            ),
+            file_size=1024,
+            mime_type="application/pdf",
+            checksum="b" * 64,
+            original_filename="invoice.pdf",
+            uploaded_by=test_user,
+        )
+        claim.calculate_claimed_amount()
+
+        is_valid, errors = claim.validate_for_submission()
+
+        assert is_valid is False
+        assert any("discharge" in error.lower() for error in errors)
+
     # =========================================================================
     # Test 14: validate_for_submission() - no items fails
     # =========================================================================

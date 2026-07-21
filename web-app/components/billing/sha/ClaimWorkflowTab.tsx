@@ -17,6 +17,7 @@ import { ConsentPanel, type ConsentCredential } from './ConsentPanel';
 import { PreauthPanel } from './PreauthPanel';
 import { ClaimILMPanel } from './ClaimILMPanel';
 import { DischargePanel } from './DischargePanel';
+import { DhaAttachmentSyncPanel } from './DhaAttachmentSyncPanel';
 import { PreVisitChecksPanel } from './PreVisitChecksPanel';
 import { InterventionSuggestionsPanel } from './InterventionSuggestionsPanel';
 import { AutoAttachDocumentsButton } from './AutoAttachDocumentsButton';
@@ -269,20 +270,27 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
 
       {/* Discharge (inpatient flows only) */}
       {showDischarge && (
-        <DischargePanel
-          claimId={claim.id}
-          flow={flow}
-          claimPatientId={typeof claim.patient === 'number' ? claim.patient : undefined}
-          claimEncounterId={typeof claim.encounter === 'number' ? claim.encounter : undefined}
-          shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
-          consentToken={consentTokenStr || previewAuthorizationCode}
-          patientExternalId={previewMemberNumber || claim.dha_external_id || ''}
-          invoiceNumber={claim.dha_invoice_number || previewDhaInvoiceNumber || claim.invoice_number || ''}
-          invoiceId={typeof claim.invoice === 'number' ? claim.invoice : null}
-          facilityLevel={facilityLevel}
-          activeInterventions={activeInterventions}
-          onChange={onChange}
-        />
+        <>
+          <DhaAttachmentSyncPanel
+            claimId={claim.id}
+            claimUpdatedAt={claim.updated_at}
+            onSynced={onChange}
+          />
+          <DischargePanel
+            claimId={claim.id}
+            flow={flow}
+            claimPatientId={typeof claim.patient === 'number' ? claim.patient : undefined}
+            claimEncounterId={typeof claim.encounter === 'number' ? claim.encounter : undefined}
+            shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
+            consentToken={consentTokenStr || previewAuthorizationCode}
+            patientExternalId={previewMemberNumber || claim.dha_external_id || ''}
+            invoiceNumber={claim.dha_invoice_number || previewDhaInvoiceNumber || claim.invoice_number || ''}
+            invoiceId={typeof claim.invoice === 'number' ? claim.invoice : null}
+            facilityLevel={facilityLevel}
+            activeInterventions={activeInterventions}
+            onChange={onChange}
+          />
+        </>
       )}
 
       {/* Quiet state — nothing to do */}

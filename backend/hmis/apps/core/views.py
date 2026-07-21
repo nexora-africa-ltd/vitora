@@ -2416,7 +2416,14 @@ class FacilityViewSet(viewsets.ModelViewSet):
             else:
                 return qs.none()
         # Simple exact-match filters
-        for param in ["level", "ownership", "county", "is_active", "sha_contracted"]:
+        for param in [
+            "level",
+            "level_subtype",
+            "ownership",
+            "county",
+            "is_active",
+            "sha_contracted",
+        ]:
             value = self.request.query_params.get(param)
             if value is not None:
                 # Convert string booleans for boolean fields
@@ -2699,7 +2706,7 @@ class FacilityViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        facility.update_from_dha_response(data)
+        updated_local_fields = facility.update_from_dha_response(data)
         facility.save()
 
         AuditLog.log(
@@ -2712,6 +2719,7 @@ class FacilityViewSet(viewsets.ModelViewSet):
             details={
                 "mfl_code": facility.mfl_code,
                 "sha_facility_code": facility.sha_facility_code,
+                "updated_local_fields": updated_local_fields,
             },
         )
 

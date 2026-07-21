@@ -144,29 +144,39 @@ export default function ClaimDetailPage() {
   const handleResubmit = useCallback(async () => {
     setActionError(null);
     try {
+      const isQueuedRetry = claim?.status === 'pending_submission';
       const result = await resubmitMutation.mutateAsync(claimId);
       const statusValue = String(result?.status || '').toLowerCase();
       if (statusValue === 'draft' || statusValue === 'validated' || statusValue === 'failed') {
-        throw new Error(result?.message || 'Claim resubmission failed.');
+        throw new Error(result?.message || 'Claim retry failed.');
       }
       toast({
-        title: result?.status === 'queued' ? 'Resubmission queued' : 'Resubmitted',
+        title:
+          result?.status === 'queued'
+            ? isQueuedRetry
+              ? 'Retry queued'
+              : 'Resubmission queued'
+            : isQueuedRetry
+              ? 'Retry submitted'
+              : 'Resubmitted',
         description:
           result?.status === 'queued'
             ? result?.message || 'Queued for submission when online.'
-            : 'Claim resubmitted to SHA.',
+            : isQueuedRetry
+              ? 'Queued claim submitted to SHA.'
+              : 'Claim resubmitted to SHA.',
       });
       refetch();
     } catch (e) {
       const errorMessage = extractShaInlineError(e);
       setActionError(errorMessage);
       toast({
-        title: 'Resubmit failed',
+        title: claim?.status === 'pending_submission' ? 'Retry failed' : 'Resubmit failed',
         description: errorMessage,
         variant: 'destructive',
       });
     }
-  }, [claimId, resubmitMutation, refetch, toast]);
+  }, [claim?.status, claimId, resubmitMutation, refetch, toast]);
 
   const handleNextStepCta = useCallback(
     (step: ClaimNextStep) => {
@@ -225,7 +235,7 @@ export default function ClaimDetailPage() {
   }
 
   const canSubmit = claim.status === 'draft' && nextStep.action === 'submit';
-  const canResubmit = claim.status === 'rejected';
+  const canResubmit = claim.status === 'rejected' || claim.status === 'pending_submission';
 
   // ---- Render ----
   return (
@@ -266,7 +276,7 @@ export default function ClaimDetailPage() {
                   ) : (
                     <RotateCcw className="h-4 w-4 mr-2" />
                   )}
-                  Resubmit
+                  {claim.status === 'pending_submission' ? 'Retry now' : 'Resubmit'}
                 </Button>
               )}
             </>

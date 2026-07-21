@@ -41,6 +41,16 @@ from hmis.apps.patients.models import Patient
 
 logger = logging.getLogger(__name__)
 
+_HWR_REGULATORS = ("KMPDC", "COC", "PPB", "NCK", "KMLTTB", "KNDI")
+_HWR_REGULATOR_FULL_TO_ABBREV = {
+    "kenya medical practitioners and dentists council": "KMPDC",
+    "clinical officers council": "COC",
+    "pharmacy and poisons board": "PPB",
+    "nursing council of kenya": "NCK",
+    "kenya medical laboratory technicians and technologists board": "KMLTTB",
+    "kenya nutritionists and dieticians institute": "KNDI",
+}
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -114,6 +124,23 @@ def _facility(request):
         return getattr(profile, "primary_facility", None)
 
     return getattr(user, "primary_facility", None)
+
+
+def _normalize_regulator(value: str | None) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    upper = raw.upper()
+    if upper in _HWR_REGULATORS:
+        return upper
+    return _HWR_REGULATOR_FULL_TO_ABBREV.get(raw.lower(), "")
+
+
+def _regulator_required_for_identification_type(identification_type: str) -> bool:
+    normalized = str(identification_type or "").strip().lower()
+    if normalized in {"national id", "passport"}:
+        return False
+    return "license" in normalized
 
 
 _CR_NUMBER_RE = re.compile(r"^CR\d+-\d$")
@@ -214,23 +241,61 @@ class IlmProfessionalSearchView(APIView):
     def get(self, request):
         idn = request.query_params.get("identification_number")
         idt = request.query_params.get("identification_type")
-        regulator = request.query_params.get("regulator")
-        if not idn or not idt or not regulator:
+        regulator_raw = request.query_params.get("regulator")
+        if not idn or not idt:
             return Response(
-                {"error": "identification_number, identification_type and regulator are required"},
+                {"error": "identification_number and identification_type are required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        try:
-            result = IlmRegistriesService().search_professional(
-                identification_number=idn,
-                identification_type=idt,
-                regulator=regulator,
-                facility=_facility(request),
-                user=request.user,
+
+        regulator = _normalize_regulator(regulator_raw)
+        if _regulator_required_for_identification_type(idt) and not regulator:
+            return Response(
+                {
+                    "error": (
+                        "regulator is required for this identification_type and must be one of: "
+                        + ", ".join(_HWR_REGULATORS)
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        except DHAError as exc:
-            return _ilm_handle_error("professional_search", exc, extra={"regulator": regulator})
-        return _result_to_response(result)
+
+        regulators = [regulator] if regulator else list(_HWR_REGULATORS)
+        service = IlmRegistriesService()
+        last_error: DHAError | None = None
+
+        for reg in regulators:
+            try:
+                result = service.search_professional(
+                    identification_number=idn,
+                    identification_type=idt,
+                    regulator=reg,
+                    facility=_facility(request),
+                    user=request.user,
+                )
+                return _result_to_response(result)
+            except DHANotFoundError as exc:
+                last_error = exc
+                continue
+            except DHAValidationError as exc:
+                msg = str(exc).lower()
+                if "no practitioner" in msg or "not found" in msg:
+                    last_error = exc
+                    continue
+                return _ilm_handle_error("professional_search", exc, extra={"regulator": reg})
+            except DHAError as exc:
+                last_error = exc
+                continue
+
+        if last_error is not None:
+            return _ilm_handle_error(
+                "professional_search", last_error, extra={"regulator": regulator}
+            )
+
+        return Response(
+            {"error": "No practitioner found with the provided identification"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
 
 
 # ---------------------------------------------------------------------------

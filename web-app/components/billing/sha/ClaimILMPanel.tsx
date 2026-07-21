@@ -617,6 +617,11 @@ export function ClaimILMPanel({
     return 'OUTPATIENT';
   }, [activeInterventions, selectedIntervention, effectiveInterventionCode]);
 
+  const hasPerDiemIntervention = useMemo(
+    () => (claim.claim_interventions ?? []).some((item) => item.status === 'active' && item.is_per_diem),
+    [claim.claim_interventions],
+  );
+
   // Add intervention / diagnosis dialogs
   const [addInterventionOpen, setAddInterventionOpen] = useState(false);
   const [addDialogPkgCode, setAddDialogPkgCode] = useState('');
@@ -637,6 +642,21 @@ export function ClaimILMPanel({
     staleTime: 0,
   });
 
+  const {
+    data: attachmentSyncStatus,
+    isFetching: attachmentSyncStatusLoading,
+    refetch: refetchAttachmentSyncStatus,
+  } = useQuery({
+    queryKey: ['sha-claim-dha-attachment-sync-status-checklist', claimId, claim.updated_at],
+    queryFn: () => shaApi.ilmAttachmentSyncStatus(claimId),
+    enabled: !!claimId && visitStarted,
+    staleTime: 0,
+  });
+
+  const attachmentSyncMatched = attachmentSyncStatus?.matched ?? 0;
+  const attachmentSyncTotal = attachmentSyncStatus?.total ?? 0;
+  const dhaAttachmentsSynced = attachmentSyncStatus?.all_matched ?? false;
+
   const preSubmitChecklist = useMemo<PreSubmitChecklistItem[]>(() => {
     const preSubmitErrors = preSubmitValidation?.errors ?? [];
     const hasError = (matcher: (error: string) => boolean) => preSubmitErrors.some(matcher);
@@ -653,6 +673,13 @@ export function ClaimILMPanel({
         label: 'Required core attachments (clinical notes + invoice)',
         mode: 'auto',
         complete: !hasError((error) => /Missing required attachment:/i.test(error)),
+      },
+      {
+        id: 'dha-attachments',
+        label: 'Attachments synced to DHA claim attachments endpoint',
+        mode: 'manual',
+        complete: dhaAttachmentsSynced,
+        detail: `${attachmentSyncMatched}/${attachmentSyncTotal} strict file/type matches on DHA`,
       },
       {
         id: 'amount',
@@ -685,7 +712,12 @@ export function ClaimILMPanel({
         complete: !hasError((error) => /pre-authorization|preauth|must be approved/i.test(error)),
       },
     ];
-  }, [preSubmitValidation?.errors]);
+  }, [
+    preSubmitValidation?.errors,
+    dhaAttachmentsSynced,
+    attachmentSyncMatched,
+    attachmentSyncTotal,
+  ]);
 
   const [autoFixedChecklistIds, setAutoFixedChecklistIds] = useState<string[]>([]);
   const previousChecklistStateRef = useRef<Record<string, boolean> | null>(null);
@@ -713,6 +745,11 @@ export function ClaimILMPanel({
   const preSubmitChecklistBlocking = visitStarted && (
     preSubmitValidationLoading || (preSubmitValidation ? !allChecklistItemsComplete : false)
   );
+
+  const refreshPreSubmitChecklist = useCallback(() => {
+    void refetchPreSubmitValidation();
+    void refetchAttachmentSyncStatus();
+  }, [refetchPreSubmitValidation, refetchAttachmentSyncStatus]);
 
   const addInterventionValidation = useMemo(
     () => validateInterventionCombination(interventionCodes, newInterventionCode),
@@ -883,6 +920,12 @@ export function ClaimILMPanel({
   openVisitRef.current = openVisit;
 
   async function preview() {
+    if (serviceType === 'INPATIENT' && hasPerDiemIntervention && !claim.discharge_date) {
+      setError(
+        'DHA blocks preview for active inpatient PER DIEM claims before discharge. Complete discharge first, then retry preview.',
+      );
+      return;
+    }
     const result = await run('preview', () => shaApi.ilmPreview(claimId));
     if (result) {
       setPreviewResult(result);
@@ -1471,12 +1514,12 @@ export function ClaimILMPanel({
             <StepHeader index={3} title="Lifecycle" />
 
       <PreSubmitChecklistBox
-        loading={preSubmitValidationLoading}
+        loading={
+          preSubmitValidationLoading || attachmentSyncStatusLoading
+        }
         items={preSubmitChecklist}
         autoFixedIds={autoFixedChecklistIds}
-        onRefresh={() => {
-          void refetchPreSubmitValidation();
-        }}
+        onRefresh={refreshPreSubmitChecklist}
       />
 
             <div className="flex flex-wrap gap-2">
@@ -2019,7 +2062,12 @@ function PreSubmitChecklistBox({
                 ) : (
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
                 )}
-                <span>{item.label}</span>
+                <div>
+                  <p>{item.label}</p>
+                  {item.detail ? (
+                    <p className="text-[11px] text-muted-foreground">{item.detail}</p>
+                  ) : null}
+                </div>
               </div>
               {item.complete ? (
                 autoFixed ? (

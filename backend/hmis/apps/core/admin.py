@@ -977,7 +977,15 @@ class FacilityInline(admin.TabularInline):
 
     model = Facility
     extra = 0
-    fields = ["mfl_code", "name", "level", "is_headquarters", "branch_code", "is_active"]
+    fields = [
+        "mfl_code",
+        "name",
+        "level",
+        "level_subtype",
+        "is_headquarters",
+        "branch_code",
+        "is_active",
+    ]
     readonly_fields = ["mfl_code", "name"]
     show_change_link = True
 
@@ -1674,6 +1682,7 @@ class FacilityAdmin(admin.ModelAdmin):
     list_filter = [
         "organization",
         "level",
+        "level_subtype",
         "operating_mode",
         "ownership",
         "county",
@@ -1710,6 +1719,7 @@ class FacilityAdmin(admin.ModelAdmin):
                     "name",
                     "logo",
                     "level",
+                    "level_subtype",
                     "ownership",
                 )
             },
@@ -1840,7 +1850,7 @@ class FacilityAdmin(admin.ModelAdmin):
             "6": "#dc3545",
         }
         colour = colours.get(obj.level, "#6c757d")
-        label = obj.get_level_display()
+        label = obj.keph_level_display
         return format_html(
             '<span style="background:{}; color:#fff; padding:2px 8px; '
             'border-radius:4px; font-size:11px;">{}</span>',

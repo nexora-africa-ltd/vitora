@@ -3228,6 +3228,13 @@ class Facility(TimeStampedModel):
         LEVEL_5 = "5", "Level 5 – County Referral Hospital"
         LEVEL_6 = "6", "Level 6 – National Referral Hospital"
 
+    class LevelSubtype(models.TextChoices):
+        """Optional KEPH subtype suffix for levels that are split into bands."""
+
+        A = "A", "A"
+        B = "B", "B"
+        C = "C", "C"
+
     class OwnershipType(models.TextChoices):
         """
         Facility ownership categories as defined by the Ministry of Health.
@@ -3286,6 +3293,13 @@ class Facility(TimeStampedModel):
         max_length=1,
         choices=FacilityLevel.choices,
         help_text="KEPH level (1–6) determining the scope of services offered.",
+    )
+    level_subtype = models.CharField(
+        max_length=1,
+        choices=LevelSubtype.choices,
+        blank=True,
+        default="",
+        help_text="Optional KEPH subtype band (e.g. A/B/C for Level 3/4 variants).",
     )
     ownership = models.CharField(
         max_length=20,
@@ -3700,8 +3714,32 @@ class Facility(TimeStampedModel):
         """Return the facility name and MFL code for human-readable display."""
         return f"{self.name} ({self.mfl_code})"
 
+    @property
+    def keph_level_code(self) -> str:
+        """Return compact KEPH level code (e.g. "3", "3B")."""
+        return f"{self.level}{self.level_subtype}" if self.level_subtype else str(self.level)
+
+    @property
+    def keph_level_display(self) -> str:
+        """Return human label with subtype, e.g. "Level 3B – Health Centre"."""
+        base = self.get_level_display()
+        if not self.level_subtype:
+            return base
+        return base.replace(
+            f"Level {self.level}",
+            f"Level {self.level}{self.level_subtype}",
+            1,
+        )
+
     def save(self, *args, **kwargs):
         """Auto-apply default modules based on KEPH level on creation."""
+        subtype = str(getattr(self, "level_subtype", "") or "").strip().upper()
+        if subtype not in {"", "A", "B", "C"}:
+            subtype = ""
+        if str(self.level) in {"1", "2"}:
+            subtype = ""
+        self.level_subtype = subtype
+
         # Detect operating_mode changes so we cascade module flags on save.
         apply_mode_cascade = False
         if self._state.adding:
@@ -4006,15 +4044,101 @@ class Facility(TimeStampedModel):
         }
     )
 
-    def update_from_dha_response(self, data: dict) -> None:
+    _DHA_OWNERSHIP_MAP = {
+        "GOK": OwnershipType.GOK,
+        "PUBLIC": OwnershipType.GOK,
+        "GOVERNMENT": OwnershipType.GOK,
+        "GOVERNMENT OF KENYA": OwnershipType.GOK,
+        "FBO": OwnershipType.FBO,
+        "FAITH-BASED ORGANIZATION": OwnershipType.FBO,
+        "FAITH BASED ORGANIZATION": OwnershipType.FBO,
+        "NGO": OwnershipType.NGO,
+        "NON-GOVERNMENTAL ORGANIZATION": OwnershipType.NGO,
+        "NON GOVERNMENTAL ORGANIZATION": OwnershipType.NGO,
+        "PRIVATE": OwnershipType.PRIVATE,
+        "PRIVATE PRACTICE": OwnershipType.PRIVATE,
+    }
+
+    @staticmethod
+    def _normalize_dha_level(value: str) -> tuple[str, str]:
+        """Map DHA levels (e.g. "Level 4B") to ("4", "B")."""
+        import re
+
+        text = (value or "").strip().upper()
+        match = re.search(r"([1-6])\s*([ABC])?", text)
+        if not match:
+            return "", ""
+        level = match.group(1) or ""
+        subtype = match.group(2) or ""
+        if level in {"1", "2"}:
+            subtype = ""
+        return level, subtype
+
+    @classmethod
+    def _normalize_dha_ownership(cls, value: str) -> str:
+        """Map DHA ownership labels to Facility ownership enum values."""
+        key = (value or "").strip().upper()
+        normalized = cls._DHA_OWNERSHIP_MAP.get(key)
+        if normalized:
+            return str(normalized)
+        valid_values = {choice for choice, _ in cls.OwnershipType.choices}
+        return key if key in valid_values else ""
+
+    def update_from_dha_response(self, data: dict) -> list[str]:
         """
         Populate cached DHA registry fields from a DHA API response dict.
 
         Non-PII fields are stored as plain columns.  PII fields (admin
         contact, facility contact) are stored encrypted.  The full response
         is cached in ``dha_registry_data`` with PII keys stripped.
+
+        Returns:
+            list[str]: Canonical facility fields updated from DHA.
         """
         from django.utils import timezone
+        from django.utils.dateparse import parse_date
+
+        updated_local_fields: list[str] = []
+
+        def set_local_field(field_name: str, value):
+            current_value = getattr(self, field_name)
+            if value == current_value:
+                return
+            setattr(self, field_name, value)
+            updated_local_fields.append(field_name)
+
+        # Canonical local fields (used in UI and business flows)
+        official_name = str(data.get("officialName", "") or "").strip()
+        if official_name:
+            set_local_field("name", official_name)
+
+        fr_code = str(data.get("frCode", "") or "").strip()
+        if fr_code:
+            set_local_field("sha_facility_code", fr_code)
+
+        normalized_level, normalized_subtype = self._normalize_dha_level(
+            str(data.get("kephLevel", "") or "")
+        )
+        if normalized_level:
+            set_local_field("level", normalized_level)
+            set_local_field("level_subtype", normalized_subtype)
+
+        normalized_ownership = self._normalize_dha_ownership(
+            str(data.get("facilityOwnership", "") or "")
+        )
+        if normalized_ownership:
+            set_local_field("ownership", normalized_ownership)
+
+        sha_contract_status = str(data.get("shaContractStatus", "") or "").strip().lower()
+        if sha_contract_status:
+            is_contracted = "active" in sha_contract_status
+            set_local_field("sha_contracted", is_contracted)
+
+        contract_end = str(data.get("shaConstractEndDate", "") or "").strip()
+        if contract_end:
+            contract_expiry = parse_date(contract_end.split(" ")[0])
+            if contract_expiry:
+                set_local_field("sha_contract_expiry", contract_expiry)
 
         # Non-PII columns
         self.dha_fid_code = str(data.get("fidCode", "") or "")
@@ -4055,6 +4179,7 @@ class Facility(TimeStampedModel):
         safe_data = {k: v for k, v in data.items() if k not in self._DHA_PII_KEYS}
         self.dha_registry_data = safe_data
         self.dha_registry_synced_at = timezone.now()
+        return updated_local_fields
 
     # ------------------------------------------------------------------
     # Class Methods
