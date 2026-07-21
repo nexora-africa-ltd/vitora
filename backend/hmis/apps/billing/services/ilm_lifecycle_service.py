@@ -343,7 +343,9 @@ class IlmLifecycleService:
         - ISO date: YYYY-MM-DD
         - ISO datetime: YYYY-MM-DDTHH:MM:SS[Z|±HH:MM]
 
-        Returns RFC3339 datetime string, using UTC midnight for date-only inputs.
+        Returns RFC3339 datetime string, using end-of-day UTC for date-only
+        inputs so same-day admissions do not fail "admission ahead of discharge"
+        validation on DHA side.
         """
         raw = str(value or "").strip()
         if not raw:
@@ -357,7 +359,7 @@ class IlmLifecycleService:
         except ValueError:
             return raw
 
-        return f"{parsed_date.isoformat()}T00:00:00Z"
+        return f"{parsed_date.isoformat()}T23:59:59Z"
 
     # =====================================================================
     # OTP whitelist
