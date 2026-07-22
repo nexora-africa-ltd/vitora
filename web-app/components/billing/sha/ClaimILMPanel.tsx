@@ -67,7 +67,7 @@ import { useFacility } from '@/lib/context/facility-context';
 import { useQuery } from '@tanstack/react-query';
 import type { CapitationValidationResult } from '@/lib/api/sha';
 import type { IlmCallResult } from '@/lib/schemas/sha.schema';
-import type { Claim } from '@/lib/types/sha';
+import type { Claim, ClaimItem } from '@/lib/types/sha';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
 import type { ConsentCredential } from './ConsentPanel';
 import {
@@ -141,6 +141,15 @@ interface PreSubmitChecklistItem {
   mode: ChecklistMode;
   complete: boolean;
   detail?: string;
+}
+
+interface AllocationDraft {
+  sha_covered_amount: string;
+  patient_payable_amount: string;
+  discount_amount: string;
+  discount_reason: string;
+  saving?: boolean;
+  error?: string | null;
 }
 
 // =============================================================================
@@ -433,7 +442,39 @@ export function ClaimILMPanel({
   const [applyPreviewResult, setApplyPreviewResult] = useState<IlmApplyPreviewLinesResponse | null>(null);
   const [materializePreviewResult, setMaterializePreviewResult] =
     useState<IlmMaterializePreviewInvoiceResponse | null>(null);
+  const [allocationDrafts, setAllocationDrafts] = useState<Record<number, AllocationDraft>>({});
   const [replacePreviewLines, setReplacePreviewLines] = useState(true);
+
+  const claimItems = useMemo<ClaimItem[]>(() => {
+    const raw = (claim as Claim & { items?: unknown }).items;
+    return Array.isArray(raw) ? (raw as ClaimItem[]) : [];
+  }, [claim]);
+  const pendingAllocationItems = useMemo(
+    () => claimItems.filter((item) => item.allocation_status === 'pending'),
+    [claimItems],
+  );
+
+  useEffect(() => {
+    if (claimItems.length === 0) {
+      setAllocationDrafts({});
+      return;
+    }
+    setAllocationDrafts((prev) => {
+      const next: Record<number, AllocationDraft> = {};
+      for (const item of claimItems) {
+        const existing = prev[item.id];
+        next[item.id] = existing ?? {
+          sha_covered_amount: String(item.sha_covered_amount ?? item.claimed_amount ?? '0.00'),
+          patient_payable_amount: String(item.patient_payable_amount ?? '0.00'),
+          discount_amount: String(item.discount_amount ?? '0.00'),
+          discount_reason: String(item.discount_reason ?? ''),
+          saving: false,
+          error: null,
+        };
+      }
+      return next;
+    });
+  }, [claimItems]);
 
   const { data: latestConsentToken } = useQuery({
     queryKey: ['sha-latest-consent-for-workflow', claim.sha_member, claim.updated_at],
@@ -694,6 +735,15 @@ export function ClaimILMPanel({
         complete: !hasError((error) => /Claimed amount must be greater than zero/i.test(error)),
       },
       {
+        id: 'payer-allocation',
+        label: 'Payer allocation resolved (SHA / patient / discount)',
+        mode: 'manual',
+        complete: pendingAllocationItems.length === 0,
+        detail: pendingAllocationItems.length
+          ? `${pendingAllocationItems.length} line(s) pending allocation review`
+          : 'All line allocations resolved',
+      },
+      {
         id: 'preview',
         label: 'Claim preview completed',
         mode: 'auto',
@@ -720,6 +770,7 @@ export function ClaimILMPanel({
     ];
   }, [
     preSubmitValidation?.errors,
+    pendingAllocationItems.length,
     dhaAttachmentsSynced,
     attachmentSyncMatched,
     attachmentSyncTotal,
@@ -985,6 +1036,43 @@ export function ClaimILMPanel({
       setError(formatErr(e));
     } finally {
       setBusy(null);
+    }
+  }
+
+  function updateAllocationDraft(itemId: number, patch: Partial<AllocationDraft>) {
+    setAllocationDrafts((prev) => ({
+      ...prev,
+      [itemId]: {
+        ...(prev[itemId] ?? {
+          sha_covered_amount: '0.00',
+          patient_payable_amount: '0.00',
+          discount_amount: '0.00',
+          discount_reason: '',
+          saving: false,
+          error: null,
+        }),
+        ...patch,
+      },
+    }));
+  }
+
+  async function saveAllocation(itemId: number) {
+    const draft = allocationDrafts[itemId];
+    if (!draft) return;
+    updateAllocationDraft(itemId, { saving: true, error: null });
+    try {
+      await shaApi.updateClaimItemAllocation(claimId, itemId, {
+        sha_covered_amount: draft.sha_covered_amount,
+        patient_payable_amount: draft.patient_payable_amount,
+        discount_amount: draft.discount_amount,
+        discount_reason: draft.discount_reason,
+      });
+      toast.success('Line allocation updated.');
+      onChange?.();
+    } catch (e: unknown) {
+      updateAllocationDraft(itemId, { error: formatErr(e) });
+    } finally {
+      updateAllocationDraft(itemId, { saving: false });
     }
   }
 
@@ -1553,6 +1641,89 @@ export function ClaimILMPanel({
         onRefresh={refreshPreSubmitChecklist}
       />
 
+            {pendingAllocationItems.length > 0 && (
+              <div className="rounded-md border border-amber-300 bg-amber-50/70 p-3 space-y-3 dark:border-amber-800 dark:bg-amber-900/20">
+                <p className="text-xs font-medium text-amber-900 dark:text-amber-100">
+                  Payer allocation review required
+                </p>
+                <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                  Review each pending line, then split amounts between SHA, patient payable, and optional
+                  discount/waiver (reason required for discounts).
+                </p>
+                <div className="space-y-2">
+                  {pendingAllocationItems.map((item) => {
+                    const draft = allocationDrafts[item.id];
+                    if (!draft) return null;
+                    return (
+                      <div key={item.id} className="rounded border bg-background p-2 space-y-2">
+                        <div className="flex items-center justify-between gap-2 text-xs">
+                          <p className="font-medium truncate">{item.description}</p>
+                          <Badge variant="outline">Gross KES {item.claimed_amount}</Badge>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-4">
+                          <div className="space-y-1">
+                            <Label className="text-[11px]">SHA covered</Label>
+                            <Input
+                              value={draft.sha_covered_amount}
+                              onChange={(e) => updateAllocationDraft(item.id, { sha_covered_amount: e.target.value })}
+                              className="h-8 text-xs"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[11px]">Patient payable</Label>
+                            <Input
+                              value={draft.patient_payable_amount}
+                              onChange={(e) => updateAllocationDraft(item.id, { patient_payable_amount: e.target.value })}
+                              className="h-8 text-xs"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[11px]">Discount / waiver</Label>
+                            <Input
+                              value={draft.discount_amount}
+                              onChange={(e) => updateAllocationDraft(item.id, { discount_amount: e.target.value })}
+                              className="h-8 text-xs"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[11px]">Discount reason</Label>
+                            <Input
+                              value={draft.discount_reason}
+                              onChange={(e) => updateAllocationDraft(item.id, { discount_reason: e.target.value })}
+                              className="h-8 text-xs"
+                              placeholder="Required when discount > 0"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          {draft.error ? (
+                            <p className="text-[11px] text-destructive">{draft.error}</p>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground">
+                              Save to mark this line as resolved.
+                            </span>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => saveAllocation(item.id)}
+                            disabled={!!draft.saving || busy !== null}
+                          >
+                            {draft.saving ? (
+                              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="mr-2 h-3 w-3" />
+                            )}
+                            Save allocation
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={preview} disabled={busy !== null}>
                 {busy === 'preview' ? (
@@ -1645,6 +1816,12 @@ export function ClaimILMPanel({
                   {applyPreviewResult.final_bill_skipped_reason && (
                     <p>
                       Final Bill auto-generation skipped: {applyPreviewResult.final_bill_skipped_reason}.
+                    </p>
+                  )}
+                  {typeof applyPreviewResult.allocation_pending_count === 'number' && (
+                    <p>
+                      {applyPreviewResult.allocation_pending_count} line(s) need payer allocation review
+                      before submit/discharge.
                     </p>
                   )}
                   {applyPreviewResult.unmatched_tariff_codes.length > 0 && (

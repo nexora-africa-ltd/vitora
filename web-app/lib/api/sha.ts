@@ -756,7 +756,7 @@ async function getClaimAttachments(claimId: number): Promise<Array<{
   name: string;
   original_filename?: string | null;
   description?: string | null;
-}>> {
+  }>> {
   const response = await apiClient.get(`/api/billing/claims/${claimId}/attachments/`);
   return response.data as Array<{
     id: number;
@@ -765,6 +765,28 @@ async function getClaimAttachments(claimId: number): Promise<Array<{
     original_filename?: string | null;
     description?: string | null;
   }>;
+}
+
+export interface ClaimItemAllocationUpdateRequest {
+  sha_covered_amount: string;
+  patient_payable_amount: string;
+  discount_amount: string;
+  discount_reason?: string;
+}
+
+export interface ClaimItemAllocationUpdateResponse {
+  success: boolean;
+  item: unknown;
+  claim_claimed_amount: string;
+}
+
+async function updateClaimItemAllocation(
+  claimId: number,
+  itemId: number,
+  payload: ClaimItemAllocationUpdateRequest,
+): Promise<ClaimItemAllocationUpdateResponse> {
+  const response = await apiClient.post(`/api/sha/claims/${claimId}/items/${itemId}/allocation/`, payload);
+  return response.data as ClaimItemAllocationUpdateResponse;
 }
 
 // ============================================================================
@@ -1355,6 +1377,7 @@ export interface IlmApplyPreviewLinesResponse {
   final_bill_created?: boolean;
   final_bill_updated?: boolean;
   final_bill_skipped_reason?: string;
+  allocation_pending_count?: number;
   unmatched_tariff_codes: string[];
   parse_errors: string[];
   claimed_amount: string;
@@ -1953,6 +1976,7 @@ export const shaApi = {
   cancelClaim,
   getClaimBundle,
   getClaimAttachments,
+  updateClaimItemAllocation,
 
   // Facility Validation
   validateFacility,

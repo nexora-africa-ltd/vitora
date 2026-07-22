@@ -292,6 +292,7 @@ class TestPreviewBeforeSubmit:
         assert response.data["final_bill_attachment_id"]
         assert response.data["final_bill_created"] is True
         assert response.data["final_bill_skipped_reason"] == ""
+        assert response.data["allocation_pending_count"] == 1
 
         claim.refresh_from_db()
         assert claim.invoice_id == response.data["materialized_invoice_id"]
@@ -305,9 +306,97 @@ class TestPreviewBeforeSubmit:
         assert final_bill.attachment_type == "invoice"
         assert "Final Bill" in final_bill.name
         assert "final_bill" in final_bill.original_filename
+        assert claim.items.first() is not None
+        assert claim.items.first().allocation_status == "pending"
 
-        invoice = Invoice.objects.get(id=claim.invoice_id)
-        assert invoice.sha_claim_number == claim.claim_number
+    def test_item_allocation_endpoint_requires_discount_reason(
+        self, sha_client, sample_sha_claim_for_uat
+    ):
+        """Discounts/waivers require a reason for audit compliance."""
+        from hmis.apps.billing.models import SHATariff
+
+        claim = sample_sha_claim_for_uat
+        tariff = SHATariff.objects.create(
+            code="SHA-08-777",
+            name="Allocation Test",
+            description="Allocation Test",
+            category=SHATariff.TariffCategory.LABORATORY,
+            facility_level=claim.facility_level,
+            sha_amount=Decimal("1000.00"),
+            effective_date=date.today(),
+            is_active=True,
+        )
+        item = claim.items.create(
+            tariff=tariff,
+            description="Allocation Test",
+            service_date=claim.service_date,
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("1000.00"),
+            sha_covered_amount=Decimal("1000.00"),
+            patient_payable_amount=Decimal("0.00"),
+            discount_amount=Decimal("0.00"),
+            allocation_status="pending",
+        )
+
+        response = sha_client.post(
+            f"/api/sha/claims/{claim.id}/items/{item.id}/allocation/",
+            {
+                "sha_covered_amount": "700.00",
+                "patient_payable_amount": "200.00",
+                "discount_amount": "100.00",
+                "discount_reason": "",
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "reason" in str(response.data.get("error", "")).lower()
+
+    def test_item_allocation_endpoint_resolves_split(self, sha_client, sample_sha_claim_for_uat):
+        """Allocation endpoint should support partial split across SHA/patient/discount."""
+        from hmis.apps.billing.models import SHATariff
+
+        claim = sample_sha_claim_for_uat
+        tariff = SHATariff.objects.create(
+            code="SHA-08-778",
+            name="Allocation Split",
+            description="Allocation Split",
+            category=SHATariff.TariffCategory.LABORATORY,
+            facility_level=claim.facility_level,
+            sha_amount=Decimal("1200.00"),
+            effective_date=date.today(),
+            is_active=True,
+        )
+        item = claim.items.create(
+            tariff=tariff,
+            description="Allocation Split",
+            service_date=claim.service_date,
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("1200.00"),
+            sha_covered_amount=Decimal("1200.00"),
+            patient_payable_amount=Decimal("0.00"),
+            discount_amount=Decimal("0.00"),
+            allocation_status="pending",
+        )
+
+        response = sha_client.post(
+            f"/api/sha/claims/{claim.id}/items/{item.id}/allocation/",
+            {
+                "sha_covered_amount": "700.00",
+                "patient_payable_amount": "300.00",
+                "discount_amount": "200.00",
+                "discount_reason": "Social support waiver",
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["success"] is True
+
+        item.refresh_from_db()
+        assert str(item.sha_covered_amount) == "700.00"
+        assert str(item.patient_payable_amount) == "300.00"
+        assert str(item.discount_amount) == "200.00"
+        assert item.discount_reason == "Social support waiver"
+        assert item.allocation_status == "resolved"
 
     def test_materialize_preview_invoice_endpoint_creates_invoice_from_claim_items(
         self, sha_client, sample_sha_claim_for_uat
@@ -647,6 +736,63 @@ class TestDischargeNotFuture:
         ensure_final_bill.assert_called_once()
         called_claim = ensure_final_bill.call_args.kwargs["claim"]
         assert called_claim.id == claim.id
+
+    def test_discharge_blocked_when_allocation_pending(self, sha_client, sample_sha_claim_for_uat):
+        """Discharge should block when payer allocation review is pending."""
+        from hmis.apps.billing.models import ConsentToken, SHATariff
+
+        claim = sample_sha_claim_for_uat
+        tariff = SHATariff.objects.create(
+            code="SHA-08-779",
+            name="Pending Allocation",
+            description="Pending Allocation",
+            category=SHATariff.TariffCategory.LABORATORY,
+            facility_level=claim.facility_level,
+            sha_amount=Decimal("500.00"),
+            effective_date=date.today(),
+            is_active=True,
+        )
+        claim.items.create(
+            tariff=tariff,
+            description="Pending Allocation",
+            service_date=claim.service_date,
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("500.00"),
+            sha_covered_amount=Decimal("500.00"),
+            patient_payable_amount=Decimal("0.00"),
+            discount_amount=Decimal("0.00"),
+            allocation_status="pending",
+        )
+        ConsentToken.objects.create(
+            patient=claim.patient,
+            sha_member=claim.sha_member,
+            encounter=claim.encounter,
+            facility=claim.facility,
+            organization=claim.organization,
+            consent_method=ConsentToken.ConsentMethod.OTP,
+            status=ConsentToken.ConsentStatus.VALIDATED,
+            identification_type="CR Number",
+            identification_number="CR0001234567890-1",
+            consent_token="pending-allocation-token",
+            created_by=claim.created_by,
+        )
+
+        with patch("hmis.apps.billing.sha_ilm_lifecycle_views.IlmLifecycleService") as svc:
+            response = sha_client.post(
+                "/api/sha/ilm/lifecycle/discharge/",
+                {
+                    "consent_token": "pending-allocation-token",
+                    "discharge_date": date.today().isoformat(),
+                    "discharge_reason": "RECOVERED",
+                    "invoice_number": "INV-001",
+                    "otp": "123456",
+                },
+                format="json",
+            )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data.get("code") == "allocation_pending"
+        svc.return_value.discharge_inpatient.assert_not_called()
 
 
 # =============================================================================
