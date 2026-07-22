@@ -851,6 +851,10 @@ class InvoiceItem(models.Model):
     insurance_approved_amount = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal("0.00")
     )
+    is_preview_materialized = models.BooleanField(
+        default=False,
+        help_text="True when this line is auto-materialized from DHA preview data",
+    )
 
     # Stock allocation tracking (for pharmacy items)
     stock_batch = models.ForeignKey(
@@ -3242,6 +3246,10 @@ class SHAClaimItem(models.Model):
         choices=AllocationStatus.choices,
         default=AllocationStatus.RESOLVED,
     )
+    is_preview_line = models.BooleanField(
+        default=False,
+        help_text="True when this claim line originates from DHA preview apply",
+    )
 
     # Adjudication results
     status = models.CharField(max_length=20, choices=ItemStatus.choices, default=ItemStatus.PENDING)
@@ -3395,6 +3403,7 @@ class SHAClaimItem(models.Model):
             patient_payable_amount=Decimal("0.00"),
             discount_amount=Decimal("0.00"),
             allocation_status=cls.AllocationStatus.RESOLVED,
+            is_preview_line=False,
         )
 
 

@@ -9,12 +9,24 @@ from decimal import Decimal
 from typing import Any
 
 from django.db import transaction
+from django.db.models import Q
 
 from hmis.apps.billing.models import Invoice, InvoiceItem, SHAClaim
 from hmis.apps.billing.services.final_bill_attachment_service import FinalBillAttachmentService
 
 AUTO_MATERIALIZED_MARKER = "DHA_PREVIEW_MATERIALIZED"
 TWO_DP = Decimal("0.01")
+
+
+def _line_key(
+    description: str, quantity: Decimal, unit_price: Decimal, tariff_code: str
+) -> tuple[str, str, str, str]:
+    return (
+        str(description or "").strip().lower(),
+        str(Decimal(quantity or 0).quantize(TWO_DP)),
+        str(Decimal(unit_price or 0).quantize(TWO_DP)),
+        str(tariff_code or "").strip().lower(),
+    )
 
 
 @dataclass
@@ -104,10 +116,9 @@ class PreviewInvoiceMaterializer:
             claim.invoice = invoice
             claim.save(update_fields=["invoice", "updated_at"])
 
-        final_bill_result = FinalBillAttachmentService.ensure_for_claim(claim=claim, user=user)
-
         can_write_items = AUTO_MATERIALIZED_MARKER in (invoice.internal_notes or "")
         if not can_write_items:
+            final_bill_result = FinalBillAttachmentService.ensure_for_claim(claim=claim, user=user)
             return MaterializePreviewInvoiceResult(
                 invoice_id=invoice.id,
                 invoice_number=invoice.invoice_number,
@@ -125,8 +136,35 @@ class PreviewInvoiceMaterializer:
         with transaction.atomic():
             replaced = 0
             if replace_existing:
-                replaced = invoice.items.count()
-                invoice.items.all().delete()
+                preview_keys = {
+                    _line_key(
+                        str(line.get("description") or line.get("tariff_code") or ""),
+                        Decimal(str(line.get("quantity") or "0")),
+                        Decimal(str(line.get("unit_price") or "0")),
+                        str(
+                            line.get("tariff_code") or getattr(line.get("tariff"), "code", "") or ""
+                        ),
+                    )
+                    for line in parsed_lines
+                }
+                matched_fallback_ids: list[int] = []
+                for item in invoice.items.filter(
+                    is_preview_materialized=False, is_covered_by_insurance=True
+                ):
+                    item_key = _line_key(
+                        item.description,
+                        Decimal(str(item.quantity or "0")),
+                        Decimal(str(item.unit_price or "0")),
+                        item.sha_code,
+                    )
+                    if item_key in preview_keys:
+                        matched_fallback_ids.append(item.id)
+
+                delete_qs = invoice.items.filter(
+                    Q(is_preview_materialized=True) | Q(id__in=matched_fallback_ids)
+                )
+                replaced = delete_qs.count()
+                delete_qs.delete()
 
             created = 0
             for line in parsed_lines:
@@ -150,8 +188,11 @@ class PreviewInvoiceMaterializer:
                     sha_code=tariff_code,
                     is_covered_by_insurance=True,
                     insurance_approved_amount=line_total,
+                    is_preview_materialized=True,
                 )
                 created += 1
+
+        final_bill_result = FinalBillAttachmentService.ensure_for_claim(claim=claim, user=user)
 
         return MaterializePreviewInvoiceResult(
             invoice_id=invoice.id,

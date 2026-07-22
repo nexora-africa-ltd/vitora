@@ -1933,12 +1933,39 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         previous_count = claim.items.count()
         created_count = 0
+        two_dp = Decimal("0.01")
         with transaction.atomic():
             if replace_existing:
-                claim.items.all().delete()
+                preview_keys = {
+                    (
+                        str(line["description"] or "").strip().lower(),
+                        str(Decimal(str(line["quantity"])).quantize(two_dp)),
+                        str(Decimal(str(line["unit_price"])).quantize(two_dp)),
+                        str(
+                            line.get("tariff_code") or getattr(line.get("tariff"), "code", "") or ""
+                        )
+                        .strip()
+                        .lower(),
+                    )
+                    for line in parsed_lines
+                }
+                matched_fallback_ids: list[int] = []
+                for item in claim.items.filter(is_preview_line=False):
+                    item_key = (
+                        str(item.description or "").strip().lower(),
+                        str(Decimal(str(item.quantity or "0")).quantize(two_dp)),
+                        str(Decimal(str(item.unit_price or "0")).quantize(two_dp)),
+                        str(getattr(item.tariff, "code", "") or "").strip().lower(),
+                    )
+                    if item_key in preview_keys:
+                        matched_fallback_ids.append(item.id)
+
+                claim.items.filter(
+                    models.Q(is_preview_line=True) | models.Q(id__in=matched_fallback_ids)
+                ).delete()
 
             for line in parsed_lines:
-                line_total = (line["quantity"] * line["unit_price"]).quantize(Decimal("0.01"))
+                line_total = (line["quantity"] * line["unit_price"]).quantize(two_dp)
                 SHAClaimItem.objects.create(
                     claim=claim,
                     tariff=line["tariff"],
@@ -1950,6 +1977,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                     patient_payable_amount=Decimal("0.00"),
                     discount_amount=Decimal("0.00"),
                     allocation_status=SHAClaimItem.AllocationStatus.PENDING,
+                    is_preview_line=True,
                 )
                 created_count += 1
 
