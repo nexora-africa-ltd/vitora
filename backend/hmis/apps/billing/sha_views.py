@@ -272,6 +272,14 @@ def _stringify_error(exc: Exception) -> str:
     return f"{exc.__class__.__name__}"
 
 
+def _parse_money(value, field_name: str) -> Decimal:
+    try:
+        parsed = Decimal(str(value)).quantize(Decimal("0.01"))
+    except (InvalidOperation, ValueError, TypeError) as exc:
+        raise serializers.ValidationError({field_name: "Must be a valid decimal amount."}) from exc
+    return parsed
+
+
 def _extract_dha_invoice_number(payload: object) -> str:
     """Extract DHA invoice identifier from an ILM preview-style payload."""
     if not isinstance(payload, Mapping):
@@ -931,6 +939,75 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             item = SHAClaimItem.objects.create(claim=claim, **serializer.validated_data)
 
             return Response(SHAClaimItemSerializer(item).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path=r"items/(?P<item_id>[^/.]+)/allocation")
+    def item_allocation(self, request, pk=None, item_id=None):
+        """Update SHA/patient/discount allocation for a claim line item."""
+        claim = self.get_object()
+        item = get_object_or_404(claim.items.all(), pk=item_id)
+
+        sha_covered_amount = _parse_money(
+            request.data.get("sha_covered_amount", item.sha_covered_amount),
+            "sha_covered_amount",
+        )
+        patient_payable_amount = _parse_money(
+            request.data.get("patient_payable_amount", item.patient_payable_amount),
+            "patient_payable_amount",
+        )
+        discount_amount = _parse_money(
+            request.data.get("discount_amount", item.discount_amount),
+            "discount_amount",
+        )
+        discount_reason = str(
+            request.data.get("discount_reason", item.discount_reason or "")
+        ).strip()
+
+        if discount_amount > 0 and not discount_reason:
+            return Response(
+                {"error": "Discount/waiver reason is required for audit."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        item.sha_covered_amount = sha_covered_amount
+        item.patient_payable_amount = patient_payable_amount
+        item.discount_amount = discount_amount
+        item.discount_reason = discount_reason
+        item.allocation_status = SHAClaimItem.AllocationStatus.RESOLVED
+        if discount_amount > 0:
+            item.discount_applied_by = request.user
+            item.discount_applied_at = timezone.now()
+        else:
+            item.discount_applied_by = None
+            item.discount_applied_at = None
+
+        try:
+            item.save()
+        except Exception as exc:
+            return Response({"error": _stringify_error(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        AuditLog.log(
+            action="sha_claim_item_allocation_updated",
+            user=request.user,
+            resource_type="SHAClaimItem",
+            resource_id=item.id,
+            details={
+                "claim_id": claim.id,
+                "sha_covered_amount": str(item.sha_covered_amount),
+                "patient_payable_amount": str(item.patient_payable_amount),
+                "discount_amount": str(item.discount_amount),
+                "discount_reason": item.discount_reason,
+                "allocation_status": item.allocation_status,
+            },
+        )
+
+        claim.refresh_from_db(fields=["claimed_amount"])
+        return Response(
+            {
+                "success": True,
+                "item": SHAClaimItemSerializer(item).data,
+                "claim_claimed_amount": str(claim.claimed_amount),
+            }
+        )
 
     @action(detail=True, methods=["get", "post"], url_path="attachments")
     def attachments(self, request, pk=None):
@@ -1861,6 +1938,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 claim.items.all().delete()
 
             for line in parsed_lines:
+                line_total = (line["quantity"] * line["unit_price"]).quantize(Decimal("0.01"))
                 SHAClaimItem.objects.create(
                     claim=claim,
                     tariff=line["tariff"],
@@ -1868,6 +1946,10 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                     service_date=claim.service_date,
                     quantity=line["quantity"],
                     unit_price=line["unit_price"],
+                    sha_covered_amount=line_total,
+                    patient_payable_amount=Decimal("0.00"),
+                    discount_amount=Decimal("0.00"),
+                    allocation_status=SHAClaimItem.AllocationStatus.PENDING,
                 )
                 created_count += 1
 
@@ -1914,6 +1996,9 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "final_bill_created": invoice_materialization.final_bill_created,
                 "final_bill_updated": invoice_materialization.final_bill_updated,
                 "final_bill_skipped_reason": invoice_materialization.final_bill_skipped_reason,
+                "allocation_pending_count": claim.items.filter(
+                    allocation_status=SHAClaimItem.AllocationStatus.PENDING
+                ).count(),
                 "unmatched_tariff_codes": sorted(unmatched_tariff_codes),
                 "description_resolved_count": description_resolved_count,
                 "unresolved_lines": unresolved_lines,
@@ -1940,6 +2025,9 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "final_bill_created": invoice_materialization.final_bill_created,
                 "final_bill_updated": invoice_materialization.final_bill_updated,
                 "final_bill_skipped_reason": invoice_materialization.final_bill_skipped_reason,
+                "allocation_pending_count": claim.items.filter(
+                    allocation_status=SHAClaimItem.AllocationStatus.PENDING
+                ).count(),
                 "unmatched_tariff_codes": sorted(unmatched_tariff_codes),
                 "description_resolved_count": description_resolved_count,
                 "unresolved_lines": unresolved_lines,

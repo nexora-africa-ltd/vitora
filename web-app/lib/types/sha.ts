@@ -790,6 +790,7 @@ export interface Claim {
   // Computed counts
   items_count?: number | null;
   attachments_count?: number | null;
+  items?: ClaimItem[];
 
   // DHA HIE integration (document-type enforcement)
   dha_external_id?: string | null;
@@ -875,6 +876,13 @@ export interface ClaimItem {
   quantity: string | number;
   unit_price: string;
   claimed_amount: string;
+  sha_covered_amount?: string;
+  patient_payable_amount?: string;
+  discount_amount?: string;
+  discount_reason?: string;
+  discount_applied_by?: number | null;
+  discount_applied_at?: string | null;
+  allocation_status?: 'pending' | 'resolved';
   // PFMS coverage type
   coverage_type: CoverageType;
   coverage_type_display?: string;

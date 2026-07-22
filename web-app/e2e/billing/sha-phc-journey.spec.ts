@@ -374,6 +374,7 @@ async function setupMocks(page: Page, options?: { visitStarted?: boolean }) {
           final_bill_created: true,
           final_bill_updated: false,
           final_bill_skipped_reason: '',
+          allocation_pending_count: 0,
           unmatched_tariff_codes: [],
           parse_errors: [],
           claimed_amount: '1300.00',

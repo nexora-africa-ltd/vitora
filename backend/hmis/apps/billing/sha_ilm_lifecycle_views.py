@@ -335,6 +335,20 @@ class IlmDischargeView(APIView):
                 )
 
         if claim is not None:
+            pending_allocations = claim.items.filter(allocation_status="pending")
+            if pending_allocations.exists():
+                return Response(
+                    {
+                        "error": (
+                            "Payer allocation review is required before discharge. "
+                            "Resolve SHA/patient/discount splits for all pending claim lines."
+                        ),
+                        "code": "allocation_pending",
+                        "pending_count": pending_allocations.count(),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             try:
                 from hmis.apps.billing.services.final_bill_attachment_service import (
                     FinalBillAttachmentService,

@@ -2659,6 +2659,15 @@ class SHAClaim(FacilityScopedModel):
             count = items_without_tariff.count()
             errors.append(f"{count} item(s) missing SHA tariff code")
 
+        pending_allocations = self.items.filter(
+            allocation_status=SHAClaimItem.AllocationStatus.PENDING
+        )
+        if pending_allocations.exists():
+            errors.append(
+                f"{pending_allocations.count()} item(s) require payer allocation review "
+                "(SHA / patient / discount split)."
+            )
+
         # Check required attachments (clinical_notes and invoice are required)
         required_types = ["clinical_notes", "invoice"]
         existing_types = list(self.attachments.values_list("attachment_type", flat=True))
@@ -3141,6 +3150,12 @@ class SHAClaimItem(models.Model):
         PFMS = "pfms", "PFMS Coverage (Government Subsidy)"
         BOTH = "both", "Split Between SHA and PFMS"
 
+    class AllocationStatus(models.TextChoices):
+        """Whether payer split for this line is final."""
+
+        PENDING = "pending", "Pending Allocation Review"
+        RESOLVED = "resolved", "Allocation Resolved"
+
     id = models.BigAutoField(primary_key=True)
 
     # Claim linkage
@@ -3194,6 +3209,29 @@ class SHAClaimItem(models.Model):
     claimed_amount = models.DecimalField(
         max_digits=12, decimal_places=2, help_text="Total claimed (quantity × unit_price)"
     )
+    sha_covered_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0.00")
+    )
+    patient_payable_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+    )
+    discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    discount_reason = models.TextField(blank=True)
+    discount_applied_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="sha_claim_item_discounts_applied",
+        null=True,
+        blank=True,
+    )
+    discount_applied_at = models.DateTimeField(null=True, blank=True)
+    allocation_status = models.CharField(
+        max_length=16,
+        choices=AllocationStatus.choices,
+        default=AllocationStatus.RESOLVED,
+    )
 
     # Adjudication results
     status = models.CharField(max_length=20, choices=ItemStatus.choices, default=ItemStatus.PENDING)
@@ -3233,6 +3271,15 @@ class SHAClaimItem(models.Model):
         if self.quantity is not None and self.unit_price is not None:
             self.claimed_amount = (self.quantity * self.unit_price).quantize(Decimal("0.01"))
 
+        if (
+            self.claimed_amount is not None
+            and self.sha_covered_amount == Decimal("0.00")
+            and self.patient_payable_amount == Decimal("0.00")
+            and self.discount_amount == Decimal("0.00")
+            and self.allocation_status == self.AllocationStatus.RESOLVED
+        ):
+            self.sha_covered_amount = self.claimed_amount
+
         self.full_clean()
         super().save(*args, **kwargs)
 
@@ -3250,6 +3297,33 @@ class SHAClaimItem(models.Model):
         # Unit price cannot be negative
         if self.unit_price is not None and self.unit_price < 0:
             errors["unit_price"] = "Unit price cannot be negative"
+
+        if self.sha_covered_amount < 0:
+            errors["sha_covered_amount"] = "SHA covered amount cannot be negative"
+
+        if self.patient_payable_amount < 0:
+            errors["patient_payable_amount"] = "Patient payable amount cannot be negative"
+
+        if self.discount_amount < 0:
+            errors["discount_amount"] = "Discount amount cannot be negative"
+
+        if self.discount_amount > 0 and not str(self.discount_reason or "").strip():
+            errors["discount_reason"] = (
+                "Discount reason is required when discount amount is applied"
+            )
+
+        split_total = (
+            Decimal(self.sha_covered_amount or 0)
+            + Decimal(self.patient_payable_amount or 0)
+            + Decimal(self.discount_amount or 0)
+        ).quantize(Decimal("0.01"))
+        claimed_amount = Decimal(self.claimed_amount or 0).quantize(Decimal("0.01"))
+        if split_total != claimed_amount:
+            errors["allocation"] = (
+                "Line allocation mismatch: "
+                "sha_covered_amount + patient_payable_amount + discount_amount "
+                "must equal claimed_amount"
+            )
 
         # Validate against tariff max quantity
         if self.tariff and self.quantity and self.quantity > self.tariff.max_quantity_per_claim:
@@ -3307,6 +3381,10 @@ class SHAClaimItem(models.Model):
             service_date=claim.service_date,
             quantity=invoice_item.quantity,
             unit_price=unit_price,
+            sha_covered_amount=(invoice_item.quantity * unit_price).quantize(Decimal("0.01")),
+            patient_payable_amount=Decimal("0.00"),
+            discount_amount=Decimal("0.00"),
+            allocation_status=cls.AllocationStatus.RESOLVED,
         )
 
 
