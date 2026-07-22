@@ -2174,6 +2174,10 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "discharge_summary_created": invoice_materialization.discharge_summary_created,
                 "discharge_summary_updated": invoice_materialization.discharge_summary_updated,
                 "discharge_summary_skipped_reason": invoice_materialization.discharge_summary_skipped_reason,
+                "claim_form_attachment_id": invoice_materialization.claim_form_attachment_id,
+                "claim_form_created": invoice_materialization.claim_form_created,
+                "claim_form_updated": invoice_materialization.claim_form_updated,
+                "claim_form_skipped_reason": invoice_materialization.claim_form_skipped_reason,
                 "allocation_pending_count": claim.items.filter(
                     allocation_status=SHAClaimItem.AllocationStatus.PENDING
                 ).count(),
@@ -2211,6 +2215,10 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "discharge_summary_created": invoice_materialization.discharge_summary_created,
                 "discharge_summary_updated": invoice_materialization.discharge_summary_updated,
                 "discharge_summary_skipped_reason": invoice_materialization.discharge_summary_skipped_reason,
+                "claim_form_attachment_id": invoice_materialization.claim_form_attachment_id,
+                "claim_form_created": invoice_materialization.claim_form_created,
+                "claim_form_updated": invoice_materialization.claim_form_updated,
+                "claim_form_skipped_reason": invoice_materialization.claim_form_skipped_reason,
                 "allocation_pending_count": claim.items.filter(
                     allocation_status=SHAClaimItem.AllocationStatus.PENDING
                 ).count(),
@@ -2288,6 +2296,10 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "discharge_summary_created": result.discharge_summary_created,
                 "discharge_summary_updated": result.discharge_summary_updated,
                 "discharge_summary_skipped_reason": result.discharge_summary_skipped_reason,
+                "claim_form_attachment_id": result.claim_form_attachment_id,
+                "claim_form_created": result.claim_form_created,
+                "claim_form_updated": result.claim_form_updated,
+                "claim_form_skipped_reason": result.claim_form_skipped_reason,
                 "skipped_reason": result.skipped_reason,
             }
         )

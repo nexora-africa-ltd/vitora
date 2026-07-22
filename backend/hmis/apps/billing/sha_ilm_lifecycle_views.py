@@ -24,6 +24,7 @@ from rest_framework.views import APIView
 from hmis.apps.billing.facility_identifiers import resolve_fr_code
 from hmis.apps.billing.models import SHAOtpRequest, SHAOtpWhitelistRequest, SHAUpload
 from hmis.apps.billing.services.admission_attachment_service import AdmissionAttachmentService
+from hmis.apps.billing.services.claim_form_attachment_service import ClaimFormAttachmentService
 from hmis.apps.billing.services.dha_errors import (
     DHAClientError,
     DHAError,
@@ -364,6 +365,10 @@ class IlmDischargeView(APIView):
                 "discharge_summary_created": False,
                 "discharge_summary_updated": False,
                 "discharge_summary_skipped_reason": "",
+                "claim_form_attachment_id": None,
+                "claim_form_created": False,
+                "claim_form_updated": False,
+                "claim_form_skipped_reason": "",
             }
             try:
                 from hmis.apps.billing.services.final_bill_attachment_service import (
@@ -372,6 +377,10 @@ class IlmDischargeView(APIView):
 
                 FinalBillAttachmentService.ensure_for_claim(claim=claim, user=request.user)
                 admission_docs = AdmissionAttachmentService.ensure_for_claim(
+                    claim=claim,
+                    user=request.user,
+                )
+                claim_form = ClaimFormAttachmentService.ensure_for_claim(
                     claim=claim,
                     user=request.user,
                 )
@@ -384,6 +393,10 @@ class IlmDischargeView(APIView):
                     "discharge_summary_created": admission_docs.discharge_summary.created,
                     "discharge_summary_updated": admission_docs.discharge_summary.updated,
                     "discharge_summary_skipped_reason": admission_docs.discharge_summary.skipped_reason,
+                    "claim_form_attachment_id": claim_form.attachment_id,
+                    "claim_form_created": claim_form.created,
+                    "claim_form_updated": claim_form.updated,
+                    "claim_form_skipped_reason": claim_form.skipped_reason,
                 }
             except Exception:  # noqa: BLE001 - best-effort guardrail
                 logger.exception(
@@ -394,6 +407,7 @@ class IlmDischargeView(APIView):
                     **admission_doc_extra,
                     "critical_care_skipped_reason": "auto_generation_failed",
                     "discharge_summary_skipped_reason": "auto_generation_failed",
+                    "claim_form_skipped_reason": "auto_generation_failed",
                 }
 
         otp = str(request.data.get("otp", ""))
