@@ -297,7 +297,7 @@ class TestPreviewBeforeSubmit:
         assert response.data["claim_form_skipped_reason"] == ""
         assert response.data["critical_care_skipped_reason"] == "missing_admission_context"
         assert response.data["discharge_summary_skipped_reason"] == "missing_admission_context"
-        assert response.data["allocation_pending_count"] == 1
+        assert response.data["allocation_pending_count"] == 0
 
         claim.refresh_from_db()
         assert claim.invoice_id == response.data["materialized_invoice_id"]
@@ -312,7 +312,7 @@ class TestPreviewBeforeSubmit:
         assert "Final Bill" in final_bill.name
         assert "final_bill" in final_bill.original_filename
         assert claim.items.first() is not None
-        assert claim.items.first().allocation_status == "pending"
+        assert claim.items.first().allocation_status == "resolved"
 
     def test_item_allocation_endpoint_requires_discount_reason(
         self, sha_client, sample_sha_claim_for_uat

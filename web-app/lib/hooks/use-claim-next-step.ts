@@ -122,6 +122,30 @@ export function useClaimNextStep(
       };
     }
 
+    const dischargeSnapshot =
+      claim.dha_discharge_snapshot && typeof claim.dha_discharge_snapshot === 'object'
+        ? (claim.dha_discharge_snapshot as Record<string, unknown>)
+        : null;
+    const dischargeWorkflowState = String(dischargeSnapshot?.workflow_state || '').trim().toUpperCase();
+    const dischargeLikelySubmitted =
+      claim.status === 'draft' &&
+      (
+        Boolean(claim.sha_claim_reference || claim.sha_reference)
+        ||
+        ['SUBMISSION_READY', 'SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(dischargeWorkflowState)
+        || Boolean(dischargeSnapshot?.visit_end)
+        || Boolean(dischargeSnapshot?.discharged_on)
+      );
+
+    if (dischargeLikelySubmitted) {
+      return {
+        action: null,
+        title: 'Submitted to SHA',
+        description: 'Submission was accepted. Local status is syncing now.',
+        severity: 'success',
+      };
+    }
+
     // 6. Consent required (SHIF/PHC flows)
     // Show only if: flow requires consent, not emergency, visit not started,
     // AND no consent token (PENDING or VALIDATED) exists today.

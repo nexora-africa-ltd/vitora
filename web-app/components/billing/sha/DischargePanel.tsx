@@ -12,7 +12,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ExternalLink, Fingerprint, Loader2, LogOut, Plus, Trash2 } from 'lucide-react';
+import { ExternalLink, Fingerprint, Loader2, LogOut, Plus, Trash2, UploadCloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DiagnosisCodeInput,
+  emptyDiagnosisCodeValue,
+  type DiagnosisCodeValue,
+} from '@/components/shared/diagnosis-code-input';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { shaApi } from '@/lib/api/sha';
 import { billingApi } from '@/lib/api/billing';
@@ -89,11 +94,41 @@ const LOCAL_ATTACHMENT_TYPES: Array<{ value: string; label: string }> = [
   { value: 'other', label: 'Other' },
 ];
 
+const DOCTOR_ID_TYPES = [
+  { value: 'National ID', label: 'National ID' },
+  { value: 'Passport', label: 'Passport' },
+  { value: 'License Number', label: 'License Number' },
+] as const;
+
+const DOCTOR_REGULATORS = ['KMPDC', 'NCK', 'COC', 'PPB', 'KMLTTB', 'KNDI'] as const;
+
 function normalizeText(value: string): string {
   return String(value || '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+}
+
+function readDiagnosisCode(value: Record<string, unknown>): string {
+  return String(value.diagnosis_code || value.icd_code || '').trim();
+}
+
+function readDiagnosisName(value: Record<string, unknown>): string {
+  return String(value.diagnosis_name || value.diagnosis || '').trim();
+}
+
+function diagnosisCodeForPayload(value: DiagnosisCodeValue): string {
+  if (value.icd11Code) return value.icd11Code.trim();
+  if (value.icd10Display) return value.icd10Display.split(' - ')[0]?.trim() || '';
+  return '';
+}
+
+function idTypeNeedsRegulator(idType: string): boolean {
+  return String(idType || '').trim().toLowerCase().includes('license');
 }
 
 function toAttachmentUrl(filePath?: string | null): string {
@@ -216,6 +251,16 @@ export function DischargePanel({
   const [attachmentNameInput, setAttachmentNameInput] = useState('');
   const [attachmentDescriptionInput, setAttachmentDescriptionInput] = useState('');
   const [attachmentReplacementFile, setAttachmentReplacementFile] = useState<File | null>(null);
+  const [diagnosisCodeInput, setDiagnosisCodeInput] = useState<DiagnosisCodeValue>(
+    emptyDiagnosisCodeValue()
+  );
+  const [diagnosisInterventionInput, setDiagnosisInterventionInput] = useState(
+    activeInterventions[0]?.intervention_code || ''
+  );
+  const [doctorIdNumberInput, setDoctorIdNumberInput] = useState('');
+  const [doctorIdTypeInput, setDoctorIdTypeInput] = useState('National ID');
+  const [doctorRegulationBodyInput, setDoctorRegulationBodyInput] = useState('');
+  const [attachmentSyncMessage, setAttachmentSyncMessage] = useState('');
   const biometricPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { facilityDetail } = useFacility();
@@ -237,7 +282,95 @@ export function DischargePanel({
     queryKey: ['discharge-local-attachments', claimId],
     queryFn: () => shaApi.getClaimAttachments(claimId),
     staleTime: 0,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: true,
   });
+
+  const {
+    data: attachmentSyncStatus,
+    refetch: refetchAttachmentSyncStatus,
+    isFetching: fetchingAttachmentSyncStatus,
+  } = useQuery({
+    queryKey: ['discharge-dha-attachment-sync-status', claimId],
+    queryFn: () => shaApi.ilmAttachmentSyncStatus(claimId),
+    staleTime: 0,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: true,
+  });
+
+  const {
+    data: ilmPreviewResult,
+    refetch: refetchIlmPreview,
+    isLoading: loadingIlmPreview,
+    isFetching: fetchingIlmPreview,
+  } = useQuery({
+    queryKey: ['discharge-ilm-preview', claimId],
+    queryFn: () => shaApi.ilmPreview(claimId),
+    staleTime: 0,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: true,
+  });
+
+  const claimDiagnoses = useMemo(() => {
+    const payload = asRecord(ilmPreviewResult?.payload);
+    const diagnoses = Array.isArray(payload.claim_diagnoses) ? payload.claim_diagnoses : [];
+    return diagnoses
+      .map((entry, index) => {
+        const row = asRecord(entry);
+        const icdCode = readDiagnosisCode(row);
+        if (!icdCode) return null;
+        const interventionCode = String(row.intervention_code || '').trim();
+        return {
+          key: `${icdCode}-${interventionCode || 'none'}-${index}`,
+          icdCode,
+          name: readDiagnosisName(row),
+          interventionCode,
+          recordedAt: String(row.recorded_on || row.original_visit_date || '').trim(),
+        };
+      })
+      .filter(
+        (row): row is {
+          key: string;
+          icdCode: string;
+          name: string;
+          interventionCode: string;
+          recordedAt: string;
+        } => !!row
+      );
+  }, [ilmPreviewResult?.payload]);
+
+  const claimDoctors = useMemo(() => {
+    const payload = asRecord(ilmPreviewResult?.payload);
+    const doctors = Array.isArray(payload.claim_doctors) ? payload.claim_doctors : [];
+    return doctors
+      .map((entry, index) => {
+        const row = asRecord(entry);
+        const sladeCode = String(row.slade_code || row.identification_number || '').trim();
+        if (!sladeCode) return null;
+        return {
+          key: `${sladeCode}-${index}`,
+          sladeCode,
+          doctorName: String(row.doctor_name || '').trim(),
+          requestStatus: String(row.doctor_request_status || row.status || '').trim(),
+          recordedAt: String(row.recorded_on || row.created_at || '').trim(),
+        };
+      })
+      .filter(
+        (row): row is {
+          key: string;
+          sladeCode: string;
+          doctorName: string;
+          requestStatus: string;
+          recordedAt: string;
+        } => !!row
+      );
+  }, [ilmPreviewResult?.payload]);
+
+  const selectedDiagnosisCode = useMemo(
+    () => diagnosisCodeForPayload(diagnosisCodeInput),
+    [diagnosisCodeInput]
+  );
+  const doctorNeedsRegulator = idTypeNeedsRegulator(doctorIdTypeInput);
 
   const presentDhaDocTypes = useMemo(() => {
     const set = new Set<string>();
@@ -252,6 +385,38 @@ export function DischargePanel({
     [presentDhaDocTypes],
   );
   const hasMissingRequiredDischargeDocs = missingRequiredDischargeDocs.length > 0;
+  const dhaAttachmentMatched = attachmentSyncStatus?.matched ?? 0;
+  const dhaAttachmentTotal = attachmentSyncStatus?.total ?? localAttachments.length;
+  const dhaAttachmentsSynced = attachmentSyncStatus?.all_matched ?? localAttachments.length === 0;
+
+  async function resolveRemoteAttachmentMapping(localAttachmentId: number): Promise<{
+    remoteAttachmentId: string;
+    interventionCode: string;
+  } | null> {
+    const syncStatus = await shaApi.ilmAttachmentSyncStatus(claimId);
+    const matched = (syncStatus.matched_details || []).find((item) => item.attachment_id === localAttachmentId);
+    if (!matched || !matched.remote_attachment_id) {
+      return null;
+    }
+    return {
+      remoteAttachmentId: matched.remote_attachment_id,
+      interventionCode: matched.intervention_code || activeInterventions[0]?.intervention_code || '',
+    };
+  }
+
+  async function removeAttachmentOnDhaIfMapped(localAttachment: LocalClaimAttachment): Promise<void> {
+    const mapping = await resolveRemoteAttachmentMapping(localAttachment.id);
+    if (!mapping?.remoteAttachmentId) {
+      return;
+    }
+    if (!mapping.interventionCode) {
+      throw new Error('Cannot remove DHA attachment: intervention_code is missing.');
+    }
+    await shaApi.ilmRemoveAttachment(claimId, {
+      attachment_id: mapping.remoteAttachmentId,
+      intervention_code: mapping.interventionCode,
+    });
+  }
 
   const activeAttachment = useMemo<LocalClaimAttachment | null>(
     () => localAttachments.find((att) => att.id === activeAttachmentId) ?? null,
@@ -273,6 +438,7 @@ export function DischargePanel({
       setError(null);
       setDocFiles((prev) => ({ ...prev, [result.docType]: null }));
       await refetchLocalAttachments();
+      await refetchAttachmentSyncStatus();
       onChange?.();
     },
     onError: (e: any) => {
@@ -327,6 +493,7 @@ export function DischargePanel({
     onSuccess: async () => {
       setError(null);
       await refetchLocalAttachments();
+      await refetchAttachmentSyncStatus();
       onChange?.();
       setAttachmentDialogOpen(false);
     },
@@ -340,6 +507,22 @@ export function DischargePanel({
       if (!activeAttachment) {
         throw new Error('No attachment selected');
       }
+      if (attachmentReplacementFile) {
+        await removeAttachmentOnDhaIfMapped(activeAttachment);
+
+        const nextDocType = inferDhaDocumentTypeFromLocalAttachment({
+          attachment_type: attachmentTypeInput || activeAttachment.attachment_type,
+          name: attachmentNameInput || activeAttachment.name,
+          original_filename: attachmentReplacementFile.name,
+        });
+        const interventionCode = activeInterventions[0]?.intervention_code || '';
+        await shaApi.ilmAddAttachment(claimId, [attachmentReplacementFile], {
+          document_type: nextDocType,
+          document_title: attachmentNameInput || attachmentReplacementFile.name,
+          document_description: attachmentDescriptionInput || '',
+          ...(interventionCode ? { intervention_code: interventionCode } : {}),
+        });
+      }
       return shaApi.updateClaimAttachment(claimId, activeAttachment.id, {
         attachment_type: attachmentTypeInput,
         name: attachmentNameInput,
@@ -350,6 +533,7 @@ export function DischargePanel({
     onSuccess: async () => {
       setError(null);
       await refetchLocalAttachments();
+      await refetchAttachmentSyncStatus();
       onChange?.();
       setAttachmentDialogOpen(false);
     },
@@ -363,16 +547,143 @@ export function DischargePanel({
       if (!activeAttachment) {
         throw new Error('No attachment selected');
       }
+      await removeAttachmentOnDhaIfMapped(activeAttachment);
       await shaApi.deleteClaimAttachment(claimId, activeAttachment.id);
     },
     onSuccess: async () => {
       setError(null);
       await refetchLocalAttachments();
+      await refetchAttachmentSyncStatus();
       onChange?.();
       setAttachmentDialogOpen(false);
     },
     onError: (e: any) => {
       setError(e?.response?.data?.error ?? e?.message ?? 'Failed to delete attachment');
+    },
+  });
+
+  const addDiagnosisMutation = useMutation({
+    mutationFn: async () => {
+      const icdCode = selectedDiagnosisCode;
+      const interventionCode = diagnosisInterventionInput.trim();
+      if (!icdCode) {
+        throw new Error('ICD code is required.');
+      }
+      if (!interventionCode) {
+        throw new Error('Select an intervention to anchor this diagnosis.');
+      }
+      await shaApi.ilmAddDiagnosis(claimId, {
+        icd_code: icdCode,
+        intervention_code: interventionCode,
+      });
+    },
+    onSuccess: async () => {
+      setError(null);
+      setDiagnosisCodeInput(emptyDiagnosisCodeValue());
+      await refetchIlmPreview();
+      onChange?.();
+    },
+    onError: (e: any) => {
+      setError(e?.response?.data?.error ?? e?.message ?? 'Failed to add diagnosis');
+    },
+  });
+
+  const removeDiagnosisMutation = useMutation({
+    mutationFn: async ({ icdCode, interventionCode }: { icdCode: string; interventionCode?: string }) => {
+      const fallbackInterventionCode =
+        diagnosisInterventionInput.trim() || activeInterventions[0]?.intervention_code || '';
+      const resolvedInterventionCode = interventionCode?.trim() || fallbackInterventionCode;
+      if (!resolvedInterventionCode) {
+        throw new Error(`Cannot remove ${icdCode}: intervention code is missing.`);
+      }
+      await shaApi.ilmRemoveDiagnosis(claimId, {
+        icd_code: icdCode,
+        intervention_code: resolvedInterventionCode,
+      });
+    },
+    onSuccess: async () => {
+      setError(null);
+      await refetchIlmPreview();
+      onChange?.();
+    },
+    onError: (e: any) => {
+      setError(e?.response?.data?.error ?? e?.message ?? 'Failed to remove diagnosis');
+    },
+  });
+
+  const addDoctorMutation = useMutation({
+    mutationFn: async () => {
+      const consent = token.trim();
+      const idNumber = doctorIdNumberInput.trim();
+      const idType = doctorIdTypeInput.trim() || 'National ID';
+      const regulationBody = doctorRegulationBodyInput.trim();
+      if (!consent) {
+        throw new Error('Consent token is required before adding doctor details.');
+      }
+      if (!idNumber) {
+        throw new Error('Doctor identification number is required.');
+      }
+      if (idTypeNeedsRegulator(idType) && !regulationBody) {
+        throw new Error('Select the licensing body for license-number identification.');
+      }
+      await shaApi.ilmAddEmergencyDoctor({
+        consent_token: consent,
+        identification_number: idNumber,
+        identification_type: idType,
+        ...(idTypeNeedsRegulator(idType) ? { regulation_body: regulationBody } : {}),
+      });
+    },
+    onSuccess: async () => {
+      setError(null);
+      setDoctorIdNumberInput('');
+      if (!idTypeNeedsRegulator(doctorIdTypeInput)) {
+        setDoctorRegulationBodyInput('');
+      }
+      await refetchIlmPreview();
+      onChange?.();
+    },
+    onError: (e: any) => {
+      setError(e?.response?.data?.error ?? e?.message ?? 'Failed to add doctor');
+    },
+  });
+
+  const removeDoctorMutation = useMutation({
+    mutationFn: async () => {
+      const consent = token.trim();
+      if (!consent) {
+        throw new Error('Consent token is required to remove doctor details.');
+      }
+      await shaApi.ilmRemoveEmergencyDoctor({ consent_token: consent });
+    },
+    onSuccess: async () => {
+      setError(null);
+      await refetchIlmPreview();
+      onChange?.();
+    },
+    onError: (e: any) => {
+      setError(e?.response?.data?.error ?? e?.message ?? 'Failed to remove doctor');
+    },
+  });
+
+  const syncAttachmentsMutation = useMutation({
+    mutationFn: async () => shaApi.ilmPushLocalAttachments(claimId),
+    onSuccess: async (result) => {
+      setError(null);
+      setAttachmentSyncMessage(
+        result.failed > 0
+          ? `DHA sync completed with warnings: ${result.uploaded} uploaded, ${result.failed} failed.`
+          : `DHA sync completed: ${result.uploaded} attachment(s) uploaded.`
+      );
+      await Promise.all([
+        refetchLocalAttachments(),
+        refetchAttachmentSyncStatus(),
+        refetchIlmPreview(),
+      ]);
+      onChange?.();
+    },
+    onError: (e: any) => {
+      setAttachmentSyncMessage('');
+      setError(e?.response?.data?.error ?? e?.message ?? 'Failed to sync attachments to DHA');
     },
   });
 
@@ -387,6 +698,18 @@ export function DischargePanel({
   useEffect(() => {
     if (initialInvoice) setInvoiceNumber(initialInvoice);
   }, [initialInvoice]);
+
+  useEffect(() => {
+    if (!diagnosisInterventionInput && activeInterventions[0]?.intervention_code) {
+      setDiagnosisInterventionInput(activeInterventions[0].intervention_code);
+    }
+  }, [activeInterventions, diagnosisInterventionInput]);
+
+  useEffect(() => {
+    if (!idTypeNeedsRegulator(doctorIdTypeInput) && doctorRegulationBodyInput) {
+      setDoctorRegulationBodyInput('');
+    }
+  }, [doctorIdTypeInput, doctorRegulationBodyInput]);
 
   useEffect(() => {
     const fallbackNumber = fallbackInvoice?.invoice_number;
@@ -484,6 +807,8 @@ export function DischargePanel({
     queryKey: ['admission-clinical-summary', admissionIdForPreview],
     enabled: typeof admissionIdForPreview === 'number',
     staleTime: 30_000,
+    refetchInterval: typeof admissionIdForPreview === 'number' ? 60_000 : false,
+    refetchIntervalInBackground: true,
     queryFn: () => inpatientApi.getAdmissionClinicalSummary(admissionIdForPreview!),
   });
 
@@ -494,6 +819,12 @@ export function DischargePanel({
     if (hasMissingRequiredDischargeDocs) {
       setError(
         `Upload required DHA discharge documents first: ${missingRequiredDischargeDocs.map((d) => d.label).join(', ')}.`,
+      );
+      return;
+    }
+    if (!dhaAttachmentsSynced) {
+      setError(
+        `Sync attachments to DHA before discharge OTP. Currently matched ${dhaAttachmentMatched}/${dhaAttachmentTotal}.`
       );
       return;
     }
@@ -540,6 +871,12 @@ export function DischargePanel({
     if (hasMissingRequiredDischargeDocs) {
       setError(
         `Upload required DHA discharge documents first: ${missingRequiredDischargeDocs.map((d) => d.label).join(', ')}.`,
+      );
+      return;
+    }
+    if (!dhaAttachmentsSynced) {
+      setError(
+        `Sync attachments to DHA before biometric verification. Currently matched ${dhaAttachmentMatched}/${dhaAttachmentTotal}.`
       );
       return;
     }
@@ -591,6 +928,12 @@ export function DischargePanel({
       );
       return;
     }
+    if (!dhaAttachmentsSynced) {
+      setError(
+        `Cannot submit discharge: DHA is still missing attachments (${dhaAttachmentMatched}/${dhaAttachmentTotal} matched).`
+      );
+      return;
+    }
     if (hasMissingPerDiemTariffs) {
       const levelText = facilityLevel ? `Level ${facilityLevel}` : 'current facility level';
       setError(
@@ -606,6 +949,7 @@ export function DischargePanel({
     setError(null);
     try {
       await shaApi.ilmDischarge({
+        claim_id: claimId,
         consent_token: token,
         discharge_date: dischargeDate,
         discharge_reason: dischargeReason,
@@ -619,6 +963,15 @@ export function DischargePanel({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function refreshDischargePanelData() {
+    await Promise.all([
+      refetchLocalAttachments(),
+      refetchAttachmentSyncStatus(),
+      refetchIlmPreview(),
+      typeof admissionIdForPreview === 'number' ? refetchClinicalSummary() : Promise.resolve(),
+    ]);
   }
 
   const activeAttachmentUrl = toAttachmentUrl(activeAttachment?.file);
@@ -637,6 +990,8 @@ export function DischargePanel({
     createAttachmentMutation.isPending
     || updateAttachmentMutation.isPending
     || deleteAttachmentMutation.isPending;
+  const diagnosisBusy = addDiagnosisMutation.isPending || removeDiagnosisMutation.isPending;
+  const doctorBusy = addDoctorMutation.isPending || removeDoctorMutation.isPending;
 
   if (step === 'complete') {
     return (
@@ -658,9 +1013,28 @@ export function DischargePanel({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <CardTitle className="text-base">Inpatient Discharge</CardTitle>
-          <HelpPopover content="Per DHA HIE spec, inpatient claims are submitted by discharging the patient. This sends a discharge OTP for patient consent, then finalizes the discharge which simultaneously submits the claim to SHA." />
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base">Inpatient Discharge</CardTitle>
+            <HelpPopover content="Per DHA HIE spec, inpatient claims are submitted by discharging the patient. This sends a discharge OTP for patient consent, then finalizes the discharge which simultaneously submits the claim to SHA." />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void refreshDischargePanelData()}
+            disabled={
+              fetchingLocalAttachments
+              || fetchingAttachmentSyncStatus
+              || fetchingIlmPreview
+              || fetchingClinicalSummary
+            }
+          >
+            {(fetchingLocalAttachments || fetchingAttachmentSyncStatus || fetchingIlmPreview || fetchingClinicalSummary)
+              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              : null}
+            Refresh panel
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -686,6 +1060,38 @@ export function DischargePanel({
             {hasMissingRequiredDischargeDocs
               ? `Missing: ${missingRequiredDischargeDocs.map((d) => d.label).join(', ')}`
               : 'All required discharge document categories are present locally.'}
+          </AlertDescription>
+        </Alert>
+
+        <Alert variant={dhaAttachmentsSynced ? 'default' : 'destructive'}>
+          <AlertTitle>DHA attachment sync status</AlertTitle>
+          <AlertDescription>
+            <div className="space-y-2">
+              <p>
+                {dhaAttachmentsSynced
+                  ? `Synced to DHA: ${dhaAttachmentMatched}/${dhaAttachmentTotal} matched.`
+                  : `Not fully synced to DHA yet: ${dhaAttachmentMatched}/${dhaAttachmentTotal} matched. Run manual sync before OTP/discharge.`}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => syncAttachmentsMutation.mutate()}
+                  disabled={syncAttachmentsMutation.isPending || fetchingAttachmentSyncStatus}
+                >
+                  {syncAttachmentsMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <UploadCloud className="mr-2 h-4 w-4" />
+                  )}
+                  Sync attachments to DHA now
+                </Button>
+              </div>
+              {attachmentSyncMessage ? (
+                <p className="text-xs text-muted-foreground">{attachmentSyncMessage}</p>
+              ) : null}
+            </div>
           </AlertDescription>
         </Alert>
 
@@ -757,6 +1163,227 @@ export function DischargePanel({
                     {attachment.original_filename ? ` • ${attachment.original_filename}` : ''}
                   </p>
                 </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-md border p-3 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">Claim diagnoses (DHA)</p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => void refetchIlmPreview()}
+              disabled={loadingIlmPreview || fetchingIlmPreview || diagnosisBusy}
+            >
+              {fetchingIlmPreview ? 'Refreshing…' : 'Refresh'}
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_220px_auto] sm:items-end">
+            <div>
+              <DiagnosisCodeInput
+                label="Diagnosis code"
+                value={diagnosisCodeInput}
+                onChange={setDiagnosisCodeInput}
+                showSNOMED={false}
+                defaultToICD11={false}
+                disabled={diagnosisBusy}
+              />
+            </div>
+            <div>
+              <Label htmlFor="discharge-diagnosis-intervention">Intervention</Label>
+              <select
+                id="discharge-diagnosis-intervention"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={diagnosisInterventionInput}
+                onChange={(e) => setDiagnosisInterventionInput(e.target.value)}
+              >
+                <option value="">Select intervention</option>
+                {activeInterventions.map((intervention) => (
+                  <option key={intervention.intervention_code} value={intervention.intervention_code}>
+                    {intervention.intervention_code}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => addDiagnosisMutation.mutate()}
+              disabled={!selectedDiagnosisCode || !diagnosisInterventionInput.trim() || diagnosisBusy}
+            >
+              {addDiagnosisMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Add
+            </Button>
+          </div>
+
+          {claimDiagnoses.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No diagnoses found in DHA preview yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {claimDiagnoses.map((diagnosis) => (
+                <div
+                  key={diagnosis.key}
+                  className="flex flex-col gap-2 rounded border bg-background p-2 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="text-sm font-medium">
+                      {diagnosis.icdCode}
+                      {diagnosis.name ? ` - ${diagnosis.name}` : ''}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Intervention: {diagnosis.interventionCode || '-'}
+                      {diagnosis.recordedAt ? ` • Recorded: ${diagnosis.recordedAt}` : ''}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={diagnosisBusy}
+                    onClick={() => {
+                      removeDiagnosisMutation.mutate({
+                        icdCode: diagnosis.icdCode,
+                        interventionCode: diagnosis.interventionCode,
+                      });
+                    }}
+                  >
+                    {removeDiagnosisMutation.isPending ? (
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="mr-2 h-3 w-3" />
+                    )}
+                    Remove
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-md border p-3 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">Claim doctors (DHA)</p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => void refetchIlmPreview()}
+              disabled={loadingIlmPreview || fetchingIlmPreview || doctorBusy}
+            >
+              {fetchingIlmPreview ? 'Refreshing…' : 'Refresh'}
+            </Button>
+          </div>
+
+          <div
+            className={`grid grid-cols-1 gap-3 ${doctorNeedsRegulator
+              ? 'sm:grid-cols-[1fr_180px_140px_auto]'
+              : 'sm:grid-cols-[1fr_180px_auto]'} sm:items-end`}
+          >
+            <div>
+              <Label htmlFor="discharge-doctor-id">Doctor identification number</Label>
+              <Input
+                id="discharge-doctor-id"
+                value={doctorIdNumberInput}
+                onChange={(e) => setDoctorIdNumberInput(e.target.value)}
+                placeholder="e.g. National ID or SLADE"
+              />
+            </div>
+            <div>
+              <Label htmlFor="discharge-doctor-id-type">ID type</Label>
+              <select
+                id="discharge-doctor-id-type"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={doctorIdTypeInput}
+                onChange={(e) => setDoctorIdTypeInput(e.target.value)}
+              >
+                {DOCTOR_ID_TYPES.map((entry) => (
+                  <option key={entry.value} value={entry.value}>
+                    {entry.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {doctorNeedsRegulator ? (
+              <div>
+                <Label htmlFor="discharge-doctor-regulator">Licensing body</Label>
+                <select
+                  id="discharge-doctor-regulator"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={doctorRegulationBodyInput}
+                  onChange={(e) => setDoctorRegulationBodyInput(e.target.value)}
+                >
+                  <option value="">Select body</option>
+                  {DOCTOR_REGULATORS.map((regulator) => (
+                    <option key={regulator} value={regulator}>
+                      {regulator}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => addDoctorMutation.mutate()}
+              disabled={
+                !token.trim()
+                || !doctorIdNumberInput.trim()
+                || (doctorNeedsRegulator && !doctorRegulationBodyInput.trim())
+                || doctorBusy
+              }
+            >
+              {addDoctorMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Add
+            </Button>
+          </div>
+
+          {!token.trim() ? (
+            <p className="text-xs text-muted-foreground">
+              Enter consent token above to add or remove claim doctor details.
+            </p>
+          ) : null}
+
+          {claimDoctors.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No doctors found in DHA preview yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {claimDoctors.map((doctor) => (
+                <div
+                  key={doctor.key}
+                  className="flex flex-col gap-2 rounded border bg-background p-2 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="text-sm font-medium">
+                      {doctor.doctorName || 'Doctor'} - {doctor.sladeCode}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Status: {doctor.requestStatus || '-'}
+                      {doctor.recordedAt ? ` • Recorded: ${doctor.recordedAt}` : ''}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={!token.trim() || doctorBusy}
+                    onClick={() => {
+                      removeDoctorMutation.mutate();
+                    }}
+                  >
+                    {removeDoctorMutation.isPending ? (
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="mr-2 h-3 w-3" />
+                    )}
+                    Remove
+                  </Button>
+                </div>
               ))}
             </div>
           )}
@@ -1057,7 +1684,13 @@ export function DischargePanel({
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Button
                 onClick={sendDischargeOtp}
-                disabled={busy || !token || hasMissingPerDiemTariffs || hasMissingRequiredDischargeDocs}
+                disabled={
+                  busy
+                  || !token
+                  || hasMissingPerDiemTariffs
+                  || hasMissingRequiredDischargeDocs
+                  || !dhaAttachmentsSynced
+                }
               >
                 {busy && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                 Send Discharge OTP
@@ -1071,6 +1704,7 @@ export function DischargePanel({
                   || !token
                   || hasMissingPerDiemTariffs
                   || hasMissingRequiredDischargeDocs
+                  || !dhaAttachmentsSynced
                   || !shaMemberId
                 }
               >
@@ -1173,7 +1807,13 @@ export function DischargePanel({
             <div className="flex gap-2">
               <Button
                 onClick={submitDischarge}
-                disabled={busy || (!otp && !authGuid) || hasMissingPerDiemTariffs || (useBiometric && biometricStatus === 'pending')}
+                disabled={
+                  busy
+                  || (!otp && !authGuid)
+                  || hasMissingPerDiemTariffs
+                  || !dhaAttachmentsSynced
+                  || (useBiometric && biometricStatus === 'pending')
+                }
               >
                 {busy && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                 Discharge &amp; Submit Claim

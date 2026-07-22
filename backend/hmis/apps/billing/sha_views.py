@@ -121,6 +121,22 @@ def _to_dha_document_type(
     return "OTHER"
 
 
+def _to_dha_document_type_for_claim(claim: SHAClaim, attachment: SHAClaimAttachment) -> str:
+    """Resolve DHA doc type with claim-context overrides.
+
+    DHA preview for inpatient flows expects FINAL_BILL, while local attachments often
+    store invoice-like types/names. Normalize those to FINAL_BILL for IP claims.
+    """
+    doc_type = _to_dha_document_type(
+        attachment.attachment_type,
+        attachment_name=attachment.name,
+        original_filename=attachment.original_filename,
+    )
+    if doc_type == "INVOICE" and claim.claim_type == SHAClaim.ClaimType.INPATIENT:
+        return "FINAL_BILL"
+    return doc_type
+
+
 def _normalize_attachment_name(value: str) -> str:
     normalized = "".join(ch.lower() if ch.isalnum() else " " for ch in str(value or "").strip())
     parts = [part for part in normalized.split() if part]
@@ -151,6 +167,7 @@ def _to_local_attachment_type(dha_document_type: str) -> str:
 
 def _build_attachment_sync_status(claim: SHAClaim) -> dict:
     from hmis.apps.billing.services.consent_token_resolver import resolve_for_claim
+    from hmis.apps.billing.services.ilm_claim_service import PREVIEW_PATH
     from hmis.apps.core.models import DHAOutboundCall
 
     local_attachments = list(claim.attachments.all())
@@ -181,46 +198,112 @@ def _build_attachment_sync_status(claim: SHAClaim) -> dict:
                 {
                     "attachment_id": att.id,
                     "attachment_name": att.name,
-                    "attachment_type": _to_dha_document_type(
-                        att.attachment_type,
-                        attachment_name=att.name,
-                        original_filename=att.original_filename,
-                    ),
+                    "attachment_type": _to_dha_document_type_for_claim(claim, att),
                 }
                 for att in local_attachments
             ],
             "consent_token_present": False,
         }
 
-    calls = DHAOutboundCall.objects.filter(
-        path="/api/v1/claims/attachments",
+    bucket: dict[tuple[str, str], list[dict[str, str]]] = {}
+    match_source = "upload_history"
+
+    # Preferred source of truth: latest successful DHA preview payload.
+    # If preview says claim_attachments is empty, we must treat sync as missing even if
+    # uploads previously succeeded in outbound logs.
+    preview_calls = DHAOutboundCall.objects.filter(
+        path=PREVIEW_PATH,
         consent_token=consent_token,
         status=DHAOutboundCall.Status.SUCCESS,
-    ).order_by("created_at")
+    ).order_by("-created_at")
 
-    bucket: dict[tuple[str, str], int] = {}
-    for call in calls:
-        payload = call.request_payload if isinstance(call.request_payload, Mapping) else {}
-        doc_type = str(payload.get("document_type") or "").strip().upper()
-        doc_title = str(
-            payload.get("document_title")
-            or payload.get("attachment_name")
-            or payload.get("document_name")
-            or ""
-        ).strip()
-        if not doc_type:
+    for call in preview_calls:
+        response = call.response_excerpt if isinstance(call.response_excerpt, Mapping) else {}
+        payload = response
+        if isinstance(response.get("payload"), Mapping):
+            payload = response.get("payload")
+        attachments = payload.get("claim_attachments") if isinstance(payload, Mapping) else None
+        if not isinstance(attachments, list):
             continue
-        key = (doc_type, _normalize_attachment_name(doc_title))
-        bucket[key] = bucket.get(key, 0) + 1
+        match_source = "preview"
+        for entry in attachments:
+            if not isinstance(entry, Mapping):
+                continue
+            doc_type = (
+                str(
+                    entry.get("attachment_type")
+                    or entry.get("document_type")
+                    or entry.get("type")
+                    or ""
+                )
+                .strip()
+                .upper()
+            )
+            if not doc_type:
+                continue
+            doc_title = str(
+                entry.get("title")
+                or entry.get("document_title")
+                or entry.get("attachment_name")
+                or entry.get("description")
+                or ""
+            ).strip()
+            key = (doc_type, _normalize_attachment_name(doc_title))
+            bucket.setdefault(key, []).append(
+                {
+                    "remote_attachment_id": str(
+                        entry.get("id")
+                        or entry.get("attachment_id")
+                        or entry.get("attachment_guid")
+                        or ""
+                    ).strip(),
+                    "intervention_code": str(entry.get("intervention_code") or "").strip(),
+                }
+            )
+        break
+
+    # Fallback for flows where preview has not yet been run.
+    if not bucket and match_source != "preview":
+        calls = DHAOutboundCall.objects.filter(
+            path="/api/v1/claims/attachments",
+            consent_token=consent_token,
+            status=DHAOutboundCall.Status.SUCCESS,
+        ).order_by("created_at")
+
+        for call in calls:
+            payload = call.request_payload if isinstance(call.request_payload, Mapping) else {}
+            response = call.response_excerpt if isinstance(call.response_excerpt, Mapping) else {}
+            doc_type = str(payload.get("document_type") or "").strip().upper()
+            doc_title = str(
+                payload.get("document_title")
+                or payload.get("attachment_name")
+                or payload.get("document_name")
+                or ""
+            ).strip()
+            if not doc_type:
+                continue
+            key = (doc_type, _normalize_attachment_name(doc_title))
+            remote_attachment_id = str(
+                response.get("id")
+                or response.get("attachment_id")
+                or response.get("attachment_guid")
+                or ""
+            ).strip()
+            intervention_code = str(
+                payload.get("intervention_code") or response.get("intervention_code") or ""
+            ).strip()
+            bucket.setdefault(key, []).append(
+                {
+                    "remote_attachment_id": remote_attachment_id,
+                    "intervention_code": intervention_code,
+                }
+            )
 
     matched = 0
+    matched_details: list[dict[str, str | int]] = []
     missing: list[dict[str, str | int]] = []
     for att in local_attachments:
-        doc_type = _to_dha_document_type(
-            att.attachment_type,
-            attachment_name=att.name,
-            original_filename=att.original_filename,
-        )
+        doc_type = _to_dha_document_type_for_claim(claim, att)
         candidates = [
             _normalize_attachment_name(att.name),
             _normalize_attachment_name(att.original_filename),
@@ -228,10 +311,19 @@ def _build_attachment_sync_status(claim: SHAClaim) -> dict:
         found = False
         for name_key in candidates:
             key = (doc_type, name_key)
-            count = bucket.get(key, 0)
-            if count > 0:
-                bucket[key] = count - 1
+            entries = bucket.get(key) or []
+            if entries:
+                matched_meta = entries.pop(0)
                 matched += 1
+                matched_details.append(
+                    {
+                        "attachment_id": att.id,
+                        "attachment_name": att.name,
+                        "attachment_type": doc_type,
+                        "remote_attachment_id": matched_meta.get("remote_attachment_id", ""),
+                        "intervention_code": matched_meta.get("intervention_code", ""),
+                    }
+                )
                 found = True
                 break
         if not found:
@@ -248,6 +340,8 @@ def _build_attachment_sync_status(claim: SHAClaim) -> dict:
         "matched": matched,
         "total": local_count,
         "all_matched": len(missing) == 0,
+        "match_source": match_source,
+        "matched_details": matched_details,
         "missing": missing,
         "consent_token_present": True,
     }
@@ -1522,11 +1616,24 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     def ilm_remove_diagnosis(self, request, pk=None):
         claim = self.get_object()
         code = request.data.get("icd_code")
+        intervention_code = str(request.data.get("intervention_code") or "").strip()
+        if not intervention_code:
+            active_intervention = (
+                claim.claim_interventions.filter(status="active").order_by("created_at").first()
+            )
+            intervention_code = (
+                str(active_intervention.intervention_code).strip() if active_intervention else ""
+            )
         if not code:
             return Response({"error": "icd_code required"}, status=400)
+        if not intervention_code:
+            return Response({"error": "intervention_code required"}, status=400)
         try:
             result = self._ilm_service(facility=claim.facility).remove_diagnosis(
-                claim, icd_code=code, user=request.user
+                claim,
+                icd_code=code,
+                intervention_code=intervention_code,
+                user=request.user,
             )
         except Exception as exc:
             return self._ilm_handle_error(exc)
@@ -1804,6 +1911,8 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                     attachment_name=attachment.name,
                     original_filename=attachment.original_filename,
                 )
+                if document_type == "INVOICE" and claim.claim_type == SHAClaim.ClaimType.INPATIENT:
+                    document_type = "FINAL_BILL"
                 extra_fields: dict[str, str] = {
                     "document_type": document_type,
                     "document_title": attachment.name,
@@ -1811,12 +1920,21 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 }
                 if intervention_code:
                     extra_fields["intervention_code"] = intervention_code
-                service.add_attachment(
+                result = service.add_attachment(
                     claim,
                     [multipart_file],
                     extra_fields=extra_fields,
                     user=request.user,
                 )
+                if int(getattr(result, "status_code", 500) or 500) >= 400:
+                    payload = result.payload if isinstance(result.payload, Mapping) else {}
+                    message = str(
+                        payload.get("error")
+                        or payload.get("message")
+                        or payload.get("detail")
+                        or "DHA rejected attachment upload"
+                    )
+                    raise ValueError(message)
                 uploaded += 1
             except Exception as exc:  # noqa: BLE001 - collect and continue
                 failed += 1
@@ -1850,11 +1968,24 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     def ilm_remove_attachment(self, request, pk=None):
         claim = self.get_object()
         attachment_id = request.data.get("attachment_id")
+        intervention_code = str(request.data.get("intervention_code") or "").strip()
+        if not intervention_code:
+            active_intervention = (
+                claim.claim_interventions.filter(status="active").order_by("created_at").first()
+            )
+            intervention_code = (
+                str(active_intervention.intervention_code).strip() if active_intervention else ""
+            )
         if not attachment_id:
             return Response({"error": "attachment_id required"}, status=400)
+        if not intervention_code:
+            return Response({"error": "intervention_code required"}, status=400)
         try:
             result = self._ilm_service(facility=claim.facility).remove_attachment(
-                claim, attachment_id=str(attachment_id), user=request.user
+                claim,
+                attachment_id=str(attachment_id),
+                intervention_code=intervention_code,
+                user=request.user,
             )
         except Exception as exc:
             return self._ilm_handle_error(exc)
@@ -2118,7 +2249,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                     sha_covered_amount=line_total,
                     patient_payable_amount=Decimal("0.00"),
                     discount_amount=Decimal("0.00"),
-                    allocation_status=SHAClaimItem.AllocationStatus.PENDING,
+                    allocation_status=SHAClaimItem.AllocationStatus.RESOLVED,
                     is_preview_line=True,
                 )
                 created_count += 1

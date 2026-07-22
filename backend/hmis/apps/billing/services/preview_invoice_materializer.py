@@ -9,7 +9,7 @@ from decimal import Decimal
 from typing import Any
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import F, Q
 
 from hmis.apps.billing.models import Invoice, InvoiceItem, SHAClaim, SHAClaimItem
 from hmis.apps.billing.services.admission_attachment_service import AdmissionAttachmentService
@@ -275,7 +275,24 @@ class PreviewInvoiceMaterializer:
                 update_data = {"invoice_item_id": invoice_item_id}
                 if not claim_item.is_preview_line:
                     update_data["is_preview_line"] = True
+                if claim_item.allocation_status == SHAClaimItem.AllocationStatus.PENDING:
+                    update_data["allocation_status"] = SHAClaimItem.AllocationStatus.RESOLVED
+                    update_data["patient_payable_amount"] = Decimal("0.00")
+                    update_data["discount_amount"] = Decimal("0.00")
                 SHAClaimItem.objects.filter(pk=claim_item.pk).update(**update_data)
+
+            # Backfill older preview claim lines created before auto-allocation so invoice detail
+            # no longer surfaces stale "pending allocation" after materialization.
+            SHAClaimItem.objects.filter(
+                claim=claim,
+                is_preview_line=True,
+                allocation_status=SHAClaimItem.AllocationStatus.PENDING,
+            ).update(
+                allocation_status=SHAClaimItem.AllocationStatus.RESOLVED,
+                sha_covered_amount=F("claimed_amount"),
+                patient_payable_amount=Decimal("0.00"),
+                discount_amount=Decimal("0.00"),
+            )
 
         final_bill_result = FinalBillAttachmentService.ensure_for_claim(claim=claim, user=user)
         admission_docs = AdmissionAttachmentService.ensure_for_claim(claim=claim, user=user)

@@ -798,6 +798,7 @@ export interface Claim {
   last_dha_status?: string | null;
   last_dha_payload_at?: string | null;
   dha_visit_started_at?: string | null;
+  dha_discharge_snapshot?: Record<string, unknown> | null;
   claim_interventions?: Array<{
     id: number;
     intervention_code: string;

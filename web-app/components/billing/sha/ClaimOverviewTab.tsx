@@ -59,6 +59,13 @@ export function ClaimOverviewTab({ claim }: ClaimOverviewTabProps) {
     claim.primary_diagnosis_code,
     ...diagnosisCodes,
   ].filter(Boolean) as string[];
+  const dischargeSnapshot =
+    claim.dha_discharge_snapshot && typeof claim.dha_discharge_snapshot === 'object'
+      ? (claim.dha_discharge_snapshot as Record<string, unknown>)
+      : null;
+  const dischargeWorkflowState = String(dischargeSnapshot?.workflow_state || '').trim();
+  const dischargeVisitEnd = String(dischargeSnapshot?.visit_end || '').trim();
+  const dischargeAttachmentsCount = Number(dischargeSnapshot?.claim_attachments_count ?? NaN);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -182,6 +189,24 @@ export function ClaimOverviewTab({ claim }: ClaimOverviewTabProps) {
               <div>
                 <p className="text-xs text-muted-foreground">DHA external ID</p>
                 <p className="font-mono text-xs break-all">{claim.dha_external_id}</p>
+              </div>
+            )}
+            {dischargeWorkflowState && (
+              <div>
+                <p className="text-xs text-muted-foreground">DHA discharge state</p>
+                <p className="font-medium text-xs">{dischargeWorkflowState}</p>
+              </div>
+            )}
+            {dischargeVisitEnd && (
+              <div>
+                <p className="text-xs text-muted-foreground">DHA visit end</p>
+                <p>{new Date(dischargeVisitEnd).toLocaleString()}</p>
+              </div>
+            )}
+            {Number.isFinite(dischargeAttachmentsCount) && (
+              <div>
+                <p className="text-xs text-muted-foreground">DHA claim attachments</p>
+                <p className="font-medium">{dischargeAttachmentsCount}</p>
               </div>
             )}
             {claim.fhir_bundle_id && (

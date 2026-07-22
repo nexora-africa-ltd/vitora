@@ -39,6 +39,7 @@ from hmis.apps.billing.models import (
     Service,
     ServiceCategory,
     SHAClaim,
+    SHAClaimItem,
 )
 from hmis.apps.billing.serializers import (
     CreditNoteSerializer,
@@ -401,6 +402,86 @@ class InvoiceViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.ModelV
         item = get_object_or_404(InvoiceItem, id=item_id, invoice=invoice)
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["patch"], url_path="items/(?P<item_id>[^/.]+)/allocation")
+    def update_item_allocation(self, request, pk=None, item_id=None):
+        """Update allocation for unlinked invoice items only.
+
+        Allowed modes:
+        - patient: mark line as fully patient-payable
+        - discount: mark line as discounted/waived (requires reason)
+        """
+        invoice = self.get_object()
+        item = get_object_or_404(InvoiceItem, id=item_id, invoice=invoice)
+
+        linked_claim_item = SHAClaimItem.objects.filter(invoice_item=item).first()
+        if linked_claim_item is not None:
+            return Response(
+                {
+                    "error": (
+                        "Allocation for linked SHA claim lines is read-only here. "
+                        "Only unlinked invoice items can be updated from invoice detail."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        mode = str(request.data.get("mode") or "").strip().lower()
+        if mode not in {"patient", "discount"}:
+            return Response(
+                {"error": "mode must be either 'patient' or 'discount'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        item.is_covered_by_insurance = False
+        item.insurance_approved_amount = Decimal("0.00")
+
+        if mode == "patient":
+            item.discount_amount = Decimal("0.00")
+            item.discount_reason = ""
+        else:
+            try:
+                discount_amount = Decimal(str(request.data.get("discount_amount") or "0"))
+            except Exception:
+                return Response(
+                    {"error": "discount_amount must be a valid number."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if discount_amount < 0:
+                return Response(
+                    {"error": "discount_amount cannot be negative."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            line_total = Decimal(str(item.line_total or "0.00"))
+            if discount_amount > line_total:
+                return Response(
+                    {"error": "discount_amount cannot exceed line total."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            discount_reason = str(request.data.get("discount_reason") or "").strip()
+            if discount_amount > 0 and not discount_reason:
+                return Response(
+                    {"error": "discount_reason is required when discount_amount > 0."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            item.discount_amount = discount_amount
+            item.discount_reason = discount_reason
+
+        item.save(
+            update_fields=[
+                "is_covered_by_insurance",
+                "insurance_approved_amount",
+                "discount_amount",
+                "discount_reason",
+                "line_total",
+                "updated_at",
+            ]
+        )
+        return Response(InvoiceItemSerializer(item).data)
 
     # ------ Payers (nested) ------ #
 

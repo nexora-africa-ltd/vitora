@@ -6,7 +6,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from hmis.apps.billing.models import SHAOtpRequest, SHAOtpWhitelistRequest, SHAUpload
+from hmis.apps.billing.models import (
+    SHAClaim,
+    SHAMember,
+    SHAOtpRequest,
+    SHAOtpWhitelistRequest,
+    SHAUpload,
+)
 from hmis.apps.billing.services.ilm_client import IlmResponse
 from hmis.apps.billing.services.ilm_lifecycle_service import (
     DischargeOtpParams,
@@ -116,6 +122,74 @@ class TestDischarge:
 
         body = client.post.call_args.kwargs["json_body"]
         assert body["discharge_date"] == "2026-04-30T10:15:00Z"
+
+    def test_persists_compact_discharge_snapshot_on_claim(
+        self,
+        client,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        test_user,
+    ):
+        member = SHAMember.objects.create(
+            patient=sample_patient,
+            sha_number=f"SHA-{sample_patient.id:010d}",
+            national_id="12345678",
+            status=SHAMember.MembershipStatus.ACTIVE,
+            created_by=test_user,
+        )
+
+        claim = SHAClaim.objects.create(
+            patient=sample_patient,
+            sha_member=member,
+            encounter=sample_encounter,
+            claim_type=SHAClaim.ClaimType.INPATIENT,
+            service_date=sample_encounter.encounter_date,
+            admission_date=sample_encounter.encounter_date,
+            primary_diagnosis_code="A00",
+            primary_diagnosis_description="Cholera",
+            facility_code="FR-TEST",
+            facility_level="L4",
+            created_by=test_user,
+            facility=sample_facility,
+        )
+
+        client.post.return_value = _resp(
+            200,
+            {
+                "id": "dha-claim-123",
+                "workflow_state": "SUBMISSION_READY",
+                "invoice_number": "INV/13545/73342",
+                "claim_attachments_count": 4,
+                "invoices": [{"invoice_number": "INV/13545/73342"}],
+                "interventions": [{"intervention_code": "SHA-07-001"}],
+            },
+            corr="corr-discharge-1",
+        )
+        discharge_date = sample_encounter.encounter_date.isoformat()
+        svc = IlmLifecycleService(client=client)
+        svc.discharge_inpatient(
+            params=DischargeParams(
+                consent_token="c-1",
+                discharge_date=discharge_date,
+                discharge_reason="RECOVERED",
+                invoice_number="INV-1",
+                otp="123456",
+            ),
+            claim=claim,
+            facility=sample_facility,
+        )
+
+        claim.refresh_from_db()
+        assert claim.status == SHAClaim.ClaimStatus.SUBMITTED
+        assert claim.submitted_at is not None
+        assert claim.discharge_date.isoformat() == discharge_date
+        assert claim.dha_external_id == "dha-claim-123"
+        assert claim.last_dha_status == "SUBMISSION_READY"
+        assert claim.dha_invoice_number == "INV/13545/73342"
+        assert claim.dha_correlation_id == "corr-discharge-1"
+        assert claim.dha_discharge_snapshot.get("claim_attachments_count") == 4
+        assert claim.dha_discharge_snapshot.get("intervention_codes") == ["SHA-07-001"]
 
 
 @pytest.mark.django_db

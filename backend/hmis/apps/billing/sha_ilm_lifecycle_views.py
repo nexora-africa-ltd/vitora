@@ -319,8 +319,23 @@ class IlmDischargeView(APIView):
 
         consent_obj = CT.objects.filter(consent_token=consent_token_val).first()
         claim = None
+        claim_id_raw = request.data.get("claim_id")
+        if claim_id_raw not in (None, ""):
+            try:
+                claim_id = int(claim_id_raw)
+            except (TypeError, ValueError):
+                return Response(
+                    {"error": "claim_id must be a valid integer."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            claim = SHAClaim.objects.filter(id=claim_id, facility=_facility(request)).first()
+            if claim is None:
+                return Response(
+                    {"error": "Claim not found for this facility."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
         if consent_obj and consent_obj.encounter_id:
-            claim = SHAClaim.objects.filter(encounter=consent_obj.encounter).first()
+            claim = claim or SHAClaim.objects.filter(encounter=consent_obj.encounter).first()
 
         # If discharge reason is DECEASED, warn if death notification attachment is missing
         discharge_reason = str(request.data["discharge_reason"])

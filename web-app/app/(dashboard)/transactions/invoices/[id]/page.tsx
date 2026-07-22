@@ -36,7 +36,7 @@ import {
   useServices,
 } from '@/lib/hooks/billing';
 import { useClaim, useClaims } from '@/lib/hooks/use-sha';
-import { shaApi } from '@/lib/api/sha';
+import { billingApi } from '@/lib/api/billing';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { Invoice, PaymentCreateData, InvoiceItemCreateData, ApplyDiscountData } from '@/lib/types/billing';
 import type { Claim } from '@/lib/types/sha';
@@ -294,17 +294,16 @@ export default function InvoiceDetailPage() {
     }
   };
 
-  const handleUpdateClaimItemAllocation = async (
-    claimId: number,
+  const handleUpdateInvoiceItemAllocation = async (
+    invoiceId: number,
     itemId: number,
     payload: {
-      sha_covered_amount: string;
-      patient_payable_amount: string;
-      discount_amount: string;
+      mode: 'patient' | 'discount';
+      discount_amount?: string;
       discount_reason?: string;
     }
   ) => {
-    await shaApi.updateClaimItemAllocation(claimId, itemId, payload);
+    await billingApi.updateInvoiceItemAllocation(invoiceId, itemId, payload);
     await Promise.all([refetchLinkedClaim(), refetchClaims(), refetchInvoice()]);
   };
 
@@ -335,7 +334,7 @@ export default function InvoiceDetailPage() {
         onClaimSubmitted={handleClaimSubmitted}
         linkedClaim={linkedClaim}
         linkedClaimDetail={linkedClaimDetail ?? null}
-        onUpdateClaimItemAllocation={handleUpdateClaimItemAllocation}
+        onUpdateInvoiceItemAllocation={handleUpdateInvoiceItemAllocation}
       />
 
       {/* Add Item Dialog */}

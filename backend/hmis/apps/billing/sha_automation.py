@@ -23,6 +23,7 @@ from django.db.models import Q, Sum
 from django.utils import timezone
 
 from hmis.apps.billing.facility_identifiers import resolve_fr_code
+from hmis.apps.billing.services.document_context import append_standard_header
 
 logger = logging.getLogger(__name__)
 
@@ -500,7 +501,7 @@ class SHAClaimAutomationService:
 
             # --- Lab results → lab_report ---
             if "lab_report" not in existing_types:
-                lab_content = cls._render_lab_results_text(encounter)
+                lab_content = cls._render_lab_results_text(encounter, claim)
                 if lab_content:
                     pdf_bytes = cls._render_text_pdf_bytes(lab_content)
                     file_obj = ContentFile(pdf_bytes, name=f"lab_results_{claim.claim_number}.pdf")
@@ -508,7 +509,10 @@ class SHAClaimAutomationService:
                         claim=claim,
                         attachment_type="lab_report",
                         name=f"Lab Results - {claim.claim_number}",
-                        description="Auto-generated from verified lab results",
+                        description=(
+                            "Auto-generated laboratory results report from verified encounter "
+                            "lab results for claim support"
+                        ),
                         file=file_obj,
                         file_size=len(pdf_bytes),
                         mime_type="application/pdf",
@@ -521,7 +525,7 @@ class SHAClaimAutomationService:
 
             # --- Clinical notes → clinical_notes ---
             if "clinical_notes" not in existing_types:
-                notes_content = cls._render_clinical_notes_text(encounter, claim.patient)
+                notes_content = cls._render_clinical_notes_text(encounter, claim.patient, claim)
                 if notes_content:
                     pdf_bytes = cls._render_text_pdf_bytes(notes_content)
                     file_obj = ContentFile(
@@ -532,7 +536,10 @@ class SHAClaimAutomationService:
                         claim=claim,
                         attachment_type="clinical_notes",
                         name=f"Clinical Notes - {claim.claim_number}",
-                        description="Auto-generated from encounter clinical data",
+                        description=(
+                            "Auto-generated clinical notes summary from encounter narrative, "
+                            "structured vitals, and inpatient timeline"
+                        ),
                         file=file_obj,
                         file_size=len(pdf_bytes),
                         mime_type="application/pdf",
@@ -553,7 +560,9 @@ class SHAClaimAutomationService:
                         claim=claim,
                         attachment_type="invoice",
                         name=f"Invoice - {claim.claim_number}",
-                        description="Auto-generated from linked invoice line items",
+                        description=(
+                            "Auto-generated invoice summary from linked invoice or claim line items"
+                        ),
                         file=file_obj,
                         file_size=len(pdf_bytes),
                         mime_type="application/pdf",
@@ -566,7 +575,7 @@ class SHAClaimAutomationService:
 
             # --- Prescriptions → prescription ---
             if "prescription" not in existing_types:
-                rx_content = cls._render_prescriptions_text(encounter)
+                rx_content = cls._render_prescriptions_text(encounter, claim)
                 if rx_content:
                     pdf_bytes = cls._render_text_pdf_bytes(rx_content)
                     file_obj = ContentFile(
@@ -577,7 +586,9 @@ class SHAClaimAutomationService:
                         claim=claim,
                         attachment_type="prescription",
                         name=f"Prescriptions - {claim.claim_number}",
-                        description="Auto-generated from encounter prescriptions",
+                        description=(
+                            "Auto-generated prescription record from encounter medication orders"
+                        ),
                         file=file_obj,
                         file_size=len(pdf_bytes),
                         mime_type="application/pdf",
@@ -636,15 +647,19 @@ class SHAClaimAutomationService:
         """
         invoice = getattr(claim, "invoice", None)
         if invoice:
-            lines = [
-                "INVOICE SUMMARY",
-                f"Claim: {claim.claim_number}",
-                f"Invoice Number: {invoice.invoice_number or ''}",
-                f"Invoice Date: {invoice.invoice_date or ''}",
-                f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}",
-                "-" * 50,
-                "",
-            ]
+            lines: list[str] = []
+            append_standard_header(lines, title="INVOICE SUMMARY", claim=claim)
+            lines.extend(
+                [
+                    "Invoice Context",
+                    "---------------",
+                    f"Invoice Number: {invoice.invoice_number or 'N/A'}",
+                    f"Invoice Date: {invoice.invoice_date or 'N/A'}",
+                    "",
+                    "Invoice Lines",
+                    "-------------",
+                ]
+            )
 
             items = list(invoice.items.all()) if hasattr(invoice, "items") else []
             if items:
@@ -676,16 +691,20 @@ class SHAClaimAutomationService:
         if not claim_items and not dha_invoice_number:
             return None
 
-        lines = [
-            "INVOICE SUMMARY (AUTO-GENERATED)",
-            f"Claim: {claim.claim_number}",
-            f"DHA Invoice Number: {dha_invoice_number}",
-            f"Service Date: {getattr(claim, 'service_date', '')}",
-            f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}",
-            "Source: SHA claim items (no linked local invoice)",
-            "-" * 50,
-            "",
-        ]
+        lines: list[str] = []
+        append_standard_header(lines, title="INVOICE SUMMARY (AUTO-GENERATED)", claim=claim)
+        lines.extend(
+            [
+                "Invoice Context",
+                "---------------",
+                f"DHA Invoice Number: {dha_invoice_number or 'N/A'}",
+                f"Service Date: {getattr(claim, 'service_date', '') or 'N/A'}",
+                "Source: SHA claim items (no linked local invoice)",
+                "",
+                "Claim Item Lines",
+                "----------------",
+            ]
+        )
 
         if claim_items:
             for item in claim_items:
@@ -708,20 +727,37 @@ class SHAClaimAutomationService:
         return "\n".join(lines)
 
     @classmethod
-    def _render_lab_results_text(cls, encounter) -> str | None:
+    def _render_lab_results_text(cls, encounter, claim=None) -> str | None:
         """Render verified lab results as structured text for SHA attachment."""
         lab_results = cls._get_completed_lab_results(encounter)
         if not lab_results:
             return None
 
-        lines = [
-            "LABORATORY RESULTS REPORT",
-            f"Patient: {encounter.patient}",
-            f"Encounter Date: {encounter.encounter_date}",
-            f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}",
-            "-" * 50,
-            "",
-        ]
+        lines: list[str] = []
+        if claim is not None:
+            append_standard_header(lines, title="LABORATORY RESULTS REPORT", claim=claim)
+            lines.extend(
+                [
+                    "Encounter Context",
+                    "-----------------",
+                    f"Patient: {encounter.patient}",
+                    f"Encounter Date: {encounter.encounter_date}",
+                    "",
+                    "Verified Results",
+                    "----------------",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "LABORATORY RESULTS REPORT",
+                    f"Patient: {encounter.patient}",
+                    f"Encounter Date: {encounter.encounter_date}",
+                    f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}",
+                    "-" * 50,
+                    "",
+                ]
+            )
 
         for result in lab_results:
             test_name = getattr(result, "test_name", "") or getattr(result, "test", "")
@@ -730,7 +766,7 @@ class SHAClaimAutomationService:
             ref_range = getattr(result, "reference_range", "") or ""
             status = getattr(result, "status", "")
 
-            lines.append(f"Test: {test_name}")
+            lines.append(f"Test: {test_name or 'Unnamed test'}")
             lines.append(f"  Result: {value} {unit}")
             if ref_range:
                 lines.append(f"  Reference Range: {ref_range}")
@@ -741,7 +777,7 @@ class SHAClaimAutomationService:
         return "\n".join(lines)
 
     @classmethod
-    def _render_clinical_notes_text(cls, encounter, patient) -> str | None:
+    def _render_clinical_notes_text(cls, encounter, patient, claim=None) -> str | None:
         """Render clinical notes as structured text for SHA attachment."""
         chief_complaint = encounter.chief_complaint or ""
         clinical_notes = getattr(encounter, "clinical_notes", "") or ""
@@ -824,15 +860,31 @@ class SHAClaimAutomationService:
         ):
             return None
 
-        lines = [
-            "CLINICAL NOTES",
-            f"Patient: {patient}",
-            f"Encounter Date: {encounter.encounter_date}",
-            f"Encounter Type: {encounter.encounter_type}",
-            f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}",
-            "-" * 50,
-            "",
-        ]
+        lines: list[str] = []
+        if claim is not None:
+            append_standard_header(lines, title="CLINICAL NOTES", claim=claim)
+            lines.extend(
+                [
+                    "Encounter Context",
+                    "-----------------",
+                    f"Patient: {patient}",
+                    f"Encounter Date: {encounter.encounter_date}",
+                    f"Encounter Type: {encounter.encounter_type}",
+                    "",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "CLINICAL NOTES",
+                    f"Patient: {patient}",
+                    f"Encounter Date: {encounter.encounter_date}",
+                    f"Encounter Type: {encounter.encounter_type}",
+                    f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}",
+                    "-" * 50,
+                    "",
+                ]
+            )
 
         if chief_complaint:
             lines.append(f"Chief Complaint: {chief_complaint}")
@@ -861,9 +913,24 @@ class SHAClaimAutomationService:
         if diagnoses:
             lines.append("Diagnoses:")
             for dx in diagnoses:
-                code = getattr(dx, "icd_code", "") or getattr(dx, "code", "")
-                desc = getattr(dx, "description", "") or str(dx)
-                lines.append(f"  - [{code}] {desc}")
+                code = (getattr(dx, "icd_code", "") or getattr(dx, "code", "") or "").strip()
+                desc = (getattr(dx, "description", "") or "").strip()
+                if not code and not desc:
+                    fallback_code = str(getattr(claim, "primary_diagnosis_code", "") or "").strip()
+                    fallback_desc = str(
+                        getattr(claim, "primary_diagnosis_description", "") or ""
+                    ).strip()
+                    if fallback_code or fallback_desc:
+                        lines.append(
+                            f"  - {fallback_code or 'N/A'}: {fallback_desc or 'Primary diagnosis'}"
+                        )
+                    continue
+                if code and desc:
+                    lines.append(f"  - {code}: {desc}")
+                elif code:
+                    lines.append(f"  - {code}")
+                else:
+                    lines.append(f"  - {desc}")
             lines.append("")
 
         # Include vitals if available
@@ -883,20 +950,37 @@ class SHAClaimAutomationService:
         return "\n".join(lines)
 
     @classmethod
-    def _render_prescriptions_text(cls, encounter) -> str | None:
+    def _render_prescriptions_text(cls, encounter, claim=None) -> str | None:
         """Render prescriptions as structured text for SHA attachment."""
         prescriptions = cls._get_encounter_prescriptions(encounter)
         if not prescriptions:
             return None
 
-        lines = [
-            "PRESCRIPTION RECORD",
-            f"Patient: {encounter.patient}",
-            f"Encounter Date: {encounter.encounter_date}",
-            f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}",
-            "-" * 50,
-            "",
-        ]
+        lines: list[str] = []
+        if claim is not None:
+            append_standard_header(lines, title="PRESCRIPTION RECORD", claim=claim)
+            lines.extend(
+                [
+                    "Encounter Context",
+                    "-----------------",
+                    f"Patient: {encounter.patient}",
+                    f"Encounter Date: {encounter.encounter_date}",
+                    "",
+                    "Prescription Lines",
+                    "------------------",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "PRESCRIPTION RECORD",
+                    f"Patient: {encounter.patient}",
+                    f"Encounter Date: {encounter.encounter_date}",
+                    f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}",
+                    "-" * 50,
+                    "",
+                ]
+            )
 
         for rx in prescriptions:
             med_name = getattr(rx, "medication_name", "") or getattr(rx, "drug_name", "") or str(rx)

@@ -9,9 +9,9 @@ from io import BytesIO
 
 from django.core.files.base import ContentFile
 from django.db.models import Q
-from django.utils import timezone
 
 from hmis.apps.billing.models import SHAClaim, SHAClaimAttachment
+from hmis.apps.billing.services.document_context import append_standard_header
 
 AUTO_FINAL_BILL_MARKER = "AUTO_FINAL_BILL_FROM_INVOICE"
 
@@ -72,7 +72,8 @@ class FinalBillAttachmentService:
                 attachment_type="invoice",
                 name=f"Final Bill - {claim.claim_number}",
                 description=(
-                    f"{AUTO_FINAL_BILL_MARKER}; auto-generated from local invoice/claim lines"
+                    "Auto-generated final bill from local invoice and claim line items "
+                    f"for claim settlement evidence | System Tag: {AUTO_FINAL_BILL_MARKER}"
                 ),
                 file=ContentFile(pdf_bytes, name=filename),
                 file_size=len(pdf_bytes),
@@ -91,7 +92,8 @@ class FinalBillAttachmentService:
         attachment.file.save(filename, ContentFile(pdf_bytes), save=False)
         attachment.name = f"Final Bill - {claim.claim_number}"
         attachment.description = (
-            f"{AUTO_FINAL_BILL_MARKER}; auto-generated from local invoice/claim lines"
+            "Auto-generated final bill from local invoice and claim line items "
+            f"for claim settlement evidence | System Tag: {AUTO_FINAL_BILL_MARKER}"
         )
         attachment.file_size = len(pdf_bytes)
         attachment.mime_type = "application/pdf"
@@ -136,20 +138,24 @@ class FinalBillAttachmentService:
         if not invoice and not claim_items:
             return None
 
-        lines = [
-            "FINAL BILL",
-            f"Claim Number: {claim.claim_number}",
-            f"DHA Invoice Number: {getattr(claim, 'dha_invoice_number', '') or ''}",
-            f"Service Date: {getattr(claim, 'service_date', '') or ''}",
-            f"Generated At: {timezone.now().strftime('%Y-%m-%d %H:%M')}",
-            "-" * 56,
-            "",
-        ]
+        lines: list[str] = []
+        append_standard_header(lines, title="FINAL BILL", claim=claim)
+        lines.extend(
+            [
+                "Billing Context",
+                "---------------",
+                f"DHA Invoice Number: {getattr(claim, 'dha_invoice_number', '') or 'N/A'}",
+                f"Service Date: {getattr(claim, 'service_date', '') or 'N/A'}",
+                "",
+                "Billed Lines",
+                "-----------",
+            ]
+        )
 
         total = 0.0
         if invoice:
-            lines.append(f"Local Invoice Number: {invoice.invoice_number or ''}")
-            lines.append(f"Invoice Date: {invoice.invoice_date or ''}")
+            lines.append(f"Local Invoice Number: {invoice.invoice_number or 'N/A'}")
+            lines.append(f"Invoice Date: {invoice.invoice_date or 'N/A'}")
             lines.append("")
             for item in invoice.items.all():
                 qty = item.quantity or 0

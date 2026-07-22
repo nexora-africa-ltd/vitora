@@ -457,6 +457,22 @@ class TestLifecycle:
         assert claim.last_dha_status == "SUBMITTED"
         assert claim.dha_correlation_id == "corr-z"
 
+    def test_submit_persists_status_even_when_payload_is_not_object(
+        self, service, mock_client, claim, consent, test_user
+    ):
+        mock_client.post.return_value = _make_response(
+            200,
+            ["ok"],
+            headers={"X-Correlation-Id": "corr-array"},
+        )
+        result = service.submit(claim, invoice_number="INV/2", user=test_user)
+        assert result.status_code == 200
+        claim.refresh_from_db()
+        assert claim.status == "submitted"
+        assert claim.submitted_at is not None
+        assert claim.last_dha_status == "SUBMITTED"
+        assert claim.dha_correlation_id == "corr-array"
+
     def test_close_marks_written_off(self, service, mock_client, claim, consent):
         mock_client.post.return_value = _make_response(200, {})
         service.close(

@@ -9,7 +9,7 @@
 
 import React, { useCallback, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Copy, Loader2, RefreshCw, RotateCcw, Send } from 'lucide-react';
+import { Copy, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -19,9 +19,9 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { getApiErrorMessage } from '@/lib/api/client';
 
-import { useClaim, useSubmitClaim, useResubmitClaim } from '@/lib/hooks/use-sha';
+import { useClaim, useResubmitClaim } from '@/lib/hooks/use-sha';
 import { useClaimFlow } from '@/lib/hooks/use-claim-flow';
-import { useClaimNextStep, type ClaimNextStep } from '@/lib/hooks/use-claim-next-step';
+import { useClaimNextStep } from '@/lib/hooks/use-claim-next-step';
 import { useToast } from '@/lib/hooks/use-toast';
 
 import { ClaimSummaryBar } from '@/components/billing/sha/ClaimSummaryBar';
@@ -75,7 +75,6 @@ export default function ClaimDetailPage() {
   const { refresh: pageRefresh, isRefreshing } = usePageRefresh();
 
   const { data: claim, isLoading, refetch, isRefetching } = useClaim(claimId);
-  const submitMutation = useSubmitClaim();
   const resubmitMutation = useResubmitClaim();
 
   const flow = useClaimFlow(claim);
@@ -114,33 +113,6 @@ export default function ClaimDetailPage() {
     }
   }, []);
 
-  const handleSubmit = useCallback(async () => {
-    setActionError(null);
-    try {
-      const result = await submitMutation.mutateAsync(claimId);
-      const statusValue = String(result?.status || '').toLowerCase();
-      if (statusValue === 'draft' || statusValue === 'validated' || statusValue === 'failed') {
-        throw new Error(result?.message || 'Claim submission failed.');
-      }
-      toast({
-        title: result?.status === 'queued' ? 'Claim queued' : 'Claim submitted',
-        description:
-          result?.status === 'queued'
-            ? result?.message || 'Queued for submission when online.'
-            : 'Sent to SHA for processing.',
-      });
-      refetch();
-    } catch (e) {
-      const errorMessage = extractShaInlineError(e);
-      setActionError(errorMessage);
-      toast({
-        title: 'Submission failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    }
-  }, [claimId, submitMutation, refetch, toast]);
-
   const handleResubmit = useCallback(async () => {
     setActionError(null);
     try {
@@ -178,30 +150,7 @@ export default function ClaimDetailPage() {
     }
   }, [claim?.status, claimId, resubmitMutation, refetch, toast]);
 
-  const handleNextStepCta = useCallback(
-    (step: ClaimNextStep) => {
-      if (step.action === 'submit') {
-        handleSubmit();
-        return;
-      }
-      if (step.action === 'resubmit') {
-        handleResubmit();
-        return;
-      }
-      if (step.targetTab) {
-        handleTabChange(step.targetTab);
-        // For consent action, scroll to the workflow section after tab switch
-        if (step.action === 'start-consent') {
-          setTimeout(() => {
-            document.getElementById('claim-workflow-section')?.scrollIntoView({ behavior: 'smooth' });
-          }, 100);
-        }
-      }
-    },
-    [handleSubmit, handleResubmit, handleTabChange],
-  );
-
-  const isMutating = submitMutation.isPending || resubmitMutation.isPending;
+  const isMutating = resubmitMutation.isPending;
 
   // ---- Loading / not-found states ----
   if (isLoading) {
@@ -234,7 +183,6 @@ export default function ClaimDetailPage() {
     );
   }
 
-  const canSubmit = claim.status === 'draft' && nextStep.action === 'submit';
   const canResubmit = claim.status === 'rejected' || claim.status === 'pending_submission';
 
   // ---- Render ----
@@ -259,16 +207,6 @@ export default function ClaimDetailPage() {
                 )}
                 Refresh
               </Button>
-              {canSubmit && (
-                <Button size="sm" onClick={handleSubmit} disabled={isMutating}>
-                  {isMutating ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4 mr-2" />
-                  )}
-                  Submit to SHA
-                </Button>
-              )}
               {canResubmit && (
                 <Button size="sm" onClick={handleResubmit} disabled={isMutating}>
                   {isMutating ? (
@@ -289,7 +227,7 @@ export default function ClaimDetailPage() {
         {/* Single next-step banner replaces the rejection / missing-docs / consent alerts */}
         <ClaimNextStepBanner
           step={nextStep}
-          onCtaClick={handleNextStepCta}
+          showCta={false}
           isBusy={isMutating}
         />
 
@@ -372,24 +310,6 @@ export default function ClaimDetailPage() {
             <ClaimAdjudicationTab claim={claim} />
           </TabsContent>
         </Tabs>
-
-        {/* Mobile sticky action bar — only when there's an actionable next step */}
-        {nextStep.ctaLabel && !nextStep.blocked && (
-          <div className="fixed bottom-0 left-0 right-0 z-30 border-t bg-background/95 backdrop-blur p-3 lg:hidden">
-            <Button
-              className="w-full"
-              size="lg"
-              variant={nextStep.severity === 'destructive' ? 'destructive' : 'default'}
-              onClick={() => handleNextStepCta(nextStep)}
-              disabled={isMutating}
-            >
-              {isMutating ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : null}
-              {nextStep.ctaLabel}
-            </Button>
-          </div>
-        )}
       </div>
     </PullToRefresh>
   );

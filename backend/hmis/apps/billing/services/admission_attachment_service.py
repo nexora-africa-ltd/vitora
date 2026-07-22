@@ -10,6 +10,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from hmis.apps.billing.models import SHAClaim, SHAClaimAttachment
+from hmis.apps.billing.services.document_context import append_standard_header
 from hmis.apps.imaging.models import ImagingOrder, RadiologyReport
 from hmis.apps.inpatient.models import Admission, Discharge, Transfer, WardRound
 from hmis.apps.laboratory.models import LabOrder, LabResult
@@ -230,6 +231,10 @@ class AdmissionAttachmentService:
             attachment_type=SHAClaimAttachment.AttachmentType.CLINICAL_NOTES,
             attachment_name=f"Critical Care Unit Case - {claim.claim_number}",
             marker=AUTO_CRITICAL_CARE_MARKER,
+            description=(
+                "Auto-generated critical care unit case notes from admission-scoped ICU/HDU "
+                "timeline and chronological clinical events"
+            ),
             content=content,
             filename=filename,
             find_existing_q=Q(description__icontains=AUTO_CRITICAL_CARE_MARKER)
@@ -274,6 +279,10 @@ class AdmissionAttachmentService:
             attachment_type=SHAClaimAttachment.AttachmentType.DISCHARGE_SUMMARY,
             attachment_name=f"Discharge Summary - {claim.claim_number}",
             marker=AUTO_DISCHARGE_SUMMARY_MARKER,
+            description=(
+                "Auto-generated discharge summary from admission-scoped ward timeline, "
+                "clinical highlights, and discharge workflow state"
+            ),
             content=content,
             filename=filename,
             find_existing_q=Q(description__icontains=AUTO_DISCHARGE_SUMMARY_MARKER)
@@ -292,15 +301,20 @@ class AdmissionAttachmentService:
         ward_timeline: list[dict[str, object]],
         critical_intervals: list[tuple[datetime, datetime, str]],
     ) -> str:
-        lines: list[str] = [
-            "CRITICAL CARE UNIT CASE",
-            f"Claim Number: {claim.claim_number}",
-            f"Admission Number: {admission.admission_number}",
-            f"Patient ID: {admission.patient_id}",
-            f"Admission Window: {start.isoformat()} -> {end.isoformat()}",
-            "",
-            "Critical Care Intervals:",
-        ]
+        lines: list[str] = []
+        append_standard_header(lines, title="CRITICAL CARE UNIT CASE", claim=claim)
+        lines.extend(
+            [
+                "Admission Context",
+                "-----------------",
+                f"Admission Number: {admission.admission_number}",
+                f"Patient ID: {admission.patient_id}",
+                f"Admission Window: {start.isoformat()} -> {end.isoformat()}",
+                "",
+                "Critical Care Intervals",
+                "----------------------",
+            ]
+        )
 
         for interval_start, interval_end, ward_name in critical_intervals:
             lines.append(
@@ -308,7 +322,7 @@ class AdmissionAttachmentService:
                 f"{timezone.localtime(interval_end).strftime('%Y-%m-%d %H:%M')} @ {ward_name}"
             )
 
-        lines.extend(["", "Chronological Clinical Timeline:"])
+        lines.extend(["", "Chronological Clinical Timeline", "-----------------------------"])
         events = cls._collect_admission_events(admission=admission, start=start, end=end)
         events = [event for event in events if cls._in_any_interval(event[0], critical_intervals)]
         if not events:
@@ -319,7 +333,7 @@ class AdmissionAttachmentService:
                     f"[{timezone.localtime(timestamp).strftime('%Y-%m-%d %H:%M')}] {source}: {content}"
                 )
 
-        lines.extend(["", "Bed/Ward Timeline:"])
+        lines.extend(["", "Bed/Ward Timeline", "-----------------"])
         for item in ward_timeline:
             lines.append(
                 "- "
@@ -343,15 +357,23 @@ class AdmissionAttachmentService:
             Discharge.objects.filter(admission=admission).prefetch_related("diagnoses").first()
         )
 
-        lines: list[str] = [
-            "DISCHARGE SUMMARY",
-            f"Claim Number: {claim.claim_number}",
-            f"Admission Number: {admission.admission_number}",
-            f"Admission Date: {timezone.localtime(admission.admission_date).strftime('%Y-%m-%d %H:%M')}",
-            f"Discharge Date: {timezone.localtime(end).strftime('%Y-%m-%d %H:%M')}",
-            f"Admitting Diagnosis: {admission.admitting_diagnosis} - {admission.admitting_diagnosis_text}",
-            "",
-        ]
+        lines: list[str] = []
+        append_standard_header(lines, title="DISCHARGE SUMMARY", claim=claim)
+        lines.extend(
+            [
+                "Admission Context",
+                "-----------------",
+                f"Admission Number: {admission.admission_number}",
+                f"Admission Date: {timezone.localtime(admission.admission_date).strftime('%Y-%m-%d %H:%M')}",
+                (
+                    f"Discharge Date: {timezone.localtime(end).strftime('%Y-%m-%d %H:%M')}"
+                    if discharge is not None
+                    else f"Summary Window End: {timezone.localtime(end).strftime('%Y-%m-%d %H:%M')}"
+                ),
+                f"Admitting Diagnosis: {admission.admitting_diagnosis} - {admission.admitting_diagnosis_text}",
+                "",
+            ]
+        )
 
         if discharge is None:
             lines.append("No finalized discharge record exists yet for this admission.")
@@ -374,7 +396,7 @@ class AdmissionAttachmentService:
                 for diagnosis in diagnoses:
                     lines.append(f"- {diagnosis.role}: {diagnosis.code} - {diagnosis.description}")
 
-        lines.extend(["", "Admission Ward Timeline:"])
+        lines.extend(["", "Admission Ward Timeline", "----------------------"])
         for item in ward_timeline:
             lines.append(
                 "- "
@@ -383,7 +405,9 @@ class AdmissionAttachmentService:
                 + f"{item['ward_name']} ({item['ward_type'] or 'N/A'})"
             )
 
-        lines.extend(["", "Admission-Scoped Clinical Highlights:"])
+        lines.extend(
+            ["", "Admission-Scoped Clinical Highlights", "-----------------------------------"]
+        )
         events = cls._collect_admission_events(admission=admission, start=start, end=end)
         if not events:
             lines.append("- No chronological events recorded in this admission window.")
@@ -467,14 +491,34 @@ class AdmissionAttachmentService:
                 )
             )
 
-        lab_orders = LabOrder.objects.filter(admission=admission)
+        lab_orders = LabOrder.objects.filter(admission=admission).prefetch_related("items__test")
         for order in lab_orders:
             if cls._in_window(order.ordered_at, start, end):
+                test_labels: list[str] = []
+                for item in order.items.all():
+                    test = getattr(item, "test", None)
+                    if test is None:
+                        continue
+                    loinc = str(getattr(test, "loinc_code", "") or "").strip()
+                    code = str(getattr(test, "code", "") or "").strip()
+                    name = str(getattr(test, "name", "") or "").strip()
+                    detail = name or code or "Unnamed test"
+                    if loinc:
+                        detail = f"{detail} [LOINC {loinc}]"
+                    elif code:
+                        detail = f"{detail} [{code}]"
+                    test_labels.append(detail)
+                tests_rendered = (
+                    "; ".join(test_labels[:6]) if test_labels else "No test items listed"
+                )
                 events.append(
                     (
                         order.ordered_at,
                         "Lab Order",
-                        f"{order.order_number} ({order.status}) - Priority {order.priority}",
+                        (
+                            f"{order.order_number} ({order.status}) - Priority {order.priority}; "
+                            f"Tests: {tests_rendered}"
+                        ),
                     )
                 )
         lab_results = LabResult.objects.filter(
@@ -496,14 +540,38 @@ class AdmissionAttachmentService:
                 )
             )
 
-        imaging_orders = ImagingOrder.objects.filter(admission=admission)
+        imaging_orders = ImagingOrder.objects.filter(admission=admission).prefetch_related(
+            "items__procedure"
+        )
         for order in imaging_orders:
             if cls._in_window(order.ordered_at, start, end):
+                procedure_labels: list[str] = []
+                for item in order.items.all():
+                    procedure = getattr(item, "procedure", None)
+                    if procedure is None:
+                        continue
+                    name = str(getattr(procedure, "name", "") or "").strip()
+                    code = str(getattr(procedure, "code", "") or "").strip()
+                    loinc = str(getattr(procedure, "loinc_code", "") or "").strip()
+                    label = name or code or "Unnamed procedure"
+                    if loinc:
+                        label = f"{label} [LOINC {loinc}]"
+                    elif code:
+                        label = f"{label} [{code}]"
+                    procedure_labels.append(label)
+                procedures_rendered = (
+                    "; ".join(procedure_labels[:6])
+                    if procedure_labels
+                    else "No procedure items listed"
+                )
                 events.append(
                     (
                         order.ordered_at,
                         "Imaging Order",
-                        f"{order.order_number} ({order.status}) - {order.clinical_indication}",
+                        (
+                            f"{order.order_number} ({order.status}) - Procedures: {procedures_rendered}; "
+                            f"Indication: {order.clinical_indication or 'N/A'}"
+                        ),
                     )
                 )
         reports = RadiologyReport.objects.filter(imaging_order__admission=admission).select_related(
@@ -556,6 +624,7 @@ class AdmissionAttachmentService:
         attachment_type: str,
         attachment_name: str,
         marker: str,
+        description: str,
         content: str,
         filename: str,
         find_existing_q: Q,
@@ -577,7 +646,7 @@ class AdmissionAttachmentService:
                 claim=claim,
                 attachment_type=attachment_type,
                 name=attachment_name,
-                description=f"{marker}; auto-generated from admission-scoped records",
+                description=f"{description} | System Tag: {marker}",
                 file=ContentFile(pdf_bytes, name=filename),
                 file_size=len(pdf_bytes),
                 mime_type="application/pdf",
@@ -589,7 +658,7 @@ class AdmissionAttachmentService:
 
         attachment.file.save(filename, ContentFile(pdf_bytes), save=False)
         attachment.name = attachment_name
-        attachment.description = f"{marker}; auto-generated from admission-scoped records"
+        attachment.description = f"{description} | System Tag: {marker}"
         attachment.file_size = len(pdf_bytes)
         attachment.mime_type = "application/pdf"
         attachment.checksum = checksum

@@ -130,16 +130,67 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
 
   const claims = claimsData?.results ?? EMPTY_CLAIMS;
 
+  const effectiveStatus = useCallback((claim: Claim): ClaimStatus => {
+    if (claim.status !== 'draft') return claim.status;
+    const snapshot =
+      claim.dha_discharge_snapshot && typeof claim.dha_discharge_snapshot === 'object'
+        ? (claim.dha_discharge_snapshot as Record<string, unknown>)
+        : null;
+    const workflowState = String(snapshot?.workflow_state || '').trim().toUpperCase();
+    if (
+      claim.submitted_at
+      || !!(claim.sha_claim_reference || claim.sha_reference)
+      || ['SUBMISSION_READY', 'SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(workflowState)
+    ) {
+      return 'submitted';
+    }
+    return claim.status;
+  }, []);
+
+  const isInProgressClaim = useCallback((claim: Claim): boolean => {
+    if (
+      [
+        'pending_submission',
+        'pending',
+        'submitted',
+        'processing',
+        'acknowledged',
+        'under_review',
+        'query',
+      ].includes(claim.status)
+    ) {
+      return true;
+    }
+
+    const snapshot =
+      claim.dha_discharge_snapshot && typeof claim.dha_discharge_snapshot === 'object'
+        ? (claim.dha_discharge_snapshot as Record<string, unknown>)
+        : null;
+    const workflowState = String(snapshot?.workflow_state || '').trim().toUpperCase();
+    if (
+      claim.status === 'draft'
+      && (
+        !!claim.submitted_at
+        || !!(claim.sha_claim_reference || claim.sha_reference)
+        || ['SUBMISSION_READY', 'SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(workflowState)
+      )
+    ) {
+      return true;
+    }
+
+    return false;
+  }, []);
+
   const stats = useMemo(() => ({
     total: claims.length,
-    pending: claims.filter((c) => ['pending', 'submitted', 'processing'].includes(c.status)).length,
+    pending: claims.filter((c) => isInProgressClaim(c)).length,
     approved: claims.filter((c) => c.status === 'approved').length,
     rejected: claims.filter((c) => c.status === 'rejected').length,
     totalAmount: claims.reduce((sum, c) => sum + parseFloat(c.total_amount ?? '0'), 0),
     approvedAmount: claims
       .filter((c) => c.approved_amount)
       .reduce((sum, c) => sum + parseFloat(c.approved_amount || '0'), 0),
-  }), [claims]);
+  }), [claims, isInProgressClaim]);
 
   const claimsStatusData = useMemo(() => {
     const statusCounts = new Map<ClaimStatus, { count: number; amount: number }>();
@@ -444,7 +495,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                 sortable: true,
                 cell: (claim) => (
                   <div className="flex flex-col gap-1">
-                    <ClaimStatusBadge status={claim.status} />
+                    <ClaimStatusBadge status={effectiveStatus(claim)} />
                     <TimeBarBadge claim={claim} compact />
                   </div>
                 ),
@@ -506,7 +557,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                       <span className="font-mono text-sm font-medium truncate">
                         {claim.claim_number || `#${claim.id}`}
                       </span>
-                      <ClaimStatusBadge status={claim.status} />
+                      <ClaimStatusBadge status={effectiveStatus(claim)} />
                     </div>
                     <p className="text-sm text-muted-foreground truncate mt-0.5">
                       {claim.patient_name} • {claim.patient_mrn}
