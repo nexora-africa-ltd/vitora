@@ -83,6 +83,19 @@ function inferDhaDocumentTypeFromLocalAttachment(attachment: {
   const type = String(attachment.attachment_type || '').trim().toLowerCase();
   const haystack = normalizeText(`${attachment.name} ${attachment.original_filename || ''}`);
 
+  if (type === 'critical_care_unit_case') {
+    return 'CRITICAL_CARE_UNIT_CASE';
+  }
+  if (type === 'final_bill') {
+    return 'FINAL_BILL';
+  }
+  if (type === 'claim_form') {
+    return 'CLAIM_FORM';
+  }
+  if (type === 'case_note') {
+    return 'CASE_NOTE';
+  }
+
   if (type === 'discharge_summary' || haystack.includes('discharge summary')) {
     return 'DISCHARGE_SUMMARY';
   }
