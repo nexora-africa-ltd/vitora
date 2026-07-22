@@ -43,6 +43,65 @@ from .multipart_builder import MultipartFile, build_multipart
 logger = logging.getLogger(__name__)
 
 
+def _compact_discharge_snapshot(payload: Any) -> dict[str, Any]:
+    """Keep only discharge-relevant DHA fields for local claim snapshotting."""
+    if not isinstance(payload, dict):
+        return {}
+
+    source = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+    if not isinstance(source, dict):
+        return {}
+
+    keep_keys = {
+        "id",
+        "workflow_state",
+        "claim_auth_status",
+        "service_type",
+        "scheme_code",
+        "scheme_name",
+        "patient_number",
+        "member_number",
+        "provider_name",
+        "visit_start",
+        "visit_end",
+        "admitted_on",
+        "discharged_on",
+        "discharge_reason",
+        "authorization_code",
+        "authorization_guid",
+        "invoice_id",
+        "invoice_number",
+        "number_of_invoices",
+        "diagnoses_count",
+        "claim_attachments_count",
+        "invoice_attachments_count",
+        "total_claim_amount",
+        "total_claim_net_amount",
+        "total_claim_copay",
+        "total_claim_discount",
+        "total_claim_splits",
+    }
+    snapshot = {k: source.get(k) for k in keep_keys if k in source}
+
+    interventions = source.get("interventions")
+    if isinstance(interventions, list):
+        snapshot["intervention_codes"] = [
+            str(item.get("intervention_code"))
+            for item in interventions
+            if isinstance(item, dict) and item.get("intervention_code")
+        ]
+
+    invoices = source.get("invoices")
+    if isinstance(invoices, list):
+        snapshot["invoice_numbers"] = [
+            str(item.get("invoice_number"))
+            for item in invoices
+            if isinstance(item, dict) and item.get("invoice_number")
+        ]
+
+    return snapshot
+
+
 # ---------------------------------------------------------------------------
 # Endpoint paths
 # ---------------------------------------------------------------------------
@@ -333,6 +392,68 @@ class IlmLifecycleService:
                 "http_status": response.status_code,
             },
         )
+
+        if claim is not None and result.status_code < 400:
+            update_fields: list[str] = []
+            snapshot = _compact_discharge_snapshot(result.payload)
+            discharge_date_raw = str(params.discharge_date or "").strip()
+            if hasattr(claim, "discharge_date") and discharge_date_raw:
+                date_part = discharge_date_raw.split("T", 1)[0]
+                try:
+                    claim.discharge_date = date_cls.fromisoformat(date_part)
+                    update_fields.append("discharge_date")
+                except ValueError:
+                    pass
+            if hasattr(claim, "status") and str(getattr(claim, "status", "")) in {
+                "draft",
+                "validated",
+                "pending_submission",
+            }:
+                claim.status = "submitted"
+                update_fields.append("status")
+            if hasattr(claim, "submitted_at") and not getattr(claim, "submitted_at", None):
+                claim.submitted_at = timezone.now()
+                update_fields.append("submitted_at")
+            if (
+                user
+                and hasattr(claim, "submitted_by_id")
+                and not getattr(claim, "submitted_by_id", None)
+            ):
+                claim.submitted_by = user
+                update_fields.append("submitted_by")
+            if hasattr(claim, "dha_discharge_snapshot"):
+                claim.dha_discharge_snapshot = snapshot
+                update_fields.append("dha_discharge_snapshot")
+            if hasattr(claim, "last_dha_status"):
+                status_value = str(snapshot.get("workflow_state") or "").strip()
+                if status_value:
+                    claim.last_dha_status = status_value[:32]
+                    update_fields.append("last_dha_status")
+                elif "status" in update_fields:
+                    claim.last_dha_status = "SUBMITTED"
+                    update_fields.append("last_dha_status")
+            if hasattr(claim, "last_dha_payload_at"):
+                claim.last_dha_payload_at = timezone.now()
+                update_fields.append("last_dha_payload_at")
+            if hasattr(claim, "dha_external_id"):
+                external_id = str(snapshot.get("id") or "").strip()
+                if external_id:
+                    claim.dha_external_id = external_id[:64]
+                    update_fields.append("dha_external_id")
+            if hasattr(claim, "dha_invoice_number"):
+                invoice_number = str(snapshot.get("invoice_number") or "").strip()
+                if invoice_number:
+                    claim.dha_invoice_number = invoice_number[:64]
+                    update_fields.append("dha_invoice_number")
+            if hasattr(claim, "dha_correlation_id"):
+                correlation_id = str(result.correlation_id or "").strip()
+                if correlation_id:
+                    claim.dha_correlation_id = correlation_id[:64]
+                    update_fields.append("dha_correlation_id")
+
+            if update_fields:
+                claim.save(update_fields=list(dict.fromkeys([*update_fields, "updated_at"])))
+
         return result
 
     @staticmethod

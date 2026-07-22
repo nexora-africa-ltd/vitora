@@ -2494,6 +2494,14 @@ class SHAClaim(FacilityScopedModel):
         default="",
         help_text="DHA-side invoice number from ILM preview (e.g. INV/12345/67890)",
     )
+    dha_discharge_snapshot = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Compact discharge-time DHA payload snapshot (status, totals, key identifiers) "
+            "captured for audit/reporting."
+        ),
+    )
     previewed_at = models.DateTimeField(
         null=True,
         blank=True,

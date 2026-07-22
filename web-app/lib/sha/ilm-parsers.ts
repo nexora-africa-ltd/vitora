@@ -236,19 +236,82 @@ export function parseProfessional(resp: IlmRegistryResponse | null | undefined):
   const rec = firstRecord(resp?.data);
   if (!rec) return null;
 
+  const root = (typeof rec.message === 'object' && rec.message !== null)
+    ? (rec.message as Record<string, unknown>)
+    : rec;
+  const membership = (typeof root.membership === 'object' && root.membership !== null)
+    ? (root.membership as Record<string, unknown>)
+    : undefined;
+  const identifiers = (typeof root.identifiers === 'object' && root.identifiers !== null)
+    ? (root.identifiers as Record<string, unknown>)
+    : undefined;
+  const professional = (typeof root.professional_details === 'object' && root.professional_details !== null)
+    ? (root.professional_details as Record<string, unknown>)
+    : undefined;
+
+  const licenses = Array.isArray(root.licenses)
+    ? (root.licenses as Record<string, unknown>[])
+    : [];
+  const activeLicense = licenses.find((license) => {
+    const end = getString(license, 'license_end', 'licenseEnd', 'expiryDate', 'expiry_date');
+    if (!end || end.toLowerCase() === 'none') return false;
+    const parsed = new Date(end);
+    if (Number.isNaN(parsed.getTime())) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return parsed >= today;
+  }) || licenses[0];
+
+  const explicitStatus = getString(root, 'licenseStatus', 'license_status', 'status')
+    || getString(membership, 'licenseStatus', 'license_status', 'status');
+  const membershipActiveRaw = membership?.is_active;
+  const membershipActive = membershipActiveRaw === true
+    || membershipActiveRaw === 1
+    || membershipActiveRaw === '1'
+    || membershipActiveRaw === 'true';
+  const derivedStatus = explicitStatus
+    ? explicitStatus.toUpperCase()
+    : membershipActive
+      ? 'ACTIVE'
+      : '';
+
   return {
     fullName:
-      getString(rec, 'fullName', 'full_name', 'name', 'practitionerName') ||
-      [getString(rec, 'firstName', 'first_name'), getString(rec, 'lastName', 'last_name')]
+      getString(root, 'fullName', 'full_name', 'name', 'practitionerName') ||
+      getString(membership, 'full_name', 'fullName', 'name') ||
+      [
+        getString(root, 'firstName', 'first_name'),
+        getString(membership, 'first_name', 'firstName'),
+        getString(root, 'lastName', 'last_name'),
+        getString(membership, 'last_name', 'lastName'),
+      ]
         .filter(Boolean)
         .join(' '),
-    registrationNumber: getString(rec, 'registrationNumber', 'registration_number', 'regNumber', 'reg_number', 'licenseNumber'),
-    regulator: getString(rec, 'regulator', 'regulatoryBody'),
-    cadre: getString(rec, 'cadre', 'category', 'profession'),
-    specialty: getString(rec, 'specialty', 'specialization', 'specialisation'),
-    licenseStatus: getString(rec, 'licenseStatus', 'license_status', 'status').toUpperCase(),
-    licenseExpiry: getString(rec, 'licenseExpiry', 'license_expiry', 'expiryDate', 'expiry_date'),
-    identificationNumber: getString(rec, 'identificationNumber', 'identification_number', 'idNumber'),
+    registrationNumber: getString(
+      root,
+      'registrationNumber',
+      'registration_number',
+      'regNumber',
+      'reg_number',
+      'licenseNumber',
+    ) || getString(membership, 'registration_id', 'registrationNumber'),
+    regulator: getString(root, 'regulator', 'regulatoryBody') || getString(membership, 'licensing_body'),
+    cadre: getString(root, 'cadre', 'category', 'profession')
+      || getString(professional, 'professional_cadre', 'practice_type'),
+    specialty: getString(root, 'specialty', 'specialization', 'specialisation')
+      || getString(membership, 'specialty')
+      || getString(professional, 'discipline_name'),
+    licenseStatus: derivedStatus,
+    licenseExpiry: getString(
+      activeLicense,
+      'license_end',
+      'licenseExpiry',
+      'license_expiry',
+      'expiryDate',
+      'expiry_date',
+    ),
+    identificationNumber: getString(root, 'identificationNumber', 'identification_number', 'idNumber')
+      || getString(identifiers, 'identification_number', 'identificationNumber'),
   };
 }
 

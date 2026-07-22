@@ -6,9 +6,9 @@ from io import BytesIO
 
 from django.core.files.base import ContentFile
 from django.db.models import Q
-from django.utils import timezone
 
 from hmis.apps.billing.models import SHAClaim, SHAClaimAttachment
+from hmis.apps.billing.services.document_context import append_standard_header
 
 AUTO_CLAIM_FORM_MARKER = "AUTO_CLAIM_FORM_FROM_CLAIM"
 
@@ -64,7 +64,10 @@ class ClaimFormAttachmentService:
                 claim=claim,
                 attachment_type=SHAClaimAttachment.AttachmentType.OTHER,
                 name=f"Claim Form - {claim.claim_number}",
-                description=f"{AUTO_CLAIM_FORM_MARKER}; auto-generated from local claim records",
+                description=(
+                    "Auto-generated claim form from local claim demographics, diagnoses, "
+                    f"and billed items | System Tag: {AUTO_CLAIM_FORM_MARKER}"
+                ),
                 file=ContentFile(pdf_bytes, name=filename),
                 file_size=len(pdf_bytes),
                 mime_type="application/pdf",
@@ -77,7 +80,8 @@ class ClaimFormAttachmentService:
         attachment.file.save(filename, ContentFile(pdf_bytes), save=False)
         attachment.name = f"Claim Form - {claim.claim_number}"
         attachment.description = (
-            f"{AUTO_CLAIM_FORM_MARKER}; auto-generated from local claim records"
+            "Auto-generated claim form from local claim demographics, diagnoses, "
+            f"and billed items | System Tag: {AUTO_CLAIM_FORM_MARKER}"
         )
         attachment.file_size = len(pdf_bytes)
         attachment.mime_type = "application/pdf"
@@ -104,17 +108,18 @@ class ClaimFormAttachmentService:
         if not claim_items and not invoice:
             return None
 
-        lines = [
-            "CLAIM FORM",
-            f"Claim Number: {claim.claim_number}",
-            f"SHA Member Number: {getattr(claim, 'sha_member_number', '') or ''}",
-            f"Claim Type: {getattr(claim, 'claim_type', '') or ''}",
-            f"Service Date: {getattr(claim, 'service_date', '') or ''}",
-            f"DHA Invoice Number: {getattr(claim, 'dha_invoice_number', '') or ''}",
-            f"Generated At: {timezone.now().strftime('%Y-%m-%d %H:%M')}",
-            "-" * 56,
-            "",
-        ]
+        lines: list[str] = []
+        append_standard_header(lines, title="CLAIM FORM", claim=claim)
+        lines.extend(
+            [
+                "Claim Details",
+                "-------------",
+                f"Claim Type: {getattr(claim, 'claim_type', '') or 'N/A'}",
+                f"Service Date: {getattr(claim, 'service_date', '') or 'N/A'}",
+                f"DHA Invoice Number: {getattr(claim, 'dha_invoice_number', '') or 'N/A'}",
+                "",
+            ]
+        )
 
         if invoice:
             lines.append(f"Local Invoice Number: {invoice.invoice_number or ''}")
@@ -129,7 +134,7 @@ class ClaimFormAttachmentService:
             lines.append("")
 
         total = 0.0
-        lines.append("Claim Items:")
+        lines.extend(["Claim Items", "-----------"])
         for item in claim_items:
             qty = item.quantity or 0
             unit = item.unit_price or 0

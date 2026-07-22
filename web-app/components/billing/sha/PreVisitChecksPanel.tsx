@@ -9,7 +9,7 @@
  *   1. Patient coverage   — eligibility check (auto, uses SHA member ID number)
  *   2. Benefits & interventions — BenefitsPanel (auto, uses DHA CR number)
  *   3. Facility contract  — facility lookup (auto, uses claim.facility_code or user.facility.mfl_code)
- *   4. Practitioner licence — health-worker lookup (auto, uses user.license_number)
+ *   4. Practitioner licence — health-worker lookup (auto, prefers user.national_id)
  *
  * An "Ad-hoc lookup" section at the bottom remains for one-off searches
  * (different facility, different patient, different practitioner).
@@ -280,10 +280,13 @@ export function PreVisitChecksPanel({
     || facilityDetail?.sha_facility_code
     || facilityDetail?.dha_fr_code
     || '';
-  // Prefer encounter clinician over logged-in user for the practitioner licence check.
+  // Prefer encounter clinician over logged-in user for practitioner verification.
+  // Preferred lookup key is National ID; license number is fallback only.
+  const nationalId = encounterClinician?.national_id || user?.national_id || '';
   const licenseNumber = encounterClinician?.license_number || user?.license_number || '';
   const regulator = normalizeRegulator(encounterClinician?.licensing_body || user?.licensing_body || '');
-  const practitionerIdNumber = encounterClinician?.national_id || user?.national_id || '';
+  const practitionerIdType = nationalId ? 'National ID' : licenseNumber ? 'License Number' : 'National ID';
+  const practitionerIdNumber = nationalId || licenseNumber || '';
 
   // -------------------------------------------------------------------------
   // 1. Patient coverage (eligibility)
@@ -327,7 +330,6 @@ export function PreVisitChecksPanel({
   // -------------------------------------------------------------------------
   // 4. Practitioner licence
   // -------------------------------------------------------------------------
-  const practitionerIdType = 'National ID';
   const practitionerNeedsRegulator = regulatorRequiredForIdType(practitionerIdType);
   const practitionerEnabled = !!practitionerIdNumber && (!practitionerNeedsRegulator || !!regulator);
   const practitionerQuery = useQuery({
@@ -336,7 +338,7 @@ export function PreVisitChecksPanel({
       shaApi.ilmProfessionalSearch({
         identification_number: practitionerIdNumber,
         identification_type: practitionerIdType,
-        ...(practitionerNeedsRegulator && regulator ? { regulator } : {}),
+        ...(regulator ? { regulator } : {}),
       }),
     enabled: practitionerEnabled,
     staleTime: 60 * 60 * 1000,

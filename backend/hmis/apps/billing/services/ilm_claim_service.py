@@ -538,11 +538,22 @@ class IlmClaimService:
         )
         return result
 
-    def remove_diagnosis(self, claim: Any, *, icd_code: str, user: Any = None) -> IlmClaimResult:
+    def remove_diagnosis(
+        self,
+        claim: Any,
+        *,
+        icd_code: str,
+        intervention_code: str,
+        user: Any = None,
+    ) -> IlmClaimResult:
         consent = resolve_for_claim(claim)
         response = self.client.patch(
             DIAGNOSES_PATH,
-            json_body={"consent_token": consent.token, "icd_code": icd_code},
+            json_body={
+                "consent_token": consent.token,
+                "icd_code": icd_code,
+                "intervention_code": intervention_code,
+            },
             consent_token=consent.token,
             facility=getattr(claim, "facility", None),
             user=user,
@@ -659,12 +670,22 @@ class IlmClaimService:
         return result
 
     def remove_attachment(
-        self, claim: Any, *, attachment_id: str, user: Any = None
+        self,
+        claim: Any,
+        *,
+        attachment_id: str,
+        intervention_code: str,
+        user: Any = None,
     ) -> IlmClaimResult:
         consent = resolve_for_claim(claim)
+        body = {
+            "consent_token": consent.token,
+            "attachment_id": attachment_id,
+            "intervention_code": intervention_code,
+        }
         response = self.client.patch(
             ATTACHMENTS_PATH,
-            json_body={"consent_token": consent.token, "attachment_id": attachment_id},
+            json_body=body,
             consent_token=consent.token,
             facility=getattr(claim, "facility", None),
             user=user,
@@ -854,8 +875,6 @@ class IlmClaimService:
             claim.save(update_fields=update_fields)
 
     def _apply_submit_response(self, claim: Any, result: IlmClaimResult, *, user: Any) -> None:
-        if not isinstance(result.payload, dict):
-            return
         update_fields: list[str] = []
         if result.status_code < 400 and hasattr(claim, "status"):
             claim.status = "submitted"
@@ -864,7 +883,8 @@ class IlmClaimService:
                 claim.submitted_by = user
                 update_fields.append("submitted_by")
             update_fields += ["status", "submitted_at"]
-        sha_ref = result.payload.get("sha_claim_reference") or result.payload.get("claim_id")
+        payload = result.payload if isinstance(result.payload, dict) else {}
+        sha_ref = payload.get("sha_claim_reference") or payload.get("claim_id")
         if sha_ref and hasattr(claim, "sha_claim_reference"):
             claim.sha_claim_reference = str(sha_ref)[:50]
             update_fields.append("sha_claim_reference")

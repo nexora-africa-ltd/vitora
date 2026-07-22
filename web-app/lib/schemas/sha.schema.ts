@@ -623,6 +623,7 @@ export const ClaimSchema = z.object({
   last_dha_status: z.string().nullable().optional(),
   last_dha_payload_at: z.string().nullable().optional(),
   dha_visit_started_at: z.string().nullable().optional(),
+  dha_discharge_snapshot: z.record(z.unknown()).nullable().optional(),
 
   // Intervention tracking & document-type enforcement (Phase 1.1)
   claim_interventions: z.array(z.object({
@@ -1133,6 +1134,7 @@ export type IlmAddDiagnosisRequest = z.infer<typeof IlmAddDiagnosisRequestSchema
 
 export const IlmRemoveDiagnosisRequestSchema = z.object({
   icd_code: z.string().min(1),
+  intervention_code: z.string().min(1).optional(),
 });
 export type IlmRemoveDiagnosisRequest = z.infer<typeof IlmRemoveDiagnosisRequestSchema>;
 
@@ -1165,6 +1167,7 @@ export type IlmRemoveLineRequest = z.infer<typeof IlmRemoveLineRequestSchema>;
 
 export const IlmRemoveAttachmentRequestSchema = z.object({
   attachment_id: z.string().min(1),
+  intervention_code: z.string().min(1).optional(),
 });
 export type IlmRemoveAttachmentRequest = z.infer<typeof IlmRemoveAttachmentRequestSchema>;
 

@@ -1406,6 +1406,13 @@ async function ilmAttachmentSyncStatus(claimId: number): Promise<{
   matched: number;
   total: number;
   all_matched: boolean;
+  matched_details?: Array<{
+    attachment_id: number;
+    attachment_name: string;
+    attachment_type: string;
+    remote_attachment_id: string;
+    intervention_code: string;
+  }>;
   missing: Array<{ attachment_id: number; attachment_name: string; attachment_type: string }>;
   consent_token_present: boolean;
 }> {
@@ -1809,6 +1816,7 @@ async function ilmSendDischargeOtp(body: {
 }
 
 async function ilmDischarge(body: {
+  claim_id?: number;
   consent_token: string;
   discharge_date: string;
   discharge_reason: string;
@@ -1858,6 +1866,7 @@ async function ilmAddEmergencyDoctor(body: {
   consent_token: string;
   identification_number: string;
   identification_type?: string;
+  regulation_body?: string;
 }) {
   const response = await apiClient.post(`${ILM_BASE}/lifecycle/emergency-doctors/`, body);
   return parseResponse(IlmLifecycleResponseSchema, response.data, {

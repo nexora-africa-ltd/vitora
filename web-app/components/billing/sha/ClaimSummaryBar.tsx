@@ -40,6 +40,20 @@ function CopyButton({ text }: { text: string }) {
 
 export function ClaimSummaryBar({ claim }: ClaimSummaryBarProps) {
   const shaRef = claim.sha_reference ?? claim.sha_claim_reference;
+  const snapshot =
+    claim.dha_discharge_snapshot && typeof claim.dha_discharge_snapshot === 'object'
+      ? (claim.dha_discharge_snapshot as Record<string, unknown>)
+      : null;
+  const workflowState = String(snapshot?.workflow_state || '').trim().toUpperCase();
+  const effectiveStatus =
+    claim.status === 'draft' &&
+    (
+      !!claim.submitted_at
+      || !!(claim.sha_claim_reference || claim.sha_reference)
+      || ['SUBMISSION_READY', 'SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(workflowState)
+    )
+      ? 'submitted'
+      : claim.status;
 
   return (
     <div className="sticky top-0 z-20 -mx-3 sm:-mx-6 px-3 sm:px-6 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -98,7 +112,7 @@ export function ClaimSummaryBar({ claim }: ClaimSummaryBarProps) {
         {/* Badges */}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           {claim.claim_flow && <ClaimFlowBadge claim={claim} className="text-xs" />}
-          <ClaimStatusBadge status={claim.status} />
+          <ClaimStatusBadge status={effectiveStatus} />
           <TimeBarBadge claim={claim} compact />
           {claim.is_emergency_claim && (
             <Badge variant="outline" className="border-red-400 text-red-700 dark:text-red-300 text-xs">

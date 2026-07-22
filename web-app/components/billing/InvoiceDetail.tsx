@@ -85,13 +85,12 @@ interface InvoiceDetailProps {
   onClaimSubmitted?: (claim: Claim) => void;
   linkedClaim?: Claim | null;
   linkedClaimDetail?: Claim | null;
-  onUpdateClaimItemAllocation?: (
-    claimId: number,
+  onUpdateInvoiceItemAllocation?: (
+    invoiceId: number,
     itemId: number,
     payload: {
-      sha_covered_amount: string;
-      patient_payable_amount: string;
-      discount_amount: string;
+      mode: 'patient' | 'discount';
+      discount_amount?: string;
       discount_reason?: string;
     }
   ) => Promise<void>;
@@ -101,8 +100,7 @@ interface InvoiceDetailProps {
 }
 
 interface AllocationDraft {
-  sha_covered_amount: string;
-  patient_payable_amount: string;
+  mode: 'patient' | 'discount';
   discount_amount: string;
   discount_reason: string;
   saving?: boolean;
@@ -180,7 +178,7 @@ export function InvoiceDetail({
   onClaimSubmitted,
   linkedClaim,
   linkedClaimDetail,
-  onUpdateClaimItemAllocation,
+  onUpdateInvoiceItemAllocation,
   onConvertProforma,
   onRenewProforma,
 }: InvoiceDetailProps) {
@@ -197,46 +195,20 @@ export function InvoiceDetail({
 
   const claimItemByInvoiceItemId = React.useMemo(() => {
     const map = new Map<number, ClaimItem>();
-    const toLineKey = (
-      description: string,
-      quantity: string | number,
-      unitPrice: string,
-      tariffCode?: string | null,
-    ) => {
-      const qty = Number(quantity || 0).toFixed(2);
-      const unit = Number(unitPrice || 0).toFixed(2);
-      return `${String(description || '').trim().toLowerCase()}|${qty}|${unit}|${String(tariffCode || '').trim().toLowerCase()}`;
-    };
-
-    const fallbackClaimItemsByKey = new Map<string, ClaimItem[]>();
     for (const item of claimItems) {
       if (typeof item.invoice_item === 'number') {
         map.set(item.invoice_item, item);
-        continue;
-      }
-
-      const key = toLineKey(item.description, item.quantity, item.unit_price, item.tariff_code);
-      const existing = fallbackClaimItemsByKey.get(key) || [];
-      existing.push(item);
-      fallbackClaimItemsByKey.set(key, existing);
-    }
-
-    for (const invoiceItem of invoiceItems) {
-      if (map.has(invoiceItem.id)) continue;
-      const key = toLineKey(invoiceItem.description, invoiceItem.quantity, invoiceItem.unit_price, invoiceItem.sha_code);
-      const candidates = fallbackClaimItemsByKey.get(key);
-      if (!candidates || candidates.length === 0) continue;
-      const next = candidates.shift();
-      if (next) {
-        map.set(invoiceItem.id, next);
       }
     }
     return map;
-  }, [claimItems, invoiceItems]);
+  }, [claimItems]);
 
   const pendingAllocationCount = React.useMemo(
-    () => claimItems.filter((item) => item.allocation_status === 'pending').length,
-    [claimItems],
+    () => invoiceItems
+      .map((item) => claimItemByInvoiceItemId.get(item.id))
+      .filter((item): item is ClaimItem => !!item)
+      .filter((item) => item.allocation_status === 'pending').length,
+    [invoiceItems, claimItemByInvoiceItemId],
   );
 
   React.useEffect(() => {
@@ -248,11 +220,10 @@ export function InvoiceDetail({
       const next: Record<number, AllocationDraft> = {};
       for (const item of invoiceItems) {
         const claimItem = claimItemByInvoiceItemId.get(item.id);
-        const gross = item.line_total || '0.00';
+        const discountAmount = String(claimItem?.discount_amount ?? item.discount_amount ?? '0.00');
         next[item.id] = prev[item.id] ?? {
-          sha_covered_amount: String(claimItem?.sha_covered_amount ?? item.insurance_approved_amount ?? gross),
-          patient_payable_amount: String(claimItem?.patient_payable_amount ?? '0.00'),
-          discount_amount: String(claimItem?.discount_amount ?? item.discount_amount ?? '0.00'),
+          mode: Number(discountAmount || '0') > 0 ? 'discount' : 'patient',
+          discount_amount: discountAmount,
           discount_reason: String(claimItem?.discount_reason ?? ''),
           saving: false,
           error: null,
@@ -267,8 +238,7 @@ export function InvoiceDetail({
       ...prev,
       [invoiceItemId]: {
         ...(prev[invoiceItemId] ?? {
-          sha_covered_amount: '0.00',
-          patient_payable_amount: '0.00',
+          mode: 'patient',
           discount_amount: '0.00',
           discount_reason: '',
           saving: false,
@@ -280,20 +250,21 @@ export function InvoiceDetail({
   }, []);
 
   const saveAllocation = React.useCallback(async (invoiceItemId: number) => {
-    if (!linkedClaimDetail?.id || !onUpdateClaimItemAllocation) return;
+    if (!invoice?.id || !onUpdateInvoiceItemAllocation) return;
     const claimItem = claimItemByInvoiceItemId.get(invoiceItemId);
-    if (!claimItem) return;
+    if (claimItem) return;
     const draft = allocationDrafts[invoiceItemId];
     if (!draft) return;
 
     updateAllocationDraft(invoiceItemId, { saving: true, error: null });
     try {
-      await onUpdateClaimItemAllocation(linkedClaimDetail.id, claimItem.id, {
-        sha_covered_amount: draft.sha_covered_amount,
-        patient_payable_amount: draft.patient_payable_amount,
-        discount_amount: draft.discount_amount,
-        discount_reason: draft.discount_reason,
-      });
+      await onUpdateInvoiceItemAllocation(invoice.id, invoiceItemId, draft.mode === 'patient'
+        ? { mode: 'patient' }
+        : {
+            mode: 'discount',
+            discount_amount: draft.discount_amount,
+            discount_reason: draft.discount_reason,
+          });
       setEditingInvoiceItemId(null);
     } catch (error: unknown) {
       const message =
@@ -304,7 +275,7 @@ export function InvoiceDetail({
     } finally {
       updateAllocationDraft(invoiceItemId, { saving: false });
     }
-  }, [linkedClaimDetail?.id, onUpdateClaimItemAllocation, claimItemByInvoiceItemId, allocationDrafts, updateAllocationDraft]);
+  }, [invoice?.id, onUpdateInvoiceItemAllocation, claimItemByInvoiceItemId, allocationDrafts, updateAllocationDraft]);
 
   if (isLoading) {
     return <InvoiceDetailSkeleton />;
@@ -618,39 +589,27 @@ export function InvoiceDetail({
                     const isEditing = editingInvoiceItemId === item.id;
                     const canEditThisRow = !!(
                       canEditAllocation &&
-                      claimItem &&
-                      linkedClaimDetail?.id &&
-                      onUpdateClaimItemAllocation
+                      !claimItem &&
+                      invoice?.id &&
+                      onUpdateInvoiceItemAllocation
                     );
                     const isLinkedToClaimLine = !!claimItem;
                     const statusPending = claimItem?.allocation_status === 'pending';
+                    const lineTotal = parseFloat(String(item.line_total || '0'));
+                    const shaAmount = parseFloat(String(claimItem?.sha_covered_amount || item.insurance_approved_amount || '0'));
+                    const discountAmount = parseFloat(String(claimItem?.discount_amount || item.discount_amount || '0'));
+                    const patientAmount = Math.max(0, lineTotal - shaAmount - discountAmount);
 
                     return (
                       <>
                         <TableCell className="text-right">
-                          {isEditing && draft ? (
-                            <Input
-                              value={draft.sha_covered_amount}
-                              onChange={(e) => updateAllocationDraft(item.id, { sha_covered_amount: e.target.value })}
-                              className="h-8 text-xs text-right"
-                            />
-                          ) : (
-                            formatKES(parseFloat(String(claimItem?.sha_covered_amount || item.insurance_approved_amount || '0')))
-                          )}
+                          {formatKES(shaAmount)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {isEditing && draft ? (
-                            <Input
-                              value={draft.patient_payable_amount}
-                              onChange={(e) => updateAllocationDraft(item.id, { patient_payable_amount: e.target.value })}
-                              className="h-8 text-xs text-right"
-                            />
-                          ) : (
-                            formatKES(parseFloat(String(claimItem?.patient_payable_amount || '0')))
-                          )}
+                          {formatKES(patientAmount)}
                         </TableCell>
                         <TableCell>
-                          {isEditing && draft ? (
+                          {isEditing && draft && draft.mode === 'discount' ? (
                             <div className="space-y-1">
                               <Input
                                 value={draft.discount_amount}
@@ -668,7 +627,7 @@ export function InvoiceDetail({
                             </div>
                           ) : (
                             <div className="text-right">
-                              <div>{formatKES(parseFloat(String(claimItem?.discount_amount || item.discount_amount || '0')))}</div>
+                              <div>{formatKES(discountAmount)}</div>
                               {claimItem?.discount_reason ? (
                                 <p className="text-[11px] text-muted-foreground truncate">{claimItem.discount_reason}</p>
                               ) : null}
@@ -677,7 +636,13 @@ export function InvoiceDetail({
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
-                            <Badge className={statusPending ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}>
+                            <Badge className={
+                              !isLinkedToClaimLine
+                                ? 'bg-slate-100 text-slate-700'
+                                : statusPending
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-emerald-100 text-emerald-800'
+                            }>
                               {!isLinkedToClaimLine ? 'Unlinked' : statusPending ? 'Pending allocation' : 'Resolved'}
                             </Badge>
                             {draft?.error ? (
@@ -687,12 +652,21 @@ export function InvoiceDetail({
                               <div className="flex gap-1">
                                 {isEditing ? (
                                   <>
+                                    <select
+                                      value={draft?.mode || 'patient'}
+                                      onChange={(e) => updateAllocationDraft(item.id, { mode: e.target.value as 'patient' | 'discount' })}
+                                      className="h-7 rounded border border-input bg-background px-2 text-[11px]"
+                                      disabled={!!draft?.saving}
+                                    >
+                                      <option value="patient">Set patient payer</option>
+                                      <option value="discount">Apply discount</option>
+                                    </select>
                                     <Button
                                       variant="outline"
                                       size="sm"
                                       className="h-7 px-2 text-[11px]"
                                       onClick={() => void saveAllocation(item.id)}
-                                      disabled={!!draft?.saving}
+                                      disabled={!!draft?.saving || (draft?.mode === 'discount' && !canApplyLineDiscount)}
                                     >
                                       {draft?.saving ? 'Saving…' : 'Save'}
                                     </Button>
@@ -711,7 +685,13 @@ export function InvoiceDetail({
                                     variant="outline"
                                     size="sm"
                                     className="h-7 px-2 text-[11px]"
-                                    onClick={() => setEditingInvoiceItemId(item.id)}
+                                    onClick={() => {
+                                      const currentDiscount = Number(draft?.discount_amount || item.discount_amount || '0');
+                                      updateAllocationDraft(item.id, {
+                                        mode: currentDiscount > 0 ? 'discount' : 'patient',
+                                      });
+                                      setEditingInvoiceItemId(item.id);
+                                    }}
                                   >
                                     Edit allocation
                                   </Button>
@@ -719,7 +699,7 @@ export function InvoiceDetail({
                               </div>
                             ) : (
                               <p className="text-[11px] text-muted-foreground">
-                                {claimItem ? 'Read-only' : 'Not linked to claim line'}
+                                {claimItem ? 'Read-only (linked SHA line)' : 'Read-only'}
                               </p>
                             )}
                           </div>

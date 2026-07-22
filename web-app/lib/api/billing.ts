@@ -288,6 +288,22 @@ async function removeInvoiceItem(
   );
 }
 
+async function updateInvoiceItemAllocation(
+  invoiceId: IdParam,
+  itemId: number,
+  data: {
+    mode: 'patient' | 'discount';
+    discount_amount?: string;
+    discount_reason?: string;
+  }
+): Promise<InvoiceItem> {
+  const response = await apiClient.patch(
+    `/api/billing/invoices/${invoiceId}/items/${itemId}/allocation/`,
+    data
+  );
+  return parseResponse(InvoiceItemSchema, response.data, { context: 'billingApi.updateInvoiceItemAllocation' });
+}
+
 async function applyDiscount(
   invoiceId: IdParam,
   data: ApplyDiscountData
@@ -723,6 +739,7 @@ export const billingApi = {
   cancelInvoice,
   addInvoiceItem,
   removeInvoiceItem,
+  updateInvoiceItemAllocation,
   applyDiscount,
   getOverdueInvoices,
 
