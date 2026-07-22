@@ -866,20 +866,20 @@ export interface Claim {
 export interface ClaimItem {
   id: number;
   claim: number;
-  tariff?: number;
+  tariff?: number | null;
   tariff_code?: string;
   tariff_name?: string;
-  service?: number;
-  invoice_item?: number;
+  service?: number | null;
+  invoice_item?: number | null;
   description: string;
-  service_date?: string;
+  service_date?: string | null;
   quantity: string | number;
   unit_price: string;
   claimed_amount: string;
-  sha_covered_amount?: string;
-  patient_payable_amount?: string;
-  discount_amount?: string;
-  discount_reason?: string;
+  sha_covered_amount?: string | null;
+  patient_payable_amount?: string | null;
+  discount_amount?: string | null;
+  discount_reason?: string | null;
   discount_applied_by?: number | null;
   discount_applied_at?: string | null;
   allocation_status?: 'pending' | 'resolved';
@@ -887,9 +887,9 @@ export interface ClaimItem {
   coverage_type: CoverageType;
   coverage_type_display?: string;
   status: 'pending' | 'approved' | 'rejected' | 'adjusted';
-  approved_quantity?: string | number;
-  approved_amount?: string;
-  rejection_reason?: string;
+  approved_quantity?: string | number | null;
+  approved_amount?: string | null;
+  rejection_reason?: string | null;
   created_at: string;
   updated_at: string;
 }
