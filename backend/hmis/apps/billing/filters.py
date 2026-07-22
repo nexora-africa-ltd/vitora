@@ -55,10 +55,11 @@ class InvoiceFilter(django_filters.FilterSet):
     status = CaseInsensitiveCharFilter(field_name="status")
     status__in = CaseInsensitiveInFilter(field_name="status", lookup_expr="in")
     payment_type = CaseInsensitiveCharFilter(field_name="payment_type")
+    payer_type = CaseInsensitiveCharFilter(field_name="payer_type")
 
     class Meta:
         model = Invoice
-        fields = ["status", "patient", "encounter", "payment_type"]
+        fields = ["status", "patient", "encounter", "payment_type", "payer_type"]
 
 
 class PaymentFilter(django_filters.FilterSet):

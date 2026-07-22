@@ -89,6 +89,7 @@ export interface ServiceUpdateData extends Partial<ServiceCreateData> {}
  * Invoice payment type matching backend Invoice.PaymentType
  */
 export type InvoicePaymentType = 'CASH' | 'MPESA' | 'INSURANCE' | 'CORPORATE' | 'MIXED';
+export type InvoicePayerType = 'CASH' | 'SHA' | 'PRIVATE_INSURANCE' | 'CORPORATE' | 'MIXED';
 
 export interface InvoiceCreateData {
   patient: number;
@@ -96,6 +97,7 @@ export interface InvoiceCreateData {
   due_date: string;
   notes?: string;
   payment_type?: InvoicePaymentType;
+  payer_type?: InvoicePayerType;
 }
 
 export interface InvoiceUpdateData {
@@ -245,6 +247,7 @@ export interface InvoiceListParams {
   status?: 'PROFORMA' | 'DRAFT' | 'PENDING' | 'PARTIAL' | 'PAID' | 'CANCELLED' | 'OVERDUE' | 'WRITTEN_OFF';
   status__in?: string;
   payment_type?: 'CASH' | 'MPESA' | 'INSURANCE' | 'CORPORATE' | 'MIXED';
+  payer_type?: 'CASH' | 'SHA' | 'PRIVATE_INSURANCE' | 'CORPORATE' | 'MIXED';
   patient?: number;
   start_date?: string;
   end_date?: string;

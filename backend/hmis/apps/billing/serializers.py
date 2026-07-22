@@ -261,6 +261,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "due_date",
             "status",
             "payment_type",
+            "payer_type",
             "subtotal",
             "discount_type",
             "discount_value",

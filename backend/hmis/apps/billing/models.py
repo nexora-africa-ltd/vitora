@@ -170,6 +170,13 @@ class Invoice(FacilityScopedModel):
         CORPORATE = "corporate", "Corporate Account"
         MIXED = "mixed", "Mixed Payment"
 
+    class PayerType(models.TextChoices):
+        CASH = "cash", "Cash / Self-Pay"
+        SHA = "sha", "SHA (Social Health Authority)"
+        PRIVATE_INSURANCE = "private_insurance", "Private Insurance"
+        CORPORATE = "corporate", "Corporate Account"
+        MIXED = "mixed", "Mixed / Split Responsibility"
+
     # Default proforma validity in days
     DEFAULT_PROFORMA_VALIDITY_DAYS = 30
 
@@ -211,6 +218,7 @@ class Invoice(FacilityScopedModel):
     payment_type = models.CharField(
         max_length=20, choices=PaymentType.choices, default=PaymentType.CASH
     )
+    payer_type = models.CharField(max_length=24, choices=PayerType.choices, default=PayerType.CASH)
 
     # Dates
     invoice_date = models.DateField(default=date.today)
@@ -633,6 +641,7 @@ class Invoice(FacilityScopedModel):
             due_date=date.today() + timedelta(days=settings.BILLING_DEFAULT_DUE_DAYS),
             status=self.Status.DRAFT,
             payment_type=self.payment_type,
+            payer_type=self.payer_type,
             insurance_provider=self.insurance_provider,
             insurance_member_no=self.insurance_member_no,
             notes=f"Converted from proforma {self.invoice_number}",
@@ -702,6 +711,7 @@ class Invoice(FacilityScopedModel):
             due_date=date.today() + timedelta(days=settings.BILLING_DEFAULT_DUE_DAYS),
             status=self.Status.PROFORMA,
             payment_type=self.payment_type,
+            payer_type=self.payer_type,
             valid_until=date.today() + timedelta(days=validity),
             insurance_provider=self.insurance_provider,
             insurance_member_no=self.insurance_member_no,

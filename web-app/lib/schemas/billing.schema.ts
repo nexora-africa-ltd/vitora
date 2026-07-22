@@ -162,6 +162,7 @@ export const InvoiceSchema = z.object({
   insurance_member_no: z.string().optional().nullable(),
   insurance_amount: z.string().optional().nullable(),
   payment_type: z.string().optional().nullable(),
+  payer_type: z.string().optional().nullable(),
   discount_reason: z.string().optional().nullable(),
 
   // Notes

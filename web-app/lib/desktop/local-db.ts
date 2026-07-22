@@ -494,6 +494,7 @@ function runMigrations(database: import('better-sqlite3').Database): void {
       clinic_visit_id TEXT,
       status TEXT,
       payment_type TEXT,
+      payer_type TEXT,
       invoice_date TEXT,
       due_date TEXT,
       discount_type TEXT,

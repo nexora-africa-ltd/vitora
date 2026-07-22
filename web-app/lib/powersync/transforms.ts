@@ -524,6 +524,7 @@ export interface InvoiceLocalRecord {
   encounter_id?: number;
   status: string;
   payment_type?: string;
+  payer_type?: string;
   invoice_date?: string;
   due_date?: string;
   subtotal?: number;
@@ -552,6 +553,7 @@ export function transformInvoiceRow(
     encounter_id: row.encounter_id ? toNumericId(row.encounter_id as string) : undefined,
     status: (row.status as string) || '',
     payment_type: (row.payment_type as string) || undefined,
+    payer_type: (row.payer_type as string) || undefined,
     invoice_date: (row.invoice_date as string) || undefined,
     due_date: (row.due_date as string) || undefined,
     subtotal: row.subtotal as number | undefined,

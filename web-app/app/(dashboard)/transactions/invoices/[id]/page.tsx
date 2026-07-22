@@ -68,15 +68,11 @@ export default function InvoiceDetailPage() {
   const invoiceNumericId = invoice?.id ?? 0;
   const { data: servicesData } = useServices();
 
-  // Only fetch SHA claims for insurance invoices (avoid unnecessary API calls for cash invoices).
-  // Backend stores payment_type as uppercase enum values (e.g. "INSURANCE").
-  const paymentType = String(invoice?.payment_type || '').toUpperCase();
-  const isInsuranceInvoice = paymentType === 'INSURANCE' || !!invoice?.sha_claim_number;
   const { data: claimsData, refetch: refetchClaims } = useClaims(
     { invoice: invoiceNumericId },
-    { enabled: isInsuranceInvoice }
+    { enabled: invoiceNumericId > 0 }
   );
-  const linkedClaim = isInsuranceInvoice ? (claimsData?.results?.[0] || null) : null;
+  const linkedClaim = claimsData?.results?.[0] || null;
   const { data: linkedClaimDetail, refetch: refetchLinkedClaim } = useClaim(linkedClaim?.id);
 
   // Fetch receipt when we have a payment ID

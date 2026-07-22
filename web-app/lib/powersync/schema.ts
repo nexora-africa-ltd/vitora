@@ -417,6 +417,7 @@ const invoices = new Table(
     clinic_visit_id: column.text,
     status: column.text,
     payment_type: column.text,
+    payer_type: column.text,
     invoice_date: column.text,
     due_date: column.text,
     discount_type: column.text,
