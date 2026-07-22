@@ -1092,6 +1092,90 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 SHAClaimAttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED
             )
 
+    @action(
+        detail=True,
+        methods=["patch", "delete"],
+        url_path=r"attachments/(?P<attachment_id>[^/.]+)",
+        parser_classes=[MultiPartParser, FormParser],
+    )
+    def attachment_detail(self, request, pk=None, attachment_id=None):
+        """Update or delete a local claim attachment."""
+        claim = self.get_object()
+        attachment = get_object_or_404(claim.attachments, id=attachment_id)
+
+        if request.method == "DELETE":
+            attachment.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        allowed_types = {choice[0] for choice in SHAClaimAttachment.AttachmentType.choices}
+        changed = False
+
+        if "attachment_type" in request.data:
+            attachment_type = str(request.data.get("attachment_type") or "").strip()
+            if not attachment_type:
+                return Response(
+                    {"attachment_type": "attachment_type cannot be blank"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if attachment_type not in allowed_types:
+                return Response(
+                    {"attachment_type": "Invalid attachment_type"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            attachment.attachment_type = attachment_type
+            changed = True
+
+        if "name" in request.data:
+            attachment.name = str(request.data.get("name") or "").strip()
+            changed = True
+
+        if "description" in request.data:
+            attachment.description = str(request.data.get("description") or "").strip()
+            changed = True
+
+        file = request.FILES.get("file")
+        if file:
+            max_size = 10 * 1024 * 1024  # 10MB
+            if file.size > max_size:
+                return Response(
+                    {"file": "File size exceeds maximum of 10MB"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            allowed_mime_types = {
+                "application/pdf",
+                "image/jpeg",
+                "image/png",
+                "image/tiff",
+            }
+            if file.content_type not in allowed_mime_types:
+                return Response(
+                    {
+                        "file": (
+                            "File type not allowed. Allowed: "
+                            "application/pdf, image/jpeg, image/png, image/tiff"
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            file_content = file.read()
+            checksum = hashlib.sha256(file_content).hexdigest()
+            file.seek(0)
+
+            attachment.file = file
+            attachment.file_size = file.size
+            attachment.mime_type = file.content_type
+            attachment.checksum = checksum
+            attachment.original_filename = file.name
+            changed = True
+
+        if not changed:
+            return Response(SHAClaimAttachmentSerializer(attachment).data)
+
+        attachment.save()
+        return Response(SHAClaimAttachmentSerializer(attachment).data)
+
     # =================================================================
     # DHA HIE Middleware (ILM) — per-action claim workflow endpoints
     # =================================================================
