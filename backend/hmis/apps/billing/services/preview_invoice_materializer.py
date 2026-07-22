@@ -11,7 +11,7 @@ from typing import Any
 from django.db import transaction
 from django.db.models import Q
 
-from hmis.apps.billing.models import Invoice, InvoiceItem, SHAClaim
+from hmis.apps.billing.models import Invoice, InvoiceItem, SHAClaim, SHAClaimItem
 from hmis.apps.billing.services.final_bill_attachment_service import FinalBillAttachmentService
 
 AUTO_MATERIALIZED_MARKER = "DHA_PREVIEW_MATERIALIZED"
@@ -26,6 +26,16 @@ def _line_key(
         str(Decimal(quantity or 0).quantize(TWO_DP)),
         str(Decimal(unit_price or 0).quantize(TWO_DP)),
         str(tariff_code or "").strip().lower(),
+    )
+
+
+def _weak_line_key(
+    description: str, quantity: Decimal, unit_price: Decimal
+) -> tuple[str, str, str]:
+    return (
+        str(description or "").strip().lower(),
+        str(Decimal(quantity or 0).quantize(TWO_DP)),
+        str(Decimal(unit_price or 0).quantize(TWO_DP)),
     )
 
 
@@ -163,10 +173,18 @@ class PreviewInvoiceMaterializer:
                 delete_qs = invoice.items.filter(
                     Q(is_preview_materialized=True) | Q(id__in=matched_fallback_ids)
                 )
+                deleted_invoice_item_ids = list(delete_qs.values_list("id", flat=True))
+                if deleted_invoice_item_ids:
+                    SHAClaimItem.objects.filter(
+                        claim=claim,
+                        invoice_item_id__in=deleted_invoice_item_ids,
+                    ).update(invoice_item_id=None)
                 replaced = delete_qs.count()
                 delete_qs.delete()
 
             created = 0
+            created_items_by_key: dict[tuple[str, str, str, str], list[int]] = {}
+            created_items_by_weak_key: dict[tuple[str, str, str], list[int]] = {}
             for line in parsed_lines:
                 tariff = line.get("tariff")
                 tariff_code = str(line.get("tariff_code") or getattr(tariff, "code", "") or "")
@@ -177,7 +195,7 @@ class PreviewInvoiceMaterializer:
 
                 line_total = (quantity * unit_price).quantize(TWO_DP)
 
-                InvoiceItem.objects.create(
+                created_item = InvoiceItem.objects.create(
                     invoice=invoice,
                     item_type=InvoiceItem.ItemType.SERVICE,
                     service=getattr(tariff, "service", None) if tariff else None,
@@ -190,7 +208,46 @@ class PreviewInvoiceMaterializer:
                     insurance_approved_amount=line_total,
                     is_preview_materialized=True,
                 )
+                key = _line_key(
+                    str(line.get("description") or tariff_code or "DHA Preview Line"),
+                    quantity,
+                    unit_price,
+                    tariff_code,
+                )
+                created_items_by_key.setdefault(key, []).append(created_item.id)
+                weak_key = _weak_line_key(
+                    str(line.get("description") or tariff_code or "DHA Preview Line"),
+                    quantity,
+                    unit_price,
+                )
+                created_items_by_weak_key.setdefault(weak_key, []).append(created_item.id)
                 created += 1
+
+            candidate_claim_items = claim.items.filter(invoice_item_id__isnull=True).order_by(
+                "-is_preview_line", "created_at", "id"
+            )
+            for claim_item in candidate_claim_items:
+                key = _line_key(
+                    claim_item.description,
+                    claim_item.quantity,
+                    claim_item.unit_price,
+                    getattr(claim_item.tariff, "code", "") or "",
+                )
+                matches = created_items_by_key.get(key) or []
+                if not matches:
+                    weak_key = _weak_line_key(
+                        claim_item.description,
+                        claim_item.quantity,
+                        claim_item.unit_price,
+                    )
+                    matches = created_items_by_weak_key.get(weak_key) or []
+                if not matches:
+                    continue
+                invoice_item_id = matches.pop(0)
+                update_data = {"invoice_item_id": invoice_item_id}
+                if not claim_item.is_preview_line:
+                    update_data["is_preview_line"] = True
+                SHAClaimItem.objects.filter(pk=claim_item.pk).update(**update_data)
 
         final_bill_result = FinalBillAttachmentService.ensure_for_claim(claim=claim, user=user)
 

@@ -197,13 +197,42 @@ export function InvoiceDetail({
 
   const claimItemByInvoiceItemId = React.useMemo(() => {
     const map = new Map<number, ClaimItem>();
+    const toLineKey = (
+      description: string,
+      quantity: string | number,
+      unitPrice: string,
+      tariffCode?: string | null,
+    ) => {
+      const qty = Number(quantity || 0).toFixed(2);
+      const unit = Number(unitPrice || 0).toFixed(2);
+      return `${String(description || '').trim().toLowerCase()}|${qty}|${unit}|${String(tariffCode || '').trim().toLowerCase()}`;
+    };
+
+    const fallbackClaimItemsByKey = new Map<string, ClaimItem[]>();
     for (const item of claimItems) {
       if (typeof item.invoice_item === 'number') {
         map.set(item.invoice_item, item);
+        continue;
+      }
+
+      const key = toLineKey(item.description, item.quantity, item.unit_price, item.tariff_code);
+      const existing = fallbackClaimItemsByKey.get(key) || [];
+      existing.push(item);
+      fallbackClaimItemsByKey.set(key, existing);
+    }
+
+    for (const invoiceItem of invoiceItems) {
+      if (map.has(invoiceItem.id)) continue;
+      const key = toLineKey(invoiceItem.description, invoiceItem.quantity, invoiceItem.unit_price, invoiceItem.sha_code);
+      const candidates = fallbackClaimItemsByKey.get(key);
+      if (!candidates || candidates.length === 0) continue;
+      const next = candidates.shift();
+      if (next) {
+        map.set(invoiceItem.id, next);
       }
     }
     return map;
-  }, [claimItems]);
+  }, [claimItems, invoiceItems]);
 
   const pendingAllocationCount = React.useMemo(
     () => claimItems.filter((item) => item.allocation_status === 'pending').length,
@@ -291,6 +320,11 @@ export function InvoiceDetail({
   const canCancel = ['DRAFT', 'PENDING'].includes(invoice.status);
   const canEditAllocation = hasPermission('billing.change_shaclaimitem');
   const canApplyLineDiscount = hasPermission('billing.apply_discount');
+  const showShaPanels =
+    String((invoice as any).payer_type || '').toLowerCase() === 'sha' ||
+    !!invoice.sha_claim_number ||
+    !!linkedClaim ||
+    !!linkedClaimDetail;
   const isPaid = invoice.status === 'PAID';
   const isOverdue = invoice.status === 'OVERDUE';
 
@@ -462,11 +496,7 @@ export function InvoiceDetail({
 
       {/* SHA Claim Status Card - Show only for insurance/SHA invoices */}
       {['PENDING', 'PARTIAL', 'PAID', 'OVERDUE'].includes(invoice.status) &&
-        (
-          String((invoice as any).payer_type || '').toLowerCase() === 'sha' ||
-          !!invoice.sha_claim_number ||
-          !!linkedClaim
-        ) && (
+        showShaPanels && (
         <Card className="border-blue-200 dark:border-blue-800">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
@@ -538,7 +568,7 @@ export function InvoiceDetail({
           )}
         </CardHeader>
         <CardContent className="px-0 sm:px-6">
-          {linkedClaimDetail && (
+          {showShaPanels && (
             <div className="mb-3 rounded border border-amber-300 bg-amber-50/70 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
               Payer allocation review: {pendingAllocationCount} pending line(s)
             </div>
@@ -551,7 +581,7 @@ export function InvoiceDetail({
                   <TableHead className="text-right w-16">Qty</TableHead>
                   <TableHead className="text-right w-28">Unit Price</TableHead>
                   <TableHead className="text-right w-28">Gross</TableHead>
-                  {linkedClaimDetail && (
+                  {showShaPanels && (
                     <>
                       <TableHead className="text-right w-28">SHA</TableHead>
                       <TableHead className="text-right w-28">Patient</TableHead>
@@ -582,16 +612,17 @@ export function InvoiceDetail({
                   <TableCell className="text-right font-medium">
                     {formatKES(parseFloat(item.line_total))}
                   </TableCell>
-                  {linkedClaimDetail && (() => {
+                  {showShaPanels && (() => {
                     const claimItem = claimItemByInvoiceItemId.get(item.id);
                     const draft = allocationDrafts[item.id];
                     const isEditing = editingInvoiceItemId === item.id;
                     const canEditThisRow = !!(
                       canEditAllocation &&
                       claimItem &&
-                      linkedClaimDetail.id &&
+                      linkedClaimDetail?.id &&
                       onUpdateClaimItemAllocation
                     );
+                    const isLinkedToClaimLine = !!claimItem;
                     const statusPending = claimItem?.allocation_status === 'pending';
 
                     return (
@@ -647,7 +678,7 @@ export function InvoiceDetail({
                         <TableCell>
                           <div className="space-y-1">
                             <Badge className={statusPending ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}>
-                              {statusPending ? 'Pending allocation' : 'Resolved'}
+                              {!isLinkedToClaimLine ? 'Unlinked' : statusPending ? 'Pending allocation' : 'Resolved'}
                             </Badge>
                             {draft?.error ? (
                               <p className="text-[11px] text-destructive">{draft.error}</p>
@@ -713,7 +744,7 @@ export function InvoiceDetail({
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell colSpan={linkedClaimDetail ? 7 : 3}>Subtotal</TableCell>
+                <TableCell colSpan={showShaPanels ? 7 : 3}>Subtotal</TableCell>
                 <TableCell className="text-right">
                   {formatKES(subtotal)}
                 </TableCell>
@@ -721,7 +752,7 @@ export function InvoiceDetail({
               </TableRow>
               {discount > 0 && (
                 <TableRow>
-                  <TableCell colSpan={linkedClaimDetail ? 7 : 3} className="text-green-600">
+                    <TableCell colSpan={showShaPanels ? 7 : 3} className="text-green-600">
                     Discount
                     {invoice.discount_type === 'PERCENTAGE' && (() => {
                       const pct = parseFloat(invoice.discount_value || '0');
@@ -737,7 +768,7 @@ export function InvoiceDetail({
                 </TableRow>
               )}
               <TableRow className="font-bold">
-                <TableCell colSpan={linkedClaimDetail ? 7 : 3}>Total</TableCell>
+                <TableCell colSpan={showShaPanels ? 7 : 3}>Total</TableCell>
                 <TableCell className="text-right">
                   {formatKES(total)}
                 </TableCell>

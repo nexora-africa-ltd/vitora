@@ -5,8 +5,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { ExternalLink } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { InvoiceDetail } from '@/components/billing/InvoiceDetail';
 import { PaymentForm } from '@/components/billing/PaymentForm';
@@ -311,6 +313,14 @@ export default function InvoiceDetailPage() {
       <PageHeader
         title={`Invoice ${invoice?.invoice_number || ''}`}
         helpContent="View and manage invoice details. Record payments, add or remove line items, apply discounts, and submit SHA claims from this page."
+        actions={linkedClaim ? (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/transactions/sha-claims/${linkedClaim.id}`}>
+              Attached Claim
+              <ExternalLink className="ml-1 h-4 w-4" />
+            </Link>
+          </Button>
+        ) : null}
       />
 
       <InvoiceDetail
