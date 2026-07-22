@@ -292,6 +292,9 @@ class TestPreviewBeforeSubmit:
         assert response.data["final_bill_attachment_id"]
         assert response.data["final_bill_created"] is True
         assert response.data["final_bill_skipped_reason"] == ""
+        assert response.data["claim_form_attachment_id"]
+        assert response.data["claim_form_created"] is True
+        assert response.data["claim_form_skipped_reason"] == ""
         assert response.data["critical_care_skipped_reason"] == "missing_admission_context"
         assert response.data["discharge_summary_skipped_reason"] == "missing_admission_context"
         assert response.data["allocation_pending_count"] == 1
@@ -442,6 +445,9 @@ class TestPreviewBeforeSubmit:
         assert response.data["final_bill_attachment_id"]
         assert response.data["final_bill_created"] is True
         assert response.data["final_bill_skipped_reason"] == ""
+        assert response.data["claim_form_attachment_id"]
+        assert response.data["claim_form_created"] is True
+        assert response.data["claim_form_skipped_reason"] == ""
         assert response.data["critical_care_skipped_reason"] == "missing_admission_context"
         assert response.data["discharge_summary_skipped_reason"] == "missing_admission_context"
 
@@ -539,6 +545,9 @@ class TestPreviewBeforeSubmit:
         assert response.data["discharge_summary_attachment_id"]
         assert response.data["discharge_summary_created"] is True
         assert response.data["discharge_summary_skipped_reason"] == ""
+        assert response.data["claim_form_attachment_id"]
+        assert response.data["claim_form_created"] is True
+        assert response.data["claim_form_skipped_reason"] == ""
 
         critical = SHAClaimAttachment.objects.get(id=response.data["critical_care_attachment_id"])
         assert critical.attachment_type == "clinical_notes"
@@ -877,6 +886,9 @@ class TestDischargeNotFuture:
         assert "discharge_summary_attachment_id" in response.data
         assert "discharge_summary_created" in response.data
         assert "discharge_summary_skipped_reason" in response.data
+        assert "claim_form_attachment_id" in response.data
+        assert "claim_form_created" in response.data
+        assert "claim_form_skipped_reason" in response.data
 
     def test_discharge_blocked_when_allocation_pending(self, sha_client, sample_sha_claim_for_uat):
         """Discharge should block when payer allocation review is pending."""

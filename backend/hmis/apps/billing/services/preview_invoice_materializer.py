@@ -13,6 +13,7 @@ from django.db.models import Q
 
 from hmis.apps.billing.models import Invoice, InvoiceItem, SHAClaim, SHAClaimItem
 from hmis.apps.billing.services.admission_attachment_service import AdmissionAttachmentService
+from hmis.apps.billing.services.claim_form_attachment_service import ClaimFormAttachmentService
 from hmis.apps.billing.services.final_bill_attachment_service import FinalBillAttachmentService
 
 AUTO_MATERIALIZED_MARKER = "DHA_PREVIEW_MATERIALIZED"
@@ -60,6 +61,10 @@ class MaterializePreviewInvoiceResult:
     discharge_summary_created: bool = False
     discharge_summary_updated: bool = False
     discharge_summary_skipped_reason: str = ""
+    claim_form_attachment_id: int | None = None
+    claim_form_created: bool = False
+    claim_form_updated: bool = False
+    claim_form_skipped_reason: str = ""
     skipped_reason: str = ""
 
 
@@ -139,6 +144,7 @@ class PreviewInvoiceMaterializer:
         if not can_write_items:
             final_bill_result = FinalBillAttachmentService.ensure_for_claim(claim=claim, user=user)
             admission_docs = AdmissionAttachmentService.ensure_for_claim(claim=claim, user=user)
+            claim_form_result = ClaimFormAttachmentService.ensure_for_claim(claim=claim, user=user)
             return MaterializePreviewInvoiceResult(
                 invoice_id=invoice.id,
                 invoice_number=invoice.invoice_number,
@@ -158,6 +164,10 @@ class PreviewInvoiceMaterializer:
                 discharge_summary_created=admission_docs.discharge_summary.created,
                 discharge_summary_updated=admission_docs.discharge_summary.updated,
                 discharge_summary_skipped_reason=admission_docs.discharge_summary.skipped_reason,
+                claim_form_attachment_id=claim_form_result.attachment_id,
+                claim_form_created=claim_form_result.created,
+                claim_form_updated=claim_form_result.updated,
+                claim_form_skipped_reason=claim_form_result.skipped_reason,
                 skipped_reason="invoice_not_auto_materialized",
             )
 
@@ -269,6 +279,7 @@ class PreviewInvoiceMaterializer:
 
         final_bill_result = FinalBillAttachmentService.ensure_for_claim(claim=claim, user=user)
         admission_docs = AdmissionAttachmentService.ensure_for_claim(claim=claim, user=user)
+        claim_form_result = ClaimFormAttachmentService.ensure_for_claim(claim=claim, user=user)
 
         return MaterializePreviewInvoiceResult(
             invoice_id=invoice.id,
@@ -289,5 +300,9 @@ class PreviewInvoiceMaterializer:
             discharge_summary_created=admission_docs.discharge_summary.created,
             discharge_summary_updated=admission_docs.discharge_summary.updated,
             discharge_summary_skipped_reason=admission_docs.discharge_summary.skipped_reason,
+            claim_form_attachment_id=claim_form_result.attachment_id,
+            claim_form_created=claim_form_result.created,
+            claim_form_updated=claim_form_result.updated,
+            claim_form_skipped_reason=claim_form_result.skipped_reason,
             skipped_reason="",
         )

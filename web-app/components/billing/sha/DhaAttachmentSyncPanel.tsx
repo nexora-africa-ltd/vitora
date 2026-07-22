@@ -37,6 +37,12 @@ export function DhaAttachmentSyncPanel({
   const total = syncStatus?.total ?? 0;
   const synced = !!syncStatus?.all_matched;
 
+  const refreshSyncAndDischargePanel = React.useCallback(async () => {
+    await refetch();
+    queryClient.invalidateQueries({ queryKey: ['discharge-local-attachments', claimId] });
+    onSynced?.();
+  }, [claimId, onSynced, queryClient, refetch]);
+
   const pushMutation = useMutation({
     mutationFn: () => shaApi.ilmPushLocalAttachments(claimId),
     onSuccess: async (result) => {
@@ -49,8 +55,8 @@ export function DhaAttachmentSyncPanel({
       }
       queryClient.invalidateQueries({ queryKey: ['sha-claim-dha-attachment-sync-status', claimId] });
       queryClient.invalidateQueries({ queryKey: ['sha-claim-dha-attachment-sync-status-checklist', claimId] });
-      await refetch();
-      onSynced?.();
+      queryClient.invalidateQueries({ queryKey: ['discharge-local-attachments', claimId] });
+      await refreshSyncAndDischargePanel();
     },
     onError: (error: unknown) => {
       const message =
@@ -73,7 +79,9 @@ export function DhaAttachmentSyncPanel({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => refetch()}
+            onClick={() => {
+              void refreshSyncAndDischargePanel();
+            }}
             disabled={isFetching || pushMutation.isPending}
           >
             {isFetching ? (
