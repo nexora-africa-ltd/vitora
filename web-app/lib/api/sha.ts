@@ -750,21 +750,79 @@ async function getClaimBundle(claimId: number): Promise<unknown> {
   return response.data;
 }
 
-async function getClaimAttachments(claimId: number): Promise<Array<{
+export interface ClaimAttachment {
   id: number;
   attachment_type: string;
   name: string;
-  original_filename?: string | null;
   description?: string | null;
-  }>> {
+  file?: string | null;
+  file_size?: number | null;
+  mime_type?: string | null;
+  checksum?: string | null;
+  original_filename?: string | null;
+  created_at?: string | null;
+}
+
+export interface ClaimAttachmentUpsertPayload {
+  attachment_type?: string;
+  name?: string;
+  description?: string;
+  file?: File;
+}
+
+async function getClaimAttachments(claimId: number): Promise<ClaimAttachment[]> {
   const response = await apiClient.get(`/api/billing/claims/${claimId}/attachments/`);
-  return response.data as Array<{
-    id: number;
-    attachment_type: string;
-    name: string;
-    original_filename?: string | null;
-    description?: string | null;
-  }>;
+  return response.data as ClaimAttachment[];
+}
+
+async function createClaimAttachment(
+  claimId: number,
+  payload: ClaimAttachmentUpsertPayload,
+): Promise<ClaimAttachment> {
+  const formData = new FormData();
+  formData.append('attachment_type', payload.attachment_type || 'other');
+  formData.append('name', payload.name || 'Attachment');
+  if (payload.description) {
+    formData.append('description', payload.description);
+  }
+  if (!payload.file) {
+    throw new Error('file is required when creating an attachment');
+  }
+  formData.append('file', payload.file);
+  const response = await apiClient.post(`/api/sha/claims/${claimId}/attachments/`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data as ClaimAttachment;
+}
+
+async function updateClaimAttachment(
+  claimId: number,
+  attachmentId: number,
+  payload: ClaimAttachmentUpsertPayload,
+): Promise<ClaimAttachment> {
+  const formData = new FormData();
+  if (typeof payload.attachment_type === 'string') {
+    formData.append('attachment_type', payload.attachment_type);
+  }
+  if (typeof payload.name === 'string') {
+    formData.append('name', payload.name);
+  }
+  if (typeof payload.description === 'string') {
+    formData.append('description', payload.description);
+  }
+  if (payload.file) {
+    formData.append('file', payload.file);
+  }
+  const response = await apiClient.patch(
+    `/api/sha/claims/${claimId}/attachments/${attachmentId}/`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  );
+  return response.data as ClaimAttachment;
+}
+
+async function deleteClaimAttachment(claimId: number, attachmentId: number): Promise<void> {
+  await apiClient.delete(`/api/sha/claims/${claimId}/attachments/${attachmentId}/`);
 }
 
 export interface ClaimItemAllocationUpdateRequest {
@@ -1976,6 +2034,9 @@ export const shaApi = {
   cancelClaim,
   getClaimBundle,
   getClaimAttachments,
+  createClaimAttachment,
+  updateClaimAttachment,
+  deleteClaimAttachment,
   updateClaimItemAllocation,
 
   // Facility Validation

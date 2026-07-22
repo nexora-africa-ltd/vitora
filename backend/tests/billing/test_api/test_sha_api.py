@@ -1069,6 +1069,79 @@ class TestAttachmentUpload:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_update_claim_attachment(self, sha_client, sample_sha_claim, test_user):
+        """Should update attachment metadata and optionally replace file."""
+        from hmis.apps.billing.models import SHAClaimAttachment
+
+        initial_file = SimpleUploadedFile(
+            name="initial.pdf",
+            content=b"%PDF-1.4 initial",
+            content_type="application/pdf",
+        )
+        attachment = SHAClaimAttachment.objects.create(
+            claim=sample_sha_claim,
+            attachment_type=SHAClaimAttachment.AttachmentType.OTHER,
+            name="Initial",
+            description="Initial description",
+            file=initial_file,
+            file_size=initial_file.size,
+            mime_type="application/pdf",
+            checksum="",
+            original_filename="initial.pdf",
+            uploaded_by=test_user,
+        )
+
+        replacement = SimpleUploadedFile(
+            name="replacement.pdf",
+            content=b"%PDF-1.4 replacement",
+            content_type="application/pdf",
+        )
+        response = sha_client.patch(
+            f"/api/sha/claims/{sample_sha_claim.id}/attachments/{attachment.id}/",
+            {
+                "attachment_type": SHAClaimAttachment.AttachmentType.CLINICAL_NOTES,
+                "name": "Updated Clinical Notes",
+                "description": "Updated description",
+                "file": replacement,
+            },
+            format="multipart",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        attachment.refresh_from_db()
+        assert attachment.attachment_type == SHAClaimAttachment.AttachmentType.CLINICAL_NOTES
+        assert attachment.name == "Updated Clinical Notes"
+        assert attachment.description == "Updated description"
+        assert attachment.original_filename == "replacement.pdf"
+
+    def test_delete_claim_attachment(self, sha_client, sample_sha_claim, test_user):
+        """Should delete a local claim attachment."""
+        from hmis.apps.billing.models import SHAClaimAttachment
+
+        attachment = SHAClaimAttachment.objects.create(
+            claim=sample_sha_claim,
+            attachment_type=SHAClaimAttachment.AttachmentType.OTHER,
+            name="To Delete",
+            description="",
+            file=SimpleUploadedFile(
+                name="to-delete.pdf",
+                content=b"%PDF-1.4 delete",
+                content_type="application/pdf",
+            ),
+            file_size=0,
+            mime_type="application/pdf",
+            checksum="",
+            original_filename="to-delete.pdf",
+            uploaded_by=test_user,
+        )
+
+        response = sha_client.delete(
+            f"/api/sha/claims/{sample_sha_claim.id}/attachments/{attachment.id}/"
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert not SHAClaimAttachment.objects.filter(id=attachment.id).exists()
+
 
 # =============================================================================
 # Test Class: Claim Validation Endpoint

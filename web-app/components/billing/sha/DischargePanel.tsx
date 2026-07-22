@@ -12,16 +12,25 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Fingerprint, Loader2, LogOut } from 'lucide-react';
+import { ExternalLink, Fingerprint, Loader2, LogOut, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { shaApi } from '@/lib/api/sha';
 import { billingApi } from '@/lib/api/billing';
 import { inpatientApi } from '@/lib/api/inpatient';
+import { getApiBaseUrl } from '@/lib/api/client';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useFacility } from '@/lib/context/facility-context';
@@ -68,11 +77,32 @@ const REQUIRED_DHA_DISCHARGE_DOCS: Array<{
   },
 ];
 
+const LOCAL_ATTACHMENT_TYPES: Array<{ value: string; label: string }> = [
+  { value: 'clinical_notes', label: 'Clinical notes' },
+  { value: 'lab_report', label: 'Lab report' },
+  { value: 'radiology_report', label: 'Radiology report' },
+  { value: 'prescription', label: 'Prescription' },
+  { value: 'invoice', label: 'Invoice / Final bill' },
+  { value: 'discharge_summary', label: 'Discharge summary' },
+  { value: 'operative_notes', label: 'Operative notes' },
+  { value: 'preauth_approval', label: 'Preauth approval' },
+  { value: 'other', label: 'Other' },
+];
+
 function normalizeText(value: string): string {
   return String(value || '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
+}
+
+function toAttachmentUrl(filePath?: string | null): string {
+  if (!filePath) return '';
+  if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+    return filePath;
+  }
+  const normalizedPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
+  return new URL(normalizedPath, getApiBaseUrl()).toString();
 }
 
 function inferDhaDocumentTypeFromLocalAttachment(attachment: {
@@ -138,6 +168,7 @@ interface DischargePanelProps {
 }
 
 type Step = 'details' | 'otp_sent' | 'complete';
+type LocalClaimAttachment = Awaited<ReturnType<typeof shaApi.getClaimAttachments>>[number];
 
 function extractOtpFromMessage(message: string): string {
   const match = message.match(/\b(\d{4,8})\b/);
@@ -178,6 +209,13 @@ export function DischargePanel({
   const [biometricInfo, setBiometricInfo] = useState('');
   const [biometricStatus, setBiometricStatus] = useState<'idle' | 'pending' | 'authorized' | 'failed' | 'expired'>('idle');
   const [docFiles, setDocFiles] = useState<Record<string, File | null>>({});
+  const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false);
+  const [attachmentDialogMode, setAttachmentDialogMode] = useState<'create' | 'edit'>('edit');
+  const [activeAttachmentId, setActiveAttachmentId] = useState<number | null>(null);
+  const [attachmentTypeInput, setAttachmentTypeInput] = useState('other');
+  const [attachmentNameInput, setAttachmentNameInput] = useState('');
+  const [attachmentDescriptionInput, setAttachmentDescriptionInput] = useState('');
+  const [attachmentReplacementFile, setAttachmentReplacementFile] = useState<File | null>(null);
   const biometricPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { facilityDetail } = useFacility();
@@ -215,6 +253,11 @@ export function DischargePanel({
   );
   const hasMissingRequiredDischargeDocs = missingRequiredDischargeDocs.length > 0;
 
+  const activeAttachment = useMemo<LocalClaimAttachment | null>(
+    () => localAttachments.find((att) => att.id === activeAttachmentId) ?? null,
+    [localAttachments, activeAttachmentId],
+  );
+
   const uploadDocMutation = useMutation({
     mutationFn: async ({ docType, file }: { docType: string; file: File }) => {
       const fallbackInterventionCode = activeInterventions[0]?.intervention_code;
@@ -234,6 +277,102 @@ export function DischargePanel({
     },
     onError: (e: any) => {
       setError(e?.response?.data?.error ?? e?.message ?? 'Attachment upload failed');
+    },
+  });
+
+  useEffect(() => {
+    if (!attachmentDialogOpen) return;
+    if (attachmentDialogMode === 'create') {
+      return;
+    }
+    if (!activeAttachment) return;
+    setAttachmentTypeInput(activeAttachment.attachment_type || 'other');
+    setAttachmentNameInput(activeAttachment.name || '');
+    setAttachmentDescriptionInput(activeAttachment.description || '');
+    setAttachmentReplacementFile(null);
+  }, [attachmentDialogOpen, attachmentDialogMode, activeAttachment]);
+
+  function openCreateAttachmentDialog() {
+    setAttachmentDialogMode('create');
+    setActiveAttachmentId(null);
+    setAttachmentTypeInput('other');
+    setAttachmentNameInput('');
+    setAttachmentDescriptionInput('');
+    setAttachmentReplacementFile(null);
+    setAttachmentDialogOpen(true);
+  }
+
+  function openEditAttachmentDialog(attachment: LocalClaimAttachment) {
+    setAttachmentDialogMode('edit');
+    setActiveAttachmentId(attachment.id);
+    setAttachmentTypeInput(attachment.attachment_type || 'other');
+    setAttachmentNameInput(attachment.name || '');
+    setAttachmentDescriptionInput(attachment.description || '');
+    setAttachmentReplacementFile(null);
+    setAttachmentDialogOpen(true);
+  }
+
+  const createAttachmentMutation = useMutation({
+    mutationFn: async () => {
+      if (!attachmentReplacementFile) {
+        throw new Error('Select a file to create the attachment');
+      }
+      return shaApi.createClaimAttachment(claimId, {
+        attachment_type: attachmentTypeInput,
+        name: attachmentNameInput || attachmentReplacementFile.name,
+        description: attachmentDescriptionInput,
+        file: attachmentReplacementFile,
+      });
+    },
+    onSuccess: async () => {
+      setError(null);
+      await refetchLocalAttachments();
+      onChange?.();
+      setAttachmentDialogOpen(false);
+    },
+    onError: (e: any) => {
+      setError(e?.response?.data?.error ?? e?.message ?? 'Failed to create attachment');
+    },
+  });
+
+  const updateAttachmentMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeAttachment) {
+        throw new Error('No attachment selected');
+      }
+      return shaApi.updateClaimAttachment(claimId, activeAttachment.id, {
+        attachment_type: attachmentTypeInput,
+        name: attachmentNameInput,
+        description: attachmentDescriptionInput,
+        file: attachmentReplacementFile ?? undefined,
+      });
+    },
+    onSuccess: async () => {
+      setError(null);
+      await refetchLocalAttachments();
+      onChange?.();
+      setAttachmentDialogOpen(false);
+    },
+    onError: (e: any) => {
+      setError(e?.response?.data?.error ?? e?.message ?? 'Failed to update attachment');
+    },
+  });
+
+  const deleteAttachmentMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeAttachment) {
+        throw new Error('No attachment selected');
+      }
+      await shaApi.deleteClaimAttachment(claimId, activeAttachment.id);
+    },
+    onSuccess: async () => {
+      setError(null);
+      await refetchLocalAttachments();
+      onChange?.();
+      setAttachmentDialogOpen(false);
+    },
+    onError: (e: any) => {
+      setError(e?.response?.data?.error ?? e?.message ?? 'Failed to delete attachment');
     },
   });
 
@@ -482,6 +621,23 @@ export function DischargePanel({
     }
   }
 
+  const activeAttachmentUrl = toAttachmentUrl(activeAttachment?.file);
+  const activeAttachmentIsImage = String(activeAttachment?.mime_type || '').startsWith('image/');
+  const activeAttachmentIsPdf = String(activeAttachment?.mime_type || '').includes('pdf');
+  const activeAttachmentIsCrossOrigin = (() => {
+    if (!activeAttachmentUrl || typeof window === 'undefined') return false;
+    try {
+      const target = new URL(activeAttachmentUrl);
+      return target.origin !== window.location.origin;
+    } catch {
+      return false;
+    }
+  })();
+  const attachmentCrudBusy =
+    createAttachmentMutation.isPending
+    || updateAttachmentMutation.isPending
+    || deleteAttachmentMutation.isPending;
+
   if (step === 'complete') {
     return (
       <Card className="border-green-200 dark:border-green-800">
@@ -574,6 +730,197 @@ export function DischargePanel({
             ))}
           </div>
         )}
+
+        <div className="rounded-md border p-3 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">Local claim attachments</p>
+            <Button type="button" size="sm" variant="outline" onClick={openCreateAttachmentDialog}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add attachment
+            </Button>
+          </div>
+
+          {localAttachments.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No local attachments yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {localAttachments.map((attachment) => (
+                <button
+                  key={attachment.id}
+                  type="button"
+                  className="w-full rounded border bg-background p-2 text-left hover:bg-muted/30"
+                  onClick={() => openEditAttachmentDialog(attachment)}
+                >
+                  <p className="text-sm font-medium">{attachment.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {attachment.attachment_type.replace(/_/g, ' ')}
+                    {attachment.original_filename ? ` • ${attachment.original_filename}` : ''}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <Dialog
+          open={attachmentDialogOpen}
+          onOpenChange={(open) => {
+            setAttachmentDialogOpen(open);
+            if (!open) {
+              setAttachmentReplacementFile(null);
+            }
+          }}
+        >
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>
+                {attachmentDialogMode === 'create' ? 'Add claim attachment' : 'Manage claim attachment'}
+              </DialogTitle>
+              <DialogDescription>
+                {attachmentDialogMode === 'create'
+                  ? 'Create a new local attachment for this claim.'
+                  : 'View, edit, replace, or remove this local attachment.'}
+              </DialogDescription>
+            </DialogHeader>
+
+            {attachmentDialogMode === 'edit' && activeAttachment && activeAttachmentUrl ? (
+              <div className="space-y-2 rounded border bg-muted/20 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-muted-foreground">Attachment preview</p>
+                  <a
+                    href={activeAttachmentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center text-xs text-primary hover:underline"
+                  >
+                    <ExternalLink className="mr-1 h-3 w-3" />
+                    Open original
+                  </a>
+                </div>
+                {activeAttachmentIsImage ? (
+                  <img
+                    src={activeAttachmentUrl}
+                    alt={activeAttachment.name}
+                    className="max-h-72 w-full rounded border object-contain bg-background"
+                  />
+                ) : activeAttachmentIsPdf && !activeAttachmentIsCrossOrigin ? (
+                  <iframe
+                    title={activeAttachment.name}
+                    src={activeAttachmentUrl}
+                    className="h-72 w-full rounded border bg-background"
+                  />
+                ) : activeAttachmentIsPdf ? (
+                  <p className="text-xs text-muted-foreground">
+                    PDF inline preview is blocked by browser/frame security for cross-origin media.
+                    Use <span className="font-medium">Open original</span>.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Inline preview is not available for this file type.
+                  </p>
+                )}
+              </div>
+            ) : null}
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <Label htmlFor="attachment-name">Name</Label>
+                <Input
+                  id="attachment-name"
+                  value={attachmentNameInput}
+                  onChange={(e) => setAttachmentNameInput(e.target.value)}
+                  placeholder="Attachment name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="attachment-type">Type</Label>
+                <select
+                  id="attachment-type"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={attachmentTypeInput}
+                  onChange={(e) => setAttachmentTypeInput(e.target.value)}
+                >
+                  {LOCAL_ATTACHMENT_TYPES.map((entry) => (
+                    <option key={entry.value} value={entry.value}>
+                      {entry.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="attachment-file">
+                  {attachmentDialogMode === 'create' ? 'File (required)' : 'Replace file (optional)'}
+                </Label>
+                <Input
+                  id="attachment-file"
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.tif,.tiff"
+                  onChange={(e) => setAttachmentReplacementFile(e.target.files?.[0] || null)}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="attachment-description">Description</Label>
+                <Input
+                  id="attachment-description"
+                  value={attachmentDescriptionInput}
+                  onChange={(e) => setAttachmentDescriptionInput(e.target.value)}
+                  placeholder="Optional description"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+              <div>
+                {attachmentDialogMode === 'edit' && activeAttachment ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={attachmentCrudBusy}
+                    onClick={() => {
+                      if (!window.confirm('Delete this attachment? This cannot be undone.')) return;
+                      deleteAttachmentMutation.mutate();
+                    }}
+                  >
+                    {deleteAttachmentMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="mr-2 h-4 w-4" />
+                    )}
+                    Delete
+                  </Button>
+                ) : null}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setAttachmentDialogOpen(false)}
+                  disabled={attachmentCrudBusy}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  disabled={
+                    attachmentCrudBusy
+                    || !attachmentNameInput.trim()
+                    || (attachmentDialogMode === 'create' && !attachmentReplacementFile)
+                  }
+                  onClick={() => {
+                    if (attachmentDialogMode === 'create') {
+                      createAttachmentMutation.mutate();
+                      return;
+                    }
+                    updateAttachmentMutation.mutate();
+                  }}
+                >
+                  {attachmentCrudBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {attachmentDialogMode === 'create' ? 'Create attachment' : 'Save changes'}
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <div className="rounded-md border bg-muted/20 p-3 space-y-2">
           <div className="flex items-center justify-between gap-2">
