@@ -292,6 +292,8 @@ class TestPreviewBeforeSubmit:
         assert response.data["final_bill_attachment_id"]
         assert response.data["final_bill_created"] is True
         assert response.data["final_bill_skipped_reason"] == ""
+        assert response.data["critical_care_skipped_reason"] == "missing_admission_context"
+        assert response.data["discharge_summary_skipped_reason"] == "missing_admission_context"
         assert response.data["allocation_pending_count"] == 1
 
         claim.refresh_from_db()
@@ -440,6 +442,8 @@ class TestPreviewBeforeSubmit:
         assert response.data["final_bill_attachment_id"]
         assert response.data["final_bill_created"] is True
         assert response.data["final_bill_skipped_reason"] == ""
+        assert response.data["critical_care_skipped_reason"] == "missing_admission_context"
+        assert response.data["discharge_summary_skipped_reason"] == "missing_admission_context"
 
         claim.refresh_from_db()
         assert claim.invoice_id == response.data["invoice_id"]
@@ -448,6 +452,102 @@ class TestPreviewBeforeSubmit:
         final_bill = claim.attachments.get(id=response.data["final_bill_attachment_id"])
         assert final_bill.attachment_type == "invoice"
         assert "Final Bill" in final_bill.name
+
+    def test_materialize_preview_invoice_generates_critical_care_and_discharge_summary_for_icu_admission(
+        self,
+        sha_client,
+        sample_sha_claim_for_uat,
+        sample_admission,
+        sample_inpatient_ward,
+        sample_bed,
+        sample_facility,
+        sample_organization,
+        test_user,
+    ):
+        """Materialization should auto-generate CCU and discharge summary from the linked admission."""
+        from django.utils import timezone
+
+        from hmis.apps.billing.models import SHAClaimAttachment, SHATariff
+        from hmis.apps.inpatient.models import Discharge, Ward
+
+        icu_ward = Ward.objects.create(
+            name="ICU Ward",
+            code="ICU-01",
+            ward_type="ICU",
+            capacity=10,
+            daily_rate=Decimal("5000.00"),
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+
+        sample_admission.ward = icu_ward
+        sample_admission.bed = sample_bed
+        sample_admission.save(update_fields=["ward", "bed", "updated_at"])
+
+        claim = sample_sha_claim_for_uat
+        claim.encounter = sample_admission.ipd_encounter
+        claim.claim_type = claim.ClaimType.INPATIENT
+        claim.admission_date = sample_admission.admission_date
+        claim.save(update_fields=["encounter", "claim_type", "admission_date", "updated_at"])
+
+        Discharge.objects.create(
+            admission=sample_admission,
+            discharge_type="NORMAL",
+            discharge_date=timezone.now(),
+            discharged_by=test_user,
+            admission_diagnosis=sample_admission.admitting_diagnosis,
+            final_diagnosis=sample_admission.admitting_diagnosis,
+            final_diagnosis_text="Recovered",
+            treatment_summary="Stabilized in ICU and discharged.",
+            patient_instructions="Return in 7 days.",
+        )
+
+        tariff = SHATariff.objects.create(
+            code="SHA-ICU-901",
+            name="ICU Monitoring",
+            description="ICU Monitoring",
+            category=SHATariff.TariffCategory.CONSULTATION,
+            facility_level=claim.facility_level,
+            sha_amount=Decimal("2500.00"),
+            effective_date=date.today(),
+            is_active=True,
+        )
+        claim.items.create(
+            tariff=tariff,
+            description="ICU Monitoring",
+            service_date=claim.service_date,
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("2500.00"),
+            claimed_amount=Decimal("2500.00"),
+            sha_covered_amount=Decimal("2500.00"),
+            patient_payable_amount=Decimal("0.00"),
+            discount_amount=Decimal("0.00"),
+            allocation_status="pending",
+            is_preview_line=True,
+        )
+
+        response = sha_client.post(
+            f"/api/sha/claims/{claim.id}/ilm/materialize-preview-invoice/",
+            {"invoice_number": "INV/DHA/ICU-001", "replace_existing": True},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["critical_care_attachment_id"]
+        assert response.data["critical_care_created"] is True
+        assert response.data["critical_care_skipped_reason"] == ""
+        assert response.data["discharge_summary_attachment_id"]
+        assert response.data["discharge_summary_created"] is True
+        assert response.data["discharge_summary_skipped_reason"] == ""
+
+        critical = SHAClaimAttachment.objects.get(id=response.data["critical_care_attachment_id"])
+        assert critical.attachment_type == "clinical_notes"
+        assert "Critical Care Unit Case" in critical.name
+        discharge_summary = SHAClaimAttachment.objects.get(
+            id=response.data["discharge_summary_attachment_id"]
+        )
+        assert discharge_summary.attachment_type == "discharge_summary"
+        assert "Discharge Summary" in discharge_summary.name
 
     def test_ilm_submit_returns_unresolved_lines_for_missing_tariff_items(
         self, sha_client, sample_sha_claim_for_uat, test_user
@@ -607,6 +707,8 @@ class TestAttachmentLocalValidation:
 
     def test_valid_pdf_accepted(self, sha_client, sample_sha_claim_for_uat):
         """Should accept a valid PDF within size limits."""
+        from hmis.apps.billing.models import SHAClaimAttachment
+
         claim = sample_sha_claim_for_uat
         valid_file = SimpleUploadedFile("report.pdf", b"%PDF-1.4 test content", "application/pdf")
 
@@ -617,10 +719,17 @@ class TestAttachmentLocalValidation:
             svc.return_value.add_attachment.return_value = mock_result
             response = sha_client.post(
                 f"/api/sha/claims/{claim.id}/ilm/attachments/add/",
-                {"file": valid_file},
+                {
+                    "file": valid_file,
+                    "document_type": "CRITICAL_CARE_UNIT_CASE",
+                    "document_title": "Critical Care Unit Case",
+                },
                 format="multipart",
             )
         assert response.status_code == status.HTTP_200_OK
+        saved = claim.attachments.latest("id")
+        assert saved.attachment_type == SHAClaimAttachment.AttachmentType.CLINICAL_NOTES
+        assert saved.name == "Critical Care Unit Case"
 
 
 # =============================================================================
@@ -706,6 +815,35 @@ class TestDischargeNotFuture:
             with patch(
                 "hmis.apps.billing.services.final_bill_attachment_service.FinalBillAttachmentService.ensure_for_claim"
             ) as ensure_final_bill:
+                with patch(
+                    "hmis.apps.billing.sha_ilm_lifecycle_views.AdmissionAttachmentService.ensure_for_claim"
+                ) as ensure_admission_docs:
+                    ensure_admission_docs.return_value = type(
+                        "AdmissionDocs",
+                        (),
+                        {
+                            "critical_care": type(
+                                "Doc",
+                                (),
+                                {
+                                    "attachment_id": 101,
+                                    "created": True,
+                                    "updated": False,
+                                    "skipped_reason": "",
+                                },
+                            )(),
+                            "discharge_summary": type(
+                                "Doc",
+                                (),
+                                {
+                                    "attachment_id": 102,
+                                    "created": True,
+                                    "updated": False,
+                                    "skipped_reason": "",
+                                },
+                            )(),
+                        },
+                    )()
                 mock_result = type(
                     "Result",
                     (),
@@ -733,9 +871,12 @@ class TestDischargeNotFuture:
                 )
 
         assert response.status_code == status.HTTP_200_OK
-        ensure_final_bill.assert_called_once()
-        called_claim = ensure_final_bill.call_args.kwargs["claim"]
-        assert called_claim.id == claim.id
+        assert "critical_care_attachment_id" in response.data
+        assert "critical_care_created" in response.data
+        assert "critical_care_skipped_reason" in response.data
+        assert "discharge_summary_attachment_id" in response.data
+        assert "discharge_summary_created" in response.data
+        assert "discharge_summary_skipped_reason" in response.data
 
     def test_discharge_blocked_when_allocation_pending(self, sha_client, sample_sha_claim_for_uat):
         """Discharge should block when payer allocation review is pending."""

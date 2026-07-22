@@ -14,6 +14,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
+from django.core.files.base import ContentFile
 from django.db import models
 from django.db.models import Count, Sum
 from django.http import HttpResponse
@@ -81,6 +82,21 @@ _DHA_DOCUMENT_TYPE_MAP: dict[str, str] = {
     "other": "OTHER",
 }
 
+_DHA_TO_LOCAL_ATTACHMENT_TYPE_MAP: dict[str, str] = {
+    "CASE_NOTE": SHAClaimAttachment.AttachmentType.CLINICAL_NOTES,
+    "CRITICAL_CARE_UNIT_CASE": SHAClaimAttachment.AttachmentType.CLINICAL_NOTES,
+    "LAB_RESULTS": SHAClaimAttachment.AttachmentType.LAB_REPORT,
+    "IMAGING_REPORT": SHAClaimAttachment.AttachmentType.RADIOLOGY_REPORT,
+    "PRESCRIPTION": SHAClaimAttachment.AttachmentType.PRESCRIPTION,
+    "FINAL_BILL": SHAClaimAttachment.AttachmentType.INVOICE,
+    "INVOICE": SHAClaimAttachment.AttachmentType.INVOICE,
+    "DISCHARGE_SUMMARY": SHAClaimAttachment.AttachmentType.DISCHARGE_SUMMARY,
+    "THEATRE_NOTES": SHAClaimAttachment.AttachmentType.OPERATIVE_NOTES,
+    "PREAUTH_FORM": SHAClaimAttachment.AttachmentType.PREAUTH_APPROVAL,
+    "CLAIM_FORM": SHAClaimAttachment.AttachmentType.OTHER,
+    "OTHER": SHAClaimAttachment.AttachmentType.OTHER,
+}
+
 
 def _to_dha_document_type(
     local_attachment_type: str,
@@ -126,6 +142,11 @@ def _normalize_attachment_name(value: str) -> str:
     ):
         parts = parts[:-1]
     return " ".join(parts)
+
+
+def _to_local_attachment_type(dha_document_type: str) -> str:
+    value = str(dha_document_type or "").strip().upper()
+    return _DHA_TO_LOCAL_ATTACHMENT_TYPE_MAP.get(value, SHAClaimAttachment.AttachmentType.OTHER)
 
 
 def _build_attachment_sync_status(claim: SHAClaim) -> dict:
@@ -1574,15 +1595,25 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 status=400,
             )
 
-        multipart_files = [
-            MultipartFile(
-                field_name="file_blob",
-                filename=f.name,
-                content=f.read(),
-                content_type=f.content_type or "application/octet-stream",
+        prepared_uploads: list[dict[str, object]] = []
+        multipart_files: list[MultipartFile] = []
+        for file_obj in files_in:
+            content = file_obj.read()
+            prepared_uploads.append(
+                {
+                    "name": file_obj.name,
+                    "content": content,
+                    "content_type": file_obj.content_type or "application/octet-stream",
+                }
             )
-            for f in files_in
-        ]
+            multipart_files.append(
+                MultipartFile(
+                    field_name="file_blob",
+                    filename=file_obj.name,
+                    content=content,
+                    content_type=file_obj.content_type or "application/octet-stream",
+                )
+            )
         extra = {k: v for k, v in request.data.items() if k not in ("files", "file")}
         if not extra.get("intervention_code"):
             active_intervention = (
@@ -1599,6 +1630,33 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             )
         except Exception as exc:
             return self._ilm_handle_error(exc)
+
+        if result.status_code < 400:
+            requested_doc_type = str(extra.get("document_type") or "").strip()
+            local_attachment_type = _to_local_attachment_type(requested_doc_type)
+            title_prefix = str(extra.get("document_title") or "").strip()
+            description = str(extra.get("document_description") or "").strip()
+            for entry in prepared_uploads:
+                filename = str(entry["name"])
+                content = entry["content"]
+                content_type = str(entry["content_type"])
+                if not isinstance(content, (bytes, bytearray)):
+                    continue
+                checksum = hashlib.sha256(content).hexdigest()
+                attachment_name = title_prefix or filename
+                local_attachment = SHAClaimAttachment(
+                    claim=claim,
+                    attachment_type=local_attachment_type,
+                    name=attachment_name,
+                    description=description,
+                    file_size=len(content),
+                    mime_type=content_type,
+                    checksum=checksum,
+                    original_filename=filename,
+                    uploaded_by=request.user,
+                )
+                local_attachment.file.save(filename, ContentFile(content), save=False)
+                local_attachment.save()
         return self._ilm_response(result)
 
     @action(detail=True, methods=["post"], url_path="ilm/attachments/push-local")
@@ -2024,6 +2082,14 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "final_bill_created": invoice_materialization.final_bill_created,
                 "final_bill_updated": invoice_materialization.final_bill_updated,
                 "final_bill_skipped_reason": invoice_materialization.final_bill_skipped_reason,
+                "critical_care_attachment_id": invoice_materialization.critical_care_attachment_id,
+                "critical_care_created": invoice_materialization.critical_care_created,
+                "critical_care_updated": invoice_materialization.critical_care_updated,
+                "critical_care_skipped_reason": invoice_materialization.critical_care_skipped_reason,
+                "discharge_summary_attachment_id": invoice_materialization.discharge_summary_attachment_id,
+                "discharge_summary_created": invoice_materialization.discharge_summary_created,
+                "discharge_summary_updated": invoice_materialization.discharge_summary_updated,
+                "discharge_summary_skipped_reason": invoice_materialization.discharge_summary_skipped_reason,
                 "allocation_pending_count": claim.items.filter(
                     allocation_status=SHAClaimItem.AllocationStatus.PENDING
                 ).count(),
@@ -2053,6 +2119,14 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "final_bill_created": invoice_materialization.final_bill_created,
                 "final_bill_updated": invoice_materialization.final_bill_updated,
                 "final_bill_skipped_reason": invoice_materialization.final_bill_skipped_reason,
+                "critical_care_attachment_id": invoice_materialization.critical_care_attachment_id,
+                "critical_care_created": invoice_materialization.critical_care_created,
+                "critical_care_updated": invoice_materialization.critical_care_updated,
+                "critical_care_skipped_reason": invoice_materialization.critical_care_skipped_reason,
+                "discharge_summary_attachment_id": invoice_materialization.discharge_summary_attachment_id,
+                "discharge_summary_created": invoice_materialization.discharge_summary_created,
+                "discharge_summary_updated": invoice_materialization.discharge_summary_updated,
+                "discharge_summary_skipped_reason": invoice_materialization.discharge_summary_skipped_reason,
                 "allocation_pending_count": claim.items.filter(
                     allocation_status=SHAClaimItem.AllocationStatus.PENDING
                 ).count(),
@@ -2122,6 +2196,14 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "final_bill_created": result.final_bill_created,
                 "final_bill_updated": result.final_bill_updated,
                 "final_bill_skipped_reason": result.final_bill_skipped_reason,
+                "critical_care_attachment_id": result.critical_care_attachment_id,
+                "critical_care_created": result.critical_care_created,
+                "critical_care_updated": result.critical_care_updated,
+                "critical_care_skipped_reason": result.critical_care_skipped_reason,
+                "discharge_summary_attachment_id": result.discharge_summary_attachment_id,
+                "discharge_summary_created": result.discharge_summary_created,
+                "discharge_summary_updated": result.discharge_summary_updated,
+                "discharge_summary_skipped_reason": result.discharge_summary_skipped_reason,
                 "skipped_reason": result.skipped_reason,
             }
         )

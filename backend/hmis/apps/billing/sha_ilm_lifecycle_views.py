@@ -23,6 +23,7 @@ from rest_framework.views import APIView
 
 from hmis.apps.billing.facility_identifiers import resolve_fr_code
 from hmis.apps.billing.models import SHAOtpRequest, SHAOtpWhitelistRequest, SHAUpload
+from hmis.apps.billing.services.admission_attachment_service import AdmissionAttachmentService
 from hmis.apps.billing.services.dha_errors import (
     DHAClientError,
     DHAError,
@@ -134,17 +135,22 @@ def _resolve_patient(request) -> Patient | None:
         return None
 
 
-def _result_to_response(result, *, http_status: int = status.HTTP_200_OK) -> Response:
-    return Response(
-        {
-            "data": result.payload,
-            "http_status": result.status_code,
-            "record_id": getattr(result, "record_id", None),
-            "dha_external_id": getattr(result, "dha_external_id", ""),
-            "correlation_id": getattr(result, "correlation_id", ""),
-        },
-        status=http_status,
-    )
+def _result_to_response(
+    result,
+    *,
+    http_status: int = status.HTTP_200_OK,
+    extra: dict[str, Any] | None = None,
+) -> Response:
+    payload = {
+        "data": result.payload,
+        "http_status": result.status_code,
+        "record_id": getattr(result, "record_id", None),
+        "dha_external_id": getattr(result, "dha_external_id", ""),
+        "correlation_id": getattr(result, "correlation_id", ""),
+    }
+    if extra:
+        payload.update(extra)
+    return Response(payload, status=http_status)
 
 
 def _is_pending_whitelist_error(exc: DHAError) -> bool:
@@ -349,17 +355,46 @@ class IlmDischargeView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+            admission_doc_extra = {
+                "critical_care_attachment_id": None,
+                "critical_care_created": False,
+                "critical_care_updated": False,
+                "critical_care_skipped_reason": "",
+                "discharge_summary_attachment_id": None,
+                "discharge_summary_created": False,
+                "discharge_summary_updated": False,
+                "discharge_summary_skipped_reason": "",
+            }
             try:
                 from hmis.apps.billing.services.final_bill_attachment_service import (
                     FinalBillAttachmentService,
                 )
 
                 FinalBillAttachmentService.ensure_for_claim(claim=claim, user=request.user)
+                admission_docs = AdmissionAttachmentService.ensure_for_claim(
+                    claim=claim,
+                    user=request.user,
+                )
+                admission_doc_extra = {
+                    "critical_care_attachment_id": admission_docs.critical_care.attachment_id,
+                    "critical_care_created": admission_docs.critical_care.created,
+                    "critical_care_updated": admission_docs.critical_care.updated,
+                    "critical_care_skipped_reason": admission_docs.critical_care.skipped_reason,
+                    "discharge_summary_attachment_id": admission_docs.discharge_summary.attachment_id,
+                    "discharge_summary_created": admission_docs.discharge_summary.created,
+                    "discharge_summary_updated": admission_docs.discharge_summary.updated,
+                    "discharge_summary_skipped_reason": admission_docs.discharge_summary.skipped_reason,
+                }
             except Exception:  # noqa: BLE001 - best-effort guardrail
                 logger.exception(
-                    "Failed to auto-generate final bill attachment for claim %s during discharge",
+                    "Failed to auto-generate claim attachments for claim %s during discharge",
                     claim.id,
                 )
+                admission_doc_extra = {
+                    **admission_doc_extra,
+                    "critical_care_skipped_reason": "auto_generation_failed",
+                    "discharge_summary_skipped_reason": "auto_generation_failed",
+                }
 
         otp = str(request.data.get("otp", ""))
         auth_guid = str(request.data.get("auth_guid", ""))
@@ -385,7 +420,7 @@ class IlmDischargeView(APIView):
             )
         except DHAError as exc:
             return _ilm_handle_error("discharge", exc)
-        return _result_to_response(result)
+        return _result_to_response(result, extra=admission_doc_extra if claim is not None else None)
 
 
 # ---------------------------------------------------------------------------
