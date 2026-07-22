@@ -146,6 +146,10 @@ export function useInvoices(params?: InvoiceListParams) {
     conditions.push('inv.payment_type = ?');
     sqlParams.push(params.payment_type);
   }
+  if (params?.payer_type) {
+    conditions.push('inv.payer_type = ?');
+    sqlParams.push(params.payer_type);
+  }
   if (params?.patient) {
     conditions.push('inv.patient_id = ?');
     sqlParams.push(String(params.patient));
@@ -267,6 +271,7 @@ export function useCreateInvoice() {
       encounter_id: data.encounter ? String(data.encounter) : null,
       status: 'DRAFT',
       payment_type: data.payment_type || null,
+      payer_type: data.payer_type || null,
       invoice_date: new Date().toISOString().split('T')[0],
       due_date: data.due_date || null,
       subtotal: 0,

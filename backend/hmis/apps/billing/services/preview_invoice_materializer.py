@@ -71,6 +71,7 @@ class PreviewInvoiceMaterializer:
                 facility=claim.facility,
                 status=Invoice.Status.DRAFT,
                 payment_type=Invoice.PaymentType.INSURANCE,
+                payer_type=Invoice.PayerType.SHA,
                 invoice_date=claim.service_date or date.today(),
                 created_by=user,
                 insurance_provider="SHA",
@@ -84,13 +85,20 @@ class PreviewInvoiceMaterializer:
             )
         else:
             notes = invoice.internal_notes or ""
+            update_fields: list[str] = []
             if AUTO_MATERIALIZED_MARKER not in notes:
                 invoice.internal_notes = (
                     f"{notes}\n{AUTO_MATERIALIZED_MARKER}; "
                     f"claim={claim.claim_number}; "
                     f"dha_invoice={detected_invoice_number or '-'}"
                 ).strip()
-                invoice.save(update_fields=["internal_notes", "updated_at"])
+                update_fields.append("internal_notes")
+            if invoice.payer_type == Invoice.PayerType.CASH:
+                invoice.payer_type = Invoice.PayerType.SHA
+                update_fields.append("payer_type")
+            if update_fields:
+                update_fields.append("updated_at")
+                invoice.save(update_fields=update_fields)
 
         if claim.invoice_id != invoice.id:
             claim.invoice = invoice

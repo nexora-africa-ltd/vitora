@@ -96,6 +96,7 @@ class BillingAgentService:
             + timedelta(days=getattr(settings, "BILLING_DEFAULT_DUE_DAYS", 30)),
             status=Invoice.Status.DRAFT,
             payment_type=Invoice.PaymentType.CASH,
+            payer_type=Invoice.PayerType.CASH,
             created_by=_get_system_user(),
         )
 

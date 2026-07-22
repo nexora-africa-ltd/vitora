@@ -678,7 +678,7 @@ access_point: z.preprocess(
     created_at: z.string(),
     updated_at: z.string(),
   })).optional().default([]),
-  items: z.array(z.unknown()).optional().default([]),
+  items: z.array(z.lazy(() => ClaimItemSchema)).optional().default([]),
   missing_document_types: z.array(z.object({
     intervention_code: z.string(),
     intervention_name: z.string().optional().default(''),
