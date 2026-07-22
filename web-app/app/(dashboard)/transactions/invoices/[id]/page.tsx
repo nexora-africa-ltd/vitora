@@ -33,7 +33,8 @@ import {
   usePaymentReceipt,
   useServices,
 } from '@/lib/hooks/billing';
-import { useClaims } from '@/lib/hooks/use-sha';
+import { useClaim, useClaims } from '@/lib/hooks/use-sha';
+import { shaApi } from '@/lib/api/sha';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { Invoice, PaymentCreateData, InvoiceItemCreateData, ApplyDiscountData } from '@/lib/types/billing';
 import type { Claim } from '@/lib/types/sha';
@@ -67,13 +68,16 @@ export default function InvoiceDetailPage() {
   const invoiceNumericId = invoice?.id ?? 0;
   const { data: servicesData } = useServices();
 
-  // Only fetch SHA claims for insurance invoices (avoid unnecessary API calls for cash invoices)
-  const isInsuranceInvoice = invoice?.payment_type === 'insurance' || !!invoice?.sha_claim_number;
+  // Only fetch SHA claims for insurance invoices (avoid unnecessary API calls for cash invoices).
+  // Backend stores payment_type as uppercase enum values (e.g. "INSURANCE").
+  const paymentType = String(invoice?.payment_type || '').toUpperCase();
+  const isInsuranceInvoice = paymentType === 'INSURANCE' || !!invoice?.sha_claim_number;
   const { data: claimsData, refetch: refetchClaims } = useClaims(
     { invoice: invoiceNumericId },
     { enabled: isInsuranceInvoice }
   );
   const linkedClaim = isInsuranceInvoice ? (claimsData?.results?.[0] || null) : null;
+  const { data: linkedClaimDetail, refetch: refetchLinkedClaim } = useClaim(linkedClaim?.id);
 
   // Fetch receipt when we have a payment ID
   const { data: receiptData, isLoading: isReceiptLoading } = usePaymentReceipt(
@@ -292,6 +296,20 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const handleUpdateClaimItemAllocation = async (
+    claimId: number,
+    itemId: number,
+    payload: {
+      sha_covered_amount: string;
+      patient_payable_amount: string;
+      discount_amount: string;
+      discount_reason?: string;
+    }
+  ) => {
+    await shaApi.updateClaimItemAllocation(claimId, itemId, payload);
+    await Promise.all([refetchLinkedClaim(), refetchClaims(), refetchInvoice()]);
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
@@ -310,6 +328,8 @@ export default function InvoiceDetailPage() {
         onApplyDiscount={handleApplyDiscount}
         onClaimSubmitted={handleClaimSubmitted}
         linkedClaim={linkedClaim}
+        linkedClaimDetail={linkedClaimDetail ?? null}
+        onUpdateClaimItemAllocation={handleUpdateClaimItemAllocation}
       />
 
       {/* Add Item Dialog */}

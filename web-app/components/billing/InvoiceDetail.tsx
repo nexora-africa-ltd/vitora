@@ -53,9 +53,11 @@ import { SHALogo } from '@/components/ui/sha-logo';
 import { ClaimSubmissionButton, ClaimStatusBadge } from '@/components/billing/sha';
 import { ActionButton } from '@/components/shared/action-button';
 import { PermissionGate } from '@/components/shared/permission-gate';
+import { Input } from '@/components/ui/input';
 import type { Invoice, InvoiceItem, InvoiceStatus } from '@/lib/types/billing';
-import type { Claim } from '@/lib/types/sha';
+import type { Claim, ClaimItem } from '@/lib/types/sha';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 function formatKES(amount: number): string {
   const formatted = amount.toLocaleString('en-KE', {
@@ -82,9 +84,29 @@ interface InvoiceDetailProps {
   onApplyDiscount?: (invoice: Invoice) => void;
   onClaimSubmitted?: (claim: Claim) => void;
   linkedClaim?: Claim | null;
+  linkedClaimDetail?: Claim | null;
+  onUpdateClaimItemAllocation?: (
+    claimId: number,
+    itemId: number,
+    payload: {
+      sha_covered_amount: string;
+      patient_payable_amount: string;
+      discount_amount: string;
+      discount_reason?: string;
+    }
+  ) => Promise<void>;
   // Proforma-specific actions
   onConvertProforma?: (invoice: Invoice) => void;
   onRenewProforma?: (invoice: Invoice) => void;
+}
+
+interface AllocationDraft {
+  sha_covered_amount: string;
+  patient_payable_amount: string;
+  discount_amount: string;
+  discount_reason: string;
+  saving?: boolean;
+  error?: string | null;
 }
 
 // ============================================================================
@@ -157,10 +179,103 @@ export function InvoiceDetail({
   onApplyDiscount,
   onClaimSubmitted,
   linkedClaim,
+  linkedClaimDetail,
+  onUpdateClaimItemAllocation,
   onConvertProforma,
   onRenewProforma,
 }: InvoiceDetailProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false);
+  const [editingInvoiceItemId, setEditingInvoiceItemId] = React.useState<number | null>(null);
+  const [allocationDrafts, setAllocationDrafts] = React.useState<Record<number, AllocationDraft>>({});
+  const { hasPermission } = usePermissions();
+  const invoiceItems = React.useMemo(() => invoice?.items || [], [invoice?.items]);
+
+  const claimItems = React.useMemo<ClaimItem[]>(() => {
+    const raw = (linkedClaimDetail as Claim & { items?: unknown } | null)?.items;
+    return Array.isArray(raw) ? (raw as ClaimItem[]) : [];
+  }, [linkedClaimDetail]);
+
+  const claimItemByInvoiceItemId = React.useMemo(() => {
+    const map = new Map<number, ClaimItem>();
+    for (const item of claimItems) {
+      if (typeof item.invoice_item === 'number') {
+        map.set(item.invoice_item, item);
+      }
+    }
+    return map;
+  }, [claimItems]);
+
+  const pendingAllocationCount = React.useMemo(
+    () => claimItems.filter((item) => item.allocation_status === 'pending').length,
+    [claimItems],
+  );
+
+  React.useEffect(() => {
+    if (invoiceItems.length === 0) {
+      setAllocationDrafts({});
+      return;
+    }
+    setAllocationDrafts((prev) => {
+      const next: Record<number, AllocationDraft> = {};
+      for (const item of invoiceItems) {
+        const claimItem = claimItemByInvoiceItemId.get(item.id);
+        const gross = item.line_total || '0.00';
+        next[item.id] = prev[item.id] ?? {
+          sha_covered_amount: String(claimItem?.sha_covered_amount ?? item.insurance_approved_amount ?? gross),
+          patient_payable_amount: String(claimItem?.patient_payable_amount ?? '0.00'),
+          discount_amount: String(claimItem?.discount_amount ?? item.discount_amount ?? '0.00'),
+          discount_reason: String(claimItem?.discount_reason ?? ''),
+          saving: false,
+          error: null,
+        };
+      }
+      return next;
+    });
+  }, [invoiceItems, claimItemByInvoiceItemId]);
+
+  const updateAllocationDraft = React.useCallback((invoiceItemId: number, patch: Partial<AllocationDraft>) => {
+    setAllocationDrafts((prev) => ({
+      ...prev,
+      [invoiceItemId]: {
+        ...(prev[invoiceItemId] ?? {
+          sha_covered_amount: '0.00',
+          patient_payable_amount: '0.00',
+          discount_amount: '0.00',
+          discount_reason: '',
+          saving: false,
+          error: null,
+        }),
+        ...patch,
+      },
+    }));
+  }, []);
+
+  const saveAllocation = React.useCallback(async (invoiceItemId: number) => {
+    if (!linkedClaimDetail?.id || !onUpdateClaimItemAllocation) return;
+    const claimItem = claimItemByInvoiceItemId.get(invoiceItemId);
+    if (!claimItem) return;
+    const draft = allocationDrafts[invoiceItemId];
+    if (!draft) return;
+
+    updateAllocationDraft(invoiceItemId, { saving: true, error: null });
+    try {
+      await onUpdateClaimItemAllocation(linkedClaimDetail.id, claimItem.id, {
+        sha_covered_amount: draft.sha_covered_amount,
+        patient_payable_amount: draft.patient_payable_amount,
+        discount_amount: draft.discount_amount,
+        discount_reason: draft.discount_reason,
+      });
+      setEditingInvoiceItemId(null);
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+        (error as { message?: string })?.message ||
+        'Failed to update allocation';
+      updateAllocationDraft(invoiceItemId, { error: String(message) });
+    } finally {
+      updateAllocationDraft(invoiceItemId, { saving: false });
+    }
+  }, [linkedClaimDetail?.id, onUpdateClaimItemAllocation, claimItemByInvoiceItemId, allocationDrafts, updateAllocationDraft]);
 
   if (isLoading) {
     return <InvoiceDetailSkeleton />;
@@ -174,6 +289,8 @@ export function InvoiceDetail({
   const canFinalize = invoice.status === 'DRAFT' && (invoice.items?.length ?? 0) > 0;
   const canRecordPayment = ['PENDING', 'PARTIAL', 'OVERDUE'].includes(invoice.status);
   const canCancel = ['DRAFT', 'PENDING'].includes(invoice.status);
+  const canEditAllocation = hasPermission('billing.change_shaclaimitem');
+  const canApplyLineDiscount = hasPermission('billing.apply_discount');
   const isPaid = invoice.status === 'PAID';
   const isOverdue = invoice.status === 'OVERDUE';
 
@@ -417,14 +534,27 @@ export function InvoiceDetail({
           )}
         </CardHeader>
         <CardContent className="px-0 sm:px-6">
+          {linkedClaimDetail && (
+            <div className="mb-3 rounded border border-amber-300 bg-amber-50/70 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+              Payer allocation review: {pendingAllocationCount} pending line(s)
+            </div>
+          )}
           <div className="overflow-x-auto -mx-0">
-            <Table className="min-w-[500px]">
+            <Table className="min-w-[980px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Service</TableHead>
                   <TableHead className="text-right w-16">Qty</TableHead>
                   <TableHead className="text-right w-28">Unit Price</TableHead>
-                  <TableHead className="text-right w-28">Amount</TableHead>
+                  <TableHead className="text-right w-28">Gross</TableHead>
+                  {linkedClaimDetail && (
+                    <>
+                      <TableHead className="text-right w-28">SHA</TableHead>
+                      <TableHead className="text-right w-28">Patient</TableHead>
+                      <TableHead className="text-right w-36">Discount</TableHead>
+                      <TableHead className="w-40">Status</TableHead>
+                    </>
+                  )}
                   {canEdit && onRemoveItem && <TableHead className="w-12" />}
                 </TableRow>
               </TableHeader>
@@ -448,6 +578,120 @@ export function InvoiceDetail({
                   <TableCell className="text-right font-medium">
                     {formatKES(parseFloat(item.line_total))}
                   </TableCell>
+                  {linkedClaimDetail && (() => {
+                    const claimItem = claimItemByInvoiceItemId.get(item.id);
+                    const draft = allocationDrafts[item.id];
+                    const isEditing = editingInvoiceItemId === item.id;
+                    const canEditThisRow = !!(
+                      canEditAllocation &&
+                      claimItem &&
+                      linkedClaimDetail.id &&
+                      onUpdateClaimItemAllocation
+                    );
+                    const statusPending = claimItem?.allocation_status === 'pending';
+
+                    return (
+                      <>
+                        <TableCell className="text-right">
+                          {isEditing && draft ? (
+                            <Input
+                              value={draft.sha_covered_amount}
+                              onChange={(e) => updateAllocationDraft(item.id, { sha_covered_amount: e.target.value })}
+                              className="h-8 text-xs text-right"
+                            />
+                          ) : (
+                            formatKES(parseFloat(String(claimItem?.sha_covered_amount || item.insurance_approved_amount || '0')))
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {isEditing && draft ? (
+                            <Input
+                              value={draft.patient_payable_amount}
+                              onChange={(e) => updateAllocationDraft(item.id, { patient_payable_amount: e.target.value })}
+                              className="h-8 text-xs text-right"
+                            />
+                          ) : (
+                            formatKES(parseFloat(String(claimItem?.patient_payable_amount || '0')))
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isEditing && draft ? (
+                            <div className="space-y-1">
+                              <Input
+                                value={draft.discount_amount}
+                                onChange={(e) => updateAllocationDraft(item.id, { discount_amount: e.target.value })}
+                                className="h-8 text-xs text-right"
+                                disabled={!canApplyLineDiscount}
+                              />
+                              <Input
+                                value={draft.discount_reason}
+                                onChange={(e) => updateAllocationDraft(item.id, { discount_reason: e.target.value })}
+                                className="h-8 text-xs"
+                                placeholder="Reason required if discount > 0"
+                                disabled={!canApplyLineDiscount}
+                              />
+                            </div>
+                          ) : (
+                            <div className="text-right">
+                              <div>{formatKES(parseFloat(String(claimItem?.discount_amount || item.discount_amount || '0')))}</div>
+                              {claimItem?.discount_reason ? (
+                                <p className="text-[11px] text-muted-foreground truncate">{claimItem.discount_reason}</p>
+                              ) : null}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <Badge className={statusPending ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}>
+                              {statusPending ? 'Pending allocation' : 'Resolved'}
+                            </Badge>
+                            {draft?.error ? (
+                              <p className="text-[11px] text-destructive">{draft.error}</p>
+                            ) : null}
+                            {canEditThisRow ? (
+                              <div className="flex gap-1">
+                                {isEditing ? (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 px-2 text-[11px]"
+                                      onClick={() => void saveAllocation(item.id)}
+                                      disabled={!!draft?.saving}
+                                    >
+                                      {draft?.saving ? 'Saving…' : 'Save'}
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-2 text-[11px]"
+                                      onClick={() => setEditingInvoiceItemId(null)}
+                                      disabled={!!draft?.saving}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2 text-[11px]"
+                                    onClick={() => setEditingInvoiceItemId(item.id)}
+                                  >
+                                    Edit allocation
+                                  </Button>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-[11px] text-muted-foreground">
+                                {claimItem ? 'Read-only' : 'Not linked to claim line'}
+                              </p>
+                            )}
+                          </div>
+                        </TableCell>
+                      </>
+                    );
+                  })()}
                   {canEdit && onRemoveItem && (
                     <TableCell>
                       <Button
@@ -465,7 +709,7 @@ export function InvoiceDetail({
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell colSpan={3}>Subtotal</TableCell>
+                <TableCell colSpan={linkedClaimDetail ? 7 : 3}>Subtotal</TableCell>
                 <TableCell className="text-right">
                   {formatKES(subtotal)}
                 </TableCell>
@@ -473,7 +717,7 @@ export function InvoiceDetail({
               </TableRow>
               {discount > 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-green-600">
+                  <TableCell colSpan={linkedClaimDetail ? 7 : 3} className="text-green-600">
                     Discount
                     {invoice.discount_type === 'PERCENTAGE' && (() => {
                       const pct = parseFloat(invoice.discount_value || '0');
@@ -489,7 +733,7 @@ export function InvoiceDetail({
                 </TableRow>
               )}
               <TableRow className="font-bold">
-                <TableCell colSpan={3}>Total</TableCell>
+                <TableCell colSpan={linkedClaimDetail ? 7 : 3}>Total</TableCell>
                 <TableCell className="text-right">
                   {formatKES(total)}
                 </TableCell>
