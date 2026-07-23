@@ -20,7 +20,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.core.mixins import NestedTenantScopeMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, resolve_request_tenant
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import WriteRequiresRolePermission, get_client_ip
 from hmis.apps.patients.models import Patient
@@ -341,35 +341,11 @@ class PatientCheckinView(views.APIView):
 
         data = serializer.validated_data
 
-        # Resolve tenant context for facility/org scoping
-        # Middleware may not have resolved these for JWT-authenticated requests
-        # (DRF auth runs in the view layer, after middleware).
+        # Resolve tenant context for facility/org scoping.
+        # With JWT auth, middleware can run before DRF attaches request.user.
+        resolve_request_tenant(request)
         facility = getattr(request, "facility", None)
         organization = getattr(request, "organization", None)
-
-        if not facility:
-            from hmis.apps.core.models import Facility
-
-            facility_id = request.META.get("HTTP_X_FACILITY_ID")
-            if facility_id:
-                try:
-                    facility = Facility.objects.select_related("organization").get(
-                        pk=int(facility_id), is_active=True
-                    )
-                    organization = facility.organization
-                except (Facility.DoesNotExist, ValueError, TypeError):
-                    pass
-
-            if not facility:
-                profile = getattr(request.user, "staff_profile", None)
-                if profile and profile.primary_facility_id:
-                    try:
-                        facility = Facility.objects.select_related("organization").get(
-                            pk=profile.primary_facility_id, is_active=True
-                        )
-                        organization = facility.organization
-                    except Facility.DoesNotExist:
-                        pass
 
         if not facility:
             return Response(

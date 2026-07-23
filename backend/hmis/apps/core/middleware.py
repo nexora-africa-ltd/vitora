@@ -15,6 +15,8 @@ from urllib.parse import quote
 from django.conf import settings
 from django.utils import timezone
 
+from hmis.apps.core.tenant_access import user_has_facility_access
+
 logger = logging.getLogger(__name__)
 
 
@@ -101,7 +103,7 @@ class TenantMiddleware:
                 return None
 
             # Validate the user has access to this facility
-            if self._user_has_facility_access(user, facility):
+            if user_has_facility_access(user, facility):
                 return facility
 
             logger.warning(
@@ -124,36 +126,8 @@ class TenantMiddleware:
         return None
 
     def _user_has_facility_access(self, user, facility):
-        """Check whether user is assigned to the given facility via OrgMembership."""
-        if user.is_superuser:
-            return True
-
-        profile = getattr(user, "staff_profile", None)
-        if not profile:
-            return False
-
-        # Legacy/direct assignment fallback: primary/secondary facilities on
-        # StaffProfile should grant facility access even when OrgMembership
-        # facilities are not yet synchronized.
-        if profile.primary_facility_id == facility.id:
-            return True
-        secondary_facilities = getattr(profile, "secondary_facilities", None)
-        if (
-            secondary_facilities is not None
-            and secondary_facilities.filter(id=facility.id).exists()
-        ):
-            return True
-
-        # Check via OrgMembership: user needs an ACTIVE membership for the
-        # facility's org, AND that membership must include this facility.
-        from hmis.apps.core.models import OrgMembership
-
-        return OrgMembership.objects.filter(
-            staff_profile=profile,
-            organization=facility.organization,
-            status=OrgMembership.MembershipStatus.ACTIVE,
-            facilities=facility,
-        ).exists()
+        """Backward-compatible wrapper around shared facility access checks."""
+        return user_has_facility_access(user, facility)
 
 
 class AuditLogMiddleware:

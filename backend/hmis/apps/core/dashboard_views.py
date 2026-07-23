@@ -22,6 +22,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.core.mixins import resolve_request_tenant
+
 # Cache configuration
 DASHBOARD_STATS_CACHE_KEY = "dashboard_stats"
 DASHBOARD_STATS_TTL = 300  # 5 minutes
@@ -36,39 +38,7 @@ def _resolve_tenant_for_request(request):
     This re-resolves from the X-Facility-Id header or the user's
     primary_facility — mirroring TenantScopedViewMixin._resolve_tenant_context.
     """
-    if getattr(request, "facility", None) or getattr(request, "organization", None):
-        return  # Already resolved by middleware
-
-    user = getattr(request, "user", None)
-    if not user or not getattr(user, "is_authenticated", False):
-        return
-
-    from hmis.apps.core.models import Facility
-
-    # 1. Try X-Facility-Id header
-    facility_id = request.META.get("HTTP_X_FACILITY_ID")
-    if facility_id:
-        try:
-            facility = Facility.objects.select_related("organization").get(
-                pk=int(facility_id), is_active=True
-            )
-            request.facility = facility
-            request.organization = facility.organization
-            return
-        except (Facility.DoesNotExist, ValueError, TypeError):
-            pass
-
-    # 2. Fallback to primary facility from staff profile
-    profile = getattr(user, "staff_profile", None)
-    if profile and profile.primary_facility_id:
-        try:
-            facility = Facility.objects.select_related("organization").get(
-                pk=profile.primary_facility_id, is_active=True
-            )
-            request.facility = facility
-            request.organization = facility.organization
-        except Facility.DoesNotExist:
-            pass
+    resolve_request_tenant(request)
 
 
 @extend_schema(
