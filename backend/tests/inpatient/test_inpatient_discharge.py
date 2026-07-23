@@ -207,6 +207,63 @@ class TestDischargeCreation:
         assert active_admission.status == "DISCHARGED"
         assert active_admission.discharge_date is not None
 
+    def test_ipd_encounter_closed_on_discharge(self, active_admission, test_user):
+        """Should close the linked IPD encounter when the patient is discharged."""
+        assert active_admission.ipd_encounter.status != "CLOSED"
+
+        discharge_date = timezone.now()
+        Discharge.objects.create(
+            admission=active_admission,
+            discharge_type="NORMAL",
+            discharge_date=discharge_date,
+            discharged_by=test_user,
+            admission_diagnosis="K35.8",
+            final_diagnosis="K35.8",
+            final_diagnosis_text="Resolved",
+            treatment_summary="Treatment completed",
+            patient_instructions="Rest at home",
+            pharmacy_cleared=True,
+            billing_cleared=True,
+            lab_results_acknowledged=True,
+        )
+
+        active_admission.ipd_encounter.refresh_from_db()
+        assert active_admission.ipd_encounter.status == "CLOSED"
+        assert active_admission.ipd_encounter.finalized_by == test_user
+        assert abs(active_admission.ipd_encounter.finalized_at - discharge_date) < timedelta(
+            seconds=1
+        )
+        assert active_admission.ipd_encounter.disposition == "TREATED_DISCHARGED"
+        assert (
+            active_admission.ipd_encounter.disposition_notes
+            == "Inpatient discharge outcome: NORMAL"
+        )
+
+    def test_absconded_discharge_updates_encounter_outcome_note(self, active_admission, test_user):
+        """Absconded discharge should stamp the encounter with discharge outcome."""
+        Discharge.objects.create(
+            admission=active_admission,
+            discharge_type="ABSCONDED",
+            discharge_date=timezone.now(),
+            discharged_by=test_user,
+            admission_diagnosis="K35.8",
+            final_diagnosis="K35.8",
+            final_diagnosis_text="Patient absconded",
+            treatment_summary="Patient left before completion of treatment",
+            patient_instructions="",
+            pharmacy_cleared=False,
+            billing_cleared=False,
+            lab_results_acknowledged=False,
+        )
+
+        active_admission.ipd_encounter.refresh_from_db()
+        assert active_admission.ipd_encounter.status == "CLOSED"
+        assert active_admission.ipd_encounter.disposition == "LEFT_AMA"
+        assert (
+            active_admission.ipd_encounter.disposition_notes
+            == "Inpatient discharge outcome: ABSCONDED"
+        )
+
     def test_length_of_stay_calculation(self, active_admission, test_user):
         """Should calculate correct length of stay."""
         # Admission was 5 days ago

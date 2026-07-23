@@ -76,6 +76,8 @@ import type {
   ConstraintOverrideMetrics,
   ClearanceStatus,
   Discharge,
+  DischargeDraft,
+  DischargeDraftInput,
   DischargeCreateData,
   DischargeListParams,
   DischargeListResponse,
@@ -342,6 +344,35 @@ export const inpatientApi = {
   async getClearanceStatus(admissionId: IdParam): Promise<ClearanceStatus> {
     const response = await apiClient.get<ClearanceStatus>(`/api/inpatient/admissions/${admissionId}/clearance-status/`);
     return parseResponse(ClearanceStatusSchema, response.data, { context: 'inpatientApi.getClearanceStatus' });
+  },
+
+  async getAdmissionDischargeDraft(admissionId: IdParam): Promise<DischargeDraft | null> {
+    try {
+      const response = await apiClient.get<DischargeDraft>(
+        `/api/inpatient/admissions/${admissionId}/discharge-draft/`
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  async saveAdmissionDischargeDraft(
+    admissionId: IdParam,
+    data: DischargeDraftInput
+  ): Promise<DischargeDraft> {
+    const response = await apiClient.put<DischargeDraft>(
+      `/api/inpatient/admissions/${admissionId}/discharge-draft/`,
+      data
+    );
+    return response.data;
+  },
+
+  async deleteAdmissionDischargeDraft(admissionId: IdParam): Promise<void> {
+    await apiClient.delete(`/api/inpatient/admissions/${admissionId}/discharge-draft/`);
   },
 
   // ============================================================================

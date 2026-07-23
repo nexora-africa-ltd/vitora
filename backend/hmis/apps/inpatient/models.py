@@ -1176,6 +1176,8 @@ class Discharge(TimeStampedModel):
         self.admission.discharge_date = self.discharge_date
         self.admission.save()
 
+        self._close_ipd_encounter()
+
         # Move bed into housekeeping turnover workflow
         bed = self.admission.bed
         if bed.status == "OCCUPIED":
@@ -1187,6 +1189,36 @@ class Discharge(TimeStampedModel):
         # Auto-create DeathRecord for deceased discharges
         if is_new and self.discharge_type == "DECEASED":
             self._create_death_record()
+
+    def _close_ipd_encounter(self):
+        """Close the linked IPD encounter when the inpatient stay ends."""
+        encounter = getattr(self.admission, "ipd_encounter", None)
+        if encounter is None or encounter.status in {"CLOSED", "CANCELLED"}:
+            return
+
+        disposition_map = {
+            "NORMAL": "TREATED_DISCHARGED",
+            "ROUTINE": "TREATED_DISCHARGED",
+            "AGAINST_ADVICE": "LEFT_AMA",
+            "ABSCONDED": "LEFT_AMA",
+            "TRANSFERRED": "REFERRED",
+        }
+
+        update_fields = ["status", "finalized_by", "finalized_at", "updated_at"]
+        encounter.status = "CLOSED"
+        encounter.finalized_by = self.discharged_by
+        encounter.finalized_at = self.discharge_date
+        discharge_note = f"Inpatient discharge outcome: {self.discharge_type}"
+        if encounter.disposition_notes != discharge_note:
+            encounter.disposition_notes = discharge_note
+            update_fields.append("disposition_notes")
+
+        disposition = disposition_map.get(self.discharge_type)
+        if disposition and encounter.disposition != disposition:
+            encounter.disposition = disposition
+            update_fields.append("disposition")
+
+        encounter.save(update_fields=update_fields)
 
     def _create_death_record(self):
         """Create a DeathRecord linked to this discharge's admission."""
@@ -1350,6 +1382,63 @@ class DischargeDiagnosis(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.get_role_display()}: {self.code} - {self.description}"
+
+
+class DischargeDraft(TimeStampedModel):
+    """Persisted draft discharge summary for an active admission."""
+
+    admission = models.OneToOneField(
+        Admission,
+        on_delete=models.CASCADE,
+        related_name="discharge_draft",
+        help_text="Admission this draft discharge belongs to",
+    )
+    discharge_type = models.CharField(
+        max_length=20,
+        choices=Discharge.DISCHARGE_TYPE_CHOICES,
+        default="NORMAL",
+    )
+    diagnoses = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Draft diagnosis entries (PRIMARY/SECONDARY/COMPLICATION)",
+    )
+    procedures_performed = models.TextField(blank=True, default="")
+    treatment_summary = models.TextField(blank=True, default="")
+    discharge_medications = models.JSONField(default=list, blank=True)
+    maternity_continuity_action = models.CharField(
+        max_length=40,
+        choices=MATERNITY_CONTINUITY_ACTION_CHOICES,
+        default="NONE",
+    )
+    follow_up_date = models.DateField(null=True, blank=True)
+    follow_up_instructions = models.TextField(blank=True, default="")
+    referral_facility = models.CharField(max_length=255, blank=True, default="")
+    referral_reason = models.TextField(blank=True, default="")
+    patient_instructions = models.TextField(blank=True, default="")
+    generation_mode = models.CharField(max_length=20, blank=True, default="generate")
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_discharge_drafts",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_discharge_drafts",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-updated_at"]
+        verbose_name = "Discharge Draft"
+        verbose_name_plural = "Discharge Drafts"
+
+    def __str__(self):
+        return f"Draft: {self.admission.admission_number}"
 
 
 class Transfer(TimeStampedModel):

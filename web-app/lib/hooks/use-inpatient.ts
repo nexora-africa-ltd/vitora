@@ -83,6 +83,8 @@ export const inpatientQueryKeys = {
   pendingAdmissions: () => [...inpatientQueryKeys.all, 'pending-admissions'] as const,
   admissions: (params?: AdmissionListParams) =>
     [...inpatientQueryKeys.all, 'admissions', params] as const,
+  activeAdmissionForPatient: (patientId: number) =>
+    [...inpatientQueryKeys.all, 'admissions', 'active-by-patient', patientId] as const,
   admission: (id: string | number) => [...inpatientQueryKeys.all, 'admissions', id] as const,
   discharges: (params?: DischargeListParams) =>
     [...inpatientQueryKeys.all, 'discharges', params] as const,
@@ -103,6 +105,8 @@ export const inpatientQueryKeys = {
     [...inpatientQueryKeys.all, 'kardex', 'admission', admissionId] as const,
   admissionClearanceStatus: (admissionId: string | number) =>
     [...inpatientQueryKeys.admission(admissionId), 'clearance-status'] as const,
+  admissionDischargeDraft: (admissionId: string | number) =>
+    [...inpatientQueryKeys.admission(admissionId), 'discharge-draft'] as const,
   admissionConsumableUsage: (admissionId: string | number) =>
     [...inpatientQueryKeys.admission(admissionId), 'consumable-usage'] as const,
   shiftHandovers: (params?: ShiftHandoverListParams) =>
@@ -413,6 +417,22 @@ export function useAdmission(admissionId: string | number | undefined) {
   });
 }
 
+export function useActiveAdmissionForPatient(patientId: number | null | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.activeAdmissionForPatient(patientId ?? 0),
+    enabled: typeof patientId === 'number' && Number.isFinite(patientId),
+    queryFn: async () => {
+      const result = await inpatientApi.listAdmissions({
+        patient: patientId as number,
+        admission_status: 'ACTIVE',
+        page_size: 1,
+        ordering: '-admission_date',
+      });
+      return result.results[0] ?? null;
+    },
+  });
+}
+
 export function useCreateAdmission() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -485,6 +505,39 @@ export function useClearanceStatus(admissionId: string | number | undefined) {
     queryFn: () => inpatientApi.getClearanceStatus(admissionId!),
     enabled: admissionId !== undefined,
     refetchInterval: 30_000,
+  });
+}
+
+export function useAdmissionDischargeDraft(admissionId: string | number | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.admissionDischargeDraft(admissionId!),
+    queryFn: () => inpatientApi.getAdmissionDischargeDraft(admissionId!),
+    enabled: admissionId !== undefined,
+  });
+}
+
+export function useSaveAdmissionDischargeDraft(admissionId: string | number | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Parameters<typeof inpatientApi.saveAdmissionDischargeDraft>[1]) =>
+      inpatientApi.saveAdmissionDischargeDraft(admissionId!, data),
+    onSuccess: () => {
+      if (admissionId !== undefined) {
+        queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admissionDischargeDraft(admissionId) });
+      }
+    },
+  });
+}
+
+export function useDeleteAdmissionDischargeDraft(admissionId: string | number | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => inpatientApi.deleteAdmissionDischargeDraft(admissionId!),
+    onSuccess: () => {
+      if (admissionId !== undefined) {
+        queryClient.setQueryData(inpatientQueryKeys.admissionDischargeDraft(admissionId), null);
+      }
+    },
   });
 }
 

@@ -44,6 +44,7 @@ import {
   useGenerateWardBeds,
   useRecommendWard,
   useAdmissionRecommendations,
+  useActiveAdmissionForPatient,
 } from '@/lib/hooks/use-inpatient';
 import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { useEncounters } from '@/lib/hooks/use-encounters';
@@ -84,6 +85,7 @@ export default function NewAdmissionPage() {
 
   // Fetch patient details if patient ID is provided
   const { data: patientData } = usePatient(patientId || 0);
+  const { data: activeAdmission, isLoading: activeAdmissionCheckLoading } = useActiveAdmissionForPatient(patientId);
 
   // Form state
   const [wardId, setWardId] = useState<string>('');
@@ -316,7 +318,22 @@ export default function NewAdmissionPage() {
   const [showIncompatibleWards, setShowIncompatibleWards] = useState(false);
 
   useEffect(() => {
-    if (!patientId || wardAssignmentMode !== 'auto') {
+    if (!activeAdmission) {
+      return;
+    }
+    setWardId('');
+    setBedId('');
+    setCompatibilityViolations([]);
+    setCompatibilityResult(null);
+    setOverrideReason(null);
+    setWardRecommendationData(undefined);
+    recommendBed.reset();
+    smartRecommendBed.reset();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAdmission?.id]);
+
+  useEffect(() => {
+    if (!patientId || wardAssignmentMode !== 'auto' || !!activeAdmission) {
       return;
     }
 
@@ -359,7 +376,7 @@ export default function NewAdmissionPage() {
       isCancelled = true;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId, wardAssignmentMode, requiresIsolation, requiresOxygen, requiresVentilator, admissionType]);
+  }, [patientId, wardAssignmentMode, activeAdmission, requiresIsolation, requiresOxygen, requiresVentilator, admissionType]);
 
   // Auto-select the top recommended ward
   useEffect(() => {
@@ -378,7 +395,7 @@ export default function NewAdmissionPage() {
   }, [wardRecommendationData, wardAssignmentMode]);
 
   useEffect(() => {
-    if (!patientId || !selectedWardId) {
+    if (!patientId || !selectedWardId || !!activeAdmission) {
       return;
     }
 
@@ -416,10 +433,10 @@ export default function NewAdmissionPage() {
       isCancelled = true;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId, selectedWardId, requiresIsolation, requiresOxygen, requiresVentilator]);
+  }, [patientId, selectedWardId, activeAdmission, requiresIsolation, requiresOxygen, requiresVentilator]);
 
   useEffect(() => {
-    if (!patientId || !selectedWardId || assignmentStrategy === 'MANUAL') {
+    if (!patientId || !selectedWardId || assignmentStrategy === 'MANUAL' || !!activeAdmission) {
       return;
     }
 
@@ -516,7 +533,8 @@ export default function NewAdmissionPage() {
     && !!recommendedBedId
     && hasDiagnosis
     && !!user
-    && hasRequiredMaternityContext;
+    && hasRequiredMaternityContext
+    && !activeAdmission;
 
   const admittingDiagnosis = primaryDiagnosisValue.icd11Code
     || primaryDiagnosisValue.icd10Display?.split(' - ')[0]
@@ -736,6 +754,28 @@ export default function NewAdmissionPage() {
                   Select Patient
                 </Button>
               </div>
+            )}
+            {patientId && activeAdmissionCheckLoading && (
+              <p className="text-xs text-muted-foreground">Checking active admissions for this patient...</p>
+            )}
+            {activeAdmission && (
+              <Alert className="border-amber-300 bg-amber-50/70 dark:border-amber-800 dark:bg-amber-950/30">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <AlertDescription className="space-y-2">
+                  <p>
+                    This patient already has an active admission
+                    {activeAdmission.admission_number ? ` (${activeAdmission.admission_number})` : ''}.
+                    Discharge or transfer that admission before creating a new one.
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    <span>Ward: {activeAdmission.ward_name || `#${activeAdmission.ward}`}</span>
+                    <span>Bed: {activeAdmission.bed_number || `#${activeAdmission.bed}`}</span>
+                  </div>
+                  <Button asChild variant="outline" size="sm" className="mt-1">
+                    <Link href={`/admissions/${activeAdmission.id}`}>View active admission</Link>
+                  </Button>
+                </AlertDescription>
+              </Alert>
             )}
           </div>
 
