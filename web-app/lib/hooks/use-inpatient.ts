@@ -777,6 +777,24 @@ export function useCancelInterFacilityTransfer() {
   });
 }
 
+export function useRequestInterFacilityDischargeSummary() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (transferId: number | string) =>
+      inpatientApi.requestInterFacilityDischargeSummary(transferId),
+    onSuccess: (transfer) => invalidateInterFacilityTransferQueries(queryClient, transfer),
+  });
+}
+
+export function useShareInterFacilityDischargeSummary() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (transferId: number | string) =>
+      inpatientApi.shareInterFacilityDischargeSummary(transferId),
+    onSuccess: (transfer) => invalidateInterFacilityTransferQueries(queryClient, transfer),
+  });
+}
+
 // ============================================================================
 // Ward Round Hooks
 // ============================================================================

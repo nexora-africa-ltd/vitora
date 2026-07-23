@@ -22,12 +22,14 @@ import {
   useInterFacilityDestinationQueue,
   useInterFacilityTransfers,
   useInpatientWards,
+  useRequestInterFacilityDischargeSummary,
   useRejectInterFacilityTransfer,
   useWardBeds,
 } from '@/lib/hooks/use-inpatient';
 import type { InterFacilityTransfer } from '@/lib/types/inpatient';
 import { useFacility } from '@/lib/context/facility-context';
 import { useToast } from '@/lib/hooks/use-toast';
+import { getApiErrorMessage } from '@/lib/api/client';
 
 const OPEN_QUEUE_STATUSES = new Set(['PENDING_ACCEPTANCE', 'ACCEPTED', 'IN_TRANSIT']);
 
@@ -36,6 +38,7 @@ function DestinationQueueCard({ transfer }: { transfer: InterFacilityTransfer })
   const acceptTransfer = useAcceptInterFacilityTransfer();
   const rejectTransfer = useRejectInterFacilityTransfer();
   const arriveAndAdmit = useArriveAndAdmitInterFacilityTransfer();
+  const requestDischargeSummary = useRequestInterFacilityDischargeSummary();
   const { data: wardsData } = useInpatientWards();
 
   const [rejectReason, setRejectReason] = useState('');
@@ -51,46 +54,106 @@ function DestinationQueueCard({ transfer }: { transfer: InterFacilityTransfer })
   const busy =
     acceptTransfer.isPending ||
     rejectTransfer.isPending ||
-    arriveAndAdmit.isPending;
+    arriveAndAdmit.isPending ||
+    requestDischargeSummary.isPending;
+
+  const dischargeSnapshot = transfer.discharge_summary_snapshot as Record<string, unknown> | null | undefined;
 
   const onAccept = async () => {
     if (!destinationWard) return;
-    await acceptTransfer.mutateAsync({
-      transferId: transfer.id,
-      data: {
-        destination_ward: Number(destinationWard),
-        destination_bed: destinationBed ? Number(destinationBed) : undefined,
-        auto_assign_bed: !destinationBed,
-        admitting_diagnosis_text: admittingDiagnosisText || undefined,
-      },
-    });
-    toast({ title: 'Accepted', description: `${transfer.transfer_number} accepted.` });
+    try {
+      await acceptTransfer.mutateAsync({
+        transferId: transfer.id,
+        data: {
+          destination_ward: Number(destinationWard),
+          destination_bed: destinationBed ? Number(destinationBed) : undefined,
+          auto_assign_bed: !destinationBed,
+          admitting_diagnosis_text: admittingDiagnosisText || undefined,
+        },
+      });
+      toast({ title: 'Accepted', description: `${transfer.transfer_number} accepted.` });
+    } catch (error) {
+      toast({
+        title: 'Failed to accept transfer',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
+    }
   };
 
   const onReject = async () => {
     if (!rejectReason.trim()) return;
-    await rejectTransfer.mutateAsync({ transferId: transfer.id, reason: rejectReason.trim() });
-    setRejectReason('');
-    toast({ title: 'Rejected', description: `${transfer.transfer_number} rejected.` });
+    try {
+      await rejectTransfer.mutateAsync({ transferId: transfer.id, reason: rejectReason.trim() });
+      setRejectReason('');
+      toast({ title: 'Rejected', description: `${transfer.transfer_number} rejected.` });
+    } catch (error) {
+      toast({
+        title: 'Failed to reject transfer',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
+    }
   };
 
 
   const onArriveAndAdmit = async () => {
     if (!destinationWard) return;
-    await arriveAndAdmit.mutateAsync({
-      transferId: transfer.id,
-      data: {
-        destination_ward: Number(destinationWard),
-        destination_bed: destinationBed ? Number(destinationBed) : undefined,
-        auto_assign_bed: !destinationBed,
-        admitting_diagnosis_text: admittingDiagnosisText || undefined,
-      },
-    });
-    setDestinationWard('');
-    setDestinationBed('');
-    setAdmittingDiagnosisText('');
-    toast({ title: 'Arrived and admitted', description: `${transfer.transfer_number} completed.` });
+    try {
+      await arriveAndAdmit.mutateAsync({
+        transferId: transfer.id,
+        data: {
+          destination_ward: Number(destinationWard),
+          destination_bed: destinationBed ? Number(destinationBed) : undefined,
+          auto_assign_bed: !destinationBed,
+          admitting_diagnosis_text: admittingDiagnosisText || undefined,
+        },
+      });
+      setDestinationWard('');
+      setDestinationBed('');
+      setAdmittingDiagnosisText('');
+      toast({ title: 'Arrived and admitted', description: `${transfer.transfer_number} completed.` });
+    } catch (error) {
+      toast({
+        title: 'Failed to arrive and admit',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
+    }
   };
+
+  const onRequestDischargeSummary = async () => {
+    try {
+      await requestDischargeSummary.mutateAsync(transfer.id);
+      toast({
+        title: 'Summary requested',
+        description: 'Source facility has been asked to share discharge summary and notes.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Failed to request summary',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const finalDiagnosisText =
+    typeof dischargeSnapshot?.final_diagnosis_text === 'string'
+      ? dischargeSnapshot.final_diagnosis_text
+      : '';
+  const treatmentSummary =
+    typeof dischargeSnapshot?.treatment_summary === 'string'
+      ? dischargeSnapshot.treatment_summary
+      : '';
+  const followUpInstructions =
+    typeof dischargeSnapshot?.follow_up_instructions === 'string'
+      ? dischargeSnapshot.follow_up_instructions
+      : '';
+  const patientInstructions =
+    typeof dischargeSnapshot?.patient_instructions === 'string'
+      ? dischargeSnapshot.patient_instructions
+      : '';
 
   return (
     <Card>
@@ -111,6 +174,42 @@ function DestinationQueueCard({ transfer }: { transfer: InterFacilityTransfer })
           <p><span className="text-muted-foreground">Reason:</span> {transfer.reason_code_display ?? transfer.reason_code}</p>
         </div>
         <p className="text-sm text-muted-foreground">{transfer.clinical_summary}</p>
+
+        {dischargeSnapshot ? (
+          <div className="rounded-md border p-3 space-y-2 text-sm">
+            <p className="font-medium">Shared Discharge Summary</p>
+            {finalDiagnosisText ? (
+              <p>
+                <span className="text-muted-foreground">Final diagnosis:</span> {finalDiagnosisText}
+              </p>
+            ) : null}
+            {treatmentSummary ? (
+              <p>
+                <span className="text-muted-foreground">Treatment summary:</span> {treatmentSummary}
+              </p>
+            ) : null}
+            {followUpInstructions ? (
+              <p>
+                <span className="text-muted-foreground">Follow-up:</span> {followUpInstructions}
+              </p>
+            ) : null}
+            {patientInstructions ? (
+              <p>
+                <span className="text-muted-foreground">Patient instructions:</span> {patientInstructions}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={onRequestDischargeSummary}
+              disabled={busy || transfer.discharge_summary_requested}
+            >
+              {transfer.discharge_summary_requested ? 'Summary requested' : 'Request discharge summary'}
+            </Button>
+          </div>
+        )}
 
         {transfer.status === 'PENDING_ACCEPTANCE' && (
           <div className="space-y-3">
@@ -147,17 +246,21 @@ function DestinationQueueCard({ transfer }: { transfer: InterFacilityTransfer })
               value={admittingDiagnosisText}
               onChange={(e) => setAdmittingDiagnosisText(e.target.value)}
             />
-            <div className="flex gap-2">
+            <div className="flex">
               <Button onClick={onAccept} disabled={busy || !destinationWard}>Accept & Create Admission</Button>
-              <Button variant="destructive" onClick={onReject} disabled={busy || !rejectReason.trim()}>
-                Reject
-              </Button>
             </div>
-            <Input
-              placeholder="Rejection reason"
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-            />
+            <div className="space-y-2 rounded-md border border-destructive/25 bg-destructive/5 p-3">
+              <Input
+                placeholder="Rejection reason"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              />
+              <div className="flex justify-end">
+                <Button variant="destructive" onClick={onReject} disabled={busy || !rejectReason.trim()}>
+                  Reject
+                </Button>
+              </div>
+            </div>
           </div>
         )}
 

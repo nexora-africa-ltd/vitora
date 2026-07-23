@@ -7,6 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeftRight, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PermissionGate } from '@/components/shared/permission-gate';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -25,8 +26,19 @@ import { organizationsApi } from '@/lib/api/organizations';
 import { useUser } from '@/lib/auth';
 import { useFacility } from '@/lib/context/facility-context';
 import { useToast } from '@/lib/hooks/use-toast';
-import { useAdmission, useCreateInterFacilityTransfer, useSubmitInterFacilityTransfer } from '@/lib/hooks/use-inpatient';
-import type { InterFacilityTransferPriority, InterFacilityTransferReason } from '@/lib/types/inpatient';
+import { getApiErrorMessage } from '@/lib/api/client';
+import {
+  useAdmission,
+  useCreateInterFacilityTransfer,
+  useInterFacilityTransfers,
+  useShareInterFacilityDischargeSummary,
+  useSubmitInterFacilityTransfer,
+} from '@/lib/hooks/use-inpatient';
+import type {
+  InterFacilityTransfer,
+  InterFacilityTransferPriority,
+  InterFacilityTransferReason,
+} from '@/lib/types/inpatient';
 
 const REASON_OPTIONS: Array<{ value: InterFacilityTransferReason; label: string }> = [
   { value: 'HIGHER_LEVEL_CARE', label: 'Higher-level care' },
@@ -81,6 +93,12 @@ export default function CreateInterFacilityTransferPage() {
   });
   const createTransfer = useCreateInterFacilityTransfer();
   const submitTransfer = useSubmitInterFacilityTransfer();
+  const shareDischargeSummary = useShareInterFacilityDischargeSummary();
+  const { data: transferList } = useInterFacilityTransfers({
+    source_admission: admissionId,
+    ordering: '-updated_at',
+    page_size: 50,
+  });
 
   const [selectedDestinationFacility, setSelectedDestinationFacility] = useState<string>('OTHER');
   const [destinationFacilityName, setDestinationFacilityName] = useState('');
@@ -95,6 +113,10 @@ export default function CreateInterFacilityTransferPage() {
   const [submitImmediately, setSubmitImmediately] = useState(true);
 
   const isPending = createTransfer.isPending || submitTransfer.isPending;
+  const transfers = transferList?.results ?? [];
+  const pendingSummaryRequests = transfers.filter(
+    (transfer) => transfer.discharge_summary_requested && !transfer.discharge_summary_snapshot
+  );
   const membershipFacilities = useMemo(() => {
     const map = new Map<number, { id: number; name: string; mfl_code: string }>();
     (user?.memberships ?? []).forEach((membership) => {
@@ -169,10 +191,26 @@ export default function CreateInterFacilityTransferPage() {
         description: `${created.transfer_number} ${submitImmediately ? 'is pending destination acceptance.' : 'saved as draft.'}`,
       });
       router.push(`/admissions/${admission.id}`);
-    } catch {
+    } catch (error) {
       toast({
         title: 'Failed to create transfer',
-        description: 'Please review your entries and try again.',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleShareDischargeSummary = async (transfer: InterFacilityTransfer) => {
+    try {
+      await shareDischargeSummary.mutateAsync(transfer.id);
+      toast({
+        title: 'Discharge summary shared',
+        description: `${transfer.transfer_number} summary shared with destination team.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Failed to share summary',
+        description: getApiErrorMessage(error),
         variant: 'destructive',
       });
     }
@@ -309,6 +347,40 @@ export default function CreateInterFacilityTransferPage() {
             </div>
           </CardContent>
         </Card>
+
+        {pendingSummaryRequests.length > 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Destination Requests</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {pendingSummaryRequests.map((transfer) => (
+                <div
+                  key={transfer.id}
+                  className="rounded-md border p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
+                >
+                  <div className="space-y-1 text-sm">
+                    <p className="font-medium">{transfer.transfer_number}</p>
+                    <p>
+                      <span className="text-muted-foreground">Patient:</span> {transfer.patient_name}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Destination:</span>{' '}
+                      {transfer.destination_facility_label ?? transfer.destination_facility_name}
+                    </p>
+                    <Badge variant="secondary">Summary requested</Badge>
+                  </div>
+                  <Button
+                    onClick={() => handleShareDischargeSummary(transfer)}
+                    disabled={shareDischargeSummary.isPending}
+                  >
+                    Share Discharge Summary
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </PermissionGate>
   );

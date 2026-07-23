@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from hmis.apps.core.models import Facility
-from hmis.apps.inpatient.models import Admission, Bed, InterFacilityTransfer, Ward
+from hmis.apps.inpatient.models import Admission, Bed, Discharge, InterFacilityTransfer, Ward
 from tests.conftest import ensure_staff_profile
 
 
@@ -833,3 +833,174 @@ class TestInterFacilityTransferAPI:
         assert arrive_and_admit.status_code == status.HTTP_200_OK
         assert arrive_and_admit.data["status"] == "ARRIVED"
         assert arrive_and_admit.data["destination_admission_id"] is not None
+
+    def test_destination_can_request_and_source_can_share_discharge_summary(
+        self,
+        authenticated_client,
+        test_user,
+        another_user,
+        sample_admission,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        destination_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Referral Hospital Request",
+            mfl_code="15151",
+            level="5",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        ensure_staff_profile(another_user, sample_organization, destination_facility)
+        destination_client = self._client_for_user(another_user)
+        self._grant_permissions(test_user, ["submit_interfacility_transfer"])
+        self._grant_permissions(another_user, ["accept_interfacility_transfer"])
+
+        created = self._create_transfer(
+            authenticated_client, sample_admission, destination_facility.id
+        )
+        transfer_id = created["id"]
+        authenticated_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/submit/", {}, format="json"
+        )
+
+        request_summary = destination_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/request-discharge-summary/",
+            {},
+            format="json",
+        )
+        assert request_summary.status_code == status.HTTP_200_OK
+        assert request_summary.data["discharge_summary_requested"] is True
+
+        transfer = InterFacilityTransfer.objects.get(id=transfer_id)
+        discharge = Discharge.objects.create(
+            admission=sample_admission,
+            discharge_type="TRANSFERRED",
+            discharge_date=sample_admission.admission_date,
+            discharged_by=test_user,
+            admission_diagnosis="J18",
+            final_diagnosis="J960",
+            final_diagnosis_text="Acute respiratory failure",
+            procedures_performed="Non-invasive ventilation",
+            treatment_summary="Stabilized and referred for higher-level ICU support.",
+            discharge_medications=[{"name": "Ceftriaxone", "dose": "1g BD"}],
+            patient_instructions="Continue oxygen as advised.",
+            follow_up_instructions="Follow up at destination ICU team.",
+            pharmacy_cleared=True,
+            billing_cleared=True,
+            lab_results_acknowledged=True,
+        )
+        transfer.source_discharge = discharge
+        transfer.save(update_fields=["source_discharge", "updated_at"])
+
+        share_summary = authenticated_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/share-discharge-summary/",
+            {},
+            format="json",
+        )
+        assert share_summary.status_code == status.HTTP_200_OK
+        assert share_summary.data["discharge_summary_requested"] is False
+        assert share_summary.data["discharge_summary_snapshot"] is not None
+        assert (
+            share_summary.data["discharge_summary_snapshot"]["final_diagnosis_text"]
+            == "Acute respiratory failure"
+        )
+
+    def test_source_cannot_share_discharge_summary_without_pending_request(
+        self,
+        authenticated_client,
+        test_user,
+        sample_admission,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        destination_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Referral Hospital Share Guard",
+            mfl_code="16161",
+            level="5",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        self._grant_permissions(test_user, ["submit_interfacility_transfer"])
+
+        created = self._create_transfer(
+            authenticated_client, sample_admission, destination_facility.id
+        )
+        transfer_id = created["id"]
+
+        share_summary = authenticated_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/share-discharge-summary/",
+            {},
+            format="json",
+        )
+        assert share_summary.status_code == status.HTTP_400_BAD_REQUEST
+        assert "source_discharge" in share_summary.data
+
+    def test_accept_requires_destination_active_facility_context(
+        self,
+        authenticated_client,
+        test_user,
+        test_staff_profile,
+        sample_admission,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        destination_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Referral Hospital Context Guard",
+            mfl_code="17171",
+            level="5",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        destination_ward, _destination_bed = self._create_destination_capacity(
+            destination_facility,
+            sample_organization,
+            code_prefix="CTX",
+        )
+        test_staff_profile.secondary_facilities.add(destination_facility)
+        self._grant_permissions(
+            test_user,
+            [
+                "submit_interfacility_transfer",
+                "accept_interfacility_transfer",
+                "add_admission",
+            ],
+        )
+
+        authenticated_client.credentials(HTTP_X_FACILITY_ID=str(sample_admission.facility_id))
+        created = self._create_transfer(
+            authenticated_client, sample_admission, destination_facility.id
+        )
+        transfer_id = created["id"]
+
+        sample_admission.admission_status = "TRANSFERRED_OUT"
+        sample_admission.save(update_fields=["admission_status"])
+
+        submit = authenticated_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/submit/", {}, format="json"
+        )
+        assert submit.status_code == status.HTTP_200_OK
+
+        accept_from_source_context = authenticated_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/accept/",
+            {"destination_ward": destination_ward.id},
+            format="json",
+        )
+        assert accept_from_source_context.status_code == status.HTTP_403_FORBIDDEN
+
+        authenticated_client.credentials(HTTP_X_FACILITY_ID=str(destination_facility.id))
+        accept_from_destination_context = authenticated_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/accept/",
+            {"destination_ward": destination_ward.id},
+            format="json",
+        )
+        assert accept_from_destination_context.status_code == status.HTTP_200_OK
+        assert accept_from_destination_context.data["status"] == "ACCEPTED"

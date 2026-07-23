@@ -451,6 +451,8 @@ export type InterFacilityTransferEventType =
   | 'DISPATCHED'
   | 'ARRIVED'
   | 'AUTO_ADMITTED'
+  | 'DISCHARGE_SUMMARY_REQUESTED'
+  | 'DISCHARGE_SUMMARY_SHARED'
   | 'CANCELLED';
 
 export interface InterFacilityTransferEvent {
@@ -504,6 +506,9 @@ export interface InterFacilityTransfer {
   cancelled_at?: string | null;
   rejection_reason?: string;
   cancellation_reason?: string;
+  discharge_summary_requested?: boolean;
+  discharge_summary_requested_at?: string | null;
+  discharge_summary_snapshot?: Record<string, unknown> | null;
   timeline_events?: InterFacilityTransferEvent[];
   destination_admission_id?: number;
   destination_admission_number?: string;

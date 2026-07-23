@@ -579,6 +579,26 @@ export const inpatientApi = {
     });
   },
 
+  async requestInterFacilityDischargeSummary(transferId: IdParam): Promise<InterFacilityTransfer> {
+    const response = await apiClient.post<InterFacilityTransfer>(
+      `/api/inpatient/inter-facility-transfers/${transferId}/request-discharge-summary/`,
+      {}
+    );
+    return parseResponse(InterFacilityTransferSchema, response.data, {
+      context: 'inpatientApi.requestInterFacilityDischargeSummary',
+    });
+  },
+
+  async shareInterFacilityDischargeSummary(transferId: IdParam): Promise<InterFacilityTransfer> {
+    const response = await apiClient.post<InterFacilityTransfer>(
+      `/api/inpatient/inter-facility-transfers/${transferId}/share-discharge-summary/`,
+      {}
+    );
+    return parseResponse(InterFacilityTransferSchema, response.data, {
+      context: 'inpatientApi.shareInterFacilityDischargeSummary',
+    });
+  },
+
   // ============================================================================
   // Ward Rounds
   // ============================================================================

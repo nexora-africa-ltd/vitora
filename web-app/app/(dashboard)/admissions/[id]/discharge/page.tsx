@@ -2155,7 +2155,7 @@ export default function DischargePage() {
           </div>
 
           {admission.mch_registration && (
-            <div className="space-y-4 rounded-lg border border-amber-200 bg-amber-50/60 p-4">
+            <div className="space-y-4 rounded-lg border border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/30 p-4">
               <div className="space-y-1">
                 <Label htmlFor="maternity-continuity-action">Postpartum Continuity Action *</Label>
                 <p className="text-sm text-amber-900">
@@ -2192,6 +2192,8 @@ export default function DischargePage() {
               <DatePicker
                 value={followUpDate ? parseISO(followUpDate) : undefined}
                 onChange={(date) => setFollowUpDate(date ? format(date, 'yyyy-MM-dd') : '')}
+                allowFuture={requiresScheduledFollowUpDate}
+                allowPast={!requiresScheduledFollowUpDate}
                 placeholder={requiresScheduledFollowUpDate ? 'Select early PNC date' : admission.mch_registration ? 'Optional when routing directly to PNC' : 'Select follow-up date'}
               />
             </div>

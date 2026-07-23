@@ -1770,6 +1770,11 @@ class InterFacilityTransferEvent(TimeStampedModel):
         DISPATCHED = "DISPATCHED", "Dispatched"
         ARRIVED = "ARRIVED", "Arrived"
         AUTO_ADMITTED = "AUTO_ADMITTED", "Auto Admitted"
+        DISCHARGE_SUMMARY_REQUESTED = (
+            "DISCHARGE_SUMMARY_REQUESTED",
+            "Discharge Summary Requested",
+        )
+        DISCHARGE_SUMMARY_SHARED = "DISCHARGE_SUMMARY_SHARED", "Discharge Summary Shared"
         CANCELLED = "CANCELLED", "Cancelled"
 
     transfer = models.ForeignKey(
@@ -1777,7 +1782,7 @@ class InterFacilityTransferEvent(TimeStampedModel):
         on_delete=models.CASCADE,
         related_name="timeline_events",
     )
-    event_type = models.CharField(max_length=24, choices=EventType.choices)
+    event_type = models.CharField(max_length=40, choices=EventType.choices)
     from_status = models.CharField(max_length=24, blank=True, default="")
     to_status = models.CharField(max_length=24, blank=True, default="")
     occurred_at = models.DateTimeField(default=timezone.now, db_index=True)
