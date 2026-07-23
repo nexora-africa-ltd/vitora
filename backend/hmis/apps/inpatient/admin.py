@@ -461,6 +461,30 @@ class InterFacilityTransferAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     ]
     ordering = ["-created_at"]
 
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "destination_admission":
+            object_id = request.resolver_match.kwargs.get("object_id")
+            transfer = None
+            if object_id:
+                transfer = (
+                    InterFacilityTransfer.objects.select_related(
+                        "source_admission", "destination_facility"
+                    )
+                    .filter(pk=object_id)
+                    .first()
+                )
+
+            if transfer and transfer.destination_facility_id:
+                kwargs["queryset"] = Admission.objects.filter(
+                    facility_id=transfer.destination_facility_id
+                ).order_by("-admission_date", "-id")
+            elif transfer and transfer.source_admission_id:
+                kwargs["queryset"] = Admission.objects.filter(
+                    organization_id=transfer.source_admission.organization_id
+                ).order_by("-admission_date", "-id")
+
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
 
 @admin.register(InterFacilityTransferEvent)
 class InterFacilityTransferEventAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
