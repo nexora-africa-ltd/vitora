@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Search, BedDouble, Building2, Calendar, Hash, User, ClipboardList, Users, AlertTriangle, Clock, Activity, TrendingUp } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { Button } from '@/components/ui/button';
@@ -94,6 +95,14 @@ export default function AdmissionsPage() {
                   <span className="sm:hidden">Bulk</span>
                 </Link>
               </Button>
+              <PermissionGate action="inpatient.accept_interfacility_transfer">
+                <Button variant="outline" asChild>
+                  <Link href="/admissions/inter-facility-transfers/destination-queue">
+                    <span className="hidden sm:inline">Destination Queue</span>
+                    <span className="sm:hidden">Queue</span>
+                  </Link>
+                </Button>
+              </PermissionGate>
               <Button asChild>
                 <Link href="/admissions/new">
                   <Plus className="h-4 w-4 mr-2" />

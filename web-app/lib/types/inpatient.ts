@@ -411,6 +411,120 @@ export interface TransferCreateData {
   transferred_by?: number;
 }
 
+export type InterFacilityTransferStatus =
+  | 'DRAFT'
+  | 'PENDING_ACCEPTANCE'
+  | 'ACCEPTED'
+  | 'REJECTED'
+  | 'IN_TRANSIT'
+  | 'ARRIVED'
+  | 'CANCELLED';
+
+export type InterFacilityTransferPriority = 'ROUTINE' | 'URGENT' | 'STAT';
+
+export type InterFacilityTransferReason =
+  | 'HIGHER_LEVEL_CARE'
+  | 'SPECIALIST_INPUT'
+  | 'NO_CAPACITY'
+  | 'EQUIPMENT_LIMITATION'
+  | 'PATIENT_REQUEST'
+  | 'OTHER';
+
+export type InterFacilityTransferEventType =
+  | 'CREATED'
+  | 'SUBMITTED'
+  | 'ACCEPTED'
+  | 'REJECTED'
+  | 'DISPATCHED'
+  | 'ARRIVED'
+  | 'AUTO_ADMITTED'
+  | 'CANCELLED';
+
+export interface InterFacilityTransferEvent {
+  id: number;
+  event_type: InterFacilityTransferEventType;
+  event_type_display?: string;
+  from_status?: string;
+  to_status?: string;
+  occurred_at: string;
+  actor?: number | null;
+  actor_username?: string;
+  actor_name?: string;
+  note?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface InterFacilityTransfer {
+  id: number;
+  public_id: string;
+  transfer_number: string;
+  source_admission: number;
+  source_admission_number?: string;
+  source_discharge?: number | null;
+  patient: number;
+  patient_name?: string;
+  source_facility: number;
+  source_facility_name?: string;
+  destination_facility?: number | null;
+  destination_facility_name?: string;
+  destination_facility_label?: string;
+  status: InterFacilityTransferStatus;
+  status_display?: string;
+  priority: InterFacilityTransferPriority;
+  priority_display?: string;
+  reason_code: InterFacilityTransferReason;
+  reason_code_display?: string;
+  reason_details?: string;
+  clinical_summary: string;
+  handover_notes: string;
+  transport_mode: 'AMBULANCE' | 'PRIVATE' | 'OTHER';
+  escort_required: boolean;
+  escort_name?: string;
+  requested_by: number;
+  accepted_by?: number | null;
+  dispatched_by?: number | null;
+  arrived_by?: number | null;
+  cancelled_by?: number | null;
+  accepted_at?: string | null;
+  dispatched_at?: string | null;
+  arrived_at?: string | null;
+  cancelled_at?: string | null;
+  rejection_reason?: string;
+  cancellation_reason?: string;
+  timeline_events?: InterFacilityTransferEvent[];
+  destination_admission_id?: number;
+  destination_admission_number?: string;
+  destination_ipd_encounter_id?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface InterFacilityTransferCreateData {
+  source_admission: number;
+  destination_facility?: number;
+  destination_facility_name?: string;
+  reason_code: InterFacilityTransferReason;
+  reason_details?: string;
+  priority?: InterFacilityTransferPriority;
+  clinical_summary: string;
+  handover_notes: string;
+  transport_mode?: 'AMBULANCE' | 'PRIVATE' | 'OTHER';
+  escort_required?: boolean;
+  escort_name?: string;
+}
+
+export interface InterFacilityTransferArrivalAutoAdmitData {
+  destination_ward: number;
+  destination_bed?: number;
+  auto_assign_bed?: boolean;
+  admission_date?: string;
+  admitting_diagnosis?: string;
+  admitting_diagnosis_text?: string;
+  attending_doctor?: number;
+  payer_type?: AdmissionPayerType;
+  insurance_details?: Record<string, unknown> | null;
+}
+
 // ============================================================================
 // Ward Round Types
 // ============================================================================
