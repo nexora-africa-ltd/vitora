@@ -300,6 +300,44 @@ export interface DischargeCreateData {
   lab_results_acknowledged?: boolean;
 }
 
+export interface DischargeDraft {
+  id: number;
+  admission: number;
+  admission_number?: string;
+  patient_name?: string;
+  discharge_type: DischargeType;
+  diagnoses: Omit<DischargeDiagnosis, 'id' | 'role_display'>[];
+  procedures_performed?: string;
+  treatment_summary: string;
+  discharge_medications: DischargeMedication[];
+  maternity_continuity_action: MaternityContinuityAction;
+  follow_up_date?: string | null;
+  follow_up_instructions?: string;
+  referral_facility?: string;
+  referral_reason?: string;
+  patient_instructions: string;
+  generation_mode?: 'generate' | 'suggest';
+  updated_by?: number | null;
+  updated_by_username?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface DischargeDraftInput {
+  discharge_type: DischargeType;
+  diagnoses: Omit<DischargeDiagnosis, 'id' | 'role_display'>[];
+  procedures_performed?: string;
+  treatment_summary: string;
+  discharge_medications: DischargeMedication[];
+  maternity_continuity_action?: MaternityContinuityAction;
+  follow_up_date?: string;
+  follow_up_instructions?: string;
+  referral_facility?: string;
+  referral_reason?: string;
+  patient_instructions: string;
+  generation_mode?: 'generate' | 'suggest';
+}
+
 // ============================================================================
 // Clearance Status Types (Automated Discharge Clearance)
 // ============================================================================

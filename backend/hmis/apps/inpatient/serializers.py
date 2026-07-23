@@ -24,6 +24,7 @@ from .models import (
     DermatologicalReaction,
     Discharge,
     DischargeDiagnosis,
+    DischargeDraft,
     DischargeTemplate,
     FluidBalanceEntry,
     FluidBalanceSheet,
@@ -890,6 +891,53 @@ class DischargeSerializer(serializers.ModelSerializer):
             return None
         death_record = getattr(obj.admission.patient, "death_record", None)
         return death_record.id if death_record else None
+
+
+class DischargeDraftSerializer(serializers.ModelSerializer):
+    """Serializer for persisted discharge drafts."""
+
+    admission_number = serializers.CharField(source="admission.admission_number", read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    updated_by_username = serializers.CharField(source="updated_by.username", read_only=True)
+
+    class Meta:
+        model = DischargeDraft
+        fields = [
+            "id",
+            "admission",
+            "admission_number",
+            "patient_name",
+            "discharge_type",
+            "diagnoses",
+            "procedures_performed",
+            "treatment_summary",
+            "discharge_medications",
+            "maternity_continuity_action",
+            "follow_up_date",
+            "follow_up_instructions",
+            "referral_facility",
+            "referral_reason",
+            "patient_instructions",
+            "generation_mode",
+            "updated_by",
+            "updated_by_username",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "admission",
+            "admission_number",
+            "patient_name",
+            "updated_by",
+            "updated_by_username",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_patient_name(self, obj) -> str:
+        patient = obj.admission.patient
+        return f"{patient.first_name} {patient.last_name}"
 
 
 class TransferSerializer(serializers.ModelSerializer):

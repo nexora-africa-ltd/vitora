@@ -14,7 +14,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
 
-from hmis.apps.inpatient.models import Admission, AdmissionRecommendation
+from hmis.apps.inpatient.models import Admission, AdmissionRecommendation, Discharge, DischargeDraft
 
 User = get_user_model()
 
@@ -393,6 +393,139 @@ class TestAdmissionAPI:
         assert response.status_code == status.HTTP_200_OK
         for admission in response.data["results"]:
             assert admission["admission_status"] == "ACTIVE"
+
+    def test_filter_active_admission_for_patient_returns_only_current_stay(
+        self,
+        authenticated_client,
+        sample_admission,
+        sample_inpatient_ward,
+        sample_facility,
+        sample_organization,
+        test_user,
+    ):
+        """Patient + ACTIVE filter should return only the current active admission."""
+        from datetime import timedelta
+
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.inpatient.models import Bed
+
+        discharge_bed = Bed.objects.create(
+            ward=sample_inpatient_ward,
+            bed_number="TMP-DISCH-1",
+            status="AVAILABLE",
+            status_changed_by=test_user,
+        )
+        old_ipd = Encounter.objects.create(
+            patient=sample_admission.patient,
+            encounter_type="IPD",
+            encounter_date=timezone.now().date() - timedelta(days=10),
+            chief_complaint="Previous admission episode",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        Admission.objects.create(
+            patient=sample_admission.patient,
+            ipd_encounter=old_ipd,
+            admission_date=timezone.now() - timedelta(days=10),
+            admitting_diagnosis="J18.9",
+            admitting_diagnosis_text="Previous pneumonia episode",
+            admitting_officer=test_user,
+            attending_doctor=test_user,
+            ward=sample_inpatient_ward,
+            bed=discharge_bed,
+            payer_type="CASH",
+            admission_status="DISCHARGED",
+            discharge_date=timezone.now() - timedelta(days=6),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get(
+            f"/api/inpatient/admissions/?patient={sample_admission.patient_id}&admission_status=ACTIVE&page_size=1"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["count"] == 1
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["id"] == sample_admission.id
+        assert response.data["results"][0]["admission_status"] == "ACTIVE"
+
+    def test_save_discharge_draft_without_finalizing_discharge(
+        self,
+        authenticated_client,
+        sample_admission,
+    ):
+        """Should persist discharge summary draft while keeping admission active."""
+        payload = {
+            "discharge_type": "NORMAL",
+            "diagnoses": [
+                {
+                    "role": "PRIMARY",
+                    "code": "J18.9",
+                    "description": "Pneumonia, unspecified",
+                }
+            ],
+            "treatment_summary": "Patient clinically improved; continue oral antibiotics.",
+            "patient_instructions": "Return if fever or dyspnea worsens.",
+            "follow_up_instructions": "Review after 7 days.",
+            "follow_up_date": "2026-07-30",
+            "discharge_medications": [
+                {
+                    "drug_name": "Amoxicillin",
+                    "dosage": "500mg",
+                    "frequency": "TDS",
+                    "duration": "5 days",
+                }
+            ],
+            "generation_mode": "generate",
+        }
+
+        response = authenticated_client.put(
+            f"/api/inpatient/admissions/{sample_admission.id}/discharge-draft/",
+            payload,
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["admission"] == sample_admission.id
+        assert response.data["treatment_summary"] == payload["treatment_summary"]
+
+        sample_admission.refresh_from_db()
+        assert sample_admission.admission_status == "ACTIVE"
+        assert Discharge.objects.filter(admission=sample_admission).count() == 0
+
+        draft = DischargeDraft.objects.get(admission=sample_admission)
+        assert draft.patient_instructions == payload["patient_instructions"]
+        assert draft.diagnoses[0]["code"] == "J18.9"
+
+    def test_get_and_delete_discharge_draft(
+        self,
+        authenticated_client,
+        sample_admission,
+    ):
+        """Should fetch and delete persisted discharge draft for an admission."""
+        DischargeDraft.objects.create(
+            admission=sample_admission,
+            discharge_type="NORMAL",
+            treatment_summary="Draft summary",
+            patient_instructions="Draft instructions",
+            diagnoses=[],
+            discharge_medications=[],
+        )
+
+        get_response = authenticated_client.get(
+            f"/api/inpatient/admissions/{sample_admission.id}/discharge-draft/"
+        )
+        assert get_response.status_code == status.HTTP_200_OK
+        assert get_response.data["admission"] == sample_admission.id
+        assert get_response.data["treatment_summary"] == "Draft summary"
+
+        delete_response = authenticated_client.delete(
+            f"/api/inpatient/admissions/{sample_admission.id}/discharge-draft/"
+        )
+        assert delete_response.status_code == status.HTTP_204_NO_CONTENT
+        assert not DischargeDraft.objects.filter(admission=sample_admission).exists()
 
     def test_admission_auto_assign_bed_success(
         self,

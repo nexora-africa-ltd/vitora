@@ -44,7 +44,7 @@ import { SectionCard } from '@/components/discharge/section-card';
 import { MedicationSuggestions } from '@/components/discharge/medication-suggestions';
 import { AdmissionPrescriptionsPicker } from '@/components/discharge/admission-prescriptions-picker';
 import { ClinicalReferenceCard } from '@/components/discharge/clinical-reference-card';
-import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders, useClearanceStatus, useKardexByAdmission, useTemperatureReadings, useFluidBalanceSheets, useBPReadings, useBloodTransfusions, useDefaultDischargeTemplate } from '@/lib/hooks/use-inpatient';
+import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders, useClearanceStatus, useKardexByAdmission, useTemperatureReadings, useFluidBalanceSheets, useBPReadings, useBloodTransfusions, useDefaultDischargeTemplate, useAdmissionDischargeDraft, useSaveAdmissionDischargeDraft, useDeleteAdmissionDischargeDraft } from '@/lib/hooks/use-inpatient';
 import { useAdmissionPrescriptions, useUpdatePrescription } from '@/lib/hooks/use-pharmacy';
 import { inpatientApi } from '@/lib/api/inpatient';
 import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
@@ -131,6 +131,9 @@ export default function DischargePage() {
   const { data: defaultTemplate } = useDefaultDischargeTemplate();
   const patientContext = useOptionalPatientContext();
   const createDischarge = useCreateDischarge();
+  const { data: persistedDraft } = useAdmissionDischargeDraft(admissionId || undefined);
+  const saveDischargeDraft = useSaveAdmissionDischargeDraft(admissionId || undefined);
+  const deleteDischargeDraft = useDeleteAdmissionDischargeDraft(admissionId || undefined);
   const isAIEnabled = useAIEnabled();
   const cdsEvaluate = useAICDSEvaluate();
 
@@ -252,6 +255,76 @@ export default function DischargePage() {
   }), [dischargeType, sections, diagnoses, patientInstructions, followUpInstructions, followUpDate, medications, maternityContinuityAction, generationMode]);
 
   const { clearDraft, hasDraft } = useDischargeDraft(admissionId, draftValues, draftSetters);
+  const [serverDraftHydrated, setServerDraftHydrated] = useState(false);
+
+  useEffect(() => {
+    if (serverDraftHydrated || !persistedDraft) return;
+
+    const hasLocalDraft = (() => {
+      if (typeof window === 'undefined' || !admissionId) return false;
+      try {
+        return !!window.localStorage.getItem(`vitora:discharge-draft:${admissionId}`);
+      } catch {
+        return false;
+      }
+    })();
+
+    if (hasLocalDraft || hasDraft) {
+      setServerDraftHydrated(true);
+      return;
+    }
+
+    setDischargeType(persistedDraft.discharge_type);
+    setDiagnoses(
+      (persistedDraft.diagnoses || []).map((diag) => ({
+        role: diag.role,
+        code: {
+          ...emptyDiagnosisCodeValue(),
+          icd10Display: `${diag.code}${diag.description ? ` - ${diag.description}` : ''}`,
+        },
+      }))
+    );
+    setPatientInstructions(persistedDraft.patient_instructions || '');
+    setFollowUpInstructions(persistedDraft.follow_up_instructions || '');
+    setFollowUpDate(persistedDraft.follow_up_date || '');
+    setMedications(persistedDraft.discharge_medications || []);
+    setMaternityContinuityAction(persistedDraft.maternity_continuity_action || 'NONE');
+    if (persistedDraft.generation_mode === 'suggest' || persistedDraft.generation_mode === 'generate') {
+      setGenerationMode(persistedDraft.generation_mode);
+    }
+    if (persistedDraft.treatment_summary) {
+      setSections((prev) => {
+        if (prev.some((section) => section.content.trim())) {
+          return prev;
+        }
+        const firstSection = prev[0];
+        if (!firstSection) {
+          return [{
+            id: createSectionId(),
+            title: 'Discharge Summary',
+            content: persistedDraft.treatment_summary,
+            source: 'manual',
+          }];
+        }
+        return prev.map((section, index) =>
+          index === 0 ? { ...section, content: persistedDraft.treatment_summary } : section
+        );
+      });
+    }
+
+    setServerDraftHydrated(true);
+    toast({
+      title: 'Saved Draft Loaded',
+      description: 'Recovered a server-saved discharge draft for this admission.',
+    });
+  }, [
+    persistedDraft,
+    serverDraftHydrated,
+    hasDraft,
+    admissionId,
+    toast,
+    setGenerationMode,
+  ]);
 
   // Show restored-draft toast once
   useEffect(() => {
@@ -946,6 +1019,80 @@ export default function DischargePage() {
     entry.code.icd11Display?.split(' - ').slice(1).join(' - ') ||
     entry.code.icd10Display?.split(' - ').slice(1).join(' - ') || '';
 
+  const buildDraftMedicationList = useCallback((): DischargeMedication[] => {
+    const rxMeds: DischargeMedication[] = admissionPrescriptions
+      .filter((rx) => selectedRxIds.has(rx.id))
+      .flatMap((rx) =>
+        rx.items
+          .filter((item) => !item.is_cancelled)
+          .map((item) => ({
+            drug_name: item.drug_name || `Drug #${item.drug}`,
+            dosage: item.dosage,
+            frequency: item.frequency,
+            duration: item.duration,
+            instructions: item.instructions || '',
+            prescription_id: rx.id,
+            dispensing_type: rxDispensingTypes[rx.id] ?? rx.dispensing_type ?? 'INTERNAL',
+          }))
+      );
+    const manualMeds = medications
+      .filter((m) => m.drug_name)
+      .map((m) => ({ ...m, dispensing_type: m.dispensing_type ?? 'EXTERNAL' as const }));
+    return [...rxMeds, ...manualMeds];
+  }, [admissionPrescriptions, medications, rxDispensingTypes, selectedRxIds]);
+
+  const handleSaveServerDraft = useCallback(async () => {
+    if (!admission) return;
+
+    const primaryEntry = diagnoses.find((d) => d.role === 'PRIMARY');
+    const primaryCode = primaryEntry ? getDiagCode(primaryEntry) : admission.admitting_diagnosis || '';
+    const primaryText = primaryEntry ? getDiagDescription(primaryEntry) : admission.admitting_diagnosis_text || '';
+
+    try {
+      await saveDischargeDraft.mutateAsync({
+        discharge_type: dischargeType,
+        diagnoses: diagnoses
+          .filter((d) => getDiagCode(d))
+          .map((d) => ({ role: d.role, code: getDiagCode(d), description: getDiagDescription(d) })),
+        treatment_summary: dischargeSummary,
+        patient_instructions: patientInstructions,
+        follow_up_date: followUpDate || undefined,
+        follow_up_instructions: followUpInstructions || undefined,
+        referral_facility: undefined,
+        referral_reason: undefined,
+        maternity_continuity_action: admission.mch_registration ? maternityContinuityAction : undefined,
+        discharge_medications: buildDraftMedicationList(),
+        procedures_performed: '',
+        generation_mode: generationMode,
+      });
+      toast({
+        title: 'Draft Saved',
+        description: primaryCode || primaryText
+          ? 'Discharge summary draft saved to server.'
+          : 'Draft saved. Add diagnosis before final discharge.',
+      });
+    } catch {
+      toast({
+        title: 'Save Failed',
+        description: 'Could not save discharge draft. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }, [
+    admission,
+    buildDraftMedicationList,
+    diagnoses,
+    dischargeSummary,
+    patientInstructions,
+    followUpDate,
+    followUpInstructions,
+    dischargeType,
+    generationMode,
+    maternityContinuityAction,
+    saveDischargeDraft,
+    toast,
+  ]);
+
   // Execute the actual discharge submission
   const executeDischarge = async () => {
     if (!admission) return;
@@ -974,25 +1121,7 @@ export default function DischargePage() {
       await Promise.all([...rxUpdatePromises, ...unmarkPromises]);
 
       // Build discharge_medications list from selected prescriptions + manual entries
-      const rxMeds: DischargeMedication[] = admissionPrescriptions
-        .filter((rx) => selectedRxIds.has(rx.id))
-        .flatMap((rx) =>
-          rx.items
-            .filter((item) => !item.is_cancelled)
-            .map((item) => ({
-              drug_name: item.drug_name || `Drug #${item.drug}`,
-              dosage: item.dosage,
-              frequency: item.frequency,
-              duration: item.duration,
-              instructions: item.instructions || '',
-              prescription_id: rx.id,
-              dispensing_type: rxDispensingTypes[rx.id] ?? rx.dispensing_type ?? 'INTERNAL',
-            }))
-        );
-      const manualMeds = medications
-        .filter((m) => m.drug_name)
-        .map((m) => ({ ...m, dispensing_type: m.dispensing_type ?? 'EXTERNAL' as const }));
-      const allDischargeMeds = [...rxMeds, ...manualMeds];
+      const allDischargeMeds = buildDraftMedicationList();
 
       const result = await createDischarge.mutateAsync({
         admission: admissionId,
@@ -1017,9 +1146,16 @@ export default function DischargePage() {
         discharge_medications: allDischargeMeds,
       });
       clearDraft();
+      try {
+        await deleteDischargeDraft.mutateAsync();
+      } catch {
+        // Non-blocking cleanup
+      }
 
       // Auto-create prescriptions for manual INTERNAL medications
-      const hasManualInternal = manualMeds.some((m) => m.dispensing_type === 'INTERNAL');
+      const hasManualInternal = allDischargeMeds.some(
+        (m) => !m.prescription_id && m.dispensing_type === 'INTERNAL'
+      );
       if (hasManualInternal && result.id) {
         try {
           const rxResult = await inpatientApi.createDischargePrescriptions(result.id);
@@ -1878,6 +2014,19 @@ export default function DischargePage() {
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button variant="outline" onClick={() => router.back()} className="w-full sm:w-auto">
           Cancel
+        </Button>
+        <Button
+          variant="outline"
+          onClick={handleSaveServerDraft}
+          disabled={saveDischargeDraft.isPending || createDischarge.isPending}
+          className="w-full sm:w-auto"
+        >
+          {saveDischargeDraft.isPending ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4 mr-2" />
+          )}
+          {saveDischargeDraft.isPending ? 'Saving Draft...' : 'Save Draft'}
         </Button>
         <Button
           onClick={handleSubmit}

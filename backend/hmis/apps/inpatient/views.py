@@ -34,6 +34,7 @@ from .models import (
     BloodTransfusionObservation,
     BPMonitoringReading,
     Discharge,
+    DischargeDraft,
     DischargeTemplate,
     FluidBalanceEntry,
     FluidBalanceSheet,
@@ -66,6 +67,7 @@ from .serializers import (
     BPMonitoringReadingCreateSerializer,
     BPMonitoringReadingSerializer,
     ConstraintOverrideMetricsSerializer,
+    DischargeDraftSerializer,
     DischargeSerializer,
     DischargeTemplateCreateSerializer,
     DischargeTemplateSerializer,
@@ -2184,6 +2186,47 @@ class AdmissionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mode
                 "all_cleared": all_cleared,
             }
         )
+
+    @action(detail=True, methods=["get", "put", "delete"], url_path="discharge-draft")
+    def discharge_draft(self, request, pk=None):
+        """Manage persisted discharge draft for an admission."""
+        admission = self.get_object()
+
+        if request.method == "GET":
+            draft = getattr(admission, "discharge_draft", None)
+            if draft is None:
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(DischargeDraftSerializer(draft).data)
+
+        if request.method == "DELETE":
+            draft = getattr(admission, "discharge_draft", None)
+            if draft is None:
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            draft.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        draft, _created = DischargeDraft.objects.get_or_create(
+            admission=admission,
+            defaults={"created_by": request.user, "updated_by": request.user},
+        )
+        serializer = DischargeDraftSerializer(draft, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(updated_by=request.user)
+
+        AuditLog.log(
+            action="discharge_draft_save",
+            user=request.user,
+            resource_type="Admission",
+            resource_id=admission.id,
+            details={
+                "admission_number": admission.admission_number,
+                "discharge_type": serializer.validated_data.get(
+                    "discharge_type", draft.discharge_type
+                ),
+            },
+            ip_address=get_client_ip(request),
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class DischargeViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
