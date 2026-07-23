@@ -216,12 +216,16 @@ export const inpatientApi = {
    * Seed default wards for the current facility.
    * Creates Medical, Surgical, Paediatric, Maternity, ICU, Isolation wards with beds.
    */
-  async seedDefaultWards(): Promise<{
+  async seedDefaultWards(facilityId?: number): Promise<{
     created: number;
+    facility_id: number;
+    facility_name: string;
     wards: Array<{ id: number; name: string; code: string; beds: number }>;
     message: string;
   }> {
-    const response = await apiClient.post('/api/inpatient/wards/seed-defaults/');
+    const response = await apiClient.post('/api/inpatient/wards/seed-defaults/',
+      facilityId ? { facility_id: facilityId } : {}
+    );
     return response.data;
   },
 
