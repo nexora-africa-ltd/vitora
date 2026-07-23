@@ -712,7 +712,13 @@ export function useSubmitInterFacilityTransfer() {
 export function useAcceptInterFacilityTransfer() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (transferId: number | string) => inpatientApi.acceptInterFacilityTransfer(transferId),
+    mutationFn: ({
+      transferId,
+      data,
+    }: {
+      transferId: number | string;
+      data?: Partial<InterFacilityTransferArrivalAutoAdmitData>;
+    }) => inpatientApi.acceptInterFacilityTransfer(transferId, data),
     onSuccess: (transfer) => invalidateInterFacilityTransferQueries(queryClient, transfer),
   });
 }

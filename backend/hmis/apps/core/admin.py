@@ -600,7 +600,13 @@ class StaffProfileAdmin(admin.ModelAdmin):
         "license_number",
     ]
     ordering = ["user__last_name", "user__first_name"]
-    readonly_fields = ["created_at", "updated_at", "organization", "is_license_valid_display"]
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+        "organization",
+        "hwr_national_id_display",
+        "is_license_valid_display",
+    ]
     filter_horizontal = [
         "secondary_roles",
         "secondary_departments",
@@ -654,7 +660,7 @@ class StaffProfileAdmin(admin.ModelAdmin):
                 "fields": (
                     "hwr_id",
                     "hwr_status",
-                    "hwr_national_id",
+                    "hwr_national_id_display",
                     "identification_type",
                     "licensing_body",
                     "license_number",
@@ -710,6 +716,11 @@ class StaffProfileAdmin(admin.ModelAdmin):
         if not obj.primary_role.requires_license:
             return None  # N/A
         return obj.is_license_valid()
+
+    @admin.display(description="HWR National ID")
+    def hwr_national_id_display(self, obj):
+        """Display HWR national ID from encrypted property."""
+        return obj.hwr_national_id or ""
 
     @admin.action(description="Activate selected staff")
     def activate_staff(self, request, queryset):

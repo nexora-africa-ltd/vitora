@@ -255,11 +255,19 @@ export function usePermissions(): PermissionsResult {
     if (isSuperuser || isAdmin) return true;
 
     const allowedRoles = ACTION_PERMISSIONS[action];
-    if (!allowedRoles) return false;
-
     const userRole = user.role || '';
-    return (allowedRoles as readonly string[]).includes(userRole);
-  }, [user, isAuthenticated, isSuperuser, isAdmin]);
+    if (allowedRoles && (allowedRoles as readonly string[]).includes(userRole)) {
+      return true;
+    }
+
+    // Permission fallback: allow explicit Django perms to grant access even when
+    // role codes differ from frontend action-role mapping (e.g. MEDICAL_DOCTOR).
+    const [, codename] = action.split('.');
+    if (hasPermission(action)) return true;
+    if (codename && hasPermission(codename)) return true;
+
+    return false;
+  }, [user, isAuthenticated, isSuperuser, isAdmin, hasPermission]);
 
   return useMemo(() => {
     // Unauthenticated users have no permissions

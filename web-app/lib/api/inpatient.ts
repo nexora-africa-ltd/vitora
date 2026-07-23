@@ -56,6 +56,11 @@ import {
   ATRListSchema,
   DischargeTemplateSchema,
   PaginatedDischargeTemplateSchema,
+  InterFacilityTransferSchema,
+  InterFacilityTransferEventSchema,
+  InterFacilityTransferArraySchema,
+  InterFacilityTransferEventArraySchema,
+  PaginatedInterFacilityTransferSchema,
 } from '@/lib/schemas/inpatient.schema';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { ImagingOrder } from '@/lib/types/imaging';
@@ -441,14 +446,18 @@ export const inpatientApi = {
       '/api/inpatient/inter-facility-transfers/',
       { params }
     );
-    return response.data;
+    return parseResponse(PaginatedInterFacilityTransferSchema, response.data, {
+      context: 'inpatientApi.listInterFacilityTransfers',
+    });
   },
 
   async getInterFacilityTransfer(transferId: IdParam): Promise<InterFacilityTransfer> {
     const response = await apiClient.get<InterFacilityTransfer>(
       `/api/inpatient/inter-facility-transfers/${transferId}/`
     );
-    return response.data;
+    return parseResponse(InterFacilityTransferSchema, response.data, {
+      context: 'inpatientApi.getInterFacilityTransfer',
+    });
   },
 
   async createInterFacilityTransfer(
@@ -458,7 +467,9 @@ export const inpatientApi = {
       '/api/inpatient/inter-facility-transfers/',
       data
     );
-    return response.data;
+    return parseResponse(InterFacilityTransferSchema, response.data, {
+      context: 'inpatientApi.createInterFacilityTransfer',
+    });
   },
 
   async submitInterFacilityTransfer(transferId: IdParam): Promise<InterFacilityTransfer> {
@@ -466,15 +477,22 @@ export const inpatientApi = {
       `/api/inpatient/inter-facility-transfers/${transferId}/submit/`,
       {}
     );
-    return response.data;
+    return parseResponse(InterFacilityTransferSchema, response.data, {
+      context: 'inpatientApi.submitInterFacilityTransfer',
+    });
   },
 
-  async acceptInterFacilityTransfer(transferId: IdParam): Promise<InterFacilityTransfer> {
+  async acceptInterFacilityTransfer(
+    transferId: IdParam,
+    data?: Partial<InterFacilityTransferArrivalAutoAdmitData>
+  ): Promise<InterFacilityTransfer> {
     const response = await apiClient.post<InterFacilityTransfer>(
       `/api/inpatient/inter-facility-transfers/${transferId}/accept/`,
-      {}
+      data ?? {}
     );
-    return response.data;
+    return parseResponse(InterFacilityTransferSchema, response.data, {
+      context: 'inpatientApi.acceptInterFacilityTransfer',
+    });
   },
 
   async rejectInterFacilityTransfer(
@@ -485,7 +503,9 @@ export const inpatientApi = {
       `/api/inpatient/inter-facility-transfers/${transferId}/reject/`,
       { reason }
     );
-    return response.data;
+    return parseResponse(InterFacilityTransferSchema, response.data, {
+      context: 'inpatientApi.rejectInterFacilityTransfer',
+    });
   },
 
   async dispatchInterFacilityTransfer(transferId: IdParam): Promise<InterFacilityTransfer> {
@@ -493,7 +513,9 @@ export const inpatientApi = {
       `/api/inpatient/inter-facility-transfers/${transferId}/dispatch/`,
       {}
     );
-    return response.data;
+    return parseResponse(InterFacilityTransferSchema, response.data, {
+      context: 'inpatientApi.dispatchInterFacilityTransfer',
+    });
   },
 
   async arriveInterFacilityTransfer(
@@ -504,7 +526,9 @@ export const inpatientApi = {
       `/api/inpatient/inter-facility-transfers/${transferId}/arrive/`,
       data ?? {}
     );
-    return response.data;
+    return parseResponse(InterFacilityTransferSchema, response.data, {
+      context: 'inpatientApi.arriveInterFacilityTransfer',
+    });
   },
 
   async arriveAndAdmitInterFacilityTransfer(
@@ -515,7 +539,9 @@ export const inpatientApi = {
       `/api/inpatient/inter-facility-transfers/${transferId}/arrive-and-admit/`,
       data
     );
-    return response.data;
+    return parseResponse(InterFacilityTransferSchema, response.data, {
+      context: 'inpatientApi.arriveAndAdmitInterFacilityTransfer',
+    });
   },
 
   async cancelInterFacilityTransfer(
@@ -526,21 +552,27 @@ export const inpatientApi = {
       `/api/inpatient/inter-facility-transfers/${transferId}/cancel/`,
       { reason }
     );
-    return response.data;
+    return parseResponse(InterFacilityTransferSchema, response.data, {
+      context: 'inpatientApi.cancelInterFacilityTransfer',
+    });
   },
 
   async listInterFacilityDestinationQueue(): Promise<InterFacilityTransfer[]> {
     const response = await apiClient.get<InterFacilityTransfer[]>(
       '/api/inpatient/inter-facility-transfers/destination-queue/'
     );
-    return response.data;
+    return parseResponse(InterFacilityTransferArraySchema, response.data, {
+      context: 'inpatientApi.listInterFacilityDestinationQueue',
+    });
   },
 
   async getInterFacilityTransferTimeline(transferId: IdParam): Promise<InterFacilityTransferEvent[]> {
     const response = await apiClient.get<InterFacilityTransferEvent[]>(
       `/api/inpatient/inter-facility-transfers/${transferId}/timeline/`
     );
-    return response.data;
+    return parseResponse(InterFacilityTransferEventArraySchema, response.data, {
+      context: 'inpatientApi.getInterFacilityTransferTimeline',
+    });
   },
 
   // ============================================================================

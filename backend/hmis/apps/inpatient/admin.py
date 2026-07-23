@@ -22,6 +22,8 @@ from .models import (
     FluidBalanceEntry,
     FluidBalanceSheet,
     InpatientConsumableUsage,
+    InterFacilityTransfer,
+    InterFacilityTransferEvent,
     KardexHandoverNote,
     KardexShiftNote,
     MedicationAdministration,
@@ -404,6 +406,89 @@ class TransferAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
             },
         ),
     )
+
+
+@admin.register(InterFacilityTransfer)
+class InterFacilityTransferAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
+    """Admin interface for inter-facility transfer workflow."""
+
+    list_display = [
+        "transfer_number",
+        "source_admission",
+        "patient",
+        "source_facility",
+        "destination_facility_name",
+        "status",
+        "priority",
+        "requested_by",
+        "accepted_by",
+        "accepted_at",
+        "created_at",
+    ]
+    list_filter = [
+        "status",
+        "priority",
+        "reason_code",
+        "transport_mode",
+        "source_facility",
+        "destination_facility",
+        "created_at",
+        "accepted_at",
+    ]
+    search_fields = [
+        "transfer_number",
+        "source_admission__admission_number",
+        "patient__first_name",
+        "patient__last_name",
+        "destination_facility_name",
+    ]
+    readonly_fields = [
+        "public_id",
+        "transfer_number",
+        "patient",
+        "source_facility",
+        "requested_by",
+        "accepted_by",
+        "accepted_at",
+        "dispatched_by",
+        "dispatched_at",
+        "arrived_by",
+        "arrived_at",
+        "cancelled_by",
+        "cancelled_at",
+        "created_at",
+        "updated_at",
+    ]
+    ordering = ["-created_at"]
+
+
+@admin.register(InterFacilityTransferEvent)
+class InterFacilityTransferEventAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
+    """Admin interface for inter-facility transfer timeline events."""
+
+    list_display = [
+        "transfer",
+        "event_type",
+        "from_status",
+        "to_status",
+        "actor",
+        "occurred_at",
+    ]
+    list_filter = ["event_type", "occurred_at", "from_status", "to_status"]
+    search_fields = ["transfer__transfer_number", "actor__username", "note"]
+    readonly_fields = [
+        "transfer",
+        "event_type",
+        "from_status",
+        "to_status",
+        "actor",
+        "occurred_at",
+        "note",
+        "metadata",
+        "created_at",
+        "updated_at",
+    ]
+    ordering = ["-occurred_at", "-id"]
 
 
 @admin.register(WardRound)

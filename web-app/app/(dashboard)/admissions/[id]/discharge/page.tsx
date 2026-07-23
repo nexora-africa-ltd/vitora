@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
@@ -44,9 +45,27 @@ import { SectionCard } from '@/components/discharge/section-card';
 import { MedicationSuggestions } from '@/components/discharge/medication-suggestions';
 import { AdmissionPrescriptionsPicker } from '@/components/discharge/admission-prescriptions-picker';
 import { ClinicalReferenceCard } from '@/components/discharge/clinical-reference-card';
-import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders, useClearanceStatus, useKardexByAdmission, useTemperatureReadings, useFluidBalanceSheets, useBPReadings, useBloodTransfusions, useDefaultDischargeTemplate, useAdmissionDischargeDraft, useSaveAdmissionDischargeDraft, useDeleteAdmissionDischargeDraft } from '@/lib/hooks/use-inpatient';
+import {
+  useAdmission,
+  useCreateDischarge,
+  useAdmissionWardRounds,
+  useAdmissionOrders,
+  useClearanceStatus,
+  useKardexByAdmission,
+  useTemperatureReadings,
+  useFluidBalanceSheets,
+  useBPReadings,
+  useBloodTransfusions,
+  useDefaultDischargeTemplate,
+  useAdmissionDischargeDraft,
+  useSaveAdmissionDischargeDraft,
+  useDeleteAdmissionDischargeDraft,
+  useInterFacilityTransfers,
+} from '@/lib/hooks/use-inpatient';
 import { useAdmissionPrescriptions, useUpdatePrescription } from '@/lib/hooks/use-pharmacy';
 import { inpatientApi } from '@/lib/api/inpatient';
+import { facilitiesApi } from '@/lib/api/facilities';
+import { organizationsApi } from '@/lib/api/organizations';
 import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { useAIEnabled, useAICDSEvaluate, useStoredCarePlans, useAISuggestionAudit, useStoredDischargeResults } from '@/lib/hooks/use-ai';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
@@ -56,7 +75,13 @@ import { useFacility } from '@/lib/context/facility-context';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { printDischargeDocument } from '@/lib/documents';
-import type { DischargeType, DischargeMedication, MaternityContinuityAction } from '@/lib/types/inpatient';
+import type {
+  DischargeType,
+  DischargeMedication,
+  InterFacilityTransferPriority,
+  InterFacilityTransferReason,
+  MaternityContinuityAction,
+} from '@/lib/types/inpatient';
 import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocGenerationMode } from '@/lib/types/ai';
 import type { DischargeSummarySection, SuggestedMedication } from '@/lib/discharge/types';
 import { DEFAULT_SECTION_TEMPLATES, DEDICATED_FIELD_KEYS, DISCHARGE_TYPES, MATERNITY_CONTINUITY_ACTIONS } from '@/lib/discharge/types';
@@ -111,6 +136,34 @@ function deriveConsultantName(
   return admission?.admitting_officer_username || '';
 }
 
+const OPEN_INTERFACILITY_TRANSFER_STATUSES = new Set([
+  'DRAFT',
+  'PENDING_ACCEPTANCE',
+  'ACCEPTED',
+  'IN_TRANSIT',
+]);
+
+const INTERFACILITY_REASON_OPTIONS: Array<{
+  value: InterFacilityTransferReason;
+  label: string;
+}> = [
+  { value: 'HIGHER_LEVEL_CARE', label: 'Higher-level Care' },
+  { value: 'SPECIALIST_INPUT', label: 'Specialist Input' },
+  { value: 'NO_CAPACITY', label: 'No Bed/Service Capacity' },
+  { value: 'EQUIPMENT_LIMITATION', label: 'Equipment Limitation' },
+  { value: 'PATIENT_REQUEST', label: 'Patient/Family Request' },
+  { value: 'OTHER', label: 'Other' },
+];
+
+const INTERFACILITY_PRIORITY_OPTIONS: Array<{
+  value: InterFacilityTransferPriority;
+  label: string;
+}> = [
+  { value: 'ROUTINE', label: 'Routine' },
+  { value: 'URGENT', label: 'Urgent' },
+  { value: 'STAT', label: 'STAT' },
+];
+
 export default function DischargePage() {
   const params = useParams();
   const router = useRouter();
@@ -120,6 +173,9 @@ export default function DischargePage() {
 
   const { data: admission, isLoading } = useAdmission(admissionRouteId);
   const admissionId = admission?.id ?? 0;
+  const { data: interFacilityTransfers } = useInterFacilityTransfers(
+    admissionId ? { source_admission: admissionId, ordering: '-created_at' } : undefined
+  );
   const { data: wardRounds } = useAdmissionWardRounds(admissionId);
   const { data: orders } = useAdmissionOrders(admissionId);
   const { data: kardex } = useKardexByAdmission(admissionId);
@@ -128,6 +184,35 @@ export default function DischargePage() {
   const { data: bpData } = useBPReadings(admissionId);
   const { data: transfusionData } = useBloodTransfusions(admissionId);
   const { facility, facilityDetail } = useFacility();
+  const { data: currentFacilityDetail } = useQuery({
+    queryKey: ['facilities', facility?.id, 'discharge-transfer-mini-sheet'],
+    enabled:
+      typeof facility?.id === 'number' &&
+      typeof facilityDetail?.organization !== 'number',
+    queryFn: () => facilitiesApi.get(facility!.id),
+  });
+  const organizationId =
+    (typeof facilityDetail?.organization === 'number' ? facilityDetail.organization : undefined) ??
+    (typeof currentFacilityDetail?.organization === 'number' ? currentFacilityDetail.organization : undefined) ??
+    user?.memberships?.find((membership) => membership.is_primary)?.organization_id ??
+    user?.memberships?.[0]?.organization_id;
+  const { data: organizationFacilities = [] } = useQuery({
+    queryKey: ['organizations', organizationId, 'facilities', 'discharge-transfer-mini-sheet'],
+    enabled: typeof organizationId === 'number',
+    queryFn: () => organizationsApi.listFacilities(organizationId as number, { is_active: true }),
+  });
+  const { data: organizationFacilityList = [] } = useQuery({
+    queryKey: ['facilities', 'organization-list', organizationId, 'discharge-transfer-mini-sheet'],
+    enabled: typeof organizationId === 'number',
+    queryFn: async () => {
+      const response = await facilitiesApi.list({
+        organization: organizationId as number,
+        is_active: true,
+        page_size: 200,
+      });
+      return response.results;
+    },
+  });
   const { data: defaultTemplate } = useDefaultDischargeTemplate();
   const patientContext = useOptionalPatientContext();
   const createDischarge = useCreateDischarge();
@@ -163,6 +248,16 @@ export default function DischargePage() {
   const [followUpDate, setFollowUpDate] = useState('');
   const [medications, setMedications] = useState<DischargeMedication[]>([]);
   const [maternityContinuityAction, setMaternityContinuityAction] = useState<MaternityContinuityAction>('NONE');
+  const [transferDestinationFacilitySelection, setTransferDestinationFacilitySelection] = useState('OTHER');
+  const [transferDestinationFacilityName, setTransferDestinationFacilityName] = useState('');
+  const [transferReasonCode, setTransferReasonCode] = useState<InterFacilityTransferReason>('HIGHER_LEVEL_CARE');
+  const [transferPriority, setTransferPriority] = useState<InterFacilityTransferPriority>('URGENT');
+  const [transferReasonDetails, setTransferReasonDetails] = useState('');
+  const [transferClinicalSummary, setTransferClinicalSummary] = useState('');
+  const [transferHandoverNotes, setTransferHandoverNotes] = useState('');
+  const [transferTransportMode, setTransferTransportMode] = useState<'AMBULANCE' | 'PRIVATE' | 'OTHER'>('AMBULANCE');
+  const [transferEscortRequired, setTransferEscortRequired] = useState(false);
+  const [transferEscortName, setTransferEscortName] = useState('');
 
   // Selected prescription IDs for discharge medications + dispensing type overrides
   const [selectedRxIds, setSelectedRxIds] = useState<Set<number>>(new Set());
@@ -593,12 +688,76 @@ export default function DischargePage() {
   const clearanceSatisfied = !clearanceRequired || allClearancesComplete;
   const requiresMaternityContinuityAction = !!admission?.mch_registration && ['NORMAL', 'TRANSFERRED'].includes(dischargeType);
   const requiresScheduledFollowUpDate = requiresMaternityContinuityAction && maternityContinuityAction === 'SCHEDULE_EARLY_PNC';
+  const openInterFacilityTransfer = useMemo(() => {
+    const transfers = interFacilityTransfers?.results ?? [];
+    return (
+      transfers.find((transfer) => OPEN_INTERFACILITY_TRANSFER_STATUSES.has(transfer.status)) ??
+      null
+    );
+  }, [interFacilityTransfers?.results]);
+  const transferDestinationFacilityId =
+    transferDestinationFacilitySelection !== 'OTHER' && transferDestinationFacilitySelection
+      ? Number(transferDestinationFacilitySelection)
+      : undefined;
+  const transferNeedsManualDestinationName = transferDestinationFacilitySelection === 'OTHER';
+  const membershipFacilities = useMemo(() => {
+    const map = new Map<number, { id: number; name: string; mfl_code: string }>();
+    (user?.memberships ?? []).forEach((membership) => {
+      membership.facilities.forEach((facilityItem) => {
+        map.set(facilityItem.id, {
+          id: facilityItem.id,
+          name: facilityItem.name,
+          mfl_code: facilityItem.mfl_code,
+        });
+      });
+    });
+    return [...map.values()];
+  }, [user?.memberships]);
+  const transferDestinationOptions = useMemo(() => {
+    const map = new Map<number, { id: number; name: string; mfl_code: string }>();
+    organizationFacilities.forEach((item) => {
+      map.set(item.id, { id: item.id, name: item.name, mfl_code: item.mfl_code });
+    });
+    organizationFacilityList.forEach((item) => {
+      map.set(item.id, { id: item.id, name: item.name, mfl_code: item.mfl_code });
+    });
+    membershipFacilities.forEach((item) => {
+      map.set(item.id, { id: item.id, name: item.name, mfl_code: item.mfl_code });
+    });
+    return [...map.values()];
+  }, [membershipFacilities, organizationFacilities, organizationFacilityList]);
+  const transferSelectableFacilities = useMemo(
+    () => transferDestinationOptions.filter((item) => item.id !== facility?.id),
+    [transferDestinationOptions, facility?.id]
+  );
+  const needsTransferMiniSheet = dischargeType === 'TRANSFERRED' && !openInterFacilityTransfer;
+  const transferMiniSheetIncomplete =
+    needsTransferMiniSheet &&
+    ((!transferDestinationFacilityId && !transferDestinationFacilityName.trim()) ||
+      !transferClinicalSummary.trim() ||
+      !transferHandoverNotes.trim());
 
   useEffect(() => {
     if (admission?.mch_registration && maternityContinuityAction === 'NONE') {
       setMaternityContinuityAction('SCHEDULE_EARLY_PNC');
     }
   }, [admission?.mch_registration, maternityContinuityAction]);
+
+  useEffect(() => {
+    if (dischargeType !== 'TRANSFERRED') return;
+    if (!transferClinicalSummary.trim() && dischargeSummary.trim()) {
+      setTransferClinicalSummary(dischargeSummary);
+    }
+    if (!transferHandoverNotes.trim() && followUpInstructions.trim()) {
+      setTransferHandoverNotes(followUpInstructions);
+    }
+  }, [
+    dischargeType,
+    dischargeSummary,
+    followUpInstructions,
+    transferClinicalSummary,
+    transferHandoverNotes,
+  ]);
 
   // Build rich clinical context from admission data + full patient record for AI calls
   const patientCtx = useMemo((): AIPatientContext => {
@@ -1123,6 +1282,25 @@ export default function DischargePage() {
       // Build discharge_medications list from selected prescriptions + manual entries
       const allDischargeMeds = buildDraftMedicationList();
 
+      const transferWorkflowPayload =
+        dischargeType === 'TRANSFERRED' && !openInterFacilityTransfer
+          ? {
+              destination_facility: transferDestinationFacilityId,
+              destination_facility_name: transferDestinationFacilityId
+                ? undefined
+                : transferDestinationFacilityName.trim(),
+              reason_code: transferReasonCode,
+              reason_details: transferReasonDetails,
+              priority: transferPriority,
+              clinical_summary: transferClinicalSummary,
+              handover_notes: transferHandoverNotes,
+              transport_mode: transferTransportMode,
+              escort_required: transferEscortRequired,
+              escort_name: transferEscortRequired ? transferEscortName : '',
+              submit_immediately: true,
+            }
+          : undefined;
+
       const result = await createDischarge.mutateAsync({
         admission: admissionId,
         discharge_type: dischargeType,
@@ -1144,6 +1322,7 @@ export default function DischargePage() {
         follow_up_date: followUpDate || undefined,
         follow_up_instructions: followUpInstructions || undefined,
         discharge_medications: allDischargeMeds,
+        transfer_workflow: transferWorkflowPayload,
       });
       clearDraft();
       try {
@@ -1226,6 +1405,23 @@ export default function DischargePage() {
         variant: 'destructive',
       });
       return;
+    }
+
+    if (needsTransferMiniSheet) {
+      const missing: string[] = [];
+      if (!transferDestinationFacilityId && !transferDestinationFacilityName.trim()) {
+        missing.push('Destination Facility');
+      }
+      if (!transferClinicalSummary.trim()) missing.push('Transfer Clinical Summary');
+      if (!transferHandoverNotes.trim()) missing.push('Transfer Handover Notes');
+      if (missing.length > 0) {
+        toast({
+          title: 'Transfer Details Required',
+          description: `Please complete: ${missing.join(', ')}`,
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     // Run CDS safety checks if AI is enabled
@@ -1498,6 +1694,162 @@ export default function DischargePage() {
           </div>
         </CardContent>
       </Card>
+
+      {dischargeType === 'TRANSFERRED' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Inter-Facility Transfer Linkage</CardTitle>
+            {openInterFacilityTransfer ? (
+              <CardDescription>
+                Linked to existing transfer workflow <span className="font-medium">{openInterFacilityTransfer.transfer_number}</span> ({openInterFacilityTransfer.status_display || openInterFacilityTransfer.status}).
+              </CardDescription>
+            ) : (
+              <CardDescription>
+                No open transfer workflow found for this admission. Complete this mini-sheet to create and link one during discharge.
+              </CardDescription>
+            )}
+          </CardHeader>
+          {!openInterFacilityTransfer && (
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Destination Facility *</Label>
+                  <Select
+                    value={transferDestinationFacilitySelection}
+                    onValueChange={setTransferDestinationFacilitySelection}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select destination facility" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {transferSelectableFacilities.map((item) => (
+                        <SelectItem key={item.id} value={String(item.id)}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="OTHER">Other (Manual Entry)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {transferNeedsManualDestinationName && (
+                    <Input
+                      value={transferDestinationFacilityName}
+                      onChange={(e) => setTransferDestinationFacilityName(e.target.value)}
+                      placeholder="e.g., External Referral Hospital"
+                    />
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>Reason Code</Label>
+                  <Select
+                    value={transferReasonCode}
+                    onValueChange={(value) => setTransferReasonCode(value as InterFacilityTransferReason)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INTERFACILITY_REASON_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Priority</Label>
+                  <Select
+                    value={transferPriority}
+                    onValueChange={(value) => setTransferPriority(value as InterFacilityTransferPriority)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INTERFACILITY_PRIORITY_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Transport Mode</Label>
+                  <Select
+                    value={transferTransportMode}
+                    onValueChange={(value) =>
+                      setTransferTransportMode(value as 'AMBULANCE' | 'PRIVATE' | 'OTHER')
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AMBULANCE">Ambulance</SelectItem>
+                      <SelectItem value="PRIVATE">Private Vehicle</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Reason Details</Label>
+                <Textarea
+                  value={transferReasonDetails}
+                  onChange={(e) => setTransferReasonDetails(e.target.value)}
+                  rows={2}
+                  placeholder="Optional details explaining transfer reason"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Transfer Clinical Summary *</Label>
+                <Textarea
+                  value={transferClinicalSummary}
+                  onChange={(e) => setTransferClinicalSummary(e.target.value)}
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Transfer Handover Notes *</Label>
+                <Textarea
+                  value={transferHandoverNotes}
+                  onChange={(e) => setTransferHandoverNotes(e.target.value)}
+                  rows={3}
+                />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Escort Required</Label>
+                  <Select
+                    value={transferEscortRequired ? 'yes' : 'no'}
+                    onValueChange={(value) => setTransferEscortRequired(value === 'yes')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="no">No</SelectItem>
+                      <SelectItem value="yes">Yes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Escort Name</Label>
+                  <Input
+                    value={transferEscortName}
+                    onChange={(e) => setTransferEscortName(e.target.value)}
+                    placeholder="Optional"
+                    disabled={!transferEscortRequired}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {/* Automated Department Clearances */}
       <ClearanceStatusPanel admissionId={admissionId} />
@@ -2030,7 +2382,7 @@ export default function DischargePage() {
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={createDischarge.isPending || cdsEvaluate.isPending || !dischargeSummary || !patientInstructions || !clearanceSatisfied || (requiresScheduledFollowUpDate && !followUpDate)}
+          disabled={createDischarge.isPending || cdsEvaluate.isPending || !dischargeSummary || !patientInstructions || !clearanceSatisfied || transferMiniSheetIncomplete || (requiresScheduledFollowUpDate && !followUpDate)}
           className="w-full sm:w-auto"
         >
           {cdsEvaluate.isPending ? (

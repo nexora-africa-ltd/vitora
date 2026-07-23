@@ -1517,6 +1517,14 @@ class InterFacilityTransfer(TimeStampedModel):
         blank=True,
         related_name="incoming_interfacility_transfers",
     )
+    destination_admission = models.ForeignKey(
+        Admission,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="destination_interfacility_transfers",
+        help_text="Admission created at destination facility for this transfer workflow.",
+    )
     destination_facility_name = models.CharField(
         max_length=255,
         blank=True,

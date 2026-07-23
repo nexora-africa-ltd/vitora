@@ -5,6 +5,7 @@ Serializers for the inpatient app.
 
 from rest_framework import serializers
 
+from hmis.apps.core.models import Facility
 from hmis.apps.core.utils import resolve_model_pk_or_public_id
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.mch.services.postpartum_continuity import (
@@ -576,6 +577,7 @@ class DischargeSerializer(serializers.ModelSerializer):
     )
     length_of_stay = serializers.ReadOnlyField()
     death_record_id = serializers.SerializerMethodField()
+    transfer_workflow = serializers.DictField(write_only=True, required=False)
 
     class Meta:
         model = Discharge
@@ -615,6 +617,7 @@ class DischargeSerializer(serializers.ModelSerializer):
             "lab_results_acknowledged",
             "length_of_stay",
             "death_record_id",
+            "transfer_workflow",
             "created_at",
             "updated_at",
         ]
@@ -636,6 +639,7 @@ class DischargeSerializer(serializers.ModelSerializer):
             if "follow_up_date" in attrs
             else getattr(self.instance, "follow_up_date", None)
         )
+        transfer_workflow = attrs.get("transfer_workflow")
 
         # ----- Automated clearance validation for normal discharges -----
         if admission and discharge_type in {"NORMAL", "ROUTINE", "TRANSFERRED"}:
@@ -727,7 +731,137 @@ class DischargeSerializer(serializers.ModelSerializer):
                     }
                 )
 
+        if admission and discharge_type == "TRANSFERRED":
+            open_transfer = self._get_open_transfer_for_admission(admission)
+            if open_transfer is None and not transfer_workflow:
+                raise serializers.ValidationError(
+                    {
+                        "transfer_workflow": (
+                            "No open inter-facility transfer exists for this admission. "
+                            "Provide transfer_workflow details to create and link one."
+                        )
+                    }
+                )
+
+            if transfer_workflow:
+                destination_facility = transfer_workflow.get("destination_facility")
+                destination_name = (
+                    transfer_workflow.get("destination_facility_name") or ""
+                ).strip()
+                if not destination_facility and not destination_name:
+                    raise serializers.ValidationError(
+                        {
+                            "transfer_workflow": (
+                                "transfer_workflow requires destination_facility or "
+                                "destination_facility_name."
+                            )
+                        }
+                    )
+                required_fields = ["reason_code", "clinical_summary", "handover_notes"]
+                missing = [
+                    field
+                    for field in required_fields
+                    if not str(transfer_workflow.get(field, "") or "").strip()
+                ]
+                if missing:
+                    raise serializers.ValidationError(
+                        {
+                            "transfer_workflow": (
+                                "transfer_workflow missing required fields: " + ", ".join(missing)
+                            )
+                        }
+                    )
+
         return attrs
+
+    @staticmethod
+    def _get_open_transfer_for_admission(admission: Admission) -> InterFacilityTransfer | None:
+        return (
+            InterFacilityTransfer.objects.filter(
+                source_admission=admission,
+                status__in=[
+                    InterFacilityTransfer.TransferStatus.DRAFT,
+                    InterFacilityTransfer.TransferStatus.PENDING_ACCEPTANCE,
+                    InterFacilityTransfer.TransferStatus.ACCEPTED,
+                    InterFacilityTransfer.TransferStatus.IN_TRANSIT,
+                ],
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
+    def _normalize_transfer_workflow_payload(self, payload: dict) -> tuple[dict, bool]:
+        normalized = dict(payload)
+        destination_facility = normalized.get("destination_facility")
+        if destination_facility:
+            if isinstance(destination_facility, Facility):
+                normalized["destination_facility"] = destination_facility
+            else:
+                normalized["destination_facility"] = resolve_model_pk_or_public_id(
+                    Facility, destination_facility
+                )[0]
+
+        normalized.setdefault("priority", InterFacilityTransfer.TransferPriority.ROUTINE)
+        normalized.setdefault("transport_mode", InterFacilityTransfer.TransportMode.AMBULANCE)
+        normalized.setdefault("escort_required", False)
+        normalized.setdefault("escort_name", "")
+        normalized.setdefault("reason_details", "")
+        normalized.setdefault("destination_facility_name", "")
+
+        submit_immediately = bool(normalized.pop("submit_immediately", False))
+        return normalized, submit_immediately
+
+    def _ensure_transfer_link(self, discharge: Discharge, transfer_workflow: dict | None) -> None:
+        if discharge.discharge_type != "TRANSFERRED":
+            return
+
+        open_transfer = self._get_open_transfer_for_admission(discharge.admission)
+        if open_transfer is None:
+            if not transfer_workflow:
+                raise serializers.ValidationError(
+                    {
+                        "transfer_workflow": (
+                            "Provide transfer_workflow details to create a linked transfer record."
+                        )
+                    }
+                )
+            payload, submit_immediately = self._normalize_transfer_workflow_payload(
+                transfer_workflow
+            )
+            open_transfer = InterFacilityTransfer.objects.create(
+                source_admission=discharge.admission,
+                source_discharge=discharge,
+                patient=discharge.admission.patient,
+                source_facility=discharge.admission.facility,
+                requested_by=discharge.discharged_by,
+                **payload,
+            )
+            InterFacilityTransferEvent.objects.create(
+                transfer=open_transfer,
+                event_type=InterFacilityTransferEvent.EventType.CREATED,
+                actor=discharge.discharged_by,
+                from_status="",
+                to_status=open_transfer.status,
+                note="Created from discharge workflow.",
+            )
+            if submit_immediately:
+                open_transfer.transition_to(
+                    InterFacilityTransfer.TransferStatus.PENDING_ACCEPTANCE,
+                    user=discharge.discharged_by,
+                )
+                InterFacilityTransferEvent.objects.create(
+                    transfer=open_transfer,
+                    event_type=InterFacilityTransferEvent.EventType.SUBMITTED,
+                    actor=discharge.discharged_by,
+                    from_status=InterFacilityTransfer.TransferStatus.DRAFT,
+                    to_status=InterFacilityTransfer.TransferStatus.PENDING_ACCEPTANCE,
+                    note="Submitted from discharge workflow.",
+                )
+            return
+
+        if open_transfer.source_discharge_id is None:
+            open_transfer.source_discharge = discharge
+            open_transfer.save(update_fields=["source_discharge", "updated_at"])
 
     def _apply_maternity_continuity(self, discharge: Discharge) -> None:
         registration = discharge.admission.mch_registration
@@ -833,6 +967,7 @@ class DischargeSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         diagnoses_data = validated_data.pop("diagnoses", [])
+        transfer_workflow = validated_data.pop("transfer_workflow", None)
         discharge = super().create(validated_data)
 
         # Create nested diagnoses
@@ -848,6 +983,7 @@ class DischargeSerializer(serializers.ModelSerializer):
 
         self._apply_maternity_continuity(discharge)
         self._schedule_follow_up_appointment(discharge)
+        self._ensure_transfer_link(discharge, transfer_workflow)
         return discharge
 
     def update(self, instance, validated_data):
@@ -965,6 +1101,7 @@ class InterFacilityTransferSerializer(serializers.ModelSerializer):
             "source_admission",
             "source_admission_number",
             "source_discharge",
+            "destination_admission",
             "patient",
             "patient_name",
             "source_facility",
@@ -1006,6 +1143,7 @@ class InterFacilityTransferSerializer(serializers.ModelSerializer):
             "patient",
             "source_facility",
             "requested_by",
+            "destination_admission",
             "accepted_by",
             "dispatched_by",
             "arrived_by",
