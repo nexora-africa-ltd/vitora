@@ -508,6 +508,7 @@ export interface InterFacilityTransfer {
   cancellation_reason?: string;
   discharge_summary_requested?: boolean;
   discharge_summary_requested_at?: string | null;
+  discharge_summary_request_note?: string | null;
   discharge_summary_snapshot?: Record<string, unknown> | null;
   timeline_events?: InterFacilityTransferEvent[];
   destination_admission_id?: number;

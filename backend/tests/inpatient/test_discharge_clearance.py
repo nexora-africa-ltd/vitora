@@ -20,7 +20,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
 
-from hmis.apps.billing.models import Invoice
+from hmis.apps.billing.models import Invoice, InvoiceItem, SHAClaim, SHAClaimItem, SHAMember
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.inpatient.models import (
     Admission,
@@ -214,6 +214,81 @@ class TestClearanceStatusEndpoint:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["billing"]["cleared"] is True
+
+    def test_billing_excludes_sha_allocated_amounts_from_blocking(
+        self,
+        clearance_client,
+        clearance_admission,
+        discharge_user,
+        sample_facility,
+        sample_organization,
+    ):
+        """Submitted SHA-covered line items should not block discharge clearance."""
+        invoice = Invoice.objects.create(
+            patient=clearance_admission.patient,
+            encounter=clearance_admission.ipd_encounter,
+            invoice_date=timezone.now().date(),
+            due_date=(timezone.now() + timedelta(days=30)).date(),
+            subtotal=Decimal("5000.00"),
+            total_amount=Decimal("5000.00"),
+            balance_due=Decimal("5000.00"),
+            status="pending",
+            created_by=discharge_user,
+        )
+        invoice_item = InvoiceItem.objects.create(
+            invoice=invoice,
+            description="Covered SHA service",
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("5000.00"),
+            line_total=Decimal("5000.00"),
+        )
+        sha_member = SHAMember(
+            patient=clearance_admission.patient,
+            sha_number="SHA-0000001111",
+            membership_type=SHAMember.MembershipType.PRINCIPAL,
+            status=SHAMember.MembershipStatus.ACTIVE,
+            created_by=discharge_user,
+        )
+        sha_member.national_id = "12345678"
+        sha_member.save()
+        claim = SHAClaim.objects.create(
+            patient=clearance_admission.patient,
+            sha_member=sha_member,
+            encounter=clearance_admission.ipd_encounter,
+            invoice=invoice,
+            claim_type=SHAClaim.ClaimType.INPATIENT,
+            status=SHAClaim.ClaimStatus.SUBMITTED,
+            service_date=timezone.now().date(),
+            admission_date=timezone.now().date(),
+            primary_diagnosis_code="J18.9",
+            primary_diagnosis_description="Pneumonia",
+            facility_code="FR-TEST-001",
+            facility_level="L4",
+            facility=sample_facility,
+            organization=sample_organization,
+            created_by=discharge_user,
+        )
+        SHAClaimItem.objects.create(
+            claim=claim,
+            invoice_item=invoice_item,
+            description="Covered SHA service",
+            service_date=timezone.now().date(),
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("5000.00"),
+            claimed_amount=Decimal("5000.00"),
+            sha_covered_amount=Decimal("5000.00"),
+            patient_payable_amount=Decimal("0.00"),
+            discount_amount=Decimal("0.00"),
+            allocation_status=SHAClaimItem.AllocationStatus.RESOLVED,
+        )
+
+        url = f"/api/inpatient/admissions/{clearance_admission.id}/clearance-status/"
+        response = clearance_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["billing"]["cleared"] is True
+        assert response.data["billing"]["outstanding_amount"] == 0.0
+        assert response.data["billing"]["invoice_count"] == 0
 
     def test_pharmacy_not_cleared_with_pending_prescription(
         self, clearance_client, clearance_admission, discharge_user
@@ -449,6 +524,91 @@ class TestDischargeAutomatedClearance:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "billing_cleared" in response.data
+
+    def test_discharge_allows_unpaid_invoice_when_sha_claim_covers_line(
+        self,
+        clearance_client,
+        clearance_admission,
+        discharge_user,
+        sample_facility,
+        sample_organization,
+    ):
+        """Normal discharge should proceed when outstanding invoice is fully SHA-covered."""
+        invoice = Invoice.objects.create(
+            patient=clearance_admission.patient,
+            encounter=clearance_admission.ipd_encounter,
+            invoice_date=timezone.now().date(),
+            due_date=(timezone.now() + timedelta(days=30)).date(),
+            subtotal=Decimal("3000.00"),
+            total_amount=Decimal("3000.00"),
+            balance_due=Decimal("3000.00"),
+            status="pending",
+            created_by=discharge_user,
+        )
+        invoice_item = InvoiceItem.objects.create(
+            invoice=invoice,
+            description="SHA-covered admission charge",
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("3000.00"),
+            line_total=Decimal("3000.00"),
+        )
+        sha_member = SHAMember(
+            patient=clearance_admission.patient,
+            sha_number="SHA-0000002222",
+            membership_type=SHAMember.MembershipType.PRINCIPAL,
+            status=SHAMember.MembershipStatus.ACTIVE,
+            created_by=discharge_user,
+        )
+        sha_member.national_id = "87654321"
+        sha_member.save()
+        claim = SHAClaim.objects.create(
+            patient=clearance_admission.patient,
+            sha_member=sha_member,
+            encounter=clearance_admission.ipd_encounter,
+            invoice=invoice,
+            claim_type=SHAClaim.ClaimType.INPATIENT,
+            status=SHAClaim.ClaimStatus.SUBMITTED,
+            service_date=timezone.now().date(),
+            admission_date=timezone.now().date(),
+            primary_diagnosis_code="J18.9",
+            primary_diagnosis_description="Pneumonia",
+            facility_code="FR-TEST-001",
+            facility_level="L4",
+            facility=sample_facility,
+            organization=sample_organization,
+            created_by=discharge_user,
+        )
+        SHAClaimItem.objects.create(
+            claim=claim,
+            invoice_item=invoice_item,
+            description="SHA-covered admission charge",
+            service_date=timezone.now().date(),
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("3000.00"),
+            claimed_amount=Decimal("3000.00"),
+            sha_covered_amount=Decimal("3000.00"),
+            patient_payable_amount=Decimal("0.00"),
+            discount_amount=Decimal("0.00"),
+            allocation_status=SHAClaimItem.AllocationStatus.RESOLVED,
+        )
+
+        response = clearance_client.post(
+            "/api/inpatient/discharges/",
+            {
+                "admission": clearance_admission.id,
+                "discharge_type": "NORMAL",
+                "discharge_date": timezone.now().isoformat(),
+                "discharged_by": discharge_user.id,
+                "admission_diagnosis": "J18.9",
+                "final_diagnosis": "J18.9",
+                "final_diagnosis_text": "Pneumonia resolved",
+                "treatment_summary": "IV antibiotics completed",
+                "patient_instructions": "Rest at home",
+            },
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["billing_cleared"] is True
 
     def test_discharge_blocked_by_pending_prescription(
         self, clearance_client, clearance_admission, discharge_user

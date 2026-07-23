@@ -485,6 +485,7 @@ export const InterFacilityTransferSchema = z.object({
   cancellation_reason: z.string().optional(),
   discharge_summary_requested: z.boolean().optional(),
   discharge_summary_requested_at: z.string().nullable().optional(),
+  discharge_summary_request_note: z.string().nullable().optional(),
   discharge_summary_snapshot: z.record(z.unknown()).nullable().optional(),
   timeline_events: z.array(InterFacilityTransferEventSchema).optional(),
   destination_admission_id: z.number().optional(),

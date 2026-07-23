@@ -29,6 +29,7 @@ from hmis.apps.core.tenant_access import user_has_facility_access
 from hmis.apps.licensing.permissions import requires_feature
 from hmis.apps.patients.models import Patient
 
+from .clearance import calculate_patient_blocking_balance
 from .models import (
     Admission,
     AdmissionRecommendation,
@@ -2090,8 +2091,6 @@ class AdmissionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mode
     @action(detail=True, methods=["get"], url_path="clearance-status")
     def clearance_status(self, request, pk=None):
         """Get automated clearance status for this admission."""
-        from decimal import Decimal
-
         from hmis.apps.billing.models import Invoice
         from hmis.apps.laboratory.models import LabOrder
         from hmis.apps.pharmacy.models import Prescription
@@ -2109,19 +2108,19 @@ class AdmissionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mode
                 Invoice.Status.WRITTEN_OFF,
             ]
         )
-        outstanding = sum((inv.balance_due for inv in unpaid_invoices), Decimal("0.00"))
+        billing_balance = calculate_patient_blocking_balance(unpaid_invoices)
+        outstanding = billing_balance["outstanding_amount"]
         billing_cleared = outstanding <= 0
-        first_unpaid_id = unpaid_invoices.values_list("id", flat=True).first()
         billing_info = {
             "cleared": billing_cleared,
             "reason": (
                 "All bills settled"
                 if billing_cleared
-                else f"Outstanding balance: KES {outstanding:,.2f}"
+                else f"Patient-responsible outstanding balance: KES {outstanding:,.2f}"
             ),
             "outstanding_amount": float(outstanding),
-            "invoice_count": unpaid_invoices.count(),
-            "first_pending_id": first_unpaid_id,
+            "invoice_count": billing_balance["invoice_count"],
+            "first_pending_id": billing_balance["first_pending_id"],
         }
 
         # ----- Pharmacy: all INTERNAL prescriptions dispensed or cancelled -----
@@ -2869,27 +2868,55 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
     @staticmethod
     def _build_discharge_summary_snapshot(transfer) -> dict:
         discharge = transfer.source_discharge
-        if discharge is None:
-            return {}
-        return {
-            "discharge_id": discharge.id,
-            "discharge_type": discharge.discharge_type,
-            "discharge_date": discharge.discharge_date.isoformat()
-            if discharge.discharge_date
-            else None,
-            "final_diagnosis": discharge.final_diagnosis,
-            "final_diagnosis_text": discharge.final_diagnosis_text,
-            "procedures_performed": discharge.procedures_performed,
-            "treatment_summary": discharge.treatment_summary,
-            "discharge_medications": discharge.discharge_medications,
-            "follow_up_date": discharge.follow_up_date.isoformat()
-            if discharge.follow_up_date
-            else None,
-            "follow_up_instructions": discharge.follow_up_instructions,
-            "patient_instructions": discharge.patient_instructions,
-            "referral_facility": discharge.referral_facility,
-            "referral_reason": discharge.referral_reason,
-        }
+        if discharge is not None:
+            return {
+                "snapshot_source": "DISCHARGE",
+                "discharge_id": discharge.id,
+                "discharge_type": discharge.discharge_type,
+                "discharge_date": discharge.discharge_date.isoformat()
+                if discharge.discharge_date
+                else None,
+                "final_diagnosis": discharge.final_diagnosis,
+                "final_diagnosis_text": discharge.final_diagnosis_text,
+                "procedures_performed": discharge.procedures_performed,
+                "treatment_summary": discharge.treatment_summary,
+                "discharge_medications": discharge.discharge_medications,
+                "follow_up_date": discharge.follow_up_date.isoformat()
+                if discharge.follow_up_date
+                else None,
+                "follow_up_instructions": discharge.follow_up_instructions,
+                "patient_instructions": discharge.patient_instructions,
+                "referral_facility": discharge.referral_facility,
+                "referral_reason": discharge.referral_reason,
+            }
+
+        discharge_draft = getattr(transfer.source_admission, "discharge_draft", None)
+        if discharge_draft is not None:
+            primary_diagnosis = ""
+            for diagnosis in discharge_draft.diagnoses or []:
+                if diagnosis.get("role") == "PRIMARY":
+                    primary_diagnosis = str(
+                        diagnosis.get("description") or diagnosis.get("code") or ""
+                    )
+                    break
+            return {
+                "snapshot_source": "DISCHARGE_DRAFT",
+                "discharge_draft_id": discharge_draft.id,
+                "discharge_type": discharge_draft.discharge_type,
+                "final_diagnosis_text": primary_diagnosis,
+                "procedures_performed": discharge_draft.procedures_performed,
+                "treatment_summary": discharge_draft.treatment_summary,
+                "discharge_medications": discharge_draft.discharge_medications,
+                "follow_up_date": discharge_draft.follow_up_date.isoformat()
+                if discharge_draft.follow_up_date
+                else None,
+                "follow_up_instructions": discharge_draft.follow_up_instructions,
+                "patient_instructions": discharge_draft.patient_instructions,
+                "referral_facility": discharge_draft.referral_facility,
+                "referral_reason": discharge_draft.referral_reason,
+            }
+
+        return {}
 
     @action(detail=False, methods=["get"], url_path="destination-queue")
     def destination_queue(self, request):
@@ -2924,6 +2951,7 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
         transfer = self.get_object()
         self._ensure_action_permission("accept_interfacility_transfer")
         self._ensure_destination_actor(transfer)
+        request_note = str(request.data.get("note", "") or "").strip()
 
         if transfer.status in {
             InterFacilityTransfer.TransferStatus.DRAFT,
@@ -2953,8 +2981,12 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
             actor=request.user,
             from_status=transfer.status,
             to_status=transfer.status,
-            note="Destination requested discharge summary/notes from source facility.",
-            metadata={"requested_by_facility_id": transfer.destination_facility_id},
+            note=request_note
+            or "Destination requested discharge summary/notes from source facility.",
+            metadata={
+                "requested_by_facility_id": transfer.destination_facility_id,
+                **({"request_note": request_note} if request_note else {}),
+            },
         )
 
         serializer = self.get_serializer(transfer)
@@ -2967,10 +2999,19 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
         self._ensure_source_actor(transfer)
 
         if transfer.source_discharge_id is None:
+            admission_discharge = getattr(transfer.source_admission, "discharge", None)
+            if admission_discharge is not None:
+                transfer.source_discharge = admission_discharge
+                transfer.save(update_fields=["source_discharge", "updated_at"])
+
+        if transfer.source_discharge_id is None and not hasattr(
+            transfer.source_admission, "discharge_draft"
+        ):
             raise ValidationError(
                 {
                     "source_discharge": (
-                        "No finalized TRANSFERRED discharge is linked to this workflow yet."
+                        "No finalized TRANSFERRED discharge or discharge draft is available "
+                        "for this workflow yet."
                     )
                 }
             )

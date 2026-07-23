@@ -579,10 +579,13 @@ export const inpatientApi = {
     });
   },
 
-  async requestInterFacilityDischargeSummary(transferId: IdParam): Promise<InterFacilityTransfer> {
+  async requestInterFacilityDischargeSummary(
+    transferId: IdParam,
+    data?: { note?: string }
+  ): Promise<InterFacilityTransfer> {
     const response = await apiClient.post<InterFacilityTransfer>(
       `/api/inpatient/inter-facility-transfers/${transferId}/request-discharge-summary/`,
-      {}
+      data ?? {}
     );
     return parseResponse(InterFacilityTransferSchema, response.data, {
       context: 'inpatientApi.requestInterFacilityDischargeSummary',
