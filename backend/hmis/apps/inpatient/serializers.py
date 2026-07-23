@@ -1091,6 +1091,9 @@ class InterFacilityTransferSerializer(serializers.ModelSerializer):
     source_facility_name = serializers.CharField(source="source_facility.name", read_only=True)
     destination_facility_label = serializers.SerializerMethodField()
     timeline_events = serializers.SerializerMethodField()
+    discharge_summary_requested = serializers.SerializerMethodField()
+    discharge_summary_requested_at = serializers.SerializerMethodField()
+    discharge_summary_snapshot = serializers.SerializerMethodField()
 
     class Meta:
         model = InterFacilityTransfer
@@ -1133,6 +1136,9 @@ class InterFacilityTransferSerializer(serializers.ModelSerializer):
             "rejection_reason",
             "cancellation_reason",
             "timeline_events",
+            "discharge_summary_requested",
+            "discharge_summary_requested_at",
+            "discharge_summary_snapshot",
             "created_at",
             "updated_at",
         ]
@@ -1209,6 +1215,49 @@ class InterFacilityTransferSerializer(serializers.ModelSerializer):
     def get_timeline_events(self, obj):
         events_qs = obj.timeline_events.select_related("actor").all().order_by("occurred_at", "id")
         return InterFacilityTransferEventSerializer(events_qs, many=True).data
+
+    @staticmethod
+    def _latest_timeline_event(obj, event_type: str):
+        return (
+            obj.timeline_events.filter(event_type=event_type)
+            .order_by("-occurred_at", "-id")
+            .first()
+        )
+
+    def get_discharge_summary_requested(self, obj) -> bool:
+        requested_event = self._latest_timeline_event(
+            obj, InterFacilityTransferEvent.EventType.DISCHARGE_SUMMARY_REQUESTED
+        )
+        if requested_event is None:
+            return False
+        shared_event = self._latest_timeline_event(
+            obj, InterFacilityTransferEvent.EventType.DISCHARGE_SUMMARY_SHARED
+        )
+        if shared_event is None:
+            return True
+        if requested_event.occurred_at > shared_event.occurred_at:
+            return True
+        if requested_event.occurred_at == shared_event.occurred_at:
+            return requested_event.id > shared_event.id
+        return False
+
+    def get_discharge_summary_requested_at(self, obj):
+        if not self.get_discharge_summary_requested(obj):
+            return None
+        requested_event = self._latest_timeline_event(
+            obj, InterFacilityTransferEvent.EventType.DISCHARGE_SUMMARY_REQUESTED
+        )
+        return requested_event.occurred_at if requested_event else None
+
+    def get_discharge_summary_snapshot(self, obj):
+        shared_event = self._latest_timeline_event(
+            obj, InterFacilityTransferEvent.EventType.DISCHARGE_SUMMARY_SHARED
+        )
+        if shared_event is None:
+            return None
+        metadata = shared_event.metadata or {}
+        snapshot = metadata.get("discharge_snapshot")
+        return snapshot if isinstance(snapshot, dict) else None
 
 
 class InterFacilityTransferEventSerializer(serializers.ModelSerializer):

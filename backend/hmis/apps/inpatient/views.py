@@ -2514,6 +2514,7 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
     ordering = ["-created_at"]
 
     def get_queryset(self):
+        self._resolve_tenant_context()
         qs = self.queryset
         user = self.request.user
         if user.is_superuser:
@@ -2527,9 +2528,17 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
         if not facility_ids:
             return qs.none()
 
-        return qs.filter(source_admission__organization_id=profile.organization_id).filter(
+        qs = qs.filter(source_admission__organization_id=profile.organization_id).filter(
             Q(source_facility_id__in=facility_ids) | Q(destination_facility_id__in=facility_ids)
         )
+
+        active_facility = getattr(self.request, "facility", None)
+        if active_facility is not None:
+            qs = qs.filter(
+                Q(source_facility_id=active_facility.id)
+                | Q(destination_facility_id=active_facility.id)
+            )
+        return qs
 
     @staticmethod
     def _user_facility_ids(user) -> set[int]:
@@ -2549,6 +2558,11 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
         user = self.request.user
         if user.is_superuser:
             return
+        active_facility = getattr(self.request, "facility", None)
+        if active_facility is not None and active_facility.id != transfer.source_facility_id:
+            raise PermissionDenied(
+                "This action must be performed from the source facility context."
+            )
         if transfer.source_facility_id not in self._user_facility_ids(user):
             raise PermissionDenied("Only source-facility staff can perform this transfer action.")
 
@@ -2564,6 +2578,11 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
         if destination_id not in self._user_facility_ids(user):
             raise PermissionDenied(
                 "Only destination-facility staff can perform this transfer action."
+            )
+        active_facility = getattr(self.request, "facility", None)
+        if active_facility is not None and active_facility.id != destination_id:
+            raise PermissionDenied(
+                "This action must be performed from the destination facility context."
             )
 
     def _ensure_action_permission(self, codename: str):
@@ -2822,6 +2841,56 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
             occurred_at=timezone.now(),
         )
 
+    @staticmethod
+    def _latest_transfer_event(transfer, event_type: str):
+        return (
+            transfer.timeline_events.filter(event_type=event_type)
+            .order_by("-occurred_at", "-id")
+            .first()
+        )
+
+    def _has_pending_discharge_summary_request(self, transfer) -> bool:
+        requested_event = self._latest_transfer_event(
+            transfer, InterFacilityTransferEvent.EventType.DISCHARGE_SUMMARY_REQUESTED
+        )
+        if requested_event is None:
+            return False
+        shared_event = self._latest_transfer_event(
+            transfer, InterFacilityTransferEvent.EventType.DISCHARGE_SUMMARY_SHARED
+        )
+        if shared_event is None:
+            return True
+        if requested_event.occurred_at > shared_event.occurred_at:
+            return True
+        if requested_event.occurred_at == shared_event.occurred_at:
+            return requested_event.id > shared_event.id
+        return False
+
+    @staticmethod
+    def _build_discharge_summary_snapshot(transfer) -> dict:
+        discharge = transfer.source_discharge
+        if discharge is None:
+            return {}
+        return {
+            "discharge_id": discharge.id,
+            "discharge_type": discharge.discharge_type,
+            "discharge_date": discharge.discharge_date.isoformat()
+            if discharge.discharge_date
+            else None,
+            "final_diagnosis": discharge.final_diagnosis,
+            "final_diagnosis_text": discharge.final_diagnosis_text,
+            "procedures_performed": discharge.procedures_performed,
+            "treatment_summary": discharge.treatment_summary,
+            "discharge_medications": discharge.discharge_medications,
+            "follow_up_date": discharge.follow_up_date.isoformat()
+            if discharge.follow_up_date
+            else None,
+            "follow_up_instructions": discharge.follow_up_instructions,
+            "patient_instructions": discharge.patient_instructions,
+            "referral_facility": discharge.referral_facility,
+            "referral_reason": discharge.referral_reason,
+        }
+
     @action(detail=False, methods=["get"], url_path="destination-queue")
     def destination_queue(self, request):
         user = request.user
@@ -2848,6 +2917,82 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
             transfer.timeline_events.select_related("actor").all().order_by("occurred_at", "id")
         )
         serializer = InterFacilityTransferEventSerializer(events, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="request-discharge-summary")
+    def request_discharge_summary(self, request, pk=None):
+        transfer = self.get_object()
+        self._ensure_action_permission("accept_interfacility_transfer")
+        self._ensure_destination_actor(transfer)
+
+        if transfer.status in {
+            InterFacilityTransfer.TransferStatus.DRAFT,
+            InterFacilityTransfer.TransferStatus.REJECTED,
+            InterFacilityTransfer.TransferStatus.CANCELLED,
+        }:
+            raise ValidationError(
+                {
+                    "status": (
+                        "Discharge summary can only be requested for active transfer workflows."
+                    )
+                }
+            )
+
+        if self._has_pending_discharge_summary_request(transfer):
+            raise ValidationError(
+                {
+                    "detail": (
+                        "A discharge summary request is already pending source-facility approval."
+                    )
+                }
+            )
+
+        self._record_timeline_event(
+            transfer=transfer,
+            event_type=InterFacilityTransferEvent.EventType.DISCHARGE_SUMMARY_REQUESTED,
+            actor=request.user,
+            from_status=transfer.status,
+            to_status=transfer.status,
+            note="Destination requested discharge summary/notes from source facility.",
+            metadata={"requested_by_facility_id": transfer.destination_facility_id},
+        )
+
+        serializer = self.get_serializer(transfer)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="share-discharge-summary")
+    def share_discharge_summary(self, request, pk=None):
+        transfer = self.get_object()
+        self._ensure_action_permission("submit_interfacility_transfer")
+        self._ensure_source_actor(transfer)
+
+        if transfer.source_discharge_id is None:
+            raise ValidationError(
+                {
+                    "source_discharge": (
+                        "No finalized TRANSFERRED discharge is linked to this workflow yet."
+                    )
+                }
+            )
+
+        if not self._has_pending_discharge_summary_request(transfer):
+            raise ValidationError({"detail": ("No pending destination request found.")})
+
+        snapshot = self._build_discharge_summary_snapshot(transfer)
+        self._record_timeline_event(
+            transfer=transfer,
+            event_type=InterFacilityTransferEvent.EventType.DISCHARGE_SUMMARY_SHARED,
+            actor=request.user,
+            from_status=transfer.status,
+            to_status=transfer.status,
+            note="Source shared discharge summary/notes with destination facility.",
+            metadata={
+                "shared_with_facility_id": transfer.destination_facility_id,
+                "discharge_snapshot": snapshot,
+            },
+        )
+
+        serializer = self.get_serializer(transfer)
         return Response(serializer.data)
 
     @action(detail=True, methods=["post"], url_path="submit")
