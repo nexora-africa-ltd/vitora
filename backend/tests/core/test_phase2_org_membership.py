@@ -18,6 +18,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from hmis.apps.core.middleware import TenantMiddleware
+from hmis.apps.core.mixins import resolve_request_tenant
 from hmis.apps.core.models import (
     County,
     Department,
@@ -28,6 +29,7 @@ from hmis.apps.core.models import (
     StaffProfile,
     SubCounty,
 )
+from hmis.apps.core.tenant_access import user_has_facility_access
 
 User = get_user_model()
 
@@ -260,6 +262,58 @@ class TestTenantMiddlewareMembershipAccess:
         """User can access secondary facility in their membership."""
         mw = self._get_middleware()
         assert mw._user_has_facility_access(staff_user, facility_a2) is True
+
+
+@pytest.mark.django_db
+class TestSharedFacilityAccessHelper:
+    """Shared helper should honor both direct and membership-backed access."""
+
+    def test_allows_secondary_facility_direct_assignment(
+        self, staff_user, staff_profile, membership_a, facility_a2
+    ):
+        """Secondary facilities on StaffProfile grant access even without membership mapping."""
+        membership_a.facilities.remove(facility_a2)
+        staff_profile.secondary_facilities.add(facility_a2)
+
+        assert user_has_facility_access(staff_user, facility_a2) is True
+
+    def test_denies_unassigned_facility(self, staff_user, staff_profile, membership_a, facility_b1):
+        """No direct assignment and no membership should be denied."""
+        assert user_has_facility_access(staff_user, facility_b1) is False
+
+
+@pytest.mark.django_db
+class TestResolveRequestTenantAccessGuard:
+    """Request tenant resolver should enforce facility access checks."""
+
+    def test_resolver_rejects_unassigned_header_facility(
+        self, staff_user, staff_profile, membership_a, facility_b1
+    ):
+        request = RequestFactory().get("/api/test/", HTTP_X_FACILITY_ID=str(facility_b1.pk))
+        request.user = staff_user
+        request.facility = None
+        request.organization = None
+
+        resolve_request_tenant(request)
+
+        assert request.facility is None
+        assert request.organization is None
+
+    def test_resolver_accepts_secondary_direct_assignment(
+        self, staff_user, staff_profile, membership_a, facility_a2
+    ):
+        membership_a.facilities.remove(facility_a2)
+        staff_profile.secondary_facilities.add(facility_a2)
+
+        request = RequestFactory().get("/api/test/", HTTP_X_FACILITY_ID=str(facility_a2.pk))
+        request.user = staff_user
+        request.facility = None
+        request.organization = None
+
+        resolve_request_tenant(request)
+
+        assert request.facility == facility_a2
+        assert request.organization == facility_a2.organization
 
 
 # ============================================================================

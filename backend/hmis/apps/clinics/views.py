@@ -21,6 +21,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
+from hmis.apps.core.tenant_access import user_has_facility_access
 
 from .models import (
     Clinic,
@@ -433,9 +434,8 @@ class ClinicViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                                 {"detail": "You do not have access to this facility."},
                                 status=status.HTTP_403_FORBIDDEN,
                             )
-                        # Allow if facility belongs to user's org OR has no org yet
-                        # (org-less facilities are typically just-created during onboarding)
-                        if organization and profile.organization_id != organization.pk:
+                        # Shared access check for org-bound facilities.
+                        if organization and not user_has_facility_access(request.user, facility):
                             return Response(
                                 {"detail": "You do not have access to this facility."},
                                 status=status.HTTP_403_FORBIDDEN,

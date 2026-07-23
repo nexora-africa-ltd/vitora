@@ -21,9 +21,11 @@ from hmis.apps.core.mixins import (
     PublicIdLookupMixin,
     ReadOnCreateMixin,
     TenantScopedViewMixin,
+    resolve_request_tenant,
 )
 from hmis.apps.core.models import AuditLog, Facility
 from hmis.apps.core.permissions import WriteRequiresRolePermission, get_client_ip
+from hmis.apps.core.tenant_access import user_has_facility_access
 from hmis.apps.licensing.permissions import requires_feature
 from hmis.apps.patients.models import Patient
 
@@ -448,27 +450,10 @@ class WardViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 )
 
             if not request.user.is_superuser:
-                profile = getattr(request.user, "staff_profile", None)
-                if not profile:
+                if not getattr(request.user, "staff_profile", None):
                     raise PermissionDenied("Staff profile required for facility-scoped action.")
 
-                direct_facility_access = profile.primary_facility_id == requested_facility.id
-                if not direct_facility_access:
-                    secondary_facilities = getattr(profile, "secondary_facilities", None)
-                    if secondary_facilities is not None:
-                        direct_facility_access = secondary_facilities.filter(
-                            id=requested_facility.id
-                        ).exists()
-
-                from hmis.apps.core.models import OrgMembership
-
-                has_access = OrgMembership.objects.filter(
-                    staff_profile=profile,
-                    organization=requested_facility.organization,
-                    status=OrgMembership.MembershipStatus.ACTIVE,
-                    facilities=requested_facility,
-                ).exists()
-                if not (has_access or direct_facility_access):
+                if not user_has_facility_access(request.user, requested_facility):
                     raise PermissionDenied(
                         "You do not have access to the requested facility for this action."
                     )
@@ -806,35 +791,7 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
 
     def _resolve_tenant_context(self):
         """Resolve facility/org from request (same logic as NestedTenantScopeMixin)."""
-        request = self.request
-        if getattr(request, "facility", None) or getattr(request, "organization", None):
-            return
-        user = getattr(request, "user", None)
-        if not user or not getattr(user, "is_authenticated", False):
-            return
-        from hmis.apps.core.models import Facility
-
-        facility_id = request.META.get("HTTP_X_FACILITY_ID")
-        if facility_id:
-            try:
-                facility = Facility.objects.select_related("organization").get(
-                    pk=int(facility_id), is_active=True
-                )
-                request.facility = facility
-                request.organization = facility.organization
-                return
-            except (Facility.DoesNotExist, ValueError, TypeError):
-                pass
-        profile = getattr(user, "staff_profile", None)
-        if profile and profile.primary_facility_id:
-            try:
-                facility = Facility.objects.select_related("organization").get(
-                    pk=profile.primary_facility_id, is_active=True
-                )
-                request.facility = facility
-                request.organization = facility.organization
-            except Facility.DoesNotExist:
-                pass
+        resolve_request_tenant(self.request)
 
     def _tenant_admission_filter(self) -> dict:
         """Return filter kwargs to scope Admission queries to the current tenant."""

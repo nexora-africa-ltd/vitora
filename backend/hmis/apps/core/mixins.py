@@ -212,6 +212,7 @@ def resolve_request_tenant(request):
         return
 
     from hmis.apps.core.models import Facility
+    from hmis.apps.core.tenant_access import user_has_facility_access
 
     facility_id = request.META.get("HTTP_X_FACILITY_ID")
     if facility_id:
@@ -219,11 +220,13 @@ def resolve_request_tenant(request):
             facility = Facility.objects.select_related("organization").get(
                 pk=int(facility_id), is_active=True
             )
+            if not user_has_facility_access(user, facility):
+                return
             request.facility = facility
             request.organization = facility.organization
             return
         except (Facility.DoesNotExist, ValueError, TypeError):
-            pass
+            return
 
     profile = getattr(user, "staff_profile", None)
     if profile and profile.primary_facility_id:
