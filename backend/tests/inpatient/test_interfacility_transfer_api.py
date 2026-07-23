@@ -42,6 +42,23 @@ class TestInterFacilityTransferAPI:
         assert response.status_code == status.HTTP_201_CREATED
         return response.data
 
+    def _create_destination_capacity(self, destination_facility, organization, *, code_prefix):
+        ward = Ward.objects.create(
+            name=f"{code_prefix} Destination Ward",
+            code=f"{code_prefix}-WARD",
+            ward_type="MEDICAL",
+            capacity=10,
+            daily_rate="1200.00",
+            facility=destination_facility,
+            organization=organization,
+        )
+        bed = Bed.objects.create(
+            ward=ward,
+            bed_number=f"{code_prefix}-BED-01",
+            status="AVAILABLE",
+        )
+        return ward, bed
+
     def test_create_interfacility_transfer_draft(
         self,
         authenticated_client,
@@ -141,8 +158,15 @@ class TestInterFacilityTransferAPI:
         )
         self._grant_permissions(
             another_user,
-            ["accept_interfacility_transfer", "arrive_interfacility_transfer"],
+            ["accept_interfacility_transfer", "arrive_interfacility_transfer", "add_admission"],
         )
+        destination_ward, _destination_bed = self._create_destination_capacity(
+            destination_facility,
+            sample_organization,
+            code_prefix="HPY",
+        )
+        sample_admission.admission_status = "TRANSFERRED_OUT"
+        sample_admission.save(update_fields=["admission_status"])
 
         submit = authenticated_client.post(
             f"/api/inpatient/inter-facility-transfers/{transfer_id}/submit/", {}, format="json"
@@ -151,7 +175,9 @@ class TestInterFacilityTransferAPI:
         assert submit.data["status"] == "PENDING_ACCEPTANCE"
 
         accept = destination_client.post(
-            f"/api/inpatient/inter-facility-transfers/{transfer_id}/accept/", {}, format="json"
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/accept/",
+            {"destination_ward": destination_ward.id},
+            format="json",
         )
         assert accept.status_code == status.HTTP_200_OK
         assert accept.data["status"] == "ACCEPTED"
@@ -216,6 +242,65 @@ class TestInterFacilityTransferAPI:
         assert reject_ok.status_code == status.HTTP_200_OK
         assert reject_ok.data["status"] == "REJECTED"
         assert reject_ok.data["rejection_reason"] == "Destination ICU unavailable"
+
+    def test_accept_auto_creates_destination_admission(
+        self,
+        authenticated_client,
+        test_user,
+        another_user,
+        sample_admission,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        destination_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Referral Hospital Accept Admit",
+            mfl_code="65656",
+            level="5",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        destination_ward, destination_bed = self._create_destination_capacity(
+            destination_facility,
+            sample_organization,
+            code_prefix="ACP",
+        )
+        created = self._create_transfer(
+            authenticated_client, sample_admission, destination_facility.id
+        )
+        transfer_id = created["id"]
+        ensure_staff_profile(another_user, sample_organization, destination_facility)
+        destination_client = self._client_for_user(another_user)
+        self._grant_permissions(test_user, ["submit_interfacility_transfer"])
+        self._grant_permissions(
+            another_user,
+            ["accept_interfacility_transfer", "add_admission"],
+        )
+        sample_admission.admission_status = "TRANSFERRED_OUT"
+        sample_admission.save(update_fields=["admission_status"])
+
+        submit = authenticated_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/submit/", {}, format="json"
+        )
+        assert submit.status_code == status.HTTP_200_OK
+
+        accept = destination_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/accept/",
+            {
+                "destination_ward": destination_ward.id,
+                "destination_bed": destination_bed.id,
+            },
+            format="json",
+        )
+        assert accept.status_code == status.HTTP_200_OK
+        assert accept.data["status"] == "ACCEPTED"
+        assert accept.data["destination_admission_id"] is not None
+        assert accept.data["destination_ipd_encounter_id"] is not None
+
+        transfer = InterFacilityTransfer.objects.get(id=transfer_id)
+        assert transfer.destination_admission_id == accept.data["destination_admission_id"]
 
     def test_transfer_invalid_transition_blocked(
         self,
@@ -292,13 +377,21 @@ class TestInterFacilityTransferAPI:
                 "accept_interfacility_transfer",
                 "dispatch_interfacility_transfer",
                 "arrive_interfacility_transfer",
+                "add_admission",
             ],
+        )
+        destination_ward, _destination_bed = self._create_destination_capacity(
+            destination_facility,
+            sample_organization,
+            code_prefix="SRC",
         )
 
         created = self._create_transfer(
             authenticated_client, sample_admission, destination_facility.id
         )
         transfer_id = created["id"]
+        sample_admission.admission_status = "TRANSFERRED_OUT"
+        sample_admission.save(update_fields=["admission_status"])
 
         source_accept = authenticated_client.post(
             f"/api/inpatient/inter-facility-transfers/{transfer_id}/accept/", {}, format="json"
@@ -316,7 +409,9 @@ class TestInterFacilityTransferAPI:
         assert submit_ok.status_code == status.HTTP_200_OK
 
         accept_ok = destination_client.post(
-            f"/api/inpatient/inter-facility-transfers/{transfer_id}/accept/", {}, format="json"
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/accept/",
+            {"destination_ward": destination_ward.id},
+            format="json",
         )
         assert accept_ok.status_code == status.HTTP_200_OK
 
@@ -427,6 +522,95 @@ class TestInterFacilityTransferAPI:
         queue_after_ids = {item["id"] for item in queue_after_cancel.data}
         assert first_id not in queue_after_ids
 
+    def test_source_staff_user_cannot_accept_destination_transfer(
+        self,
+        authenticated_client,
+        test_user,
+        sample_admission,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        destination_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Referral Hospital Staff Guard",
+            mfl_code="21212",
+            level="5",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        self._grant_permissions(
+            test_user,
+            ["submit_interfacility_transfer", "accept_interfacility_transfer"],
+        )
+        test_user.is_staff = True
+        test_user.save(update_fields=["is_staff"])
+
+        created = self._create_transfer(
+            authenticated_client, sample_admission, destination_facility.id
+        )
+        transfer_id = created["id"]
+
+        submit = authenticated_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/submit/", {}, format="json"
+        )
+        assert submit.status_code == status.HTTP_200_OK
+
+        source_accept = authenticated_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/accept/", {}, format="json"
+        )
+        assert source_accept.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_source_staff_user_does_not_see_destination_queue(
+        self,
+        authenticated_client,
+        test_user,
+        another_user,
+        sample_admission,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        destination_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Referral Hospital Queue Guard",
+            mfl_code="23232",
+            level="5",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        ensure_staff_profile(another_user, sample_organization, destination_facility)
+        destination_client = self._client_for_user(another_user)
+        self._grant_permissions(test_user, ["submit_interfacility_transfer"])
+
+        test_user.is_staff = True
+        test_user.save(update_fields=["is_staff"])
+
+        created = self._create_transfer(
+            authenticated_client, sample_admission, destination_facility.id
+        )
+        transfer_id = created["id"]
+        submit = authenticated_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/submit/", {}, format="json"
+        )
+        assert submit.status_code == status.HTTP_200_OK
+
+        source_queue = authenticated_client.get(
+            "/api/inpatient/inter-facility-transfers/destination-queue/"
+        )
+        assert source_queue.status_code == status.HTTP_200_OK
+        source_ids = {item["id"] for item in source_queue.data}
+        assert transfer_id not in source_ids
+
+        destination_queue = destination_client.get(
+            "/api/inpatient/inter-facility-transfers/destination-queue/"
+        )
+        assert destination_queue.status_code == status.HTTP_200_OK
+        destination_ids = {item["id"] for item in destination_queue.data}
+        assert transfer_id in destination_ids
+
     def test_arrive_with_auto_admit_creates_destination_admission_and_ipd_encounter(
         self,
         authenticated_client,
@@ -484,7 +668,9 @@ class TestInterFacilityTransferAPI:
         )
         assert submit.status_code == status.HTTP_200_OK
         accept = destination_client.post(
-            f"/api/inpatient/inter-facility-transfers/{transfer_id}/accept/", {}, format="json"
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/accept/",
+            {"destination_ward": destination_ward.id},
+            format="json",
         )
         assert accept.status_code == status.HTTP_200_OK
         dispatch = authenticated_client.post(
@@ -511,7 +697,7 @@ class TestInterFacilityTransferAPI:
         assert destination_admission.patient_id == sample_admission.patient_id
         assert destination_admission.ipd_encounter.encounter_type == "IPD"
 
-    def test_arrive_with_auto_admit_requires_finalized_source_admission(
+    def test_accept_with_auto_admit_requires_finalized_source_admission(
         self,
         authenticated_client,
         test_user,
@@ -563,24 +749,13 @@ class TestInterFacilityTransferAPI:
         authenticated_client.post(
             f"/api/inpatient/inter-facility-transfers/{transfer_id}/submit/", {}, format="json"
         )
-        destination_client.post(
-            f"/api/inpatient/inter-facility-transfers/{transfer_id}/accept/", {}, format="json"
-        )
-        authenticated_client.post(
-            f"/api/inpatient/inter-facility-transfers/{transfer_id}/dispatch/", {}, format="json"
-        )
-
-        arrive = destination_client.post(
-            f"/api/inpatient/inter-facility-transfers/{transfer_id}/arrive/",
-            {
-                "auto_admit": True,
-                "destination_ward": destination_ward.id,
-                "destination_bed": destination_bed.id,
-            },
+        accept = destination_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/accept/",
+            {"destination_ward": destination_ward.id},
             format="json",
         )
-        assert arrive.status_code == status.HTTP_400_BAD_REQUEST
-        assert "source_admission" in arrive.data
+        assert accept.status_code == status.HTTP_400_BAD_REQUEST
+        assert "source_admission" in accept.data
 
     def test_arrive_and_admit_alias_auto_admits_without_auto_admit_flag(
         self,
@@ -638,7 +813,9 @@ class TestInterFacilityTransferAPI:
             f"/api/inpatient/inter-facility-transfers/{transfer_id}/submit/", {}, format="json"
         )
         destination_client.post(
-            f"/api/inpatient/inter-facility-transfers/{transfer_id}/accept/", {}, format="json"
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/accept/",
+            {"destination_ward": destination_ward.id},
+            format="json",
         )
         authenticated_client.post(
             f"/api/inpatient/inter-facility-transfers/{transfer_id}/dispatch/", {}, format="json"

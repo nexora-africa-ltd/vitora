@@ -2473,6 +2473,7 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
     queryset = InterFacilityTransfer.objects.select_related(
         "source_admission",
         "source_discharge",
+        "destination_admission",
         "patient",
         "source_facility",
         "destination_facility",
@@ -2508,7 +2509,7 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
     def get_queryset(self):
         qs = self.queryset
         user = self.request.user
-        if user.is_superuser or user.is_staff:
+        if user.is_superuser:
             return qs
 
         profile = getattr(user, "staff_profile", None)
@@ -2539,14 +2540,14 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
 
     def _ensure_source_actor(self, transfer):
         user = self.request.user
-        if user.is_superuser or user.is_staff:
+        if user.is_superuser:
             return
         if transfer.source_facility_id not in self._user_facility_ids(user):
             raise PermissionDenied("Only source-facility staff can perform this transfer action.")
 
     def _ensure_destination_actor(self, transfer):
         user = self.request.user
-        if user.is_superuser or user.is_staff:
+        if user.is_superuser:
             return
         destination_id = transfer.destination_facility_id
         if not destination_id:
@@ -2560,7 +2561,7 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
 
     def _ensure_action_permission(self, codename: str):
         user = self.request.user
-        if user.is_superuser or user.is_staff:
+        if user.is_superuser:
             return
         app_label = InterFacilityTransfer._meta.app_label
         if not user.has_perm(f"{app_label}.{codename}"):
@@ -2637,13 +2638,60 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
             return value.strip().lower() in {"1", "true", "yes", "on"}
         return bool(value)
 
-    def _create_destination_admission(self, request, transfer):
+    def _resolve_destination_ward(self, request, transfer):
+        destination_ward_id = request.data.get("destination_ward")
+        if destination_ward_id:
+            ward = Ward.objects.filter(
+                pk=destination_ward_id,
+                facility_id=transfer.destination_facility_id,
+                is_active=True,
+            ).first()
+            if ward is None:
+                raise ValidationError(
+                    {
+                        "destination_ward": (
+                            "Selected ward does not exist in the destination facility."
+                        )
+                    }
+                )
+            return ward
+
+        source_ward_type = transfer.source_admission.ward.ward_type
+        ward = (
+            Ward.objects.filter(
+                facility_id=transfer.destination_facility_id,
+                is_active=True,
+                ward_type=source_ward_type,
+            )
+            .order_by("id")
+            .first()
+        )
+        if ward is not None:
+            return ward
+
+        fallback_ward = (
+            Ward.objects.filter(facility_id=transfer.destination_facility_id, is_active=True)
+            .order_by("id")
+            .first()
+        )
+        if fallback_ward is not None:
+            return fallback_ward
+
+        raise ValidationError(
+            {
+                "destination_ward": (
+                    "No active wards available in destination facility for auto-admission."
+                )
+            }
+        )
+
+    def _create_destination_admission(self, request, transfer, *, require_source_finalized=True):
         if transfer.destination_facility_id is None:
             raise ValidationError(
                 {"destination_facility": ("Destination facility must be mapped before auto-admit.")}
             )
 
-        if transfer.source_admission.admission_status == "ACTIVE":
+        if require_source_finalized and transfer.source_admission.admission_status == "ACTIVE":
             raise ValidationError(
                 {
                     "source_admission": (
@@ -2652,7 +2700,17 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
                 }
             )
 
-        if Admission.objects.filter(patient=transfer.patient, admission_status="ACTIVE").exists():
+        if transfer.destination_admission_id:
+            return transfer.destination_admission
+
+        if (
+            Admission.objects.filter(
+                patient=transfer.patient,
+                admission_status="ACTIVE",
+            )
+            .exclude(pk=transfer.source_admission_id)
+            .exists()
+        ):
             raise ValidationError(
                 {
                     "patient": (
@@ -2661,20 +2719,7 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
                 }
             )
 
-        destination_ward_id = request.data.get("destination_ward")
-        if not destination_ward_id:
-            raise ValidationError(
-                {"destination_ward": "This field is required when auto_admit=true."}
-            )
-
-        ward = Ward.objects.filter(
-            pk=destination_ward_id,
-            facility_id=transfer.destination_facility_id,
-        ).first()
-        if ward is None:
-            raise ValidationError(
-                {"destination_ward": ("Selected ward does not exist in the destination facility.")}
-            )
+        ward = self._resolve_destination_ward(request, transfer)
 
         destination_bed_id = request.data.get("destination_bed")
         auto_assign_bed = self._as_bool(request.data.get("auto_assign_bed", True))
@@ -2728,10 +2773,13 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
             context={"request": request, "view": self},
         )
         serializer.is_valid(raise_exception=True)
-        return serializer.save(
+        admission = serializer.save(
             organization=transfer.destination_facility.organization,
             facility=transfer.destination_facility,
         )
+        transfer.destination_admission = admission
+        transfer.save(update_fields=["destination_admission", "updated_at"])
+        return admission
 
     @staticmethod
     def _event_type_for_status(status_value: str) -> str:
@@ -2771,7 +2819,7 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
     def destination_queue(self, request):
         user = request.user
         facility_ids = self._user_facility_ids(user)
-        if not (user.is_superuser or user.is_staff) and not facility_ids:
+        if not user.is_superuser and not facility_ids:
             return Response([])
 
         statuses = [
@@ -2780,7 +2828,7 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
             InterFacilityTransfer.TransferStatus.IN_TRANSIT,
         ]
         qs = self.filter_queryset(self.get_queryset()).filter(status__in=statuses)
-        if not (user.is_superuser or user.is_staff):
+        if not user.is_superuser:
             qs = qs.filter(destination_facility_id__in=facility_ids)
 
         serializer = self.get_serializer(qs, many=True)
@@ -2812,12 +2860,59 @@ class InterFacilityTransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
         transfer = self.get_object()
         self._ensure_action_permission("accept_interfacility_transfer")
         self._ensure_destination_actor(transfer)
-        return self._transition_transfer(
-            request,
-            transfer,
-            to_status=InterFacilityTransfer.TransferStatus.ACCEPTED,
-            action="interfacility_transfer_accept",
-        )
+        with transaction.atomic():
+            response = self._transition_transfer(
+                request,
+                transfer,
+                to_status=InterFacilityTransfer.TransferStatus.ACCEPTED,
+                action="interfacility_transfer_accept",
+            )
+            self._ensure_action_permission("add_admission")
+            transfer.refresh_from_db(fields=["status", "destination_admission"])
+            destination_admission = self._create_destination_admission(
+                request,
+                transfer,
+                require_source_finalized=True,
+            )
+            self._record_timeline_event(
+                transfer=transfer,
+                event_type=InterFacilityTransferEvent.EventType.AUTO_ADMITTED,
+                actor=request.user,
+                from_status=transfer.status,
+                to_status=transfer.status,
+                note=(
+                    "Auto-admitted at destination on acceptance as "
+                    f"{destination_admission.admission_number}."
+                ),
+                metadata={
+                    "destination_admission_id": destination_admission.id,
+                    "destination_admission_number": destination_admission.admission_number,
+                    "destination_ipd_encounter_id": destination_admission.ipd_encounter_id,
+                    "trigger": "accept",
+                },
+            )
+            AuditLog.log(
+                action="interfacility_transfer_auto_admit_on_accept",
+                user=request.user,
+                resource_type="InterFacilityTransfer",
+                resource_id=transfer.id,
+                details={
+                    "transfer_number": transfer.transfer_number,
+                    "destination_admission_id": destination_admission.id,
+                    "destination_admission_number": destination_admission.admission_number,
+                    "destination_ipd_encounter_id": destination_admission.ipd_encounter_id,
+                },
+                ip_address=get_client_ip(request),
+            )
+            payload = dict(response.data)
+            payload.update(
+                {
+                    "destination_admission_id": destination_admission.id,
+                    "destination_admission_number": destination_admission.admission_number,
+                    "destination_ipd_encounter_id": destination_admission.ipd_encounter_id,
+                }
+            )
+            return Response(payload)
 
     @action(detail=True, methods=["post"], url_path="reject")
     def reject(self, request, pk=None):

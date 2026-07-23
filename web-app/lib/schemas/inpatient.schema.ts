@@ -391,6 +391,106 @@ export const TransferSchema = z.object({
 
 export type TransferSchemaType = z.infer<typeof TransferSchema>;
 
+export const InterFacilityTransferStatusSchema = z.enum([
+  'DRAFT',
+  'PENDING_ACCEPTANCE',
+  'ACCEPTED',
+  'REJECTED',
+  'IN_TRANSIT',
+  'ARRIVED',
+  'CANCELLED',
+]);
+
+export const InterFacilityTransferPrioritySchema = z.enum(['ROUTINE', 'URGENT', 'STAT']);
+
+export const InterFacilityTransferReasonSchema = z.enum([
+  'HIGHER_LEVEL_CARE',
+  'SPECIALIST_INPUT',
+  'NO_CAPACITY',
+  'EQUIPMENT_LIMITATION',
+  'PATIENT_REQUEST',
+  'OTHER',
+]);
+
+export const InterFacilityTransferTransportModeSchema = z.enum(['AMBULANCE', 'PRIVATE', 'OTHER']);
+
+export const InterFacilityTransferEventTypeSchema = z.enum([
+  'CREATED',
+  'SUBMITTED',
+  'ACCEPTED',
+  'REJECTED',
+  'DISPATCHED',
+  'ARRIVED',
+  'AUTO_ADMITTED',
+  'CANCELLED',
+]);
+
+export const InterFacilityTransferEventSchema = z.object({
+  id: z.number(),
+  event_type: InterFacilityTransferEventTypeSchema,
+  event_type_display: z.string().optional(),
+  from_status: z.string().optional(),
+  to_status: z.string().optional(),
+  occurred_at: z.string(),
+  actor: z.number().nullable().optional(),
+  actor_username: z.string().optional(),
+  actor_name: z.string().optional(),
+  note: z.string().optional(),
+  metadata: z.record(z.unknown()).optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export type InterFacilityTransferEventSchemaType = z.infer<typeof InterFacilityTransferEventSchema>;
+
+export const InterFacilityTransferSchema = z.object({
+  id: z.number(),
+  public_id: z.string(),
+  transfer_number: z.string(),
+  source_admission: z.number(),
+  source_admission_number: z.string().optional(),
+  source_discharge: z.number().nullable().optional(),
+  destination_admission: z.number().nullable().optional(),
+  patient: z.number(),
+  patient_name: z.string().optional(),
+  source_facility: z.number(),
+  source_facility_name: z.string().optional(),
+  destination_facility: z.number().nullable().optional(),
+  destination_facility_name: z.string().optional(),
+  destination_facility_label: z.string().optional(),
+  status: InterFacilityTransferStatusSchema,
+  status_display: z.string().optional(),
+  priority: InterFacilityTransferPrioritySchema,
+  priority_display: z.string().optional(),
+  reason_code: InterFacilityTransferReasonSchema,
+  reason_code_display: z.string().optional(),
+  reason_details: z.string().optional(),
+  clinical_summary: z.string(),
+  handover_notes: z.string(),
+  transport_mode: InterFacilityTransferTransportModeSchema,
+  escort_required: z.boolean(),
+  escort_name: z.string().optional(),
+  requested_by: z.number(),
+  accepted_by: z.number().nullable().optional(),
+  dispatched_by: z.number().nullable().optional(),
+  arrived_by: z.number().nullable().optional(),
+  cancelled_by: z.number().nullable().optional(),
+  accepted_at: z.string().nullable().optional(),
+  dispatched_at: z.string().nullable().optional(),
+  arrived_at: z.string().nullable().optional(),
+  cancelled_at: z.string().nullable().optional(),
+  rejection_reason: z.string().optional(),
+  cancellation_reason: z.string().optional(),
+  timeline_events: z.array(InterFacilityTransferEventSchema).optional(),
+  destination_admission_id: z.number().optional(),
+  destination_admission_number: z.string().optional(),
+  destination_ipd_encounter_id: z.number().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export type InterFacilityTransferSchemaType = z.infer<typeof InterFacilityTransferSchema>;
+
 // =============================================================================
 // WARD ROUND SCHEMAS
 // =============================================================================
@@ -686,6 +786,13 @@ export const PaginatedTransferSchema = z.object({
   results: z.array(TransferSchema),
 });
 
+export const PaginatedInterFacilityTransferSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(InterFacilityTransferSchema),
+});
+
 export const PaginatedWardRoundSchema = z.object({
   count: z.number(),
   next: z.string().nullable(),
@@ -714,6 +821,8 @@ export const PaginatedShiftHandoverSchema = z.object({
 export const BedArraySchema = z.array(BedSchema);
 export const KardexShiftNoteArraySchema = z.array(KardexShiftNoteSchema);
 export const KardexHandoverNoteArraySchema = z.array(KardexHandoverNoteSchema);
+export const InterFacilityTransferArraySchema = z.array(InterFacilityTransferSchema);
+export const InterFacilityTransferEventArraySchema = z.array(InterFacilityTransferEventSchema);
 
 // Legacy aliases for backwards compatibility
 export const BedArrayResponseSchema = z.object({

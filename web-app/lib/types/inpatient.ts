@@ -298,6 +298,19 @@ export interface DischargeCreateData {
   pharmacy_clearance?: boolean;
   nursing_clearance?: boolean;
   lab_results_acknowledged?: boolean;
+  transfer_workflow?: {
+    destination_facility?: number;
+    destination_facility_name?: string;
+    reason_code: InterFacilityTransferReason;
+    reason_details?: string;
+    priority?: InterFacilityTransferPriority;
+    clinical_summary: string;
+    handover_notes: string;
+    transport_mode?: 'AMBULANCE' | 'PRIVATE' | 'OTHER';
+    escort_required?: boolean;
+    escort_name?: string;
+    submit_immediately?: boolean;
+  };
 }
 
 export interface DischargeDraft {

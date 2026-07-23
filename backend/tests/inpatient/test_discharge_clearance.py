@@ -26,6 +26,7 @@ from hmis.apps.inpatient.models import (
     Admission,
     Bed,
     Discharge,
+    InterFacilityTransfer,
     NursingCarePlanEntry,
     NursingKardex,
     Ward,
@@ -643,3 +644,93 @@ class TestDischargeAutomatedClearance:
         )
 
         assert response.status_code == status.HTTP_201_CREATED
+
+    def test_transferred_discharge_requires_transfer_workflow_when_no_open_transfer(
+        self, clearance_client, clearance_admission, discharge_user
+    ):
+        response = clearance_client.post(
+            "/api/inpatient/discharges/",
+            {
+                "admission": clearance_admission.id,
+                "discharge_type": "TRANSFERRED",
+                "discharge_date": timezone.now().isoformat(),
+                "discharged_by": discharge_user.id,
+                "admission_diagnosis": "J18.9",
+                "final_diagnosis": "J18.9",
+                "final_diagnosis_text": "Referred to higher-level facility",
+                "treatment_summary": "Stabilized and referred",
+                "patient_instructions": "Proceed to referral center",
+            },
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "transfer_workflow" in response.data
+
+    def test_transferred_discharge_creates_and_links_transfer_workflow(
+        self, clearance_client, clearance_admission, discharge_user
+    ):
+        response = clearance_client.post(
+            "/api/inpatient/discharges/",
+            {
+                "admission": clearance_admission.id,
+                "discharge_type": "TRANSFERRED",
+                "discharge_date": timezone.now().isoformat(),
+                "discharged_by": discharge_user.id,
+                "admission_diagnosis": "J18.9",
+                "final_diagnosis": "J18.9",
+                "final_diagnosis_text": "Referred to higher-level facility",
+                "treatment_summary": "Stabilized and referred",
+                "patient_instructions": "Proceed to referral center",
+                "transfer_workflow": {
+                    "destination_facility_name": "County Referral Hospital",
+                    "reason_code": "HIGHER_LEVEL_CARE",
+                    "reason_details": "Requires ICU bed",
+                    "priority": "URGENT",
+                    "clinical_summary": "Escalating respiratory distress",
+                    "handover_notes": "On oxygen 4L/min",
+                    "transport_mode": "AMBULANCE",
+                    "escort_required": True,
+                    "escort_name": "Nurse Otieno",
+                    "submit_immediately": True,
+                },
+            },
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        discharge = Discharge.objects.get(id=response.data["id"])
+        transfer = InterFacilityTransfer.objects.get(source_admission=clearance_admission)
+        assert transfer.source_discharge_id == discharge.id
+        assert transfer.status == InterFacilityTransfer.TransferStatus.PENDING_ACCEPTANCE
+
+    def test_transferred_discharge_links_existing_open_transfer(
+        self, clearance_client, clearance_admission, discharge_user
+    ):
+        existing_transfer = InterFacilityTransfer.objects.create(
+            source_admission=clearance_admission,
+            patient=clearance_admission.patient,
+            source_facility=clearance_admission.facility,
+            destination_facility_name="Outside Facility",
+            reason_code="OTHER",
+            requested_by=discharge_user,
+            clinical_summary="Pending transfer workflow",
+            handover_notes="Monitor oxygen saturation",
+        )
+
+        response = clearance_client.post(
+            "/api/inpatient/discharges/",
+            {
+                "admission": clearance_admission.id,
+                "discharge_type": "TRANSFERRED",
+                "discharge_date": timezone.now().isoformat(),
+                "discharged_by": discharge_user.id,
+                "admission_diagnosis": "J18.9",
+                "final_diagnosis": "J18.9",
+                "final_diagnosis_text": "Referred",
+                "treatment_summary": "Stabilized and referred",
+                "patient_instructions": "Proceed to referral center",
+            },
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        existing_transfer.refresh_from_db()
+        assert existing_transfer.source_discharge_id == response.data["id"]

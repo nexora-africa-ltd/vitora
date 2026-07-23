@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeftRight, Loader2 } from 'lucide-react';
@@ -19,6 +20,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { facilitiesApi } from '@/lib/api/facilities';
+import { organizationsApi } from '@/lib/api/organizations';
+import { useUser } from '@/lib/auth';
+import { useFacility } from '@/lib/context/facility-context';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useAdmission, useCreateInterFacilityTransfer, useSubmitInterFacilityTransfer } from '@/lib/hooks/use-inpatient';
 import type { InterFacilityTransferPriority, InterFacilityTransferReason } from '@/lib/types/inpatient';
@@ -45,9 +50,39 @@ export default function CreateInterFacilityTransferPage() {
 
   const admissionId = params.id;
   const { data: admission } = useAdmission(admissionId);
+  const user = useUser();
+  const { organization, facility } = useFacility();
+  const { data: currentFacilityDetail } = useQuery({
+    queryKey: ['facilities', facility?.id, 'inter-facility-transfer'],
+    enabled: typeof facility?.id === 'number' && typeof organization?.id !== 'number',
+    queryFn: () => facilitiesApi.get(facility!.id),
+  });
+  const organizationId =
+    organization?.id ??
+    (typeof currentFacilityDetail?.organization === 'number' ? currentFacilityDetail.organization : undefined) ??
+    user?.memberships?.find((membership) => membership.is_primary)?.organization_id ??
+    user?.memberships?.[0]?.organization_id;
+  const { data: organizationFacilities = [] } = useQuery({
+    queryKey: ['organizations', organizationId, 'facilities', 'inter-facility-transfer'],
+    enabled: typeof organizationId === 'number',
+    queryFn: () => organizationsApi.listFacilities(organizationId as number, { is_active: true }),
+  });
+  const { data: facilityListResults = [] } = useQuery({
+    queryKey: ['facilities', 'organization-list', organizationId, 'inter-facility-transfer'],
+    enabled: typeof organizationId === 'number',
+    queryFn: async () => {
+      const response = await facilitiesApi.list({
+        organization: organizationId as number,
+        is_active: true,
+        page_size: 200,
+      });
+      return response.results;
+    },
+  });
   const createTransfer = useCreateInterFacilityTransfer();
   const submitTransfer = useSubmitInterFacilityTransfer();
 
+  const [selectedDestinationFacility, setSelectedDestinationFacility] = useState<string>('OTHER');
   const [destinationFacilityName, setDestinationFacilityName] = useState('');
   const [reasonCode, setReasonCode] = useState<InterFacilityTransferReason>('HIGHER_LEVEL_CARE');
   const [priority, setPriority] = useState<InterFacilityTransferPriority>('URGENT');
@@ -60,10 +95,46 @@ export default function CreateInterFacilityTransferPage() {
   const [submitImmediately, setSubmitImmediately] = useState(true);
 
   const isPending = createTransfer.isPending || submitTransfer.isPending;
+  const membershipFacilities = useMemo(() => {
+    const map = new Map<number, { id: number; name: string; mfl_code: string }>();
+    (user?.memberships ?? []).forEach((membership) => {
+      membership.facilities.forEach((facilityItem) => {
+        map.set(facilityItem.id, {
+          id: facilityItem.id,
+          name: facilityItem.name,
+          mfl_code: facilityItem.mfl_code,
+        });
+      });
+    });
+    return [...map.values()];
+  }, [user?.memberships]);
+  const destinationFacilityOptions = useMemo(() => {
+    const map = new Map<number, { id: number; name: string; mfl_code: string }>();
+    organizationFacilities.forEach((item) => {
+      map.set(item.id, { id: item.id, name: item.name, mfl_code: item.mfl_code });
+    });
+    facilityListResults.forEach((item) => {
+      map.set(item.id, { id: item.id, name: item.name, mfl_code: item.mfl_code });
+    });
+    membershipFacilities.forEach((item) => {
+      map.set(item.id, { id: item.id, name: item.name, mfl_code: item.mfl_code });
+    });
+    return [...map.values()];
+  }, [facilityListResults, membershipFacilities, organizationFacilities]);
+  const selectableFacilities = destinationFacilityOptions.filter((item) => item.id !== facility?.id);
+  const selectedDestinationFacilityId =
+    selectedDestinationFacility !== 'OTHER' && selectedDestinationFacility
+      ? Number(selectedDestinationFacility)
+      : undefined;
+  const needsManualDestinationName = selectedDestinationFacility === 'OTHER';
 
   const handleCreate = async () => {
     if (!admission) return;
-    if (!destinationFacilityName.trim() || !clinicalSummary.trim() || !handoverNotes.trim()) {
+    if (
+      (!selectedDestinationFacilityId && !destinationFacilityName.trim()) ||
+      !clinicalSummary.trim() ||
+      !handoverNotes.trim()
+    ) {
       toast({
         title: 'Missing required fields',
         description: 'Destination facility, clinical summary, and handover notes are required.',
@@ -75,7 +146,10 @@ export default function CreateInterFacilityTransferPage() {
     try {
       const created = await createTransfer.mutateAsync({
         source_admission: admission.id,
-        destination_facility_name: destinationFacilityName.trim(),
+        destination_facility: selectedDestinationFacilityId,
+        destination_facility_name: selectedDestinationFacilityId
+          ? undefined
+          : destinationFacilityName.trim(),
         reason_code: reasonCode,
         priority,
         reason_details: reasonDetails,
@@ -122,12 +196,30 @@ export default function CreateInterFacilityTransferPage() {
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label>Destination Facility Name *</Label>
-                <Input
-                  value={destinationFacilityName}
-                  onChange={(e) => setDestinationFacilityName(e.target.value)}
-                  placeholder="e.g., County Referral Hospital"
-                />
+                <Label>Destination Facility *</Label>
+                <Select
+                  value={selectedDestinationFacility}
+                  onValueChange={setSelectedDestinationFacility}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select destination facility" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectableFacilities.map((item) => (
+                      <SelectItem key={item.id} value={String(item.id)}>
+                        {item.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="OTHER">Other (Manual Entry)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {needsManualDestinationName && (
+                  <Input
+                    value={destinationFacilityName}
+                    onChange={(e) => setDestinationFacilityName(e.target.value)}
+                    placeholder="e.g., External Referral Hospital"
+                  />
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Reason</Label>
