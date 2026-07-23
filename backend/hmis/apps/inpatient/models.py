@@ -1441,6 +1441,357 @@ class DischargeDraft(TimeStampedModel):
         return f"Draft: {self.admission.admission_number}"
 
 
+class InterFacilityTransfer(TimeStampedModel):
+    """Operational workflow record for inter-facility inpatient transfer."""
+
+    class TransferStatus(models.TextChoices):
+        DRAFT = "DRAFT", "Draft"
+        PENDING_ACCEPTANCE = "PENDING_ACCEPTANCE", "Pending Acceptance"
+        ACCEPTED = "ACCEPTED", "Accepted"
+        REJECTED = "REJECTED", "Rejected"
+        IN_TRANSIT = "IN_TRANSIT", "In Transit"
+        ARRIVED = "ARRIVED", "Arrived"
+        CANCELLED = "CANCELLED", "Cancelled"
+
+    class TransferPriority(models.TextChoices):
+        ROUTINE = "ROUTINE", "Routine"
+        URGENT = "URGENT", "Urgent"
+        STAT = "STAT", "STAT"
+
+    class TransferReason(models.TextChoices):
+        HIGHER_LEVEL_CARE = "HIGHER_LEVEL_CARE", "Higher-level Care"
+        SPECIALIST_INPUT = "SPECIALIST_INPUT", "Specialist Input"
+        NO_CAPACITY = "NO_CAPACITY", "No Bed/Service Capacity"
+        EQUIPMENT_LIMITATION = "EQUIPMENT_LIMITATION", "Equipment Limitation"
+        PATIENT_REQUEST = "PATIENT_REQUEST", "Patient/Family Request"
+        OTHER = "OTHER", "Other"
+
+    class TransportMode(models.TextChoices):
+        AMBULANCE = "AMBULANCE", "Ambulance"
+        PRIVATE = "PRIVATE", "Private Vehicle"
+        OTHER = "OTHER", "Other"
+
+    public_id = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        db_index=True,
+        editable=False,
+        help_text="Stable UUID for transfer workflow references.",
+    )
+    transfer_number = models.CharField(
+        max_length=30,
+        unique=True,
+        db_index=True,
+        blank=True,
+        help_text="Auto-generated transfer number (IFT-YYYYMMDD-XXXX).",
+    )
+
+    source_admission = models.ForeignKey(
+        Admission,
+        on_delete=models.CASCADE,
+        related_name="interfacility_transfers",
+        help_text="Admission being transferred out.",
+    )
+    source_discharge = models.OneToOneField(
+        Discharge,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="interfacility_transfer",
+        help_text="Linked discharge event once transfer-out is finalized.",
+    )
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="interfacility_transfers",
+    )
+    source_facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.PROTECT,
+        related_name="outgoing_interfacility_transfers",
+    )
+    destination_facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="incoming_interfacility_transfers",
+    )
+    destination_facility_name = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Fallback destination facility name when not mapped in-system.",
+    )
+
+    status = models.CharField(
+        max_length=24,
+        choices=TransferStatus.choices,
+        default=TransferStatus.DRAFT,
+    )
+    priority = models.CharField(
+        max_length=12,
+        choices=TransferPriority.choices,
+        default=TransferPriority.ROUTINE,
+    )
+    reason_code = models.CharField(
+        max_length=32,
+        choices=TransferReason.choices,
+    )
+    reason_details = models.TextField(blank=True, default="")
+    clinical_summary = models.TextField(blank=True, default="")
+    handover_notes = models.TextField(blank=True, default="")
+
+    transport_mode = models.CharField(
+        max_length=20,
+        choices=TransportMode.choices,
+        default=TransportMode.AMBULANCE,
+    )
+    escort_required = models.BooleanField(default=False)
+    escort_name = models.CharField(max_length=255, blank=True, default="")
+
+    requested_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="interfacility_transfer_requests",
+    )
+    accepted_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="interfacility_transfer_acceptances",
+    )
+    dispatched_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="interfacility_transfer_dispatches",
+    )
+    arrived_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="interfacility_transfer_arrivals",
+    )
+    cancelled_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="interfacility_transfer_cancellations",
+    )
+
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    dispatched_at = models.DateTimeField(null=True, blank=True)
+    arrived_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True, default="")
+    cancellation_reason = models.TextField(blank=True, default="")
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-created_at"]
+        verbose_name = "Inter-facility Transfer"
+        verbose_name_plural = "Inter-facility Transfers"
+        permissions = [
+            ("submit_interfacility_transfer", "Can submit inter-facility transfer"),
+            ("accept_interfacility_transfer", "Can accept inter-facility transfer"),
+            ("reject_interfacility_transfer", "Can reject inter-facility transfer"),
+            ("dispatch_interfacility_transfer", "Can dispatch inter-facility transfer"),
+            ("arrive_interfacility_transfer", "Can mark inter-facility transfer as arrived"),
+            ("cancel_interfacility_transfer", "Can cancel inter-facility transfer"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source_admission"],
+                condition=models.Q(
+                    status__in=[
+                        "DRAFT",
+                        "PENDING_ACCEPTANCE",
+                        "ACCEPTED",
+                        "IN_TRANSIT",
+                    ]
+                ),
+                name="unique_open_interfacility_transfer_per_admission",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.transfer_number} ({self.get_status_display()})"
+
+    VALID_TRANSITIONS = {
+        TransferStatus.DRAFT: {TransferStatus.PENDING_ACCEPTANCE, TransferStatus.CANCELLED},
+        TransferStatus.PENDING_ACCEPTANCE: {
+            TransferStatus.ACCEPTED,
+            TransferStatus.REJECTED,
+            TransferStatus.CANCELLED,
+        },
+        TransferStatus.ACCEPTED: {TransferStatus.IN_TRANSIT, TransferStatus.CANCELLED},
+        TransferStatus.REJECTED: set(),
+        TransferStatus.IN_TRANSIT: {TransferStatus.ARRIVED, TransferStatus.CANCELLED},
+        TransferStatus.ARRIVED: set(),
+        TransferStatus.CANCELLED: set(),
+    }
+
+    def save(self, *args, **kwargs):
+        if not self.transfer_number:
+            self.transfer_number = self.generate_transfer_number()
+
+        if self.source_admission_id:
+            if not self.patient_id:
+                self.patient = self.source_admission.patient
+            if not self.source_facility_id:
+                self.source_facility = self.source_admission.facility
+
+        if self.destination_facility_id and not self.destination_facility_name:
+            self.destination_facility_name = self.destination_facility.name
+
+        super().save(*args, **kwargs)
+
+    def clean(self):
+        super().clean()
+
+        if not self.destination_facility_id and not self.destination_facility_name:
+            raise ValidationError("Destination facility or destination facility name is required.")
+
+        if (
+            self.destination_facility_id
+            and self.source_facility_id
+            and self.destination_facility_id == self.source_facility_id
+        ):
+            raise ValidationError("Destination facility must differ from source facility.")
+
+        if self.source_discharge_id:
+            if self.source_discharge.admission_id != self.source_admission_id:
+                raise ValidationError("Linked discharge must belong to the source admission.")
+            if self.source_discharge.discharge_type != "TRANSFERRED":
+                raise ValidationError("Linked discharge must have discharge_type='TRANSFERRED'.")
+
+    def generate_transfer_number(self) -> str:
+        import re
+
+        from django.db.models import Max
+
+        today = timezone.now().strftime("%Y%m%d")
+        prefix = f"IFT-{today}-"
+        last_number = InterFacilityTransfer.objects.filter(
+            transfer_number__startswith=prefix
+        ).aggregate(Max("transfer_number"))["transfer_number__max"]
+
+        if last_number:
+            match = re.search(r"-(\d{4})$", last_number)
+            sequence = int(match.group(1)) + 1 if match else 1
+        else:
+            sequence = 1
+
+        return f"{prefix}{sequence:04d}"
+
+    def can_transition_to(self, next_status: str) -> bool:
+        return next_status in self.VALID_TRANSITIONS.get(self.status, set())
+
+    def transition_to(self, next_status: str, *, user, reason: str = "") -> None:
+        if not self.can_transition_to(next_status):
+            raise ValidationError(
+                f"Cannot transition inter-facility transfer from {self.status} to {next_status}."
+            )
+
+        now = timezone.now()
+        update_fields = ["status", "updated_at"]
+
+        if next_status == self.TransferStatus.PENDING_ACCEPTANCE:
+            if not self.clinical_summary.strip() or not self.handover_notes.strip():
+                raise ValidationError(
+                    "Clinical summary and handover notes are required before submitting."
+                )
+            self.rejection_reason = ""
+            self.cancellation_reason = ""
+            update_fields.extend(["rejection_reason", "cancellation_reason"])
+
+        elif next_status == self.TransferStatus.ACCEPTED:
+            self.accepted_by = user
+            self.accepted_at = now
+            self.rejection_reason = ""
+            update_fields.extend(["accepted_by", "accepted_at", "rejection_reason"])
+
+        elif next_status == self.TransferStatus.REJECTED:
+            if not reason.strip():
+                raise ValidationError("Rejection reason is required.")
+            self.rejection_reason = reason.strip()
+            self.accepted_by = None
+            self.accepted_at = None
+            update_fields.extend(
+                [
+                    "rejection_reason",
+                    "accepted_by",
+                    "accepted_at",
+                ]
+            )
+
+        elif next_status == self.TransferStatus.IN_TRANSIT:
+            self.dispatched_by = user
+            self.dispatched_at = now
+            update_fields.extend(["dispatched_by", "dispatched_at"])
+
+        elif next_status == self.TransferStatus.ARRIVED:
+            self.arrived_by = user
+            self.arrived_at = now
+            update_fields.extend(["arrived_by", "arrived_at"])
+
+        elif next_status == self.TransferStatus.CANCELLED:
+            if not reason.strip():
+                raise ValidationError("Cancellation reason is required.")
+            self.cancelled_by = user
+            self.cancelled_at = now
+            self.cancellation_reason = reason.strip()
+            update_fields.extend(["cancelled_by", "cancelled_at", "cancellation_reason"])
+
+        self.status = next_status
+        self.save(update_fields=update_fields)
+
+
+class InterFacilityTransferEvent(TimeStampedModel):
+    """Chronological timeline event for inter-facility transfer workflow."""
+
+    class EventType(models.TextChoices):
+        CREATED = "CREATED", "Created"
+        SUBMITTED = "SUBMITTED", "Submitted"
+        ACCEPTED = "ACCEPTED", "Accepted"
+        REJECTED = "REJECTED", "Rejected"
+        DISPATCHED = "DISPATCHED", "Dispatched"
+        ARRIVED = "ARRIVED", "Arrived"
+        AUTO_ADMITTED = "AUTO_ADMITTED", "Auto Admitted"
+        CANCELLED = "CANCELLED", "Cancelled"
+
+    transfer = models.ForeignKey(
+        InterFacilityTransfer,
+        on_delete=models.CASCADE,
+        related_name="timeline_events",
+    )
+    event_type = models.CharField(max_length=24, choices=EventType.choices)
+    from_status = models.CharField(max_length=24, blank=True, default="")
+    to_status = models.CharField(max_length=24, blank=True, default="")
+    occurred_at = models.DateTimeField(default=timezone.now, db_index=True)
+    actor = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="interfacility_transfer_timeline_events",
+    )
+    note = models.TextField(blank=True, default="")
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["occurred_at", "id"]
+        verbose_name = "Inter-facility Transfer Event"
+        verbose_name_plural = "Inter-facility Transfer Events"
+
+    def __str__(self):
+        return f"{self.transfer.transfer_number} - {self.event_type}"
+
+
 class Transfer(TimeStampedModel):
     """
     Patient transfer between wards.

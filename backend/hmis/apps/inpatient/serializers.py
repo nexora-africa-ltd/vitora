@@ -31,6 +31,8 @@ from .models import (
     GeneralReaction,
     HaematologicalReaction,
     InpatientConsumableUsage,
+    InterFacilityTransfer,
+    InterFacilityTransferEvent,
     KardexHandoverNote,
     KardexShiftNote,
     MedicationAdministration,
@@ -938,6 +940,168 @@ class DischargeDraftSerializer(serializers.ModelSerializer):
     def get_patient_name(self, obj) -> str:
         patient = obj.admission.patient
         return f"{patient.first_name} {patient.last_name}"
+
+
+class InterFacilityTransferSerializer(serializers.ModelSerializer):
+    """Serializer for inter-facility transfer workflow records."""
+
+    source_admission_number = serializers.CharField(
+        source="source_admission.admission_number", read_only=True
+    )
+    patient_name = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    priority_display = serializers.CharField(source="get_priority_display", read_only=True)
+    reason_code_display = serializers.CharField(source="get_reason_code_display", read_only=True)
+    source_facility_name = serializers.CharField(source="source_facility.name", read_only=True)
+    destination_facility_label = serializers.SerializerMethodField()
+    timeline_events = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InterFacilityTransfer
+        fields = [
+            "id",
+            "public_id",
+            "transfer_number",
+            "source_admission",
+            "source_admission_number",
+            "source_discharge",
+            "patient",
+            "patient_name",
+            "source_facility",
+            "source_facility_name",
+            "destination_facility",
+            "destination_facility_name",
+            "destination_facility_label",
+            "status",
+            "status_display",
+            "priority",
+            "priority_display",
+            "reason_code",
+            "reason_code_display",
+            "reason_details",
+            "clinical_summary",
+            "handover_notes",
+            "transport_mode",
+            "escort_required",
+            "escort_name",
+            "requested_by",
+            "accepted_by",
+            "dispatched_by",
+            "arrived_by",
+            "cancelled_by",
+            "accepted_at",
+            "dispatched_at",
+            "arrived_at",
+            "cancelled_at",
+            "rejection_reason",
+            "cancellation_reason",
+            "timeline_events",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "public_id",
+            "transfer_number",
+            "patient",
+            "source_facility",
+            "requested_by",
+            "accepted_by",
+            "dispatched_by",
+            "arrived_by",
+            "cancelled_by",
+            "accepted_at",
+            "dispatched_at",
+            "arrived_at",
+            "cancelled_at",
+            "created_at",
+            "updated_at",
+        ]
+
+    def validate(self, attrs):
+        if self.instance and "status" in attrs and attrs.get("status") != self.instance.status:
+            raise serializers.ValidationError(
+                {"status": "Use workflow actions (submit/accept/reject/dispatch/arrive/cancel)."}
+            )
+
+        source_admission = attrs.get("source_admission") or getattr(
+            self.instance, "source_admission", None
+        )
+        source_discharge = attrs.get("source_discharge") or getattr(
+            self.instance, "source_discharge", None
+        )
+        destination_facility = attrs.get("destination_facility") or getattr(
+            self.instance, "destination_facility", None
+        )
+        destination_name = attrs.get("destination_facility_name") or getattr(
+            self.instance, "destination_facility_name", ""
+        )
+
+        if source_admission and source_admission.admission_status != "ACTIVE":
+            if not source_discharge:
+                raise serializers.ValidationError(
+                    {
+                        "source_admission": (
+                            "Transfer workflow can only start from an ACTIVE admission "
+                            "unless linked to a TRANSFERRED discharge."
+                        )
+                    }
+                )
+
+        if not destination_facility and not destination_name:
+            raise serializers.ValidationError(
+                {
+                    "destination_facility_name": (
+                        "Provide destination facility or destination facility name."
+                    )
+                }
+            )
+
+        return attrs
+
+    def get_patient_name(self, obj) -> str:
+        patient = obj.patient
+        return f"{patient.first_name} {patient.last_name}"
+
+    def get_destination_facility_label(self, obj) -> str:
+        if obj.destination_facility is not None:
+            return obj.destination_facility.name
+        return obj.destination_facility_name
+
+    def get_timeline_events(self, obj):
+        events_qs = obj.timeline_events.select_related("actor").all().order_by("occurred_at", "id")
+        return InterFacilityTransferEventSerializer(events_qs, many=True).data
+
+
+class InterFacilityTransferEventSerializer(serializers.ModelSerializer):
+    event_type_display = serializers.CharField(source="get_event_type_display", read_only=True)
+    actor_username = serializers.CharField(source="actor.username", read_only=True)
+    actor_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InterFacilityTransferEvent
+        fields = [
+            "id",
+            "event_type",
+            "event_type_display",
+            "from_status",
+            "to_status",
+            "occurred_at",
+            "actor",
+            "actor_username",
+            "actor_name",
+            "note",
+            "metadata",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_actor_name(self, obj) -> str:
+        if obj.actor is None:
+            return ""
+        full_name = obj.actor.get_full_name()
+        return full_name or obj.actor.username
 
 
 class TransferSerializer(serializers.ModelSerializer):

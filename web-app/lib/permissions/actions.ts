@@ -80,6 +80,12 @@ export const ACTION_PERMISSIONS = {
   'inpatient.order_imaging': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
   'inpatient.discharge': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
   'inpatient.transfer': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
+  'inpatient.submit_interfacility_transfer': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
+  'inpatient.accept_interfacility_transfer': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
+  'inpatient.reject_interfacility_transfer': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
+  'inpatient.dispatch_interfacility_transfer': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
+  'inpatient.arrive_interfacility_transfer': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
+  'inpatient.cancel_interfacility_transfer': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
   'inpatient.view_alerts': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
 
   // === Last Office (Death Records) Module ===
