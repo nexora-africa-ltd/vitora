@@ -315,17 +315,33 @@ export function ICURiskAssessmentPanel({
   const { mutate, data: prediction, isPending, reset, isError } = useAIICUPredict();
   const [showDetails, setShowDetails] = React.useState(false);
   const [predictionType, setPredictionType] = React.useState<AIICUPredictionType>('predict');
+  const lastRequestRef = React.useRef<AIICUPredictRequest | null>(null);
   const panelId = React.useId();
 
   // Load stored ICU results
   const { data: storedResults } = useStoredICURiskResults(admissionId);
-  const latestStored = storedResults?.[0];
+  const latestStored = React.useMemo(() => {
+    if (!storedResults || storedResults.length === 0) return undefined;
+    return [...storedResults].sort((a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0];
+  }, [storedResults]);
 
   // Normalize stored result_data — older records may have sofa_score/qsofa_score
   // as raw TibaBot objects instead of numbers.
   const normalizedStored = React.useMemo<AIICUPredictResponse | undefined>(() => {
     if (!latestStored?.result_data) return undefined;
-    const raw = latestStored.result_data as Record<string, unknown>;
+    const rawResult =
+      latestStored.result_data && typeof latestStored.result_data === 'object'
+        ? latestStored.result_data
+        : {};
+    const raw = {
+      ...(rawResult as Record<string, unknown>),
+      risk_level:
+        (rawResult as Record<string, unknown>).risk_level ?? latestStored.risk_level,
+      risk_score:
+        (rawResult as Record<string, unknown>).risk_score ?? latestStored.risk_score,
+    } as Record<string, unknown>;
 
     let sofaScore = raw.sofa_score as number | null | undefined;
     let sofaBreakdown = raw.sofa_breakdown as AISOFAScoreBreakdown | null | undefined;
@@ -409,42 +425,61 @@ export function ICURiskAssessmentPanel({
     const useType = type ?? predictionType;
     setPredictionType(useType);
 
-    const patientData: AIICUPredictRequest['patient_data'] = {
+    const currentPatientData: AIICUPredictRequest['patient_data'] = {
       age: patientAge,
       gender: patientGender,
     };
 
     // Vitals
-    if (vitals?.temperature != null) patientData.temperature = vitals.temperature;
-    if (vitals?.heart_rate != null) patientData.heart_rate = vitals.heart_rate;
-    if (vitals?.systolic_bp != null) patientData.systolic_bp = vitals.systolic_bp;
-    if (vitals?.diastolic_bp != null) patientData.diastolic_bp = vitals.diastolic_bp;
-    if (vitals?.respiratory_rate != null) patientData.respiratory_rate = vitals.respiratory_rate;
-    if (vitals?.spo2 != null) patientData.spo2 = vitals.spo2;
+    if (vitals?.temperature != null) currentPatientData.temperature = vitals.temperature;
+    if (vitals?.heart_rate != null) currentPatientData.heart_rate = vitals.heart_rate;
+    if (vitals?.systolic_bp != null) currentPatientData.systolic_bp = vitals.systolic_bp;
+    if (vitals?.diastolic_bp != null) currentPatientData.diastolic_bp = vitals.diastolic_bp;
+    if (vitals?.respiratory_rate != null) {
+      currentPatientData.respiratory_rate = vitals.respiratory_rate;
+    }
+    if (vitals?.spo2 != null) currentPatientData.spo2 = vitals.spo2;
 
     // Compute MAP if BP available
     if (vitals?.systolic_bp != null && vitals?.diastolic_bp != null) {
-      patientData.mean_arterial_pressure =
+      currentPatientData.mean_arterial_pressure =
         Math.round((vitals.systolic_bp + 2 * vitals.diastolic_bp) / 3);
     }
 
     // Labs
-    if (labs?.wbc != null) patientData.wbc = labs.wbc;
-    if (labs?.platelets != null) patientData.platelets = labs.platelets;
-    if (labs?.creatinine != null) patientData.creatinine = labs.creatinine;
-    if (labs?.bilirubin != null) patientData.bilirubin = labs.bilirubin;
-    if (labs?.lactate != null) patientData.lactate = labs.lactate;
-    if (labs?.pao2_fio2_ratio != null) patientData.pao2_fio2_ratio = labs.pao2_fio2_ratio;
+    if (labs?.wbc != null) currentPatientData.wbc = labs.wbc;
+    if (labs?.platelets != null) currentPatientData.platelets = labs.platelets;
+    if (labs?.creatinine != null) currentPatientData.creatinine = labs.creatinine;
+    if (labs?.bilirubin != null) currentPatientData.bilirubin = labs.bilirubin;
+    if (labs?.lactate != null) currentPatientData.lactate = labs.lactate;
+    if (labs?.pao2_fio2_ratio != null) currentPatientData.pao2_fio2_ratio = labs.pao2_fio2_ratio;
 
     // Clinical context
-    if (gcs != null) patientData.gcs = gcs;
-    if (urineOutputMlDay != null) patientData.urine_output_ml_day = urineOutputMlDay;
-    if (onVasopressors) patientData.on_vasopressors = true;
-    if (onMechanicalVentilation) patientData.on_mechanical_ventilation = true;
-    if (admissionDiagnosis?.trim()) patientData.admission_diagnosis = admissionDiagnosis;
-    if (lengthOfStayDays != null) patientData.length_of_stay_days = lengthOfStayDays;
+    if (gcs != null) currentPatientData.gcs = gcs;
+    if (urineOutputMlDay != null) currentPatientData.urine_output_ml_day = urineOutputMlDay;
+    if (onVasopressors) currentPatientData.on_vasopressors = true;
+    if (onMechanicalVentilation) currentPatientData.on_mechanical_ventilation = true;
+    if (admissionDiagnosis?.trim()) currentPatientData.admission_diagnosis = admissionDiagnosis;
+    if (lengthOfStayDays != null) currentPatientData.length_of_stay_days = lengthOfStayDays;
 
-    mutate({ patient_data: patientData, prediction_type: useType, admission_id: admissionId });
+    const requestPayload: AIICUPredictRequest = {
+      patient_data: currentPatientData,
+      prediction_type: useType,
+      admission_id: admissionId,
+    };
+
+    lastRequestRef.current = requestPayload;
+    mutate(requestPayload);
+  };
+
+  const handleRerun = () => {
+    reset();
+    if (lastRequestRef.current) {
+      setPredictionType(lastRequestRef.current.prediction_type ?? 'predict');
+      mutate(lastRequestRef.current);
+      return;
+    }
+    handlePredict('predict');
   };
 
   const riskConfig = displayPrediction?.risk_level
@@ -773,36 +808,15 @@ export function ICURiskAssessmentPanel({
                 variant="ghost"
                 size="sm"
                 disabled={disabled || isPending}
-                onClick={() => {
-                  reset();
-                  handlePredict('predict');
-                }}
+                onClick={handleRerun}
                 className="gap-1.5 text-xs"
               >
-                {isPending && predictionType === 'predict' ? (
+                {isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <HeartPulse className="h-3.5 w-3.5" />
                 )}
-                Re-run ICU Risk
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={disabled || isPending}
-                onClick={() => {
-                  reset();
-                  handlePredict('risk-stratify');
-                }}
-                className="gap-1.5 text-xs"
-              >
-                {isPending && predictionType === 'risk-stratify' ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Activity className="h-3.5 w-3.5" />
-                )}
-                Re-run Risk Stratify
+                Re-run Last Assessment
               </Button>
               </div>
             </div>
