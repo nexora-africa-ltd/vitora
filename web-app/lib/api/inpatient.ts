@@ -109,6 +109,10 @@ import type {
   TransferCreateData,
   TransferListParams,
   TransferListResponse,
+  InterFacilityTransfer,
+  InterFacilityTransferCreateData,
+  InterFacilityTransferArrivalAutoAdmitData,
+  InterFacilityTransferEvent,
   WardRound,
   WardRoundCreateData,
   WardRoundListParams,
@@ -425,6 +429,118 @@ export const inpatientApi = {
   async createTransfer(data: TransferCreateData): Promise<Transfer> {
     const response = await apiClient.post<Transfer>('/api/inpatient/transfers/', data);
     return parseResponse(TransferSchema, response.data, { context: 'inpatientApi.createTransfer' });
+  },
+
+  // ============================================================================
+  // Inter-Facility Transfers
+  // ============================================================================
+  async listInterFacilityTransfers(
+    params?: Record<string, string | number | boolean | undefined>
+  ): Promise<Paginated<InterFacilityTransfer>> {
+    const response = await apiClient.get<Paginated<InterFacilityTransfer>>(
+      '/api/inpatient/inter-facility-transfers/',
+      { params }
+    );
+    return response.data;
+  },
+
+  async getInterFacilityTransfer(transferId: IdParam): Promise<InterFacilityTransfer> {
+    const response = await apiClient.get<InterFacilityTransfer>(
+      `/api/inpatient/inter-facility-transfers/${transferId}/`
+    );
+    return response.data;
+  },
+
+  async createInterFacilityTransfer(
+    data: InterFacilityTransferCreateData
+  ): Promise<InterFacilityTransfer> {
+    const response = await apiClient.post<InterFacilityTransfer>(
+      '/api/inpatient/inter-facility-transfers/',
+      data
+    );
+    return response.data;
+  },
+
+  async submitInterFacilityTransfer(transferId: IdParam): Promise<InterFacilityTransfer> {
+    const response = await apiClient.post<InterFacilityTransfer>(
+      `/api/inpatient/inter-facility-transfers/${transferId}/submit/`,
+      {}
+    );
+    return response.data;
+  },
+
+  async acceptInterFacilityTransfer(transferId: IdParam): Promise<InterFacilityTransfer> {
+    const response = await apiClient.post<InterFacilityTransfer>(
+      `/api/inpatient/inter-facility-transfers/${transferId}/accept/`,
+      {}
+    );
+    return response.data;
+  },
+
+  async rejectInterFacilityTransfer(
+    transferId: IdParam,
+    reason: string
+  ): Promise<InterFacilityTransfer> {
+    const response = await apiClient.post<InterFacilityTransfer>(
+      `/api/inpatient/inter-facility-transfers/${transferId}/reject/`,
+      { reason }
+    );
+    return response.data;
+  },
+
+  async dispatchInterFacilityTransfer(transferId: IdParam): Promise<InterFacilityTransfer> {
+    const response = await apiClient.post<InterFacilityTransfer>(
+      `/api/inpatient/inter-facility-transfers/${transferId}/dispatch/`,
+      {}
+    );
+    return response.data;
+  },
+
+  async arriveInterFacilityTransfer(
+    transferId: IdParam,
+    data?: { auto_admit?: boolean } & Partial<InterFacilityTransferArrivalAutoAdmitData>
+  ): Promise<InterFacilityTransfer> {
+    const response = await apiClient.post<InterFacilityTransfer>(
+      `/api/inpatient/inter-facility-transfers/${transferId}/arrive/`,
+      data ?? {}
+    );
+    return response.data;
+  },
+
+  async arriveAndAdmitInterFacilityTransfer(
+    transferId: IdParam,
+    data: InterFacilityTransferArrivalAutoAdmitData
+  ): Promise<InterFacilityTransfer> {
+    const response = await apiClient.post<InterFacilityTransfer>(
+      `/api/inpatient/inter-facility-transfers/${transferId}/arrive-and-admit/`,
+      data
+    );
+    return response.data;
+  },
+
+  async cancelInterFacilityTransfer(
+    transferId: IdParam,
+    reason: string
+  ): Promise<InterFacilityTransfer> {
+    const response = await apiClient.post<InterFacilityTransfer>(
+      `/api/inpatient/inter-facility-transfers/${transferId}/cancel/`,
+      { reason }
+    );
+    return response.data;
+  },
+
+  async listInterFacilityDestinationQueue(): Promise<InterFacilityTransfer[]> {
+    const response = await apiClient.get<InterFacilityTransfer[]>(
+      '/api/inpatient/inter-facility-transfers/destination-queue/'
+    );
+    return response.data;
+  },
+
+  async getInterFacilityTransferTimeline(transferId: IdParam): Promise<InterFacilityTransferEvent[]> {
+    const response = await apiClient.get<InterFacilityTransferEvent[]>(
+      `/api/inpatient/inter-facility-transfers/${transferId}/timeline/`
+    );
+    return response.data;
   },
 
   // ============================================================================

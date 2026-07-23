@@ -741,6 +741,15 @@ export default function AdmissionDetailPage() {
           </Button>
           </PermissionGate>
 
+          <PermissionGate action="inpatient.submit_interfacility_transfer">
+          <Button variant="outline" asChild>
+            <Link href={`/admissions/${admission.id}/inter-facility-transfer`}>
+              <MoveRight className="h-4 w-4 mr-2" />
+              Inter-Facility Transfer
+            </Link>
+          </Button>
+          </PermissionGate>
+
           {/* Blood Bank — only when module enabled */}
           {hasModule('blood_bank') && (
             <Button variant="outline" asChild>

@@ -309,6 +309,12 @@ const _allNavItems: NavItemType[] = [
       { label: 'Bed Board', href: '/inpatient/bed-board', icon: BedDouble, actionKey: 'inpatient.view_ward' },
       { label: 'Wards', href: '/wards', icon: Building2, actionKey: 'inpatient.view_ward' },
       { label: 'Admissions', href: '/admissions', icon: ClipboardList, actionKey: 'inpatient.view_admissions' },
+      {
+        label: 'Inter-Facility Queue',
+        href: '/admissions/inter-facility-transfers/destination-queue',
+        icon: ArrowLeftRight,
+        actionKey: 'inpatient.accept_interfacility_transfer',
+      },
       { label: 'Recommendations', href: '/admissions/recommendations', icon: ListOrdered, actionKey: 'inpatient.view_admissions' },
       { label: 'Handover', href: '/admissions/handover', icon: ArrowLeftRight, actionKey: 'inpatient.view_ward' },
       { label: 'Reviews', href: '/inpatient/reviews', icon: FileText, actionKey: 'inpatient.view_reviews' },

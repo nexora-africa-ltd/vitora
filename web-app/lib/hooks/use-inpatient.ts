@@ -48,6 +48,9 @@ import type {
   Transfer,
   TransferCreateData,
   TransferListParams,
+  InterFacilityTransfer,
+  InterFacilityTransferCreateData,
+  InterFacilityTransferArrivalAutoAdmitData,
   TransfusionObservationEntryCreateData,
   SetExpectedDischargeRequest,
   BedOverrideRequest,
@@ -92,6 +95,14 @@ export const inpatientQueryKeys = {
   transfers: (params?: TransferListParams) =>
     [...inpatientQueryKeys.all, 'transfers', params] as const,
   transfer: (id: number) => [...inpatientQueryKeys.all, 'transfers', id] as const,
+  interFacilityTransfers: (params?: Record<string, unknown>) =>
+    [...inpatientQueryKeys.all, 'inter-facility-transfers', params] as const,
+  interFacilityTransfer: (id: string | number) =>
+    [...inpatientQueryKeys.all, 'inter-facility-transfers', id] as const,
+  interFacilityDestinationQueue: () =>
+    [...inpatientQueryKeys.all, 'inter-facility-transfers', 'destination-queue'] as const,
+  interFacilityTransferTimeline: (id: string | number) =>
+    [...inpatientQueryKeys.all, 'inter-facility-transfers', id, 'timeline'] as const,
   wardRounds: (params?: WardRoundListParams) =>
     [...inpatientQueryKeys.all, 'ward-rounds', params] as const,
   wardRound: (id: number) => [...inpatientQueryKeys.all, 'ward-rounds', id] as const,
@@ -623,6 +634,140 @@ export function useCreateTransfer() {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.beds() });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wards() });
     },
+  });
+}
+
+export function useInterFacilityTransfers(params?: Record<string, string | number | boolean | undefined>) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.interFacilityTransfers(params),
+    queryFn: () => inpatientApi.listInterFacilityTransfers(params),
+  });
+}
+
+export function useInterFacilityTransfer(transferId: string | number | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.interFacilityTransfer(transferId!),
+    enabled: transferId !== undefined,
+    queryFn: () => inpatientApi.getInterFacilityTransfer(transferId!),
+  });
+}
+
+export function useInterFacilityDestinationQueue() {
+  return useQuery({
+    queryKey: inpatientQueryKeys.interFacilityDestinationQueue(),
+    queryFn: () => inpatientApi.listInterFacilityDestinationQueue(),
+  });
+}
+
+export function useInterFacilityTransferTimeline(transferId: string | number | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.interFacilityTransferTimeline(transferId!),
+    enabled: transferId !== undefined,
+    queryFn: () => inpatientApi.getInterFacilityTransferTimeline(transferId!),
+  });
+}
+
+function invalidateInterFacilityTransferQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  transfer?: InterFacilityTransfer | null
+) {
+  queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.interFacilityTransfers() });
+  queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.interFacilityDestinationQueue() });
+  if (transfer?.id) {
+    queryClient.invalidateQueries({
+      queryKey: inpatientQueryKeys.interFacilityTransfer(transfer.id),
+    });
+    queryClient.invalidateQueries({
+      queryKey: inpatientQueryKeys.interFacilityTransferTimeline(transfer.id),
+    });
+  }
+  if (transfer?.source_admission) {
+    queryClient.invalidateQueries({
+      queryKey: inpatientQueryKeys.admission(transfer.source_admission),
+    });
+  }
+  queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admissions() });
+  queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wards() });
+  queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.beds() });
+}
+
+export function useCreateInterFacilityTransfer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: InterFacilityTransferCreateData) => inpatientApi.createInterFacilityTransfer(data),
+    onSuccess: (transfer) => {
+      invalidateInterFacilityTransferQueries(queryClient, transfer);
+    },
+  });
+}
+
+export function useSubmitInterFacilityTransfer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (transferId: number | string) => inpatientApi.submitInterFacilityTransfer(transferId),
+    onSuccess: (transfer) => invalidateInterFacilityTransferQueries(queryClient, transfer),
+  });
+}
+
+export function useAcceptInterFacilityTransfer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (transferId: number | string) => inpatientApi.acceptInterFacilityTransfer(transferId),
+    onSuccess: (transfer) => invalidateInterFacilityTransferQueries(queryClient, transfer),
+  });
+}
+
+export function useRejectInterFacilityTransfer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ transferId, reason }: { transferId: number | string; reason: string }) =>
+      inpatientApi.rejectInterFacilityTransfer(transferId, reason),
+    onSuccess: (transfer) => invalidateInterFacilityTransferQueries(queryClient, transfer),
+  });
+}
+
+export function useDispatchInterFacilityTransfer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (transferId: number | string) => inpatientApi.dispatchInterFacilityTransfer(transferId),
+    onSuccess: (transfer) => invalidateInterFacilityTransferQueries(queryClient, transfer),
+  });
+}
+
+export function useArriveInterFacilityTransfer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      transferId,
+      data,
+    }: {
+      transferId: number | string;
+      data?: { auto_admit?: boolean } & Partial<InterFacilityTransferArrivalAutoAdmitData>;
+    }) => inpatientApi.arriveInterFacilityTransfer(transferId, data),
+    onSuccess: (transfer) => invalidateInterFacilityTransferQueries(queryClient, transfer),
+  });
+}
+
+export function useArriveAndAdmitInterFacilityTransfer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      transferId,
+      data,
+    }: {
+      transferId: number | string;
+      data: InterFacilityTransferArrivalAutoAdmitData;
+    }) => inpatientApi.arriveAndAdmitInterFacilityTransfer(transferId, data),
+    onSuccess: (transfer) => invalidateInterFacilityTransferQueries(queryClient, transfer),
+  });
+}
+
+export function useCancelInterFacilityTransfer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ transferId, reason }: { transferId: number | string; reason: string }) =>
+      inpatientApi.cancelInterFacilityTransfer(transferId, reason),
+    onSuccess: (transfer) => invalidateInterFacilityTransferQueries(queryClient, transfer),
   });
 }
 
