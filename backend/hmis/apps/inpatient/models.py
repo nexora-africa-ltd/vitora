@@ -34,6 +34,8 @@ from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.models import TimeStampedModel
 from hmis.apps.core.pii import encrypted_pii_property
 
+from .clearance import calculate_patient_blocking_balance
+
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractUser
     from django.db.models import QuerySet
@@ -1263,8 +1265,6 @@ class Discharge(TimeStampedModel):
         # The DischargeSerializer also performs this check at the API layer;
         # keeping it here ensures model-level integrity for non-API callers.
         if self.discharge_type == "NORMAL":
-            from decimal import Decimal
-
             from hmis.apps.billing.models import Invoice
             from hmis.apps.laboratory.models import LabOrder
             from hmis.apps.pharmacy.models import Prescription
@@ -1281,10 +1281,11 @@ class Discharge(TimeStampedModel):
                     Invoice.Status.WRITTEN_OFF,
                 ]
             )
-            outstanding = sum((inv.balance_due for inv in unpaid), Decimal("0.00"))
+            billing_balance = calculate_patient_blocking_balance(unpaid)
+            outstanding = billing_balance["outstanding_amount"]
             if outstanding > 0:
                 errors["billing_cleared"] = (
-                    f"Cannot discharge: KES {outstanding:,.2f} outstanding balance"
+                    f"Cannot discharge: KES {outstanding:,.2f} patient-responsible outstanding balance"
                 )
 
             # Pharmacy

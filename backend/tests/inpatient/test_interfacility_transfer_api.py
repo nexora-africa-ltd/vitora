@@ -868,11 +868,15 @@ class TestInterFacilityTransferAPI:
 
         request_summary = destination_client.post(
             f"/api/inpatient/inter-facility-transfers/{transfer_id}/request-discharge-summary/",
-            {},
+            {"note": "Please include discharge meds and escalation notes."},
             format="json",
         )
         assert request_summary.status_code == status.HTTP_200_OK
         assert request_summary.data["discharge_summary_requested"] is True
+        assert (
+            request_summary.data["discharge_summary_request_note"]
+            == "Please include discharge meds and escalation notes."
+        )
 
         transfer = InterFacilityTransfer.objects.get(id=transfer_id)
         discharge = Discharge.objects.create(
@@ -1004,3 +1008,71 @@ class TestInterFacilityTransferAPI:
         )
         assert accept_from_destination_context.status_code == status.HTTP_200_OK
         assert accept_from_destination_context.data["status"] == "ACCEPTED"
+
+    def test_source_can_share_from_discharge_draft_when_final_discharge_missing(
+        self,
+        authenticated_client,
+        test_user,
+        another_user,
+        sample_admission,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        from hmis.apps.inpatient.models import DischargeDraft
+
+        destination_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Referral Hospital Draft Share",
+            mfl_code="18181",
+            level="5",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        ensure_staff_profile(another_user, sample_organization, destination_facility)
+        destination_client = self._client_for_user(another_user)
+        self._grant_permissions(test_user, ["submit_interfacility_transfer"])
+        self._grant_permissions(another_user, ["accept_interfacility_transfer"])
+
+        created = self._create_transfer(
+            authenticated_client, sample_admission, destination_facility.id
+        )
+        transfer_id = created["id"]
+
+        authenticated_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/submit/", {}, format="json"
+        )
+        destination_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/request-discharge-summary/",
+            {"note": "Need summary now."},
+            format="json",
+        )
+
+        DischargeDraft.objects.create(
+            admission=sample_admission,
+            discharge_type="TRANSFERRED",
+            diagnoses=[
+                {
+                    "role": "PRIMARY",
+                    "code": "J960",
+                    "description": "Acute respiratory failure",
+                }
+            ],
+            treatment_summary="Draft treatment summary",
+            patient_instructions="Draft patient instructions",
+            follow_up_instructions="Draft follow up",
+            discharge_medications=[{"name": "Ceftriaxone"}],
+            created_by=test_user,
+        )
+
+        share_summary = authenticated_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/share-discharge-summary/",
+            {},
+            format="json",
+        )
+
+        assert share_summary.status_code == status.HTTP_200_OK
+        snapshot = share_summary.data["discharge_summary_snapshot"]
+        assert snapshot["snapshot_source"] == "DISCHARGE_DRAFT"
+        assert snapshot["final_diagnosis_text"] == "Acute respiratory failure"

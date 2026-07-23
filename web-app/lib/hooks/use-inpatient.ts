@@ -780,8 +780,8 @@ export function useCancelInterFacilityTransfer() {
 export function useRequestInterFacilityDischargeSummary() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (transferId: number | string) =>
-      inpatientApi.requestInterFacilityDischargeSummary(transferId),
+    mutationFn: ({ transferId, note }: { transferId: number | string; note?: string }) =>
+      inpatientApi.requestInterFacilityDischargeSummary(transferId, { note }),
     onSuccess: (transfer) => invalidateInterFacilityTransferQueries(queryClient, transfer),
   });
 }

@@ -1,7 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { ArrowRightLeft } from 'lucide-react';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { PermissionGate } from '@/components/shared/permission-gate';
 import { PageHeader } from '@/components/shared/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -33,7 +37,18 @@ import { getApiErrorMessage } from '@/lib/api/client';
 
 const OPEN_QUEUE_STATUSES = new Set(['PENDING_ACCEPTANCE', 'ACCEPTED', 'IN_TRANSIT']);
 
-function DestinationQueueCard({ transfer }: { transfer: InterFacilityTransfer }) {
+function normalizeMarkdown(value: string): string {
+  if (!value) return '';
+  return value.replace(/([^\n])\n([^\n])/g, '$1  \n$2');
+}
+
+function DestinationQueueCard({
+  transfer,
+  currentFacilityId,
+}: {
+  transfer: InterFacilityTransfer;
+  currentFacilityId?: number;
+}) {
   const { toast } = useToast();
   const acceptTransfer = useAcceptInterFacilityTransfer();
   const rejectTransfer = useRejectInterFacilityTransfer();
@@ -45,6 +60,8 @@ function DestinationQueueCard({ transfer }: { transfer: InterFacilityTransfer })
   const [destinationWard, setDestinationWard] = useState<string>('');
   const [destinationBed, setDestinationBed] = useState<string>('');
   const [admittingDiagnosisText, setAdmittingDiagnosisText] = useState('');
+  const [attachSummaryRequestNote, setAttachSummaryRequestNote] = useState(false);
+  const [summaryRequestNote, setSummaryRequestNote] = useState('');
 
   const selectedWardId = destinationWard ? Number(destinationWard) : undefined;
   const { data: bedsData } = useWardBeds(selectedWardId, { status: 'AVAILABLE' });
@@ -124,7 +141,12 @@ function DestinationQueueCard({ transfer }: { transfer: InterFacilityTransfer })
 
   const onRequestDischargeSummary = async () => {
     try {
-      await requestDischargeSummary.mutateAsync(transfer.id);
+      await requestDischargeSummary.mutateAsync({
+        transferId: transfer.id,
+        note: attachSummaryRequestNote ? summaryRequestNote.trim() || undefined : undefined,
+      });
+      setAttachSummaryRequestNote(false);
+      setSummaryRequestNote('');
       toast({
         title: 'Summary requested',
         description: 'Source facility has been asked to share discharge summary and notes.',
@@ -154,6 +176,7 @@ function DestinationQueueCard({ transfer }: { transfer: InterFacilityTransfer })
     typeof dischargeSnapshot?.patient_instructions === 'string'
       ? dischargeSnapshot.patient_instructions
       : '';
+  const isSourceContext = typeof currentFacilityId === 'number' && transfer.source_facility === currentFacilityId;
 
   return (
     <Card>
@@ -173,7 +196,21 @@ function DestinationQueueCard({ transfer }: { transfer: InterFacilityTransfer })
           <p><span className="text-muted-foreground">Priority:</span> {transfer.priority_display ?? transfer.priority}</p>
           <p><span className="text-muted-foreground">Reason:</span> {transfer.reason_code_display ?? transfer.reason_code}</p>
         </div>
-        <p className="text-sm text-muted-foreground">{transfer.clinical_summary}</p>
+        {isSourceContext ? (
+          <div className="flex">
+            <Button variant="outline" asChild>
+              <Link href={`/admissions/${transfer.source_admission}/inter-facility-transfer`}>
+                Open Source Transfer Page
+              </Link>
+            </Button>
+          </div>
+        ) : null}
+        <div className="rounded-md border p-3 text-sm">
+          <p className="text-muted-foreground mb-2">Clinical summary</p>
+          <div className="prose prose-sm max-w-none break-words overflow-hidden dark:prose-invert">
+            <Markdown remarkPlugins={[remarkGfm]}>{normalizeMarkdown(transfer.clinical_summary || '')}</Markdown>
+          </div>
+        </div>
 
         {dischargeSnapshot ? (
           <div className="rounded-md border p-3 space-y-2 text-sm">
@@ -184,23 +221,53 @@ function DestinationQueueCard({ transfer }: { transfer: InterFacilityTransfer })
               </p>
             ) : null}
             {treatmentSummary ? (
-              <p>
-                <span className="text-muted-foreground">Treatment summary:</span> {treatmentSummary}
-              </p>
+              <div>
+                <p className="text-muted-foreground">Treatment summary:</p>
+                <div className="prose prose-sm max-w-none break-words overflow-hidden dark:prose-invert">
+                  <Markdown remarkPlugins={[remarkGfm]}>{normalizeMarkdown(treatmentSummary)}</Markdown>
+                </div>
+              </div>
             ) : null}
             {followUpInstructions ? (
-              <p>
-                <span className="text-muted-foreground">Follow-up:</span> {followUpInstructions}
-              </p>
+              <div>
+                <p className="text-muted-foreground">Follow-up:</p>
+                <div className="prose prose-sm max-w-none break-words overflow-hidden dark:prose-invert">
+                  <Markdown remarkPlugins={[remarkGfm]}>{normalizeMarkdown(followUpInstructions)}</Markdown>
+                </div>
+              </div>
             ) : null}
             {patientInstructions ? (
-              <p>
-                <span className="text-muted-foreground">Patient instructions:</span> {patientInstructions}
-              </p>
+              <div>
+                <p className="text-muted-foreground">Patient instructions:</p>
+                <div className="prose prose-sm max-w-none break-words overflow-hidden dark:prose-invert">
+                  <Markdown remarkPlugins={[remarkGfm]}>{normalizeMarkdown(patientInstructions)}</Markdown>
+                </div>
+              </div>
             ) : null}
           </div>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="space-y-2 rounded-md border p-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={attachSummaryRequestNote}
+                onCheckedChange={(value) => setAttachSummaryRequestNote(Boolean(value))}
+                disabled={busy || transfer.discharge_summary_requested}
+              />
+              <Label>Attach note with request</Label>
+            </div>
+            {attachSummaryRequestNote ? (
+              <Input
+                placeholder="e.g., Include latest discharge meds and escalation notes"
+                value={summaryRequestNote}
+                onChange={(e) => setSummaryRequestNote(e.target.value)}
+                disabled={busy || transfer.discharge_summary_requested}
+              />
+            ) : null}
+            {transfer.discharge_summary_request_note ? (
+              <p className="text-xs text-muted-foreground">
+                Last request note: {transfer.discharge_summary_request_note}
+              </p>
+            ) : null}
             <Button
               variant="outline"
               onClick={onRequestDischargeSummary}
@@ -313,7 +380,16 @@ function DestinationQueueCard({ transfer }: { transfer: InterFacilityTransfer })
   );
 }
 
-function TransferHistoryCard({ transfer, direction }: { transfer: InterFacilityTransfer; direction: 'INBOUND' | 'OUTBOUND' }) {
+function TransferHistoryCard({
+  transfer,
+  direction,
+  currentFacilityId,
+}: {
+  transfer: InterFacilityTransfer;
+  direction: 'INBOUND' | 'OUTBOUND';
+  currentFacilityId?: number;
+}) {
+  const isSourceContext = typeof currentFacilityId === 'number' && transfer.source_facility === currentFacilityId;
   return (
     <Card>
       <CardHeader>
@@ -333,6 +409,15 @@ function TransferHistoryCard({ transfer, direction }: { transfer: InterFacilityT
         <p><span className="text-muted-foreground">Admission:</span> {transfer.source_admission_number}</p>
         <p><span className="text-muted-foreground">Destination:</span> {transfer.destination_facility_label ?? transfer.destination_facility_name}</p>
         <p><span className="text-muted-foreground">Reason:</span> {transfer.reason_code_display ?? transfer.reason_code}</p>
+        {isSourceContext ? (
+          <div className="pt-1">
+            <Button variant="outline" asChild>
+              <Link href={`/admissions/${transfer.source_admission}/inter-facility-transfer`}>
+                Open Source Transfer Page
+              </Link>
+            </Button>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -373,7 +458,7 @@ export default function InterFacilityDestinationQueuePage() {
         ) : (
           <div className="space-y-4">
             {queue.map((transfer) => (
-              <DestinationQueueCard key={transfer.id} transfer={transfer} />
+              <DestinationQueueCard key={transfer.id} transfer={transfer} currentFacilityId={facility?.id} />
             ))}
           </div>
         )}
@@ -395,13 +480,20 @@ export default function InterFacilityDestinationQueuePage() {
                     <div className="space-y-3">
                       {inboundHistory.map((transfer) => {
                         if (OPEN_QUEUE_STATUSES.has(transfer.status)) {
-                          return <DestinationQueueCard key={`in-open-${transfer.id}`} transfer={transfer} />;
+                          return (
+                            <DestinationQueueCard
+                              key={`in-open-${transfer.id}`}
+                              transfer={transfer}
+                              currentFacilityId={facility?.id}
+                            />
+                          );
                         }
                         return (
                           <TransferHistoryCard
                             key={`in-closed-${transfer.id}`}
                             transfer={transfer}
                             direction="INBOUND"
+                            currentFacilityId={facility?.id}
                           />
                         );
                       })}
@@ -416,7 +508,12 @@ export default function InterFacilityDestinationQueuePage() {
                   ) : (
                     <div className="space-y-3">
                       {outboundHistory.map((transfer) => (
-                        <TransferHistoryCard key={`out-${transfer.id}`} transfer={transfer} direction="OUTBOUND" />
+                        <TransferHistoryCard
+                          key={`out-${transfer.id}`}
+                          transfer={transfer}
+                          direction="OUTBOUND"
+                          currentFacilityId={facility?.id}
+                        />
                       ))}
                     </div>
                   )}

@@ -14,6 +14,7 @@ from hmis.apps.mch.services.postpartum_continuity import (
     transition_registration_to_postnatal,
 )
 
+from .clearance import calculate_patient_blocking_balance
 from .models import (
     Admission,
     AdmissionRecommendation,
@@ -643,8 +644,6 @@ class DischargeSerializer(serializers.ModelSerializer):
 
         # ----- Automated clearance validation for normal discharges -----
         if admission and discharge_type in {"NORMAL", "ROUTINE", "TRANSFERRED"}:
-            from decimal import Decimal
-
             from hmis.apps.billing.models import Invoice
             from hmis.apps.laboratory.models import LabOrder
             from hmis.apps.pharmacy.models import Prescription
@@ -661,11 +660,12 @@ class DischargeSerializer(serializers.ModelSerializer):
                     Invoice.Status.WRITTEN_OFF,
                 ]
             )
-            outstanding = sum((inv.balance_due for inv in unpaid_invoices), Decimal("0.00"))
+            billing_balance = calculate_patient_blocking_balance(unpaid_invoices)
+            outstanding = billing_balance["outstanding_amount"]
             billing_cleared = outstanding <= 0
             if not billing_cleared:
                 clearance_errors["billing_cleared"] = (
-                    f"Cannot discharge: KES {outstanding:,.2f} outstanding balance"
+                    f"Cannot discharge: KES {outstanding:,.2f} patient-responsible outstanding balance"
                 )
 
             # Pharmacy: all INTERNAL prescriptions dispensed or cancelled
@@ -1093,6 +1093,7 @@ class InterFacilityTransferSerializer(serializers.ModelSerializer):
     timeline_events = serializers.SerializerMethodField()
     discharge_summary_requested = serializers.SerializerMethodField()
     discharge_summary_requested_at = serializers.SerializerMethodField()
+    discharge_summary_request_note = serializers.SerializerMethodField()
     discharge_summary_snapshot = serializers.SerializerMethodField()
 
     class Meta:
@@ -1138,6 +1139,7 @@ class InterFacilityTransferSerializer(serializers.ModelSerializer):
             "timeline_events",
             "discharge_summary_requested",
             "discharge_summary_requested_at",
+            "discharge_summary_request_note",
             "discharge_summary_snapshot",
             "created_at",
             "updated_at",
@@ -1248,6 +1250,16 @@ class InterFacilityTransferSerializer(serializers.ModelSerializer):
             obj, InterFacilityTransferEvent.EventType.DISCHARGE_SUMMARY_REQUESTED
         )
         return requested_event.occurred_at if requested_event else None
+
+    def get_discharge_summary_request_note(self, obj):
+        requested_event = self._latest_timeline_event(
+            obj, InterFacilityTransferEvent.EventType.DISCHARGE_SUMMARY_REQUESTED
+        )
+        if requested_event is None:
+            return None
+        metadata = requested_event.metadata or {}
+        request_note = metadata.get("request_note")
+        return request_note if isinstance(request_note, str) and request_note.strip() else None
 
     def get_discharge_summary_snapshot(self, obj):
         shared_event = self._latest_timeline_event(

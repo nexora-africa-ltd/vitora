@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { format, parseISO } from 'date-fns';
+import { addDays, format, isValid, parseISO, startOfDay } from 'date-fns';
 import { Save, Plus, Trash2, Clock, CheckCircle2, BrainCircuit, Loader2, AlertTriangle, ShieldAlert, Printer, ShieldCheck } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -688,6 +688,13 @@ export default function DischargePage() {
   const clearanceSatisfied = !clearanceRequired || allClearancesComplete;
   const requiresMaternityContinuityAction = !!admission?.mch_registration && ['NORMAL', 'TRANSFERRED'].includes(dischargeType);
   const requiresScheduledFollowUpDate = requiresMaternityContinuityAction && maternityContinuityAction === 'SCHEDULE_EARLY_PNC';
+  const minimumFollowUpDate = useMemo(() => startOfDay(addDays(new Date(), 1)), []);
+  const isFollowUpDateInvalid = useMemo(() => {
+    if (!followUpDate) return false;
+    const parsedDate = parseISO(followUpDate);
+    if (!isValid(parsedDate)) return true;
+    return startOfDay(parsedDate) < minimumFollowUpDate;
+  }, [followUpDate, minimumFollowUpDate]);
   const openInterFacilityTransfer = useMemo(() => {
     const transfers = interFacilityTransfers?.results ?? [];
     return (
@@ -1393,6 +1400,15 @@ export default function DischargePage() {
       toast({
         title: 'Follow-up Date Required',
         description: 'Scheduling early PNC requires a follow-up date.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (isFollowUpDateInvalid) {
+      toast({
+        title: 'Invalid Follow-up Date',
+        description: 'Follow-up date must be tomorrow or a future date.',
         variant: 'destructive',
       });
       return;
@@ -2192,8 +2208,9 @@ export default function DischargePage() {
               <DatePicker
                 value={followUpDate ? parseISO(followUpDate) : undefined}
                 onChange={(date) => setFollowUpDate(date ? format(date, 'yyyy-MM-dd') : '')}
-                allowFuture={requiresScheduledFollowUpDate}
-                allowPast={!requiresScheduledFollowUpDate}
+                allowFuture
+                allowPast={false}
+                minDate={minimumFollowUpDate}
                 placeholder={requiresScheduledFollowUpDate ? 'Select early PNC date' : admission.mch_registration ? 'Optional when routing directly to PNC' : 'Select follow-up date'}
               />
             </div>
@@ -2384,7 +2401,7 @@ export default function DischargePage() {
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={createDischarge.isPending || cdsEvaluate.isPending || !dischargeSummary || !patientInstructions || !clearanceSatisfied || transferMiniSheetIncomplete || (requiresScheduledFollowUpDate && !followUpDate)}
+          disabled={createDischarge.isPending || cdsEvaluate.isPending || !dischargeSummary || !patientInstructions || !clearanceSatisfied || transferMiniSheetIncomplete || (requiresScheduledFollowUpDate && !followUpDate) || isFollowUpDateInvalid}
           className="w-full sm:w-auto"
         >
           {cdsEvaluate.isPending ? (

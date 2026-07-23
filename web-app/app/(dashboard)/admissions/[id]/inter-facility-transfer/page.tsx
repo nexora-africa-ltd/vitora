@@ -55,6 +55,8 @@ const PRIORITY_OPTIONS: Array<{ value: InterFacilityTransferPriority; label: str
   { value: 'STAT', label: 'STAT' },
 ];
 
+const OPEN_TRANSFER_STATUSES = new Set(['DRAFT', 'PENDING_ACCEPTANCE', 'ACCEPTED', 'IN_TRANSIT']);
+
 export default function CreateInterFacilityTransferPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -114,6 +116,8 @@ export default function CreateInterFacilityTransferPage() {
 
   const isPending = createTransfer.isPending || submitTransfer.isPending;
   const transfers = transferList?.results ?? [];
+  const activeTransfer =
+    transfers.find((transfer) => OPEN_TRANSFER_STATUSES.has(transfer.status)) ?? null;
   const pendingSummaryRequests = transfers.filter(
     (transfer) => transfer.discharge_summary_requested && !transfer.discharge_summary_snapshot
   );
@@ -224,129 +228,164 @@ export default function CreateInterFacilityTransferPage() {
           helpContent="Create and optionally submit an inter-facility transfer request for this admission."
         />
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ArrowLeftRight className="h-5 w-5" />
-              Request Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+        {activeTransfer ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ArrowLeftRight className="h-5 w-5" />
+                Request Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">{activeTransfer.transfer_number}</Badge>
+                <Badge variant="outline">{activeTransfer.status_display ?? activeTransfer.status}</Badge>
+              </div>
+              <p>
+                <span className="text-muted-foreground">Destination:</span>{' '}
+                {activeTransfer.destination_facility_label ?? activeTransfer.destination_facility_name}
+              </p>
+              <p>
+                <span className="text-muted-foreground">Reason:</span>{' '}
+                {activeTransfer.reason_code_display ?? activeTransfer.reason_code}
+              </p>
+              <p>
+                <span className="text-muted-foreground">Clinical summary:</span> {activeTransfer.clinical_summary}
+              </p>
+              <p>
+                <span className="text-muted-foreground">Handover notes:</span> {activeTransfer.handover_notes}
+              </p>
+              <p className="text-muted-foreground">
+                An open transfer already exists for this admission. This page is now in management mode
+                for destination requests and source sharing.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ArrowLeftRight className="h-5 w-5" />
+                Request Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Destination Facility *</Label>
+                  <Select
+                    value={selectedDestinationFacility}
+                    onValueChange={setSelectedDestinationFacility}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select destination facility" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectableFacilities.map((item) => (
+                        <SelectItem key={item.id} value={String(item.id)}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="OTHER">Other (Manual Entry)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {needsManualDestinationName && (
+                    <Input
+                      value={destinationFacilityName}
+                      onChange={(e) => setDestinationFacilityName(e.target.value)}
+                      placeholder="e.g., External Referral Hospital"
+                    />
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>Reason</Label>
+                  <Select value={reasonCode} onValueChange={(v) => setReasonCode(v as InterFacilityTransferReason)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {REASON_OPTIONS.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Priority</Label>
+                  <Select value={priority} onValueChange={(v) => setPriority(v as InterFacilityTransferPriority)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRIORITY_OPTIONS.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Transport</Label>
+                  <Select value={transportMode} onValueChange={(v) => setTransportMode(v as 'AMBULANCE' | 'PRIVATE' | 'OTHER')}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AMBULANCE">Ambulance</SelectItem>
+                      <SelectItem value="PRIVATE">Private Vehicle</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label>Destination Facility *</Label>
-                <Select
-                  value={selectedDestinationFacility}
-                  onValueChange={setSelectedDestinationFacility}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select destination facility" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectableFacilities.map((item) => (
-                      <SelectItem key={item.id} value={String(item.id)}>
-                        {item.name}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="OTHER">Other (Manual Entry)</SelectItem>
-                  </SelectContent>
-                </Select>
-                {needsManualDestinationName && (
-                  <Input
-                    value={destinationFacilityName}
-                    onChange={(e) => setDestinationFacilityName(e.target.value)}
-                    placeholder="e.g., External Referral Hospital"
-                  />
-                )}
+                <Label>Reason Details</Label>
+                <Textarea value={reasonDetails} onChange={(e) => setReasonDetails(e.target.value)} rows={2} />
               </div>
               <div className="space-y-2">
-                <Label>Reason</Label>
-                <Select value={reasonCode} onValueChange={(v) => setReasonCode(v as InterFacilityTransferReason)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REASON_OPTIONS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Priority</Label>
-                <Select value={priority} onValueChange={(v) => setPriority(v as InterFacilityTransferPriority)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRIORITY_OPTIONS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Clinical Summary *</Label>
+                <Textarea value={clinicalSummary} onChange={(e) => setClinicalSummary(e.target.value)} rows={4} />
               </div>
               <div className="space-y-2">
-                <Label>Transport</Label>
-                <Select value={transportMode} onValueChange={(v) => setTransportMode(v as 'AMBULANCE' | 'PRIVATE' | 'OTHER')}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="AMBULANCE">Ambulance</SelectItem>
-                    <SelectItem value="PRIVATE">Private Vehicle</SelectItem>
-                    <SelectItem value="OTHER">Other</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Handover Notes *</Label>
+                <Textarea value={handoverNotes} onChange={(e) => setHandoverNotes(e.target.value)} rows={4} />
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label>Reason Details</Label>
-              <Textarea value={reasonDetails} onChange={(e) => setReasonDetails(e.target.value)} rows={2} />
-            </div>
-            <div className="space-y-2">
-              <Label>Clinical Summary *</Label>
-              <Textarea value={clinicalSummary} onChange={(e) => setClinicalSummary(e.target.value)} rows={4} />
-            </div>
-            <div className="space-y-2">
-              <Label>Handover Notes *</Label>
-              <Textarea value={handoverNotes} onChange={(e) => setHandoverNotes(e.target.value)} rows={4} />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox checked={escortRequired} onCheckedChange={(v) => setEscortRequired(Boolean(v))} />
-              <Label>Escort required</Label>
-            </div>
-            {escortRequired && (
-              <div className="space-y-2">
-                <Label>Escort Name</Label>
-                <Input value={escortName} onChange={(e) => setEscortName(e.target.value)} />
+              <div className="flex items-center gap-2">
+                <Checkbox checked={escortRequired} onCheckedChange={(v) => setEscortRequired(Boolean(v))} />
+                <Label>Escort required</Label>
               </div>
-            )}
+              {escortRequired && (
+                <div className="space-y-2">
+                  <Label>Escort Name</Label>
+                  <Input value={escortName} onChange={(e) => setEscortName(e.target.value)} />
+                </div>
+              )}
 
-            <div className="flex items-center gap-2">
-              <Checkbox checked={submitImmediately} onCheckedChange={(v) => setSubmitImmediately(Boolean(v))} />
-              <Label>Submit immediately after save</Label>
-            </div>
+              <div className="flex items-center gap-2">
+                <Checkbox checked={submitImmediately} onCheckedChange={(v) => setSubmitImmediately(Boolean(v))} />
+                <Label>Submit immediately after save</Label>
+              </div>
 
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" asChild>
-                <Link href={`/admissions/${admissionId}`}>Cancel</Link>
-              </Button>
-              <Button onClick={handleCreate} disabled={isPending}>
-                {isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                {submitImmediately ? 'Create & Submit' : 'Create Draft'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" asChild>
+                  <Link href={`/admissions/${admissionId}`}>Cancel</Link>
+                </Button>
+                <Button onClick={handleCreate} disabled={isPending}>
+                  {isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  {submitImmediately ? 'Create & Submit' : 'Create Draft'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {pendingSummaryRequests.length > 0 ? (
           <Card>
@@ -368,6 +407,12 @@ export default function CreateInterFacilityTransferPage() {
                       <span className="text-muted-foreground">Destination:</span>{' '}
                       {transfer.destination_facility_label ?? transfer.destination_facility_name}
                     </p>
+                    {transfer.discharge_summary_request_note ? (
+                      <p>
+                        <span className="text-muted-foreground">Request note:</span>{' '}
+                        {transfer.discharge_summary_request_note}
+                      </p>
+                    ) : null}
                     <Badge variant="secondary">Summary requested</Badge>
                   </div>
                   <Button
