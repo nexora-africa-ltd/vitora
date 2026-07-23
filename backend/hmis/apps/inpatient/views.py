@@ -22,7 +22,7 @@ from hmis.apps.core.mixins import (
     ReadOnCreateMixin,
     TenantScopedViewMixin,
 )
-from hmis.apps.core.models import AuditLog
+from hmis.apps.core.models import AuditLog, Facility
 from hmis.apps.core.permissions import WriteRequiresRolePermission, get_client_ip
 from hmis.apps.licensing.permissions import requires_feature
 from hmis.apps.patients.models import Patient
@@ -432,6 +432,49 @@ class WardViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         from hmis.apps.inpatient.management.commands.seed_default_wards import DEFAULT_WARDS
 
         facility = getattr(request, "facility", None)
+        requested_facility_id = request.data.get("facility_id") or request.query_params.get(
+            "facility_id"
+        )
+
+        if requested_facility_id:
+            try:
+                requested_facility = Facility.objects.select_related("organization").get(
+                    pk=int(requested_facility_id), is_active=True
+                )
+            except (Facility.DoesNotExist, ValueError, TypeError):
+                return Response(
+                    {"error": "Invalid facility_id."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not request.user.is_superuser:
+                profile = getattr(request.user, "staff_profile", None)
+                if not profile:
+                    raise PermissionDenied("Staff profile required for facility-scoped action.")
+
+                direct_facility_access = profile.primary_facility_id == requested_facility.id
+                if not direct_facility_access:
+                    secondary_facilities = getattr(profile, "secondary_facilities", None)
+                    if secondary_facilities is not None:
+                        direct_facility_access = secondary_facilities.filter(
+                            id=requested_facility.id
+                        ).exists()
+
+                from hmis.apps.core.models import OrgMembership
+
+                has_access = OrgMembership.objects.filter(
+                    staff_profile=profile,
+                    organization=requested_facility.organization,
+                    status=OrgMembership.MembershipStatus.ACTIVE,
+                    facilities=requested_facility,
+                ).exists()
+                if not (has_access or direct_facility_access):
+                    raise PermissionDenied(
+                        "You do not have access to the requested facility for this action."
+                    )
+
+            facility = requested_facility
+
         if not facility and hasattr(request.user, "staff_profile"):
             profile = getattr(request.user, "staff_profile", None)
             if profile and hasattr(profile, "primary_facility"):
@@ -446,7 +489,12 @@ class WardViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         created_wards = []
         for ward_def in DEFAULT_WARDS:
             code = ward_def["code"]
-            if Ward.objects.filter(code=code, facility=facility).exists():
+            ward_name = ward_def["name"]
+            if (
+                Ward.objects.filter(facility=facility)
+                .filter(Q(code=code) | Q(name=ward_name))
+                .exists()
+            ):
                 continue
             ward = Ward.objects.create(facility=facility, is_active=True, **ward_def)
             created_wards.append(
@@ -456,6 +504,8 @@ class WardViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return Response(
             {
                 "created": len(created_wards),
+                "facility_id": facility.id,
+                "facility_name": facility.name,
                 "wards": created_wards,
                 "message": f"Created {len(created_wards)} default ward(s)"
                 if created_wards

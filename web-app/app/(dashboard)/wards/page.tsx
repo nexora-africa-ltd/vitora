@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/lib/hooks/use-toast';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useFacility } from '@/lib/context/facility-context';
 import {
   useInpatientWards,
   useAdmissions,
@@ -41,6 +42,7 @@ import {
 export default function WardsPage() {
   const { refresh, isRefreshing } = usePageRefresh();
   const { toast } = useToast();
+  const { facility } = useFacility();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedWard, setSelectedWard] = useState<string>('all');
 
@@ -226,11 +228,11 @@ export default function WardsPage() {
               <Button
                 className="gap-2"
                 onClick={() => {
-                  seedDefaultWards.mutate(undefined, {
+                  seedDefaultWards.mutate(facility?.id, {
                     onSuccess: (data) => {
                       toast({
                         title: 'Default Wards Created',
-                        description: data.message,
+                        description: `${data.message} (${data.facility_name})`,
                       });
                     },
                     onError: () => {

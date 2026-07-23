@@ -212,7 +212,7 @@ export function useGenerateWardBeds() {
 export function useSeedDefaultWards() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => inpatientApi.seedDefaultWards(),
+    mutationFn: (facilityId?: number) => inpatientApi.seedDefaultWards(facilityId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wards() });
     },

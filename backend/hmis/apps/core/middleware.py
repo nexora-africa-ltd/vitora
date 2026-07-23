@@ -132,6 +132,18 @@ class TenantMiddleware:
         if not profile:
             return False
 
+        # Legacy/direct assignment fallback: primary/secondary facilities on
+        # StaffProfile should grant facility access even when OrgMembership
+        # facilities are not yet synchronized.
+        if profile.primary_facility_id == facility.id:
+            return True
+        secondary_facilities = getattr(profile, "secondary_facilities", None)
+        if (
+            secondary_facilities is not None
+            and secondary_facilities.filter(id=facility.id).exists()
+        ):
+            return True
+
         # Check via OrgMembership: user needs an ACTIVE membership for the
         # facility's org, AND that membership must include this facility.
         from hmis.apps.core.models import OrgMembership

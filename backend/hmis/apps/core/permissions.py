@@ -742,7 +742,12 @@ class WriteRequiresRolePermission(permissions.BasePermission):
             roles = profile.get_all_roles()
             if not roles or all(not role.permissions_matrix for role in roles):
                 return True
-            return profile.has_permission(action, resource)
+            if profile.has_permission(action, resource):
+                return True
+
+            # Explicit Django model permissions (direct or via groups) should
+            # be able to grant access even when the role matrix denies.
+            return self._check_django_permission(user, action, resource)
 
         # No staff profile — allow through (in production all users have profiles;
         # profileless users are typically test fixtures or system accounts).
@@ -790,12 +795,21 @@ class WriteRequiresRolePermission(permissions.BasePermission):
         django_action = action_map.get(action, "add")
         resource_lower = resource.lower()
 
-        # Search all installed apps for the permission
+        # Search all installed apps for matching model names. Some projects may
+        # have duplicate model class names across apps (e.g. core.Ward and
+        # inpatient.Ward); grant if the user has permission on any matching one.
+        checked_any = False
         for model in apps.get_models():
             if model.__name__ == resource:
+                checked_any = True
                 app_label = model._meta.app_label
                 perm = f"{app_label}.{django_action}_{resource_lower}"
-                return user.has_perm(perm)
+                if user.has_perm(perm):
+                    return True
+
+        if checked_any:
+            return False
+
         return False
 
 
