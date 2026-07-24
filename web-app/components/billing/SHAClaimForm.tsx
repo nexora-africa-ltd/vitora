@@ -1,6 +1,6 @@
 /**
  * SHA Claim Form Component
- * Form for submitting SHA (Social Health Authority) claims
+ * Form for submitting SHA claims
  *
  * IMPORTANT: SHA claims require an active encounter to be valid.
  * Claims submitted without encounter context will be rejected.

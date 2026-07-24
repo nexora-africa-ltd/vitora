@@ -1,5 +1,5 @@
 /**
- * Contract Test: SHA (Social Health Authority) Schema Comparison
+ * Contract Test: SHA Schema Comparison
  *
  * Layer 3 — Frontend Schema Comparison Tests
  *

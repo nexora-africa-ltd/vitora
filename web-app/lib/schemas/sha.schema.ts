@@ -1,5 +1,5 @@
 /**
- * Zod schemas for SHA (Social Health Authority) API response validation
+ * Zod schemas for SHA API response validation
  *
  * Implements validation for all SHA-related API responses including:
  * - Client Registry lookups

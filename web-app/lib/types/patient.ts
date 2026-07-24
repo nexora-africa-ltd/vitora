@@ -104,7 +104,7 @@ export interface Patient {
 export interface PatientCreateData {
   // Client Registry (readonly after creation if from CR)
   cr_number?: string;
-  // SHA (Social Health Authority) - readonly, populated from SHA lookup
+  // SHA - readonly, populated from SHA lookup
   sha_number?: string;
   household_number?: string;
   principal_national_id?: string; // Principal's national ID for dependant eligibility
@@ -150,7 +150,7 @@ export type PaymentMode = 'cash' | 'sha' | 'insurance_private' | 'insurance_corp
 
 export const PAYMENT_MODE_OPTIONS: Array<{ value: PaymentMode; label: string; description?: string }> = [
   { value: 'cash', label: 'Cash', description: 'Patient pays out of pocket' },
-  { value: 'sha', label: 'SHA (Social Health Authority)', description: 'Government health insurance' },
+  { value: 'sha', label: 'SHA', description: 'Government health insurance' },
   { value: 'insurance_private', label: 'Private Insurance', description: 'Individual private health cover' },
   { value: 'insurance_corporate', label: 'Corporate Insurance', description: 'Employer-provided health cover' },
 ];

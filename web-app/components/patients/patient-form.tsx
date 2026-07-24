@@ -17,7 +17,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, CreditCard, Building2, Wallet, ChevronDown, HelpCircle, ChevronsUpDown, Check, Ban, ChevronLeft, ChevronRight, Eye, BadgeCheck, XCircle, Users, RotateCcw } from 'lucide-react';
+import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, ChevronDown, HelpCircle, ChevronsUpDown, Check, Ban, ChevronLeft, ChevronRight, Eye, BadgeCheck, XCircle, Users, RotateCcw } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -113,7 +113,6 @@ import {
   type HouseholdMember,
   type IdentificationType,
   type PatientTitle,
-  type PaymentMode,
   type DuplicateCheckResult,
   type DuplicateMatch,
   IDENTIFICATION_TYPE_OPTIONS,
@@ -121,7 +120,6 @@ import {
   PAYMENT_MODE_OPTIONS,
 } from '@/lib/types/patient';
 import type { ClientRegistryClient, DirectEligibilityCheckResponse, SHAPayloadPerson } from '@/lib/types/sha';
-import { PaymentMethodCarousel } from './payment-method-carousel';
 
 // Debounce hook for auto-search
 function useDebounce<T>(value: T, delay: number): T {
@@ -306,14 +304,6 @@ function buildShaAddress(person: SHAPayloadPerson): string | undefined {
 
   return addressParts.length > 0 ? addressParts.join(', ') : undefined;
 }
-
-// Payment mode icons - using muted foreground for consistent theming
-const PAYMENT_MODE_ICONS: Record<PaymentMode, React.ReactNode> = {
-  cash: <Wallet className="h-4 w-4 text-success" />,
-  sha: <SHALogo size="sm" />,
-  insurance_private: <CreditCard className="h-4 w-4 text-accent-foreground" />,
-  insurance_corporate: <Building2 className="h-4 w-4 text-warning-foreground" />,
-};
 
 export function PatientForm({
   onSubmit,
@@ -1837,7 +1827,7 @@ export function PatientForm({
               </Alert>
             )}
 
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid items-start gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
               {/* ID Type + Number with clickable label */}
               <div className="space-y-2 sm:col-span-2 lg:col-span-1">
                 <FormField
@@ -1977,55 +1967,44 @@ export function PatientForm({
                 )}
               />
               {/* TODO : modularise all reusable components */}
-              {/* Payment Method - Compact selector with dialog */}
-              {/* Payment Method - Compact selector with dialog */}
+              {/* Payment Method */}
               <FormField
                 control={form.control}
                 name="payment_mode"
                 render={({ field }) => {
-                  const selectedOption = PAYMENT_MODE_OPTIONS.find(o => o.value === field.value);
                   const isShaDisabled = shaEligibility.checked && !shaEligibility.isEligible;
 
                   return (
-                    <FormItem>
+                    <FormItem className="self-start">
                       <FormLabel>Payment Method *</FormLabel>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-between",
-                              !field.value && "text-muted-foreground"
-                            )}
-                            disabled={formLocked || isFormLoading}
-                          >
-                            <div className="flex items-center gap-2">
-                              {selectedOption && PAYMENT_MODE_ICONS[selectedOption.value]}
-                              <span>{selectedOption?.label || "Select payment method"}</span>
-                            </div>
-                            <ChevronDown className="h-4 w-4 opacity-50" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-sm overflow-y-auto">
-                          <DialogHeader>
-                            <div className="flex items-center gap-2">
-                              <DialogTitle>Select Payment Method</DialogTitle>
-                              <HelpPopover content="Choose how the patient will pay for services. SHA requires active coverage." />
-                            </div>
-                            {isShaDisabled && (
-                              <p className="text-sm text-warning-foreground mt-1">
-                                ⚠️ SHA is unavailable: {shaEligibility.reason || 'Patient not eligible'}
-                              </p>
-                            )}
-                          </DialogHeader>
-                          <PaymentMethodCarousel
-                            value={field.value}
-                            onChange={field.onChange}
-                            shaDisabled={isShaDisabled}
-                            shaDisabledReason={shaEligibility.reason}
-                          />
-                        </DialogContent>
-                      </Dialog>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={formLocked || isFormLoading}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-10">
+                            <SelectValue placeholder="Select payment method" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {PAYMENT_MODE_OPTIONS.map((option) => {
+                            if (option.value === 'sha' && isShaDisabled) {
+                              return null;
+                            }
+                            return (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                      {isShaDisabled && (
+                        <FormDescription className="text-warning-foreground">
+                          SHA is unavailable: {shaEligibility.reason || 'Patient not eligible'}
+                        </FormDescription>
+                      )}
                       <FormMessage />
                     </FormItem>
                   );

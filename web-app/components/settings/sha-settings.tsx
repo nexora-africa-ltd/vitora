@@ -1,6 +1,6 @@
 /**
  * SHA Settings Tab Component
- * Configuration for SHA (Social Health Authority) integration
+ * Configuration for SHA integration
  * Sprint 1.5-1.6: SHA Integration
  */
 'use client';

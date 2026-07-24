@@ -1,4 +1,4 @@
-# SHA (Social Health Authority) Frontend Integration
+# SHA Frontend Integration
 
 This document describes the frontend implementation for integrating with Kenya's Social Health Authority (SHA) systems in the Vitora HMIS web application.
 

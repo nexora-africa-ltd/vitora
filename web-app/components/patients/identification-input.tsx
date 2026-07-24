@@ -1,21 +1,22 @@
 /**
  * Identification Input Component
  * A clickable label that allows switching between different ID types
- * supported by SHA (Social Health Authority)
+ * supported by SHA
  */
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { ChevronDown, Check, CreditCard, Hash, Fingerprint, Globe, Building2, Clock, FileText, Search, Loader2 } from 'lucide-react';
+import React, { useCallback } from 'react';
+import { CreditCard, Hash, Fingerprint, Globe, Building2, Clock, FileText, Search, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { type IdentificationType, IDENTIFICATION_TYPE_OPTIONS } from '@/lib/types/patient';
 
@@ -87,8 +88,6 @@ export function IdentificationInput({
   onBlur,
   onKeyDown,
 }: IdentificationInputProps) {
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-
   const currentTypeOption = IDENTIFICATION_TYPE_OPTIONS.find(opt => opt.value === identificationType);
   const currentLabel = currentTypeOption?.label || 'Select ID Type';
   const currentIcon = ID_TYPE_ICONS[identificationType];
@@ -96,46 +95,39 @@ export function IdentificationInput({
 
   const handleTypeSelect = useCallback((type: IdentificationType) => {
     onTypeChange(type);
-    setDropdownOpen(false);
   }, [onTypeChange]);
 
   return (
     <div className={cn('space-y-2', className)}>
-      {/* Clickable Label */}
-      <div className="flex items-center gap-1">
-        <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
-          <DropdownMenuTrigger asChild disabled={disabled}>
-            <button
-              type="button"
-              className={cn(
-                'inline-flex items-center gap-1 text-sm font-medium',
-                'hover:text-primary transition-colors cursor-pointer',
-                'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded',
-                disabled && 'cursor-not-allowed opacity-50'
-              )}
-            >
-              {currentIcon}
-              <span>{currentLabel}</span>
-              {required && <span className="text-destructive ml-0.5">*</span>}
-              <ChevronDown className="h-3 w-3 ml-0.5 opacity-60" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
+      <div className="space-y-1">
+        <Label>
+          Identification Type
+          {required && <span className="text-destructive ml-0.5">*</span>}
+        </Label>
+        <Select
+          value={identificationType}
+          onValueChange={(value) => handleTypeSelect(value as IdentificationType)}
+          disabled={disabled}
+        >
+          <SelectTrigger className="h-10">
+            <SelectValue>
+              <span className="inline-flex items-center gap-2">
+                {currentIcon}
+                <span>{currentLabel}</span>
+              </span>
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
             {IDENTIFICATION_TYPE_OPTIONS.map((option) => (
-              <DropdownMenuItem
-                key={option.value}
-                onClick={() => handleTypeSelect(option.value)}
-                className="flex items-center gap-2"
-              >
-                {ID_TYPE_ICONS[option.value]}
-                <span className="flex-1">{option.label}</span>
-                {identificationType === option.value && (
-                  <Check className="h-4 w-4 text-primary" />
-                )}
-              </DropdownMenuItem>
+              <SelectItem key={option.value} value={option.value}>
+                <span className="inline-flex items-center gap-2">
+                  {ID_TYPE_ICONS[option.value]}
+                  <span>{option.label}</span>
+                </span>
+              </SelectItem>
             ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Input Field with optional search icon */}
