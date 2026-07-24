@@ -8,13 +8,16 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
+  Check,
   CheckCircle2,
+  ChevronsUpDown,
   ChevronRight,
   Clock,
   Download,
   FileText,
   Filter,
   Loader2,
+  Plus,
   RefreshCw,
   Search,
   Send,
@@ -39,18 +42,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 import { ClaimsStatusChart } from '@/components/widgets';
 import { TimeBarBadge } from '@/components/billing/sha/TimeBarBadge';
-import { useClaims } from '@/lib/hooks/use-sha';
+import { useClaims, useCreateClaim, usePatientEligibility } from '@/lib/hooks/use-sha';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { useFacility } from '@/lib/context/facility-context';
 import { useSHAClaimSocket } from '@/lib/hooks/use-websocket';
+import { usePatientSearch } from '@/lib/hooks/use-checkin';
+import { usePatientEncounters } from '@/lib/hooks/use-patients';
+import { useInvoices } from '@/lib/hooks/billing';
 import type { Claim, ClaimStatus } from '@/lib/types/sha';
 import { formatCurrency } from '@/lib/utils/format';
+import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
+import { toast } from 'sonner';
 
 const EMPTY_CLAIMS: Claim[] = [];
 
@@ -121,7 +141,59 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [patientPickerOpen, setPatientPickerOpen] = useState(false);
+  const [patientSearchQuery, setPatientSearchQuery] = useState('');
+  const [selectedPatientId, setSelectedPatientId] = useState('');
+  const [selectedPatientSnapshot, setSelectedPatientSnapshot] = useState<{
+    value: string;
+    label: string;
+    sublabel?: string;
+  } | null>(null);
+  const [selectedEncounterId, setSelectedEncounterId] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
+  const debouncedPatientSearch = useDebounce(patientSearchQuery, 300);
+  const createClaim = useCreateClaim();
+  const selectedPatientIdNumber = selectedPatientId ? Number(selectedPatientId) : null;
+  const selectedEncounterIdNumber = selectedEncounterId ? Number(selectedEncounterId) : null;
+
+  const { data: patientSearchData, isFetching: isPatientSearchFetching } = usePatientSearch(
+    debouncedPatientSearch,
+    {
+      enabled: showCreateDialog && patientPickerOpen && debouncedPatientSearch.trim().length >= 2,
+      limit: 25,
+    }
+  );
+  const patientOptions = useMemo(
+    () =>
+      (patientSearchData?.results ?? []).map((patient) => ({
+        value: String(patient.id),
+        label: patient.full_name || `${patient.first_name} ${patient.last_name}`,
+        sublabel: `${patient.mrn} • ${patient.gender} • ${patient.age}y`,
+      })),
+    [patientSearchData]
+  );
+  const selectedPatientOption = useMemo(() => {
+    const fromSearch = patientOptions.find((option) => option.value === selectedPatientId);
+    if (fromSearch) return fromSearch;
+    if (selectedPatientSnapshot?.value === selectedPatientId) return selectedPatientSnapshot;
+    return null;
+  }, [patientOptions, selectedPatientId, selectedPatientSnapshot]);
+
+  const eligibility = usePatientEligibility(selectedPatientIdNumber ?? undefined, {
+    enabled: showCreateDialog && !!selectedPatientIdNumber,
+  });
+
+  const { data: encountersData } = usePatientEncounters(selectedPatientIdNumber ?? -1);
+  const { data: patientClaimsData } = useClaims(
+    { patient: selectedPatientIdNumber ?? -1, page_size: 200 },
+    { enabled: showCreateDialog && !!selectedPatientIdNumber }
+  );
+  const { data: invoicesData } = useInvoices({
+    patient: selectedPatientIdNumber ?? -1,
+    page_size: 200,
+    ordering: '-created_at',
+  });
 
   const { data: claimsData, isLoading, refetch, isRefetching } = useClaims({
     status: statusFilter !== 'all' ? (statusFilter as ClaimStatus) : undefined,
@@ -243,6 +315,114 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
     [claims, selectedIds]
   );
 
+  const claimedEncounterIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const claim of patientClaimsData?.results ?? []) {
+      const encounterId = claim.encounter_id ?? claim.encounter;
+      if (typeof encounterId === 'number') ids.add(encounterId);
+    }
+    return ids;
+  }, [patientClaimsData]);
+
+  const encounterToClaim = useMemo(() => {
+    const mapping = new Map<number, Claim>();
+    for (const claim of patientClaimsData?.results ?? []) {
+      const encounterId = claim.encounter_id ?? claim.encounter;
+      if (typeof encounterId === 'number' && !mapping.has(encounterId)) {
+        mapping.set(encounterId, claim);
+      }
+    }
+    return mapping;
+  }, [patientClaimsData]);
+
+  const encounterOptions = useMemo(() => {
+    const all = (encountersData ?? []).map((encounter) => {
+      const hasClaim = claimedEncounterIds.has(encounter.id);
+      return {
+        value: String(encounter.id),
+        hasClaim,
+        label: `#${encounter.id} ${encounter.chief_complaint || 'No chief complaint'}`,
+        sublabel: `${encounter.encounter_type} • ${encounter.status} • ${format(parseISO(encounter.encounter_date), 'MMM d, yyyy')}${hasClaim ? ' • has claim' : ''}`,
+      };
+    });
+    return all.filter((option) => !option.hasClaim);
+  }, [claimedEncounterIds, encountersData]);
+
+  const invoicesByEncounter = useMemo(() => {
+    const map = new Map<number, { id: number; invoice_number: string }>();
+    for (const invoice of invoicesData?.results ?? []) {
+      if (typeof invoice.encounter === 'number' && !map.has(invoice.encounter)) {
+        map.set(invoice.encounter, {
+          id: invoice.id,
+          invoice_number: invoice.invoice_number,
+        });
+      }
+    }
+    return map;
+  }, [invoicesData]);
+
+  const selectedEncounterClaim =
+    selectedEncounterIdNumber != null ? encounterToClaim.get(selectedEncounterIdNumber) : undefined;
+  const selectedInvoice =
+    selectedEncounterIdNumber != null ? invoicesByEncounter.get(selectedEncounterIdNumber) : undefined;
+  const canCreateClaim =
+    !!selectedPatientIdNumber
+    && !!selectedEncounterIdNumber
+    && !!selectedInvoice
+    && !selectedEncounterClaim
+    && !!eligibility.data?.is_eligible
+    && !createClaim.isPending;
+
+  const handleCreateClaim = useCallback(async () => {
+    if (!selectedPatientIdNumber) {
+      toast.error('Select a patient first.');
+      return;
+    }
+    if (!selectedEncounterIdNumber) {
+      toast.error('Select an encounter first.');
+      return;
+    }
+    if (!eligibility.data?.is_eligible) {
+      toast.error('Selected patient is not SHA eligible.');
+      return;
+    }
+    if (selectedEncounterClaim) {
+      toast.error('This encounter already has an attached SHA claim.');
+      return;
+    }
+    if (!selectedInvoice) {
+      toast.error('No invoice found for the selected encounter.');
+      return;
+    }
+
+    try {
+      const created = await createClaim.mutateAsync({
+        encounter_id: selectedEncounterIdNumber,
+        invoice_id: selectedInvoice.id,
+      });
+      toast.success('SHA claim created.');
+      setShowCreateDialog(false);
+      setPatientPickerOpen(false);
+      setPatientSearchQuery('');
+      setSelectedPatientId('');
+      setSelectedPatientSnapshot(null);
+      setSelectedEncounterId('');
+      router.push(`${basePath}/${created.id}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create SHA claim.';
+      toast.error(message);
+    }
+  }, [
+    basePath,
+    createClaim,
+    eligibility.data?.is_eligible,
+    router,
+    selectedEncounterClaim,
+    selectedEncounterIdNumber,
+    selectedInvoice,
+    selectedPatientIdNumber,
+  ]);
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {showHeader && (
@@ -252,6 +432,166 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
             <p className="text-sm text-muted-foreground">Manage and track Social Health Authority claims</p>
           </div>
           <div className="flex items-center gap-2">
+            <Dialog
+              open={showCreateDialog}
+              onOpenChange={(open) => {
+                setShowCreateDialog(open);
+                if (!open) {
+                  setPatientPickerOpen(false);
+                  setPatientSearchQuery('');
+                  setSelectedPatientId('');
+                  setSelectedPatientSnapshot(null);
+                  setSelectedEncounterId('');
+                }
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">New Claim</span>
+                  <span className="sm:hidden">New</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create SHA claim</DialogTitle>
+                  <DialogDescription>
+                    Search patient, confirm SHA eligibility, then pick an encounter and linked invoice.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Patient</label>
+                    <Popover open={patientPickerOpen} onOpenChange={setPatientPickerOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={patientPickerOpen}
+                          className={cn('w-full justify-between font-normal', !selectedPatientOption && 'text-muted-foreground')}
+                        >
+                          <span className="truncate">
+                            {selectedPatientOption?.label || 'Search and select patient'}
+                          </span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <Command shouldFilter={false}>
+                          <CommandInput
+                            placeholder="Type name, MRN, phone, or national ID"
+                            value={patientSearchQuery}
+                            onValueChange={setPatientSearchQuery}
+                          />
+                          <CommandList className="max-h-[220px]">
+                            {isPatientSearchFetching ? (
+                              <div className="py-6 text-center text-sm text-muted-foreground">Searching...</div>
+                            ) : patientSearchQuery.trim().length > 0 && patientSearchQuery.trim().length < 2 ? (
+                              <div className="py-6 text-center text-sm text-muted-foreground">Type at least 2 characters to search</div>
+                            ) : patientSearchQuery.trim().length >= 2 && patientOptions.length === 0 ? (
+                              <CommandEmpty>No matching patients found.</CommandEmpty>
+                            ) : patientSearchQuery.trim().length === 0 ? (
+                              <div className="py-6 text-center text-sm text-muted-foreground">Start typing to search for a patient</div>
+                            ) : (
+                              <CommandGroup>
+                                {patientOptions.map((option) => (
+                                  <CommandItem
+                                    key={option.value}
+                                    value={option.value}
+                                    onSelect={() => {
+                                      setSelectedPatientId(option.value);
+                                      setSelectedPatientSnapshot(option);
+                                      setSelectedEncounterId('');
+                                      setPatientPickerOpen(false);
+                                      setPatientSearchQuery('');
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        'mr-2 h-4 w-4 shrink-0',
+                                        selectedPatientId === option.value ? 'opacity-100' : 'opacity-0',
+                                      )}
+                                    />
+                                    <div className="min-w-0">
+                                      <p className="truncate">{option.label}</p>
+                                      {option.sublabel && <p className="truncate text-xs text-muted-foreground">{option.sublabel}</p>}
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            )}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="rounded-md border px-3 py-2 text-sm">
+                    <div className="font-medium">SHA eligibility</div>
+                    {!selectedPatientIdNumber && (
+                      <p className="text-muted-foreground">Select a patient to check eligibility.</p>
+                    )}
+                    {selectedPatientIdNumber && eligibility.isLoading && (
+                      <p className="text-muted-foreground">Checking eligibility...</p>
+                    )}
+                    {selectedPatientIdNumber && !eligibility.isLoading && eligibility.data && (
+                      <p className={eligibility.data.is_eligible ? 'text-green-700' : 'text-amber-700'}>
+                        {eligibility.data.is_eligible
+                          ? 'Eligible'
+                          : eligibility.data.ineligibility_reason || eligibility.data.coverage_caveat || 'Not eligible'}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Select encounter</label>
+                    <SearchableSelect
+                      options={encounterOptions}
+                      value={selectedEncounterId}
+                      onValueChange={setSelectedEncounterId}
+                      placeholder="Select encounter"
+                      searchPlaceholder="Search encounter ID, complaint, status"
+                      emptyMessage={
+                        selectedPatientIdNumber
+                          ? 'No encounters match this filter.'
+                          : 'Select a patient first.'
+                      }
+                      disabled={!selectedPatientIdNumber}
+                    />
+                    {selectedEncounterClaim && (
+                      <p className="text-xs text-amber-700">
+                        Encounter already linked to claim {selectedEncounterClaim.claim_number || `#${selectedEncounterClaim.id}`}. Choose a different encounter.
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium" htmlFor="new-claim-invoice-id">Invoice (auto from encounter)</label>
+                    <Input
+                      id="new-claim-invoice-id"
+                      value={selectedInvoice ? `${selectedInvoice.invoice_number} (#${selectedInvoice.id})` : ''}
+                      placeholder={selectedEncounterIdNumber ? 'No invoice found for encounter' : 'Select encounter first'}
+                      readOnly
+                    />
+                    {selectedEncounterIdNumber && !selectedInvoice && (
+                      <p className="text-xs text-amber-700">
+                        This encounter has no linked invoice yet. Claims require an encounter invoice.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowCreateDialog(false)} disabled={createClaim.isPending}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreateClaim} disabled={!canCreateClaim}>
+                    {createClaim.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4 mr-2" />
+                    )}
+                    Create claim
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isRefetching}>
               {isRefetching ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

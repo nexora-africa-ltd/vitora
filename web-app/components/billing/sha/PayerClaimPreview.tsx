@@ -10,9 +10,10 @@
  */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
+  ArrowRight,
   CheckCircle2,
   Clock,
   Eye,
@@ -23,14 +24,133 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useQueryClient } from '@tanstack/react-query';
 import { shaApi } from '@/lib/api/sha';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { IlmCallResult } from '@/lib/schemas/sha.schema';
+import {
+  isPayerPreviewEligibleStatus,
+  payerPreviewQueryKey,
+  payerPreviewStorageKey,
+  payerStateNeedsAttention,
+  type PayerPreviewSnapshot,
+} from '@/lib/sha/payer-preview';
 
 interface PayerClaimPreviewProps {
   claimId: number;
-  /** Only show for submitted/processing/approved/rejected claims */
   claimStatus: string;
+  isActive?: boolean;
+  onNavigateToTab?: (tab: 'overview' | 'workflow' | 'interventions' | 'adjudication') => void;
+  onAttentionChange?: (attention: boolean) => void;
+}
+
+interface PaymentDetails {
+  approvedAmount: string | null;
+  paidAmount: string | null;
+  paymentReference: string | null;
+  paymentDate: string | null;
+  currency: string | null;
+}
+
+interface NormalizedPayerPayload {
+  rawPayload: Record<string, unknown> | null;
+  payerState: string | null;
+  processingNotes: string | null;
+  invoiceFlags: string[];
+  payment: PaymentDetails;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+}
+
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    const stringValue = asString(value);
+    if (stringValue) return stringValue;
+  }
+  return null;
+}
+
+function normalizePayerPayload(payload: unknown): NormalizedPayerPayload {
+  const rawPayload = asRecord(payload);
+  const paymentRecord = asRecord(rawPayload?.payment_details ?? rawPayload?.payment ?? rawPayload?.paymentInfo);
+
+  return {
+    rawPayload,
+    payerState: firstString(
+      rawPayload?.workflowState,
+      rawPayload?.workflow_state,
+      rawPayload?.payer_claim_status,
+      rawPayload?.claim_status,
+    ),
+    processingNotes: firstString(
+      rawPayload?.processing_notes,
+      rawPayload?.claim_notes,
+      rawPayload?.adjudication_notes,
+      rawPayload?.notes,
+    ),
+    invoiceFlags: asStringArray(rawPayload?.invoice_flags ?? rawPayload?.flags ?? rawPayload?.issues),
+    payment: {
+      approvedAmount: firstString(
+        rawPayload?.approved_amount,
+        rawPayload?.approvedAmount,
+        paymentRecord?.approved_amount,
+        paymentRecord?.approvedAmount,
+      ),
+      paidAmount: firstString(
+        rawPayload?.paid_amount,
+        rawPayload?.paidAmount,
+        paymentRecord?.paid_amount,
+        paymentRecord?.paidAmount,
+      ),
+      paymentReference: firstString(
+        rawPayload?.payment_reference,
+        rawPayload?.paymentReference,
+        paymentRecord?.payment_reference,
+        paymentRecord?.paymentReference,
+      ),
+      paymentDate: firstString(
+        rawPayload?.payment_date,
+        rawPayload?.paymentDate,
+        paymentRecord?.payment_date,
+        paymentRecord?.paymentDate,
+      ),
+      currency: firstString(rawPayload?.currency, paymentRecord?.currency),
+    },
+  };
+}
+
+function getPayerAction(payerState: string | null): {
+  label: string;
+  tab: 'overview' | 'workflow';
+} | null {
+  switch (payerState) {
+    case 'MISSING_DOCUMENTS':
+    case 'CLARIFICATION_AFTER_AUTOMATIC_CHECKS':
+    case 'SENT_BACK':
+      return { label: 'Open workflow', tab: 'workflow' };
+    case 'REJECTED':
+    case 'QUERY':
+      return { label: 'Review in overview', tab: 'overview' };
+    case 'APPROVED':
+    case 'PAID':
+    case 'SENT_FOR_PAYMENT_PROCESSING':
+      return { label: 'Open overview', tab: 'overview' };
+    default:
+      return null;
+  }
 }
 
 /** Map payer workflow states to display info */
@@ -51,66 +171,216 @@ const PAYER_STATE_CONFIG: Record<string, { label: string; variant: 'default' | '
   APPEALED: { label: 'Under Appeal', variant: 'secondary', icon: Clock },
 };
 
-export function PayerClaimPreview({ claimId, claimStatus }: PayerClaimPreviewProps) {
+export function PayerClaimPreview({
+  claimId,
+  claimStatus,
+  isActive = false,
+  onNavigateToTab,
+  onAttentionChange,
+}: PayerClaimPreviewProps) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [payerData, setPayerData] = useState<IlmCallResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
+  const [changeSummary, setChangeSummary] = useState<string[]>([]);
+  const previousFingerprintRef = useRef<string | null>(null);
+  const hasAutoFetchedRef = useRef(false);
 
-  // Only show for claims that have been submitted
-  const showableStatuses = ['submitted', 'processing', 'approved', 'rejected', 'paid', 'query'];
-  if (!showableStatuses.includes(claimStatus)) {
-    return null;
-  }
+  const isEligibleStatus = isPayerPreviewEligibleStatus(claimStatus);
+  const normalizedPayload = useMemo(() => normalizePayerPayload(payerData?.payload), [payerData?.payload]);
+  const stateConfig = normalizedPayload.payerState
+    ? PAYER_STATE_CONFIG[normalizedPayload.payerState]
+    : null;
+  const nextAction = useMemo(() => getPayerAction(normalizedPayload.payerState), [normalizedPayload.payerState]);
+  const shouldPoll = isActive && ['submitted', 'acknowledged', 'under_review', 'processing', 'query'].includes(claimStatus);
+  const isStale = lastFetchedAt ? Date.now() - lastFetchedAt.getTime() > 5 * 60 * 1000 : false;
+  const lastFetchedLabel = lastFetchedAt ? lastFetchedAt.toLocaleTimeString() : null;
 
-  async function fetchPayerView() {
+  const applySnapshot = useCallback((snapshot: PayerPreviewSnapshot) => {
+    setPayerData(snapshot.result);
+    const normalized = normalizePayerPayload(snapshot.result.payload);
+    previousFingerprintRef.current = JSON.stringify({
+      statusCode: snapshot.result.status_code,
+      payerState: normalized.payerState,
+      processingNotes: normalized.processingNotes,
+      invoiceFlags: normalized.invoiceFlags,
+      payment: normalized.payment,
+    });
+    setChangeSummary([]);
+    const fetchedDate = new Date(snapshot.fetchedAtIso);
+    setLastFetchedAt(Number.isNaN(fetchedDate.getTime()) ? null : fetchedDate);
+    onAttentionChange?.(payerStateNeedsAttention(normalized.payerState));
+  }, [onAttentionChange]);
+
+  useEffect(() => {
+    setPayerData(null);
+    setError(null);
+    setLastFetchedAt(null);
+    setChangeSummary([]);
+    previousFingerprintRef.current = null;
+    hasAutoFetchedRef.current = false;
+    onAttentionChange?.(false);
+  }, [claimId, onAttentionChange]);
+
+  useEffect(() => {
+    if (!isEligibleStatus) return;
+    const cached = queryClient.getQueryData<PayerPreviewSnapshot>(payerPreviewQueryKey(claimId));
+    if (cached) {
+      applySnapshot(cached);
+      return;
+    }
+    if (typeof window === 'undefined') return;
+    const raw = window.localStorage.getItem(payerPreviewStorageKey(claimId));
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as PayerPreviewSnapshot;
+      if (parsed && parsed.claimId === claimId && parsed.result && parsed.fetchedAtIso) {
+        applySnapshot(parsed);
+        queryClient.setQueryData(payerPreviewQueryKey(claimId), parsed);
+      }
+    } catch {
+      window.localStorage.removeItem(payerPreviewStorageKey(claimId));
+    }
+  }, [applySnapshot, claimId, isEligibleStatus, queryClient]);
+
+  const fetchPayerView = useCallback(async (opts?: { silent?: boolean }) => {
     setLoading(true);
     setError(null);
     try {
       const result = await shaApi.ilmPreviewPayerClaim(claimId);
+      const normalized = normalizePayerPayload(result.payload);
+      const fingerprint = JSON.stringify({
+        statusCode: result.status_code,
+        payerState: normalized.payerState,
+        processingNotes: normalized.processingNotes,
+        invoiceFlags: normalized.invoiceFlags,
+        payment: normalized.payment,
+      });
+
+      if (previousFingerprintRef.current && previousFingerprintRef.current !== fingerprint) {
+        const previous = JSON.parse(previousFingerprintRef.current) as {
+          payerState: string | null;
+          processingNotes: string | null;
+          invoiceFlags: string[];
+          payment: PaymentDetails;
+        };
+        const changes: string[] = [];
+        if (previous.payerState !== normalized.payerState && normalized.payerState) {
+          changes.push(`Status changed to ${normalized.payerState}.`);
+        }
+        if (previous.processingNotes !== normalized.processingNotes && normalized.processingNotes) {
+          changes.push('Processing notes updated.');
+        }
+        const previousFlags = previous.invoiceFlags.join('|');
+        const nextFlags = normalized.invoiceFlags.join('|');
+        if (previousFlags !== nextFlags) {
+          changes.push('Invoice flags changed.');
+        }
+        const previousPayment = JSON.stringify(previous.payment);
+        const nextPayment = JSON.stringify(normalized.payment);
+        if (previousPayment !== nextPayment) {
+          changes.push('Payment details updated.');
+        }
+        setChangeSummary(changes);
+      } else {
+        setChangeSummary([]);
+      }
+
+      previousFingerprintRef.current = fingerprint;
       setPayerData(result);
+      const fetchedAt = new Date();
+      setLastFetchedAt(fetchedAt);
+      onAttentionChange?.(payerStateNeedsAttention(normalized.payerState));
+
+      const snapshot: PayerPreviewSnapshot = {
+        claimId,
+        result,
+        fetchedAtIso: fetchedAt.toISOString(),
+      };
+      queryClient.setQueryData(payerPreviewQueryKey(claimId), snapshot);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(payerPreviewStorageKey(claimId), JSON.stringify(snapshot));
+      }
     } catch (e: any) {
       const msg = e?.response?.data?.error ?? e?.message ?? 'Failed to fetch payer claim view.';
       setError(msg);
-      toast({
-        title: 'Payer preview failed',
-        description: msg,
-        variant: 'destructive',
-      });
+      if (!opts?.silent) {
+        toast({
+          title: 'Payer preview failed',
+          description: msg,
+          variant: 'destructive',
+        });
+      }
     } finally {
       setLoading(false);
     }
-  }
+  }, [claimId, onAttentionChange, queryClient, toast]);
 
-  const payload = payerData?.payload as Record<string, unknown> | null | undefined;
-  const payerState = (payload?.workflowState ?? payload?.payer_claim_status ?? null) as string | null;
-  const processingNotes = (payload?.processing_notes ?? payload?.claim_notes ?? null) as string | null;
-  const invoiceFlags = (payload?.invoice_flags ?? null) as string[] | null;
-  const stateConfig = payerState ? PAYER_STATE_CONFIG[payerState] : null;
+  useEffect(() => {
+    if (!isEligibleStatus || !isActive || hasAutoFetchedRef.current) return;
+    hasAutoFetchedRef.current = true;
+    void fetchPayerView({ silent: true });
+  }, [fetchPayerView, isActive, isEligibleStatus]);
 
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
+  useEffect(() => {
+    if (!shouldPoll) return;
+    const timer = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      void fetchPayerView({ silent: true });
+    }, 45000);
+    return () => window.clearInterval(timer);
+  }, [fetchPayerView, shouldPoll]);
+
+  if (!isEligibleStatus) {
+    return (
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Eye className="h-4 w-4" />
             Payer Adjudication View
           </CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchPayerView}
-            disabled={loading}
-          >
-            {loading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-            ) : payerData ? (
-              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-            ) : (
-              <Eye className="h-3.5 w-3.5 mr-1.5" />
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Payer preview becomes available after submission and during adjudication states.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Eye className="h-4 w-4" />
+            Payer Adjudication View
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            {lastFetchedLabel && (
+              <Badge variant={isStale ? 'destructive' : 'outline'} className="text-xs">
+                {isStale ? 'Stale' : 'Fresh'} • {lastFetchedLabel}
+              </Badge>
             )}
-            {payerData ? 'Refresh' : 'Fetch Payer View'}
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void fetchPayerView()}
+              disabled={loading}
+            >
+              {loading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+              ) : payerData ? (
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+              ) : (
+                <Eye className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              {payerData ? 'Refresh' : 'Fetch Payer View'}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -128,8 +398,18 @@ export function PayerClaimPreview({ claimId, claimStatus }: PayerClaimPreviewPro
 
         {payerData && (
           <div className="space-y-4">
-            {/* Payer Workflow State */}
-            {payerState && (
+            {changeSummary.length > 0 && (
+              <div className="rounded-md border border-primary/20 bg-primary/5 p-3">
+                <p className="text-sm font-medium mb-1">Updates since last check</p>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  {changeSummary.map((change) => (
+                    <li key={change}>{change}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {normalizedPayload.payerState && (
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Payer Status</span>
                 {stateConfig ? (
@@ -138,30 +418,38 @@ export function PayerClaimPreview({ claimId, claimStatus }: PayerClaimPreviewPro
                     {stateConfig.label}
                   </Badge>
                 ) : (
-                  <Badge variant="outline">{payerState}</Badge>
+                  <Badge variant="outline">{normalizedPayload.payerState}</Badge>
                 )}
               </div>
             )}
 
-            {/* Processing Notes */}
-            {processingNotes && (
+            {nextAction && onNavigateToTab && (
+              <div className="flex items-center justify-between rounded-md border p-2">
+                <span className="text-sm text-muted-foreground">Recommended next action</span>
+                <Button size="sm" variant="outline" onClick={() => onNavigateToTab(nextAction.tab)}>
+                  <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
+                  {nextAction.label}
+                </Button>
+              </div>
+            )}
+
+            {normalizedPayload.processingNotes && (
               <div className="space-y-1">
                 <span className="text-sm font-medium">Processing Notes</span>
                 <p className="text-sm text-muted-foreground bg-muted/50 rounded-md p-2">
-                  {processingNotes}
+                  {normalizedPayload.processingNotes}
                 </p>
               </div>
             )}
 
-            {/* Invoice Flags */}
-            {invoiceFlags && invoiceFlags.length > 0 && (
+            {normalizedPayload.invoiceFlags.length > 0 && (
               <div className="space-y-1">
                 <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
                   Invoice Flags
                 </span>
                 <div className="flex flex-wrap gap-1">
-                  {invoiceFlags.map((flag, i) => (
-                    <Badge key={i} variant="outline" className="text-xs bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+                  {normalizedPayload.invoiceFlags.map((flag, index) => (
+                    <Badge key={`${flag}-${index}`} variant="outline" className="text-xs bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
                       {flag}
                     </Badge>
                   ))}
@@ -169,7 +457,47 @@ export function PayerClaimPreview({ claimId, claimStatus }: PayerClaimPreviewPro
               </div>
             )}
 
-            {/* HTTP status from the ILM call */}
+            {(normalizedPayload.payment.approvedAmount
+              || normalizedPayload.payment.paidAmount
+              || normalizedPayload.payment.paymentDate
+              || normalizedPayload.payment.paymentReference) && (
+                <div className="space-y-2">
+                  <span className="text-sm font-medium">Payment Details</span>
+                  <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                    {normalizedPayload.payment.approvedAmount && (
+                      <div className="rounded-md bg-muted/50 p-2">
+                        <p className="text-xs text-muted-foreground">Approved Amount</p>
+                        <p className="font-medium">
+                          {normalizedPayload.payment.currency ? `${normalizedPayload.payment.currency} ` : ''}
+                          {normalizedPayload.payment.approvedAmount}
+                        </p>
+                      </div>
+                    )}
+                    {normalizedPayload.payment.paidAmount && (
+                      <div className="rounded-md bg-muted/50 p-2">
+                        <p className="text-xs text-muted-foreground">Paid Amount</p>
+                        <p className="font-medium">
+                          {normalizedPayload.payment.currency ? `${normalizedPayload.payment.currency} ` : ''}
+                          {normalizedPayload.payment.paidAmount}
+                        </p>
+                      </div>
+                    )}
+                    {normalizedPayload.payment.paymentDate && (
+                      <div className="rounded-md bg-muted/50 p-2">
+                        <p className="text-xs text-muted-foreground">Payment Date</p>
+                        <p className="font-medium">{normalizedPayload.payment.paymentDate}</p>
+                      </div>
+                    )}
+                    {normalizedPayload.payment.paymentReference && (
+                      <div className="rounded-md bg-muted/50 p-2">
+                        <p className="text-xs text-muted-foreground">Payment Reference</p>
+                        <p className="font-medium break-all">{normalizedPayload.payment.paymentReference}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
             <div className="flex items-center justify-between text-xs text-muted-foreground border-t pt-2">
               <span>DHA Response: HTTP {payerData.status_code}</span>
               {payerData.status_code && payerData.status_code >= 200 && payerData.status_code < 300 && (
@@ -177,13 +505,12 @@ export function PayerClaimPreview({ claimId, claimStatus }: PayerClaimPreviewPro
               )}
             </div>
 
-            {/* Raw payload (collapsed) */}
             <details className="text-xs">
               <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
                 Raw response payload
               </summary>
               <pre className="mt-2 max-h-48 overflow-auto rounded bg-muted p-2 text-xs">
-                {JSON.stringify(payload, null, 2)}
+                {JSON.stringify(normalizedPayload.rawPayload, null, 2)}
               </pre>
             </details>
           </div>

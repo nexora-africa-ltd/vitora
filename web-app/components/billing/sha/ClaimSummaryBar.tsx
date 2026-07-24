@@ -15,6 +15,7 @@ import { ClaimStatusBadge } from './ClaimComponents';
 import { ClaimFlowBadge } from './ClaimFlowBadge';
 import { TimeBarBadge } from './TimeBarBadge';
 import type { Claim } from '@/lib/types/sha';
+import { getEffectiveClaimStatus } from '@/lib/sha/payer-preview';
 
 interface ClaimSummaryBarProps {
   claim: Claim;
@@ -40,19 +41,7 @@ function CopyButton({ text }: { text: string }) {
 
 export function ClaimSummaryBar({ claim }: ClaimSummaryBarProps) {
   const shaRef = claim.sha_reference ?? claim.sha_claim_reference;
-  const snapshot =
-    claim.dha_discharge_snapshot && typeof claim.dha_discharge_snapshot === 'object'
-      ? (claim.dha_discharge_snapshot as Record<string, unknown>)
-      : null;
-  const workflowState = String(snapshot?.workflow_state || '').trim().toUpperCase();
-  const effectiveStatus =
-    claim.status === 'draft' &&
-    (
-      !!claim.submitted_at
-      || ['SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(workflowState)
-    )
-      ? 'submitted'
-      : claim.status;
+  const effectiveStatus = getEffectiveClaimStatus(claim);
 
   return (
     <div className="sticky top-0 z-20 -mx-3 sm:-mx-6 px-3 sm:px-6 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
