@@ -15,13 +15,13 @@ export type IdentificationType =
 
 export const IDENTIFICATION_TYPE_OPTIONS: Array<{ value: IdentificationType; label: string }> = [
   { value: 'national_id', label: 'National ID' },
-  { value: 'cr_number', label: 'HIE Patient ID' },
+  { value: 'cr_number', label: 'CR ID' },
   { value: 'mandate_number', label: 'Mandate Number' },
   { value: 'alien_id', label: 'Alien ID' },
   { value: 'kra_pin', label: 'KRA PIN' },
   { value: 'temporary_id', label: 'Temporary ID' },
   { value: 'passport', label: 'Passport Number' },
-  { value: 'birth_certificate', label: 'Birth Certificate' },
+  { value: 'birth_certificate', label: 'Birth Certificate Number' },
 ];
 
 // Title options

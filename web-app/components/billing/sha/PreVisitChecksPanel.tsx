@@ -99,11 +99,12 @@ interface PreVisitChecksPanelProps {
 
 const ID_TYPES = [
   'National ID',
-  'Passport',
-  'License Number',
-  'Birth Certificate',
+  'Refugee ID',
+  'Mandate Number',
   'Alien ID',
-  'SHA Number',
+  'Birth Certificate',
+  'ClientRegistry ID',
+  'Birth Notification',
 ];
 const FACILITY_ID_TYPES = [
   { value: 'mfl', label: 'MFL code' },

@@ -166,13 +166,13 @@ class Patient(HistoryMixin, models.Model):
     # SHA/CR supported identification types
     IDENTIFICATION_TYPE_CHOICES = [
         ("national_id", "National ID"),
-        ("cr_number", "HIE Patient ID"),
+        ("cr_number", "CR ID"),
         ("mandate_number", "Mandate Number"),
         ("alien_id", "Alien ID"),
         ("kra_pin", "KRA PIN"),
         ("temporary_id", "Temporary ID"),
         ("passport", "Passport Number"),
-        ("birth_certificate", "Birth Certificate"),
+        ("birth_certificate", "Birth Certificate Number"),
     ]
 
     # Required fields

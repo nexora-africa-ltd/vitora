@@ -30,7 +30,6 @@ import { useFetchFromCR } from '@/lib/hooks/use-sha';
 import { shaApi, type CapitationValidationResult } from '@/lib/api/sha';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import type { Patient } from '@/lib/types/patient';
-import { IDENTIFICATION_TYPE_OPTIONS, type IdentificationType } from '@/lib/types/patient';
 import type {
   ClientRegistryClient,
   DirectEligibilityCheckResponse,
@@ -38,23 +37,39 @@ import type {
   SHAPayloadPerson,
 } from '@/lib/types/sha';
 
+const ILM_LOOKUP_ID_OPTIONS = [
+  { value: 'national_id', label: 'National ID' },
+  { value: 'refugee_id', label: 'Refugee ID' },
+  { value: 'mandate_number', label: 'Mandate Number' },
+  { value: 'alien_id', label: 'Alien ID' },
+  { value: 'birth_certificate', label: 'Birth Certificate' },
+  { value: 'client_registry_id', label: 'ClientRegistry ID' },
+  { value: 'birth_notification', label: 'Birth Notification' },
+] as const;
+
+type IlmLookupIdType = (typeof ILM_LOOKUP_ID_OPTIONS)[number]['value'];
+
 export default function PatientLookupPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [lookupIdType, setLookupIdType] = useState<IdentificationType>('national_id');
+  const [lookupIdType, setLookupIdType] = useState<IlmLookupIdType | ''>('');
   const debouncedQuery = useDebounce(searchQuery, 300);
 
   useEffect(() => {
     const storedType = window.localStorage.getItem('patient_lookup_id_type');
     if (!storedType) return;
-    const valid = IDENTIFICATION_TYPE_OPTIONS.some((option) => option.value === storedType);
+    const valid = ILM_LOOKUP_ID_OPTIONS.some((option) => option.value === storedType);
     if (valid) {
-      setLookupIdType(storedType as IdentificationType);
+      setLookupIdType(storedType as IlmLookupIdType);
     }
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem('patient_lookup_id_type', lookupIdType);
+    if (lookupIdType) {
+      window.localStorage.setItem('patient_lookup_id_type', lookupIdType);
+    } else {
+      window.localStorage.removeItem('patient_lookup_id_type');
+    }
   }, [lookupIdType]);
 
   // Local search — numeric-only queries are treated as a national-ID exact
@@ -83,13 +98,13 @@ export default function PatientLookupPage() {
   };
 
   const handleCRLookup = () => {
-    if (!debouncedQuery || debouncedQuery.length < 2) return;
+    if (!debouncedQuery || debouncedQuery.length < 2 || !lookupIdType) return;
 
     // Reset eligibility
     setEligibility(null);
 
     const query = debouncedQuery.trim();
-    const idTypeLabel = IDENTIFICATION_TYPE_OPTIONS.find((opt) => opt.value === lookupIdType)?.label || 'National ID';
+    const idTypeLabel = ILM_LOOKUP_ID_OPTIONS.find((opt) => opt.value === lookupIdType)?.label || 'National ID';
     const crParams = lookupIdType === 'national_id'
       ? { national_id: query }
       : { identification_type: idTypeLabel, identification_number: query };
@@ -126,14 +141,14 @@ export default function PatientLookupPage() {
             <KenyaCoatOfArms size={28} className="shrink-0 hidden sm:block" />
             <div className="w-[180px] shrink-0 hidden md:block">
               <Select
-                value={lookupIdType}
-                onValueChange={(value) => setLookupIdType(value as IdentificationType)}
+                value={lookupIdType || undefined}
+                onValueChange={(value) => setLookupIdType(value as IlmLookupIdType)}
               >
                 <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Select ID type" />
+                  <SelectValue placeholder="ID type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {IDENTIFICATION_TYPE_OPTIONS.map((option) => (
+                  {ILM_LOOKUP_ID_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -161,7 +176,7 @@ export default function PatientLookupPage() {
               variant="outline"
               size="sm"
               onClick={handleCRLookup}
-              disabled={!hasSearched || crMutation.isPending}
+              disabled={!hasSearched || !lookupIdType || crMutation.isPending}
               className="shrink-0 gap-1.5"
             >
               {crMutation.isPending ? (
@@ -174,14 +189,14 @@ export default function PatientLookupPage() {
           </div>
           <div className="mt-3 md:hidden">
             <Select
-              value={lookupIdType}
-              onValueChange={(value) => setLookupIdType(value as IdentificationType)}
+              value={lookupIdType || undefined}
+              onValueChange={(value) => setLookupIdType(value as IlmLookupIdType)}
             >
               <SelectTrigger className="h-9 mt-1">
-                <SelectValue placeholder="Select ID type" />
+                <SelectValue placeholder="ID type" />
               </SelectTrigger>
               <SelectContent>
-                {IDENTIFICATION_TYPE_OPTIONS.map((option) => (
+                {ILM_LOOKUP_ID_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>

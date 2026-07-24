@@ -96,7 +96,6 @@ import {
 } from '@/components/ui/accordion';
 import { LocationCombobox } from '@/components/ui/location-combobox';
 import { HelpPopover } from '@/components/shared/help-popover';
-import { IdentificationInput } from './identification-input';
 import { ConsentConfirmationDialog, type ConsentDecision } from './consent-confirmation-dialog';
 import { DuplicatePatientAlert } from './duplicate-patient-alert';
 import { DuplicatePatientModal } from './duplicate-patient-modal';
@@ -142,10 +141,7 @@ function useDebounce<T>(value: T, delay: number): T {
 const patientFormSchema = z.object({
   // Identification (at the top)
   identification_type: z.enum(['national_id', 'cr_number', 'mandate_number', 'alien_id', 'kra_pin', 'temporary_id', 'passport', 'birth_certificate']).default('national_id'),
-  identification_number: z.string()
-    .max(15, 'ID number cannot exceed 15 characters')
-    .regex(/^[a-zA-Z0-9-]*$/, 'ID can only contain letters, numbers, and dashes')
-    .optional(),
+  identification_number: z.string().optional(),
   cr_number: z.string().optional(), // Read-only, populated from CR lookup
   sha_number: z.string().optional(), // Read-only, populated from SHA lookup
   household_number: z.string().optional(), // Read-only, populated from SHA payload
@@ -203,19 +199,44 @@ const patientFormSchema = z.object({
 });
 
 // Add refinement for conditional validation
-const patientFormSchemaRefined = patientFormSchema.refine(
-  (data) => {
-    // If referral_source is 'other_facility', referred_from_facility is required
-    if (data.referral_source === 'other_facility') {
-      return !!data.referred_from_facility && data.referred_from_facility.trim().length > 0;
+const patientFormSchemaRefined = patientFormSchema.superRefine((data, ctx) => {
+  const idNumber = data.identification_number?.trim() || '';
+  if (idNumber) {
+    const maxLen = data.identification_type === 'birth_certificate' ? 64 : 15;
+    const format = data.identification_type === 'birth_certificate'
+      ? /^[a-zA-Z0-9_-]*$/
+      : /^[a-zA-Z0-9-]*$/;
+
+    if (idNumber.length > maxLen) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['identification_number'],
+        message: data.identification_type === 'birth_certificate'
+          ? 'Birth certificate number cannot exceed 64 characters'
+          : 'ID number cannot exceed 15 characters',
+      });
     }
-    return true;
-  },
-  {
-    message: "Facility name is required when referral source is 'Other Facility'.",
-    path: ['referred_from_facility'],
+
+    if (!format.test(idNumber)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['identification_number'],
+        message: data.identification_type === 'birth_certificate'
+          ? 'Birth certificate can only contain letters, numbers, dashes, and underscores'
+          : 'ID can only contain letters, numbers, and dashes',
+      });
+    }
   }
-);
+
+  // If referral_source is 'other_facility', referred_from_facility is required
+  if (data.referral_source === 'other_facility' && (!data.referred_from_facility || data.referred_from_facility.trim().length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['referred_from_facility'],
+      message: "Facility name is required when referral source is 'Other Facility'.",
+    });
+  }
+});
 
 type PatientFormValues = z.infer<typeof patientFormSchema>;
 
@@ -242,6 +263,7 @@ const SHA_IDENTIFICATION_TYPE_MAP: Record<string, IdentificationType> = {
   'national id': 'national_id',
   'national_id': 'national_id',
   'hie patient id': 'cr_number',
+  'cr id': 'cr_number',
   'cr number': 'cr_number',
   'cr_number': 'cr_number',
   'mandate number': 'mandate_number',
@@ -253,10 +275,23 @@ const SHA_IDENTIFICATION_TYPE_MAP: Record<string, IdentificationType> = {
   passport: 'passport',
   'passport number': 'passport',
   'birth certificate': 'birth_certificate',
+  'birth certificate number': 'birth_certificate',
   birth_certificate: 'birth_certificate',
   'temporary id': 'temporary_id',
   temporary_id: 'temporary_id',
 };
+
+const ILM_IDENTIFICATION_TYPE_MAP: Partial<Record<IdentificationType, string>> = {
+  national_id: 'National ID',
+  cr_number: 'ClientRegistry ID',
+  mandate_number: 'Mandate Number',
+  alien_id: 'Alien ID',
+  birth_certificate: 'Birth Certificate',
+};
+
+function toIlmIdentificationType(idType: IdentificationType): string | null {
+  return ILM_IDENTIFICATION_TYPE_MAP[idType] ?? null;
+}
 
 function normalizeShaGender(gender?: string): 'M' | 'F' | 'O' | undefined {
   if (!gender) {
@@ -849,22 +884,19 @@ export function PatientForm({
     setDuplicateAcknowledged(false);
 
     try {
-      // Build the request based on ID type - always use identification_type/identification_number
+      // Build ILM-compatible request based on supported identifier types.
+      const ilmIdentificationType = toIlmIdentificationType(idType);
+      if (!ilmIdentificationType) {
+        toast({
+          title: 'Unsupported lookup identifier',
+          description: 'Use National ID, CR ID, Mandate Number, Alien ID, Temporary ID, or Birth Certificate Number for CR/SHA lookup.',
+          variant: 'destructive',
+        });
+        return null;
+      }
+
       const request: Record<string, string> = {};
-
-      // Map our internal ID types to DHA API identification_type values
-      const idTypeMap: Record<IdentificationType, string> = {
-        national_id: 'National ID',
-        passport: 'Passport',
-        cr_number: 'SHA Number',
-        alien_id: 'Alien ID',
-        kra_pin: 'KRA PIN',
-        mandate_number: 'Mandate Number',
-        temporary_id: 'Temporary ID',
-        birth_certificate: 'Birth Certificate',
-      };
-
-      request.identification_type = idTypeMap[idType] || idType;
+      request.identification_type = ilmIdentificationType;
       request.identification_number = idNumber;
 
       // Run CR lookup and local duplicate check in parallel
@@ -1279,19 +1311,22 @@ export function PatientForm({
     setIsSearchingCR(true);
     setIsCheckingEligibility(true);
 
+    const ilmIdentificationType = toIlmIdentificationType(idType);
+    if (!ilmIdentificationType) {
+      setIsSearchingCR(false);
+      setIsCheckingEligibility(false);
+      toast({
+        title: 'Unsupported lookup identifier',
+        description: 'Use National ID, CR ID, Mandate Number, Alien ID, Temporary ID, or Birth Certificate Number for CR/SHA lookup.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Run CR lookup and SHA eligibility in parallel
     Promise.allSettled([
       shaApi.fetchFromClientRegistry({
-        identification_type: {
-          national_id: 'National ID',
-          passport: 'Passport',
-          cr_number: 'SHA Number',
-          alien_id: 'Alien ID',
-          kra_pin: 'KRA PIN',
-          mandate_number: 'Mandate Number',
-          temporary_id: 'Temporary ID',
-          birth_certificate: 'Birth Certificate',
-        }[idType] || idType,
+        identification_type: ilmIdentificationType,
         identification_number: idNumber,
       }),
       patientsApi.checkDuplicate({
@@ -1827,39 +1862,93 @@ export function PatientForm({
               </Alert>
             )}
 
-            <div className="grid items-start gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
-              {/* ID Type + Number with clickable label */}
-              <div className="space-y-2 sm:col-span-2 lg:col-span-1">
+            <div className="space-y-2">
+              <div className="grid items-start gap-3 grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)]">
+                <FormField
+                  control={form.control}
+                  name="identification_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Identification Type *</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value as IdentificationType);
+                          resetVerificationState();
+                        }}
+                        disabled={formLocked || isFormLoading}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-10">
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {IDENTIFICATION_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="identification_number"
                   render={({ field }) => (
                     <FormItem>
-                      <IdentificationInput
-                        identificationType={identificationType}
-                        identificationNumber={field.value || ''}
-                        onTypeChange={(type) => {
-                          form.setValue('identification_type', type);
-                          resetVerificationState();
-                        }}
-                        onNumberChange={(value) => {
-                          field.onChange(value);
-                          clearVerificationResults();
-                        }}
-                        disabled={formLocked || isFormLoading}
-                        required
-                        error={form.formState.errors.identification_number?.message}
-                        onSearch={handleManualCRSearch}
-                        isSearching={isSearchingCR}
-                        minSearchLength={5}
-                      />
-                      <FormDescription>
+                      <FormLabel>Identification Number *</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            {...field}
+                            value={field.value || ''}
+                            placeholder="Enter ID number"
+                            disabled={formLocked || isFormLoading}
+                            className="h-10 pr-10"
+                            onChange={(e) => {
+                              field.onChange(e.target.value);
+                              clearVerificationResults();
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleManualCRSearch}
+                            disabled={formLocked || isFormLoading || isSearchingCR || (field.value || '').length < 5}
+                            className={cn(
+                              'absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md transition-colors',
+                              'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
+                              (field.value || '').length >= 5 && !isSearchingCR && !formLocked && !isFormLoading
+                                ? 'text-teal-600 hover:bg-teal-600/10 cursor-pointer'
+                                : 'text-muted-foreground/40 cursor-not-allowed'
+                            )}
+                            title={(field.value || '').length < 5
+                              ? 'Enter at least 5 characters to search'
+                              : 'Search CR/SHA'
+                            }
+                          >
+                            {isSearchingCR ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Search className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                      </FormControl>
+                      <FormDescription className="min-h-[20px]">
                         Click search icon to look up registries
                       </FormDescription>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+            </div>
+
+            <div className="grid items-start gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
 
               {/* CR Number (Read-only) */}
               <FormField
@@ -1975,7 +2064,7 @@ export function PatientForm({
                   const isShaDisabled = shaEligibility.checked && !shaEligibility.isEligible;
 
                   return (
-                    <FormItem className="self-start">
+                    <FormItem className={cn(!shaNumber && 'lg:col-span-2')}>
                       <FormLabel>Payment Method *</FormLabel>
                       <Select
                         value={field.value}
