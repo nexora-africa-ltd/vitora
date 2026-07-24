@@ -636,6 +636,23 @@ class BillingAgentService:
             return None
 
         if not sha_member:
+            member_any = SHAMember.objects.filter(patient=invoice.patient).first()
+            eligibility_payload = (
+                getattr(member_any, "eligibility_response", {}) if member_any else {}
+            )
+            status_desc = str(
+                (eligibility_payload or {}).get("status_desc")
+                or (eligibility_payload or {}).get("statusDesc")
+                or ""
+            ).strip()
+            logger.info(
+                "Billing agent: skipping SHA auto-claim for encounter %s (patient=%s) "
+                "because no ACTIVE SHAMember exists; member_status=%s status_desc=%s",
+                getattr(encounter, "pk", None),
+                getattr(invoice, "patient_id", None),
+                getattr(member_any, "status", None),
+                status_desc or "n/a",
+            )
             return None
 
         # Avoid duplicate: do not create a second claim if one already exists

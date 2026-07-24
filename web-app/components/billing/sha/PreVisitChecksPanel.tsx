@@ -266,6 +266,7 @@ export function PreVisitChecksPanel({
   // so we do not use sha_number as a fallback here.
   const idNumber =
     defaultIdentificationNumber ||
+    patient?.principal_national_id ||
     member?.national_id ||
     patient?.identification_number ||
     patient?.national_id ||

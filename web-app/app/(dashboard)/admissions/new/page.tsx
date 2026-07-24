@@ -173,6 +173,22 @@ export default function NewAdmissionPage() {
 
   // Benefits check — run when SHA eligible and we have a SHA/CR number
   const shaNumber = shaEligibility.shaNumber ?? patientData?.sha_number ?? undefined;
+  const consentBenefitsLookupId = useMemo(() => {
+    if (!patientData) return undefined;
+    if (patientData.cr_number) return patientData.cr_number;
+    if (patientData.sha_number) return patientData.sha_number;
+
+    const idType = String(patientData.identification_type || '').toLowerCase();
+    if (
+      patientData.identification_number &&
+      (idType.includes('sha') || idType.includes('cr'))
+    ) {
+      return patientData.identification_number;
+    }
+
+    return undefined;
+  }, [patientData]);
+
   const {
     data: benefitsData,
     isLoading: benefitsLoading,
@@ -1531,6 +1547,7 @@ export default function NewAdmissionPage() {
                       patientId={patientId}
                       encounterId={encounterId}
                       patientName={patientData ? `${patientData.first_name} ${patientData.last_name}` : undefined}
+                      patientCrNumber={consentBenefitsLookupId}
                       workflowMemberType={(patientData as any)?.principal_national_id ? 'dependent' : 'principal'}
                     />
                   </div>

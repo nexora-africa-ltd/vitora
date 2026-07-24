@@ -424,6 +424,47 @@ class TestHandleAdmissionCreated:
         # Bed night uses ward's daily_rate (500.00)
         assert bed_items.first().unit_price == Decimal("500.00")
 
+    def test_logs_skip_reason_when_no_active_sha_member(
+        self,
+        db,
+        sample_admission,
+        test_user,
+        caplog,
+    ):
+        from hmis.apps.billing.agent import BillingAgentService
+
+        # Use SHA payer to mirror admission flow intent
+        sample_admission.payer_type = "SHA"
+        sample_admission.save(update_fields=["payer_type"])
+
+        invoice = BillingAgentService.get_or_create_draft_invoice(
+            sample_admission.patient,
+            encounter=sample_admission.ipd_encounter,
+        )
+
+        SHAMember.objects.create(
+            patient=sample_admission.patient,
+            sha_number="SHA-3923731260646-8",
+            national_id="34349545",
+            membership_type=SHAMember.MembershipType.CHILD,
+            principal_sha_number="SHA-4237486648862-4",
+            status=SHAMember.MembershipStatus.INACTIVE,
+            eligibility_response={"statusDesc": "Member Not found!"},
+            created_by=test_user,
+        )
+
+        with caplog.at_level("INFO"):
+            claim = BillingAgentService._maybe_create_sha_claim(
+                invoice,
+                sample_admission.ipd_encounter,
+                admission=sample_admission,
+            )
+
+        assert claim is None
+        assert "skipping SHA auto-claim" in caplog.text
+        assert "member_status=inactive" in caplog.text
+        assert "Member Not found!" in caplog.text
+
 
 # ============================================================================
 # Test: handle_discharge

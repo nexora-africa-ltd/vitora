@@ -436,12 +436,14 @@ export function ClaimILMPanel({
   const [replacePreviewLines, setReplacePreviewLines] = useState(true);
 
   const { data: latestConsentToken } = useQuery({
-    queryKey: ['sha-latest-consent-for-workflow', claim.sha_member, claim.updated_at],
+    queryKey: ['sha-latest-consent-for-workflow', claim.sha_member, claim.encounter, claim.updated_at],
     enabled: typeof claim.sha_member === 'number' && !!flow?.requiresConsent,
     queryFn: async () => {
       try {
         if (typeof claim.sha_member !== 'number') return null;
-        return await shaApi.getLatestConsent(claim.sha_member);
+        return await shaApi.getLatestConsent(claim.sha_member, {
+          encounterId: typeof claim.encounter === 'number' ? claim.encounter : undefined,
+        });
       } catch (e: unknown) {
         const statusCode = (e as { response?: { status?: number } })?.response?.status;
         if (statusCode === 404) return null;

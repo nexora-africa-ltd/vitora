@@ -49,8 +49,7 @@ export function ClaimSummaryBar({ claim }: ClaimSummaryBarProps) {
     claim.status === 'draft' &&
     (
       !!claim.submitted_at
-      || !!(claim.sha_claim_reference || claim.sha_reference)
-      || ['SUBMISSION_READY', 'SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(workflowState)
+      || ['SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(workflowState)
     )
       ? 'submitted'
       : claim.status;

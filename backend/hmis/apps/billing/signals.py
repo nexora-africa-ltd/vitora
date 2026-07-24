@@ -251,22 +251,49 @@ def handle_admission_billing(sender, instance, created, **kwargs):
         return
 
     try:
+        eligibility_sync_result = None
+
+        # For SHA admissions, refresh eligibility synchronously first so
+        # claim auto-creation sees the latest SHAMember status immediately.
+        if getattr(instance, "payer_type", "") == "SHA":
+            try:
+                from hmis.apps.billing.tasks import verify_patient_sha_eligibility
+
+                eligibility_sync_result = verify_patient_sha_eligibility(
+                    instance.patient_id,
+                    getattr(instance, "facility_id", None),
+                )
+            except Exception:
+                logger.exception(
+                    "Synchronous SHA eligibility refresh failed for admission %s; "
+                    "falling back to async verification",
+                    instance.id,
+                )
+                trigger_sha_eligibility_verification(
+                    instance.patient_id,
+                    getattr(instance, "facility_id", None),
+                )
+
         from hmis.apps.billing.agent import BillingAgentService
 
         BillingAgentService.handle_admission_created(instance)
-
-        # Verify SHA eligibility for inpatient admissions with SHA payer
-        if getattr(instance, "payer_type", "") == "SHA":
-            trigger_sha_eligibility_verification(
-                instance.patient_id,
-                getattr(instance, "facility_id", None),
-            )
 
         publish_event(
             event_type=BillingEvents.ADMISSION_BILLING,
             aggregate_type="Admission",
             aggregate_id=instance.id,
-            payload={"patient_id": getattr(instance, "patient_id", None)},
+            payload={
+                "patient_id": getattr(instance, "patient_id", None),
+                "payer_type": getattr(instance, "payer_type", None),
+                "sha_eligibility_sync": {
+                    "status": (eligibility_sync_result or {}).get("status"),
+                    "eligible": (eligibility_sync_result or {}).get("eligible"),
+                    "member_status": (eligibility_sync_result or {}).get("member_status"),
+                    "reason": (eligibility_sync_result or {}).get("reason"),
+                }
+                if eligibility_sync_result is not None
+                else None,
+            },
             facility_id=getattr(instance, "facility_id", None),
         )
     except Exception:

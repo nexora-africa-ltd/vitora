@@ -139,8 +139,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
     const workflowState = String(snapshot?.workflow_state || '').trim().toUpperCase();
     if (
       claim.submitted_at
-      || !!(claim.sha_claim_reference || claim.sha_reference)
-      || ['SUBMISSION_READY', 'SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(workflowState)
+      || ['SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(workflowState)
     ) {
       return 'submitted';
     }
@@ -171,8 +170,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
       claim.status === 'draft'
       && (
         !!claim.submitted_at
-        || !!(claim.sha_claim_reference || claim.sha_reference)
-        || ['SUBMISSION_READY', 'SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(workflowState)
+        || ['SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(workflowState)
       )
     ) {
       return true;

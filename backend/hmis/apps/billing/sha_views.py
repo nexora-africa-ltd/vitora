@@ -5109,11 +5109,22 @@ class ConsentLatestView(APIView):
             )
 
         sha_member_id = request.query_params.get("sha_member_id")
+        encounter_id = request.query_params.get("encounter_id")
+        encounter_pk = None
         if not sha_member_id:
             return Response(
                 {"error": "sha_member_id query parameter is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        if encounter_id not in (None, ""):
+            try:
+                encounter_pk = int(encounter_id)
+            except (TypeError, ValueError):
+                return Response(
+                    {"error": "encounter_id must be an integer"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         from django.db.models import Q
         from django.utils import timezone
@@ -5121,7 +5132,7 @@ class ConsentLatestView(APIView):
         now = timezone.now()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-        consent = (
+        base_qs = (
             ConsentToken.objects.filter(
                 sha_member_id=sha_member_id,
                 facility=facility,
@@ -5135,8 +5146,14 @@ class ConsentLatestView(APIView):
                 ),
             )
             .order_by("-created_at")
-            .first()
         )
+
+        consent = None
+        if encounter_pk is not None:
+            consent = base_qs.filter(encounter_id=encounter_pk).first()
+
+        if not consent:
+            consent = base_qs.first()
 
         if not consent:
             return Response(
