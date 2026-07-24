@@ -1,5 +1,5 @@
 /**
- * SHA (Social Health Authority) Type Definitions for Vitora HMIS
+ * SHA Type Definitions for Vitora HMIS
  * Based on DHA API integration and FHIR R4 standards
  *
  * @see docs/sha-frontend-integration-guide.md

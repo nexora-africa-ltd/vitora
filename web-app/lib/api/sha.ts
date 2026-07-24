@@ -1,5 +1,5 @@
 /**
- * SHA (Social Health Authority) API Client for Vitora HMIS
+ * SHA API Client for Vitora HMIS
  *
  * Implements all SHA-related API operations including:
  * - Client Registry lookup and registration

@@ -17,7 +17,7 @@ interface KenyaCoatOfArmsProps {
  *
  * Official emblem of the Republic of Kenya, used to indicate
  * government-related services and integrations like:
- * - SHA (Social Health Authority)
+ * - SHA
  * - DHA (Digital Health Authority)
  * - KHIS (Kenya Health Information System)
  * - Government registries

@@ -13,6 +13,13 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/shared/page-header';
@@ -23,16 +30,32 @@ import { useFetchFromCR } from '@/lib/hooks/use-sha';
 import { shaApi, type CapitationValidationResult } from '@/lib/api/sha';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import type { Patient } from '@/lib/types/patient';
+import { IDENTIFICATION_TYPE_OPTIONS, type IdentificationType } from '@/lib/types/patient';
 import type {
   ClientRegistryClient,
   DirectEligibilityCheckResponse,
   CRDependantPerson,
+  SHAPayloadPerson,
 } from '@/lib/types/sha';
 
 export default function PatientLookupPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const [lookupIdType, setLookupIdType] = useState<IdentificationType>('national_id');
   const debouncedQuery = useDebounce(searchQuery, 300);
+
+  useEffect(() => {
+    const storedType = window.localStorage.getItem('patient_lookup_id_type');
+    if (!storedType) return;
+    const valid = IDENTIFICATION_TYPE_OPTIONS.some((option) => option.value === storedType);
+    if (valid) {
+      setLookupIdType(storedType as IdentificationType);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem('patient_lookup_id_type', lookupIdType);
+  }, [lookupIdType]);
 
   // Local search — numeric-only queries are treated as a national-ID exact
   // lookup (PII is HMAC-indexed, so substring search can't reach it). All
@@ -65,18 +88,16 @@ export default function PatientLookupPage() {
     // Reset eligibility
     setEligibility(null);
 
-    // Determine ID type from format
     const query = debouncedQuery.trim();
-    const isNumericOnly = /^\d+$/.test(query);
-
-    const crParams = isNumericOnly
+    const idTypeLabel = IDENTIFICATION_TYPE_OPTIONS.find((opt) => opt.value === lookupIdType)?.label || 'National ID';
+    const crParams = lookupIdType === 'national_id'
       ? { national_id: query }
-      : { identification_number: query };
+      : { identification_type: idTypeLabel, identification_number: query };
 
     crMutation.mutate(crParams, {
       onSuccess: (result) => {
         // Also check eligibility if we have a national_id
-        const nationalId = result?.client?.national_id || (isNumericOnly ? query : null);
+        const nationalId = result?.client?.national_id || (lookupIdType === 'national_id' ? query : null);
         if (nationalId) {
           setEligibilityLoading(true);
           shaApi.checkDirectEligibility({ national_id: nationalId })
@@ -103,6 +124,23 @@ export default function PatientLookupPage() {
         <CardContent className="pt-6">
           <div className="flex items-center gap-3">
             <KenyaCoatOfArms size={28} className="shrink-0 hidden sm:block" />
+            <div className="w-[180px] shrink-0 hidden md:block">
+              <Select
+                value={lookupIdType}
+                onValueChange={(value) => setLookupIdType(value as IdentificationType)}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Select ID type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {IDENTIFICATION_TYPE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -133,6 +171,23 @@ export default function PatientLookupPage() {
               )}
               <span className="hidden sm:inline">CR/SHA Lookup</span>
             </Button>
+          </div>
+          <div className="mt-3 md:hidden">
+            <Select
+              value={lookupIdType}
+              onValueChange={(value) => setLookupIdType(value as IdentificationType)}
+            >
+              <SelectTrigger className="h-9 mt-1">
+                <SelectValue placeholder="Select ID type" />
+              </SelectTrigger>
+              <SelectContent>
+                {IDENTIFICATION_TYPE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
             Local search is automatic. Click &ldquo;CR/SHA Lookup&rdquo; to query the national Client Registry by ID number.
@@ -339,6 +394,7 @@ function CRResultCard({
 }) {
   const router = useRouter();
   const [showDependants, setShowDependants] = useState(false);
+  const [openDependantBenefitsKey, setOpenDependantBenefitsKey] = useState<string | null>(null);
   const [capitationWarning, setCapitationWarning] = useState<CapitationValidationResult | null>(null);
   const [benefitsEmpty, setBenefitsEmpty] = useState(false);
   const [benefitsChecked, setBenefitsChecked] = useState(false);
@@ -409,6 +465,21 @@ function CRResultCard({
 
   const totalDependantsDisplay = totalDependants || eligibility?.dependents_covered || 0;
   const showDependentsSection = totalDependantsDisplay > 0;
+
+  const getCRDependantLookupId = (dep: CRDependantPerson): string | null => {
+    if (dep.id && dep.id.startsWith('CR')) return dep.id;
+    if (dep.other_identifications?.length) {
+      const preferred = dep.other_identifications.find((oid) => {
+        const label = oid.identification_type?.toLowerCase() ?? '';
+        return label.includes('sha') || label.includes('hie patient id') || label.includes('cr number');
+      });
+      if (preferred?.identification_number) return preferred.identification_number;
+    }
+    if (dep.identification_number && dep.identification_type?.toLowerCase().includes('sha')) {
+      return dep.identification_number;
+    }
+    return null;
+  };
 
   return (
     <Card className="border-primary/30 overflow-hidden">
@@ -796,6 +867,9 @@ function CRResultCard({
             <div className="mt-2 space-y-2">
               {/* CR dependants (full details) */}
               {crDependants.length > 0 && crDependants.map((dep, i) => {
+                const depBenefitKey = dep.id || dep.identification_number || `${dep.first_name || 'dep'}-${dep.last_name || i}-${i}`;
+                const depLookupId = getCRDependantLookupId(dep);
+                const showDepBenefits = openDependantBenefitsKey === depBenefitKey;
                 // Collect dependant other IDs as badges
                 const depOtherIds: { label: string; value: string }[] = [];
                 if (dep.other_identifications) {
@@ -861,39 +935,75 @@ function CRResultCard({
                           )}
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="shrink-0 h-7 w-7 p-0"
-                        title="Register this dependant"
-                        onClick={() => {
-                          const isNationalId = dep.identification_type?.toLowerCase().replace(/[\s_-]/g, '') === 'nationalid';
-                          const depClient: ClientRegistryClient = {
-                            client_number: dep.id || '',
-                            first_name: dep.first_name || '',
-                            last_name: dep.last_name || '',
-                            middle_name: dep.middle_name,
-                            date_of_birth: dep.date_of_birth || '',
-                            gender: dep.gender || '',
-                            national_id: isNationalId ? dep.identification_number : null,
-                            phone_number: dep.phone,
-                            county: dep.county,
-                            sub_county: dep.sub_county,
-                            ward: dep.ward,
-                            citizenship: dep.citizenship,
-                            place_of_birth: dep.place_of_birth,
-                            civil_status: dep.civil_status,
-                            employment_type: dep.employment_type,
-                            village_estate: dep.village_estate,
-                            country: dep.country,
-                            zip_code: dep.zip_code,
-                            other_identifications: dep.other_identifications,
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button
+                          variant={showDepBenefits ? 'secondary' : 'ghost'}
+                          size="sm"
+                          className="h-7 px-2"
+                          title={showDepBenefits ? 'Hide dependant benefits' : 'See dependant benefits'}
+                          onClick={() => {
+                            setOpenDependantBenefitsKey((prev) => (prev === depBenefitKey ? null : depBenefitKey));
+                          }}
+                        >
+                          {showDepBenefits ? 'Hide benefits' : 'See benefits'}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          title="Register this dependant"
+                          onClick={() => {
+                          const principalContributor = eligibility?.schemes?.find((scheme) => scheme.principalContributor?.idNumber)?.principalContributor;
+                          const principalNationalId = principalContributor?.idType?.toUpperCase() === 'NATIONAL_ID'
+                            ? principalContributor.idNumber
+                            : (client.national_id ?? undefined);
+                          const depShaNumber = dep.other_identifications?.find((oid) => oid.identification_type?.toLowerCase().includes('sha'))?.identification_number;
+                          const depHouseholdNumber = dep.other_identifications?.find((oid) => oid.identification_type?.toLowerCase().includes('household'))?.identification_number;
+
+                          const depPerson: SHAPayloadPerson = {
+                            source: 'dependent',
+                            relationship: dep.relationship,
+                            id: dep.id ?? undefined,
+                            resourceType: dep.resourceType ?? undefined,
+                            first_name: dep.first_name ?? undefined,
+                            middle_name: dep.middle_name ?? undefined,
+                            last_name: dep.last_name ?? undefined,
+                            gender: dep.gender ?? undefined,
+                            date_of_birth: dep.date_of_birth ?? undefined,
+                            place_of_birth: dep.place_of_birth ?? undefined,
+                            citizenship: dep.citizenship ?? undefined,
+                            employment_type: dep.employment_type ?? undefined,
+                            civil_status: dep.civil_status ?? undefined,
+                            identification_type: dep.identification_type ?? undefined,
+                            identification_number: dep.identification_number ?? undefined,
+                            other_identifications: dep.other_identifications?.map((oid) => ({
+                              identification_type: oid.identification_type,
+                              identification_number: oid.identification_number,
+                            })),
+                            phone: dep.phone ?? undefined,
+                            country: dep.country ?? undefined,
+                            county: dep.county ?? undefined,
+                            sub_county: dep.sub_county ?? undefined,
+                            ward: dep.ward ?? undefined,
+                            village_estate: dep.village_estate ?? undefined,
+                            province_state_country: dep.province_state_country ?? undefined,
+                            zip_code: dep.zip_code ?? undefined,
+                            postal_address: dep.postal_address ?? undefined,
+                            id_serial: dep.id_serial ?? undefined,
+                            sha_number: depShaNumber,
+                            cr_number: dep.id ?? undefined,
+                            household_number: depHouseholdNumber,
+                            principal_national_id: principalNationalId,
                           };
-                          handleRegister(depClient);
-                        }}
-                      >
-                        <UserPlus className="h-3.5 w-3.5" />
-                      </Button>
+
+                          sessionStorage.removeItem('cr_prepopulate');
+                          sessionStorage.setItem('sha_person_prepopulate', JSON.stringify(depPerson));
+                          router.push('/patients/new?from_sha=1');
+                          }}
+                        >
+                          <UserPlus className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Row 3: Other IDs + extra detail */}
@@ -916,16 +1026,32 @@ function CRResultCard({
                         </div>
                       </div>
                     )}
+
+                    {showDepBenefits && (
+                      <div className="pl-7 pt-1">
+                        {depLookupId ? (
+                          <BenefitsPanel crNumber={depLookupId} compact />
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            No SHA/CR identifier found for this dependant. Register first or verify from the SHA modal to load benefits.
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
 
               {/* SHA dependants (if no CR dependants available) */}
-              {crDependants.length === 0 && shaDependants.length > 0 && shaDependants.map((dep, i) => (
+              {crDependants.length === 0 && shaDependants.length > 0 && shaDependants.map((dep, i) => {
+                const depBenefitKey = dep.sha_number || dep.name || `sha-${i}`;
+                const showDepBenefits = openDependantBenefitsKey === depBenefitKey;
+                return (
                 <div
                   key={`sha-${i}`}
-                  className="flex items-center gap-3 rounded-md border p-2.5 bg-muted/30"
+                  className="rounded-md border p-2.5 bg-muted/30"
                 >
+                  <div className="flex items-center gap-3">
                   <User className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -949,8 +1075,31 @@ function CRResultCard({
                       )}
                     </div>
                   </div>
+                  <Button
+                    variant={showDepBenefits ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="h-7 px-2"
+                    title={showDepBenefits ? 'Hide dependant benefits' : 'See dependant benefits'}
+                    onClick={() => {
+                      setOpenDependantBenefitsKey((prev) => (prev === depBenefitKey ? null : depBenefitKey));
+                    }}
+                  >
+                    {showDepBenefits ? 'Hide benefits' : 'See benefits'}
+                  </Button>
+                  </div>
+                  {showDepBenefits && (
+                    <div className="mt-2 pl-7">
+                      {dep.sha_number ? (
+                        <BenefitsPanel crNumber={dep.sha_number} compact />
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          No SHA number found for this dependant yet.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
-              ))}
+              );})}
             </div>
           )}
         </CardContent>

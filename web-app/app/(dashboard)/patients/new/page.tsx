@@ -78,6 +78,21 @@ export default function NewPatientPage() {
   // Pre-populate from CR data passed via Patient Lookup page
   useEffect(() => {
     try {
+      const storedShaPerson = sessionStorage.getItem('sha_person_prepopulate');
+      if (storedShaPerson) {
+        sessionStorage.removeItem('sha_person_prepopulate');
+        sessionStorage.removeItem('cr_prepopulate');
+
+        const person = JSON.parse(storedShaPerson) as SHAPayloadPerson;
+        setCrClient(null);
+        setSelectedShaPerson(person);
+        toast({
+          title: 'Dependant Record Loaded',
+          description: `Pre-populated from ${[person.first_name, person.last_name].filter(Boolean).join(' ') || 'selected dependant'}.`,
+        });
+        return;
+      }
+
       const stored = sessionStorage.getItem('cr_prepopulate');
       if (stored) {
         sessionStorage.removeItem('cr_prepopulate');

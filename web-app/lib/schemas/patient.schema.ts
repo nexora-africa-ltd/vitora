@@ -210,7 +210,7 @@ export const PatientCreateDataSchema = z.object({
   // Client Registry (readonly after creation if from CR)
   cr_number: z.string().optional(),
 
-  // SHA (Social Health Authority)
+  // SHA
   sha_number: z.string().optional(),
   household_number: z.string().optional(),
   principal_national_id: z.string().optional(),
