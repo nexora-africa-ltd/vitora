@@ -145,6 +145,29 @@ def _regulator_required_for_identification_type(identification_type: str) -> boo
 
 _CR_NUMBER_RE = re.compile(r"^CR\d+-\d$")
 
+_ILM_IDENTIFIER_TYPE_ALIASES = {
+    "NATIONAL ID": "National ID",
+    "REFUGEE ID": "Refugee ID",
+    "MANDATE NUMBER": "Mandate Number",
+    "ALIEN ID": "Alien ID",
+    "BIRTH CERTIFICATE": "Birth Certificate",
+    "BIRTH CERTIFICATE NUMBER": "Birth Certificate",
+    "BIRTH NOTIFICATION": "Birth Notification",
+    "CLIENTREGISTRY ID": "ClientRegistry ID",
+    "CLIENT REGISTRY ID": "ClientRegistry ID",
+    "CR ID": "ClientRegistry ID",
+    "CR NUMBER": "ClientRegistry ID",
+    "HIE PATIENT ID": "ClientRegistry ID",
+}
+_ILM_IDENTIFIER_TYPE_ALLOWED = sorted(set(_ILM_IDENTIFIER_TYPE_ALIASES.values()))
+
+
+def _normalize_ilm_identifier_type(value: str | None) -> str | None:
+    normalized = " ".join(str(value or "").strip().upper().split())
+    if not normalized:
+        return None
+    return _ILM_IDENTIFIER_TYPE_ALIASES.get(normalized)
+
 
 def _validate_patient_id(patient_id: str) -> str | None:
     """Return an error message if patient_id doesn't look like a CR number.
@@ -213,10 +236,21 @@ class IlmPatientLookupView(APIView):
 
     def get(self, request):
         idn = request.query_params.get("identification_number")
-        idt = request.query_params.get("identification_type")
-        if not idn or not idt:
+        idt_raw = request.query_params.get("identification_type")
+        idt = _normalize_ilm_identifier_type(idt_raw)
+        if not idn or not idt_raw:
             return Response(
                 {"error": "identification_number and identification_type are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if idt not in _ILM_IDENTIFIER_TYPE_ALLOWED:
+            return Response(
+                {
+                    "error": (
+                        "Invalid identification_type for ILM patient lookup. "
+                        f"Allowed values: {', '.join(_ILM_IDENTIFIER_TYPE_ALLOWED)}"
+                    )
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
@@ -310,10 +344,21 @@ class IlmEligibilityView(APIView):
 
     def get(self, request):
         idn = request.query_params.get("identification_number")
-        idt = request.query_params.get("identification_type")
-        if not idn or not idt:
+        idt_raw = request.query_params.get("identification_type")
+        idt = _normalize_ilm_identifier_type(idt_raw)
+        if not idn or not idt_raw:
             return Response(
                 {"error": "identification_number and identification_type are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if idt not in _ILM_IDENTIFIER_TYPE_ALLOWED:
+            return Response(
+                {
+                    "error": (
+                        "Invalid identification_type for ILM eligibility lookup. "
+                        f"Allowed values: {', '.join(_ILM_IDENTIFIER_TYPE_ALLOWED)}"
+                    )
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:

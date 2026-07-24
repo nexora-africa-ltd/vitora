@@ -492,20 +492,22 @@ class ClientRegistryService:
         "national_id": "National ID",
         "national id": "National ID",
         "nationalid": "National ID",
-        "passport": "Passport",
-        "passport_number": "Passport",
-        "huduma": "Huduma Number",
-        "huduma_number": "Huduma Number",
-        "huduma number": "Huduma Number",
-        "birth_certificate": "Birth Certificate",
-        "birth certificate": "Birth Certificate",
+        "refugee_id": "Refugee ID",
+        "refugee id": "Refugee ID",
+        "mandate_number": "Mandate Number",
+        "mandate number": "Mandate Number",
         "alien_id": "Alien ID",
         "alien id": "Alien ID",
-        "sha_number": "SHA Number",
-        "sha number": "SHA Number",
-        "cr_number": "CR Number",
-        "cr number": "CR Number",
-        "client_number": "CR Number",
+        "birth_certificate": "Birth Certificate",
+        "birth certificate": "Birth Certificate",
+        "birth_notification": "Birth Notification",
+        "birth notification": "Birth Notification",
+        "cr_number": "ClientRegistry ID",
+        "cr number": "ClientRegistry ID",
+        "cr id": "ClientRegistry ID",
+        "hie patient id": "ClientRegistry ID",
+        "clientregistry id": "ClientRegistry ID",
+        "client_number": "ClientRegistry ID",
     }
 
     @classmethod
@@ -515,8 +517,7 @@ class ClientRegistryService:
         key = raw.strip().lower()
         if key in cls._ILM_ID_TYPE_MAP:
             return cls._ILM_ID_TYPE_MAP[key]
-        # Already in the expected form ("National ID", "Passport", ...)
-        return raw.strip()
+        return " ".join(raw.strip().split())
 
     def _fetch_client_via_ilm(
         self,
@@ -550,7 +551,7 @@ class ClientRegistryService:
             id_type_raw = "Passport"
             id_number = passport_number
         elif client_number:
-            id_type_raw = "CR Number"
+            id_type_raw = "ClientRegistry ID"
             id_number = client_number
         else:
             return None

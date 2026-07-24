@@ -2,7 +2,8 @@
 	staging-status staging-logs staging-logs-100 staging-exec staging-seed \
 	staging-migrate staging-shell staging-restart staging-env staging-secrets \
 	staging-deploy staging-login-test check-ilm \
-	prod-deploy prod-env prod-logs prod-status prod-restart
+	prod-deploy prod-env prod-logs prod-status prod-restart \
+	api api-wsgi kill-api r
 
 help:
 	@echo "Vitora HMIS Backend - Make Commands"
@@ -15,6 +16,7 @@ help:
 	@echo "  api           - Start ASGI server on port 9088 with WebSocket support (background)"
 	@echo "  api-wsgi      - Start WSGI server on port 9088 without WebSocket (background)"
 	@echo "  kill-api      - Kill process running on port 9088"
+	@echo "  r             - Restart API server on port 9088 (kill-api + api)"
 	@echo "  shell         - Open Django shell"
 	@echo ""
 	@echo "Testing:"
@@ -308,6 +310,9 @@ kill-api:
 			kill $$pid 2>/dev/null && echo "Killed $$cmd (PID $$pid)"; \
 		fi; \
 	done || echo "No daphne/python server running on port 9088"
+
+r: kill-api api
+	@echo "API restart complete on port 9088"
 
 shell:
 	poetry run python manage.py shell
