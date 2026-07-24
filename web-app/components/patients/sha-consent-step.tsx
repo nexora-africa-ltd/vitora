@@ -60,6 +60,10 @@ interface SHAConsentStepProps {
   onError?: (error: string) => void;
   /** Custom className */
   className?: string;
+  /** Optional beneficiary display name for dependent workflows */
+  patientName?: string;
+  /** Optional workflow context for principal vs dependent admissions */
+  workflowMemberType?: 'principal' | 'dependent';
 }
 
 type StepState =
@@ -102,6 +106,8 @@ export function SHAConsentStep({
   autoCheck = true,
   patientDateOfBirth,
   className,
+  patientName,
+  workflowMemberType,
 }: SHAConsentStepProps) {
   const [step, setStep] = useState<StepState>('checking');
   const [shaMember, setSHAMember] = useState<SHAMember | null>(null);
@@ -168,6 +174,7 @@ export function SHAConsentStep({
     const numLevel = parseInt(facilityLevel.replace(/[^0-9]/g, ''), 10);
     return numLevel >= 4;
   }, [facilityLevel]);
+  const isDependentWorkflow = workflowMemberType === 'dependent';
 
   // Check SHA eligibility on mount
   const checkEligibility = useCallback(async () => {
@@ -559,10 +566,19 @@ export function SHAConsentStep({
               ? 'Verify patient identity with fingerprint, then start the SHA visit.'
               : 'Select the visit intervention, then send a one-time password to the patient\u0027s phone.'}
             {eligibilityInfo?.verifiedName && (
-              <span className="block mt-0.5 text-green-600 dark:text-green-400">
-                Coverage verified for {eligibilityInfo.verifiedName}
-                {eligibilityInfo.coverageEndDate && ` • Valid until ${eligibilityInfo.coverageEndDate}`}
-              </span>
+              <>
+                <span className="block mt-0.5 text-green-600 dark:text-green-400">
+                  {isDependentWorkflow
+                    ? `Coverage verified for principal ${eligibilityInfo.verifiedName}`
+                    : `Coverage verified for ${eligibilityInfo.verifiedName}`}
+                  {eligibilityInfo.coverageEndDate && ` • Valid until ${eligibilityInfo.coverageEndDate}`}
+                </span>
+                {isDependentWorkflow && patientName && (
+                  <span className="block mt-0.5 text-emerald-600 dark:text-emerald-400">
+                    Admitting dependant: {patientName}
+                  </span>
+                )}
+              </>
             )}
           </p>
 
@@ -589,7 +605,9 @@ export function SHAConsentStep({
               </select>
             ) : (
               <p className="text-xs text-muted-foreground py-2">
-                No eligible benefit packages found. OTP can still be sent.
+                {shaMember
+                  ? 'No eligible benefit packages found. OTP can still be sent.'
+                  : 'Benefit packages will load after member verification. OTP can still be sent.'}
               </p>
             )}
           </div>

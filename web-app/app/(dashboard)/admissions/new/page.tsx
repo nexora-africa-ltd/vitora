@@ -387,12 +387,25 @@ export default function NewAdmissionPage() {
     ) {
       return;
     }
+
+    if (!wards) {
+      return;
+    }
+
+    const wardsList = (wards as any)?.results ?? wards ?? [];
     const recommendedId = String(wardRecommendationData.recommended_ward_id);
+    const wardIsAccessible = wardsList.some((w: any) => String(w.id) === recommendedId);
+
+    if (!wardIsAccessible) {
+      toast.warning('Recommended ward is outside your active facility scope');
+      return;
+    }
+
     if (wardId !== recommendedId) {
       handleWardChange(recommendedId);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wardRecommendationData, wardAssignmentMode]);
+  }, [wardRecommendationData, wardAssignmentMode, wards]);
 
   useEffect(() => {
     if (!patientId || !selectedWardId || !!activeAdmission) {
@@ -849,23 +862,28 @@ export default function NewAdmissionPage() {
                             onClick={() => handleWardChange(String(rw.ward_id))}
                             className={cn(
                               'flex w-full items-center justify-between rounded-md border p-2 text-left text-sm transition-colors hover:bg-accent',
-                              idx === 0 && 'border-primary/30 bg-primary/5',
+                              idx === 0 && 'border-emerald-500 bg-emerald-50 text-green-700 dark:border-emerald-400 dark:bg-emerald-950/30 dark:text-green-300',
                               String(rw.ward_id) === wardId && 'ring-2 ring-primary'
                             )}
                           >
                             <div className="flex items-center gap-2 min-w-0">
                               <span className={cn(
                                 'flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs font-bold',
-                                idx === 0 ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                                idx === 0 ? 'bg-emerald-100 text-green-700 dark:bg-emerald-900/50 dark:text-green-300' : 'bg-muted text-muted-foreground'
                               )}>
                                 {idx + 1}
                               </span>
-                              <span className="truncate font-medium">{rw.ward_name}</span>
+                              <span className={cn('truncate font-medium', idx === 0 && 'text-green-700 dark:text-green-300')}>
+                                {rw.ward_name}
+                              </span>
                               <span className="text-xs text-muted-foreground">{rw.ward_type}</span>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               <span className="text-xs text-muted-foreground">{rw.available_beds} beds</span>
                               <Badge variant="outline" className="text-xs">Score {rw.score.toFixed(1)}</Badge>
+                              {String(rw.ward_id) === wardId && (
+                                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                              )}
                             </div>
                           </button>
                         ))}
@@ -1512,6 +1530,8 @@ export default function NewAdmissionPage() {
                     <SHAConsentStep
                       patientId={patientId}
                       encounterId={encounterId}
+                      patientName={patientData ? `${patientData.first_name} ${patientData.last_name}` : undefined}
+                      workflowMemberType={(patientData as any)?.principal_national_id ? 'dependent' : 'principal'}
                     />
                   </div>
                 </div>

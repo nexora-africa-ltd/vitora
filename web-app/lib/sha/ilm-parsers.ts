@@ -459,11 +459,17 @@ export function parseUtilization(resp: IlmRegistryResponse | null | undefined): 
 
 /**
  * Normalise an internal SHA member number to the DHA Client Registry id.
- * Local convention stores numbers as `SHA-XXXXX-N`; DHA expects `CRXXXXX-N`.
+ * Local convention stores numbers as `SHA-XXXXX-N` or `SHAXXXXX-N`;
+ * DHA expects `CRXXXXX-N`.
  * Already-CR ids and other shapes are returned unchanged.
  */
 export function toCrId(value: string | null | undefined): string {
   if (!value) return '';
-  if (value.startsWith('SHA-')) return `CR${value.slice(4)}`;
-  return value;
+  const trimmed = value.trim();
+  const upper = trimmed.toUpperCase();
+  if (/^SHA-?\d/.test(upper)) {
+    const suffix = upper.startsWith('SHA-') ? trimmed.slice(4) : trimmed.slice(3);
+    return `CR${suffix}`;
+  }
+  return trimmed;
 }

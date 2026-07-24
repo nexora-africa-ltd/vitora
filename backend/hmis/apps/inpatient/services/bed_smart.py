@@ -776,6 +776,7 @@ class SmartBedAllocationService:
         requires_oxygen: bool = False,
         requires_ventilator: bool = False,
         admission_type: str = "ELECTIVE",
+        wards_queryset: models.QuerySet[Ward] | None = None,
     ) -> WardRecommendationResult:
         """
         Evaluate all active wards and rank them for a patient.
@@ -800,7 +801,11 @@ class SmartBedAllocationService:
         if infection_detected and not requires_isolation:
             requires_isolation = True
 
-        wards = Ward.objects.filter(is_active=True).prefetch_related("beds")
+        wards = (
+            wards_queryset.filter(is_active=True).prefetch_related("beds")
+            if wards_queryset is not None
+            else Ward.objects.filter(is_active=True).prefetch_related("beds")
+        )
         ranked: list[WardCandidate] = []
         incompatible: list[WardCandidate] = []
 

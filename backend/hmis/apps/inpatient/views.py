@@ -770,6 +770,7 @@ class WardViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             requires_oxygen=serializer.validated_data.get("requires_oxygen", False),
             requires_ventilator=serializer.validated_data.get("requires_ventilator", False),
             admission_type=serializer.validated_data.get("admission_type", "ELECTIVE"),
+            wards_queryset=self.get_queryset(),
         )
 
         return Response(result.to_dict(), status=status.HTTP_200_OK)
