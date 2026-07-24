@@ -29,6 +29,7 @@ interface SearchableSelectProps {
   emptyMessage?: string;
   className?: string;
   disabled?: boolean;
+  maxVisibleOptions?: number;
 }
 
 export function SearchableSelect({
@@ -40,10 +41,26 @@ export function SearchableSelect({
   emptyMessage = 'No results found.',
   className,
   disabled,
+  maxVisibleOptions = 150,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState('');
+  const deferredQuery = React.useDeferredValue(query);
 
   const selected = options.find((o) => o.value === value);
+
+  const filteredOptions = React.useMemo(() => {
+    const q = deferredQuery.trim().toLowerCase();
+    if (!q) return options.slice(0, maxVisibleOptions);
+    return options
+      .filter((option) => {
+        const haystack = `${option.label} ${option.sublabel || ''} ${option.value}`.toLowerCase();
+        return haystack.includes(q);
+      })
+      .slice(0, maxVisibleOptions);
+  }, [deferredQuery, options, maxVisibleOptions]);
+
+  const truncated = filteredOptions.length < options.length;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -66,15 +83,19 @@ export function SearchableSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder={searchPlaceholder}
+            value={query}
+            onValueChange={setQuery}
+          />
           <CommandList>
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
-              {options.map((option) => (
+              {filteredOptions.map((option) => (
                 <CommandItem
                   key={option.value}
-                  value={option.label}
+                  value={option.value}
                   onSelect={() => {
                     onValueChange(option.value);
                     setOpen(false);
@@ -94,6 +115,11 @@ export function SearchableSelect({
                   </div>
                 </CommandItem>
               ))}
+              {truncated && (
+                <CommandItem disabled value="__searchable_select_truncated__">
+                  Showing first {maxVisibleOptions} matches. Keep typing to narrow results.
+                </CommandItem>
+              )}
             </CommandGroup>
           </CommandList>
         </Command>

@@ -238,6 +238,8 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
               shaMemberId={
                 typeof claim.sha_member === 'number' ? claim.sha_member : undefined
               }
+              patientCrId={patientCrId || undefined}
+              activeInterventionCodes={interventionCodes}
               onPreauthComplete={onChange}
             />
           )}

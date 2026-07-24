@@ -43,6 +43,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useFacility } from '@/lib/context/facility-context';
 import { ContactPicker } from '@/components/patients/contact-picker';
 import { toCrId } from '@/lib/sha/ilm-parsers';
+import { useBenefitInterventions } from '@/lib/hooks/use-benefit-interventions';
 
 // ============================================================================
 // Types
@@ -132,63 +133,6 @@ function getStatusBadge(status: ConsentStatus) {
 }
 
 // ============================================================================
-// Helpers
-// ============================================================================
-
-interface DhaInterventionItem {
-  code: string;
-  name: string;
-  paymentMechanism?: string;
-  tariff?: number;
-}
-
-/**
- * Extract intervention items from the DHA `ilmBenefitInterventions` response.
- * DHA returns deeply nested payloads — this normalizes across known shapes.
- */
-function extractDhaInterventionItems(data: unknown): DhaInterventionItem[] {
-  if (!data) return [];
-  const items: DhaInterventionItem[] = [];
-
-  function extract(obj: unknown): void {
-    if (!obj) return;
-    if (Array.isArray(obj)) {
-      for (const item of obj) extract(item);
-      return;
-    }
-    if (typeof obj !== 'object') return;
-    const rec = obj as Record<string, unknown>;
-
-    // If this object has `code` or `interventionCode`, it's likely an intervention
-    const code = String(rec.code || rec.interventionCode || rec.intervention_code || '');
-    const name = String(
-      rec.name || rec.interventionName || rec.intervention_name ||
-      rec.benefit_name || rec.benefitName || rec.description || ''
-    );
-    if (code) {
-      items.push({
-        code,
-        name: name || code,
-        paymentMechanism: String(rec.paymentMechanism || rec.payment_mechanism || ''),
-        tariff: typeof rec.overallTariff === 'number' ? rec.overallTariff
-          : typeof rec.overall_tariff === 'number' ? rec.overall_tariff
-          : undefined,
-      });
-      return;
-    }
-
-    // Recurse into nested arrays
-    if (Array.isArray(rec.results)) extract(rec.results);
-    if (Array.isArray(rec.data)) extract(rec.data);
-    if (Array.isArray(rec.interventions)) extract(rec.interventions);
-    if (Array.isArray(rec.benefits)) extract(rec.benefits);
-  }
-
-  extract(data);
-  return items;
-}
-
-// ============================================================================
 // Component
 // ============================================================================
 
@@ -210,16 +154,9 @@ export function ConsentPanel({
   const [consentId, setConsentId] = useState<number | undefined>(initialConsentId);
   const [error, setError] = useState<string | null>(null);
 
-  // ---- Intervention selection: live DHA query → static catalog fallback ----
-  // Per DHA docs (Scenario 6), the correct flow is:
-  //   1. Call `ilmBenefitInterventions(patient_id, sub_benefit_code)` to get
-  //      the interventions DHA explicitly allows for this patient + facility.
-  //   2. Fall back to the static OCL catalog only if DHA returns nothing.
+  // ---- Intervention selection: DHA benefits cascade ----
   const { facilityDetail } = useFacility();
-  const facilityLevel = facilityDetail?.level ? parseInt(facilityDetail.level.replace(/[^0-9]/g, ''), 10) : undefined;
   const facilityAgentNationalId = facilityDetail?.biometrics_agent_national_id || '';
-  const facilityLevelKnown = typeof facilityLevel === 'number' && !Number.isNaN(facilityLevel);
-  const isPhcLevel = facilityLevelKnown && facilityLevel! <= 3;
 
   // ---- Resolve patient CR ID: prop first, then derive from SHA member ----
   const { data: fallbackSHAMember } = useQuery({
@@ -230,69 +167,35 @@ export function ConsentPanel({
   });
   const resolvedCrId = patientCrId || (fallbackSHAMember && toCrId(fallbackSHAMember.sha_member_number));
 
-  // Step 1: Live DHA benefit-interventions (requires patient CR ID).
-  // Try SHA-12-SC-01 (Outpatient PHC) first — most dispensaries are PHC-contracted.
-  const { data: liveInterventionsResp } = useQuery({
-    queryKey: ['sha-live-benefit-interventions', resolvedCrId],
-    queryFn: () =>
-      shaApi.ilmBenefitInterventions({
-        patient_id: resolvedCrId!,
-        sub_benefit_code: 'SHA-12-SC-01',
-      }),
+  const {
+    benefitPackageOptions,
+    benefitPackagesLoading,
+    selectedBenefitPkgCode,
+    setSelectedBenefitPkgCode,
+    interventionOptions,
+    interventionsLoading,
+    selectedIntervention,
+    setSelectedInterventionCode,
+  } = useBenefitInterventions({
+    patientCrId: resolvedCrId || '',
     enabled: !!resolvedCrId,
-    staleTime: 5 * 60 * 1000,
-    retry: 1,
-    meta: { skipGlobalErrorHandler: true },
   });
 
-  // Parse the live DHA response into options.
-  const liveOptions = useMemo(() => {
-    if (!liveInterventionsResp?.data) return [];
-    const items = extractDhaInterventionItems(liveInterventionsResp.data);
-    return items
-      .filter((i) => i.code && i.name)
-      .map((i) => ({
-        code: i.code,
-        label: `${i.name}${i.paymentMechanism ? ` · ${i.paymentMechanism}` : ''}${i.tariff ? ` · KES ${Number(i.tariff).toLocaleString()}` : ''}`,
-        schemes: undefined as string[] | undefined,
-      }));
-  }, [liveInterventionsResp]);
+  const preselectedInterventionCode = interventionCodes?.[0] || '';
+  const selectedInterventionCode = preselectedInterventionCode || selectedIntervention?.code || '';
 
-  // Step 2: Static catalog fallback (FFS + OP + active + level-filtered).
-  const { data: staticInterventions } = useQuery({
-    queryKey: ['sha-interventions-for-consent-static', facilityLevel],
-    queryFn: () =>
-      shaApi.searchInterventionCodes('', 100, facilityLevel, {
-        paymentMechanism: isPhcLevel ? 'FEE FOR SERVICE,FIXED FEE FOR SERVICE,CAPITATION' : 'FEE FOR SERVICE',
-        accessPoint: 'OP',
-        activeOnly: true,
-      }),
-    // Only run if live DHA returned nothing and we have a facility level
-    enabled: facilityLevelKnown && liveOptions.length === 0,
-    staleTime: 60 * 60 * 1000,
-  });
-
-  const staticOptions = useMemo(() => {
-    if (!staticInterventions?.length) return [];
-    return staticInterventions.map((i) => ({
-      code: i.code,
-      schemes: i.schemes,
-      label: `${i.name}${i.category ? ` · ${i.category}` : ''}${i.price ? ` · KES ${Number(i.price).toLocaleString()}` : ''}`,
-    }));
-  }, [staticInterventions]);
-
-  // Use live DHA results when available, otherwise fall back to static catalog.
-  const interventionOptions = liveOptions.length > 0 ? liveOptions : staticOptions;
-
-  const [selectedIntervention, setSelectedIntervention] = useState(
-    interventionCodes?.[0] || ''
-  );
   // Update selection when interventions load
   useEffect(() => {
-    if (!selectedIntervention && interventionOptions.length > 0) {
-      setSelectedIntervention(interventionOptions[0]!.code);
+    if (preselectedInterventionCode) return;
+    if (!selectedInterventionCode && interventionOptions.length > 0) {
+      setSelectedInterventionCode(interventionOptions[0]!.code);
     }
-  }, [interventionOptions, selectedIntervention]);
+  }, [
+    preselectedInterventionCode,
+    selectedInterventionCode,
+    interventionOptions,
+    setSelectedInterventionCode,
+  ]);
 
   // Biometric state
   const [biometricAuthGuid, setBiometricAuthGuid] = useState<string | null>(null);
@@ -324,7 +227,7 @@ export function ConsentPanel({
         if (data.status === 'VALIDATED') {
           setStep('validated');
           if (data.consent_token) {
-            onConsentObtained?.(data.id, data.consent_token, {}, selectedIntervention);
+            onConsentObtained?.(data.id, data.consent_token, {}, selectedInterventionCode);
           }
         } else if (data.status === 'PENDING') {
           // OTP already sent — jump to entry step
@@ -334,14 +237,21 @@ export function ConsentPanel({
     }).catch(() => {
       // 404 or error — no existing consent, stay in idle (normal flow)
     });
-  }, [shaMemberId, encounterId, initialConsentId, step, onConsentObtained]);
+  }, [
+    shaMemberId,
+    encounterId,
+    initialConsentId,
+    step,
+    onConsentObtained,
+    selectedInterventionCode,
+  ]);
 
   const handleSendOTP = async () => {
     setError(null);
     setMethod('otp');
     const codes = interventionCodes?.length
       ? interventionCodes
-      : selectedIntervention ? [selectedIntervention] : [];
+      : selectedInterventionCode ? [selectedInterventionCode] : [];
     sendOTP.mutate(
       {
         sha_member_id: shaMemberId,
@@ -371,18 +281,24 @@ export function ConsentPanel({
     const submittedOtp = otpCode.trim();
     const codes = interventionCodes?.length
       ? interventionCodes
-      : selectedIntervention ? [selectedIntervention] : [];
+      : selectedInterventionCode ? [selectedInterventionCode] : [];
     startVisit.mutate(
       {
         consent_id: consentId,
         otp_code: submittedOtp,
         ...(codes.length ? { intervention_codes: codes } : {}),
+        ...(typeof encounterId === 'number' ? { encounter_id: encounterId } : {}),
       },
       {
         onSuccess: (response) => {
           setStep('validated');
           setOtpCode('');
-          onConsentObtained?.(response.id, response.consent_token, { otp: submittedOtp }, selectedIntervention);
+            onConsentObtained?.(
+              response.id,
+              response.consent_token,
+              { otp: submittedOtp },
+              selectedInterventionCode,
+            );
         },
         onError: (err: unknown) => {
           setError(getApiErrorMessage(err) || 'Invalid OTP code');
@@ -408,7 +324,12 @@ export function ConsentPanel({
         setStep('validated');
         stopPolling();
         const sandboxToken = result.consent_token || '';
-        onConsentObtained?.(result.consent_id!, sandboxToken, { authGuid: result.auth_guid }, selectedIntervention);
+        onConsentObtained?.(
+          result.consent_id!,
+          sandboxToken,
+          { authGuid: result.auth_guid },
+          selectedInterventionCode,
+        );
         return;
       }
       setStep('biometric_pending');
@@ -435,7 +356,12 @@ export function ConsentPanel({
         if (status.status === 'AUTHORIZED') {
           stopPolling();
           setStep('validated');
-          onConsentObtained?.(consentId!, status.consent_token, { authGuid: biometricAuthGuid }, selectedIntervention);
+          onConsentObtained?.(
+            consentId!,
+            status.consent_token,
+            { authGuid: biometricAuthGuid },
+            selectedInterventionCode,
+          );
         } else if (status.status === 'FAILED' || status.status === 'EXPIRED') {
           stopPolling();
           setError(`Biometric authorization ${status.status.toLowerCase()}`);
@@ -509,20 +435,45 @@ export function ConsentPanel({
             </p>
             {/* Intervention select — shown when no interventions are pre-set */}
             {!interventionCodes?.length && (
-              <div className="space-y-1">
-                <Label className="text-xs">Service / Intervention</Label>
-                <Select value={selectedIntervention} onValueChange={setSelectedIntervention}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Select intervention" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {interventionOptions.map((opt) => (
-                      <SelectItem key={opt.code} value={opt.code} className="text-xs">
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Benefit Package</Label>
+                  <Select
+                    value={selectedBenefitPkgCode}
+                    onValueChange={setSelectedBenefitPkgCode}
+                    disabled={benefitPackagesLoading || benefitPackageOptions.length === 0}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder={benefitPackagesLoading ? 'Loading packages...' : 'Select benefit package'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {benefitPackageOptions.map((pkg) => (
+                        <SelectItem key={pkg.code} value={pkg.code} className="text-xs">
+                          {pkg.code} · {pkg.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Service / Intervention</Label>
+                  <Select
+                    value={selectedInterventionCode}
+                    onValueChange={setSelectedInterventionCode}
+                    disabled={interventionsLoading || interventionOptions.length === 0}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder={interventionsLoading ? 'Loading interventions...' : 'Select intervention'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {interventionOptions.map((opt) => (
+                        <SelectItem key={opt.code} value={opt.code} className="text-xs">
+                          {opt.code} · {opt.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             )}
             {resolvedCrId && (
@@ -568,25 +519,45 @@ export function ConsentPanel({
             </p>
             {/* Intervention select — also available during OTP entry */}
             {!interventionCodes?.length && (
-              <div className="space-y-1">
-                <Label className="text-xs">Service / Intervention</Label>
-                <Select value={selectedIntervention} onValueChange={setSelectedIntervention}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Select intervention" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {interventionOptions.map((opt) => (
-                      <SelectItem key={opt.code} value={opt.code} className="text-xs">
-                        {opt.label}
-                        {opt.schemes && opt.schemes.length > 0 && (
-                          <span className="ml-1 text-muted-foreground">
-                            · {opt.schemes.join(', ')}
-                          </span>
-                        )}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Benefit Package</Label>
+                  <Select
+                    value={selectedBenefitPkgCode}
+                    onValueChange={setSelectedBenefitPkgCode}
+                    disabled={benefitPackagesLoading || benefitPackageOptions.length === 0}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder={benefitPackagesLoading ? 'Loading packages...' : 'Select benefit package'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {benefitPackageOptions.map((pkg) => (
+                        <SelectItem key={pkg.code} value={pkg.code} className="text-xs">
+                          {pkg.code} · {pkg.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Service / Intervention</Label>
+                  <Select
+                    value={selectedInterventionCode}
+                    onValueChange={setSelectedInterventionCode}
+                    disabled={interventionsLoading || interventionOptions.length === 0}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder={interventionsLoading ? 'Loading interventions...' : 'Select intervention'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {interventionOptions.map((opt) => (
+                        <SelectItem key={opt.code} value={opt.code} className="text-xs">
+                          {opt.code} · {opt.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             )}
             {resolvedCrId && (

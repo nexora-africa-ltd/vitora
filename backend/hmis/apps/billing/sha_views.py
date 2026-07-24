@@ -1325,8 +1325,85 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             pass
 
         if isinstance(exc, DHAValidationError):
+            raw_body = getattr(exc, "response_body", None)
+            resolved_message = str(getattr(exc, "message", "") or "").strip()
+            resolved_errors = getattr(exc, "errors", None)
+            trace_id = None
+
+            def _extract_from_raw_wrapper(body):
+                if not isinstance(body, dict):
+                    return body
+                raw_value = body.get("raw")
+                if not isinstance(raw_value, str):
+                    return body
+                text = raw_value.strip()
+                if not text:
+                    return body
+                if not (text.startswith("{") or text.startswith("[")):
+                    return body
+                import json
+
+                try:
+                    return json.loads(text)
+                except json.JSONDecodeError:
+                    return body
+
+            parsed_body = _extract_from_raw_wrapper(raw_body)
+
+            if (not resolved_message or resolved_message.lower() == "ilm error") and parsed_body:
+                try:
+                    from hmis.apps.billing.services.ilm_client import _extract_message
+
+                    extracted = _extract_message(parsed_body, "")
+                    if extracted:
+                        resolved_message = extracted
+                except Exception:  # noqa: BLE001 - best effort only
+                    logger.debug(
+                        "Failed to extract validation message from parsed ILM body", exc_info=True
+                    )
+
+            if isinstance(parsed_body, dict):
+                trace_id = parsed_body.get("trace_id")
+                if resolved_errors is None:
+                    resolved_errors = parsed_body.get("errors")
+
+            # Last-resort recovery: if middleware returned a generic message but
+            # provided trace_id, fetch the audited outbound row and re-extract
+            # the upstream error payload from there.
+            if (not resolved_message or resolved_message.lower() == "ilm error") and trace_id:
+                try:
+                    import json
+
+                    from hmis.apps.core.models import DHAOutboundCall
+
+                    audit_call = (
+                        DHAOutboundCall.objects.filter(error_message__icontains=str(trace_id))
+                        .order_by("-created_at")
+                        .first()
+                    )
+                    if audit_call and audit_call.error_message:
+                        raw_error = audit_call.error_message.strip()
+                        if raw_error.startswith("{") or raw_error.startswith("["):
+                            parsed_audit = json.loads(raw_error)
+                            from hmis.apps.billing.services.ilm_client import _extract_message
+
+                            extracted = _extract_message(parsed_audit, "")
+                            if extracted:
+                                resolved_message = extracted
+                            if resolved_errors is None and isinstance(parsed_audit, dict):
+                                resolved_errors = parsed_audit.get("errors")
+                except Exception:  # noqa: BLE001 - best effort only
+                    logger.debug(
+                        "Failed to recover ILM validation error from outbound audit",
+                        exc_info=True,
+                    )
+
             return Response(
-                {"error": exc.message, "errors": getattr(exc, "errors", None)},
+                {
+                    "error": resolved_message or "Validation error",
+                    "errors": resolved_errors,
+                    **({"trace_id": trace_id} if trace_id else {}),
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if isinstance(exc, DHAUnauthorizedError):

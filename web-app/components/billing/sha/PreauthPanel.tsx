@@ -9,7 +9,7 @@
  */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   CheckCircle2,
   XCircle,
@@ -24,11 +24,26 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
 import { useSubmitPreauth, usePreauthStatus } from '@/lib/hooks/use-sha';
+import { useBenefitInterventions } from '@/lib/hooks/use-benefit-interventions';
 import { useFacility } from '@/lib/context/facility-context';
 import type { PreauthDecision } from '@/lib/types/sha';
+import {
+  getAllowedCombinations,
+  getBenefitCode,
+  isAlonePackage,
+  validateInterventionCombination,
+} from '@/lib/sha/combination-rules';
 import { format, parseISO } from 'date-fns';
 
 // ============================================================================
@@ -48,6 +63,10 @@ interface PreauthPanelProps {
   isElective?: boolean;
   /** SHA member ID (needed for biometric authorize in elective flow) */
   shaMemberId?: number;
+  /** Patient DHA CR number for live benefits/interventions lookup */
+  patientCrId?: string;
+  /** Active intervention codes on this claim (for combination-rule filtering) */
+  activeInterventionCodes?: string[];
   /** Callback on successful preauth */
   onPreauthComplete?: (preauthId: number, decision: PreauthDecision) => void;
   /** Custom class name */
@@ -102,6 +121,8 @@ export function PreauthPanel({
   diagnosisCodes = [],
   isElective = false,
   shaMemberId,
+  patientCrId,
+  activeInterventionCodes = [],
   onPreauthComplete,
   className,
 }: PreauthPanelProps) {
@@ -111,6 +132,7 @@ export function PreauthPanel({
   const [scheduledDate, setScheduledDate] = useState('');
   const [clinicalNotes, setClinicalNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [manualOverrideOpen, setManualOverrideOpen] = useState(false);
 
   // Elective preauth authorization state
   const [electiveAuthGuid, setElectiveAuthGuid] = useState('');
@@ -119,10 +141,79 @@ export function PreauthPanel({
 
   const { facilityDetail } = useFacility();
   const submitPreauth = useSubmitPreauth();
-  const { data: preauthStatus } = usePreauthStatus(preauthId);
+  const {
+    data: preauthStatus,
+    isFetching: preauthStatusRefreshing,
+    refetch: refetchPreauthStatus,
+  } = usePreauthStatus(preauthId);
+
+  const {
+    benefitPackageOptions,
+    benefitPackagesLoading,
+    selectedBenefitPkgCode,
+    setSelectedBenefitPkgCode,
+    interventionOptions,
+    interventionsLoading,
+  } = useBenefitInterventions({
+    patientCrId: patientCrId || '',
+    enabled: !!patientCrId,
+  });
+
+  const primaryBenefitCode = useMemo(
+    () => (activeInterventionCodes.length > 0 ? getBenefitCode(activeInterventionCodes[0]!) : null),
+    [activeInterventionCodes],
+  );
+
+  const allowedBenefitCodes = useMemo(() => {
+    if (!primaryBenefitCode) return null;
+    if (isAlonePackage(primaryBenefitCode)) {
+      return new Set([primaryBenefitCode]);
+    }
+    return new Set([primaryBenefitCode, ...getAllowedCombinations(primaryBenefitCode)]);
+  }, [primaryBenefitCode]);
+
+  const filteredBenefitPackageOptions = useMemo(() => {
+    if (!allowedBenefitCodes) return benefitPackageOptions;
+    return benefitPackageOptions.filter((pkg) => allowedBenefitCodes.has(pkg.code));
+  }, [benefitPackageOptions, allowedBenefitCodes]);
+
+  const filteredPreauthInterventions = useMemo(() => {
+    return interventionOptions.filter((opt) => {
+      if (!opt.code) return false;
+      if (!opt.needsPreauth) return false;
+      if (activeInterventionCodes.includes(opt.code)) return true;
+      const combo = validateInterventionCombination(activeInterventionCodes, opt.code);
+      return combo.valid;
+    });
+  }, [interventionOptions, activeInterventionCodes]);
+
+  const interventionSelectOptions = useMemo(
+    () =>
+      filteredPreauthInterventions.map((opt) => ({
+        value: opt.code,
+        label: `${opt.code} - ${opt.name || 'Unnamed intervention'}`,
+      })),
+    [filteredPreauthInterventions],
+  );
+
+  useEffect(() => {
+    if (selectedBenefitPkgCode) return;
+    const preferred =
+      (primaryBenefitCode && filteredBenefitPackageOptions.find((pkg) => pkg.code === primaryBenefitCode))
+      || filteredBenefitPackageOptions[0];
+    if (preferred) setSelectedBenefitPkgCode(preferred.code);
+  }, [selectedBenefitPkgCode, primaryBenefitCode, filteredBenefitPackageOptions, setSelectedBenefitPkgCode]);
+
+  useEffect(() => {
+    const selected = filteredPreauthInterventions.find((opt) => opt.code === procedureCode);
+    if (!selected) return;
+    if (!estimatedCost && typeof selected.price === 'number' && Number.isFinite(selected.price)) {
+      setEstimatedCost(String(selected.price));
+    }
+  }, [procedureCode, filteredPreauthInterventions, estimatedCost]);
 
   // Notify parent when decision arrives
-  React.useEffect(() => {
+  useEffect(() => {
     if (preauthStatus && preauthStatus.decision !== 'PENDING' && preauthId) {
       onPreauthComplete?.(preauthId, preauthStatus.decision);
     }
@@ -224,9 +315,22 @@ export function PreauthPanel({
           )}
 
           {preauthStatus.decision === 'PENDING' && (
-            <p className="text-xs text-muted-foreground">
-              Auto-refreshing status every 15 seconds...
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                Auto-refreshing status every 15 seconds...
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => void refetchPreauthStatus()}
+                disabled={preauthStatusRefreshing}
+              >
+                {preauthStatusRefreshing && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                Refresh now
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -252,36 +356,151 @@ export function PreauthPanel({
           </div>
         )}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="procedure-code">Procedure Code *</Label>
-            <Input
-              id="procedure-code"
-              value={procedureCode}
-              onChange={(e) => setProcedureCode(e.target.value)}
-              placeholder="e.g., SHA-PROC-001"
-            />
+        {!!patientCrId && (
+          <div className="rounded-md bg-slate-50 dark:bg-slate-900/30 p-3 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Pre-auth shortlist is built from DHA eligible benefits and filtered to combination-compliant interventions that require pre-authorization.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="preauth-benefit-package">Benefit Package</Label>
+                <Select
+                  value={selectedBenefitPkgCode}
+                  onValueChange={setSelectedBenefitPkgCode}
+                  disabled={benefitPackagesLoading || filteredBenefitPackageOptions.length === 0}
+                >
+                  <SelectTrigger id="preauth-benefit-package">
+                    <SelectValue
+                      placeholder={benefitPackagesLoading ? 'Loading packages...' : 'Select benefit package'}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredBenefitPackageOptions.map((pkg) => (
+                      <SelectItem key={pkg.code} value={pkg.code}>
+                        {pkg.code} · {pkg.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="procedure-code">Intervention Requiring Pre-auth *</Label>
+                <SearchableSelect
+                  options={interventionSelectOptions}
+                  value={procedureCode}
+                  onValueChange={(value) => {
+                    setProcedureCode(value);
+                    const match = filteredPreauthInterventions.find((item) => item.code === value);
+                    if (match && typeof match.price === 'number' && Number.isFinite(match.price)) {
+                      setEstimatedCost(String(match.price));
+                    }
+                  }}
+                  placeholder={interventionsLoading ? 'Loading interventions...' : 'Select intervention'}
+                  searchPlaceholder="Search intervention code or name..."
+                  emptyMessage="No pre-auth interventions found"
+                  disabled={interventionsLoading || filteredPreauthInterventions.length === 0}
+                />
+              </div>
+            </div>
+            {!benefitPackagesLoading && filteredBenefitPackageOptions.length === 0 && (
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                No eligible benefit package currently matches this claim&apos;s combination rules.
+              </p>
+            )}
+            {!interventionsLoading && !!selectedBenefitPkgCode && filteredPreauthInterventions.length === 0 && (
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                No pre-auth-required interventions found under the selected package for this claim context.
+              </p>
+            )}
+            <div className="pt-1">
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="h-auto px-0 text-xs"
+                onClick={() => setManualOverrideOpen((prev) => !prev)}
+              >
+                {manualOverrideOpen ? 'Hide manual override' : 'Manual override'}
+              </Button>
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="estimated-cost">Estimated Cost (KES)</Label>
-            <Input
-              id="estimated-cost"
-              type="number"
-              value={estimatedCost}
-              onChange={(e) => setEstimatedCost(e.target.value)}
-              placeholder="0"
-            />
+        )}
+
+        {!patientCrId && (
+          <div className="pt-1">
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto px-0 text-xs"
+              onClick={() => setManualOverrideOpen((prev) => !prev)}
+            >
+              {manualOverrideOpen ? 'Hide manual override' : 'Manual override'}
+            </Button>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="scheduled-date">Scheduled Date</Label>
-            <Input
-              id="scheduled-date"
-              type="date"
-              value={scheduledDate}
-              onChange={(e) => setScheduledDate(e.target.value)}
-            />
+        )}
+
+        {manualOverrideOpen && (
+          <div className="rounded-md border border-dashed p-3">
+            <p className="text-xs text-muted-foreground mb-3">
+              Override the selected procedure when DHA shortlist is unavailable or clinical judgement requires a custom code.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="procedure-code-manual">Procedure Code *</Label>
+                <Input
+                  id="procedure-code-manual"
+                  value={procedureCode}
+                  onChange={(e) => setProcedureCode(e.target.value)}
+                  placeholder="Auto-filled from shortlist or enter manually"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="estimated-cost">Estimated Cost (KES)</Label>
+                <Input
+                  id="estimated-cost"
+                  type="number"
+                  value={estimatedCost}
+                  onChange={(e) => setEstimatedCost(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="scheduled-date">Scheduled Date</Label>
+                <Input
+                  id="scheduled-date"
+                  type="date"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {!manualOverrideOpen && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="estimated-cost">Estimated Cost (KES)</Label>
+              <Input
+                id="estimated-cost"
+                type="number"
+                value={estimatedCost}
+                onChange={(e) => setEstimatedCost(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="scheduled-date">Scheduled Date</Label>
+              <Input
+                id="scheduled-date"
+                type="date"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <Label htmlFor="clinical-notes">Clinical Notes</Label>
