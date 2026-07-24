@@ -985,3 +985,104 @@ class TestSHAEligibilityServiceConfiguration:
         service = SHAEligibilityService()
 
         assert service.api_base_url == "https://ilm-dev.dha.go.ke/uat-middleware"
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("legacy_sha_settings")
+class TestSHAEligibilityServiceDependentFallbackAndGuardrails:
+    def test_dependent_without_local_principal_uses_direct_principal_cr_fallback(
+        self,
+        test_user,
+        sample_patient,
+    ):
+        from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
+
+        dependent = SHAMember.objects.create(
+            patient=sample_patient,
+            sha_number="SHA-3923731260646-8",
+            national_id="34349545",
+            membership_type=SHAMember.MembershipType.CHILD,
+            principal_sha_number="SHA-4237486648862-4",
+            status=SHAMember.MembershipStatus.ACTIVE,
+            created_by=test_user,
+        )
+
+        service = SHAEligibilityService()
+        with (
+            patch.object(
+                service,
+                "_call_api",
+                return_value={"eligible": 0, "statusDesc": "Member Not found!"},
+            ),
+            patch.object(
+                service,
+                "check_eligibility_direct",
+                return_value={
+                    "is_eligible": True,
+                    "coverage_end_date": "2030-01-01",
+                },
+            ) as mock_direct,
+        ):
+            check = service.check_eligibility(dependent, test_user, force_refresh=True)
+
+        dependent.refresh_from_db()
+        assert check.is_eligible is True
+        assert dependent.status == SHAMember.MembershipStatus.ACTIVE
+        mock_direct.assert_called_once_with(
+            identification_type="ClientRegistry ID",
+            identification_number="CR4237486648862-4",
+        )
+        assert check.response_data["principal_fallback"]["source"] == "direct_principal_sha_number"
+
+    def test_active_dependent_not_downgraded_on_transient_member_not_found_with_recent_consent(
+        self,
+        test_user,
+        sample_patient,
+        sample_facility,
+        sample_organization,
+    ):
+        from hmis.apps.billing.models import ConsentToken
+        from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
+
+        dependent = SHAMember.objects.create(
+            patient=sample_patient,
+            sha_number="SHA-3923731260646-8",
+            national_id="34349545",
+            membership_type=SHAMember.MembershipType.CHILD,
+            principal_sha_number="SHA-4237486648862-4",
+            status=SHAMember.MembershipStatus.ACTIVE,
+            created_by=test_user,
+        )
+        ConsentToken.objects.create(
+            patient=sample_patient,
+            sha_member=dependent,
+            consent_method=ConsentToken.ConsentMethod.OTP,
+            status=ConsentToken.ConsentStatus.VALIDATED,
+            identification_type="National ID",
+            identification_number="34349545",
+            created_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        service = SHAEligibilityService()
+        with (
+            patch.object(
+                service,
+                "_call_api",
+                return_value={"eligible": 0, "statusDesc": "Member Not found!"},
+            ),
+            patch.object(
+                service,
+                "check_eligibility_direct",
+                return_value={"is_eligible": False},
+            ),
+        ):
+            check = service.check_eligibility(dependent, test_user, force_refresh=True)
+
+        dependent.refresh_from_db()
+        assert check.is_eligible is False
+        assert dependent.status == SHAMember.MembershipStatus.ACTIVE
+        assert check.response_data["guardrail"]["type"] == (
+            "preserve_active_dependent_on_transient_not_found"
+        )

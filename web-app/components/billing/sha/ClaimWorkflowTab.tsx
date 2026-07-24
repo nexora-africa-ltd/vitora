@@ -82,13 +82,15 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
     const memberId = typeof claim.sha_member === 'number' ? claim.sha_member : undefined;
     if (!memberId) return;
 
-    shaApi.getLatestConsent(memberId).then((data) => {
+    shaApi.getLatestConsent(memberId, {
+      encounterId: typeof claim.encounter === 'number' ? claim.encounter : undefined,
+    }).then((data) => {
       if (data?.consent_token) {
         setConsentTokenStr(data.consent_token);
         setConsentTokenId(data.id);
       }
     }).catch(() => { /* Non-fatal */ });
-  }, [claim.consent_obtained, claim.sha_member, consentTokenStr, visitStarted]);
+  }, [claim.consent_obtained, claim.sha_member, claim.encounter, consentTokenStr, visitStarted]);
 
   // Hide consent panel if a valid (non-expired) token exists.
   // The backend's consent_obtained already checks expiry — if it returns false
@@ -213,6 +215,7 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
             <ConsentPanel
               shaMemberId={claim.sha_member!}
               patientCrId={patientCrId || undefined}
+              encounterId={typeof claim.encounter === 'number' ? claim.encounter : undefined}
               flow={flow.flow}
               interventionCodes={interventionCodes}
               onConsentObtained={(id, token, credential, interventionCode) => {

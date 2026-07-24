@@ -957,9 +957,15 @@ async function getConsentDetail(consentId: number): Promise<ConsentToken> {
  * Used to detect if an OTP was already sent (e.g. at check-in or by automation).
  * Returns the token data if found, throws 404 if none exists.
  */
-async function getLatestConsent(shaMemberId: number): Promise<ConsentToken & { exists: boolean }> {
+async function getLatestConsent(
+  shaMemberId: number,
+  options?: { encounterId?: number }
+): Promise<ConsentToken & { exists: boolean }> {
   const response = await apiClient.get('/api/sha/consent/latest/', {
-    params: { sha_member_id: shaMemberId },
+    params: {
+      sha_member_id: shaMemberId,
+      ...(typeof options?.encounterId === 'number' ? { encounter_id: options.encounterId } : {}),
+    },
   });
   return response.data;
 }

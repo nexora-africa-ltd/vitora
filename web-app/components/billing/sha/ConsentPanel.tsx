@@ -69,6 +69,8 @@ interface ConsentPanelProps {
   patientCrId?: string;
   /** Existing consent token ID (if already obtained) */
   consentId?: number;
+  /** Optional encounter context to prefer encounter-linked consent tokens. */
+  encounterId?: number;
   /** Intervention codes to include with the OTP request (determines DHA benefit package) */
   interventionCodes?: string[];
   /**
@@ -193,6 +195,7 @@ function extractDhaInterventionItems(data: unknown): DhaInterventionItem[] {
 export function ConsentPanel({
   shaMemberId,
   patientCrId,
+  encounterId,
   consentId: initialConsentId,
   interventionCodes,
   onConsentObtained,
@@ -315,7 +318,7 @@ export function ConsentPanel({
     if (hasCheckedExisting.current || initialConsentId || step !== 'idle') return;
     hasCheckedExisting.current = true;
 
-    shaApi.getLatestConsent(shaMemberId).then((data) => {
+    shaApi.getLatestConsent(shaMemberId, { encounterId }).then((data) => {
       if (data?.exists && data?.id) {
         setConsentId(data.id);
         if (data.status === 'VALIDATED') {
@@ -331,7 +334,7 @@ export function ConsentPanel({
     }).catch(() => {
       // 404 or error — no existing consent, stay in idle (normal flow)
     });
-  }, [shaMemberId, initialConsentId, step, onConsentObtained]);
+  }, [shaMemberId, encounterId, initialConsentId, step, onConsentObtained]);
 
   const handleSendOTP = async () => {
     setError(null);

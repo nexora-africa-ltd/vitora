@@ -62,6 +62,8 @@ interface SHAConsentStepProps {
   className?: string;
   /** Optional beneficiary display name for dependent workflows */
   patientName?: string;
+  /** Optional patient CR/SHA lookup identifier used for dependant-first benefit search */
+  patientCrNumber?: string;
   /** Optional workflow context for principal vs dependent admissions */
   workflowMemberType?: 'principal' | 'dependent';
 }
@@ -107,6 +109,7 @@ export function SHAConsentStep({
   patientDateOfBirth,
   className,
   patientName,
+  patientCrNumber,
   workflowMemberType,
 }: SHAConsentStepProps) {
   const [step, setStep] = useState<StepState>('checking');
@@ -124,8 +127,8 @@ export function SHAConsentStep({
 
   // ---- Shared cascading benefit-package → intervention fetch ----
   const crId = useMemo(
-    () => toCrId(shaMember?.sha_member_number || shaMember?.sha_number || ''),
-    [shaMember],
+    () => toCrId(patientCrNumber || shaMember?.sha_member_number || shaMember?.sha_number || ''),
+    [shaMember, patientCrNumber],
   );
   const {
     benefitPackageOptions,
@@ -236,7 +239,6 @@ export function SHAConsentStep({
   // Check for existing whitelist requests once we have SHA member info
   useEffect(() => {
     if (step !== 'ready' || !shaMember) return;
-    const crId = shaMember.sha_member_number || shaMember.sha_number || '';
     if (!crId) return;
     let cancelled = false;
     setIsCheckingWhitelist(true);
@@ -255,7 +257,7 @@ export function SHAConsentStep({
       .catch(() => { /* best effort */ })
       .finally(() => { if (!cancelled) setIsCheckingWhitelist(false); });
     return () => { cancelled = true; };
-  }, [step, shaMember, patientId]);
+  }, [step, shaMember, patientId, crId]);
 
   // Cleanup intervals on unmount
   useEffect(() => {
@@ -646,9 +648,9 @@ export function SHAConsentStep({
           )}
 
           {/* Contact picker (for OTP target) — only show when not biometric primary */}
-          {!isBiometricPrimary && shaMember?.sha_member_number && (
+          {!isBiometricPrimary && crId && (
             <ContactPicker
-              beneficiaryCrId={shaMember.sha_member_number}
+              beneficiaryCrId={crId}
               onSelect={setSelectedContactId}
               selectedContactId={selectedContactId}
               patientDateOfBirth={patientDateOfBirth}
@@ -949,9 +951,9 @@ export function SHAConsentStep({
           })()}
 
           {/* Contact picker for OTP target */}
-          {shaMember?.sha_member_number && (
+          {crId && (
             <ContactPicker
-              beneficiaryCrId={shaMember.sha_member_number}
+              beneficiaryCrId={crId}
               onSelect={setSelectedContactId}
               selectedContactId={selectedContactId}
               patientDateOfBirth={patientDateOfBirth}

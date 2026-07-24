@@ -10,12 +10,13 @@ Official Endpoint: GET /v2/eligibility?doc_type={type}&doc_value={value}
 """
 
 import time
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
 import requests
 from django.conf import settings
+from django.utils import timezone
 
 from hmis.apps.billing.models import SHAEligibilityCheck, SHAMember
 from hmis.apps.billing.services.sha_auth import SHAAuthError, SHAAuthService
@@ -207,8 +208,14 @@ class SHAEligibilityService:
         except requests.RequestException as e:
             check = self._create_error_result(sha_member, user, request_data, "API_ERROR", str(e))
 
-        # Update member record
-        check.update_member_eligibility()
+        # Update member record, with a guardrail for dependant workflows:
+        # do not downgrade ACTIVE dependants to INACTIVE when the upstream
+        # response is a transient "member not found" but there is a recently
+        # validated consent token in the same workflow window.
+        if self._should_preserve_active_dependant_status(check, sha_member):
+            self._apply_transient_dependent_guardrail(check, sha_member)
+        else:
+            check.update_member_eligibility()
 
         # If dependant is ineligible on their own record, try the principal's
         # credentials — DHA resolves dependant coverage via the principal.
@@ -226,25 +233,128 @@ class SHAEligibilityService:
                     principal, user, force_refresh=force_refresh, facility=facility
                 )
                 if principal_check.is_eligible:
-                    # Mark the dependant as eligible via principal's coverage
+                    # Mark the dependant as eligible via principal's coverage.
+                    # Persisting via update_member_eligibility keeps SHAMember
+                    # status/coverage fields in sync.
+                    response_data = dict(check.response_data or {})
+                    response_data["principal_fallback"] = {
+                        "source": "local_principal_member",
+                        "principal_sha_number": principal.sha_number,
+                    }
                     check.is_eligible = True
                     check.result = SHAEligibilityCheck.CheckResult.ELIGIBLE
                     check.ineligibility_reason = ""
                     if principal_check.eligible_until:
                         check.eligible_until = principal_check.eligible_until
+                    check.response_data = response_data
                     check.save(
                         update_fields=[
                             "is_eligible",
                             "result",
                             "ineligibility_reason",
                             "eligible_until",
+                            "response_data",
                         ]
                     )
-                    # Also update the member's cached eligibility
-                    sha_member.is_eligible = True
-                    sha_member.save(update_fields=["is_eligible"])
+                    check.update_member_eligibility()
+            elif sha_member.principal_sha_number:
+                # No local principal SHAMember row: validate principal directly
+                # against DHA using principal SHA number, then promote dependant
+                # eligibility when principal is active.
+                principal_identifier = str(sha_member.principal_sha_number).strip()
+                upper_identifier = principal_identifier.upper()
+                if upper_identifier.startswith("SHA-"):
+                    principal_cr_id = f"CR{principal_identifier[4:]}"
+                elif upper_identifier.startswith("SHA"):
+                    principal_cr_id = f"CR{principal_identifier[3:]}"
+                else:
+                    principal_cr_id = principal_identifier
+
+                principal_direct = self.check_eligibility_direct(
+                    identification_type="ClientRegistry ID",
+                    identification_number=principal_cr_id,
+                )
+                if principal_direct.get("is_eligible"):
+                    response_data = dict(check.response_data or {})
+                    response_data["principal_fallback"] = {
+                        "source": "direct_principal_sha_number",
+                        "principal_sha_number": sha_member.principal_sha_number,
+                        "principal_cr_number": principal_cr_id,
+                        "principal_response": principal_direct,
+                    }
+                    check.is_eligible = True
+                    check.result = SHAEligibilityCheck.CheckResult.ELIGIBLE
+                    check.ineligibility_reason = ""
+                    principal_until = self._parse_date(principal_direct.get("coverage_end_date"))
+                    if principal_until:
+                        check.eligible_until = principal_until
+                    check.response_data = response_data
+                    check.save(
+                        update_fields=[
+                            "is_eligible",
+                            "result",
+                            "ineligibility_reason",
+                            "eligible_until",
+                            "response_data",
+                        ]
+                    )
+                    check.update_member_eligibility()
 
         return check
+
+    @staticmethod
+    def _extract_status_desc(response_data: dict[str, Any] | None) -> str:
+        data = response_data or {}
+        return str(data.get("status_desc") or data.get("statusDesc") or "").strip()
+
+    def _has_recent_validated_consent(self, sha_member: SHAMember, *, minutes: int = 90) -> bool:
+        from hmis.apps.billing.models import ConsentToken
+
+        since = timezone.now() - timedelta(minutes=minutes)
+        return ConsentToken.objects.filter(
+            sha_member=sha_member,
+            status=ConsentToken.ConsentStatus.VALIDATED,
+            created_at__gte=since,
+        ).exists()
+
+    def _should_preserve_active_dependant_status(
+        self,
+        check: SHAEligibilityCheck,
+        sha_member: SHAMember,
+    ) -> bool:
+        if check.is_eligible:
+            return False
+        if sha_member.membership_type == SHAMember.MembershipType.PRINCIPAL:
+            return False
+        if sha_member.status != SHAMember.MembershipStatus.ACTIVE:
+            return False
+
+        status_desc = self._extract_status_desc(check.response_data).lower()
+        transient_not_found = "member not found" in status_desc
+        if not transient_not_found:
+            return False
+
+        return self._has_recent_validated_consent(sha_member)
+
+    def _apply_transient_dependent_guardrail(
+        self,
+        check: SHAEligibilityCheck,
+        sha_member: SHAMember,
+    ) -> None:
+        response_data = dict(check.response_data or {})
+        response_data["guardrail"] = {
+            "type": "preserve_active_dependent_on_transient_not_found",
+            "applied_at": timezone.now().isoformat(),
+        }
+        check.response_data = response_data
+        check.save(update_fields=["response_data"])
+
+        # Keep eligibility cache fresh without downgrading status.
+        sha_member.last_eligibility_check = timezone.now()
+        sha_member.eligibility_response = response_data
+        sha_member.save(
+            update_fields=["last_eligibility_check", "eligibility_response", "updated_at"]
+        )
 
     def _build_request(self, sha_member: SHAMember) -> dict:
         """

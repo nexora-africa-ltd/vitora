@@ -48,6 +48,7 @@ export interface Patient {
   // SHA Integration
   sha_number?: string;
   household_number?: string | null;
+  principal_national_id?: string | null;
   household_members?: HouseholdMember[];
   // Personal Information
   title?: PatientTitle;
