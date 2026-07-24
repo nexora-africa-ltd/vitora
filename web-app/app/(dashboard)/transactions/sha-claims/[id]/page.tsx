@@ -30,6 +30,10 @@ import { ClaimOverviewTab } from '@/components/billing/sha/ClaimOverviewTab';
 import { ClaimWorkflowTab } from '@/components/billing/sha/ClaimWorkflowTab';
 import { ClaimAdjudicationTab } from '@/components/billing/sha/ClaimAdjudicationTab';
 import { InterventionsList } from '@/components/billing/sha/InterventionsList';
+import {
+  claimStatusNeedsAdjudicationAttention,
+  getEffectiveClaimStatus,
+} from '@/lib/sha/payer-preview';
 
 type TabId = 'overview' | 'workflow' | 'interventions' | 'adjudication';
 
@@ -82,6 +86,16 @@ export default function ClaimDetailPage() {
 
   const [activeTab, setActiveTab] = React.useState<TabId>('overview');
   const [actionError, setActionError] = React.useState<string | null>(null);
+  const [payerNeedsAttention, setPayerNeedsAttention] = React.useState(false);
+
+  const effectiveStatus = claim ? getEffectiveClaimStatus(claim) : null;
+  const adjudicationNeedsAttention =
+    (effectiveStatus ? claimStatusNeedsAdjudicationAttention(effectiveStatus) : false)
+    || payerNeedsAttention;
+
+  useEffect(() => {
+    setPayerNeedsAttention(false);
+  }, [claim?.id]);
 
   const handleCopyActionError = useCallback(async () => {
     if (!actionError) return;
@@ -263,7 +277,12 @@ export default function ClaimDetailPage() {
                 </span>
               ) : null}
             </TabsTrigger>
-            <TabsTrigger value="adjudication">Adjudication</TabsTrigger>
+            <TabsTrigger value="adjudication">
+              Adjudication
+              {adjudicationNeedsAttention ? (
+                <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-amber-500" aria-label="Adjudication needs attention" />
+              ) : null}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-4 sm:mt-6">
@@ -307,7 +326,12 @@ export default function ClaimDetailPage() {
           </TabsContent>
 
           <TabsContent value="adjudication" className="mt-4 sm:mt-6">
-            <ClaimAdjudicationTab claim={claim} />
+            <ClaimAdjudicationTab
+              claim={claim}
+              isActive={activeTab === 'adjudication'}
+              onNavigateToTab={handleTabChange}
+              onAttentionChange={setPayerNeedsAttention}
+            />
           </TabsContent>
         </Tabs>
       </div>
