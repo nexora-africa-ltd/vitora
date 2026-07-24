@@ -130,9 +130,7 @@ export function useClaimNextStep(
     const dischargeLikelySubmitted =
       claim.status === 'draft' &&
       (
-        Boolean(claim.sha_claim_reference || claim.sha_reference)
-        ||
-        ['SUBMISSION_READY', 'SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(dischargeWorkflowState)
+        ['SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(dischargeWorkflowState)
         || Boolean(dischargeSnapshot?.visit_end)
         || Boolean(dischargeSnapshot?.discharged_on)
       );

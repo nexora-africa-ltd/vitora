@@ -55,6 +55,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { shaApi } from '@/lib/api/sha';
@@ -233,6 +234,23 @@ function formatErr(e: unknown): string {
     message?: string;
   };
   const data = err?.response?.data;
+  const isGenericError =
+    typeof data?.error === 'string' &&
+    ['ilm error', 'validation error', 'request failed'].includes(data.error.trim().toLowerCase());
+
+  if (isGenericError) {
+    if (data?.detail) return data.detail;
+    if (data?.message) return data.message;
+    if (Array.isArray(data?.errors)) {
+      return (data.errors as string[]).join('; ');
+    }
+    if (data?.errors && typeof data.errors === 'object') {
+      return Object.entries(data.errors)
+        .map(([field, msgs]) => `${field}: ${(msgs as string[]).join(', ')}`)
+        .join('; ');
+    }
+  }
+
   if (data?.error) return data.error;
   if (data?.detail) return data.detail;
   if (data?.message) return data.message;
@@ -260,10 +278,30 @@ function extractInterventionCombinationError(e: unknown): string | null {
 
   const tryExtractFromObject = (value: unknown): string | null => {
     if (!value || typeof value !== 'object') return null;
-    const edi = (value as Record<string, unknown>)['EDI ERROR'];
+    const root = value as Record<string, unknown>;
+    const edi = root['EDI ERROR'] || root['Edi Error'] || root['edi_error'];
     if (!edi || typeof edi !== 'object') return null;
-    const combo = (edi as Record<string, unknown>)['Intervention Combination'];
-    return typeof combo === 'string' ? combo : null;
+    const ediRec = edi as Record<string, unknown>;
+
+    const combo = ediRec['Intervention Combination'];
+    if (typeof combo === 'string' && combo.trim()) return combo;
+
+    const all = ediRec['_All__'] || ediRec['_all__'] || ediRec['all'];
+    if (Array.isArray(all)) {
+      const messages = all.filter((msg): msg is string => typeof msg === 'string' && msg.trim().length > 0);
+      if (messages.length > 0) return messages.join('; ');
+    }
+
+    for (const key of Object.keys(ediRec)) {
+      const val = ediRec[key];
+      if (typeof val === 'string' && val.trim()) return val;
+      if (Array.isArray(val)) {
+        const messages = val.filter((msg): msg is string => typeof msg === 'string' && msg.trim().length > 0);
+        if (messages.length > 0) return messages.join('; ');
+      }
+    }
+
+    return null;
   };
 
   const trimmed = rawError.trim();
@@ -286,6 +324,10 @@ function extractInterventionCombinationError(e: unknown): string | null {
     } catch {
       // ignore; fall back to null
     }
+  }
+
+  if (/failed to add intervention:/i.test(trimmed)) {
+    return trimmed.replace(/^.*failed to add intervention:\s*/i, '').trim();
   }
 
   return null;
@@ -764,6 +806,21 @@ export function ClaimILMPanel({
     [interventionCodes, newInterventionCode],
   );
 
+  const addInterventionSelectOptions = useMemo(
+    () =>
+      interventionOptions.map((opt) => ({
+        value: opt.code,
+        label: `${opt.code} - ${opt.name}`,
+        sublabel: [
+          opt.category,
+          opt.price ? `KES ${Number(opt.price).toLocaleString()}` : undefined,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      })),
+    [interventionOptions],
+  );
+
   // ---- Capitation provider validation (PHC flow only) ----
   const [capitationWarning, setCapitationWarning] = useState<CapitationValidationResult | null>(
     null,
@@ -1045,36 +1102,38 @@ export function ClaimILMPanel({
   }
 
   async function addIntervention() {
-    if (!newInterventionCode) return;
-    setAddInterventionInlineError(null);
-    if (interventionCodes.includes(newInterventionCode)) {
-      const duplicateMessage = `Intervention ${newInterventionCode} is already on the claim.`;
-      setError(duplicateMessage);
-      setAddInterventionInlineError(duplicateMessage);
-      return;
-    }
-    if (!addInterventionValidation.valid) {
-      const reason = addInterventionValidation.reason ?? 'This intervention combination is not allowed.';
-      setError(reason);
-      setAddInterventionInlineError(reason);
-      return;
-    }
-    const fn = useVirtualLine
-      ? () =>
-          shaApi.ilmAddVirtualClaimLine(claimId, {
-            intervention_code: newInterventionCode,
-          })
-      : () => shaApi.ilmAddIntervention(claimId, { intervention_code: newInterventionCode });
-    try {
-      await run(useVirtualLine ? 'addVirtualClaimLine' : 'addIntervention', fn);
+    if (!newInterventionCode) {
       setAddInterventionOpen(false);
-      setNewInterventionCode('');
-      setAddInterventionInlineError(null);
+      return;
+    }
+    setAddInterventionInlineError(null);
+    try {
+      if (interventionCodes.includes(newInterventionCode)) {
+        throw new Error(`Intervention ${newInterventionCode} is already on the claim.`);
+      }
+      if (!addInterventionValidation.valid) {
+        throw new Error(
+          addInterventionValidation.reason ?? 'This intervention combination is not allowed.',
+        );
+      }
+      const fn = useVirtualLine
+        ? () =>
+            shaApi.ilmAddVirtualClaimLine(claimId, {
+              intervention_code: newInterventionCode,
+            })
+        : () => shaApi.ilmAddIntervention(claimId, { intervention_code: newInterventionCode });
+      await run(useVirtualLine ? 'addVirtualClaimLine' : 'addIntervention', fn);
     } catch (e: unknown) {
       const inlineMessage = extractInterventionCombinationError(e);
       if (inlineMessage) {
         setAddInterventionInlineError(inlineMessage);
+      } else {
+        setError(formatErr(e));
       }
+    } finally {
+      setAddInterventionOpen(false);
+      setNewInterventionCode('');
+      setAddInterventionInlineError(null);
     }
   }
 
@@ -1887,28 +1946,19 @@ export function ClaimILMPanel({
                   <span className="text-xs text-muted-foreground">Loading interventions…</span>
                 </div>
               ) : interventionOptions.length > 0 ? (
-                <Select
+                <SearchableSelect
+                  options={addInterventionSelectOptions}
                   value={newInterventionCode}
                   onValueChange={(value) => {
                     setNewInterventionCode(value);
                     setAddInterventionInlineError(null);
                   }}
-                >
-                  <SelectTrigger className="bg-background">
-                    <SelectValue placeholder="Select intervention…" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-64">
-                    {interventionOptions.map((opt) => (
-                      <SelectItem key={opt.code} value={opt.code} className="whitespace-normal leading-snug">
-                        <span className="font-mono text-xs">{opt.code}</span>
-                        {' — '}
-                        {opt.name}
-                        {opt.category ? ` · ${opt.category}` : ''}
-                        {opt.price ? ` · KES ${Number(opt.price).toLocaleString()}` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Select intervention..."
+                  searchPlaceholder="Search interventions..."
+                  emptyMessage="No interventions found"
+                  className="bg-background"
+                  maxVisibleOptions={100}
+                />
               ) : (
                 <p className="text-xs text-muted-foreground py-2">
                   {addDialogPkgCode

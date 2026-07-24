@@ -26,6 +26,13 @@ export interface InterventionOption {
   accessPoint?: string;
   schemes?: string[];
   benefitCode?: string;
+  needsPreauth?: boolean;
+  needsManualPreauthApproval?: boolean;
+  isSurgicalPreauth?: boolean;
+  isRenalPreauth?: boolean;
+  isOncologyPreauth?: boolean;
+  isImagingPreauth?: boolean;
+  isOpticalPreauth?: boolean;
 }
 
 export interface BenefitPackageOption {
@@ -68,6 +75,20 @@ function extractItems<T>(data: unknown): T[] {
     if (Object.keys(obj).length > 0 && !obj.error) return [obj as T];
   }
   return [];
+}
+
+function getBooleanField(item: Record<string, unknown>, ...keys: string[]): boolean | undefined {
+  for (const key of keys) {
+    const v = item[key];
+    if (typeof v === 'boolean') return v;
+    if (typeof v === 'string') {
+      const normalized = v.trim().toLowerCase();
+      if (normalized === 'true') return true;
+      if (normalized === 'false') return false;
+    }
+    if (typeof v === 'number') return v !== 0;
+  }
+  return undefined;
 }
 
 // ============================================================================
@@ -180,6 +201,17 @@ export function useBenefitInterventions({
         schemes: undefined,
         benefitCode:
           getField(i, 'benefitCode', 'benefit_code') || undefined,
+        needsPreauth: getBooleanField(i, 'needsPreauth', 'needs_preauth', 'requires_preauthorization'),
+        needsManualPreauthApproval: getBooleanField(
+          i,
+          'needsManualPreauthApproval',
+          'needs_manual_preauth_approval',
+        ),
+        isSurgicalPreauth: getBooleanField(i, 'isSurgicalPreauth', 'is_surgical_preauth'),
+        isRenalPreauth: getBooleanField(i, 'isRenalPreauth', 'is_renal_preauth'),
+        isOncologyPreauth: getBooleanField(i, 'isOncologyPreauth', 'is_oncology_preauth'),
+        isImagingPreauth: getBooleanField(i, 'isImagingPreauth', 'is_imaging_preauth'),
+        isOpticalPreauth: getBooleanField(i, 'isOpticalPreauth', 'is_optical_preauth'),
       }));
   }, [interventionOptionsRaw]);
 

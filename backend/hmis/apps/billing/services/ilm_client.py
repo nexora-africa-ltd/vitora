@@ -472,7 +472,34 @@ def _extract_message(payload: Any, fallback: str) -> str:
         if isinstance(value, list) and value and isinstance(value[0], str):
             return " ".join(value)
 
-    return (fallback or "ILM error").strip()[:500]
+    # Common aggregate-key patterns used by DHA validation payloads.
+    for key in ("_All__", "_all__", "all", "errors"):
+        value = payload.get(key)
+        if isinstance(value, list):
+            items = [
+                str(v).strip() for v in value if isinstance(v, (str, int, float)) and str(v).strip()
+            ]
+            if items:
+                return "; ".join(items)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+
+    # Generic fallback across any payload value.
+    for value in payload.values():
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        if isinstance(value, list):
+            items = [
+                str(v).strip() for v in value if isinstance(v, (str, int, float)) and str(v).strip()
+            ]
+            if items:
+                return "; ".join(items)
+
+    # When fallback is empty, return empty so parent callers can keep searching
+    # nested structures instead of forcing a generic "ILM error".
+    if not fallback:
+        return ""
+    return fallback.strip()[:500]
 
 
 def _extract_embedded_edi_error(text: str) -> str | None:
