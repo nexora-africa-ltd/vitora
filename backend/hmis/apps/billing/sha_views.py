@@ -208,6 +208,18 @@ def _build_attachment_sync_status(claim: SHAClaim) -> dict:
 
     bucket: dict[tuple[str, str], list[dict[str, str]]] = {}
     match_source = "upload_history"
+    stale_preview_detected = False
+
+    latest_upload_call = (
+        DHAOutboundCall.objects.filter(
+            path="/api/v1/claims/attachments",
+            consent_token=consent_token,
+            status=DHAOutboundCall.Status.SUCCESS,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+    latest_upload_at = latest_upload_call.created_at if latest_upload_call else None
 
     # Preferred source of truth: latest successful DHA preview payload.
     # If preview says claim_attachments is empty, we must treat sync as missing even if
@@ -226,6 +238,13 @@ def _build_attachment_sync_status(claim: SHAClaim) -> dict:
         attachments = payload.get("claim_attachments") if isinstance(payload, Mapping) else None
         if not isinstance(attachments, list):
             continue
+
+        # If we have newer successful upload calls than this preview snapshot,
+        # treat preview as stale and fall back to upload history matching.
+        if latest_upload_at and call.created_at and latest_upload_at > call.created_at:
+            stale_preview_detected = True
+            break
+
         match_source = "preview"
         for entry in attachments:
             if not isinstance(entry, Mapping):
@@ -262,6 +281,9 @@ def _build_attachment_sync_status(claim: SHAClaim) -> dict:
                 }
             )
         break
+
+    if stale_preview_detected and match_source != "preview":
+        match_source = "upload_history_after_stale_preview"
 
     # Fallback for flows where preview has not yet been run.
     if not bucket and match_source != "preview":
@@ -1464,16 +1486,60 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     def _collect_local_diagnosis_codes(self, claim: SHAClaim) -> list[str]:
         codes: list[str] = []
 
-        primary_code = str(claim.primary_diagnosis_code or "").strip()
+        encounter = getattr(claim, "encounter", None)
+        if encounter is not None:
+            try:
+                encounter_icd11_codes = encounter.diagnoses.exclude(icd11_code="").values_list(
+                    "icd11_code", flat=True
+                )
+                for encounter_code in encounter_icd11_codes:
+                    candidate = str(encounter_code or "").strip().upper()
+                    if candidate and candidate not in codes:
+                        codes.append(candidate)
+            except Exception as exc:
+                logger.debug(
+                    "Unable to collect encounter ICD-11 diagnoses for claim %s: %s",
+                    claim.id,
+                    _stringify_error(exc),
+                )
+
+        primary_code = str(claim.primary_diagnosis_code or "").strip().upper()
         if primary_code:
             codes.append(primary_code)
 
         for secondary_code in claim.secondary_diagnosis_codes or []:
-            candidate = str(secondary_code or "").strip()
+            candidate = str(secondary_code or "").strip().upper()
             if candidate and candidate not in codes:
                 codes.append(candidate)
 
         return codes
+
+    def _filter_known_icd11_codes(self, diagnosis_codes: list[str]) -> list[str]:
+        if not diagnosis_codes:
+            return []
+
+        normalized = [
+            str(code or "").strip().upper() for code in diagnosis_codes if str(code or "").strip()
+        ]
+        if not normalized:
+            return []
+
+        try:
+            from hmis.apps.billing.models import ICD11CodeReference
+
+            active_count = ICD11CodeReference.objects.filter(is_active=True).count()
+            if active_count == 0:
+                return normalized
+
+            known_codes = set(
+                ICD11CodeReference.objects.filter(
+                    is_active=True,
+                    code__in=normalized,
+                ).values_list("code", flat=True)
+            )
+            return [code for code in normalized if code in known_codes]
+        except Exception:
+            return normalized
 
     def _resolve_diagnosis_intervention_code(self, claim: SHAClaim) -> str:
         intervention_code = (
@@ -1497,6 +1563,14 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     def _sync_claim_diagnoses_to_dha(self, claim: SHAClaim, *, user) -> int:
         diagnosis_codes = self._collect_local_diagnosis_codes(claim)
         if not diagnosis_codes:
+            return 0
+
+        diagnosis_codes = self._filter_known_icd11_codes(diagnosis_codes)
+        if not diagnosis_codes:
+            logger.info(
+                "Skipping DHA diagnosis sync for claim %s: no ICD-11 diagnosis codes available",
+                claim.id,
+            )
             return 0
 
         intervention_code = self._resolve_diagnosis_intervention_code(claim)

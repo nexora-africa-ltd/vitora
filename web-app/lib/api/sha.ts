@@ -1427,7 +1427,11 @@ async function ilmAttachmentSyncStatus(claimId: number): Promise<{
 }
 
 async function ilmPreview(claimId: number): Promise<IlmCallResult> {
-  const response = await apiClient.post(`${ilmBase(claimId)}/preview/`, {});
+  const response = await apiClient.post(
+    `${ilmBase(claimId)}/preview/`,
+    {},
+    { params: { _ts: Date.now() } },
+  );
   return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmPreview' });
 }
 

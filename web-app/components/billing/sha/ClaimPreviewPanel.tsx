@@ -27,6 +27,28 @@ function formatMoney(value: unknown): string {
   return String(value);
 }
 
+function parseDateTime(value: unknown): Date | null {
+  if (!value) return null;
+  const text = String(value).trim();
+  if (!text) return null;
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function parseInteger(value: unknown): number | null {
+  const raw = Number(value);
+  if (!Number.isFinite(raw)) return null;
+  return Math.max(0, Math.floor(raw));
+}
+
+function formatElapsedFrom(start: Date): string {
+  const diffMs = Math.max(0, Date.now() - start.getTime());
+  const totalMinutes = Math.floor(diffMs / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes}m`;
+}
+
 function compactTopLevelMeta(data: Record<string, unknown>): Array<[string, string]> {
   const reserved = new Set([
     'invoices',
@@ -50,6 +72,25 @@ export function ClaimPreviewPanel({ payload }: ClaimPreviewPanelProps) {
   const attachments = asArray(data.claim_attachments);
   const doctors = asArray(data.claim_doctors);
   const topMeta = compactTopLevelMeta(data);
+  const declaredInvoiceCount = Number(data.number_of_invoices);
+  const hasDeclaredInvoiceCount = Number.isFinite(declaredInvoiceCount);
+  const effectiveInvoiceCount = hasDeclaredInvoiceCount
+    ? Math.max(invoices.length, Math.max(0, Math.floor(declaredInvoiceCount)))
+    : invoices.length;
+  const visitStartDate = parseDateTime(data.visit_start);
+  const perDiemInterventions = interventions.filter((item) =>
+    String(item.intervention_payment_mechanism || '').toUpperCase().includes('PER DIEM')
+  );
+  const maxAccruedPerDiemDays = perDiemInterventions.reduce((maxDays, item) => {
+    const value = parseInteger(item.accrued_per_diem_days);
+    if (value === null) return maxDays;
+    return Math.max(maxDays, value);
+  }, 0);
+  const latestBillTo = invoices
+    .flatMap((invoice) => asArray(invoice.lines))
+    .map((line) => parseDateTime(line.bill_to || line.charge_date))
+    .filter((date): date is Date => !!date)
+    .sort((a, b) => b.getTime() - a.getTime())[0] || null;
 
   return (
     <div className="rounded-md border p-3 space-y-3">
@@ -70,6 +111,20 @@ export function ClaimPreviewPanel({ payload }: ClaimPreviewPanelProps) {
           </Badge>
         </div>
       </div>
+
+      {visitStartDate && perDiemInterventions.length > 0 && (
+        <div className="rounded border border-blue-200/70 bg-blue-50/40 p-2 text-xs text-blue-950 dark:border-blue-900 dark:bg-blue-950/20 dark:text-blue-100">
+          <p>
+            Elapsed stay since visit start: {formatElapsedFrom(visitStartDate)}; accrued per-diem days from DHA:{' '}
+            {maxAccruedPerDiemDays}
+          </p>
+          {latestBillTo && (
+            <p className="text-blue-800/90 dark:text-blue-200/90">
+              Latest billed timestamp in preview: {latestBillTo.toLocaleString()}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-xs">
         <div><p className="text-muted-foreground">Claim ID</p><p className="font-medium font-mono">{asString(data.id)}</p></div>
@@ -168,6 +223,11 @@ export function ClaimPreviewPanel({ payload }: ClaimPreviewPanelProps) {
                 <p>Tariff: KES {formatMoney(intervention.keph_level_tarrif || intervention.intervention_overall_tariff)}</p>
                 <p>Accrued: KES {formatMoney(intervention.accrued_per_diem_amount)} ({asString(intervention.accrued_per_diem_days, '0')} day(s))</p>
                 <p>Preauth: {intervention.needs_preauth || intervention.preauth_exist ? 'Yes' : 'No'}</p>
+                {Array.isArray(intervention.applicable_document_types) && intervention.applicable_document_types.length > 0 && (
+                  <p className="text-muted-foreground">
+                    Required docs: {intervention.applicable_document_types.slice(0, 6).map((item) => asString(item)).join(', ')}
+                  </p>
+                )}
                 <p className="text-muted-foreground">
                   Bill range: {asString(intervention.bill_from)} {'->'} {asString(intervention.bill_to)}
                 </p>
@@ -181,7 +241,15 @@ export function ClaimPreviewPanel({ payload }: ClaimPreviewPanelProps) {
         <div className="rounded border p-2"><p className="text-muted-foreground">Diagnoses</p><p className="font-medium">{diagnoses.length}</p></div>
         <div className="rounded border p-2"><p className="text-muted-foreground">Attachments</p><p className="font-medium">{attachments.length}</p></div>
         <div className="rounded border p-2"><p className="text-muted-foreground">Doctors</p><p className="font-medium">{doctors.length}</p></div>
-        <div className="rounded border p-2"><p className="text-muted-foreground">Number of Invoices</p><p className="font-medium">{asString(data.number_of_invoices, String(invoices.length))}</p></div>
+        <div className="rounded border p-2">
+          <p className="text-muted-foreground">Number of Invoices</p>
+          <p className="font-medium">{effectiveInvoiceCount}</p>
+          {hasDeclaredInvoiceCount && declaredInvoiceCount !== invoices.length && (
+            <p className="text-[10px] text-muted-foreground">
+              DHA field says {declaredInvoiceCount}; invoice list has {invoices.length}.
+            </p>
+          )}
+        </div>
         <div className="rounded border p-2"><p className="text-muted-foreground">Diagnoses Count</p><p className="font-medium">{asString(data.diagnoses_count, String(diagnoses.length))}</p></div>
       </div>
 
