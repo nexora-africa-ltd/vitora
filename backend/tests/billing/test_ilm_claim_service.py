@@ -354,11 +354,15 @@ class TestDiagnoses:
         assert body["intervention_code"] == "SHA-12-001"
 
     def test_remove_diagnosis_uses_patch(self, service, mock_client, claim, consent):
-        service.remove_diagnosis(claim, icd_code="1F44")
+        service.remove_diagnosis(claim, icd_code="1F44", intervention_code="SHA-12-001")
         path = mock_client.patch.call_args[0][0]
         body = mock_client.patch.call_args.kwargs["json_body"]
         assert path == DIAGNOSES_PATH
-        assert body == {"consent_token": "CT-TOKEN-XYZ", "icd_code": "1F44"}
+        assert body == {
+            "consent_token": "CT-TOKEN-XYZ",
+            "icd_code": "1F44",
+            "intervention_code": "SHA-12-001",
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -419,10 +423,14 @@ class TestAttachments:
         assert kwargs["data"] == {"consent_token": "CT-TOKEN-XYZ", "category": "lab"}
 
     def test_remove_attachment(self, service, mock_client, claim, consent):
-        service.remove_attachment(claim, attachment_id="A-1")
+        service.remove_attachment(claim, attachment_id="A-1", intervention_code="SHA-12-001")
         body = mock_client.patch.call_args.kwargs["json_body"]
         assert mock_client.patch.call_args[0][0] == ATTACHMENTS_PATH
-        assert body == {"consent_token": "CT-TOKEN-XYZ", "attachment_id": "A-1"}
+        assert body == {
+            "consent_token": "CT-TOKEN-XYZ",
+            "attachment_id": "A-1",
+            "intervention_code": "SHA-12-001",
+        }
 
 
 # ---------------------------------------------------------------------------

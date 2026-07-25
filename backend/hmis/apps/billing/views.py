@@ -1443,7 +1443,9 @@ class FacilityBillingConfigViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ["facility", "sha_accreditation_status", "default_payment_type"]
     search_fields = ["facility__name", "facility__mfl_code", "sha_contract_number"]
-    queryset = FacilityBillingConfig.objects.select_related("facility").all()
+    queryset = FacilityBillingConfig.objects.select_related("facility").order_by(
+        "facility__name", "id"
+    )
 
     def get_serializer_class(self):
         from hmis.apps.billing.serializers import (

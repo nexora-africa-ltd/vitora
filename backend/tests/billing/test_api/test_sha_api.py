@@ -1483,16 +1483,16 @@ class TestOfflineSyncCompatibility:
 
 
 # =============================================================================
-# Test Class: Offline Claim Queuing
+# Test Class: Claim Submission Connectivity
 # =============================================================================
 
 
 @pytest.mark.django_db
 class TestOfflineClaimQueuing:
-    """Test offline claim queuing functionality."""
+    """Test live-connectivity requirements for claim submission."""
 
-    def test_claim_queued_when_offline(self, sha_client, sample_claim_with_items):
-        """Should queue claim for submission when offline."""
+    def test_claim_submission_fails_when_offline(self, sha_client, sample_claim_with_items):
+        """Should fail claim submission when offline."""
         # sample_claim_with_items is already validated
         sample_sha_claim = sample_claim_with_items
         sample_sha_claim.status = "validated"
@@ -1506,15 +1506,13 @@ class TestOfflineClaimQueuing:
 
             response = sha_client.post(f"/api/sha/claims/{sample_sha_claim.id}/submit/")
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data.get("status") == "queued"
-        assert "queue_entry_id" in response.data
-        assert response.data.get("claim_number") == sample_sha_claim.claim_number
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "error" in response.data
+        assert "live SHA connectivity" in str(response.data["error"])
 
-        # Verify claim status updated
+        # Verify claim status not changed
         sample_sha_claim.refresh_from_db()
-        assert sample_sha_claim.status == "pending_submission"
-        assert sample_sha_claim.submission_response.get("queued") is True
+        assert sample_sha_claim.status == "validated"
 
     def test_claim_submitted_when_online(self, sha_client, sample_claim_with_items):
         """Should submit claim directly when online."""
@@ -1564,13 +1562,14 @@ class TestOfflineClaimQueuing:
                 f"/api/sha/claims/{sample_sha_claim.id}/submit/", {"force_online": True}
             )
 
-        # Should fail since we're offline and force_online=True
+        # Should fail since we're offline
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "live SHA connectivity" in str(response.data.get("error", ""))
 
-    def test_sync_queue_entry_created_on_offline_submission(
+    def test_no_sync_queue_entry_created_on_offline_submission(
         self, sha_client, sample_claim_with_items
     ):
-        """Should create SyncQueue entry when claim queued offline."""
+        """Should not create SyncQueue entry when offline submission fails."""
         from hmis.apps.core.models import SyncQueue
 
         sample_sha_claim = sample_claim_with_items
@@ -1584,20 +1583,16 @@ class TestOfflineClaimQueuing:
             mock_instance.check.return_value = False  # Offline
             MockChecker.return_value = mock_instance
 
-            sha_client.post(f"/api/sha/claims/{sample_sha_claim.id}/submit/")
+            response = sha_client.post(f"/api/sha/claims/{sample_sha_claim.id}/submit/")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
         final_queue_count = SyncQueue.objects.filter(model_name="SHAClaimSubmission").count()
 
-        assert final_queue_count == initial_queue_count + 1
+        assert final_queue_count == initial_queue_count
 
-        # Verify queue entry data
-        queue_entry = SyncQueue.objects.filter(model_name="SHAClaimSubmission").latest("created_at")
-
-        assert queue_entry.status == "PENDING"
-        assert queue_entry.data.get("claim_id") == sample_sha_claim.id
-
-    def test_network_error_triggers_offline_queue(self, sha_client, sample_claim_with_items):
-        """Should queue claim when network error occurs during submission."""
+    def test_network_error_returns_submission_failure(self, sha_client, sample_claim_with_items):
+        """Should fail claim when network error occurs during submission."""
         import requests
 
         sample_sha_claim = sample_claim_with_items
@@ -1620,9 +1615,8 @@ class TestOfflineClaimQueuing:
 
             response = sha_client.post(f"/api/sha/claims/{sample_sha_claim.id}/submit/")
 
-        # Should be queued instead of failing
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data.get("status") == "queued"
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "Submission failed" in str(response.data.get("error", ""))
 
 
 @pytest.mark.django_db
@@ -1639,13 +1633,8 @@ class TestProcessQueuedClaims:
         sample_sha_claim.status = "validated"
         sample_sha_claim.save()
 
-        # First, queue the claim by simulating offline
-        with patch("hmis.apps.billing.services.sha_claims.ConnectivityChecker") as MockChecker:
-            mock_instance = MagicMock()
-            mock_instance.check.return_value = False
-            MockChecker.return_value = mock_instance
-
-            sha_client.post(f"/api/sha/claims/{sample_sha_claim.id}/submit/")
+        # Seed a legacy queued claim directly.
+        SHAClaimsService()._queue_claim_for_submission(sample_sha_claim, user_with_sha_permissions)
 
         # Verify claim is queued
         sample_sha_claim.refresh_from_db()
@@ -1685,15 +1674,10 @@ class TestProcessQueuedClaims:
         sample_sha_claim.status = "validated"
         sample_sha_claim.save()
 
-        # Queue the claim
-        with patch("hmis.apps.billing.services.sha_claims.ConnectivityChecker") as MockChecker:
-            mock_instance = MagicMock()
-            mock_instance.check.return_value = False
-            MockChecker.return_value = mock_instance
-
-            response = sha_client.post(f"/api/sha/claims/{sample_sha_claim.id}/submit/")
-
-        queue_entry_id = response.data["queue_entry_id"]
+        queue_result = SHAClaimsService()._queue_claim_for_submission(
+            sample_sha_claim, sample_sha_claim.created_by
+        )
+        queue_entry_id = queue_result["queue_entry_id"]
 
         # Process queued claims
         with (
@@ -1722,15 +1706,10 @@ class TestProcessQueuedClaims:
         sample_sha_claim.status = "validated"
         sample_sha_claim.save()
 
-        # Queue the claim
-        with patch("hmis.apps.billing.services.sha_claims.ConnectivityChecker") as MockChecker:
-            mock_instance = MagicMock()
-            mock_instance.check.return_value = False
-            MockChecker.return_value = mock_instance
-
-            response = sha_client.post(f"/api/sha/claims/{sample_sha_claim.id}/submit/")
-
-        queue_entry_id = response.data["queue_entry_id"]
+        queue_result = SHAClaimsService()._queue_claim_for_submission(
+            sample_sha_claim, sample_sha_claim.created_by
+        )
+        queue_entry_id = queue_result["queue_entry_id"]
 
         # Process with failure
         with (

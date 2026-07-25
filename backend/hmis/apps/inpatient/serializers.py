@@ -988,6 +988,7 @@ class DischargeSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         diagnoses_data = validated_data.pop("diagnoses", None)
+        transfer_workflow = validated_data.pop("transfer_workflow", None)
         discharge = super().update(instance, validated_data)
 
         # Replace diagnoses if provided
@@ -1016,6 +1017,8 @@ class DischargeSerializer(serializers.ModelSerializer):
                 and discharge.pnc_clinic_visit_id is None
             ):
                 self._apply_maternity_continuity(discharge)
+
+        self._ensure_transfer_link(discharge, transfer_workflow)
         return discharge
 
     def get_patient_name(self, obj) -> str:

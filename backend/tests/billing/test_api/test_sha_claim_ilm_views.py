@@ -198,7 +198,7 @@ class TestDiagnosisEndpoints:
             svc.return_value.remove_diagnosis.return_value = _ilm_result({})
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "diagnoses/remove"),
-                {"icd_code": "J06.9"},
+                {"icd_code": "J06.9", "intervention_code": "INT-1"},
                 format="json",
             )
         assert response.status_code == status.HTTP_200_OK
@@ -242,7 +242,9 @@ class TestLineEndpoints:
 class TestPreviewSubmitClose:
     def test_preview(self, sha_client, sample_sha_claim):
         with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
-            svc.return_value.preview.return_value = _ilm_result({"total": "200"})
+            svc.return_value.preview.return_value = _ilm_result(
+                {"total": "200", "claim_diagnoses": [{"icd_code": "J06.9"}]}
+            )
             response = sha_client.post(_claim_url(sample_sha_claim, "preview"), {}, format="json")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["payload"]["total"] == "200"
@@ -252,12 +254,21 @@ class TestPreviewSubmitClose:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_submit_calls_service(self, sha_client, sample_sha_claim):
+        from django.utils import timezone
+
+        sample_sha_claim.previewed_at = timezone.now()
+        sample_sha_claim.save(update_fields=["previewed_at", "updated_at"])
+
         with (
             patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc,
             patch(
-                "hmis.apps.billing.models.SHAClaim.validate_for_submission", return_value=(True, [])
+                "hmis.apps.billing.sha_automation.SHAClaimAutomationService.auto_attach_documents"
             ),
+            patch(
+                "hmis.apps.billing.services.sha_claims.SHAClaimsService.validate_claim"
+            ) as validate,
         ):
+            validate.return_value = (True, [])
             svc.return_value.submit.return_value = _ilm_result({"sha_claim_reference": "SHA-REF-1"})
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "submit"),

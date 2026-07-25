@@ -2690,8 +2690,11 @@ class SHAClaim(FacilityScopedModel):
                 "(SHA / patient / discount split)."
             )
 
-        # Check required attachments (clinical_notes and invoice are required)
-        required_types = ["clinical_notes", "invoice"]
+        # Check required attachments. Clinical notes are always required.
+        # Provider invoice is optional for outpatient capitation interventions.
+        required_types = ["clinical_notes"]
+        if self.requires_invoice_attachment:
+            required_types.append("invoice")
         existing_types = list(self.attachments.values_list("attachment_type", flat=True))
         for req_type in required_types:
             if req_type not in existing_types:
@@ -2781,6 +2784,43 @@ class SHAClaim(FacilityScopedModel):
                 )
 
         return len(errors) == 0, errors
+
+    @property
+    def is_outpatient_capitation_claim(self) -> bool:
+        """Return True when this claim is outpatient capitation workflow."""
+        if self.claim_type != self.ClaimType.OUTPATIENT:
+            return False
+
+        flow = str(self.claim_flow or "").strip().lower()
+        if flow != self.ClaimFlow.PHC:
+            return False
+
+        capitation_interventions = self.claim_interventions.filter(
+            status=SHAClaimIntervention.InterventionStatus.ACTIVE,
+            payment_mechanism=SHAClaimIntervention.PaymentMechanism.CAPITATION,
+        )
+        if capitation_interventions.exists():
+            return True
+
+        capitation_code_q = models.Q(intervention_code__startswith="SHA-12-") | models.Q(
+            intervention_code__in=["SHA-08-001", "SHA-08-002", "SHA-08-003"]
+        )
+        if (
+            self.claim_interventions.filter(status=SHAClaimIntervention.InterventionStatus.ACTIVE)
+            .filter(capitation_code_q)
+            .exists()
+        ):
+            return True
+
+        tariff_code_q = models.Q(tariff__code__startswith="SHA-12-") | models.Q(
+            tariff__code__in=["SHA-08-001", "SHA-08-002", "SHA-08-003"]
+        )
+        return self.items.filter(tariff__isnull=False).filter(tariff_code_q).exists()
+
+    @property
+    def requires_invoice_attachment(self) -> bool:
+        """Return True when invoice attachment is required for submission."""
+        return not self.is_outpatient_capitation_claim
 
     def submit(self, user) -> bool:
         """
@@ -3297,14 +3337,40 @@ class SHAClaimItem(models.Model):
         if self.quantity is not None and self.unit_price is not None:
             self.claimed_amount = (self.quantity * self.unit_price).quantize(Decimal("0.01"))
 
+        claimed_amount = Decimal(self.claimed_amount or 0).quantize(Decimal("0.01"))
+        sha_covered = Decimal(self.sha_covered_amount or 0).quantize(Decimal("0.01"))
+        patient_payable = Decimal(self.patient_payable_amount or 0).quantize(Decimal("0.01"))
+        discount = Decimal(self.discount_amount or 0).quantize(Decimal("0.01"))
+        split_total = (sha_covered + patient_payable + discount).quantize(Decimal("0.01"))
+
         if (
             self.claimed_amount is not None
-            and self.sha_covered_amount == Decimal("0.00")
-            and self.patient_payable_amount == Decimal("0.00")
-            and self.discount_amount == Decimal("0.00")
+            and sha_covered == Decimal("0.00")
+            and patient_payable == Decimal("0.00")
+            and discount == Decimal("0.00")
             and self.allocation_status == self.AllocationStatus.RESOLVED
         ):
-            self.sha_covered_amount = self.claimed_amount
+            self.sha_covered_amount = claimed_amount
+        elif (
+            split_total != claimed_amount
+            and self.allocation_status == self.AllocationStatus.RESOLVED
+        ):
+            # Keep patient and discount amounts stable where possible, and rebalance
+            # the SHA-covered portion to preserve allocation integrity.
+            remainder_for_sha = (claimed_amount - patient_payable - discount).quantize(
+                Decimal("0.01")
+            )
+            if remainder_for_sha >= Decimal("0.00"):
+                self.sha_covered_amount = remainder_for_sha
+            else:
+                remaining_after_discount = (claimed_amount - discount).quantize(Decimal("0.01"))
+                if remaining_after_discount >= Decimal("0.00"):
+                    self.patient_payable_amount = remaining_after_discount
+                    self.sha_covered_amount = Decimal("0.00")
+                else:
+                    self.discount_amount = claimed_amount
+                    self.patient_payable_amount = Decimal("0.00")
+                    self.sha_covered_amount = Decimal("0.00")
 
         self.full_clean()
         super().save(*args, **kwargs)
@@ -3373,6 +3439,11 @@ class SHAClaimItem(models.Model):
         self.tariff = tariff
         self.unit_price = tariff.sha_amount
         self.claimed_amount = (self.quantity * self.unit_price).quantize(Decimal("0.01"))
+        if self.allocation_status == self.AllocationStatus.RESOLVED:
+            self.sha_covered_amount = self.claimed_amount
+            self.patient_payable_amount = Decimal("0.00")
+            self.discount_amount = Decimal("0.00")
+            self.discount_reason = ""
         self.save()
 
     @classmethod
