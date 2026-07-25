@@ -636,6 +636,7 @@ export const FacilityBillingConfigSchema = z.object({
   sha_contract_end: z.string().nullable().optional(),
   sha_service_level: z.string(),
   sha_max_claim_amount: z.string().nullable().optional(),
+  hide_capitation_interventions: z.boolean().optional().default(false),
   is_sha_contract_active: z.boolean(),
   sha_contract_days_remaining: z.number().nullable(),
   // Fee schedule

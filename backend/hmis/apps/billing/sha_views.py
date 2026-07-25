@@ -39,6 +39,7 @@ from rest_framework.response import Response
 from hmis.apps.billing.facility_identifiers import resolve_fr_code
 from hmis.apps.billing.filters import SHAClaimFilter, SHAMemberFilter
 from hmis.apps.billing.models import (
+    FacilityBillingConfig,
     SHAClaim,
     SHAClaimAttachment,
     SHAClaimItem,
@@ -3065,6 +3066,20 @@ class TerminologySearchView(APIView):
                 facility_level = request.query_params.get("facility_level")
                 offset = int(request.query_params.get("offset", 0))
                 payment_mechanism = request.query_params.get("payment_mechanism")
+                excluded_payment_mechanisms: list[str] = []
+                if not payment_mechanism:
+                    request_facility = getattr(request, "facility", None)
+                    if request_facility is None:
+                        profile = getattr(request.user, "staff_profile", None)
+                        request_facility = getattr(profile, "primary_facility", None)
+                    if request_facility:
+                        hide_capitation = (
+                            FacilityBillingConfig.objects.filter(facility=request_facility)
+                            .values_list("hide_capitation_interventions", flat=True)
+                            .first()
+                        )
+                        if hide_capitation:
+                            excluded_payment_mechanisms.append("CAPITATION")
                 access_point = request.query_params.get("access_point")
                 patient_gender = request.query_params.get("patient_gender")
                 active_only = request.query_params.get("active_only", "").lower() in (
@@ -3078,6 +3093,7 @@ class TerminologySearchView(APIView):
                     limit=limit,
                     offset=offset,
                     payment_mechanism=payment_mechanism or None,
+                    exclude_payment_mechanisms=excluded_payment_mechanisms,
                     active_only=active_only,
                     access_point=access_point or None,
                     patient_gender=patient_gender or None,

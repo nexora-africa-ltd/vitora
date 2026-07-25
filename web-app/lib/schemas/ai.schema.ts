@@ -113,6 +113,92 @@ export const AIConditionPredictResponseSchema = z.object({
 // Phase 4 — ICU Predictor
 // =============================================================================
 
+/** Schema for POST /api/ai/predict/icu/ request patient data */
+export const AIICUPredictPatientDataSchema = z.object({
+  age: z.number().min(0).max(150),
+  gender: z.enum(['M', 'F', 'O']),
+  temperature: z.number().nullable().optional(),
+  heart_rate: z.number().nullable().optional(),
+  systolic_bp: z.number().nullable().optional(),
+  diastolic_bp: z.number().nullable().optional(),
+  respiratory_rate: z.number().nullable().optional(),
+  spo2: z.number().nullable().optional(),
+  mean_arterial_pressure: z.number().nullable().optional(),
+  wbc: z.number().nullable().optional(),
+  platelets: z.number().nullable().optional(),
+  creatinine: z.number().nullable().optional(),
+  bilirubin: z.number().nullable().optional(),
+  lactate: z.number().nullable().optional(),
+  pao2_fio2_ratio: z.number().nullable().optional(),
+  gcs: z.number().min(3).max(15).nullable().optional(),
+  urine_output_ml_day: z.number().nullable().optional(),
+  on_vasopressors: z.boolean().optional(),
+  on_mechanical_ventilation: z.boolean().optional(),
+  admission_diagnosis: z.string().optional(),
+  length_of_stay_days: z.number().int().min(0).nullable().optional(),
+}).superRefine((value, ctx) => {
+  const requiredCore: Array<keyof typeof value> = [
+    'respiratory_rate',
+    'systolic_bp',
+    'diastolic_bp',
+    'platelets',
+    'bilirubin',
+    'creatinine',
+    'gcs',
+  ];
+
+  for (const field of requiredCore) {
+    if (value[field] == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [field],
+        message: 'Required for minimum practical SOFA assessment',
+      });
+    }
+  }
+
+  const hasRespiratoryContext =
+    value.pao2_fio2_ratio != null || value.on_mechanical_ventilation !== undefined;
+  if (!hasRespiratoryContext) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['pao2_fio2_ratio'],
+      message: 'Provide PaO2/FiO2 ratio or mechanical ventilation status',
+    });
+  }
+
+  if (value.on_vasopressors === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['on_vasopressors'],
+      message: 'Provide vasopressor status (true/false)',
+    });
+  }
+});
+
+/** Schema for POST /api/ai/predict/icu/ request */
+export const AIICUPredictRequestSchema = z.object({
+  admission_id: z.number().nullable().optional(),
+  patient_data: AIICUPredictPatientDataSchema,
+  prediction_type: z.enum(['predict', 'risk-stratify']).optional(),
+});
+
+/** Schema for POST /api/ai/predict/icu/qsofa-lite/ request */
+export const AIICUQSOFALiteRequestSchema = z.object({
+  respiratory_rate: z.number(),
+  systolic_bp: z.number(),
+  gcs_total: z.number().min(3).max(15).nullable().optional(),
+  altered_mentation: z.boolean().nullable().optional(),
+}).superRefine((value, ctx) => {
+  if (value.gcs_total == null && value.altered_mentation == null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['gcs_total'],
+      message: 'Provide gcs_total or altered_mentation',
+    });
+  }
+});
+
 /** Schema for SOFA score component breakdown */
 export const AISOFAScoreBreakdownSchema = z.object({
   respiratory: z.number().min(0).max(4).nullable().optional(),

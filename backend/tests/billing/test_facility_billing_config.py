@@ -189,6 +189,7 @@ class TestFacilityBillingConfigModel:
         assert config.auto_finalize_on_checkout is False
         assert config.tax_rate == Decimal("0.00")
         assert config.sha_accreditation_status == "not_applied"
+        assert config.hide_capitation_interventions is False
         assert config.fee_schedule_override == {}
 
 
@@ -246,6 +247,20 @@ class TestFacilityBillingConfigAPI:
         billing_config.refresh_from_db()
         assert billing_config.default_due_days == 60
         assert billing_config.auto_finalize_on_checkout is True
+
+    def test_update_capitation_intervention_visibility_toggle(
+        self, authenticated_client, billing_config
+    ):
+        """Should persist hide_capitation_interventions toggle."""
+        response = authenticated_client.patch(
+            f"/api/billing/facility-configs/{billing_config.id}/",
+            {"hide_capitation_interventions": True},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        billing_config.refresh_from_db()
+        assert billing_config.hide_capitation_interventions is True
+        assert response.data["hide_capitation_interventions"] is True
 
     def test_unauthenticated_rejected(self, api_client, billing_config):
         """Should reject unauthenticated access."""

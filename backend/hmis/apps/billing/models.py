@@ -3814,6 +3814,13 @@ class FacilityBillingConfig(models.Model):
         blank=True,
         help_text="Maximum single claim amount allowed under this contract.",
     )
+    hide_capitation_interventions = models.BooleanField(
+        default=False,
+        help_text=(
+            "When enabled, intervention lookups for this facility hide CAPITATION "
+            "codes unless explicitly requested via payment_mechanism."
+        ),
+    )
 
     # ------------------------------------------------------------------
     # Fee Schedule

@@ -37,6 +37,7 @@ from .views import (
     ICD10SuggestView,
     ICULabEnrichmentView,
     ICUPredictView,
+    ICUQSOFALiteView,
     InvestigationSuggestView,
     LabInterpretView,
     ProactiveInsightsView,
@@ -124,6 +125,11 @@ urlpatterns = [
         "predict/icu/labs/",
         ICULabEnrichmentView.as_view(),
         name="predict-icu-labs",
+    ),
+    path(
+        "predict/icu/qsofa-lite/",
+        ICUQSOFALiteView.as_view(),
+        name="predict-icu-qsofa-lite",
     ),
     # Phase 4a — Smart Autopopulate
     path("autopopulate/", AutopopulateView.as_view(), name="autopopulate"),

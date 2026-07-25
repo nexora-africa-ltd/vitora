@@ -34,10 +34,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
+import { billingApi } from '@/lib/api/billing';
 import { parseUtilization } from '@/lib/sha/ilm-parsers';
 import type { ParsedUtilizationEntry } from '@/lib/sha/ilm-parsers';
 import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
+import { useFacility } from '@/lib/context/facility-context';
 
 /**
  * DHA returns HTTP 400 with "No result found for ID ... ClientRegistry ID"
@@ -62,6 +64,10 @@ function toCrId(value: string): string {
   if (!value) return value;
   if (value.startsWith('SHA-')) return `CR${value.slice(4)}`;
   return value;
+}
+
+function isCapitationPaymentMechanism(value: string): boolean {
+  return value.trim().toUpperCase().replaceAll('_', ' ') === 'CAPITATION';
 }
 
 // ============================================================================
@@ -208,8 +214,25 @@ export function BenefitsPanel({
   onHasBenefits,
   utilizationEligibilityDisplay = 'inline',
 }: BenefitsPanelProps) {
+  const { facility } = useFacility();
   // Normalize SHA-XXX-N → CRXXX-N for ILM calls.
   const lookupId = toCrId(crNumber);
+  const { data: facilityBillingConfig } = useQuery({
+    queryKey: ['facility-billing-config', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return null;
+      const response = await billingApi.getFacilityBillingConfigs({
+        facility: facility.id,
+        page_size: 1,
+      });
+      return response.results[0] ?? null;
+    },
+    enabled: !!facility?.id,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+  const hideCapitationInterventions =
+    facilityBillingConfig?.hide_capitation_interventions ?? false;
   const {
     data: benefitsResponse,
     isLoading,
@@ -300,6 +323,7 @@ export function BenefitsPanel({
                 crNumber={lookupId}
                 patientPk={patientPk}
                 shaMemberId={shaMemberId}
+                hideCapitationInterventions={hideCapitationInterventions}
                 utilizationEligibilityDisplay={utilizationEligibilityDisplay}
               />
             ))}
@@ -330,12 +354,14 @@ function BenefitAccordion({
   crNumber,
   patientPk,
   shaMemberId,
+  hideCapitationInterventions,
   utilizationEligibilityDisplay,
 }: {
   benefit: BenefitPackageItem;
   crNumber: string;
   patientPk?: number;
   shaMemberId?: number;
+  hideCapitationInterventions: boolean;
   utilizationEligibilityDisplay: 'dot' | 'inline';
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -407,6 +433,7 @@ function BenefitAccordion({
                   crNumber={crNumber}
                   patientPk={patientPk}
                   shaMemberId={shaMemberId}
+                  hideCapitationInterventions={hideCapitationInterventions}
                   utilizationEligibilityDisplay={utilizationEligibilityDisplay}
                 />
               ))}
@@ -427,12 +454,14 @@ function SubBenefitAccordion({
   crNumber,
   patientPk,
   shaMemberId,
+  hideCapitationInterventions,
   utilizationEligibilityDisplay,
 }: {
   subBenefit: SubBenefitItem;
   crNumber: string;
   patientPk?: number;
   shaMemberId?: number;
+  hideCapitationInterventions: boolean;
   utilizationEligibilityDisplay: 'dot' | 'inline';
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -462,6 +491,13 @@ function SubBenefitAccordion({
           const item = i as Record<string, unknown>;
           const hasCode = !!getField(item, 'code', 'intervention_code', 'interventionCode', 'benefitCode');
           const hasName = !!getField(item, 'name', 'intervention_name', 'interventionName', 'benefit_name', 'benefitName', 'display_name', 'displayName');
+          const paymentMechanism = getField(item, 'paymentMechanism', 'payment_mechanism');
+          if (
+            hideCapitationInterventions &&
+            isCapitationPaymentMechanism(paymentMechanism)
+          ) {
+            return false;
+          }
           return hasCode || hasName;
         });
         const items = filteredItems.length > 0 ? filteredItems : rawItems;
@@ -475,7 +511,14 @@ function SubBenefitAccordion({
       });
 
     return () => { cancelled = true; };
-  }, [expanded, crNumber, code, patientPk, shaMemberId]);
+  }, [
+    expanded,
+    crNumber,
+    code,
+    patientPk,
+    shaMemberId,
+    hideCapitationInterventions,
+  ]);
 
   const loadUtilizationForIntervention = useCallback(async (interventionCode: string) => {
     if (!interventionCode) return;

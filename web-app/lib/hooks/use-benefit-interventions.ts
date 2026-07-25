@@ -10,6 +10,8 @@
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useFacility } from '@/lib/context/facility-context';
+import { billingApi } from '@/lib/api/billing';
 import { shaApi } from '@/lib/api/sha';
 import { toCrId } from '@/lib/sha/ilm-parsers';
 
@@ -91,6 +93,11 @@ function getBooleanField(item: Record<string, unknown>, ...keys: string[]): bool
   return undefined;
 }
 
+function isCapitationPaymentMechanism(value: string | undefined): boolean {
+  if (!value) return false;
+  return value.trim().toUpperCase().replaceAll('_', ' ') === 'CAPITATION';
+}
+
 // ============================================================================
 // Hook
 // ============================================================================
@@ -130,7 +137,25 @@ export function useBenefitInterventions({
   enabled = true,
   staleTime = 5 * 60 * 1000,
 }: UseBenefitInterventionsOptions): UseBenefitInterventionsReturn {
+  const { facility } = useFacility();
   const normalizedCrId = useMemo(() => toCrId(patientCrId) || patientCrId, [patientCrId]);
+
+  const { data: facilityBillingConfig } = useQuery({
+    queryKey: ['facility-billing-config', facility?.id],
+    queryFn: async () => {
+      if (!facility?.id) return null;
+      const response = await billingApi.getFacilityBillingConfigs({
+        facility: facility.id,
+        page_size: 1,
+      });
+      return response.results[0] ?? null;
+    },
+    enabled: !!facility?.id,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+  const hideCapitationInterventions =
+    facilityBillingConfig?.hide_capitation_interventions ?? false;
 
   // ---- State ----
   const [selectedBenefitPkgCode, setSelectedBenefitPkgCode] = useState('');
@@ -183,6 +208,14 @@ export function useBenefitInterventions({
       .filter((i) => {
         const code = getField(i, 'code', 'interventionCode', 'intervention_code');
         const name = getField(i, 'name', 'interventionName', 'intervention_name');
+        const paymentMechanism =
+          getField(i, 'paymentMechanism', 'payment_mechanism') || undefined;
+        if (
+          hideCapitationInterventions &&
+          isCapitationPaymentMechanism(paymentMechanism)
+        ) {
+          return false;
+        }
         return !!code || !!name;
       })
       .map((i) => ({
@@ -213,7 +246,7 @@ export function useBenefitInterventions({
         isImagingPreauth: getBooleanField(i, 'isImagingPreauth', 'is_imaging_preauth'),
         isOpticalPreauth: getBooleanField(i, 'isOpticalPreauth', 'is_optical_preauth'),
       }));
-  }, [interventionOptionsRaw]);
+  }, [hideCapitationInterventions, interventionOptionsRaw]);
 
   const selectedIntervention = useMemo<InterventionOption | null>(() => {
     if (!selectedInterventionCode) return null;

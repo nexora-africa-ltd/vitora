@@ -81,6 +81,7 @@ from .serializers import (  # Advisory link serializers
     ICD10SuggestResponseSerializer,
     ICUPredictRequestSerializer,
     ICUPredictResponseSerializer,
+    ICUQSOFALiteRequestSerializer,
     InvestigationSuggestRequestSerializer,
     LabInterpretRequestSerializer,
     LabInterpretResponseSerializer,
@@ -1529,6 +1530,111 @@ class ICUPredictView(AIFeatureGatedMixin, APIView):
             return Response(response_serializer.data)
 
         # Fallback — return whatever TibaBot gave us
+        return Response(response_data)
+
+
+class ICUQSOFALiteView(AIFeatureGatedMixin, APIView):
+    """
+    Proxy endpoint for qSOFA-lite scoring via TibaBot.
+
+    POST /api/ai/predict/icu/qsofa-lite/
+    Body: {
+        "respiratory_rate": 24,
+        "systolic_bp": 98,
+        "gcs_total": 13
+    }
+
+    ``gcs_total`` may be replaced by ``altered_mentation`` when GCS is not
+    available at triage.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    _EMPTY_RESPONSE: dict = {
+        "risk_level": "low",
+        "risk_score": 0.0,
+        "sofa_score": None,
+        "sofa_breakdown": None,
+        "qsofa_score": None,
+        "qsofa_criteria": [],
+        "critical_alerts": [],
+        "escalation": None,
+        "recommendations": [],
+    }
+
+    def post(self, request: Request) -> Response:
+        serializer = ICUQSOFALiteRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        AuditLog.log(
+            action="ai_icu_qsofa_lite",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            details={
+                "respiratory_rate": data.get("respiratory_rate"),
+                "systolic_bp": data.get("systolic_bp"),
+                "has_gcs_total": data.get("gcs_total") is not None,
+                "has_altered_mentation": data.get("altered_mentation") is not None,
+            },
+        )
+
+        try:
+            result = get_tibabot_client().predict_icu_qsofa_lite(data)
+        except TibaBotUnavailableError:
+            return Response(
+                {
+                    **self._EMPTY_RESPONSE,
+                    "error": "AI service is temporarily unavailable. Please proceed with clinical assessment.",
+                },
+                status=status.HTTP_200_OK,
+            )
+        except TibaBotError:
+            return Response(
+                {
+                    **self._EMPTY_RESPONSE,
+                    "error": "AI service error. Please proceed with clinical assessment.",
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        raw_qsofa = result.get("qsofa_score")
+        if isinstance(raw_qsofa, dict):
+            qsofa_total = raw_qsofa.get("total")
+            qsofa_criteria: list[str] = []
+            if raw_qsofa.get("altered_mentation"):
+                qsofa_criteria.append("Altered mentation (GCS < 15)")
+            if raw_qsofa.get("respiratory_rate_high"):
+                qsofa_criteria.append("Respiratory rate >= 22")
+            if raw_qsofa.get("systolic_bp_low"):
+                qsofa_criteria.append("Systolic BP <= 100")
+        else:
+            qsofa_total = raw_qsofa
+            qsofa_criteria = result.get("qsofa_criteria", [])
+
+        qsofa_risk_map = {
+            0: ("low", 0.2),
+            1: ("moderate", 0.5),
+            2: ("high", 0.75),
+            3: ("critical", 0.95),
+        }
+        risk_level, risk_score = qsofa_risk_map.get(int(qsofa_total or 0), ("low", 0.2))
+
+        response_data = {
+            **self._EMPTY_RESPONSE,
+            "risk_level": result.get("risk_level", risk_level),
+            "risk_score": result.get("risk_score", risk_score),
+            "qsofa_score": qsofa_total,
+            "qsofa_criteria": qsofa_criteria,
+            "critical_alerts": result.get("critical_alerts", result.get("alerts", [])),
+            "recommendations": result.get("recommendations", result.get("recommended_actions", [])),
+        }
+
+        response_serializer = ICUPredictResponseSerializer(data=response_data)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
         return Response(response_data)
 
 

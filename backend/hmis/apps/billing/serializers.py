@@ -711,6 +711,7 @@ class FacilityBillingConfigSerializer(serializers.ModelSerializer):
             "sha_contract_end",
             "sha_service_level",
             "sha_max_claim_amount",
+            "hide_capitation_interventions",
             "is_sha_contract_active",
             "sha_contract_days_remaining",
             # Fee schedule
@@ -798,6 +799,7 @@ class FacilityBillingConfigCreateSerializer(serializers.ModelSerializer):
             "sha_contract_end",
             "sha_service_level",
             "sha_max_claim_amount",
+            "hide_capitation_interventions",
             "fee_schedule_name",
             "fee_schedule_override",
             "mpesa_paybill",

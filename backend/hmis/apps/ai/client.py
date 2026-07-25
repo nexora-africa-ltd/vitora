@@ -525,6 +525,28 @@ class TibaBotClient:
             data=self._prepare_icu_payload(payload),
         )
 
+    def predict_icu_qsofa_lite(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Run qSOFA-lite scoring from minimal bedside inputs.
+
+        Forwards a compact payload to TibaBot's
+        ``POST /predict/icu/qsofa-lite`` endpoint.
+        """
+        data = {
+            "respiratory_rate": payload.get("respiratory_rate"),
+            "systolic_bp": payload.get("systolic_bp"),
+        }
+        if payload.get("gcs_total") is not None:
+            data["gcs_total"] = payload.get("gcs_total")
+        if payload.get("altered_mentation") is not None:
+            data["altered_mentation"] = payload.get("altered_mentation")
+
+        return self._request(
+            method="POST",
+            endpoint="/predict/icu/qsofa-lite",
+            data=data,
+        )
+
     # -----------------------------------------------------------------
     # Phase 8 — Surgical Assistant
     # -----------------------------------------------------------------

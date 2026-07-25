@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { useAuth, type FacilityModules } from '@/lib/auth/context';
 import { useFacility } from '@/lib/context/facility-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { billingApi } from '@/lib/api/billing';
 import { facilitiesApi, toUserFacility } from '@/lib/api/facilities';
 import { API_BASE_URL } from '@/lib/utils/constants';
 import type {
@@ -345,6 +346,7 @@ export function FacilitySettingsTab() {
     setFacilityOverride,
   } = useFacility();
   const [form, setForm] = useState<FacilityFormState | null>(null);
+  const [hideCapitationInterventions, setHideCapitationInterventions] = useState(false);
 
   // Logo upload state
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -360,6 +362,21 @@ export function FacilitySettingsTab() {
     enabled: activeFacilityId !== null,
   });
 
+  const billingConfigQuery = useQuery({
+    queryKey: ['facility-billing-config', activeFacilityId],
+    queryFn: async () => {
+      if (!activeFacilityId) {
+        return null;
+      }
+      const response = await billingApi.getFacilityBillingConfigs({
+        facility: activeFacilityId,
+        page_size: 1,
+      });
+      return response.results[0] ?? null;
+    },
+    enabled: activeFacilityId !== null,
+  });
+
   useEffect(() => {
     if (facilityQuery.data) {
       setForm(createFormState(facilityQuery.data));
@@ -367,13 +384,24 @@ export function FacilitySettingsTab() {
     }
   }, [facilityQuery.data]);
 
+  useEffect(() => {
+    setHideCapitationInterventions(
+      billingConfigQuery.data?.hide_capitation_interventions ?? false,
+    );
+  }, [billingConfigQuery.data, activeFacilityId]);
+
   const isDirty = useMemo(() => {
     if (!form || !facilityQuery.data) {
       return false;
     }
-
-    return JSON.stringify(form) !== JSON.stringify(createFormState(facilityQuery.data));
-  }, [form, facilityQuery.data]);
+    const facilityChanged =
+      JSON.stringify(form) !== JSON.stringify(createFormState(facilityQuery.data));
+    const initialHideCapitation =
+      billingConfigQuery.data?.hide_capitation_interventions ?? false;
+    return (
+      facilityChanged || hideCapitationInterventions !== initialHideCapitation
+    );
+  }, [form, facilityQuery.data, billingConfigQuery.data, hideCapitationInterventions]);
 
   const updateMutation = useMutation({
     mutationFn: async (values: FacilityFormState) => {
@@ -386,12 +414,27 @@ export function FacilitySettingsTab() {
         sha_contract_expiry: values.sha_contract_expiry || null,
       };
 
-      return facilitiesApi.update(activeFacilityId, payload);
+      const updatedFacility = await facilitiesApi.update(activeFacilityId, payload);
+
+      const existingConfig = billingConfigQuery.data;
+      if (existingConfig) {
+        await billingApi.updateFacilityBillingConfig(existingConfig.id, {
+          hide_capitation_interventions: hideCapitationInterventions,
+        });
+      } else if (hideCapitationInterventions) {
+        await billingApi.createFacilityBillingConfig({
+          facility: activeFacilityId,
+          hide_capitation_interventions: true,
+        });
+      }
+
+      return updatedFacility;
     },
     onSuccess: (updatedFacility) => {
       queryClient.setQueryData(['facility', updatedFacility.id], updatedFacility);
       queryClient.invalidateQueries({ queryKey: ['facility-detail', updatedFacility.id] });
       queryClient.invalidateQueries({ queryKey: ['debug-facilities'] });
+      queryClient.invalidateQueries({ queryKey: ['facility-billing-config', updatedFacility.id] });
 
       const nextUserFacility = toUserFacility(updatedFacility);
 
@@ -763,6 +806,20 @@ export function FacilitySettingsTab() {
                 onCheckedChange={(checked) => setForm((prev) => prev ? { ...prev, is_active: checked } : prev)}
               />
             </div>
+
+            <div className="flex items-center justify-between rounded-xl border border-primary/10 px-4 py-3 md:col-span-2">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Hide capitation interventions</p>
+                <p className="text-sm text-muted-foreground">
+                  Default intervention lookup hides CAPITATION codes for this facility unless payment mechanism is explicitly set.
+                </p>
+              </div>
+              <Switch
+                checked={hideCapitationInterventions}
+                disabled={!canManageFacility || updateMutation.isPending || billingConfigQuery.isLoading}
+                onCheckedChange={setHideCapitationInterventions}
+              />
+            </div>
           </section>
 
           <section className="space-y-4">
@@ -810,6 +867,9 @@ export function FacilitySettingsTab() {
                 if (facilityQuery.data) {
                   setForm(createFormState(facilityQuery.data));
                 }
+                setHideCapitationInterventions(
+                  billingConfigQuery.data?.hide_capitation_interventions ?? false,
+                );
               }}
               disabled={!isDirty || updateMutation.isPending}
             >

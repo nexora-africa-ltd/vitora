@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { HelpPopover } from '@/components/shared/help-popover';
-import { useAIConditionPredict, useAIEnabled } from '@/lib/hooks/use-ai';
+import { useAIConditionPredict, useAIEnabled, useAIICUQSOFALite } from '@/lib/hooks/use-ai';
 import type {
   AIConditionPredictRequest,
   AIConditionPredictResponse,
@@ -60,6 +60,7 @@ export interface AIRiskAssessmentPanelProps {
   /** Clinical assessment */
   painScore?: number | null;
   mentalStatus?: string;
+  gcsTotal?: number | null;
   mobility?: string;
   allergies?: string;
   /** Whether the form is disabled */
@@ -178,16 +179,20 @@ export function AIRiskAssessmentPanel({
   vitals,
   painScore,
   mentalStatus,
+  gcsTotal,
   mobility,
   allergies,
   disabled = false,
 }: AIRiskAssessmentPanelProps) {
   const aiEnabled = useAIEnabled();
   const { mutate, data: prediction, isPending, reset } = useAIConditionPredict();
+  const {
+    mutate: runQsofaLite,
+    data: qsofaLite,
+    isPending: isQsofaLitePending,
+  } = useAIICUQSOFALite();
   const [showDetails, setShowDetails] = React.useState(false);
-
-  // Don't render if AI is disabled
-  if (!aiEnabled) return null;
+  const lastQsofaSignatureRef = React.useRef<string>('');
 
   const hasEnoughData =
     chiefComplaint?.trim() ||
@@ -195,6 +200,47 @@ export function AIRiskAssessmentPanel({
     vitals?.spo2 != null ||
     vitals?.heart_rate != null ||
     vitals?.temperature != null;
+
+  const hasQsofaInputs =
+    vitals?.respiratory_rate != null &&
+    vitals?.systolic_bp != null &&
+    gcsTotal != null;
+
+  const missingQsofaFields = React.useMemo(() => {
+    const missing: string[] = [];
+    if (vitals?.respiratory_rate == null) missing.push('Respiratory rate');
+    if (vitals?.systolic_bp == null) missing.push('Systolic BP');
+    if (gcsTotal == null) missing.push('GCS total');
+    return missing;
+  }, [gcsTotal, vitals?.respiratory_rate, vitals?.systolic_bp]);
+
+  React.useEffect(() => {
+    if (!hasQsofaInputs || disabled) return;
+    const signature = JSON.stringify({
+      respiratory_rate: vitals?.respiratory_rate,
+      systolic_bp: vitals?.systolic_bp,
+      gcs_total: gcsTotal,
+    });
+    if (signature === lastQsofaSignatureRef.current) return;
+
+    const timeoutId = window.setTimeout(() => {
+      runQsofaLite({
+        respiratory_rate: Number(vitals?.respiratory_rate),
+        systolic_bp: Number(vitals?.systolic_bp),
+        gcs_total: gcsTotal ?? undefined,
+      });
+      lastQsofaSignatureRef.current = signature;
+    }, 500);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    disabled,
+    gcsTotal,
+    hasQsofaInputs,
+    runQsofaLite,
+    vitals?.respiratory_rate,
+    vitals?.systolic_bp,
+  ]);
 
   const handlePredict = () => {
     // Build patient features from form state
@@ -224,6 +270,9 @@ export function AIRiskAssessmentPanel({
     : null;
 
   const hasPrediction = prediction && prediction.primary_condition;
+
+  // Don't render if AI is disabled
+  if (!aiEnabled) return null;
 
   return (
     <Card
@@ -437,6 +486,44 @@ export function AIRiskAssessmentPanel({
             </div>
           </div>
         )}
+
+        <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">qSOFA Lite</p>
+            {isQsofaLitePending && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+          </div>
+
+          {!hasQsofaInputs && (
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>Assessment runs automatically when these fields are present:</p>
+              <p className="font-medium text-foreground">
+                Respiratory rate, Systolic BP, and GCS total.
+              </p>
+              {missingQsofaFields.length > 0 && (
+                <p>Missing: {missingQsofaFields.join(', ')}</p>
+              )}
+            </div>
+          )}
+
+          {hasQsofaInputs && qsofaLite?.qsofa_score != null && (
+            <div className="space-y-1">
+              <p className="text-sm">
+                Score: <span className="font-semibold">{qsofaLite.qsofa_score}/3</span>
+              </p>
+              {qsofaLite.qsofa_criteria && qsofaLite.qsofa_criteria.length > 0 && (
+                <ul className="list-disc list-inside text-xs text-muted-foreground space-y-0.5">
+                  {qsofaLite.qsofa_criteria.map((criterion, index) => (
+                    <li key={`${criterion}-${index}`}>{criterion}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {hasQsofaInputs && qsofaLite?.error && (
+            <p className="text-xs text-muted-foreground">{qsofaLite.error}</p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

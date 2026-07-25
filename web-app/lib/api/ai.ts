@@ -14,6 +14,8 @@ import {
   AIChatSessionListResponseSchema,
   AIChatSessionDetailResponseSchema,
   AIConditionPredictResponseSchema,
+  AIICUPredictRequestSchema,
+  AIICUQSOFALiteRequestSchema,
   AIICUPredictResponseSchema,
   AIFeedbackResponseSchema,
   AIFeedbackStatsSchema,
@@ -70,6 +72,7 @@ import type {
   AIConditionPredictRequest,
   AIConditionPredictResponse,
   AIICUPredictRequest,
+  AIICUQSOFALiteRequest,
   AIICUPredictResponse,
   AIFeedbackRequest,
   AIFeedbackResponse,
@@ -283,9 +286,25 @@ export const aiApi = {
    * @returns ICU risk assessment with SOFA/qSOFA, alerts, escalation
    */
   predictICU: async (data: AIICUPredictRequest): Promise<AIICUPredictResponse> => {
-    const response = await apiClient.post('/api/ai/predict/icu/', data);
+    const requestData = parseResponse(AIICUPredictRequestSchema, data, {
+      context: 'aiApi.predictICU.request',
+    });
+    const response = await apiClient.post('/api/ai/predict/icu/', requestData);
     return parseResponse(AIICUPredictResponseSchema, response.data, {
       context: 'aiApi.predictICU',
+    });
+  },
+
+  /**
+   * Run qSOFA-lite from minimal triage bedside inputs.
+   */
+  predictICUQSOFALite: async (data: AIICUQSOFALiteRequest): Promise<AIICUPredictResponse> => {
+    const requestData = parseResponse(AIICUQSOFALiteRequestSchema, data, {
+      context: 'aiApi.predictICUQSOFALite.request',
+    });
+    const response = await apiClient.post('/api/ai/predict/icu/qsofa-lite/', requestData);
+    return parseResponse(AIICUPredictResponseSchema, response.data, {
+      context: 'aiApi.predictICUQSOFALite',
     });
   },
 

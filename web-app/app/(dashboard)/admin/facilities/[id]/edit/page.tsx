@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCounties, useSubCounties, useWards } from '@/lib/hooks/use-locations';
+import { billingApi } from '@/lib/api/billing';
 import { facilitiesApi, toUserFacility } from '@/lib/api/facilities';
 import { useAuth } from '@/lib/auth/context';
 import { useFacility } from '@/lib/context/facility-context';
@@ -115,6 +116,18 @@ export default function EditFacilityPage() {
     enabled: !isNaN(facilityId),
   });
 
+  const { data: billingConfig } = useQuery({
+    queryKey: ['facility-billing-config', facilityId],
+    queryFn: async () => {
+      const response = await billingApi.getFacilityBillingConfigs({
+        facility: facilityId,
+        page_size: 1,
+      });
+      return response.results[0] ?? null;
+    },
+    enabled: !isNaN(facilityId),
+  });
+
   const [formData, setFormData] = useState({
     name: '',
     mfl_code: '',
@@ -162,6 +175,7 @@ export default function EditFacilityPage() {
     has_analytics: false,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [hideCapitationInterventions, setHideCapitationInterventions] = useState(false);
 
   const [countyId, setCountyId] = useState<number | undefined>();
   const [subCountyId, setSubCountyId] = useState<number | undefined>();
@@ -225,12 +239,32 @@ export default function EditFacilityPage() {
     }
   }, [facility]);
 
+  useEffect(() => {
+    setHideCapitationInterventions(billingConfig?.hide_capitation_interventions ?? false);
+  }, [billingConfig]);
+
   const updateFacility = useMutation({
-    mutationFn: (data: FacilityUpdateData) => facilitiesApi.update(facilityId, data),
+    mutationFn: async (data: FacilityUpdateData) => {
+      const updatedFacility = await facilitiesApi.update(facilityId, data);
+
+      if (billingConfig) {
+        await billingApi.updateFacilityBillingConfig(billingConfig.id, {
+          hide_capitation_interventions: hideCapitationInterventions,
+        });
+      } else if (hideCapitationInterventions) {
+        await billingApi.createFacilityBillingConfig({
+          facility: facilityId,
+          hide_capitation_interventions: true,
+        });
+      }
+
+      return updatedFacility;
+    },
     onSuccess: (updatedFacility) => {
       queryClient.invalidateQueries({ queryKey: ['facility', facilityId] });
       queryClient.invalidateQueries({ queryKey: ['facility-detail', facilityId] });
       queryClient.invalidateQueries({ queryKey: ['facilities'] });
+      queryClient.invalidateQueries({ queryKey: ['facility-billing-config', facilityId] });
 
       // Propagate module changes to auth/facility context so sidebar updates immediately
       const nextUserFacility = toUserFacility(updatedFacility);
@@ -479,6 +513,18 @@ export default function EditFacilityPage() {
                 </div>
               </>
             )}
+            <div className="flex items-center gap-3 sm:col-span-2">
+              <Switch
+                checked={hideCapitationInterventions}
+                onCheckedChange={setHideCapitationInterventions}
+              />
+              <div>
+                <Label>Hide capitation interventions by default</Label>
+                <p className="text-xs text-muted-foreground">
+                  Intervention lookup hides CAPITATION codes unless payment mechanism is explicitly set.
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

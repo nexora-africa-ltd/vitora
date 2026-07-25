@@ -20,6 +20,7 @@ import type {
   AIChatSessionDetailResponse,
   AIConditionPredictRequest,
   AIConditionPredictResponse,
+  AIICUQSOFALiteRequest,
   AIICUPredictRequest,
   AIICUPredictResponse,
   AIFeedbackRequest,
@@ -299,6 +300,16 @@ export function useAIConditionPredict() {
 export function useAIICUPredict() {
   return useMutation<AIICUPredictResponse, Error, AIICUPredictRequest>({
     mutationFn: (data) => aiApi.predictICU(data),
+    retry: false,
+  });
+}
+
+/**
+ * Hook for qSOFA-lite assessment from minimal triage inputs.
+ */
+export function useAIICUQSOFALite() {
+  return useMutation<AIICUPredictResponse, Error, AIICUQSOFALiteRequest>({
+    mutationFn: (data) => aiApi.predictICUQSOFALite(data),
     retry: false,
   });
 }
