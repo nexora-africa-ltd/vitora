@@ -554,11 +554,11 @@ export type ReviewRequestStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CAN
 export type ReviewUrgency = 'ROUTINE' | 'URGENT' | 'STAT';
 
 export interface WardRoundVitalSigns {
-  temperature?: number;
-  pulse?: number;
+  temperature?: number | null;
+  pulse?: number | null;
   blood_pressure?: string;
-  respiratory_rate?: number;
-  spo2?: number;
+  respiratory_rate?: number | null;
+  spo2?: number | null;
 }
 
 export interface WardRound {
@@ -587,11 +587,16 @@ export interface WardRound {
   clinical_notes?: string;
   // Vital signs can be nested object or individual fields
   vital_signs?: WardRoundVitalSigns;
-  temperature?: number;
-  pulse?: number;
+  temperature?: number | null;
+  pulse?: number | null;
   blood_pressure?: string;
-  respiratory_rate?: number;
-  spo2?: number;
+  respiratory_rate?: number | null;
+  spo2?: number | null;
+  gcs_total?: number | null;
+  on_vasopressors?: boolean | null;
+  vasopressor_dose_mcg_kg_min?: number | null;
+  on_mechanical_ventilation?: boolean | null;
+  urine_output_ml_24h?: number | null;
   // Additional fields
   diet_orders?: string;
   activity_level?: string;
@@ -625,6 +630,40 @@ export interface WardRoundCreateData {
   blood_pressure?: string;
   respiratory_rate?: number;
   spo2?: number;
+  gcs_total?: number;
+  on_vasopressors?: boolean | null;
+  vasopressor_dose_mcg_kg_min?: number | null;
+  on_mechanical_ventilation?: boolean | null;
+  urine_output_ml_24h?: number | null;
+}
+
+export interface AdmissionICUReadiness {
+  admission_id: number;
+  can_run_predict: boolean;
+  missing_required: string[];
+  missing_advisory: string[];
+  vitals?: {
+    temperature?: number | null;
+    heart_rate?: number | null;
+    systolic_bp?: number | null;
+    diastolic_bp?: number | null;
+    respiratory_rate?: number | null;
+    spo2?: number | null;
+  };
+  labs?: {
+    wbc?: number | null;
+    platelets?: number | null;
+    creatinine?: number | null;
+    bilirubin?: number | null;
+    lactate?: number | null;
+    pao2_fio2_ratio?: number | null;
+  };
+  gcs?: number | null;
+  on_vasopressors?: boolean | null;
+  vasopressor_dose_mcg_kg_min?: number | null;
+  on_mechanical_ventilation?: boolean | null;
+  urine_output_ml_day?: number | null;
+  field_sources?: Record<string, string>;
 }
 
 // ============================================================================

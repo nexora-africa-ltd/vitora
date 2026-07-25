@@ -160,6 +160,43 @@ class TestWardRoundValidation:
         assert "assessment" in response.data
         assert "plan" in response.data
 
+    def test_api_accepts_structured_sofa_bedside_fields(
+        self,
+        authenticated_client,
+        sample_admission,
+        test_user,
+    ):
+        payload = {
+            "admission": sample_admission.id,
+            "round_date": date.today().isoformat(),
+            "round_time": "10:15",
+            "conducted_by": test_user.id,
+            "review_type": "WARD_ROUND",
+            "subjective": "Patient less breathless.",
+            "objective": "BP stable, urine output improving.",
+            "assessment": "Sepsis improving.",
+            "plan": "Continue monitoring and titrate support.",
+            "condition_status": "IMPROVING",
+            "temperature": "37.2",
+            "pulse": 108,
+            "blood_pressure": "104/66",
+            "respiratory_rate": 24,
+            "spo2": "95.0",
+            "gcs_total": 13,
+            "on_vasopressors": True,
+            "vasopressor_dose_mcg_kg_min": "0.120",
+            "on_mechanical_ventilation": False,
+            "urine_output_ml_24h": 980,
+        }
+
+        response = authenticated_client.post("/api/inpatient/ward-rounds/", payload, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["gcs_total"] == 13
+        assert response.data["on_vasopressors"] is True
+        assert response.data["on_mechanical_ventilation"] is False
+        assert response.data["urine_output_ml_24h"] == 980
+
 
 @pytest.mark.django_db
 class TestMultipleRoundsPerDay:

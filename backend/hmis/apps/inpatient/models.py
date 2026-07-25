@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -1996,6 +1996,72 @@ class WardRound(TimeStampedModel):
     objective = models.TextField(help_text="Examination findings, vitals, observations")
     assessment = models.TextField(help_text="Clinical assessment, diagnosis updates")
     plan = models.TextField(help_text="Treatment plan, orders, next steps")
+
+    # Structured bedside observations
+    temperature = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("30.0"))],
+        help_text="Temperature in °C",
+    )
+    pulse = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text="Pulse rate in BPM",
+    )
+    blood_pressure = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Blood pressure (e.g., '120/80')",
+    )
+    respiratory_rate = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text="Respiratory rate in breaths/min",
+    )
+    spo2 = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.0"))],
+        help_text="Oxygen saturation percentage",
+    )
+
+    # ICU / SOFA bedside context
+    gcs_total = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(3), MaxValueValidator(15)],
+        help_text="Glasgow Coma Scale total score (3-15)",
+    )
+    on_vasopressors = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Whether patient is currently on vasopressor support",
+    )
+    vasopressor_dose_mcg_kg_min = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.000"))],
+        help_text="Current vasopressor dose in mcg/kg/min where known",
+    )
+    on_mechanical_ventilation = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Whether patient is currently mechanically ventilated",
+    )
+    urine_output_ml_24h = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Estimated or measured total urine output in the last 24 hours (mL)",
+    )
 
     maternity_continuity_action = models.CharField(
         max_length=40,

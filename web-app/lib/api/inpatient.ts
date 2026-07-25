@@ -10,6 +10,7 @@ import {
   AdmissionRecommendationSchema,
   AdmissionSchema,
   AdmissionClinicalSummarySchema,
+  AdmissionICUReadinessSchema,
   ClearanceStatusSchema,
   DischargeSchema,
   TransferSchema,
@@ -68,6 +69,7 @@ import type { Prescription } from '@/lib/types/pharmacy';
 import type {
   Admission,
   AdmissionClinicalSummary,
+  AdmissionICUReadiness,
   AdmissionCreateInput,
   AdmissionListParams,
   AdmissionListResponse,
@@ -341,6 +343,15 @@ export const inpatientApi = {
     );
     return parseResponse(AdmissionClinicalSummarySchema, response.data, {
       context: 'inpatientApi.getAdmissionClinicalSummary',
+    });
+  },
+
+  async getAdmissionICUReadiness(admissionId: IdParam): Promise<AdmissionICUReadiness> {
+    const response = await apiClient.get<AdmissionICUReadiness>(
+      `/api/inpatient/admissions/${admissionId}/icu-readiness/`
+    );
+    return parseResponse(AdmissionICUReadinessSchema, response.data, {
+      context: 'inpatientApi.getAdmissionICUReadiness',
     });
   },
 

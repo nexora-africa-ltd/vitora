@@ -128,7 +128,7 @@ export function DhaAttachmentSyncPanel({
             ) : (
               <UploadCloud className="h-4 w-4 mr-2" />
             )}
-            Upload local attachments to DHA
+            4. Upload local attachments to DHA
           </Button>
         )}
 

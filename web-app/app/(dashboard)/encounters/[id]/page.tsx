@@ -234,6 +234,7 @@ export default function EncounterDetailPage() {
     refresh: refreshProactiveInsights,
     error: proactiveError,
     noInsightsFound: proactiveNoInsights,
+    loadedFromCache: proactiveLoadedFromCache,
   } = useProactiveInsights(proactivePatientCtx, proactiveEncounterCtx, {
     cacheKey: encounterId,
   });
@@ -466,6 +467,7 @@ export default function EncounterDetailPage() {
         isLoading={proactiveLoading}
         error={proactiveError}
         noInsightsFound={proactiveNoInsights}
+        loadedFromCache={proactiveLoadedFromCache}
       />
 
       <EncounterChiefComplaintCard encounter={encounter} />

@@ -148,6 +148,7 @@ interface ProactiveInsightsPanelProps {
   isLoading?: boolean;
   error?: string | null;
   noInsightsFound?: boolean;
+  loadedFromCache?: boolean;
   className?: string;
 }
 
@@ -159,6 +160,7 @@ export function ProactiveInsightsPanel({
   isLoading,
   error,
   noInsightsFound,
+  loadedFromCache,
   className,
 }: ProactiveInsightsPanelProps) {
   // Loading skeleton
@@ -227,6 +229,11 @@ export function ProactiveInsightsPanel({
               <span className="ml-2 inline-block h-2 w-2 animate-pulse rounded-full bg-primary" />
             )}
           </span>
+          {loadedFromCache && !isLoading && (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+              Loaded from cache
+            </Badge>
+          )}
           {insights.length > 1 && onDismissAll && (
             <Button
               variant="ghost"

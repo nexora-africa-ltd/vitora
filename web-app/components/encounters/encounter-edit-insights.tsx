@@ -71,6 +71,7 @@ export function EncounterEditInsights({ className }: EncounterEditInsightsProps)
     refresh,
     error,
     noInsightsFound,
+    loadedFromCache,
   } = useProactiveInsights(patientContext, encounterCtx, {
     cacheKey: encounterId ? `edit_${encounterId}` : undefined,
   });
@@ -84,6 +85,7 @@ export function EncounterEditInsights({ className }: EncounterEditInsightsProps)
       isLoading={isLoading}
       error={error}
       noInsightsFound={noInsightsFound}
+      loadedFromCache={loadedFromCache}
       className={className}
     />
   );

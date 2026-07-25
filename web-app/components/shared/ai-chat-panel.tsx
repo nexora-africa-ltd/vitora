@@ -273,6 +273,7 @@ export function AIChatPanel({
     refresh: refreshProactiveInsights,
     error: proactiveError,
     noInsightsFound: proactiveNoInsights,
+    loadedFromCache: proactiveLoadedFromCache,
   } = useProactiveInsights(patientContext, encounterContext, {
     enabled: isEncounterAware,
   });
@@ -513,6 +514,7 @@ export function AIChatPanel({
               isLoading={proactiveLoading}
               error={proactiveError}
               noInsightsFound={proactiveNoInsights}
+              loadedFromCache={proactiveLoadedFromCache}
             />
           </div>
           {(proactiveInsights.length > 0 || proactiveLoading) && <Separator />}

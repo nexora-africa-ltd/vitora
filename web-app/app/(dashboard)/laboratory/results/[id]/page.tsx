@@ -201,6 +201,7 @@ export default function LabResultDetailPage() {
     refresh: refreshProactiveInsights,
     error: proactiveError,
     noInsightsFound: proactiveNoInsights,
+    loadedFromCache: proactiveLoadedFromCache,
   } = useProactiveInsights(proactivePatientCtx, null, { includeLLM: false, cacheKey: `lab_${resultId}` });
 
   return (
@@ -349,6 +350,7 @@ export default function LabResultDetailPage() {
             isLoading={proactiveLoading}
             error={proactiveError}
             noInsightsFound={proactiveNoInsights}
+            loadedFromCache={proactiveLoadedFromCache}
           />
 
           <Card>

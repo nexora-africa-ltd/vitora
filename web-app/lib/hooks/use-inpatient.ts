@@ -64,6 +64,13 @@ import type {
   DischargeTemplateCreateData,
 } from '@/lib/types/inpatient';
 
+function toValidPositiveId(id: string | number | undefined): number | null {
+  if (id === undefined || id === null) return null;
+  const parsed = typeof id === 'number' ? id : Number(id);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
 // ============================================================================
 // Query Keys
 // ============================================================================
@@ -89,6 +96,8 @@ export const inpatientQueryKeys = {
   activeAdmissionForPatient: (patientId: number) =>
     [...inpatientQueryKeys.all, 'admissions', 'active-by-patient', patientId] as const,
   admission: (id: string | number) => [...inpatientQueryKeys.all, 'admissions', id] as const,
+  admissionICUReadiness: (admissionId: string | number) =>
+    [...inpatientQueryKeys.admission(admissionId), 'icu-readiness'] as const,
   discharges: (params?: DischargeListParams) =>
     [...inpatientQueryKeys.all, 'discharges', params] as const,
   discharge: (id: number) => [...inpatientQueryKeys.all, 'discharges', id] as const,
@@ -425,6 +434,14 @@ export function useAdmission(admissionId: string | number | undefined) {
     queryKey: inpatientQueryKeys.admission(admissionId!),
     enabled: admissionId !== undefined,
     queryFn: () => inpatientApi.getAdmission(admissionId!),
+  });
+}
+
+export function useAdmissionICUReadiness(admissionId: string | number | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.admissionICUReadiness(admissionId!),
+    enabled: admissionId !== undefined,
+    queryFn: () => inpatientApi.getAdmissionICUReadiness(admissionId!),
   });
 }
 
@@ -815,10 +832,11 @@ export function useWardRound(wardRoundId: number | undefined) {
 }
 
 export function useAdmissionWardRounds(admissionId: string | number | undefined) {
+  const validAdmissionId = toValidPositiveId(admissionId);
   return useQuery({
-    queryKey: inpatientQueryKeys.wardRounds({ admission: admissionId }),
-    enabled: admissionId !== undefined,
-    queryFn: () => inpatientApi.listWardRounds({ admission: admissionId }),
+    queryKey: inpatientQueryKeys.wardRounds({ admission: validAdmissionId ?? undefined }),
+    enabled: validAdmissionId !== null,
+    queryFn: () => inpatientApi.listWardRounds({ admission: validAdmissionId! }),
   });
 }
 
@@ -865,10 +883,11 @@ export function useReviewRequest(requestId: number | undefined) {
 }
 
 export function useAdmissionReviewRequests(admissionId: string | number | undefined) {
+  const validAdmissionId = toValidPositiveId(admissionId);
   return useQuery({
-    queryKey: inpatientQueryKeys.reviewRequests({ admission: admissionId }),
-    enabled: admissionId !== undefined,
-    queryFn: () => inpatientApi.listReviewRequests({ admission: admissionId }),
+    queryKey: inpatientQueryKeys.reviewRequests({ admission: validAdmissionId ?? undefined }),
+    enabled: validAdmissionId !== null,
+    queryFn: () => inpatientApi.listReviewRequests({ admission: validAdmissionId! }),
   });
 }
 
@@ -944,10 +963,11 @@ export function useKardex(kardexId: number | undefined) {
 }
 
 export function useKardexByAdmission(admissionId: string | number | undefined) {
+  const validAdmissionId = toValidPositiveId(admissionId);
   return useQuery({
-    queryKey: inpatientQueryKeys.kardexByAdmission(admissionId!),
-    enabled: admissionId !== undefined,
-    queryFn: () => inpatientApi.getKardexByAdmission(admissionId!),
+    queryKey: inpatientQueryKeys.kardexByAdmission(validAdmissionId ?? 0),
+    enabled: validAdmissionId !== null,
+    queryFn: () => inpatientApi.getKardexByAdmission(validAdmissionId!),
   });
 }
 

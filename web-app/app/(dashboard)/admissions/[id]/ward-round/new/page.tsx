@@ -100,6 +100,13 @@ export default function NewWardRoundPage() {
   const [respiratoryRate, setRespiratoryRate] = useState('');
   const [spo2, setSpo2] = useState('');
 
+  // ICU / SOFA bedside context
+  const [gcsTotal, setGcsTotal] = useState('');
+  const [onVasopressors, setOnVasopressors] = useState<'unknown' | 'yes' | 'no'>('unknown');
+  const [vasopressorDose, setVasopressorDose] = useState('');
+  const [onMechanicalVentilation, setOnMechanicalVentilation] = useState<'unknown' | 'yes' | 'no'>('unknown');
+  const [urineOutput24h, setUrineOutput24h] = useState('');
+
   // Track if form was submitted (to show validation errors)
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
@@ -282,6 +289,13 @@ export default function NewWardRoundPage() {
         blood_pressure: bloodPressure || undefined,
         respiratory_rate: respiratoryRate ? parseInt(respiratoryRate) : undefined,
         spo2: spo2 ? parseFloat(spo2) : undefined,
+        gcs_total: gcsTotal ? parseInt(gcsTotal) : undefined,
+        on_vasopressors:
+          onVasopressors === 'unknown' ? null : onVasopressors === 'yes',
+        vasopressor_dose_mcg_kg_min: vasopressorDose ? parseFloat(vasopressorDose) : undefined,
+        on_mechanical_ventilation:
+          onMechanicalVentilation === 'unknown' ? null : onMechanicalVentilation === 'yes',
+        urine_output_ml_24h: urineOutput24h ? parseInt(urineOutput24h) : undefined,
       });
       toast({
         title: 'Success',
@@ -513,6 +527,80 @@ export default function NewWardRoundPage() {
                 value={spo2}
                 onChange={(e) => setSpo2(e.target.value)}
                 placeholder={getVitalPlaceholder('spo2', ageGroup)}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Critical Care Context (SOFA)</CardTitle>
+          <CardDescription>
+            Capture bedside fields that improve ICU escalation and SOFA-readiness checks.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="gcs-total">GCS Total (3-15)</Label>
+              <Input
+                id="gcs-total"
+                type="number"
+                min={3}
+                max={15}
+                value={gcsTotal}
+                onChange={(e) => setGcsTotal(e.target.value)}
+                placeholder="15"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="on-vasopressors">On Vasopressors</Label>
+              <Select value={onVasopressors} onValueChange={(value) => setOnVasopressors(value as 'unknown' | 'yes' | 'no')}>
+                <SelectTrigger id="on-vasopressors">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unknown">Unknown</SelectItem>
+                  <SelectItem value="yes">Yes</SelectItem>
+                  <SelectItem value="no">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vasopressor-dose">Vasopressor Dose (mcg/kg/min)</Label>
+              <Input
+                id="vasopressor-dose"
+                type="number"
+                step="0.001"
+                min={0}
+                value={vasopressorDose}
+                onChange={(e) => setVasopressorDose(e.target.value)}
+                placeholder="0.100"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="on-mechanical-ventilation">On Mechanical Ventilation</Label>
+              <Select value={onMechanicalVentilation} onValueChange={(value) => setOnMechanicalVentilation(value as 'unknown' | 'yes' | 'no')}>
+                <SelectTrigger id="on-mechanical-ventilation">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unknown">Unknown</SelectItem>
+                  <SelectItem value="yes">Yes</SelectItem>
+                  <SelectItem value="no">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="urine-output-24h">Urine Output (24h, mL)</Label>
+              <Input
+                id="urine-output-24h"
+                type="number"
+                min={0}
+                value={urineOutput24h}
+                onChange={(e) => setUrineOutput24h(e.target.value)}
+                placeholder="1200"
               />
             </div>
           </div>

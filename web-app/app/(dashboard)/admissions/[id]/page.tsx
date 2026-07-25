@@ -50,6 +50,7 @@ import {
 } from '@/components/ui/select';
 import {
   useAdmission,
+  useAdmissionICUReadiness,
   useAdmissionWardRounds,
   useBeds,
   useKardexByAdmission,
@@ -187,6 +188,9 @@ export default function AdmissionDetailPage() {
 
   // Fetch latest verified lab values for ICU risk scoring
   const { data: icuLabValues } = useICULabs(
+    admission?.admission_status === 'ACTIVE' ? admissionId : undefined
+  );
+  const { data: icuReadiness } = useAdmissionICUReadiness(
     admission?.admission_status === 'ACTIVE' ? admissionId : undefined
   );
 
@@ -1049,8 +1053,17 @@ export default function AdmissionDetailPage() {
               admissionId={admission.id}
               patientAge={admission.patient_age ?? 0}
               patientGender={admission.patient_gender ?? 'O'}
-              vitals={latestVitalsForICU}
-              labs={icuLabValues}
+              vitals={icuReadiness?.vitals ?? latestVitalsForICU}
+              labs={icuReadiness?.labs ?? icuLabValues}
+              gcs={icuReadiness?.gcs}
+              onVasopressors={icuReadiness?.on_vasopressors ?? undefined}
+              onMechanicalVentilation={icuReadiness?.on_mechanical_ventilation ?? undefined}
+              urineOutputMlDay={icuReadiness?.urine_output_ml_day ?? undefined}
+              readinessPreflight={icuReadiness ? {
+                missingRequired: icuReadiness.missing_required,
+                missingAdvisory: icuReadiness.missing_advisory,
+                canRunPredict: icuReadiness.can_run_predict,
+              } : undefined}
               admissionDiagnosis={
                 admission.admitting_diagnosis_text || admission.admitting_diagnosis
               }

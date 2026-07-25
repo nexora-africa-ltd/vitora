@@ -16,6 +16,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.ai.services.icu_lab_enrichment import get_latest_labs_for_icu
 from hmis.apps.core.mixins import (
     NestedTenantScopeMixin,
     PublicIdLookupMixin,
@@ -58,6 +59,7 @@ from .models import (
     WardRound,
 )
 from .serializers import (
+    AdmissionICUReadinessSerializer,
     AdmissionRecommendationSerializer,
     AdmissionSerializer,
     ATRAcknowledgeSerializer,
@@ -1629,6 +1631,18 @@ class AdmissionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mode
             q |= Q(encounter=admission.opd_encounter)
         return q
 
+    @staticmethod
+    def _parse_bp_value(raw_bp: str | None) -> tuple[int | None, int | None]:
+        if not raw_bp:
+            return None, None
+        parts = [part.strip() for part in raw_bp.split("/")]
+        if len(parts) != 2:
+            return None, None
+        try:
+            return int(parts[0]), int(parts[1])
+        except (TypeError, ValueError):
+            return None, None
+
     @extend_schema(
         tags=["Inpatient - Admissions"],
         summary="Get lab orders for admission",
@@ -1794,6 +1808,190 @@ class AdmissionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mode
                 "rendered_text": rendered_text,
             }
         )
+
+    @extend_schema(
+        tags=["Inpatient - Admissions"],
+        summary="Get ICU predictor readiness for admission",
+        description=(
+            "Returns normalized bedside/lab fields used by ICU predictor plus "
+            "required/advisory missing-field preflight checks."
+        ),
+        responses={200: AdmissionICUReadinessSerializer},
+    )
+    @action(detail=True, methods=["get"], url_path="icu-readiness")
+    def icu_readiness(self, request, pk=None):
+        """Expose ICU predictor preflight data for this admission."""
+        admission = self.get_object()
+
+        latest_ward_round = admission.ward_rounds.order_by(
+            "-round_date", "-round_time", "-created_at"
+        ).first()
+        latest_temp = admission.temperature_readings.order_by("-recorded_at").first()
+        latest_bp = admission.bp_readings.order_by("-recorded_at").first()
+        latest_fluid = admission.fluid_balance_sheets.order_by("-chart_date", "-created_at").first()
+        lab_values = get_latest_labs_for_icu(
+            patient_id=admission.patient_id,
+            admission_id=admission.id,
+        )
+
+        wr_systolic, wr_diastolic = self._parse_bp_value(
+            getattr(latest_ward_round, "blood_pressure", None)
+        )
+
+        field_sources: dict[str, str] = {}
+
+        temperature = None
+        if latest_temp and latest_temp.temperature is not None:
+            temperature = float(latest_temp.temperature)
+            field_sources["temperature"] = "temperature_chart"
+        elif latest_ward_round and latest_ward_round.temperature is not None:
+            temperature = float(latest_ward_round.temperature)
+            field_sources["temperature"] = "ward_round"
+
+        heart_rate = None
+        if latest_bp and latest_bp.pulse is not None:
+            heart_rate = int(latest_bp.pulse)
+            field_sources["heart_rate"] = "bp_chart"
+        elif latest_temp and latest_temp.pulse is not None:
+            heart_rate = int(latest_temp.pulse)
+            field_sources["heart_rate"] = "temperature_chart"
+        elif latest_ward_round and latest_ward_round.pulse is not None:
+            heart_rate = int(latest_ward_round.pulse)
+            field_sources["heart_rate"] = "ward_round"
+
+        respiratory_rate = None
+        if latest_temp and latest_temp.respiratory_rate is not None:
+            respiratory_rate = int(latest_temp.respiratory_rate)
+            field_sources["respiratory_rate"] = "temperature_chart"
+        elif latest_ward_round and latest_ward_round.respiratory_rate is not None:
+            respiratory_rate = int(latest_ward_round.respiratory_rate)
+            field_sources["respiratory_rate"] = "ward_round"
+
+        systolic_bp = None
+        diastolic_bp = None
+        if latest_bp:
+            systolic_bp = int(latest_bp.systolic)
+            diastolic_bp = int(latest_bp.diastolic)
+            field_sources["systolic_bp"] = "bp_chart"
+            field_sources["diastolic_bp"] = "bp_chart"
+        elif wr_systolic is not None and wr_diastolic is not None:
+            systolic_bp = wr_systolic
+            diastolic_bp = wr_diastolic
+            field_sources["systolic_bp"] = "ward_round"
+            field_sources["diastolic_bp"] = "ward_round"
+
+        spo2 = None
+        if latest_ward_round and latest_ward_round.spo2 is not None:
+            spo2 = float(latest_ward_round.spo2)
+            field_sources["spo2"] = "ward_round"
+
+        gcs = getattr(latest_ward_round, "gcs_total", None) if latest_ward_round else None
+        if gcs is not None:
+            field_sources["gcs"] = "ward_round"
+
+        on_vasopressors = (
+            getattr(latest_ward_round, "on_vasopressors", None) if latest_ward_round else None
+        )
+        if on_vasopressors is not None:
+            field_sources["on_vasopressors"] = "ward_round"
+
+        vasopressor_dose = (
+            getattr(latest_ward_round, "vasopressor_dose_mcg_kg_min", None)
+            if latest_ward_round
+            else None
+        )
+        if vasopressor_dose is not None:
+            field_sources["vasopressor_dose_mcg_kg_min"] = "ward_round"
+
+        on_mechanical_ventilation = (
+            getattr(latest_ward_round, "on_mechanical_ventilation", None)
+            if latest_ward_round
+            else None
+        )
+        if on_mechanical_ventilation is not None:
+            field_sources["on_mechanical_ventilation"] = "ward_round"
+
+        urine_output_ml_day = (
+            getattr(latest_ward_round, "urine_output_ml_24h", None) if latest_ward_round else None
+        )
+        if urine_output_ml_day is not None:
+            field_sources["urine_output_ml_day"] = "ward_round"
+        elif latest_fluid is not None:
+            urine_output_ml_day = latest_fluid.total_urine_output_ml
+            field_sources["urine_output_ml_day"] = "fluid_balance_sheet"
+
+        labs = {
+            "wbc": lab_values.get("wbc"),
+            "platelets": lab_values.get("platelets"),
+            "creatinine": lab_values.get("creatinine"),
+            "bilirubin": lab_values.get("bilirubin"),
+            "lactate": lab_values.get("lactate"),
+            "pao2_fio2_ratio": lab_values.get("pao2_fio2_ratio"),
+        }
+        for key, value in labs.items():
+            if value is not None:
+                field_sources[key] = "icu_lab_enrichment"
+
+        vitals = {
+            "temperature": temperature,
+            "heart_rate": heart_rate,
+            "systolic_bp": systolic_bp,
+            "diastolic_bp": diastolic_bp,
+            "respiratory_rate": respiratory_rate,
+            "spo2": spo2,
+        }
+
+        missing_required: list[str] = []
+        if vitals["respiratory_rate"] is None:
+            missing_required.append("respiratory_rate")
+        if vitals["systolic_bp"] is None:
+            missing_required.append("systolic_bp")
+        if vitals["diastolic_bp"] is None:
+            missing_required.append("diastolic_bp")
+        if labs["platelets"] is None:
+            missing_required.append("platelets")
+        if labs["bilirubin"] is None:
+            missing_required.append("bilirubin")
+        if labs["creatinine"] is None:
+            missing_required.append("creatinine")
+        if gcs is None:
+            missing_required.append("gcs")
+
+        has_respiratory_context = (
+            labs["pao2_fio2_ratio"] is not None or on_mechanical_ventilation is not None
+        )
+        if not has_respiratory_context:
+            missing_required.append("pao2_fio2_ratio_or_ventilation_status")
+        if on_vasopressors is None:
+            missing_required.append("on_vasopressors")
+
+        missing_advisory: list[str] = []
+        if labs["wbc"] is None:
+            missing_advisory.append("wbc")
+        if labs["lactate"] is None:
+            missing_advisory.append("lactate")
+        if urine_output_ml_day is None:
+            missing_advisory.append("urine_output_ml_day")
+
+        payload = {
+            "admission_id": admission.id,
+            "can_run_predict": len(missing_required) == 0,
+            "missing_required": missing_required,
+            "missing_advisory": missing_advisory,
+            "vitals": vitals,
+            "labs": labs,
+            "gcs": gcs,
+            "on_vasopressors": on_vasopressors,
+            "vasopressor_dose_mcg_kg_min": (
+                float(vasopressor_dose) if vasopressor_dose is not None else None
+            ),
+            "on_mechanical_ventilation": on_mechanical_ventilation,
+            "urine_output_ml_day": urine_output_ml_day,
+            "field_sources": field_sources,
+        }
+        serializer = AdmissionICUReadinessSerializer(data=payload)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.data)
 
     @extend_schema(
         tags=["Inpatient - Admissions"],
