@@ -894,3 +894,48 @@ class TestDischargeAutomatedClearance:
         assert response.status_code == status.HTTP_201_CREATED
         existing_transfer.refresh_from_db()
         assert existing_transfer.source_discharge_id == response.data["id"]
+
+    def test_update_to_transferred_links_transfer_workflow(
+        self, clearance_client, clearance_admission, discharge_user
+    ):
+        create_response = clearance_client.post(
+            "/api/inpatient/discharges/",
+            {
+                "admission": clearance_admission.id,
+                "discharge_type": "NORMAL",
+                "discharge_date": timezone.now().isoformat(),
+                "discharged_by": discharge_user.id,
+                "admission_diagnosis": "J18.9",
+                "final_diagnosis": "J18.9",
+                "final_diagnosis_text": "Recovered",
+                "treatment_summary": "Clinically stable",
+                "patient_instructions": "Return if symptoms recur",
+            },
+        )
+        assert create_response.status_code == status.HTTP_201_CREATED
+        discharge_id = create_response.data["id"]
+
+        patch_response = clearance_client.patch(
+            f"/api/inpatient/discharges/{discharge_id}/",
+            {
+                "discharge_type": "TRANSFERRED",
+                "transfer_workflow": {
+                    "destination_facility_name": "County Referral Hospital",
+                    "reason_code": "HIGHER_LEVEL_CARE",
+                    "reason_details": "Requires ICU bed",
+                    "priority": "URGENT",
+                    "clinical_summary": "Escalating respiratory distress",
+                    "handover_notes": "On oxygen 4L/min",
+                    "transport_mode": "AMBULANCE",
+                    "escort_required": True,
+                    "escort_name": "Nurse Otieno",
+                    "submit_immediately": True,
+                },
+            },
+            format="json",
+        )
+
+        assert patch_response.status_code == status.HTTP_200_OK
+        transfer = InterFacilityTransfer.objects.get(source_admission=clearance_admission)
+        assert transfer.source_discharge_id == discharge_id
+        assert transfer.status == InterFacilityTransfer.TransferStatus.PENDING_ACCEPTANCE

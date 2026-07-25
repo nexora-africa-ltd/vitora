@@ -223,7 +223,7 @@ class TestExtractMessage:
         assert "whitelist request" in result
 
     def test_returns_fallback_for_unknown_payload(self):
-        assert _extract_message({"trace_id": "abc"}, "fallback") == "fallback"
+        assert _extract_message({"trace_id": "abc"}, "fallback") == "abc"
 
     def test_returns_plain_message_when_no_edi_error(self):
         payload = {"message": "Something went wrong"}

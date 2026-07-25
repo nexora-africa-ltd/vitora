@@ -5,6 +5,7 @@ from django.contrib.auth.models import Permission
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from hmis.apps.billing.models import SHAClaim, SHAMember
 from hmis.apps.core.models import Facility
 from hmis.apps.inpatient.models import Admission, Bed, Discharge, InterFacilityTransfer, Ward
 from tests.conftest import ensure_staff_profile
@@ -833,6 +834,110 @@ class TestInterFacilityTransferAPI:
         assert arrive_and_admit.status_code == status.HTTP_200_OK
         assert arrive_and_admit.data["status"] == "ARRIVED"
         assert arrive_and_admit.data["destination_admission_id"] is not None
+
+    def test_transfer_transitions_do_not_mutate_source_sha_claim(
+        self,
+        authenticated_client,
+        test_user,
+        another_user,
+        sample_admission,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        destination_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Referral Hospital SHA Guard",
+            mfl_code="19191",
+            level="5",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        destination_ward, _destination_bed = self._create_destination_capacity(
+            destination_facility,
+            sample_organization,
+            code_prefix="SHA",
+        )
+        ensure_staff_profile(another_user, sample_organization, destination_facility)
+        destination_client = self._client_for_user(another_user)
+        self._grant_permissions(
+            test_user,
+            ["submit_interfacility_transfer", "dispatch_interfacility_transfer"],
+        )
+        self._grant_permissions(
+            another_user,
+            ["accept_interfacility_transfer", "arrive_interfacility_transfer", "add_admission"],
+        )
+
+        sha_member, _ = SHAMember.objects.get_or_create(
+            patient=sample_admission.patient,
+            defaults={
+                "sha_number": f"SHA-{sample_admission.patient_id:010d}",
+                "status": SHAMember.MembershipStatus.ACTIVE,
+                "national_id": "12345678",
+                "created_by": test_user,
+            },
+        )
+        if sha_member.status != SHAMember.MembershipStatus.ACTIVE:
+            sha_member.status = SHAMember.MembershipStatus.ACTIVE
+            sha_member.save(update_fields=["status", "updated_at"])
+
+        source_claim = SHAClaim.objects.create(
+            patient=sample_admission.patient,
+            sha_member=sha_member,
+            encounter=sample_admission.ipd_encounter,
+            invoice=None,
+            claim_type=SHAClaim.ClaimType.INPATIENT,
+            status=SHAClaim.ClaimStatus.DRAFT,
+            service_date=sample_admission.admission_date.date(),
+            admission_date=sample_admission.admission_date.date(),
+            primary_diagnosis_code="J18.9",
+            primary_diagnosis_description="Pneumonia",
+            facility=sample_admission.facility,
+            organization=sample_admission.organization,
+            created_by=test_user,
+        )
+        baseline = {
+            "status": source_claim.status,
+            "discharge_date": source_claim.discharge_date,
+            "sha_claim_reference": source_claim.sha_claim_reference,
+            "claimed_amount": source_claim.claimed_amount,
+        }
+
+        created = self._create_transfer(
+            authenticated_client, sample_admission, destination_facility.id
+        )
+        transfer_id = created["id"]
+
+        sample_admission.admission_status = "TRANSFERRED_OUT"
+        sample_admission.save(update_fields=["admission_status"])
+
+        submit = authenticated_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/submit/", {}, format="json"
+        )
+        assert submit.status_code == status.HTTP_200_OK
+        accept = destination_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/accept/",
+            {"destination_ward": destination_ward.id},
+            format="json",
+        )
+        assert accept.status_code == status.HTTP_200_OK
+        dispatch = authenticated_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/dispatch/", {}, format="json"
+        )
+        assert dispatch.status_code == status.HTTP_200_OK
+        arrive = destination_client.post(
+            f"/api/inpatient/inter-facility-transfers/{transfer_id}/arrive/", {}, format="json"
+        )
+        assert arrive.status_code == status.HTTP_200_OK
+
+        source_claim.refresh_from_db()
+        assert source_claim.status == baseline["status"]
+        assert source_claim.discharge_date == baseline["discharge_date"]
+        assert source_claim.sha_claim_reference == baseline["sha_claim_reference"]
+        assert source_claim.claimed_amount == baseline["claimed_amount"]
+        assert SHAClaim.objects.filter(encounter=sample_admission.ipd_encounter).count() == 1
 
     def test_destination_can_request_and_source_can_share_discharge_summary(
         self,

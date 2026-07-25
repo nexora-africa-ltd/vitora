@@ -903,82 +903,96 @@ class TestSHAClaimsServicePackaging:
 
 @pytest.mark.django_db
 class TestSHAClaimsServiceSubmission:
-    """Tests for SHAClaimsService.submit_claim() method (offline-first)."""
+    """Tests for SHAClaimsService.submit_claim() method (live submission only)."""
 
     def test_submit_claim_success_flow(self, valid_claim, test_user, mock_sha_submission_response):
         """
-        Test successful claim submission flow (offline-first queuing).
+        Test successful claim submission flow.
 
         Given: A valid claim ready for submission
         When: submit_claim() is called
-        Then: Claim is queued for offline submission
+        Then: Claim is submitted to SHA and response is returned
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
 
         service = SHAClaimsService()
 
-        response = service.submit_claim(valid_claim, test_user)
+        with (
+            patch("hmis.apps.billing.services.sha_claims.ConnectivityChecker") as checker_cls,
+            patch.object(service, "_submit_to_sha_api") as mock_submit,
+        ):
+            checker = checker_cls.return_value
+            checker.check.return_value = True
+            mock_submit.return_value = mock_sha_submission_response
 
-        # Offline-first implementation queues claims
-        assert response["status"] == "queued"
-        assert response["message"] == "Claim queued for submission when online"
-        assert "queue_entry_id" in response
-        assert response["claim_number"] == valid_claim.claim_number
+            response = service.submit_claim(valid_claim, test_user)
+
+        assert response == mock_sha_submission_response
+        assert response["claim_reference"] == "SHA-REF-2026-001234"
 
     def test_submit_claim_updates_claim_status(
         self, valid_claim, test_user, mock_sha_submission_response
     ):
         """
-        Test that submit_claim() updates claim status to PENDING_SUBMISSION.
+        Test that submit_claim() updates claim status to SUBMITTED.
 
         Given: A valid claim
         When: submit_claim() is called
-        Then: Claim status is PENDING_SUBMISSION (queued for later)
+        Then: Claim status is SUBMITTED
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
 
         service = SHAClaimsService()
 
-        service.submit_claim(valid_claim, test_user)
+        with (
+            patch("hmis.apps.billing.services.sha_claims.ConnectivityChecker") as checker_cls,
+            patch.object(service, "_submit_to_sha_api") as mock_submit,
+        ):
+            checker = checker_cls.return_value
+            checker.check.return_value = True
+            mock_submit.return_value = mock_sha_submission_response
+            service.submit_claim(valid_claim, test_user)
 
         # Refresh from database
         valid_claim.refresh_from_db()
 
-        # Offline-first: claim is queued, not submitted directly
-        assert valid_claim.status == SHAClaim.ClaimStatus.PENDING_SUBMISSION
-        assert "queued" in valid_claim.submission_response
-        assert valid_claim.submission_response["queued"] is True
-        assert "queue_entry_id" in valid_claim.submission_response
+        assert valid_claim.status == SHAClaim.ClaimStatus.SUBMITTED
+        assert valid_claim.submission_response == mock_sha_submission_response
+        assert valid_claim.sha_claim_reference == "SHA-REF-2026-001234"
 
     def test_submit_claim_logs_audit_entry(
         self, valid_claim, test_user, mock_sha_submission_response
     ):
         """
-        Test that submit_claim() creates audit log entry for queuing.
+        Test that submit_claim() creates audit log entry for submission.
 
         Given: A valid claim
         When: submit_claim() is called
-        Then: AuditLog entry is created for sha_claim_queued action
+        Then: AuditLog entry is created for sha_claim_submit action
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
 
         service = SHAClaimsService()
 
-        # Check for queued action (offline-first implementation)
-        initial_audit_count = AuditLog.objects.filter(action="sha_claim_queued").count()
+        initial_audit_count = AuditLog.objects.filter(action="sha_claim_submit").count()
 
-        service.submit_claim(valid_claim, test_user)
+        with (
+            patch("hmis.apps.billing.services.sha_claims.ConnectivityChecker") as checker_cls,
+            patch.object(service, "_submit_to_sha_api") as mock_submit,
+        ):
+            checker = checker_cls.return_value
+            checker.check.return_value = True
+            mock_submit.return_value = mock_sha_submission_response
+            service.submit_claim(valid_claim, test_user)
 
-        # Check audit log was created for queuing
-        final_audit_count = AuditLog.objects.filter(action="sha_claim_queued").count()
+        final_audit_count = AuditLog.objects.filter(action="sha_claim_submit").count()
         assert final_audit_count == initial_audit_count + 1
 
-        # Verify audit log content
-        audit_log = AuditLog.objects.filter(action="sha_claim_queued").latest("timestamp")
+        audit_log = AuditLog.objects.filter(action="sha_claim_submit").latest("timestamp")
         assert audit_log.user == test_user
         assert audit_log.resource_type == "SHAClaim"
         assert audit_log.resource_id == valid_claim.id
-        assert "queue_entry_id" in audit_log.details
+        assert audit_log.details.get("sha_reference") == "SHA-REF-2026-001234"
 
     def test_submit_claim_handles_validation_error(self, valid_claim, test_user):
         """
@@ -1003,11 +1017,11 @@ class TestSHAClaimsServiceSubmission:
 
     def test_claim_queued_creates_sync_queue_entry(self, valid_claim, test_user):
         """
-        Test that submit_claim() creates sync queue entry for offline processing.
+        Test that offline submission fails and does not create sync queue entries.
 
         Given: A valid claim
-        When: submit_claim() is called
-        Then: SyncQueue entry is created with PENDING status
+        When: submit_claim() is called while offline
+        Then: ValidationError is raised and no queue entry is created
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
         from hmis.apps.core.models import SyncQueue
@@ -1016,16 +1030,16 @@ class TestSHAClaimsServiceSubmission:
 
         initial_queue_count = SyncQueue.objects.filter(model_name="SHAClaimSubmission").count()
 
-        service.submit_claim(valid_claim, test_user)
+        with patch("hmis.apps.billing.services.sha_claims.ConnectivityChecker") as checker_cls:
+            checker = checker_cls.return_value
+            checker.check.return_value = False
+            with pytest.raises(ValidationError) as exc_info:
+                service.submit_claim(valid_claim, test_user)
 
-        # Verify queue entry was created
+        assert "live SHA connectivity" in str(exc_info.value)
+
         final_queue_count = SyncQueue.objects.filter(model_name="SHAClaimSubmission").count()
-        assert final_queue_count == initial_queue_count + 1
-
-        # Verify queue entry data
-        queue_entry = SyncQueue.objects.filter(model_name="SHAClaimSubmission").latest("created_at")
-        assert queue_entry.status == "PENDING"
-        assert queue_entry.data.get("claim_id") == valid_claim.id
+        assert final_queue_count == initial_queue_count
 
 
 @pytest.mark.django_db

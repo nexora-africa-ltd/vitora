@@ -19,6 +19,7 @@ FHIR Bundle Requirements (SHA MIS):
     - Coverage: Must include scheme extensions (CAT-SHA-001)
 """
 
+import contextlib
 import logging
 import uuid
 from collections.abc import Mapping
@@ -1415,16 +1416,15 @@ class SHAClaimsService:
         Submit claim to SHA.
 
         Validates claim, packages it, submits to SHA API, and updates
-        claim status with response. If offline, queues the claim for
-        later submission.
+        claim status with response.
 
         Args:
             claim: SHAClaim to submit
             user: User performing the submission
-            force_online: If True, fail immediately if offline (don't queue)
+            force_online: Deprecated compatibility flag; ignored.
 
         Returns:
-            Submission response dict from SHA API or queue confirmation
+            Submission response dict from SHA API
 
         Raises:
             ValidationError: If claim is not valid for submission or API fails
@@ -1438,12 +1438,10 @@ class SHAClaimsService:
         checker = ConnectivityChecker(server_url=self.api_base_url)
         is_online = checker.check()
 
-        if not is_online and not force_online:
-            # Queue for offline submission
-            return self._queue_claim_for_submission(claim, user)
-
-        if not is_online and force_online:
-            raise ValidationError("Cannot submit claim: system is offline")
+        if not is_online:
+            raise ValidationError(
+                "Cannot submit claim: live SHA connectivity is required for OTP/biometric submission"
+            )
 
         # Package claim
         bundle = self.package_claim(claim)
@@ -1481,13 +1479,6 @@ class SHAClaimsService:
             return response
 
         except requests.RequestException as e:
-            # If submission fails due to network, queue for retry
-            if self._is_network_error(e):
-                logger.warning(
-                    f"Network error submitting claim {claim.claim_number}, queueing for retry"
-                )
-                return self._queue_claim_for_submission(claim, user)
-
             claim.submission_response = {"error": str(e)}
             claim.save(update_fields=["submission_response", "updated_at"])
             raise ValidationError(f"Submission failed: {str(e)}")
@@ -1694,22 +1685,64 @@ class SHAClaimsService:
 
         # Prepare multipart with attachments if any
         files = []
+        opened_files = []
         for attachment in claim.attachments.all():
+            if (
+                getattr(claim, "is_outpatient_capitation_claim", False)
+                and attachment.attachment_type == "invoice"
+            ):
+                continue
+
+            file_field = attachment.file
+            if not file_field:
+                continue
+
+            try:
+                exists = file_field.storage.exists(file_field.name)
+            except Exception:  # noqa: BLE001
+                exists = False
+
+            if not exists:
+                logger.warning(
+                    "Skipping missing SHA attachment id=%s file=%s for claim %s",
+                    attachment.id,
+                    getattr(file_field, "name", ""),
+                    claim.claim_number,
+                )
+                continue
+
+            try:
+                file_field.open("rb")
+                opened_files.append(file_field)
+            except FileNotFoundError:
+                logger.warning(
+                    "Skipping unreadable SHA attachment id=%s file=%s for claim %s",
+                    attachment.id,
+                    getattr(file_field, "name", ""),
+                    claim.claim_number,
+                )
+                continue
+
             files.append(
                 (
                     "attachments",
-                    (attachment.original_filename, attachment.file, attachment.mime_type),
+                    (attachment.original_filename, file_field, attachment.mime_type),
                 )
             )
 
-        # Submit to official endpoint: /v1/shr-med/bundle
-        response = requests.post(
-            f"{self.api_base_url}{self.claims_submit_endpoint}",
-            json=bundle,
-            files=files or None,
-            headers=headers,
-            timeout=60,
-        )
+        try:
+            # Submit to official endpoint: /v1/shr-med/bundle
+            response = requests.post(
+                f"{self.api_base_url}{self.claims_submit_endpoint}",
+                json=bundle,
+                files=files or None,
+                headers=headers,
+                timeout=60,
+            )
+        finally:
+            for opened_file in opened_files:
+                with contextlib.suppress(Exception):  # noqa: BLE001
+                    opened_file.close()
 
         # Handle auth errors
         if response.status_code == 401:

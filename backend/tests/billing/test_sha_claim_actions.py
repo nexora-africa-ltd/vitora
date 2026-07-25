@@ -121,8 +121,8 @@ class TestClaimResubmit:
         response = authenticated_client.post(f"/api/billing/claims/{sha_claim.id}/resubmit/")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_resubmit_returns_queued_response(self, authenticated_client, sha_claim):
-        """Should return queue info when submission is queued."""
+    def test_resubmit_returns_submission_response(self, authenticated_client, sha_claim):
+        """Should return submitted response payload from service."""
         from hmis.apps.billing.models import SHAClaim
 
         sha_claim.status = SHAClaim.ClaimStatus.REJECTED
@@ -131,16 +131,11 @@ class TestClaimResubmit:
         with patch(
             "hmis.apps.billing.services.sha_claims.SHAClaimsService.submit_claim"
         ) as mock_submit:
-            mock_submit.return_value = {
-                "status": "queued",
-                "message": "Claim queued for submission",
-                "queue_entry_id": 42,
-            }
+            mock_submit.return_value = {"status": "submitted"}
             response = authenticated_client.post(f"/api/billing/claims/{sha_claim.id}/resubmit/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data["status"] == "queued"
-        assert response.data["queue_entry_id"] == 42
+        assert response.data["status"] == "pending_submission"
 
 
 class TestClaimCancel:

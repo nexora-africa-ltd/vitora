@@ -857,6 +857,60 @@ class TestSHAClaimValidateForSubmission:
         assert is_valid is False
         assert any("attachment" in error.lower() for error in errors)
 
+    def test_validate_for_submission_outpatient_capitation_allows_missing_invoice(
+        self, valid_claim_data, sha_tariff, test_user
+    ):
+        """Outpatient PHC capitation should not require invoice attachment."""
+        from hmis.apps.billing.models import (
+            SHAClaim,
+            SHAClaimAttachment,
+            SHAClaimIntervention,
+            SHAClaimItem,
+        )
+
+        claim = SHAClaim.objects.create(
+            **{
+                **valid_claim_data,
+                "claim_flow": SHAClaim.ClaimFlow.PHC,
+                "claim_type": SHAClaim.ClaimType.OUTPATIENT,
+            }
+        )
+
+        SHAClaimItem.objects.create(
+            claim=claim,
+            tariff=sha_tariff,
+            description="Capitation consult",
+            quantity=1,
+            unit_price=Decimal("500.00"),
+            claimed_amount=Decimal("500.00"),
+        )
+        SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-12-001",
+            intervention_name="Primary capitation consult",
+            payment_mechanism=SHAClaimIntervention.PaymentMechanism.CAPITATION,
+            access_point=SHAClaimIntervention.AccessPoint.OP,
+        )
+
+        SHAClaimAttachment.objects.create(
+            claim=claim,
+            attachment_type="clinical_notes",
+            name="Clinical Notes",
+            file=SimpleUploadedFile("notes.pdf", b"%PDF-1.4 test", content_type="application/pdf"),
+            file_size=1024,
+            mime_type="application/pdf",
+            checksum="a" * 64,
+            original_filename="notes.pdf",
+            uploaded_by=test_user,
+        )
+        claim.calculate_claimed_amount()
+
+        is_valid, errors = claim.validate_for_submission()
+
+        assert claim.requires_invoice_attachment is False
+        assert is_valid is True
+        assert not any("Missing required attachment: invoice" in err for err in errors)
+
     # =========================================================================
     # Test 17: validate_for_submission() - zero amount fails
     # =========================================================================
