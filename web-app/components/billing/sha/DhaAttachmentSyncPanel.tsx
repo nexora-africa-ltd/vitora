@@ -31,6 +31,8 @@ export function DhaAttachmentSyncPanel({
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: true,
   });
 
   const matched = syncStatus?.matched ?? 0;
@@ -69,6 +71,10 @@ export function DhaAttachmentSyncPanel({
       toast.error(message);
     },
   });
+
+  if (synced && total > 0) {
+    return null;
+  }
 
   return (
     <Card>

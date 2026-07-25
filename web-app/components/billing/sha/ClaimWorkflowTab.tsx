@@ -114,6 +114,8 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
     queryFn: () => shaApi.validateClaimSubmission(claim.id),
     enabled: !isTerminal,
     staleTime: 0,
+    refetchInterval: !isTerminal ? 60_000 : false,
+    refetchIntervalInBackground: true,
   });
 
   const coreAttachmentErrors =

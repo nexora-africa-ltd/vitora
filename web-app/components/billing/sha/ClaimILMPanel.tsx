@@ -58,6 +58,11 @@ import {
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  DiagnosisCodeInput,
+  emptyDiagnosisCodeValue,
+  type DiagnosisCodeValue,
+} from '@/components/shared/diagnosis-code-input';
 import { shaApi } from '@/lib/api/sha';
 import type {
   IlmApplyPreviewLinesResponse,
@@ -193,6 +198,12 @@ interface ClinicianInfo {
   license_number?: string | null;
   licensing_body?: string | null;
   national_id?: string | null;
+}
+
+function diagnosisCodeForPayload(value: DiagnosisCodeValue): string {
+  if (value.icd11Code) return value.icd11Code.trim();
+  if (value.icd10Display) return value.icd10Display.split(' - ')[0]?.trim() || '';
+  return '';
 }
 
 function derivePractitionerFields(
@@ -493,6 +504,8 @@ export function ClaimILMPanel({
       }
     },
     staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: true,
   });
 
   const tokenStatus = useMemo(() => {
@@ -678,8 +691,18 @@ export function ClaimILMPanel({
   const [newInterventionCode, setNewInterventionCode] = useState('');
   const [addInterventionInlineError, setAddInterventionInlineError] = useState<string | null>(null);
   const [addDiagnosisOpen, setAddDiagnosisOpen] = useState(false);
-  const [newIcdCode, setNewIcdCode] = useState('');
+  const [newDiagnosisCodeInput, setNewDiagnosisCodeInput] = useState<DiagnosisCodeValue>(
+    emptyDiagnosisCodeValue(),
+  );
   const [diagnosisAnchorCode, setDiagnosisAnchorCode] = useState('');
+  const selectedNewDiagnosisCode = useMemo(
+    () => diagnosisCodeForPayload(newDiagnosisCodeInput),
+    [newDiagnosisCodeInput],
+  );
+  const diagnosisUsesIcd10Fallback = useMemo(
+    () => !newDiagnosisCodeInput.icd11Code && !!newDiagnosisCodeInput.icd10Display,
+    [newDiagnosisCodeInput.icd10Display, newDiagnosisCodeInput.icd11Code],
+  );
 
   const {
     data: preSubmitValidation,
@@ -690,6 +713,8 @@ export function ClaimILMPanel({
     queryFn: () => shaApi.validateClaimSubmission(claimId),
     enabled: !!claimId && visitStarted,
     staleTime: 0,
+    refetchInterval: visitStarted ? 60_000 : false,
+    refetchIntervalInBackground: true,
   });
 
   const {
@@ -701,6 +726,8 @@ export function ClaimILMPanel({
     queryFn: () => shaApi.ilmAttachmentSyncStatus(claimId),
     enabled: !!claimId && visitStarted,
     staleTime: 0,
+    refetchInterval: visitStarted ? 60_000 : false,
+    refetchIntervalInBackground: true,
   });
 
   const attachmentSyncMatched = attachmentSyncStatus?.matched ?? 0;
@@ -1138,18 +1165,53 @@ export function ClaimILMPanel({
   }
 
   async function addDiagnosis() {
-    if (!newIcdCode || !diagnosisAnchorCode) return;
+    if (!selectedNewDiagnosisCode || !diagnosisAnchorCode) return;
+    if (diagnosisUsesIcd10Fallback) {
+      setError('DHA diagnosis endpoint requires ICD-11. Select an ICD-11 diagnosis code before adding.');
+      return;
+    }
     await run('addDiagnosis', () =>
       shaApi.ilmAddDiagnosis(claimId, {
-        icd_code: newIcdCode,
+        icd_code: selectedNewDiagnosisCode,
         intervention_code: diagnosisAnchorCode,
         ...practitionerFields,
       }),
     );
     setAddDiagnosisOpen(false);
-    setNewIcdCode('');
+    setNewDiagnosisCodeInput(emptyDiagnosisCodeValue());
     setDiagnosisAnchorCode('');
   }
+
+  const refreshPreviewSilently = useCallback(async () => {
+    if (!visitStarted || busy !== null || !previewResult?.payload) return;
+    try {
+      const result = await shaApi.ilmPreview(claimId);
+      setPreviewResult(result);
+      setPreviewDhaInvoiceNumber(extractPreviewInvoiceNumber(result.payload));
+      if (result.payload && typeof result.payload === 'object' && !Array.isArray(result.payload)) {
+        const payload = result.payload as Record<string, unknown>;
+        const authorizationCode = String(payload.authorization_code || '').trim();
+        const memberNumber = String(payload.member_number || '').trim();
+        const dhaInvoiceNumber = extractPreviewInvoiceNumber(result.payload);
+        onPreviewContext?.({
+          authorizationCode: authorizationCode || undefined,
+          memberNumber: memberNumber || undefined,
+          dhaInvoiceNumber: dhaInvoiceNumber || undefined,
+        });
+      }
+      void refetchPreSubmitValidation();
+    } catch {
+      // Non-blocking background refresh
+    }
+  }, [busy, claimId, onPreviewContext, previewResult?.payload, refetchPreSubmitValidation, visitStarted]);
+
+  useEffect(() => {
+    if (!visitStarted || !previewResult?.payload) return;
+    const timer = setInterval(() => {
+      void refreshPreviewSilently();
+    }, 20 * 60_000);
+    return () => clearInterval(timer);
+  }, [previewResult?.payload, refreshPreviewSilently, visitStarted]);
 
   async function cancelClaim() {
     await run('close', () =>
@@ -2014,15 +2076,21 @@ export function ClaimILMPanel({
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label htmlFor="new-icd" className="text-xs">
-                ICD-10 code
-              </Label>
-              <Input
-                id="new-icd"
-                value={newIcdCode}
-                onChange={(e) => setNewIcdCode(e.target.value.toUpperCase())}
-                placeholder="e.g. J18.9"
+              <DiagnosisCodeInput
+                label="Diagnosis code"
+                value={newDiagnosisCodeInput}
+                onChange={setNewDiagnosisCodeInput}
+                showSNOMED={false}
+                defaultToICD11={true}
               />
+              {diagnosisUsesIcd10Fallback && (
+                <Alert variant="destructive">
+                  <AlertTitle>ICD-11 required</AlertTitle>
+                  <AlertDescription>
+                    DHA diagnosis submission expects ICD-11. Pick an ICD-11 diagnosis before adding.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
             <div className="space-y-1">
               <Label htmlFor="anchor-intervention" className="text-xs">
@@ -2050,10 +2118,10 @@ export function ClaimILMPanel({
             >
               Cancel
             </Button>
-            <Button
-              onClick={addDiagnosis}
-              disabled={!newIcdCode || !diagnosisAnchorCode || busy !== null}
-            >
+              <Button
+                onClick={addDiagnosis}
+                disabled={!selectedNewDiagnosisCode || !diagnosisAnchorCode || diagnosisUsesIcd10Fallback || busy !== null}
+              >
               {busy === 'addDiagnosis' && (
                 <Loader2 className="mr-2 h-3 w-3 animate-spin" />
               )}
