@@ -912,6 +912,11 @@ export default function TriageAssessmentPage() {
           }}
           painScore={watch('pain_score')}
           mentalStatus={watch('mental_status')}
+          gcsTotal={
+            watch('gcs_eye') != null && watch('gcs_verbal') != null && watch('gcs_motor') != null
+              ? Number(watch('gcs_eye')) + Number(watch('gcs_verbal')) + Number(watch('gcs_motor'))
+              : null
+          }
           mobility={watch('mobility')}
         />
 

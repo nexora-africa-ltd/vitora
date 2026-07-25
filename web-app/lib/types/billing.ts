@@ -348,6 +348,7 @@ export interface FacilityBillingConfigCreateData {
   sha_contract_end?: string;
   sha_service_level?: string;
   sha_max_claim_amount?: string;
+  hide_capitation_interventions?: boolean;
   fee_schedule_name?: string;
   fee_schedule_override?: Record<string, unknown>;
   mpesa_paybill?: string;

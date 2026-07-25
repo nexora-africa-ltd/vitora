@@ -342,6 +342,14 @@ export interface AIICUPredictRequest {
   prediction_type?: AIICUPredictionType;
 }
 
+/** Request body for POST /api/ai/predict/icu/qsofa-lite/ */
+export interface AIICUQSOFALiteRequest {
+  respiratory_rate: number;
+  systolic_bp: number;
+  gcs_total?: number | null;
+  altered_mentation?: boolean | null;
+}
+
 /** SOFA score component breakdown */
 export interface AISOFAScoreBreakdown {
   respiratory?: number | null;

@@ -303,8 +303,8 @@ export function ICURiskAssessmentPanel({
   vitals,
   labs,
   gcs,
-  onVasopressors = false,
-  onMechanicalVentilation = false,
+  onVasopressors,
+  onMechanicalVentilation,
   urineOutputMlDay,
   admissionDiagnosis,
   lengthOfStayDays,
@@ -397,10 +397,8 @@ export function ICURiskAssessmentPanel({
   // Don't render if AI is disabled
   if (!aiEnabled) return null;
 
-  // Vitals the frontend must supply (cannot be auto-defaulted server-side)
-  const REQUIRED_VITALS = ['heart_rate', 'systolic_bp', 'diastolic_bp', 'respiratory_rate', 'spo2', 'temperature'] as const;
-  // Labs that improve accuracy — missing ones get normal defaults server-side
-  const ADVISORY_LABS = ['creatinine', 'wbc', 'platelets', 'lactate'] as const;
+  // Advisory inputs that improve prediction quality but are not strict blockers.
+  const ADVISORY_FIELDS = ['wbc', 'lactate', 'urine_output_ml_day'] as const;
 
   const FIELD_LABELS: Record<string, string> = {
     heart_rate: 'Heart Rate',
@@ -413,13 +411,47 @@ export function ICURiskAssessmentPanel({
     wbc: 'WBC',
     platelets: 'Platelets',
     lactate: 'Lactate',
+    bilirubin: 'Bilirubin Total',
+    gcs: 'GCS Total',
+    urine_output_ml_day: 'Urine Output (24h)',
+    on_vasopressors: 'Vasopressor Status',
+    pao2_fio2_ratio_or_ventilation_status: 'PF Ratio or Ventilation Status',
   };
 
-  const missingVitals = REQUIRED_VITALS.filter((f) => vitals?.[f as keyof typeof vitals] == null);
-  const missingLabs = ADVISORY_LABS.filter((f) => labs?.[f as keyof typeof labs] == null);
+  const missingRequired: string[] = [];
+  if (vitals?.respiratory_rate == null) missingRequired.push('respiratory_rate');
+  if (vitals?.systolic_bp == null) missingRequired.push('systolic_bp');
+  if (vitals?.diastolic_bp == null) missingRequired.push('diastolic_bp');
+  if (labs?.platelets == null) missingRequired.push('platelets');
+  if (labs?.bilirubin == null) missingRequired.push('bilirubin');
+  if (labs?.creatinine == null) missingRequired.push('creatinine');
+  if (gcs == null) missingRequired.push('gcs');
 
-  // Only vitals block the assessment; labs are advisory
-  const hasEnoughData = missingVitals.length === 0;
+  const hasRespiratoryContext =
+    labs?.pao2_fio2_ratio != null || onMechanicalVentilation !== undefined;
+  const hasPressorContext = onVasopressors !== undefined;
+
+  if (!hasRespiratoryContext) {
+    missingRequired.push('pao2_fio2_ratio_or_ventilation_status');
+  }
+  if (!hasPressorContext) {
+    missingRequired.push('on_vasopressors');
+  }
+
+  const missingAdvisory = ADVISORY_FIELDS.filter((field) => {
+    switch (field) {
+      case 'wbc':
+        return labs?.wbc == null;
+      case 'lactate':
+        return labs?.lactate == null;
+      case 'urine_output_ml_day':
+        return urineOutputMlDay == null;
+      default:
+        return false;
+    }
+  });
+
+  const hasEnoughData = missingRequired.length === 0;
 
   const handlePredict = (type?: AIICUPredictionType) => {
     const useType = type ?? predictionType;
@@ -457,8 +489,10 @@ export function ICURiskAssessmentPanel({
     // Clinical context
     if (gcs != null) currentPatientData.gcs = gcs;
     if (urineOutputMlDay != null) currentPatientData.urine_output_ml_day = urineOutputMlDay;
-    if (onVasopressors) currentPatientData.on_vasopressors = true;
-    if (onMechanicalVentilation) currentPatientData.on_mechanical_ventilation = true;
+    if (onVasopressors != null) currentPatientData.on_vasopressors = onVasopressors;
+    if (onMechanicalVentilation != null) {
+      currentPatientData.on_mechanical_ventilation = onMechanicalVentilation;
+    }
     if (admissionDiagnosis?.trim()) currentPatientData.admission_diagnosis = admissionDiagnosis;
     if (lengthOfStayDays != null) currentPatientData.length_of_stay_days = lengthOfStayDays;
 
@@ -519,19 +553,19 @@ export function ICURiskAssessmentPanel({
               {!hasEnoughData
                 ? (
                   <>
-                    Record the following vitals before running ICU risk assessment:{' '}
+                    Complete minimum practical SOFA fields before running ICU risk assessment:{' '}
                     <span className="font-medium text-foreground">
-                      {missingVitals.map((f) => FIELD_LABELS[f]).join(', ')}
+                      {missingRequired.map((f) => FIELD_LABELS[f]).join(', ')}
                     </span>
                   </>
                 )
                 : 'Run AI analysis to assess ICU risk, compute SOFA/qSOFA scores, and identify escalation needs.'}
             </p>
-            {hasEnoughData && missingLabs.length > 0 && (
+            {hasEnoughData && missingAdvisory.length > 0 && (
               <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
                 <Info className="inline h-3 w-3 mr-1 -mt-0.5" />
-                Accuracy improves with lab results: {missingLabs.map((f) => FIELD_LABELS[f]).join(', ')}.
-                Normal values will be assumed for missing labs.
+                Accuracy improves with additional context: {missingAdvisory.map((f) => FIELD_LABELS[f]).join(', ')}.
+                Some missing labs may be assumed as normal defaults by the backend.
               </p>
             )}
             <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">

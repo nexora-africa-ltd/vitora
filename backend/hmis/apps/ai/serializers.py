@@ -885,12 +885,12 @@ class ICUPredictPatientDataSerializer(serializers.Serializer):
     )
     on_vasopressors = serializers.BooleanField(
         required=False,
-        default=False,
+        allow_null=True,
         help_text="Whether patient is on vasopressor support.",
     )
     on_mechanical_ventilation = serializers.BooleanField(
         required=False,
-        default=False,
+        allow_null=True,
         help_text="Whether patient is on mechanical ventilation.",
     )
     admission_diagnosis = serializers.CharField(
@@ -910,14 +910,15 @@ class ICUPredictPatientDataSerializer(serializers.Serializer):
 class ICUPredictRequestSerializer(serializers.Serializer):
     """Request body for POST /api/ai/predict/icu/."""
 
-    # Vitals that the frontend MUST supply (cannot be auto-enriched).
-    ICU_REQUIRED_VITALS = (
-        "heart_rate",
+    # Minimum practical fields for reliable SOFA/qSOFA inference in TibaBot.
+    ICU_REQUIRED_MINIMUM_FIELDS = (
+        "respiratory_rate",
         "systolic_bp",
         "diastolic_bp",
-        "respiratory_rate",
-        "spo2",
-        "temperature",
+        "platelets",
+        "bilirubin",
+        "creatinine",
+        "gcs",
     )
 
     admission_id = serializers.IntegerField(
@@ -939,16 +940,50 @@ class ICUPredictRequestSerializer(serializers.Serializer):
     def validate(self, attrs):  # type: ignore[override]
         attrs = super().validate(attrs)
         pd = attrs.get("patient_data", {})
-        missing_vitals = [f for f in self.ICU_REQUIRED_VITALS if pd.get(f) is None]
-        if missing_vitals:
+        missing_fields = [f for f in self.ICU_REQUIRED_MINIMUM_FIELDS if pd.get(f) is None]
+
+        respiratory_context_ok = (
+            pd.get("pao2_fio2_ratio") is not None or pd.get("on_mechanical_ventilation") is not None
+        )
+        if not respiratory_context_ok:
+            missing_fields.append("pao2_fio2_ratio_or_ventilation_status")
+
+        cardiovascular_context_ok = pd.get("on_vasopressors") is not None
+        if not cardiovascular_context_ok:
+            missing_fields.append("on_vasopressors")
+
+        if missing_fields:
             raise serializers.ValidationError(
                 {
                     "patient_data": (
-                        f"ICU risk prediction requires the following vitals: "
-                        f"{', '.join(missing_vitals)}. Please record them "
+                        f"ICU risk prediction requires minimum practical SOFA fields: "
+                        f"{', '.join(missing_fields)}. Please record them "
                         f"before running the assessment."
                     ),
-                    "missing_fields": missing_vitals,
+                    "missing_fields": missing_fields,
+                }
+            )
+        return attrs
+
+
+class ICUQSOFALiteRequestSerializer(serializers.Serializer):
+    """Request body for POST /api/ai/predict/icu/qsofa-lite/."""
+
+    respiratory_rate = serializers.FloatField(min_value=0)
+    systolic_bp = serializers.FloatField(min_value=0)
+    gcs_total = serializers.IntegerField(required=False, allow_null=True, min_value=3, max_value=15)
+    altered_mentation = serializers.BooleanField(required=False, allow_null=True)
+
+    def validate(self, attrs):  # type: ignore[override]
+        attrs = super().validate(attrs)
+        gcs_total = attrs.get("gcs_total")
+        altered_mentation = attrs.get("altered_mentation")
+        if gcs_total is None and altered_mentation is None:
+            raise serializers.ValidationError(
+                {
+                    "non_field_errors": [
+                        "Provide either gcs_total or altered_mentation for qSOFA-lite assessment."
+                    ]
                 }
             )
         return attrs

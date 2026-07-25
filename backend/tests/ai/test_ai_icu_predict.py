@@ -265,7 +265,7 @@ class TestICUPredictValidation:
         self,
         authenticated_client,
     ):
-        """Should reject payload missing required vitals."""
+        """Should reject payload missing minimum practical SOFA fields."""
         response = authenticated_client.post(
             "/api/ai/predict/icu/",
             {"patient_data": {"age": 65, "gender": "M"}},
@@ -275,12 +275,12 @@ class TestICUPredictValidation:
         assert "missing_fields" in response.data
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_accepts_vitals_only_defaults_labs(
+    def test_accepts_minimum_practical_fields_defaults_non_required_labs(
         self,
         authenticated_client,
         tibabot_icu_predict_response,
     ):
-        """Should accept payload with vitals but no labs — labs get normal defaults."""
+        """Should accept payload with minimum practical SOFA fields."""
         with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.predict_icu.return_value = tibabot_icu_predict_response
@@ -292,23 +292,21 @@ class TestICUPredictValidation:
                     "patient_data": {
                         "age": 65,
                         "gender": "M",
-                        "temperature": 38.0,
-                        "heart_rate": 100,
                         "systolic_bp": 110,
                         "diastolic_bp": 70,
                         "respiratory_rate": 20,
-                        "spo2": 95,
+                        "platelets": 150,
+                        "bilirubin": 1.2,
+                        "creatinine": 1.1,
+                        "gcs": 14,
+                        "on_vasopressors": False,
+                        "on_mechanical_ventilation": False,
                     },
                 },
                 format="json",
             )
             assert response.status_code == status.HTTP_200_OK
-            assert set(response.data["defaulted_labs"]) == {
-                "creatinine",
-                "wbc",
-                "platelets",
-                "lactate",
-            }
+            assert set(response.data["defaulted_labs"]) == {"wbc", "lactate"}
 
     @override_settings(TIBABOT_ENABLED=True)
     def test_accepts_payload_with_required_fields(
@@ -667,3 +665,73 @@ class TestICUPredictSanitization:
             sent_payload = call_args[0][0]
             sent_diagnosis = sent_payload["patient_data"]["admission_diagnosis"]
             assert "0712345678" not in sent_diagnosis
+
+
+@pytest.mark.django_db
+class TestICUQSOFALite:
+    """Tests for POST /api/ai/predict/icu/qsofa-lite/."""
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_requires_mentation_source(self, authenticated_client):
+        response = authenticated_client.post(
+            "/api/ai/predict/icu/qsofa-lite/",
+            {
+                "respiratory_rate": 24,
+                "systolic_bp": 98,
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_returns_qsofa_from_gcs(self, authenticated_client):
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.predict_icu_qsofa_lite.return_value = {
+                "qsofa_score": {
+                    "total": 3,
+                    "altered_mentation": True,
+                    "respiratory_rate_high": True,
+                    "systolic_bp_low": True,
+                }
+            }
+            mock_get_client.return_value = mock_client
+
+            response = authenticated_client.post(
+                "/api/ai/predict/icu/qsofa-lite/",
+                {
+                    "respiratory_rate": 28,
+                    "systolic_bp": 92,
+                    "gcs_total": 13,
+                },
+                format="json",
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["qsofa_score"] == 3
+        assert "Altered mentation (GCS < 15)" in response.data["qsofa_criteria"]
+        assert response.data["risk_level"] == "critical"
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_accepts_boolean_mentation(self, authenticated_client):
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.predict_icu_qsofa_lite.return_value = {
+                "qsofa_score": 2,
+                "qsofa_criteria": ["Respiratory rate >= 22", "Systolic BP <= 100"],
+            }
+            mock_get_client.return_value = mock_client
+
+            response = authenticated_client.post(
+                "/api/ai/predict/icu/qsofa-lite/",
+                {
+                    "respiratory_rate": 24,
+                    "systolic_bp": 98,
+                    "altered_mentation": False,
+                },
+                format="json",
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["qsofa_score"] == 2
+        assert response.data["qsofa_criteria"]

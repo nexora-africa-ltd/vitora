@@ -242,6 +242,7 @@ def search_local_interventions(
     limit: int = 50,
     offset: int = 0,
     payment_mechanism: str | None = None,
+    exclude_payment_mechanisms: list[str] | None = None,
     active_only: bool = False,
     access_point: str | None = None,
     patient_gender: str | None = None,
@@ -257,6 +258,8 @@ def search_local_interventions(
         limit / offset: Pagination.
         payment_mechanism: Filter by DHA payment mechanism
             (e.g. "FEE FOR SERVICE", "CAPITATION", "CASE BASED"). Case-insensitive.
+        exclude_payment_mechanisms: Exclude these DHA payment mechanisms.
+            Case-insensitive. Applied before ``payment_mechanism`` filter.
         active_only: If True, exclude retired or inactive interventions.
         access_point: Filter by access point. Accepts "OP" (matches "OP" and
             "OP and IP") or "IP" (matches "IP" and "OP and IP"). Case-insensitive.
@@ -274,6 +277,11 @@ def search_local_interventions(
 
     query_lower = query.lower().strip() if query else ""
     pm_lower = payment_mechanism.lower().strip() if payment_mechanism else None
+    excluded_pm = {
+        mechanism.lower().strip()
+        for mechanism in (exclude_payment_mechanisms or [])
+        if mechanism and mechanism.strip()
+    }
     ap_upper = access_point.upper().strip() if access_point else None
     gender_upper = patient_gender.upper().strip() if patient_gender else None
     matched = []
@@ -343,8 +351,14 @@ def search_local_interventions(
         # Comma-separated values: "FEE FOR SERVICE,FIXED FEE FOR SERVICE" matches either.
         if pm_lower:
             record_pm = str(extras.get("payment_mechanism", "")).lower()
+            if excluded_pm and record_pm in excluded_pm:
+                continue
             allowed = [p.strip() for p in pm_lower.split(",")]
             if record_pm not in allowed:
+                continue
+        elif excluded_pm:
+            record_pm = str(extras.get("payment_mechanism", "")).lower()
+            if record_pm in excluded_pm:
                 continue
 
         # Filter by access point (OP matches "OP" and "OP and IP", etc.)
