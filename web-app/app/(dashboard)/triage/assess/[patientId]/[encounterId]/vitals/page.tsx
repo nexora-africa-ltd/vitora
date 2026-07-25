@@ -292,6 +292,7 @@ export default function TriageVitalsPage() {
     refresh: refreshProactiveInsights,
     error: proactiveError,
     noInsightsFound: proactiveNoInsights,
+    loadedFromCache: proactiveLoadedFromCache,
   } = useProactiveInsights(proactivePatientCtx, proactiveEncounterCtx, { includeLLM: false, cacheKey: `triage_${encounterId}` });
 
   // Real-time vital evaluation for inline field color-coding (age-adjusted)
@@ -383,6 +384,7 @@ export default function TriageVitalsPage() {
         isLoading={proactiveLoading}
         error={proactiveError}
         noInsightsFound={proactiveNoInsights}
+        loadedFromCache={proactiveLoadedFromCache}
       />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

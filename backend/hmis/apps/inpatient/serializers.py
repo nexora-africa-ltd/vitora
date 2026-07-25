@@ -531,6 +531,23 @@ class AdmissionSerializer(serializers.ModelSerializer):
         )
 
 
+class AdmissionICUReadinessSerializer(serializers.Serializer):
+    """Normalized ICU predictor readiness payload for an admission."""
+
+    admission_id = serializers.IntegerField()
+    can_run_predict = serializers.BooleanField()
+    missing_required = serializers.ListField(child=serializers.CharField())
+    missing_advisory = serializers.ListField(child=serializers.CharField())
+    vitals = serializers.DictField(child=serializers.FloatField(allow_null=True), required=False)
+    labs = serializers.DictField(child=serializers.FloatField(allow_null=True), required=False)
+    gcs = serializers.IntegerField(allow_null=True, required=False)
+    on_vasopressors = serializers.BooleanField(allow_null=True, required=False)
+    vasopressor_dose_mcg_kg_min = serializers.FloatField(allow_null=True, required=False)
+    on_mechanical_ventilation = serializers.BooleanField(allow_null=True, required=False)
+    urine_output_ml_day = serializers.IntegerField(allow_null=True, required=False)
+    field_sources = serializers.DictField(child=serializers.CharField(), required=False)
+
+
 class DischargeDiagnosisSerializer(serializers.ModelSerializer):
     """Serializer for individual discharge diagnosis."""
 
@@ -1414,6 +1431,16 @@ class WardRoundSerializer(serializers.ModelSerializer):
             "objective",
             "assessment",
             "plan",
+            "temperature",
+            "pulse",
+            "blood_pressure",
+            "respiratory_rate",
+            "spo2",
+            "gcs_total",
+            "on_vasopressors",
+            "vasopressor_dose_mcg_kg_min",
+            "on_mechanical_ventilation",
+            "urine_output_ml_24h",
             "maternity_continuity_action",
             "maternity_continuity_action_display",
             "maternity_continuity_notes",
@@ -1448,6 +1475,18 @@ class WardRoundSerializer(serializers.ModelSerializer):
 
         if errors:
             raise serializers.ValidationError(errors)
+
+        if (
+            attrs.get("vasopressor_dose_mcg_kg_min") is not None
+            and attrs.get("on_vasopressors") is False
+        ):
+            raise serializers.ValidationError(
+                {
+                    "vasopressor_dose_mcg_kg_min": (
+                        "Dose can only be recorded when on_vasopressors is true or unknown."
+                    )
+                }
+            )
 
         return attrs
 

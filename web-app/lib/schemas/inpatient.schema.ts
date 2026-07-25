@@ -502,11 +502,11 @@ export type InterFacilityTransferSchemaType = z.infer<typeof InterFacilityTransf
 // =============================================================================
 
 export const WardRoundVitalSignsSchema = z.object({
-  temperature: z.number().optional(),
-  pulse: z.number().optional(),
+  temperature: z.number().nullable().optional(),
+  pulse: z.number().nullable().optional(),
   blood_pressure: z.string().optional(),
-  respiratory_rate: z.number().optional(),
-  spo2: z.number().optional(),
+  respiratory_rate: z.number().nullable().optional(),
+  spo2: z.number().nullable().optional(),
 });
 
 export const WardRoundSchema = z.object({
@@ -535,11 +535,16 @@ export const WardRoundSchema = z.object({
   clinical_notes: z.string().optional(),
   // Vital signs (can be nested or individual)
   vital_signs: WardRoundVitalSignsSchema.optional(),
-  temperature: z.number().optional(),
-  pulse: z.number().optional(),
+  temperature: z.number().nullable().optional(),
+  pulse: z.number().nullable().optional(),
   blood_pressure: z.string().optional(),
-  respiratory_rate: z.number().optional(),
-  spo2: z.number().optional(),
+  respiratory_rate: z.number().nullable().optional(),
+  spo2: z.number().nullable().optional(),
+  gcs_total: z.number().nullable().optional(),
+  on_vasopressors: z.boolean().nullable().optional(),
+  vasopressor_dose_mcg_kg_min: z.number().nullable().optional(),
+  on_mechanical_ventilation: z.boolean().nullable().optional(),
+  urine_output_ml_24h: z.number().nullable().optional(),
   // Additional fields
   diet_orders: z.string().optional(),
   activity_level: z.string().optional(),
@@ -552,6 +557,37 @@ export const WardRoundSchema = z.object({
 });
 
 export type WardRoundSchemaType = z.infer<typeof WardRoundSchema>;
+
+export const AdmissionICUReadinessSchema = z.object({
+  admission_id: z.number(),
+  can_run_predict: z.boolean(),
+  missing_required: z.array(z.string()),
+  missing_advisory: z.array(z.string()),
+  vitals: z.object({
+    temperature: z.number().nullable().optional(),
+    heart_rate: z.number().nullable().optional(),
+    systolic_bp: z.number().nullable().optional(),
+    diastolic_bp: z.number().nullable().optional(),
+    respiratory_rate: z.number().nullable().optional(),
+    spo2: z.number().nullable().optional(),
+  }).optional(),
+  labs: z.object({
+    wbc: z.number().nullable().optional(),
+    platelets: z.number().nullable().optional(),
+    creatinine: z.number().nullable().optional(),
+    bilirubin: z.number().nullable().optional(),
+    lactate: z.number().nullable().optional(),
+    pao2_fio2_ratio: z.number().nullable().optional(),
+  }).optional(),
+  gcs: z.number().nullable().optional(),
+  on_vasopressors: z.boolean().nullable().optional(),
+  vasopressor_dose_mcg_kg_min: z.number().nullable().optional(),
+  on_mechanical_ventilation: z.boolean().nullable().optional(),
+  urine_output_ml_day: z.number().nullable().optional(),
+  field_sources: z.record(z.string()).optional(),
+});
+
+export type AdmissionICUReadinessSchemaType = z.infer<typeof AdmissionICUReadinessSchema>;
 
 // =============================================================================
 // REVIEW REQUEST SCHEMAS

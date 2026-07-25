@@ -70,6 +70,8 @@ export interface UseProactiveInsightsReturn {
   error: string | null;
   /** True when generation completed but no insights were found */
   noInsightsFound: boolean;
+  /** True when current insights were rehydrated from session cache */
+  loadedFromCache: boolean;
 }
 
 // =============================================================================
@@ -83,7 +85,16 @@ interface CachedInsights {
   insights: ProactiveInsight[];
   tierCounts: ProactiveInsightTierCounts;
   contextHash: string;
+  inputSignature?: string;
   timestamp: number;
+}
+
+function buildInputSignature(request: ProactiveInsightsRequest): string {
+  return JSON.stringify({
+    patient_context: request.patient_context ?? null,
+    encounter_context: request.encounter_context ?? null,
+    include_llm: request.include_llm ?? true,
+  });
 }
 
 function getCachedInsights(cacheKey: string | number | undefined): CachedInsights | null {
@@ -107,10 +118,17 @@ function setCachedInsights(
   insights: ProactiveInsight[],
   tierCounts: ProactiveInsightTierCounts,
   contextHash: string,
+  inputSignature: string,
 ): void {
   if (!cacheKey) return;
   try {
-    const entry: CachedInsights = { insights, tierCounts, contextHash, timestamp: Date.now() };
+    const entry: CachedInsights = {
+      insights,
+      tierCounts,
+      contextHash,
+      inputSignature,
+      timestamp: Date.now(),
+    };
     sessionStorage.setItem(`${CACHE_PREFIX}${cacheKey}`, JSON.stringify(entry));
   } catch {
     // Quota exceeded — ignore
@@ -133,11 +151,14 @@ export function useProactiveInsights(
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [noInsightsFound, setNoInsightsFound] = useState(false);
+  const [loadedFromCache, setLoadedFromCache] = useState(false);
 
   // Refs for debouncing and rate limiting
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCallRef = useRef<number>(0);
   const contextHashRef = useRef<string>('');
+  const inputSignatureRef = useRef<string>('');
+  const pendingInputSignatureRef = useRef<string>('');
   const userInitiatedRef = useRef(false);
   const cacheRehydratedRef = useRef(false);
 
@@ -150,6 +171,8 @@ export function useProactiveInsights(
       setInsights(cached.insights);
       setTierCounts(cached.tierCounts);
       contextHashRef.current = cached.contextHash;
+      inputSignatureRef.current = cached.inputSignature ?? '';
+      setLoadedFromCache(true);
       // Mark last call time so debounced auto-trigger doesn't immediately fire
       lastCallRef.current = cached.timestamp;
     }
@@ -162,13 +185,21 @@ export function useProactiveInsights(
     onSuccess: (response: ProactiveInsightsResponse) => {
       // Update context hash for deduplication
       contextHashRef.current = response.context_hash;
+      inputSignatureRef.current = pendingInputSignatureRef.current;
+      setLoadedFromCache(false);
 
       if (response.total > 0) {
         setInsights(response.insights);
         setTierCounts(response.tier_counts);
         setNoInsightsFound(false);
         // Persist to sessionStorage
-        setCachedInsights(cacheKey, response.insights, response.tier_counts, response.context_hash);
+        setCachedInsights(
+          cacheKey,
+          response.insights,
+          response.tier_counts,
+          response.context_hash,
+          pendingInputSignatureRef.current
+        );
       } else if (userInitiatedRef.current) {
         // User explicitly clicked Generate but no insights found
         setInsights([]);
@@ -245,9 +276,22 @@ export function useProactiveInsights(
     const request = buildRequest();
     if (!request) return;
 
+    const inputSignature = buildInputSignature(request);
+
+    // Persist insights through tab switches/routes: when effective context has not
+    // changed, do not call TibaBot again unless user explicitly requests refresh.
+    if (
+      !bypassRateLimit &&
+      inputSignatureRef.current === inputSignature &&
+      (insights.length > 0 || noInsightsFound)
+    ) {
+      return;
+    }
+
     lastCallRef.current = now;
+    pendingInputSignatureRef.current = inputSignature;
     mutation.mutate(request);
-  }, [enabled, buildRequest, mutation]);
+  }, [enabled, buildRequest, mutation, insights.length, noInsightsFound]);
 
   // Debounced trigger on context changes
   useEffect(() => {
@@ -283,8 +327,10 @@ export function useProactiveInsights(
   // Manual refresh (bypasses debounce and clears dismissed state)
   const refresh = useCallback(() => {
     contextHashRef.current = ''; // Clear hash to force regeneration
+    inputSignatureRef.current = ''; // Force new call even if context is unchanged
     setDismissedIds(new Set()); // Reset dismissed so results show again
     setNoInsightsFound(false); // Clear empty state
+    setLoadedFromCache(false);
     userInitiatedRef.current = true; // Track that this was user-initiated
     triggerInsights(true); // Bypass rate limit for user-initiated action
   }, [triggerInsights]);
@@ -302,5 +348,6 @@ export function useProactiveInsights(
     refresh,
     error,
     noInsightsFound,
+    loadedFromCache,
   };
 }

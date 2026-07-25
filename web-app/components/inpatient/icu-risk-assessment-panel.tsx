@@ -14,7 +14,6 @@
 
 import * as React from 'react';
 import {
-  Activity,
   AlertTriangle,
   Brain,
   ChevronDown,
@@ -32,8 +31,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useAIICUPredict, useAIEnabled, useStoredICURiskResults, aiKeys } from '@/lib/hooks/use-ai';
+import { AIICUPredictRequestSchema } from '@/lib/schemas/ai.schema';
 import { toast } from 'sonner';
 import { AIFeedbackButtons } from '@/components/shared/ai-feedback-buttons';
 import { useQueryClient } from '@tanstack/react-query';
@@ -43,7 +53,6 @@ import type {
   AIICUCriticalAlert,
   AISOFAScoreBreakdown,
   AIICUEscalation,
-  AIICUPredictionType,
 } from '@/lib/types/ai';
 
 // =============================================================================
@@ -89,6 +98,12 @@ export interface ICURiskAssessmentPanelProps {
   lengthOfStayDays?: number | null;
   /** Whether the panel is disabled */
   disabled?: boolean;
+  /** Optional backend-precomputed readiness preflight */
+  readinessPreflight?: {
+    missingRequired: string[];
+    missingAdvisory: string[];
+    canRunPredict: boolean;
+  };
 }
 
 // =============================================================================
@@ -309,14 +324,98 @@ export function ICURiskAssessmentPanel({
   admissionDiagnosis,
   lengthOfStayDays,
   disabled = false,
+  readinessPreflight,
 }: ICURiskAssessmentPanelProps) {
   const aiEnabled = useAIEnabled();
   const queryClient = useQueryClient();
   const { mutate, data: prediction, isPending, reset, isError } = useAIICUPredict();
+  const {
+    mutate: mutateStratify,
+    data: stratifyPrediction,
+    isPending: isStratifyPending,
+    reset: resetStratify,
+  } = useAIICUPredict();
   const [showDetails, setShowDetails] = React.useState(false);
-  const [predictionType, setPredictionType] = React.useState<AIICUPredictionType>('predict');
   const lastRequestRef = React.useRef<AIICUPredictRequest | null>(null);
+  const [hasSavedLastRequest, setHasSavedLastRequest] = React.useState(false);
   const panelId = React.useId();
+  const [manualEntryOpen, setManualEntryOpen] = React.useState(false);
+  const [manualRespiratoryRate, setManualRespiratoryRate] = React.useState('');
+  const [manualSystolicBp, setManualSystolicBp] = React.useState('');
+  const [manualDiastolicBp, setManualDiastolicBp] = React.useState('');
+  const [manualPlatelets, setManualPlatelets] = React.useState('');
+  const [manualWbc, setManualWbc] = React.useState('');
+  const [manualLactate, setManualLactate] = React.useState('');
+  const [manualBilirubin, setManualBilirubin] = React.useState('');
+  const [manualCreatinine, setManualCreatinine] = React.useState('');
+  const [manualGcs, setManualGcs] = React.useState('');
+  const [manualPFRatio, setManualPFRatio] = React.useState('');
+  const [manualOnVasopressors, setManualOnVasopressors] = React.useState<'unknown' | 'yes' | 'no'>(
+    'unknown'
+  );
+  const [manualOnMechanicalVentilation, setManualOnMechanicalVentilation] = React.useState<'unknown' | 'yes' | 'no'>(
+    'unknown'
+  );
+
+  const parseManualNumber = React.useCallback((value: string): number | undefined => {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }, []);
+
+  const lastRequestStorageKey = React.useMemo(
+    () => `icu_last_request_${admissionId ?? 'no_admission'}`,
+    [admissionId]
+  );
+
+  const saveLastRequest = React.useCallback(
+    (payload: AIICUPredictRequest) => {
+      lastRequestRef.current = payload;
+      setHasSavedLastRequest(true);
+      try {
+        sessionStorage.setItem(lastRequestStorageKey, JSON.stringify(payload));
+      } catch {
+        // Ignore storage failures; in-memory ref still works for this session
+      }
+    },
+    [lastRequestStorageKey]
+  );
+
+  React.useEffect(() => {
+    lastRequestRef.current = null;
+    setHasSavedLastRequest(false);
+  }, [lastRequestStorageKey]);
+
+  React.useEffect(() => {
+    if (lastRequestRef.current) return;
+    try {
+      const raw = sessionStorage.getItem(lastRequestStorageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as AIICUPredictRequest;
+      const validated = AIICUPredictRequestSchema.safeParse(parsed);
+      if (!validated.success) return;
+      lastRequestRef.current = validated.data;
+      setHasSavedLastRequest(true);
+    } catch {
+      // Ignore malformed persisted payload
+    }
+  }, [lastRequestStorageKey]);
+
+  const handleClearManualInputs = React.useCallback(() => {
+    setManualRespiratoryRate('');
+    setManualSystolicBp('');
+    setManualDiastolicBp('');
+    setManualPlatelets('');
+    setManualWbc('');
+    setManualLactate('');
+    setManualBilirubin('');
+    setManualCreatinine('');
+    setManualGcs('');
+    setManualPFRatio('');
+    setManualOnVasopressors('unknown');
+    setManualOnMechanicalVentilation('unknown');
+  }, []);
 
   // Load stored ICU results
   const { data: storedResults } = useStoredICURiskResults(admissionId);
@@ -418,32 +517,152 @@ export function ICURiskAssessmentPanel({
     pao2_fio2_ratio_or_ventilation_status: 'PF Ratio or Ventilation Status',
   };
 
-  const missingRequired: string[] = [];
-  if (vitals?.respiratory_rate == null) missingRequired.push('respiratory_rate');
-  if (vitals?.systolic_bp == null) missingRequired.push('systolic_bp');
-  if (vitals?.diastolic_bp == null) missingRequired.push('diastolic_bp');
-  if (labs?.platelets == null) missingRequired.push('platelets');
-  if (labs?.bilirubin == null) missingRequired.push('bilirubin');
-  if (labs?.creatinine == null) missingRequired.push('creatinine');
-  if (gcs == null) missingRequired.push('gcs');
+  const manualOverrides = {
+    respiratory_rate: parseManualNumber(manualRespiratoryRate),
+    systolic_bp: parseManualNumber(manualSystolicBp),
+    diastolic_bp: parseManualNumber(manualDiastolicBp),
+    platelets: parseManualNumber(manualPlatelets),
+    wbc: parseManualNumber(manualWbc),
+    lactate: parseManualNumber(manualLactate),
+    bilirubin: parseManualNumber(manualBilirubin),
+    creatinine: parseManualNumber(manualCreatinine),
+    gcs: parseManualNumber(manualGcs),
+    pao2_fio2_ratio: parseManualNumber(manualPFRatio),
+    on_vasopressors:
+      manualOnVasopressors === 'unknown' ? undefined : manualOnVasopressors === 'yes',
+    on_mechanical_ventilation:
+      manualOnMechanicalVentilation === 'unknown'
+        ? undefined
+        : manualOnMechanicalVentilation === 'yes',
+  };
+
+  const hasManualOverrides =
+    Object.values(manualOverrides).some((value) => value !== undefined);
+
+  React.useEffect(() => {
+    if (!manualEntryOpen) return;
+
+    if (!manualRespiratoryRate && vitals?.respiratory_rate != null) {
+      setManualRespiratoryRate(String(vitals.respiratory_rate));
+    }
+    if (!manualSystolicBp && vitals?.systolic_bp != null) {
+      setManualSystolicBp(String(vitals.systolic_bp));
+    }
+    if (!manualDiastolicBp && vitals?.diastolic_bp != null) {
+      setManualDiastolicBp(String(vitals.diastolic_bp));
+    }
+    if (!manualPlatelets && labs?.platelets != null) {
+      setManualPlatelets(String(labs.platelets));
+    }
+    if (!manualWbc && labs?.wbc != null) {
+      setManualWbc(String(labs.wbc));
+    }
+    if (!manualLactate && labs?.lactate != null) {
+      setManualLactate(String(labs.lactate));
+    }
+    if (!manualBilirubin && labs?.bilirubin != null) {
+      setManualBilirubin(String(labs.bilirubin));
+    }
+    if (!manualCreatinine && labs?.creatinine != null) {
+      setManualCreatinine(String(labs.creatinine));
+    }
+    if (!manualGcs && gcs != null) {
+      setManualGcs(String(gcs));
+    }
+    if (!manualPFRatio && labs?.pao2_fio2_ratio != null) {
+      setManualPFRatio(String(labs.pao2_fio2_ratio));
+    }
+    if (manualOnVasopressors === 'unknown' && onVasopressors !== undefined) {
+      setManualOnVasopressors(onVasopressors ? 'yes' : 'no');
+    }
+    if (manualOnMechanicalVentilation === 'unknown' && onMechanicalVentilation !== undefined) {
+      setManualOnMechanicalVentilation(onMechanicalVentilation ? 'yes' : 'no');
+    }
+  }, [
+    manualEntryOpen,
+    manualRespiratoryRate,
+    manualSystolicBp,
+    manualDiastolicBp,
+    manualPlatelets,
+    manualWbc,
+    manualLactate,
+    manualBilirubin,
+    manualCreatinine,
+    manualGcs,
+    manualPFRatio,
+    manualOnVasopressors,
+    manualOnMechanicalVentilation,
+    vitals?.respiratory_rate,
+    vitals?.systolic_bp,
+    vitals?.diastolic_bp,
+    labs?.platelets,
+    labs?.wbc,
+    labs?.lactate,
+    labs?.bilirubin,
+    labs?.creatinine,
+    labs?.pao2_fio2_ratio,
+    gcs,
+    onVasopressors,
+    onMechanicalVentilation,
+  ]);
+
+  const effectiveVitals = {
+    ...vitals,
+    ...(manualOverrides.respiratory_rate != null
+      ? { respiratory_rate: manualOverrides.respiratory_rate }
+      : {}),
+    ...(manualOverrides.systolic_bp != null ? { systolic_bp: manualOverrides.systolic_bp } : {}),
+    ...(manualOverrides.diastolic_bp != null
+      ? { diastolic_bp: manualOverrides.diastolic_bp }
+      : {}),
+  };
+
+  const effectiveLabs = {
+    ...labs,
+    ...(manualOverrides.wbc != null ? { wbc: manualOverrides.wbc } : {}),
+    ...(manualOverrides.platelets != null ? { platelets: manualOverrides.platelets } : {}),
+    ...(manualOverrides.lactate != null ? { lactate: manualOverrides.lactate } : {}),
+    ...(manualOverrides.bilirubin != null ? { bilirubin: manualOverrides.bilirubin } : {}),
+    ...(manualOverrides.creatinine != null ? { creatinine: manualOverrides.creatinine } : {}),
+    ...(manualOverrides.pao2_fio2_ratio != null
+      ? { pao2_fio2_ratio: manualOverrides.pao2_fio2_ratio }
+      : {}),
+  };
+
+  const effectiveGcs = gcs ?? manualOverrides.gcs;
+  const effectiveOnVasopressors =
+    onVasopressors !== undefined ? onVasopressors : manualOverrides.on_vasopressors;
+  const effectiveOnMechanicalVentilation =
+    onMechanicalVentilation !== undefined
+      ? onMechanicalVentilation
+      : manualOverrides.on_mechanical_ventilation;
+
+  const computedMissingRequired: string[] = [];
+  if (effectiveVitals.respiratory_rate == null) computedMissingRequired.push('respiratory_rate');
+  if (effectiveVitals.systolic_bp == null) computedMissingRequired.push('systolic_bp');
+  if (effectiveVitals.diastolic_bp == null) computedMissingRequired.push('diastolic_bp');
+  if (effectiveLabs.platelets == null) computedMissingRequired.push('platelets');
+  if (effectiveLabs.bilirubin == null) computedMissingRequired.push('bilirubin');
+  if (effectiveLabs.creatinine == null) computedMissingRequired.push('creatinine');
+  if (effectiveGcs == null) computedMissingRequired.push('gcs');
 
   const hasRespiratoryContext =
-    labs?.pao2_fio2_ratio != null || onMechanicalVentilation !== undefined;
-  const hasPressorContext = onVasopressors !== undefined;
+    effectiveLabs.pao2_fio2_ratio != null || effectiveOnMechanicalVentilation !== undefined;
+  const hasPressorContext = effectiveOnVasopressors !== undefined;
 
   if (!hasRespiratoryContext) {
-    missingRequired.push('pao2_fio2_ratio_or_ventilation_status');
+    computedMissingRequired.push('pao2_fio2_ratio_or_ventilation_status');
   }
   if (!hasPressorContext) {
-    missingRequired.push('on_vasopressors');
+    computedMissingRequired.push('on_vasopressors');
   }
 
-  const missingAdvisory = ADVISORY_FIELDS.filter((field) => {
+  const computedMissingAdvisory = ADVISORY_FIELDS.filter((field) => {
     switch (field) {
       case 'wbc':
-        return labs?.wbc == null;
+        return effectiveLabs.wbc == null;
       case 'lactate':
-        return labs?.lactate == null;
+        return effectiveLabs.lactate == null;
       case 'urine_output_ml_day':
         return urineOutputMlDay == null;
       default:
@@ -451,69 +670,111 @@ export function ICURiskAssessmentPanel({
     }
   });
 
-  const hasEnoughData = missingRequired.length === 0;
+  const missingRequired =
+    hasManualOverrides || !readinessPreflight
+      ? computedMissingRequired
+      : readinessPreflight.missingRequired;
+  const missingAdvisory =
+    hasManualOverrides || !readinessPreflight
+      ? computedMissingAdvisory
+      : readinessPreflight.missingAdvisory;
+  const hasEnoughData =
+    hasManualOverrides || !readinessPreflight
+      ? missingRequired.length === 0
+      : readinessPreflight.canRunPredict;
 
-  const handlePredict = (type?: AIICUPredictionType) => {
-    const useType = type ?? predictionType;
-    setPredictionType(useType);
-
+  const handlePredict = () => {
     const currentPatientData: AIICUPredictRequest['patient_data'] = {
       age: patientAge,
       gender: patientGender,
     };
 
     // Vitals
-    if (vitals?.temperature != null) currentPatientData.temperature = vitals.temperature;
-    if (vitals?.heart_rate != null) currentPatientData.heart_rate = vitals.heart_rate;
-    if (vitals?.systolic_bp != null) currentPatientData.systolic_bp = vitals.systolic_bp;
-    if (vitals?.diastolic_bp != null) currentPatientData.diastolic_bp = vitals.diastolic_bp;
-    if (vitals?.respiratory_rate != null) {
-      currentPatientData.respiratory_rate = vitals.respiratory_rate;
+    if (effectiveVitals?.temperature != null) currentPatientData.temperature = effectiveVitals.temperature;
+    if (effectiveVitals?.heart_rate != null) currentPatientData.heart_rate = effectiveVitals.heart_rate;
+    if (effectiveVitals?.systolic_bp != null) currentPatientData.systolic_bp = effectiveVitals.systolic_bp;
+    if (effectiveVitals?.diastolic_bp != null) currentPatientData.diastolic_bp = effectiveVitals.diastolic_bp;
+    if (effectiveVitals?.respiratory_rate != null) {
+      currentPatientData.respiratory_rate = effectiveVitals.respiratory_rate;
     }
-    if (vitals?.spo2 != null) currentPatientData.spo2 = vitals.spo2;
+    if (effectiveVitals?.spo2 != null) currentPatientData.spo2 = effectiveVitals.spo2;
 
     // Compute MAP if BP available
-    if (vitals?.systolic_bp != null && vitals?.diastolic_bp != null) {
+    if (effectiveVitals?.systolic_bp != null && effectiveVitals?.diastolic_bp != null) {
       currentPatientData.mean_arterial_pressure =
-        Math.round((vitals.systolic_bp + 2 * vitals.diastolic_bp) / 3);
+        Math.round((effectiveVitals.systolic_bp + 2 * effectiveVitals.diastolic_bp) / 3);
     }
 
     // Labs
-    if (labs?.wbc != null) currentPatientData.wbc = labs.wbc;
-    if (labs?.platelets != null) currentPatientData.platelets = labs.platelets;
-    if (labs?.creatinine != null) currentPatientData.creatinine = labs.creatinine;
-    if (labs?.bilirubin != null) currentPatientData.bilirubin = labs.bilirubin;
-    if (labs?.lactate != null) currentPatientData.lactate = labs.lactate;
-    if (labs?.pao2_fio2_ratio != null) currentPatientData.pao2_fio2_ratio = labs.pao2_fio2_ratio;
+    if (effectiveLabs?.wbc != null) currentPatientData.wbc = effectiveLabs.wbc;
+    if (effectiveLabs?.platelets != null) currentPatientData.platelets = effectiveLabs.platelets;
+    if (effectiveLabs?.creatinine != null) currentPatientData.creatinine = effectiveLabs.creatinine;
+    if (effectiveLabs?.bilirubin != null) currentPatientData.bilirubin = effectiveLabs.bilirubin;
+    if (effectiveLabs?.lactate != null) currentPatientData.lactate = effectiveLabs.lactate;
+    if (effectiveLabs?.pao2_fio2_ratio != null) {
+      currentPatientData.pao2_fio2_ratio = effectiveLabs.pao2_fio2_ratio;
+    }
 
     // Clinical context
-    if (gcs != null) currentPatientData.gcs = gcs;
+    if (effectiveGcs != null) currentPatientData.gcs = effectiveGcs;
     if (urineOutputMlDay != null) currentPatientData.urine_output_ml_day = urineOutputMlDay;
-    if (onVasopressors != null) currentPatientData.on_vasopressors = onVasopressors;
-    if (onMechanicalVentilation != null) {
-      currentPatientData.on_mechanical_ventilation = onMechanicalVentilation;
+    if (effectiveOnVasopressors != null) currentPatientData.on_vasopressors = effectiveOnVasopressors;
+    if (effectiveOnMechanicalVentilation != null) {
+      currentPatientData.on_mechanical_ventilation = effectiveOnMechanicalVentilation;
     }
     if (admissionDiagnosis?.trim()) currentPatientData.admission_diagnosis = admissionDiagnosis;
     if (lengthOfStayDays != null) currentPatientData.length_of_stay_days = lengthOfStayDays;
 
     const requestPayload: AIICUPredictRequest = {
       patient_data: currentPatientData,
-      prediction_type: useType,
+      prediction_type: 'predict',
+      admission_id: admissionId,
+    };
+    const stratifyPayload: AIICUPredictRequest = {
+      patient_data: currentPatientData,
+      prediction_type: 'risk-stratify',
       admission_id: admissionId,
     };
 
-    lastRequestRef.current = requestPayload;
+    const requestValidation = AIICUPredictRequestSchema.safeParse(requestPayload);
+    if (!requestValidation.success) {
+      toast.error('Missing required fields for ICU assessment', {
+        description: 'Complete the required SOFA fields or use Enter Manually before running.',
+      });
+      return;
+    }
+
+    saveLastRequest(requestPayload);
     mutate(requestPayload);
+    if (AIICUPredictRequestSchema.safeParse(stratifyPayload).success) {
+      mutateStratify(stratifyPayload);
+    }
   };
 
   const handleRerun = () => {
     reset();
-    if (lastRequestRef.current) {
-      setPredictionType(lastRequestRef.current.prediction_type ?? 'predict');
-      mutate(lastRequestRef.current);
+    resetStratify();
+    const lastRequestCandidate = lastRequestRef.current;
+    if (lastRequestCandidate) {
+      const mainValidation = AIICUPredictRequestSchema.safeParse(lastRequestCandidate);
+      if (!mainValidation.success) {
+        toast.error('Cannot re-run last assessment', {
+          description: 'The saved request is no longer valid. Complete required fields and run again.',
+        });
+        return;
+      }
+
+      mutate(lastRequestCandidate);
+      const stratifyPayload: AIICUPredictRequest = {
+        ...lastRequestCandidate,
+        prediction_type: 'risk-stratify',
+      };
+      if (AIICUPredictRequestSchema.safeParse(stratifyPayload).success) {
+        mutateStratify(stratifyPayload);
+      }
       return;
     }
-    handlePredict('predict');
+    handlePredict();
   };
 
   const riskConfig = displayPrediction?.risk_level
@@ -521,6 +782,7 @@ export function ICURiskAssessmentPanel({
     : null;
 
   const hasPrediction = displayPrediction && displayPrediction.risk_level && !displayPrediction.error;
+  const probabilitySource = stratifyPrediction ?? displayPrediction;
   const alertCount = displayPrediction?.critical_alerts?.length ?? 0;
 
   return (
@@ -568,16 +830,192 @@ export function ICURiskAssessmentPanel({
                 Some missing labs may be assumed as normal defaults by the backend.
               </p>
             )}
+            {!hasEnoughData && (
+              <Collapsible open={manualEntryOpen} onOpenChange={setManualEntryOpen} className="w-full">
+                <CollapsibleTrigger asChild>
+                  <Button type="button" size="sm" variant="secondary" className="gap-2">
+                    {manualEntryOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    Enter Manually
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="w-full rounded-md border bg-muted/20 p-3 mt-2 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      Manual values are used for this ICU assessment run and do not overwrite charted records.
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleClearManualInputs}
+                      className="h-7 px-2 text-xs"
+                    >
+                      Clear Inputs
+                    </Button>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-left">
+                    <div className="space-y-1">
+                      <Label htmlFor={`${panelId}-manual-rr`}>Respiratory Rate</Label>
+                      <Input
+                        id={`${panelId}-manual-rr`}
+                        type="number"
+                        value={manualRespiratoryRate}
+                        onChange={(e) => setManualRespiratoryRate(e.target.value)}
+                        placeholder="22"
+                        className={manualRespiratoryRate ? 'text-green-700 font-medium' : undefined}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`${panelId}-manual-sbp`}>Systolic BP</Label>
+                      <Input
+                        id={`${panelId}-manual-sbp`}
+                        type="number"
+                        value={manualSystolicBp}
+                        onChange={(e) => setManualSystolicBp(e.target.value)}
+                        placeholder="100"
+                        className={manualSystolicBp ? 'text-green-700 font-medium' : undefined}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`${panelId}-manual-dbp`}>Diastolic BP</Label>
+                      <Input
+                        id={`${panelId}-manual-dbp`}
+                        type="number"
+                        value={manualDiastolicBp}
+                        onChange={(e) => setManualDiastolicBp(e.target.value)}
+                        placeholder="60"
+                        className={manualDiastolicBp ? 'text-green-700 font-medium' : undefined}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`${panelId}-manual-wbc`}>WBC</Label>
+                      <Input
+                        id={`${panelId}-manual-wbc`}
+                        type="number"
+                        step="0.1"
+                        value={manualWbc}
+                        onChange={(e) => setManualWbc(e.target.value)}
+                        placeholder="12.5"
+                        className={manualWbc ? 'text-green-700 font-medium' : undefined}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`${panelId}-manual-lactate`}>Lactate</Label>
+                      <Input
+                        id={`${panelId}-manual-lactate`}
+                        type="number"
+                        step="0.1"
+                        value={manualLactate}
+                        onChange={(e) => setManualLactate(e.target.value)}
+                        placeholder="2.0"
+                        className={manualLactate ? 'text-green-700 font-medium' : undefined}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`${panelId}-manual-platelets`}>Platelets</Label>
+                      <Input
+                        id={`${panelId}-manual-platelets`}
+                        type="number"
+                        value={manualPlatelets}
+                        onChange={(e) => setManualPlatelets(e.target.value)}
+                        placeholder="150"
+                        className={manualPlatelets ? 'text-green-700 font-medium' : undefined}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`${panelId}-manual-bilirubin`}>Bilirubin</Label>
+                      <Input
+                        id={`${panelId}-manual-bilirubin`}
+                        type="number"
+                        step="0.1"
+                        value={manualBilirubin}
+                        onChange={(e) => setManualBilirubin(e.target.value)}
+                        placeholder="1.2"
+                        className={manualBilirubin ? 'text-green-700 font-medium' : undefined}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`${panelId}-manual-creatinine`}>Creatinine</Label>
+                      <Input
+                        id={`${panelId}-manual-creatinine`}
+                        type="number"
+                        step="0.1"
+                        value={manualCreatinine}
+                        onChange={(e) => setManualCreatinine(e.target.value)}
+                        placeholder="1.0"
+                        className={manualCreatinine ? 'text-green-700 font-medium' : undefined}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`${panelId}-manual-gcs`}>GCS Total</Label>
+                      <Input
+                        id={`${panelId}-manual-gcs`}
+                        type="number"
+                        min={3}
+                        max={15}
+                        value={manualGcs}
+                        onChange={(e) => setManualGcs(e.target.value)}
+                        placeholder="15"
+                        className={manualGcs ? 'text-green-700 font-medium' : undefined}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`${panelId}-manual-pf`}>PF Ratio</Label>
+                      <Input
+                        id={`${panelId}-manual-pf`}
+                        type="number"
+                        value={manualPFRatio}
+                        onChange={(e) => setManualPFRatio(e.target.value)}
+                        placeholder="320"
+                        className={manualPFRatio ? 'text-green-700 font-medium' : undefined}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`${panelId}-manual-vent`}>Mechanical Ventilation</Label>
+                      <Select value={manualOnMechanicalVentilation} onValueChange={(value) => setManualOnMechanicalVentilation(value as 'unknown' | 'yes' | 'no')}>
+                        <SelectTrigger
+                          id={`${panelId}-manual-vent`}
+                          className={manualOnMechanicalVentilation !== 'unknown' ? 'text-green-700 font-medium' : undefined}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unknown">Unknown</SelectItem>
+                          <SelectItem value="yes">Yes</SelectItem>
+                          <SelectItem value="no">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`${panelId}-manual-pressors`}>On Vasopressors</Label>
+                      <Select value={manualOnVasopressors} onValueChange={(value) => setManualOnVasopressors(value as 'unknown' | 'yes' | 'no')}>
+                        <SelectTrigger
+                          id={`${panelId}-manual-pressors`}
+                          className={manualOnVasopressors !== 'unknown' ? 'text-green-700 font-medium' : undefined}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unknown">Unknown</SelectItem>
+                          <SelectItem value="yes">Yes</SelectItem>
+                          <SelectItem value="no">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
             <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={disabled || isPending || !hasEnoughData}
-                onClick={() => handlePredict('predict')}
+                disabled={disabled || isPending || isStratifyPending || !hasEnoughData}
+                onClick={handlePredict}
                 className="gap-2"
               >
-                {isPending && predictionType === 'predict' ? (
+                {isPending || isStratifyPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Analyzing...
@@ -585,28 +1023,7 @@ export function ICURiskAssessmentPanel({
                 ) : (
                   <>
                     <HeartPulse className="h-4 w-4" />
-                    ICU Risk
-                  </>
-                )}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={disabled || isPending || !hasEnoughData}
-                onClick={() => handlePredict('risk-stratify')}
-                className="gap-2"
-              >
-                {isPending && predictionType === 'risk-stratify' ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Activity className="h-4 w-4" />
-                    <span className="sm:hidden">Stratify</span>
-                    <span className="hidden sm:inline">Risk Stratify</span>
+                    Run ICU Assessment
                   </>
                 )}
               </Button>
@@ -777,26 +1194,26 @@ export function ICURiskAssessmentPanel({
 
                 {/* Probabilities Tab */}
                 <TabsContent value="probabilities" className="space-y-3 pt-1">
-                  {displayPrediction.sepsis_probability != null ||
-                  displayPrediction.aki_probability != null ||
-                  displayPrediction.deterioration_probability != null ? (
+                  {probabilitySource?.sepsis_probability != null ||
+                  probabilitySource?.aki_probability != null ||
+                  probabilitySource?.deterioration_probability != null ? (
                     <>
                       <RiskProbabilityBar
                         label="Sepsis"
-                        probability={displayPrediction.sepsis_probability}
+                        probability={probabilitySource?.sepsis_probability}
                       />
                       <RiskProbabilityBar
                         label="Acute Kidney Injury"
-                        probability={displayPrediction.aki_probability}
+                        probability={probabilitySource?.aki_probability}
                       />
                       <RiskProbabilityBar
                         label="Clinical Deterioration"
-                        probability={displayPrediction.deterioration_probability}
+                        probability={probabilitySource?.deterioration_probability}
                       />
                     </>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-2">
-                      Run &quot;Risk Stratify&quot; to see individual condition probabilities.
+                      Run ICU Assessment to see individual condition probabilities.
                     </p>
                   )}
                 </TabsContent>
@@ -824,12 +1241,12 @@ export function ICURiskAssessmentPanel({
             {/* Re-run Buttons */}
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-1">
               <AIFeedbackButtons
-                messageId={`icu-${predictionType}-${panelId}`}
+                messageId={`icu-predict-${panelId}`}
                 serviceType="icu_predictor"
                 userQuery={admissionDiagnosis}
                 botResponse={`${displayPrediction.risk_level} risk${displayPrediction.risk_score != null ? ` — ${Math.round(displayPrediction.risk_score * 100)}%` : ''}`}
                 metadata={{
-                  prediction_type: predictionType,
+                  prediction_type: 'predict',
                   risk_level: displayPrediction.risk_level,
                   risk_score: displayPrediction.risk_score,
                   sofa_score: displayPrediction.sofa_score,
@@ -841,11 +1258,16 @@ export function ICURiskAssessmentPanel({
                 type="button"
                 variant="ghost"
                 size="sm"
-                disabled={disabled || isPending}
+                disabled={
+                  disabled ||
+                  isPending ||
+                  isStratifyPending ||
+                  (!hasEnoughData && !hasSavedLastRequest)
+                }
                 onClick={handleRerun}
                 className="gap-1.5 text-xs"
               >
-                {isPending ? (
+                {isPending || isStratifyPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <HeartPulse className="h-3.5 w-3.5" />

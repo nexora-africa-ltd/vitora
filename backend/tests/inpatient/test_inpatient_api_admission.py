@@ -374,6 +374,60 @@ class TestAdmissionAPI:
         timestamps = [entry["timestamp"] for entry in entries]
         assert timestamps == sorted(timestamps)
 
+    def test_icu_readiness_endpoint_returns_preflight(
+        self,
+        authenticated_client,
+        sample_admission,
+        test_user,
+    ):
+        from datetime import date, time
+
+        from hmis.apps.inpatient.models import WardRound
+
+        WardRound.objects.create(
+            admission=sample_admission,
+            round_date=date.today(),
+            round_time=time(hour=8, minute=30),
+            conducted_by=test_user,
+            subjective="Less confused",
+            objective="Improving perfusion",
+            assessment="Septic shock improving",
+            plan="Continue current management",
+            condition_status="IMPROVING",
+            blood_pressure="106/68",
+            respiratory_rate=22,
+            gcs_total=14,
+            on_vasopressors=True,
+            on_mechanical_ventilation=False,
+            urine_output_ml_24h=1100,
+        )
+
+        response = authenticated_client.get(
+            f"/api/inpatient/admissions/{sample_admission.id}/icu-readiness/"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["admission_id"] == sample_admission.id
+        assert response.data["gcs"] == 14
+        assert response.data["on_vasopressors"] is True
+        assert response.data["on_mechanical_ventilation"] is False
+        assert response.data["urine_output_ml_day"] == 1100
+        assert "missing_required" in response.data
+        assert "missing_advisory" in response.data
+
+    def test_icu_readiness_requires_predictor_minimum_fields(
+        self,
+        authenticated_client,
+        sample_admission,
+    ):
+        response = authenticated_client.get(
+            f"/api/inpatient/admissions/{sample_admission.id}/icu-readiness/"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["can_run_predict"] is False
+        assert "gcs" in response.data["missing_required"]
+
     def test_filter_admissions_by_ward(
         self, authenticated_client, sample_admission, sample_inpatient_ward
     ):

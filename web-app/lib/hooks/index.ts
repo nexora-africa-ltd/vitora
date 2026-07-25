@@ -65,6 +65,7 @@ export {
   useAdmissionRecommendations,
   useAdmissions,
   useAdmission,
+  useAdmissionICUReadiness,
   useCreateAdmissionRecommendation,
   useAcceptAdmissionRecommendation,
   useDeclineAdmissionRecommendation,
