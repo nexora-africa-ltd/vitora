@@ -392,7 +392,15 @@ export const laboratoryApi = {
    * Get results for a patient.
    */
   async getPatientResults(patientId: number): Promise<LabResult[]> {
-    const response = await apiClient.get<{ results: LabResult[] }>(`/api/patients/${patientId}/lab-results/`);
+    const response = await apiClient.get<{ results: LabResult[] } | LabResult[]>(
+      `/api/patients/${patientId}/lab-results/`
+    );
+    // Patient endpoint may return either a raw array or a paginated-ish object.
+    if (Array.isArray(response.data)) {
+      return parseResponse(z.array(LabResultSchema), response.data, {
+        context: 'laboratoryApi.getPatientResults',
+      });
+    }
     return parseResponse(z.array(LabResultSchema), response.data.results || [], {
       context: 'laboratoryApi.getPatientResults',
     });

@@ -198,9 +198,6 @@ class IlmClient:
 
         if files is None and json_body is not None and "Content-Type" not in merged_headers:
             merged_headers["Content-Type"] = "application/json"
-        if files is not None:
-            # Let requests auto-set Content-Type with multipart boundary
-            merged_headers.pop("Content-Type", None)
 
         # DHA requires facility identification headers on all requests.
         # Priority: facility.billing_config.sha_facility_fr_code > facility.dha_fr_code > settings fallback
@@ -214,6 +211,13 @@ class IlmClient:
         if idempotency_key:
             merged_headers.setdefault("Idempotency-Key", idempotency_key)
         merged_headers.setdefault("X-Correlation-Id", correlation_id)
+
+        if files is not None:
+            # Let requests auto-set multipart/form-data with boundary.
+            # Do this *after* all header merges so no caller/auth layer can
+            # accidentally force application/json on multipart requests.
+            merged_headers.pop("Content-Type", None)
+            merged_headers.pop("content-type", None)
 
         # Build redacted payload for audit (do NOT send the redacted version!)
         audit_payload = _redact(json_body if json_body is not None else data)

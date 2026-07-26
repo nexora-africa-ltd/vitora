@@ -53,10 +53,70 @@ class LabOrderItemAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
 class LabResultAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin interface for Lab Results."""
 
-    list_display = ("order_item", "result_flag", "verification_status", "entered_at")
-    list_filter = ("result_flag", "verification_status", "is_external_result")
-    search_fields = ("order_item__test__name", "order_item__lab_order__order_number")
-    readonly_fields = ("entered_at", "created_at", "updated_at")
+    list_display = (
+        "order_item",
+        "order_number",
+        "patient_name",
+        "patient_mrn",
+        "facility_name",
+        "result_flag",
+        "verification_status",
+        "entered_at",
+    )
+    list_filter = (
+        "result_flag",
+        "verification_status",
+        "is_external_result",
+        "order_item__lab_order__facility",
+    )
+    search_fields = (
+        "order_item__test__name",
+        "order_item__lab_order__order_number",
+        "order_item__lab_order__patient__mrn",
+        "order_item__lab_order__patient__first_name",
+        "order_item__lab_order__patient__last_name",
+    )
+    readonly_fields = (
+        "order_number",
+        "patient_name",
+        "patient_mrn",
+        "facility_name",
+        "entered_at",
+        "created_at",
+        "updated_at",
+    )
+    list_select_related = (
+        "order_item__lab_order__patient",
+        "order_item__lab_order__facility",
+        "order_item__test",
+        "entered_by",
+        "verified_by",
+    )
+
+    @admin.display(description="Order #", ordering="order_item__lab_order__order_number")
+    def order_number(self, obj):
+        return obj.order_item.lab_order.order_number
+
+    @admin.display(description="Patient", ordering="order_item__lab_order__patient__last_name")
+    def patient_name(self, obj):
+        patient = getattr(obj.order_item.lab_order, "patient", None)
+        if not patient:
+            return "-"
+        return patient.full_name
+
+    @admin.display(description="MRN", ordering="order_item__lab_order__patient__mrn")
+    def patient_mrn(self, obj):
+        patient = getattr(obj.order_item.lab_order, "patient", None)
+        if not patient:
+            return "-"
+        return patient.mrn
+
+    @admin.display(description="Facility", ordering="order_item__lab_order__facility__name")
+    def facility_name(self, obj):
+        facility = getattr(obj.order_item.lab_order, "facility", None)
+        if not facility:
+            return "-"
+        return facility.name
 
 
 @admin.register(Specimen)

@@ -10,7 +10,9 @@ convention used elsewhere in the ILM module.
 from __future__ import annotations
 
 import contextlib
+import json
 import logging
+import os
 from typing import Any
 
 from rest_framework import status
@@ -38,6 +40,7 @@ from hmis.apps.billing.services.ilm_preauth_service import (
     EmtVisitParams,
     IlmPreauthService,
 )
+from hmis.apps.billing.services.multipart_builder import MultipartFile
 from hmis.apps.core.events import BillingEvents, publish_event
 from hmis.apps.core.permissions import WriteRequiresRolePermission
 from hmis.apps.patients.models import Patient
@@ -125,6 +128,81 @@ def _result_to_response(result, *, http_status: int = status.HTTP_200_OK) -> Res
         },
         status=http_status,
     )
+
+
+def _to_preauth_document_type_for_claim(claim: SHAClaim, attachment: Any) -> str:
+    local_type = str(getattr(attachment, "attachment_type", "") or "other").strip().lower()
+    mapping = {
+        "medical_report": "MEDICAL_REPORT",
+        "lab_report": "LAB_ORDER",
+        "radiology_report": "RADIOLOGY_REQUEST",
+        "prescription": "PRESCRIPTION",
+        "discharge_summary": "DISCHARGE_SUMMARY",
+        "operative_notes": "THEATRE_LIST",
+        "clinical_notes": "CLINICAL_DOCUMENTATION",
+        "preauth_approval": "CLINICAL_DOCUMENTATION",
+        "invoice": "INTERIM_BILL",
+    }
+    doc_type = mapping.get(local_type, "OTHER")
+    if doc_type == "INTERIM_BILL" and claim.claim_type == SHAClaim.ClaimType.INPATIENT:
+        return "FINAL_BILL"
+    return doc_type
+
+
+def _extract_preauth_attachments_from_claim(
+    claim: SHAClaim,
+) -> tuple[list[MultipartFile], list[dict[str, str]]]:
+    multipart_files: list[MultipartFile] = []
+    attachments_meta: list[dict[str, str]] = []
+
+    for idx, attachment in enumerate(claim.attachments.all(), start=1):
+        file_field_name = f"preauth_file_{idx}"
+        filename = (
+            str(getattr(attachment, "original_filename", "") or "").strip()
+            or os.path.basename(str(getattr(getattr(attachment, "file", None), "name", "") or ""))
+            or f"attachment-{attachment.id}.bin"
+        )
+        file_obj = getattr(attachment, "file", None)
+        if not file_obj:
+            continue
+        file_obj.open("rb")
+        try:
+            content = file_obj.read()
+        finally:
+            file_obj.close()
+        if not content:
+            continue
+
+        multipart_files.append(
+            MultipartFile(
+                field_name=file_field_name,
+                filename=filename,
+                content=content,
+                content_type=str(
+                    getattr(attachment, "mime_type", "") or "application/octet-stream"
+                ),
+            )
+        )
+        attachments_meta.append(
+            {
+                "file_field_name": file_field_name,
+                "document_title": str(getattr(attachment, "name", "") or filename),
+                "document_type": _to_preauth_document_type_for_claim(claim, attachment),
+            }
+        )
+
+    return multipart_files, attachments_meta
+
+
+def _has_preauth_attachments(value: Any) -> bool:
+    if isinstance(value, list):
+        return len(value) > 0
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return False
+        return text != "[]"
+    return bool(value)
 
 
 def _serialize_preauth(p: SHAPreauth) -> dict[str, Any]:
@@ -228,14 +306,61 @@ class IlmPreauthCreateView(APIView):
         patient = _resolve(Patient, request, "patient_pk")
         if not patient:
             return Response({"error": "patient_pk is required"}, status=status.HTTP_400_BAD_REQUEST)
+        claim = _resolve(SHAClaim, request, "claim_pk")
+        raw_extra_fields = request.data.get("extra_fields") or {}
+        if isinstance(raw_extra_fields, str):
+            try:
+                raw_extra_fields = json.loads(raw_extra_fields)
+            except json.JSONDecodeError:
+                raw_extra_fields = {}
+        extra_fields = dict(raw_extra_fields) if isinstance(raw_extra_fields, dict) else {}
+        multipart_files: list[MultipartFile] | None = None
+        uploaded_files: list[MultipartFile] = []
+        for field_name, uploaded in request.FILES.items():
+            content = uploaded.read()
+            if not content:
+                continue
+            uploaded_files.append(
+                MultipartFile(
+                    field_name=field_name,
+                    filename=str(getattr(uploaded, "name", "") or field_name),
+                    content=content,
+                    content_type=str(
+                        getattr(uploaded, "content_type", "") or "application/octet-stream"
+                    ),
+                )
+            )
+        if uploaded_files:
+            multipart_files = uploaded_files
+            if not _has_preauth_attachments(extra_fields.get("attachments")):
+                extra_fields["attachments"] = [
+                    {
+                        "file_field_name": f.field_name,
+                        "document_title": f.filename,
+                        "document_type": "OTHER",
+                    }
+                    for f in uploaded_files
+                ]
+
+        if (
+            claim
+            and not uploaded_files
+            and not _has_preauth_attachments(extra_fields.get("attachments"))
+        ):
+            claim_files, attachments_meta = _extract_preauth_attachments_from_claim(claim)
+            if claim_files and attachments_meta:
+                multipart_files = claim_files
+                extra_fields["attachments"] = attachments_meta
+
         try:
             result = IlmPreauthService().create_preauth(
                 consent_token=consent_token,
                 intervention_code=intervention_code,
-                extra_fields=request.data.get("extra_fields") or {},
+                files=multipart_files,
+                extra_fields=extra_fields,
                 patient=patient,
                 sha_member=_resolve(SHAMember, request, "sha_member_id"),
-                claim=_resolve(SHAClaim, request, "claim_pk"),
+                claim=claim,
                 facility=_facility(request),
                 user=request.user,
             )

@@ -5422,6 +5422,7 @@ class ConsentLatestView(APIView):
 
         sha_member_id = request.query_params.get("sha_member_id")
         encounter_id = request.query_params.get("encounter_id")
+        intervention_code = str(request.query_params.get("intervention_code") or "").strip()
         encounter_pk = None
         if not sha_member_id:
             return Response(
@@ -5460,11 +5461,15 @@ class ConsentLatestView(APIView):
             .order_by("-created_at")
         )
 
+        if intervention_code:
+            base_qs = base_qs.filter(intervention_codes__contains=[intervention_code])
+
         consent = None
         if encounter_pk is not None:
             consent = base_qs.filter(encounter_id=encounter_pk).first()
 
-        if not consent:
+        # When encounter scope is provided, never fall back to another encounter.
+        if encounter_pk is None and not consent:
             consent = base_qs.first()
 
         if not consent:

@@ -959,12 +959,13 @@ async function getConsentDetail(consentId: number): Promise<ConsentToken> {
  */
 async function getLatestConsent(
   shaMemberId: number,
-  options?: { encounterId?: number }
+  options?: { encounterId?: number; interventionCode?: string }
 ): Promise<ConsentToken & { exists: boolean }> {
   const response = await apiClient.get('/api/sha/consent/latest/', {
     params: {
       sha_member_id: shaMemberId,
       ...(typeof options?.encounterId === 'number' ? { encounter_id: options.encounterId } : {}),
+      ...(options?.interventionCode ? { intervention_code: options.interventionCode } : {}),
     },
   });
   return response.data;
@@ -1651,15 +1652,16 @@ async function ilmPreauthCreate(body: {
   claim_pk?: number;
   extra_fields?: Record<string, unknown>;
   payload?: Record<string, unknown>;
+  files?: Array<{ field_name: string; file: File }>;
 }): Promise<IlmPreauthResponse> {
-  const normalizeExtraFields = (input?: Record<string, unknown>): Record<string, string> => {
+  const normalizeExtraFields = (input?: Record<string, unknown>): Record<string, unknown> => {
     const source = input || {};
     return Object.fromEntries(
       Object.entries(source).map(([key, value]) => {
         if (value == null) return [key, ''];
         if (typeof value === 'string') return [key, value];
         if (typeof value === 'number' || typeof value === 'boolean') return [key, String(value)];
-        return [key, JSON.stringify(value)];
+        return [key, value];
       })
     );
   };
@@ -1676,7 +1678,27 @@ async function ilmPreauthCreate(body: {
     requestBody.extra_fields = normalizedExtraFields;
   }
 
-  const response = await apiClient.post(`${ILM_BASE}/preauth/create/`, requestBody);
+  let response;
+  if (body.files && body.files.length > 0) {
+    const formData = new FormData();
+    formData.append('consent_token', body.consent_token);
+    formData.append('intervention_code', body.intervention_code);
+    formData.append('patient_pk', String(body.patient_pk));
+    if (typeof body.claim_pk === 'number') {
+      formData.append('claim_pk', String(body.claim_pk));
+    }
+    if (Object.keys(normalizedExtraFields).length > 0) {
+      formData.append('extra_fields', JSON.stringify(normalizedExtraFields));
+    }
+    body.files.forEach(({ field_name, file }) => {
+      formData.append(field_name, file, file.name);
+    });
+    response = await apiClient.post(`${ILM_BASE}/preauth/create/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  } else {
+    response = await apiClient.post(`${ILM_BASE}/preauth/create/`, requestBody);
+  }
   return parseResponse(IlmPreauthResponseSchema, response.data, {
     context: 'shaApi.ilmPreauthCreate',
   });
