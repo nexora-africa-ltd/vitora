@@ -51,6 +51,11 @@ const DISCHARGE_REASONS = [
 ] as const;
 
 const DOC_HELP_BY_CODE: Record<string, { label: string; what: string; sourceHint: string }> = {
+  MEDICAL_REPORT: {
+    label: 'Medical report',
+    what: 'Comprehensive clinician report for the case, including diagnosis and management summary.',
+    sourceHint: 'Use the auto-generated medical report attachment or upload a compiled clinician report PDF.',
+  },
   CASE_NOTE: {
     label: 'Clinical notes',
     what: 'Clinical case notes and treatment narrative for the admission.',
@@ -78,7 +83,7 @@ const DOC_HELP_BY_CODE: Record<string, { label: string; what: string; sourceHint
   },
 };
 
-type ValidationDocOrigin = 'core_attachment' | 'intervention_document';
+type ValidationDocOrigin = 'core_attachment' | 'intervention_document' | 'preview_applicable_document';
 
 interface MissingValidationDoc {
   key: string;
@@ -102,9 +107,20 @@ function normalizeValidationDocCode(value: string): string {
 
 function toUploadDocumentType(validationDocCode: string): string {
   const normalized = normalizeValidationDocCode(validationDocCode);
+  if (normalized === 'MEDICAL_REPORT') return 'MEDICAL_REPORT';
   if (normalized === 'CLINICAL_NOTES') return 'CASE_NOTE';
   if (normalized === 'INVOICE') return 'FINAL_BILL';
   return normalized;
+}
+
+function equivalentRequiredDocCodes(validationDocCode: string): Set<string> {
+  const normalized = normalizeValidationDocCode(validationDocCode);
+  const equivalents = new Set<string>([normalized]);
+  if (normalized === 'INVOICE' || normalized === 'FINAL_BILL') {
+    equivalents.add('INVOICE');
+    equivalents.add('FINAL_BILL');
+  }
+  return equivalents;
 }
 
 function toDocLabel(validationDocCode: string): string {
@@ -167,8 +183,45 @@ function extractMissingValidationDocs(errors: string[]): MissingValidationDoc[] 
   return Array.from(byDocType.values());
 }
 
+function collectRequiredDocumentTypesFromPreview(payload: Record<string, unknown>): Array<{
+  code: string;
+  interventionCode?: string;
+}> {
+  const byCode = new Map<string, { code: string; interventionCode?: string }>();
+  const appendDoc = (rawValue: unknown, interventionCode?: string) => {
+    const normalized = normalizeValidationDocCode(String(rawValue || ''));
+    if (!normalized) return;
+    const existing = byCode.get(normalized);
+    if (existing) {
+      if (!existing.interventionCode && interventionCode) {
+        existing.interventionCode = interventionCode;
+      }
+      return;
+    }
+    byCode.set(normalized, { code: normalized, interventionCode });
+  };
+
+  const topLevelRequired = Array.isArray(payload.applicable_document_types)
+    ? payload.applicable_document_types
+    : [];
+  topLevelRequired.forEach((doc) => appendDoc(doc));
+
+  const interventions = Array.isArray(payload.interventions) ? payload.interventions : [];
+  for (const intervention of interventions) {
+    const row = asRecord(intervention);
+    const interventionCode = String(row.intervention_code || '').trim() || undefined;
+    const requiredDocTypes = Array.isArray(row.applicable_document_types)
+      ? row.applicable_document_types
+      : [];
+    requiredDocTypes.forEach((doc) => appendDoc(doc, interventionCode));
+  }
+
+  return Array.from(byCode.values());
+}
+
 const LOCAL_ATTACHMENT_TYPES: Array<{ value: string; label: string }> = [
   { value: 'clinical_notes', label: 'Clinical notes' },
+  { value: 'medical_report', label: 'Medical report' },
   { value: 'lab_report', label: 'Lab report' },
   { value: 'radiology_report', label: 'Radiology report' },
   { value: 'prescription', label: 'Prescription' },
@@ -178,6 +231,8 @@ const LOCAL_ATTACHMENT_TYPES: Array<{ value: string; label: string }> = [
   { value: 'preauth_approval', label: 'Preauth approval' },
   { value: 'other', label: 'Other' },
 ];
+
+const AUTO_GENERATABLE_MISSING_DOC_TYPES = new Set(['MEDICAL_REPORT', 'CASE_NOTE', 'FINAL_BILL']);
 
 const DOCTOR_ID_TYPES = [
   { value: 'National ID', label: 'National ID' },
@@ -326,6 +381,27 @@ function inferDhaDocumentTypeFromLocalAttachment(attachment: {
   if (type === 'case_note') {
     return 'CASE_NOTE';
   }
+  if (type === 'medical_report') {
+    return 'MEDICAL_REPORT';
+  }
+  if (type === 'clinical_notes') {
+    return 'CASE_NOTE';
+  }
+  if (type === 'lab_report') {
+    return 'LAB_RESULTS';
+  }
+  if (type === 'radiology_report') {
+    return 'IMAGING_REPORT';
+  }
+  if (type === 'prescription') {
+    return 'PRESCRIPTION';
+  }
+  if (type === 'operative_notes') {
+    return 'THEATRE_NOTES';
+  }
+  if (type === 'preauth_approval') {
+    return 'PREAUTH_FORM';
+  }
 
   if (type === 'discharge_summary' || haystack.includes('discharge summary')) {
     return 'DISCHARGE_SUMMARY';
@@ -340,9 +416,26 @@ function inferDhaDocumentTypeFromLocalAttachment(attachment: {
     return 'CRITICAL_CARE_UNIT_CASE';
   }
   if (type === 'invoice') {
-    return 'INVOICE';
+    return 'FINAL_BILL';
   }
   return 'OTHER';
+}
+
+function mergeMissingDocs(...groups: MissingValidationDoc[][]): MissingValidationDoc[] {
+  const byKey = new Map<string, MissingValidationDoc>();
+  for (const group of groups) {
+    for (const doc of group) {
+      if (!byKey.has(doc.key)) {
+        byKey.set(doc.key, doc);
+        continue;
+      }
+      const existing = byKey.get(doc.key)!;
+      if (!existing.interventionCode && doc.interventionCode) {
+        existing.interventionCode = doc.interventionCode;
+      }
+    }
+  }
+  return Array.from(byKey.values());
 }
 
 interface DischargePanelProps {
@@ -600,10 +693,54 @@ export function DischargePanel({
     [validationErrors],
   );
   const missingRequiredDischargeDocs = useMemo(
-    () => extractMissingValidationDocs(actionableValidationErrors),
-    [actionableValidationErrors],
+    () => {
+      const payload = asRecord(ilmPreviewResult?.payload);
+      const existingDhaDocCodes = new Set<string>();
+      for (const attachment of localAttachments) {
+        const inferred = inferDhaDocumentTypeFromLocalAttachment(attachment);
+        const normalizedInferred = normalizeValidationDocCode(inferred);
+        if (normalizedInferred) {
+          existingDhaDocCodes.add(normalizedInferred);
+        }
+
+        const equivalentCodes = equivalentRequiredDocCodes(normalizedInferred);
+        equivalentCodes.forEach((code) => existingDhaDocCodes.add(code));
+      }
+
+      const validationMissing = extractMissingValidationDocs(actionableValidationErrors);
+
+      const previewRequired = collectRequiredDocumentTypesFromPreview(payload);
+      const previewMissing: MissingValidationDoc[] = [];
+      for (const required of previewRequired) {
+        const candidates = equivalentRequiredDocCodes(required.code);
+        const satisfied = Array.from(candidates).some((candidate) => existingDhaDocCodes.has(candidate));
+        if (satisfied) continue;
+
+        const uploadDocType = toUploadDocumentType(required.code);
+        const docHelp = DOC_HELP_BY_CODE[uploadDocType] || DOC_HELP_BY_CODE[required.code];
+        previewMissing.push({
+          key: uploadDocType,
+          code: required.code,
+          uploadDocType,
+          label: docHelp?.label || toDocLabel(required.code),
+          what: docHelp?.what || `Required by DHA preview: ${required.code}`,
+          sourceHint: docHelp?.sourceHint || 'Upload a clear PDF/image document for this required type.',
+          origin: 'preview_applicable_document',
+          interventionCode: required.interventionCode,
+          rawError: `DHA preview applicable_document_types requires ${required.code}`,
+        });
+      }
+
+      return mergeMissingDocs(validationMissing, previewMissing);
+    },
+    [actionableValidationErrors, ilmPreviewResult?.payload, localAttachments],
   );
   const hasMissingRequiredDischargeDocs = missingRequiredDischargeDocs.length > 0;
+  const autoGeneratableMissingDocs = useMemo(
+    () => missingRequiredDischargeDocs.filter((doc) => AUTO_GENERATABLE_MISSING_DOC_TYPES.has(doc.uploadDocType)),
+    [missingRequiredDischargeDocs],
+  );
+  const hasAutoGeneratableMissingDocs = autoGeneratableMissingDocs.length > 0;
   const dischargeErrorDocTargets = useMemo(
     () => lastDhaRequiredDocs.map((rawDoc) => {
       const normalized = normalizeValidationDocCode(rawDoc);
@@ -976,6 +1113,36 @@ export function DischargePanel({
     onError: (e: any) => {
       setAttachmentSyncMessage('');
       setError(e?.response?.data?.error ?? e?.message ?? 'Failed to sync attachments to DHA');
+    },
+  });
+
+  const autoGenerateMissingDocsMutation = useMutation({
+    mutationFn: async () => {
+      const result = await shaApi.autoAttachDocuments(claimId);
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      return result;
+    },
+    onSuccess: async (result) => {
+      setError(null);
+      const attached = Number(result.attached || 0);
+      const alreadyAttached = Number(result.already_attached || 0);
+      await runPostAttachmentAutomation({ pushLocalUpload: true });
+      await refreshDischargePanelData();
+      if (attached > 0) {
+        setAttachmentSyncMessage(
+          `Auto-generated and attached ${attached} document(s). Existing auto-attach types already present: ${alreadyAttached}.`
+        );
+      } else {
+        setAttachmentSyncMessage(
+          'No new auto-generatable documents were produced. Upload remaining required docs manually.'
+        );
+      }
+      onChange?.();
+    },
+    onError: (e: any) => {
+      setError(e?.response?.data?.error ?? e?.message ?? 'Failed to auto-generate missing documents');
     },
   });
 
@@ -1424,9 +1591,36 @@ export function DischargePanel({
         <Alert variant={hasMissingRequiredDischargeDocs ? 'destructive' : 'default'}>
           <AlertTitle>Missing required documents</AlertTitle>
           <AlertDescription>
-            {hasMissingRequiredDischargeDocs
-              ? `Missing: ${missingRequiredDischargeDocs.map((d) => d.label).join(', ')}`
-              : 'No required document blockers reported by claim validation.'}
+            <div className="space-y-2">
+              <p>
+                {hasMissingRequiredDischargeDocs
+                  ? `Missing: ${missingRequiredDischargeDocs.map((d) => d.label).join(', ')}`
+                  : 'No required document blockers reported by claim validation or DHA preview applicable_document_types.'}
+              </p>
+              {hasMissingRequiredDischargeDocs && hasAutoGeneratableMissingDocs ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => autoGenerateMissingDocsMutation.mutate()}
+                    disabled={
+                      autoGenerateMissingDocsMutation.isPending
+                      || uploadDocMutation.isPending
+                      || fetchingLocalAttachments
+                    }
+                  >
+                    {autoGenerateMissingDocsMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    Auto-generate + retry preview
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    Can auto-generate: {autoGeneratableMissingDocs.map((doc) => doc.label).join(', ')}
+                  </span>
+                </div>
+              ) : null}
+            </div>
           </AlertDescription>
         </Alert>
 

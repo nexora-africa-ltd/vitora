@@ -523,6 +523,35 @@ class SHAClaimAutomationService:
             else:
                 already_attached += 1
 
+            # --- Comprehensive report → medical_report ---
+            if "medical_report" not in existing_types:
+                medical_report_content = cls._render_medical_report_text(
+                    encounter, claim.patient, claim
+                )
+                if medical_report_content:
+                    pdf_bytes = cls._render_text_pdf_bytes(medical_report_content)
+                    file_obj = ContentFile(
+                        pdf_bytes,
+                        name=f"medical_report_{claim.claim_number}.pdf",
+                    )
+                    SHAClaimAttachment.objects.create(
+                        claim=claim,
+                        attachment_type="medical_report",
+                        name=f"Medical Report - {claim.claim_number}",
+                        description=(
+                            "Auto-generated comprehensive medical report from encounter context, "
+                            "diagnostic findings, treatment timeline, and disposition"
+                        ),
+                        file=file_obj,
+                        file_size=len(pdf_bytes),
+                        mime_type="application/pdf",
+                        original_filename=f"medical_report_{claim.claim_number}.pdf",
+                        uploaded_by=claim.created_by,
+                    )
+                    attached += 1
+            else:
+                already_attached += 1
+
             # --- Clinical notes → clinical_notes ---
             if "clinical_notes" not in existing_types:
                 notes_content = cls._render_clinical_notes_text(encounter, claim.patient, claim)
@@ -948,6 +977,86 @@ class SHAClaimAutomationService:
             lines.append("")
 
         return "\n".join(lines)
+
+    @classmethod
+    def _render_medical_report_text(cls, encounter, patient, claim=None) -> str | None:
+        """Render a comprehensive medical report for DHA MEDICAL_REPORT uploads."""
+        clinical_notes = cls._render_clinical_notes_text(encounter, patient, claim)
+        lab_results = cls._get_completed_lab_results(encounter)
+        prescriptions = cls._get_encounter_prescriptions(encounter)
+        invoice_text = cls._render_invoice_text(claim) if claim is not None else None
+
+        if not clinical_notes and not lab_results and not prescriptions and not invoice_text:
+            return None
+
+        lines: list[str] = []
+        if claim is not None:
+            append_standard_header(lines, title="COMPREHENSIVE MEDICAL REPORT", claim=claim)
+            lines.extend(
+                [
+                    "Report Context",
+                    "--------------",
+                    f"Patient: {patient}",
+                    f"Encounter Date: {encounter.encounter_date}",
+                    f"Encounter Type: {encounter.encounter_type}",
+                    "",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "COMPREHENSIVE MEDICAL REPORT",
+                    f"Patient: {patient}",
+                    f"Encounter Date: {encounter.encounter_date}",
+                    f"Encounter Type: {encounter.encounter_type}",
+                    f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}",
+                    "-" * 50,
+                    "",
+                ]
+            )
+
+        if clinical_notes:
+            lines.extend(["Clinical Narrative", "------------------", clinical_notes.strip(), ""])
+
+        if lab_results:
+            lines.extend(["Laboratory Findings", "-------------------"])
+            for result in lab_results:
+                test_name = getattr(result, "test_name", "") or getattr(result, "test", "")
+                value = getattr(result, "value", "") or getattr(result, "result_value", "")
+                unit = getattr(result, "unit", "") or ""
+                ref_range = getattr(result, "reference_range", "") or ""
+                status = getattr(result, "status", "") or ""
+                rendered_result = f"{value} {unit}".strip() or "N/A"
+                lines.append(f"- {test_name or 'Unnamed test'}: {rendered_result}")
+                if ref_range:
+                    lines.append(f"  Reference range: {ref_range}")
+                if status:
+                    lines.append(f"  Result status: {status}")
+            lines.append("")
+
+        if prescriptions:
+            lines.extend(["Medication Plan", "---------------"])
+            for rx in prescriptions:
+                med_name = (
+                    getattr(rx, "medication_name", "") or getattr(rx, "drug_name", "") or str(rx)
+                )
+                dosage = getattr(rx, "dosage", "") or ""
+                frequency = getattr(rx, "frequency", "") or ""
+                duration = getattr(rx, "duration", "") or ""
+                details = ", ".join(part for part in [dosage, frequency, duration] if part)
+                if details:
+                    lines.append(f"- {med_name}: {details}")
+                else:
+                    lines.append(f"- {med_name}")
+            lines.append("")
+
+        if invoice_text:
+            lines.extend(["Financial Summary", "-----------------"])
+            invoice_lines = [line for line in invoice_text.splitlines() if line.strip()]
+            lines.extend(invoice_lines[:25])
+            lines.append("")
+
+        return "\n".join(lines).strip()
 
     @classmethod
     def _render_prescriptions_text(cls, encounter, claim=None) -> str | None:

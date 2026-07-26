@@ -36,6 +36,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
 from rest_framework.response import Response
 
+from hmis.apps.billing.document_types import (
+    dha_document_type_to_local_attachment_type,
+    local_to_dha_document_type,
+)
 from hmis.apps.billing.facility_identifiers import resolve_fr_code
 from hmis.apps.billing.filters import SHAClaimFilter, SHAMemberFilter
 from hmis.apps.billing.models import (
@@ -71,33 +75,6 @@ from hmis.apps.licensing.permissions import requires_feature
 
 logger = logging.getLogger(__name__)
 
-_DHA_DOCUMENT_TYPE_MAP: dict[str, str] = {
-    "clinical_notes": "CASE_NOTE",
-    "lab_report": "LAB_RESULTS",
-    "radiology_report": "IMAGING_REPORT",
-    "prescription": "PRESCRIPTION",
-    "invoice": "INVOICE",
-    "discharge_summary": "DISCHARGE_SUMMARY",
-    "operative_notes": "THEATRE_NOTES",
-    "preauth_approval": "PREAUTH_FORM",
-    "other": "OTHER",
-}
-
-_DHA_TO_LOCAL_ATTACHMENT_TYPE_MAP: dict[str, str] = {
-    "CASE_NOTE": SHAClaimAttachment.AttachmentType.CLINICAL_NOTES,
-    "CRITICAL_CARE_UNIT_CASE": SHAClaimAttachment.AttachmentType.CLINICAL_NOTES,
-    "LAB_RESULTS": SHAClaimAttachment.AttachmentType.LAB_REPORT,
-    "IMAGING_REPORT": SHAClaimAttachment.AttachmentType.RADIOLOGY_REPORT,
-    "PRESCRIPTION": SHAClaimAttachment.AttachmentType.PRESCRIPTION,
-    "FINAL_BILL": SHAClaimAttachment.AttachmentType.INVOICE,
-    "INVOICE": SHAClaimAttachment.AttachmentType.INVOICE,
-    "DISCHARGE_SUMMARY": SHAClaimAttachment.AttachmentType.DISCHARGE_SUMMARY,
-    "THEATRE_NOTES": SHAClaimAttachment.AttachmentType.OPERATIVE_NOTES,
-    "PREAUTH_FORM": SHAClaimAttachment.AttachmentType.PREAUTH_APPROVAL,
-    "CLAIM_FORM": SHAClaimAttachment.AttachmentType.OTHER,
-    "OTHER": SHAClaimAttachment.AttachmentType.OTHER,
-}
-
 
 def _to_dha_document_type(
     local_attachment_type: str,
@@ -115,11 +92,7 @@ def _to_dha_document_type(
     if "discharge summary" in haystack:
         return "DISCHARGE_SUMMARY"
 
-    value = str(local_attachment_type or "").strip().lower()
-    mapped = _DHA_DOCUMENT_TYPE_MAP.get(value)
-    if mapped:
-        return mapped
-    return "OTHER"
+    return local_to_dha_document_type(local_attachment_type)
 
 
 def _to_dha_document_type_for_claim(claim: SHAClaim, attachment: SHAClaimAttachment) -> str:
@@ -162,8 +135,10 @@ def _normalize_attachment_name(value: str) -> str:
 
 
 def _to_local_attachment_type(dha_document_type: str) -> str:
-    value = str(dha_document_type or "").strip().upper()
-    return _DHA_TO_LOCAL_ATTACHMENT_TYPE_MAP.get(value, SHAClaimAttachment.AttachmentType.OTHER)
+    return dha_document_type_to_local_attachment_type(
+        dha_document_type,
+        default=SHAClaimAttachment.AttachmentType.OTHER,
+    )
 
 
 def _build_attachment_sync_status(claim: SHAClaim) -> dict:

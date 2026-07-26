@@ -288,11 +288,29 @@ class TestAutoAttachDocuments:
 
     def test_attaches_available_documents(self, db, sha_claim_draft):
         """Should attach clinical notes from encounter."""
+        from hmis.apps.billing.models import SHAClaimAttachment
         from hmis.apps.billing.sha_automation import SHAClaimAutomationService
 
         result = SHAClaimAutomationService.auto_attach_documents(sha_claim_draft.pk)
         # Encounter has chief_complaint so MEDICAL_REPORT should be attached
         assert result["attached"] >= 0  # At least no error
+        assert SHAClaimAttachment.objects.filter(
+            claim=sha_claim_draft,
+            attachment_type=SHAClaimAttachment.AttachmentType.MEDICAL_REPORT,
+        ).exists()
+
+    def test_render_medical_report_includes_key_sections(self, sample_admission):
+        """Medical report should include clinical narrative and encounter context."""
+        from hmis.apps.billing.sha_automation import SHAClaimAutomationService
+
+        report = SHAClaimAutomationService._render_medical_report_text(
+            sample_admission.ipd_encounter,
+            sample_admission.patient,
+        )
+
+        assert report is not None
+        assert "COMPREHENSIVE MEDICAL REPORT" in report
+        assert "Clinical Narrative" in report
 
     def test_render_clinical_notes_includes_inpatient_chronological_summary(
         self, sample_admission, test_user
