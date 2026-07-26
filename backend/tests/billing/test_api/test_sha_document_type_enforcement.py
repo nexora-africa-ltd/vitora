@@ -228,6 +228,30 @@ class TestMissingDocumentTypes:
         # clinical_notes already uploaded in fixture
         assert draft_claim.missing_document_types == []
 
+    def test_medical_report_requirement_satisfied_by_medical_report_attachment(
+        self, draft_claim, test_user
+    ):
+        """MEDICAL_REPORT requirement should resolve to local medical_report attachment type."""
+        SHAClaimAttachment.objects.create(
+            claim=draft_claim,
+            attachment_type="medical_report",
+            name="Medical Report",
+            file=SimpleUploadedFile("medical_report.pdf", b"%PDF-1.4 report", "application/pdf"),
+            file_size=15,
+            mime_type="application/pdf",
+            checksum="medreport",
+            original_filename="medical_report.pdf",
+            uploaded_by=test_user,
+        )
+        SHAClaimIntervention.objects.create(
+            claim=draft_claim,
+            intervention_code="SHA-07-999",
+            intervention_name="Medical case follow-up",
+            required_document_types=["MEDICAL_REPORT"],
+        )
+
+        assert draft_claim.missing_document_types == []
+
     def test_intervention_with_missing_docs(self, draft_claim):
         """Should flag missing document types for active interventions."""
         SHAClaimIntervention.objects.create(

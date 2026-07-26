@@ -194,7 +194,7 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
               </>
             ) : (
               <p className="text-muted-foreground">
-                Use auto-attach to generate local core attachments (clinical notes + invoice) for submit readiness.
+                Use auto-attach to generate local core attachments (clinical notes, medical report, and invoice) for submit readiness.
               </p>
             )}
 

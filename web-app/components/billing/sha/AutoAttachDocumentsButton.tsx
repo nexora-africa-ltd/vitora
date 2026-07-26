@@ -2,7 +2,8 @@
  * AutoAttachDocumentsButton — One-click document auto-attachment.
  *
  * Scans the encounter for digital documents (lab results, prescriptions,
- * clinical notes) and attaches them to the SHA claim automatically.
+ * clinical notes, and medical report) and attaches them to the SHA claim
+ * automatically.
  */
 'use client';
 

@@ -23,6 +23,10 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from hmis.apps.billing.document_types import (
+    dha_document_type_to_local_attachment_type,
+    normalize_local_attachment_type,
+)
 from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.pii import encrypted_pii_property
 
@@ -2946,12 +2950,19 @@ class SHAClaim(FacilityScopedModel):
             List of dicts: [{"intervention_code": "SHA-07-001", "missing": ["MEDICAL_REPORT"]}]
         """
         missing = []
-        existing_types = set(self.attachments.values_list("attachment_type", flat=True))
+        existing_types = {
+            normalize_local_attachment_type(value)
+            for value in self.attachments.values_list("attachment_type", flat=True)
+        }
         for intervention in self.claim_interventions.all():
             required = intervention.required_document_types
             if not required:
                 continue
-            not_uploaded = [dt for dt in required if dt not in existing_types]
+            not_uploaded = []
+            for document_type in required:
+                normalized_local = dha_document_type_to_local_attachment_type(document_type)
+                if normalized_local not in existing_types:
+                    not_uploaded.append(document_type)
             if not_uploaded:
                 missing.append(
                     {
@@ -3502,6 +3513,7 @@ class SHAClaimAttachment(models.Model):
         """Types of claim attachments."""
 
         CLINICAL_NOTES = "clinical_notes", "Clinical Notes"
+        MEDICAL_REPORT = "medical_report", "Medical Report"
         LAB_REPORT = "lab_report", "Laboratory Report"
         RADIOLOGY_REPORT = "radiology_report", "Radiology Report"
         PRESCRIPTION = "prescription", "Prescription"

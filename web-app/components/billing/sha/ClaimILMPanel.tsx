@@ -747,7 +747,7 @@ export function ClaimILMPanel({
       },
       {
         id: 'attachments',
-        label: 'Required core attachments (clinical notes + invoice)',
+        label: 'Required core attachments (clinical notes + medical report + invoice)',
         mode: 'auto',
         complete: !hasError((error) => /Missing required attachment:/i.test(error)),
       },
