@@ -30,12 +30,13 @@ import { useQuery } from '@tanstack/react-query';
 interface ClaimWorkflowTabProps {
   claim: Claim;
   flow: ClaimFlowInfo;
+  isActive?: boolean;
   onChange: () => void;
 }
 
 const TERMINAL_STATUSES = new Set(['paid', 'partial', 'cancelled', 'written_off']);
 
-export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProps) {
+export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: ClaimWorkflowTabProps) {
   const [consentTokenId, setConsentTokenId] = useState<number | undefined>();
   const [consentTokenStr, setConsentTokenStr] = useState('');
   const [consentCredential, setConsentCredential] = useState<ConsentCredential>({});
@@ -115,7 +116,7 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
     enabled: !isTerminal,
     staleTime: 0,
     refetchInterval: !isTerminal ? 60_000 : false,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
   });
 
   const coreAttachmentErrors =
@@ -263,6 +264,7 @@ export function ClaimWorkflowTab({ claim, flow, onChange }: ClaimWorkflowTabProp
         <ClaimILMPanel
           claim={claim}
           flow={flow}
+          isActive={isActive}
           consentToken={consentTokenStr}
           consentCredential={consentCredential}
           consentInterventionCode={consentInterventionCode}
