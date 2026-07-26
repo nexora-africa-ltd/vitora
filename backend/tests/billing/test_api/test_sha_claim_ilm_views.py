@@ -180,7 +180,12 @@ class TestInterventionEndpoints:
 @pytest.mark.django_db
 class TestDiagnosisEndpoints:
     def test_add_diagnosis(self, sha_client, sample_sha_claim):
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        with (
+            patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc,
+            patch(
+                "hmis.apps.billing.services.claim_form_attachment_service.ClaimFormAttachmentService.ensure_for_claim"
+            ) as ensure_claim_form,
+        ):
             svc.return_value.add_diagnosis.return_value = _ilm_result({})
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "diagnoses/add"),
@@ -188,13 +193,43 @@ class TestDiagnosisEndpoints:
                 format="json",
             )
         assert response.status_code == status.HTTP_200_OK
+        sample_sha_claim.refresh_from_db()
+        assert sample_sha_claim.primary_diagnosis_code == "J06.9"
+        ensure_claim_form.assert_called_once()
+
+        from hmis.apps.encounters.models import Diagnosis
+
+        assert Diagnosis.objects.filter(
+            encounter=sample_sha_claim.encounter,
+            diagnosis_type="PRIMARY",
+            icd11_code="J06.9",
+        ).exists()
 
     def test_add_diagnosis_requires_fields(self, sha_client, sample_sha_claim):
         response = sha_client.post(_claim_url(sample_sha_claim, "diagnoses/add"), {}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_remove_diagnosis(self, sha_client, sample_sha_claim):
-        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+        from hmis.apps.encounters.models import Diagnosis
+
+        sample_sha_claim.primary_diagnosis_code = "J06.9"
+        sample_sha_claim.primary_diagnosis_description = "Acute upper respiratory infection"
+        sample_sha_claim.save(
+            update_fields=["primary_diagnosis_code", "primary_diagnosis_description", "updated_at"]
+        )
+        Diagnosis.objects.create(
+            encounter=sample_sha_claim.encounter,
+            diagnosis_type="PRIMARY",
+            icd11_code="J06.9",
+            icd11_display="Acute upper respiratory infection",
+        )
+
+        with (
+            patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc,
+            patch(
+                "hmis.apps.billing.services.claim_form_attachment_service.ClaimFormAttachmentService.ensure_for_claim"
+            ) as ensure_claim_form,
+        ):
             svc.return_value.remove_diagnosis.return_value = _ilm_result({})
             response = sha_client.post(
                 _claim_url(sample_sha_claim, "diagnoses/remove"),
@@ -202,6 +237,15 @@ class TestDiagnosisEndpoints:
                 format="json",
             )
         assert response.status_code == status.HTTP_200_OK
+        sample_sha_claim.refresh_from_db()
+        assert sample_sha_claim.primary_diagnosis_code == "PENDING"
+        assert sample_sha_claim.primary_diagnosis_description == "Awaiting diagnosis"
+        ensure_claim_form.assert_called_once()
+        assert not Diagnosis.objects.filter(
+            encounter=sample_sha_claim.encounter,
+            diagnosis_type="PRIMARY",
+            icd11_code="J06.9",
+        ).exists()
 
 
 @pytest.mark.django_db

@@ -23,6 +23,12 @@ def build_claim_document_context(claim) -> ClaimDocumentContext:
     member = getattr(claim, "sha_member", None)
     facility = getattr(claim, "facility", None)
 
+    sha_number = ""
+    if member is not None:
+        sha_number = str(getattr(member, "sha_number", "") or "").strip()
+    if not sha_number:
+        sha_number = str(getattr(claim, "sha_member_number", "") or "").strip()
+
     scheme = ""
     fund = ""
     if member is not None:
@@ -37,6 +43,34 @@ def build_claim_document_context(claim) -> ClaimDocumentContext:
             if isinstance(eligible, list) and eligible:
                 scheme = str(eligible[0])
 
+            if not scheme:
+                schemes = eligibility.get("schemes") or []
+                if isinstance(schemes, list) and schemes:
+                    first_scheme = schemes[0]
+                    if isinstance(first_scheme, dict):
+                        scheme = (
+                            str(first_scheme.get("schemeName") or "").strip()
+                            or str(first_scheme.get("name") or "").strip()
+                            or str(first_scheme.get("scheme") or "").strip()
+                        )
+
+            if not fund:
+                fund = (
+                    str(eligibility.get("fund") or "").strip()
+                    or str(eligibility.get("fund_name") or "").strip()
+                    or str(eligibility.get("fundName") or "").strip()
+                )
+
+    if not fund:
+        fund = "SHA"
+
+    if not scheme:
+        claim_flow = str(getattr(claim, "claim_flow", "") or "").strip().upper()
+        if claim_flow:
+            scheme = claim_flow
+        else:
+            scheme = "SHA"
+
     fr_code = ""
     if facility is not None:
         try:
@@ -46,7 +80,7 @@ def build_claim_document_context(claim) -> ClaimDocumentContext:
 
     return ClaimDocumentContext(
         claim_number=str(getattr(claim, "claim_number", "") or "").strip(),
-        sha_member_number=str(getattr(claim, "sha_member_number", "") or "").strip(),
+        sha_member_number=sha_number,
         fund=fund,
         scheme=scheme,
         facility_name=str(getattr(facility, "name", "") or "").strip(),

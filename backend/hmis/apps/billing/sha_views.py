@@ -1535,6 +1535,170 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             return "SHA-07-001"
         return "SHA-01-001"
 
+    def _lookup_icd11_display(self, code: str) -> str:
+        normalized = str(code or "").strip().upper()
+        if not normalized:
+            return ""
+        try:
+            from hmis.apps.billing.models import ICD11CodeReference
+
+            ref = ICD11CodeReference.objects.filter(code=normalized, is_active=True).first()
+        except Exception:
+            ref = None
+        return str(getattr(ref, "title", "") or "").strip()
+
+    def _sync_local_diagnosis_add(self, claim: SHAClaim, *, icd_code: str, user) -> None:
+        normalized = str(icd_code or "").strip().upper()
+        if not normalized:
+            return
+
+        display = self._lookup_icd11_display(normalized) or normalized
+        update_fields: list[str] = []
+
+        if len(normalized) <= 10 and claim.primary_diagnosis_code != normalized:
+            claim.primary_diagnosis_code = normalized
+            update_fields.append("primary_diagnosis_code")
+
+        if display and claim.primary_diagnosis_description != display:
+            claim.primary_diagnosis_description = display
+            update_fields.append("primary_diagnosis_description")
+
+        secondary_codes = [
+            str(code or "").strip().upper() for code in claim.secondary_diagnosis_codes or []
+        ]
+        cleaned_secondary = [code for code in secondary_codes if code and code != normalized]
+        if cleaned_secondary != secondary_codes:
+            claim.secondary_diagnosis_codes = cleaned_secondary
+            update_fields.append("secondary_diagnosis_codes")
+
+        if update_fields:
+            claim.save(update_fields=[*update_fields, "updated_at"])
+
+        encounter = getattr(claim, "encounter", None)
+        if encounter is None:
+            return
+
+        try:
+            from hmis.apps.encounters.models import Diagnosis
+
+            primary = Diagnosis.objects.filter(
+                encounter=encounter, diagnosis_type="PRIMARY"
+            ).first()
+            if primary is None:
+                Diagnosis.objects.create(
+                    encounter=encounter,
+                    diagnosis_type="PRIMARY",
+                    icd11_code=normalized[:50],
+                    icd11_display=display[:500],
+                    diagnosed_by=user,
+                )
+            else:
+                primary.icd11_code = normalized[:50]
+                primary.icd11_display = display[:500]
+                primary.free_text_diagnosis = ""
+                primary.diagnosed_by = user
+                primary.save(
+                    update_fields=[
+                        "icd11_code",
+                        "icd11_display",
+                        "free_text_diagnosis",
+                        "diagnosed_by",
+                        "updated_at",
+                    ]
+                )
+        except Exception as exc:
+            logger.warning(
+                "Failed to sync encounter diagnosis after ILM add_diagnosis for claim %s: %s",
+                claim.id,
+                _stringify_error(exc),
+            )
+
+    def _sync_local_diagnosis_remove(self, claim: SHAClaim, *, icd_code: str) -> None:
+        normalized = str(icd_code or "").strip().upper()
+        if not normalized:
+            return
+
+        encounter = getattr(claim, "encounter", None)
+        fallback_code = ""
+        fallback_desc = ""
+
+        if encounter is not None:
+            try:
+                from hmis.apps.encounters.models import Diagnosis
+
+                Diagnosis.objects.filter(
+                    encounter=encounter, icd11_code__iexact=normalized
+                ).delete()
+                remaining = Diagnosis.order_by_type_priority(
+                    Diagnosis.objects.filter(encounter=encounter)
+                ).first()
+                if remaining is not None:
+                    fallback_code = (
+                        str(getattr(remaining, "icd11_code", "") or "").strip().upper()
+                        or str(getattr(getattr(remaining, "icd10_code", None), "code", "") or "")
+                        .strip()
+                        .upper()
+                    )
+                    fallback_desc = (
+                        str(getattr(remaining, "icd11_display", "") or "").strip()
+                        or str(
+                            getattr(getattr(remaining, "icd10_code", None), "description", "") or ""
+                        ).strip()
+                        or str(getattr(remaining, "free_text_diagnosis", "") or "").strip()
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to sync encounter diagnosis after ILM remove_diagnosis for claim %s: %s",
+                    claim.id,
+                    _stringify_error(exc),
+                )
+
+        secondary_codes = [
+            str(code or "").strip().upper() for code in (claim.secondary_diagnosis_codes or [])
+        ]
+        filtered_secondary = [code for code in secondary_codes if code and code != normalized]
+
+        next_code = fallback_code or (filtered_secondary[0] if filtered_secondary else "PENDING")
+        next_desc = (
+            fallback_desc
+            or (
+                claim.primary_diagnosis_description
+                if claim.primary_diagnosis_code != normalized
+                else ""
+            )
+            or "Awaiting diagnosis"
+        )
+
+        update_fields: list[str] = []
+        if len(next_code) > 10:
+            next_code = next_code[:10]
+        if claim.primary_diagnosis_code != next_code:
+            claim.primary_diagnosis_code = next_code
+            update_fields.append("primary_diagnosis_code")
+        if claim.primary_diagnosis_description != next_desc:
+            claim.primary_diagnosis_description = next_desc
+            update_fields.append("primary_diagnosis_description")
+        if filtered_secondary != secondary_codes:
+            claim.secondary_diagnosis_codes = filtered_secondary
+            update_fields.append("secondary_diagnosis_codes")
+
+        if update_fields:
+            claim.save(update_fields=[*update_fields, "updated_at"])
+
+    def _refresh_claim_form_attachment(self, claim: SHAClaim, *, user) -> None:
+        try:
+            from hmis.apps.billing.services.claim_form_attachment_service import (
+                ClaimFormAttachmentService,
+            )
+
+            ClaimFormAttachmentService.ensure_for_claim(claim=claim, user=user)
+        except Exception as exc:
+            logger.warning(
+                "Failed to refresh claim form attachment after diagnosis update for claim %s: %s",
+                claim.id,
+                _stringify_error(exc),
+            )
+
     def _sync_claim_diagnoses_to_dha(self, claim: SHAClaim, *, user) -> int:
         diagnosis_codes = self._collect_local_diagnosis_codes(claim)
         if not diagnosis_codes:
@@ -1737,6 +1901,9 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             )
         except Exception as exc:
             return self._ilm_handle_error(exc)
+        if int(getattr(result, "status_code", 500) or 500) < 400:
+            self._sync_local_diagnosis_add(claim, icd_code=d["icd_code"], user=request.user)
+            self._refresh_claim_form_attachment(claim, user=request.user)
         return self._ilm_response(result)
 
     @action(detail=True, methods=["post"], url_path="ilm/diagnoses/remove")
@@ -1764,6 +1931,9 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             )
         except Exception as exc:
             return self._ilm_handle_error(exc)
+        if int(getattr(result, "status_code", 500) or 500) < 400:
+            self._sync_local_diagnosis_remove(claim, icd_code=str(code))
+            self._refresh_claim_form_attachment(claim, user=request.user)
         return self._ilm_response(result)
 
     @action(detail=True, methods=["post"], url_path="ilm/lines/add")
