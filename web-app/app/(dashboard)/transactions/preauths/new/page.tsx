@@ -233,6 +233,14 @@ export default function NewPreauthPage() {
 
   const [doctorChips, setDoctorChips] = useState<DoctorChip[]>([]);
   const [selectedStaffUserId, setSelectedStaffUserId] = useState<number | undefined>();
+  const [showManualDoctorForm, setShowManualDoctorForm] = useState(false);
+  const [manualDoctorName, setManualDoctorName] = useState('');
+  const [manualDoctorRegNumber, setManualDoctorRegNumber] = useState('');
+  const [manualDoctorIdType, setManualDoctorIdType] = useState('registration_number');
+  const [manualDoctorRegBody, setManualDoctorRegBody] = useState('KMPDC');
+  const [manualLookupIdType, setManualLookupIdType] = useState<'National ID' | 'passport'>('National ID');
+  const [manualLookupIdNumber, setManualLookupIdNumber] = useState('');
+  const [manualLookupLoading, setManualLookupLoading] = useState(false);
 
   const [tariffChips, setTariffChips] = useState<string[]>([]);
   const [tariffInput, setTariffInput] = useState('');
@@ -242,7 +250,14 @@ export default function NewPreauthPage() {
   const [linkedEvidenceKeys, setLinkedEvidenceKeys] = useState<string[]>([]);
   const [evidenceBusyKeys, setEvidenceBusyKeys] = useState<string[]>([]);
   const [generatedRequiredDocTypes, setGeneratedRequiredDocTypes] = useState<string[]>([]);
+  const [uploadedRequiredDocTypes, setUploadedRequiredDocTypes] = useState<string[]>([]);
+  const [requiredDocUploadBusyTypes, setRequiredDocUploadBusyTypes] = useState<string[]>([]);
+  const [showEvidenceSearch, setShowEvidenceSearch] = useState(false);
+  const [activeEvidenceDocType, setActiveEvidenceDocType] = useState<string | null>(null);
+  const [evidenceSearchTerm, setEvidenceSearchTerm] = useState('');
   const clinicalNotesRef = useRef<HTMLTextAreaElement | null>(null);
+  const evidenceSearchRef = useRef<HTMLInputElement | null>(null);
+  const previousInterventionCodeRef = useRef('');
 
   const selectedEncounterIdNumber = useMemo(() => {
     const parsed = Number(encounterId);
@@ -371,16 +386,37 @@ export default function NewPreauthPage() {
   }, [interventionOptions]);
 
   const selectedRequiredDocumentTypes = useMemo(() => {
+    const selectedFromBenefits = interventionOptions.find((entry) => entry.code === interventionCode);
     const raw = selectedInterventionRecord as Record<string, unknown> | null;
-    if (!raw) return [] as string[];
+    if (!raw && !selectedFromBenefits) return [] as string[];
+    const extras = (raw?.raw_data && typeof raw.raw_data === 'object'
+      ? raw.raw_data
+      : null) as Record<string, unknown> | null;
     const docTypes = [
-      ...(Array.isArray(raw.requiredPreauthDocumentTypes) ? raw.requiredPreauthDocumentTypes : []),
-      ...(Array.isArray(raw.required_preauth_document_types) ? raw.required_preauth_document_types : []),
-      ...(Array.isArray(raw.applicable_document_types) ? raw.applicable_document_types : []),
-      ...(Array.isArray(raw.applicableDocumentTypes) ? raw.applicableDocumentTypes : []),
+      ...(Array.isArray(selectedFromBenefits?.requiredPreauthDocumentTypes)
+        ? selectedFromBenefits.requiredPreauthDocumentTypes
+        : []),
+      ...(Array.isArray(selectedFromBenefits?.required_preauth_document_types)
+        ? selectedFromBenefits.required_preauth_document_types
+        : []),
+      ...(Array.isArray(selectedFromBenefits?.required_document_types)
+        ? selectedFromBenefits.required_document_types
+        : []),
+      ...(Array.isArray(raw?.requiredPreauthDocumentTypes) ? raw.requiredPreauthDocumentTypes : []),
+      ...(Array.isArray(raw?.required_preauth_document_types) ? raw.required_preauth_document_types : []),
+      ...(Array.isArray(raw?.required_document_types) ? raw.required_document_types : []),
+      ...(Array.isArray(extras?.requiredPreauthDocumentTypes) ? extras.requiredPreauthDocumentTypes : []),
+      ...(Array.isArray(extras?.required_preauth_document_types) ? extras.required_preauth_document_types : []),
+      ...(Array.isArray(extras?.required_document_types) ? extras.required_document_types : []),
     ];
-    return Array.from(new Set(docTypes.map((item) => String(item))));
-  }, [selectedInterventionRecord]);
+    return Array.from(
+      new Set(
+        docTypes
+          .map((item) => String(item).trim().toUpperCase())
+          .filter(Boolean),
+      ),
+    );
+  }, [interventionOptions, interventionCode, selectedInterventionRecord]);
 
   const needsLabEvidence = selectedRequiredDocumentTypes.includes('LAB_RESULTS');
   const needsImagingEvidence = selectedRequiredDocumentTypes.includes('IMAGING_RESULT');
@@ -448,8 +484,29 @@ export default function NewPreauthPage() {
     const linkedTypes = linkedEvidenceKeys
       .map((key) => preauthEvidenceOptions.find((option) => option.key === key)?.documentType)
       .filter((value): value is string => !!value);
-    return new Set([...linkedTypes, ...generatedRequiredDocTypes]);
-  }, [linkedEvidenceKeys, preauthEvidenceOptions, generatedRequiredDocTypes]);
+    return new Set([...linkedTypes, ...generatedRequiredDocTypes, ...uploadedRequiredDocTypes]);
+  }, [
+    linkedEvidenceKeys,
+    preauthEvidenceOptions,
+    generatedRequiredDocTypes,
+    uploadedRequiredDocTypes,
+  ]);
+
+  const missingRequiredDocumentTypes = useMemo(() => {
+    return selectedRequiredDocumentTypes.filter((docType) => !fulfilledRequiredDocTypes.has(docType));
+  }, [selectedRequiredDocumentTypes, fulfilledRequiredDocTypes]);
+
+  const hasAllRequiredDocuments = missingRequiredDocumentTypes.length === 0;
+
+  const filteredEvidenceOptions = useMemo(() => {
+    const term = evidenceSearchTerm.trim().toLowerCase();
+    return preauthEvidenceOptions.filter((option) => {
+      if (activeEvidenceDocType && option.documentType !== activeEvidenceDocType) return false;
+      if (!term) return true;
+      const haystack = `${option.title} ${option.subtitle} ${option.documentType}`.toLowerCase();
+      return haystack.includes(term);
+    });
+  }, [preauthEvidenceOptions, activeEvidenceDocType, evidenceSearchTerm]);
 
   const selectedInterventionTariff = useMemo(() => {
     if (interventionPrice != null) return interventionPrice;
@@ -566,8 +623,27 @@ export default function NewPreauthPage() {
     if (!interventionCode) {
       if (selectedType !== null) setSelectedType(null);
       if (linkedEvidenceKeys.length > 0) setLinkedEvidenceKeys([]);
+      if (generatedRequiredDocTypes.length > 0) setGeneratedRequiredDocTypes([]);
+      if (uploadedRequiredDocTypes.length > 0) setUploadedRequiredDocTypes([]);
+      if (showEvidenceSearch) setShowEvidenceSearch(false);
+      if (activeEvidenceDocType) setActiveEvidenceDocType(null);
+      if (evidenceSearchTerm) setEvidenceSearchTerm('');
+      previousInterventionCodeRef.current = '';
       return;
     }
+
+    if (
+      previousInterventionCodeRef.current
+      && previousInterventionCodeRef.current !== interventionCode
+    ) {
+      if (linkedEvidenceKeys.length > 0) setLinkedEvidenceKeys([]);
+      if (generatedRequiredDocTypes.length > 0) setGeneratedRequiredDocTypes([]);
+      if (uploadedRequiredDocTypes.length > 0) setUploadedRequiredDocTypes([]);
+      if (showEvidenceSearch) setShowEvidenceSearch(false);
+      if (activeEvidenceDocType) setActiveEvidenceDocType(null);
+      if (evidenceSearchTerm) setEvidenceSearchTerm('');
+    }
+    previousInterventionCodeRef.current = interventionCode;
 
     const selectedFromBenefits = interventionOptions.find((entry) => entry.code === interventionCode);
     const source = selectedFromBenefits
@@ -598,6 +674,11 @@ export default function NewPreauthPage() {
     selectedType,
     interventionName,
     linkedEvidenceKeys.length,
+    generatedRequiredDocTypes.length,
+    uploadedRequiredDocTypes.length,
+    showEvidenceSearch,
+    activeEvidenceDocType,
+    evidenceSearchTerm,
   ]);
 
   useEffect(() => {
@@ -709,6 +790,88 @@ export default function NewPreauthPage() {
     setDoctorChips((prev) => prev.filter((d) => d.registration_number !== regNum));
   }, []);
 
+  const addManualDoctor = useCallback(() => {
+    const name = manualDoctorName.trim();
+    const regNumber = manualDoctorRegNumber.trim();
+    if (!name || !regNumber) {
+      toast({
+        title: 'Missing required fields',
+        description: 'Practitioner name and registration/identification number are required.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    addDoctor({
+      name,
+      registration_number: regNumber,
+      identification_type: manualDoctorIdType || 'registration_number',
+      regulation_body: manualDoctorRegBody.trim() || 'KMPDC',
+    });
+
+    setManualDoctorName('');
+    setManualDoctorRegNumber('');
+    setManualDoctorIdType('registration_number');
+    setManualDoctorRegBody('KMPDC');
+    setShowManualDoctorForm(false);
+  }, [
+    addDoctor,
+    manualDoctorIdType,
+    manualDoctorName,
+    manualDoctorRegBody,
+    manualDoctorRegNumber,
+    toast,
+  ]);
+
+  const lookupManualDoctor = useCallback(async () => {
+    const identificationNumber = manualLookupIdNumber.trim();
+    if (!identificationNumber) {
+      toast({
+        title: 'ID required',
+        description: 'Enter National ID or passport number to lookup practitioner details.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setManualLookupLoading(true);
+    try {
+      const result = await shaApi.searchPractitioner({
+        identification_type: manualLookupIdType,
+        identification_number: identificationNumber,
+      });
+      const practitioner = result.message;
+
+      const fullName = practitioner?.membership?.full_name || '';
+      const registrationId = practitioner?.membership?.registration_id || '';
+      const licensingBody = practitioner?.membership?.licensing_body || 'KMPDC';
+
+      setManualDoctorName(fullName || manualDoctorName);
+      setManualDoctorRegNumber(registrationId || identificationNumber);
+      setManualDoctorRegBody(licensingBody);
+      setManualDoctorIdType(
+        registrationId
+          ? 'registration_number'
+          : manualLookupIdType === 'passport'
+            ? 'passport'
+            : 'national_id'
+      );
+
+      toast({
+        title: 'Practitioner found',
+        description: 'Fields prefilled from DHA HWR lookup. Review and add practitioner.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Lookup failed',
+        description: error instanceof Error ? error.message : 'Unable to find practitioner in HWR',
+        variant: 'destructive',
+      });
+    } finally {
+      setManualLookupLoading(false);
+    }
+  }, [manualLookupIdNumber, manualLookupIdType, manualDoctorName, toast]);
+
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
@@ -720,6 +883,49 @@ export default function NewPreauthPage() {
   const removeFile = useCallback((index: number) => {
     setDocuments((prev) => prev.filter((_, i) => i !== index));
   }, []);
+
+  const uploadRequiredDocument = useCallback(async (documentType: string, files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const selectedFiles = Array.from(files);
+    const normalizedDocType = String(documentType || '').trim().toUpperCase();
+    if (!normalizedDocType) return;
+
+    setRequiredDocUploadBusyTypes((prev) => (
+      prev.includes(normalizedDocType) ? prev : [...prev, normalizedDocType]
+    ));
+
+    try {
+      if (selectedClaimIdNumber) {
+        const attachmentType = PREAUTH_DOC_TO_ATTACHMENT_TYPE[normalizedDocType] || 'other';
+        for (const file of selectedFiles) {
+          await shaApi.createClaimAttachment(selectedClaimIdNumber, {
+            attachment_type: attachmentType,
+            name: file.name,
+            description: `Required preauth document (${normalizedDocType.replace(/_/g, ' ')})`,
+            file,
+          });
+        }
+      }
+
+      setDocuments((prev) => [...prev, ...selectedFiles]);
+      setUploadedRequiredDocTypes((prev) => (
+        prev.includes(normalizedDocType) ? prev : [...prev, normalizedDocType]
+      ));
+
+      toast({
+        title: 'Required document uploaded',
+        description: `${normalizedDocType.replace(/_/g, ' ')} file${selectedFiles.length > 1 ? 's' : ''} added.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Upload failed',
+        description: error instanceof Error ? error.message : 'Unable to upload required document',
+        variant: 'destructive',
+      });
+    } finally {
+      setRequiredDocUploadBusyTypes((prev) => prev.filter((entry) => entry !== normalizedDocType));
+    }
+  }, [selectedClaimIdNumber, toast]);
 
   const addEvidenceAsDocument = useCallback(async (option: PreauthEvidenceOption) => {
     if (linkedEvidenceKeys.includes(option.key)) return;
@@ -765,15 +971,29 @@ export default function NewPreauthPage() {
     await addEvidenceAsDocument(candidate);
   }, [preauthEvidenceOptions, linkedEvidenceKeys, addEvidenceAsDocument]);
 
+  const openEvidenceSearchForType = useCallback((documentType: string) => {
+    setShowEvidenceSearch(true);
+    setActiveEvidenceDocType(documentType);
+    setEvidenceSearchTerm('');
+    setTimeout(() => evidenceSearchRef.current?.focus(), 0);
+  }, []);
+
   const generateRequiredDocDraft = useCallback(async (documentType: string) => {
     if (!AUTO_GENERATABLE_PREAUTH_DOC_TYPES.has(documentType)) return;
     if (generatedRequiredDocTypes.includes(documentType)) return;
 
     const encounterCtx = selectedEncounterIdNumber || selectedClaim?.encounter;
-    if (!encounterCtx) {
+    const contextToken = encounterCtx
+      ? `encounter-${encounterCtx}`
+      : selectedClaimIdNumber
+        ? `claim-${selectedClaimIdNumber}`
+        : interventionCode
+          ? `intervention-${interventionCode.toLowerCase()}`
+          : `draft-${Date.now()}`;
+    if (!encounterCtx && !selectedClaimIdNumber && !patientId) {
       toast({
-        title: 'Encounter context required',
-        description: `Select an encounter to auto-generate ${documentType.replace(/_/g, ' ')}.`,
+        title: 'Context required',
+        description: `Select patient/claim context to auto-generate ${documentType.replace(/_/g, ' ')}.`,
         variant: 'destructive',
       });
       return;
@@ -783,6 +1003,7 @@ export default function NewPreauthPage() {
       `Document Type: ${documentType}`,
       `Patient ID: ${patientId || '-'}`,
       `Encounter ID: ${encounterCtx}`,
+      `Claim ID: ${selectedClaimIdNumber || '-'}`,
       `Intervention: ${interventionCode || '-'}`,
       `Diagnosis: ${diagnosisChips.map((entry) => entry.code).join(', ') || '-'}`,
       `Clinician: ${doctorChips.map((entry) => entry.name).join(', ') || '-'}`,
@@ -792,7 +1013,7 @@ export default function NewPreauthPage() {
     ];
     const file = new File(
       [contentLines.join('\n')],
-      `${documentType.toLowerCase()}-encounter-${encounterCtx}.txt`,
+      `${documentType.toLowerCase()}-${contextToken}.txt`,
       { type: 'text/plain' }
     );
 
@@ -802,7 +1023,7 @@ export default function NewPreauthPage() {
         await shaApi.createClaimAttachment(selectedClaimIdNumber, {
           attachment_type: attachmentType,
           name: `${documentType.replace(/_/g, ' ')} draft`,
-          description: `Auto-generated from encounter ${encounterCtx}`,
+          description: `Auto-generated from ${contextToken.replace(/-/g, ' ')}`,
           file,
         });
       }
@@ -823,6 +1044,7 @@ export default function NewPreauthPage() {
     generatedRequiredDocTypes,
     selectedEncounterIdNumber,
     selectedClaim?.encounter,
+    selectedClaimIdNumber,
     patientId,
     interventionCode,
     diagnosisChips,
@@ -833,7 +1055,7 @@ export default function NewPreauthPage() {
   ]);
 
   const handleSubmit = async () => {
-    if (!canProceedStep3 || !consentToken || !patientId) return;
+    if (!canProceedStep3 || !consentToken || !patientId || !hasAllRequiredDocuments) return;
     setIsSubmitting(true);
     try {
       const extraFields: Record<string, unknown> = {};
@@ -1222,13 +1444,40 @@ export default function NewPreauthPage() {
                     )}
                   </div>
 
-                  {preauthEvidenceOptions.length > 0 && (
+                  {(showEvidenceSearch || preauthEvidenceOptions.length > 0) && (
                     <div className="space-y-2 pt-1">
-                      <p className="text-xs text-muted-foreground">
-                        Available patient evidence (lab/imaging) for quick attachment generation
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          Search patient lab/imaging records scoped to selected patient {patientId ? `#${patientId}` : ''}
+                        </p>
+                        {activeEvidenceDocType && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {activeEvidenceDocType.replace(/_/g, ' ')}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          ref={evidenceSearchRef}
+                          value={evidenceSearchTerm}
+                          onChange={(e) => setEvidenceSearchTerm(e.target.value)}
+                          placeholder="Search by test, order number, summary..."
+                          className="h-8 text-xs"
+                        />
+                        {activeEvidenceDocType && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-xs"
+                            onClick={() => setActiveEvidenceDocType(null)}
+                          >
+                            Clear filter
+                          </Button>
+                        )}
+                      </div>
                       <div className="space-y-1.5">
-                        {preauthEvidenceOptions.slice(0, 8).map((option) => {
+                        {filteredEvidenceOptions.slice(0, 12).map((option) => {
                           const selected = linkedEvidenceKeys.includes(option.key);
                           const busy = evidenceBusyKeys.includes(option.key);
                           return (
@@ -1250,6 +1499,11 @@ export default function NewPreauthPage() {
                             </div>
                           );
                         })}
+                        {filteredEvidenceOptions.length === 0 && (
+                          <p className="text-[11px] text-muted-foreground">
+                            No matching records found for this patient.
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1417,7 +1671,107 @@ export default function NewPreauthPage() {
                   }}
                   placeholder="Search staff..."
                 />
+                <button
+                  type="button"
+                  className="text-xs text-primary underline-offset-2 hover:underline"
+                  onClick={() => setShowManualDoctorForm((prev) => !prev)}
+                >
+                  {showManualDoctorForm ? 'Cancel manual entry' : 'Or Enter manually'}
+                </button>
               </div>
+
+              {showManualDoctorForm && (
+                <div className="space-y-2 rounded-md border p-3">
+                  <p className="text-xs text-muted-foreground">Enter ID, lookup HWR, then review and add.</p>
+                  <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Lookup ID Type</Label>
+                      <select
+                        value={manualLookupIdType}
+                        onChange={(e) => setManualLookupIdType(e.target.value as 'National ID' | 'passport')}
+                        className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
+                      >
+                        <option value="National ID">National ID</option>
+                        <option value="passport">Passport</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">ID Number</Label>
+                      <Input
+                        value={manualLookupIdNumber}
+                        onChange={(e) => setManualLookupIdNumber(e.target.value)}
+                        placeholder="e.g. 12345678"
+                        className="h-8"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8"
+                        onClick={() => void lookupManualDoctor()}
+                        disabled={manualLookupLoading || !manualLookupIdNumber.trim()}
+                      >
+                        {manualLookupLoading ? (
+                          <>
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            Looking up...
+                          </>
+                        ) : (
+                          'Lookup HWR'
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Name *</Label>
+                      <Input
+                        value={manualDoctorName}
+                        onChange={(e) => setManualDoctorName(e.target.value)}
+                        placeholder="Dr Jane Doe"
+                        className="h-8"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Registration / ID No. *</Label>
+                      <Input
+                        value={manualDoctorRegNumber}
+                        onChange={(e) => setManualDoctorRegNumber(e.target.value)}
+                        placeholder="P12345"
+                        className="h-8"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Identification Type</Label>
+                      <select
+                        value={manualDoctorIdType}
+                        onChange={(e) => setManualDoctorIdType(e.target.value)}
+                        className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
+                      >
+                        <option value="registration_number">Registration Number</option>
+                        <option value="national_id">National ID</option>
+                        <option value="passport">Passport</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Regulation Body</Label>
+                      <Input
+                        value={manualDoctorRegBody}
+                        onChange={(e) => setManualDoctorRegBody(e.target.value)}
+                        placeholder="KMPDC"
+                        className="h-8"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Button type="button" size="sm" variant="outline" onClick={addManualDoctor}>
+                      Add practitioner
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -1494,7 +1848,8 @@ export default function NewPreauthPage() {
                     {selectedRequiredDocumentTypes.map((docType) => {
                       const isFulfilled = fulfilledRequiredDocTypes.has(docType);
                       const hasEvidenceOption = preauthEvidenceOptions.some((option) => option.documentType === docType);
-                      const canGenerate = AUTO_GENERATABLE_PREAUTH_DOC_TYPES.has(docType) && !!(selectedEncounterIdNumber || selectedClaim?.encounter);
+                      const canGenerate = AUTO_GENERATABLE_PREAUTH_DOC_TYPES.has(docType)
+                        && !!(selectedEncounterIdNumber || selectedClaim?.encounter || selectedClaimIdNumber || patientId || interventionCode);
                       return (
                         <div key={docType} className="flex items-center justify-between gap-2 rounded border px-2 py-1.5">
                           <div className="min-w-0">
@@ -1512,7 +1867,19 @@ export default function NewPreauthPage() {
                                 className="h-7 text-xs"
                                 onClick={() => void attachFirstEvidenceForType(docType)}
                               >
-                                Auto-attach
+                                Fetch & attach
+                              </Button>
+                            )}
+                            {(docType === 'LAB_RESULTS' || docType === 'IMAGING_RESULT') && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                                onClick={() => openEvidenceSearchForType(docType)}
+                                disabled={!patientId}
+                              >
+                                Search records
                               </Button>
                             )}
                             {canGenerate && !isFulfilled && (
@@ -1525,6 +1892,25 @@ export default function NewPreauthPage() {
                               >
                                 Generate
                               </Button>
+                            )}
+                            {!isFulfilled && (
+                              <label className="inline-flex cursor-pointer items-center rounded-md border px-2 py-1 text-[11px] hover:bg-accent">
+                                Upload
+                                <input
+                                  type="file"
+                                  multiple
+                                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.txt"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    void uploadRequiredDocument(docType, e.target.files);
+                                    e.target.value = '';
+                                  }}
+                                  disabled={requiredDocUploadBusyTypes.includes(docType)}
+                                />
+                              </label>
+                            )}
+                            {requiredDocUploadBusyTypes.includes(docType) && (
+                              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
                             )}
                           </div>
                         </div>
@@ -1672,6 +2058,16 @@ export default function NewPreauthPage() {
                   </div>
                 </div>
               )}
+
+              {missingRequiredDocumentTypes.length > 0 && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Required Documents Pending</AlertTitle>
+                  <AlertDescription>
+                    Attach all required preauth documents before submission: {missingRequiredDocumentTypes.join(', ').replace(/_/g, ' ')}.
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardContent>
           </Card>
 
@@ -1708,7 +2104,7 @@ export default function NewPreauthPage() {
           Cancel
         </Button>
 
-        <Button onClick={handleSubmit} disabled={isSubmitting || !showReviewSection || hasDuplicate}>
+        <Button onClick={handleSubmit} disabled={isSubmitting || !showReviewSection || hasDuplicate || !hasAllRequiredDocuments}>
           {isSubmitting ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
