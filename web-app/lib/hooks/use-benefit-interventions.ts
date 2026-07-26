@@ -30,6 +30,7 @@ export interface InterventionOption {
   benefitCode?: string;
   needsPreauth?: boolean;
   needsManualPreauthApproval?: boolean;
+  needsDoctorAuthorization?: boolean;
   isSurgicalPreauth?: boolean;
   isRenalPreauth?: boolean;
   isOncologyPreauth?: boolean;
@@ -222,11 +223,21 @@ export function useBenefitInterventions({
         code: getField(i, 'code', 'interventionCode', 'intervention_code'),
         name: getField(i, 'name', 'interventionName', 'intervention_name') || '',
         category: getField(i, 'paymentMechanism', 'payment_mechanism') || undefined,
-        price: typeof (i as Record<string, unknown>).overallTariff === 'number'
-          ? (i as Record<string, unknown>).overallTariff as number
-          : typeof (i as Record<string, unknown>).overall_tariff === 'number'
-            ? (i as Record<string, unknown>).overall_tariff as number
-            : undefined,
+        price: (() => {
+          const overallTariff = (i as Record<string, unknown>).overallTariff;
+          const overallTariffSnake = (i as Record<string, unknown>).overall_tariff;
+          if (typeof overallTariff === 'number') return overallTariff;
+          if (typeof overallTariffSnake === 'number') return overallTariffSnake;
+          if (typeof overallTariff === 'string') {
+            const parsed = Number(overallTariff);
+            return Number.isFinite(parsed) ? parsed : undefined;
+          }
+          if (typeof overallTariffSnake === 'string') {
+            const parsed = Number(overallTariffSnake);
+            return Number.isFinite(parsed) ? parsed : undefined;
+          }
+          return undefined;
+        })(),
         paymentMechanism:
           getField(i, 'paymentMechanism', 'payment_mechanism') || undefined,
         accessPoint:
@@ -240,11 +251,16 @@ export function useBenefitInterventions({
           'needsManualPreauthApproval',
           'needs_manual_preauth_approval',
         ),
-        isSurgicalPreauth: getBooleanField(i, 'isSurgicalPreauth', 'is_surgical_preauth'),
-        isRenalPreauth: getBooleanField(i, 'isRenalPreauth', 'is_renal_preauth'),
-        isOncologyPreauth: getBooleanField(i, 'isOncologyPreauth', 'is_oncology_preauth'),
-        isImagingPreauth: getBooleanField(i, 'isImagingPreauth', 'is_imaging_preauth'),
-        isOpticalPreauth: getBooleanField(i, 'isOpticalPreauth', 'is_optical_preauth'),
+        needsDoctorAuthorization: getBooleanField(
+          i,
+          'needsDoctorAuthorization',
+          'needs_doctor_authorization',
+        ),
+        isSurgicalPreauth: getBooleanField(i, 'isSurgicalPreauth', 'is_surgical_preauth', 'requiresSurgicalPreauth', 'requires_surgical_preauth'),
+        isRenalPreauth: getBooleanField(i, 'isRenalPreauth', 'is_renal_preauth', 'requiresRenalPreauth', 'requires_renal_preauth'),
+        isOncologyPreauth: getBooleanField(i, 'isOncologyPreauth', 'is_oncology_preauth', 'requiresOncologyPreauth', 'requires_oncology_preauth'),
+        isImagingPreauth: getBooleanField(i, 'isImagingPreauth', 'is_imaging_preauth', 'requiresImagingPreauth', 'requires_imaging_preauth', 'requiresRadiologyPreauth', 'requires_radiology_preauth'),
+        isOpticalPreauth: getBooleanField(i, 'isOpticalPreauth', 'is_optical_preauth', 'requiresOpticalPreauth', 'requires_optical_preauth'),
       }));
   }, [hideCapitationInterventions, interventionOptionsRaw]);
 

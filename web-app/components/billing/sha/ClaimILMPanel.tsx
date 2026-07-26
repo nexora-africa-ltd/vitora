@@ -664,8 +664,8 @@ export function ClaimILMPanel({
   // enable/disable the button, satisfy the prereqs, and give the user visibility
   // into what will be sent.
   const effectiveInterventionCode = useMemo(
-    () => interventionCodes[0] || consentInterventionCode || manualInterventionCode || '',
-    [interventionCodes, consentInterventionCode, manualInterventionCode],
+    () => consentInterventionCode || interventionCodes[0] || manualInterventionCode || '',
+    [consentInterventionCode, interventionCodes, manualInterventionCode],
   );
 
   // Service type derived from active interventions on the claim, falling back
@@ -915,12 +915,12 @@ export function ClaimILMPanel({
     try {
       const memberId = typeof claim.sha_member === 'number' ? claim.sha_member : 0;
       // Pass intervention codes so the OTP targets the right benefit package.
-      // Priority: claim interventions → consent intervention → none.
+      // Priority: preauth/consent intervention → claim interventions → none.
       let codes: string[] = [];
-      if (interventionCodes.length > 0) {
-        codes = interventionCodes;
-      } else if (consentInterventionCode) {
+      if (consentInterventionCode) {
         codes = [consentInterventionCode];
+      } else if (interventionCodes.length > 0) {
+        codes = interventionCodes;
       }
       const result = await shaApi.sendConsentOTP({
         sha_member_id: memberId,
@@ -981,14 +981,14 @@ export function ClaimILMPanel({
       return;
     }
     // DHA start_visit requires at least one valid intervention code.
-    // Priority: (1) interventions already on the claim,
-    //           (2) intervention selected during consent (same one used to validate OTP),
+    // Priority: (1) intervention selected for consent/preauth,
+    //           (2) interventions already on the claim,
     //           (3) intervention manually selected in the panel dropdown.
     let codes: string[] = [];
-    if (interventionCodes.length > 0) {
-      codes = interventionCodes;
-    } else if (consentInterventionCode) {
+    if (consentInterventionCode) {
       codes = [consentInterventionCode];
+    } else if (interventionCodes.length > 0) {
+      codes = interventionCodes;
     } else if (manualInterventionCode) {
       codes = [manualInterventionCode];
     }
