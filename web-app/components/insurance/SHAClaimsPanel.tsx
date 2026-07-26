@@ -74,6 +74,10 @@ import { toast } from 'sonner';
 
 const EMPTY_CLAIMS: Claim[] = [];
 
+function claimAmountValue(claim: Claim): number {
+  return parseFloat(claim.claimed_amount ?? claim.total_amount ?? '0');
+}
+
 interface SHAClaimsPanelProps {
   /** Base path used for routing to claim detail pages */
   basePath?: string;
@@ -117,7 +121,7 @@ function exportClaimsCSV(claims: Claim[]) {
     c.patient_mrn || '',
     c.status,
     c.claim_flow || '',
-    c.total_amount ?? '0',
+    c.claimed_amount ?? c.total_amount ?? '0',
     c.approved_amount ?? '',
     c.service_date || '',
     c.submitted_at ? format(parseISO(c.submitted_at), 'yyyy-MM-dd HH:mm') : '',
@@ -256,7 +260,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
     pending: claims.filter((c) => isInProgressClaim(c)).length,
     approved: claims.filter((c) => c.status === 'approved').length,
     rejected: claims.filter((c) => c.status === 'rejected').length,
-    totalAmount: claims.reduce((sum, c) => sum + parseFloat(c.total_amount ?? '0'), 0),
+    totalAmount: claims.reduce((sum, c) => sum + claimAmountValue(c), 0),
     approvedAmount: claims
       .filter((c) => c.approved_amount)
       .reduce((sum, c) => sum + parseFloat(c.approved_amount || '0'), 0),
@@ -268,7 +272,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
       const existing = statusCounts.get(claim.status) || { count: 0, amount: 0 };
       statusCounts.set(claim.status, {
         count: existing.count + 1,
-        amount: existing.amount + parseFloat(claim.total_amount ?? '0'),
+        amount: existing.amount + claimAmountValue(claim),
       });
     });
     return Array.from(statusCounts.entries()).map(([status, data]) => ({
@@ -846,7 +850,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                 hideOnMobile: true,
                 cell: (claim) => (
                   <div className="text-right">
-                    <p className="font-medium">{formatCurrency(parseFloat(claim.total_amount ?? '0'))}</p>
+                    <p className="font-medium">{formatCurrency(claimAmountValue(claim))}</p>
                     {claim.approved_amount && claim.status === 'approved' && (
                       <p className="text-xs text-green-600">
                         {formatCurrency(parseFloat(claim.approved_amount))}
@@ -902,7 +906,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-sm font-medium">
-                        {formatCurrency(parseFloat(claim.total_amount ?? '0'))}
+                        {formatCurrency(claimAmountValue(claim))}
                       </span>
                       <TimeBarBadge claim={claim} compact />
                     </div>

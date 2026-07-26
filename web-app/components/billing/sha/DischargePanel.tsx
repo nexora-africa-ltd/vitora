@@ -233,6 +233,8 @@ const LOCAL_ATTACHMENT_TYPES: Array<{ value: string; label: string }> = [
 ];
 
 const AUTO_GENERATABLE_MISSING_DOC_TYPES = new Set(['MEDICAL_REPORT', 'CASE_NOTE', 'FINAL_BILL']);
+const PANEL_REFRESH_INTERVAL_MS = 60_000;
+const PREVIEW_REFRESH_INTERVAL_MS = 180_000;
 
 const DOCTOR_ID_TYPES = [
   { value: 'National ID', label: 'National ID' },
@@ -542,8 +544,8 @@ export function DischargePanel({
     queryKey: ['discharge-local-attachments', claimId],
     queryFn: () => shaApi.getClaimAttachments(claimId),
     staleTime: 0,
-    refetchInterval: 60_000,
-    refetchIntervalInBackground: true,
+    refetchInterval: PANEL_REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: false,
   });
 
   const {
@@ -554,8 +556,8 @@ export function DischargePanel({
     queryKey: ['discharge-dha-attachment-sync-status', claimId],
     queryFn: () => shaApi.ilmAttachmentSyncStatus(claimId),
     staleTime: 0,
-    refetchInterval: 60_000,
-    refetchIntervalInBackground: true,
+    refetchInterval: PANEL_REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: false,
   });
 
   const {
@@ -567,8 +569,8 @@ export function DischargePanel({
     queryKey: ['discharge-ilm-preview', claimId],
     queryFn: () => shaApi.ilmPreview(claimId),
     staleTime: 0,
-    refetchInterval: 60_000,
-    refetchIntervalInBackground: true,
+    refetchInterval: PREVIEW_REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: false,
   });
 
   const {
@@ -1260,8 +1262,9 @@ export function DischargePanel({
     queryKey: ['admission-clinical-summary', admissionIdForPreview],
     enabled: typeof admissionIdForPreview === 'number',
     staleTime: 30_000,
-    refetchInterval: typeof admissionIdForPreview === 'number' ? 60_000 : false,
-    refetchIntervalInBackground: true,
+    refetchInterval:
+      typeof admissionIdForPreview === 'number' ? PANEL_REFRESH_INTERVAL_MS : false,
+    refetchIntervalInBackground: false,
     queryFn: () => inpatientApi.getAdmissionClinicalSummary(admissionIdForPreview!),
   });
 

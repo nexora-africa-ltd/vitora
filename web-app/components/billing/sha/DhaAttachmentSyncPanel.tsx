@@ -32,7 +32,7 @@ export function DhaAttachmentSyncPanel({
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
     refetchInterval: 60_000,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
   });
 
   const matched = syncStatus?.matched ?? 0;

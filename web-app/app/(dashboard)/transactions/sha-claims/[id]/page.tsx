@@ -290,7 +290,12 @@ export default function ClaimDetailPage() {
           </TabsContent>
 
           <TabsContent value="workflow" className="mt-4 sm:mt-6">
-            <ClaimWorkflowTab claim={claim} flow={flow} onChange={refetch} />
+            <ClaimWorkflowTab
+              claim={claim}
+              flow={flow}
+              isActive={activeTab === 'workflow'}
+              onChange={refetch}
+            />
           </TabsContent>
 
           <TabsContent value="interventions" className="mt-4 sm:mt-6">

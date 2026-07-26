@@ -380,6 +380,8 @@ interface ClaimILMPanelProps {
   consentCredential?: ConsentCredential;
   /** Intervention code selected during consent — reused for start_visit to avoid mismatch. */
   consentInterventionCode?: string;
+  /** True when the workflow tab is active/visible. */
+  isActive?: boolean;
   /** Called after any action finishes so the parent can refetch the claim. */
   onChange?: () => void;
   /** Emits context parsed from preview payload for sibling workflow panels. */
@@ -400,6 +402,7 @@ export function ClaimILMPanel({
   consentToken = '',
   consentCredential,
   consentInterventionCode = '',
+  isActive = true,
   onChange,
   onPreviewContext,
 }: ClaimILMPanelProps) {
@@ -505,7 +508,7 @@ export function ClaimILMPanel({
     },
     staleTime: 30_000,
     refetchInterval: 60_000,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
   });
 
   const tokenStatus = useMemo(() => {
@@ -714,7 +717,7 @@ export function ClaimILMPanel({
     enabled: !!claimId && visitStarted,
     staleTime: 0,
     refetchInterval: visitStarted ? 60_000 : false,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
   });
 
   const {
@@ -727,7 +730,7 @@ export function ClaimILMPanel({
     enabled: !!claimId && visitStarted,
     staleTime: 0,
     refetchInterval: visitStarted ? 60_000 : false,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
   });
 
   const attachmentSyncMatched = attachmentSyncStatus?.matched ?? 0;
@@ -1041,6 +1044,19 @@ export function ClaimILMPanel({
     }
   }
 
+  const previewRef = useRef(preview);
+  previewRef.current = preview;
+
+  const wasActiveRef = useRef(false);
+  useEffect(() => {
+    const justActivated = isActive && !wasActiveRef.current;
+    wasActiveRef.current = isActive;
+    if (!justActivated) return;
+    if (!visitStarted) return;
+    if (busy !== null) return;
+    void previewRef.current();
+  }, [isActive, visitStarted, busy]);
+
   async function applyPreviewLines() {
     const payload = previewResult?.payload;
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
@@ -1184,6 +1200,7 @@ export function ClaimILMPanel({
 
   const refreshPreviewSilently = useCallback(async () => {
     if (!visitStarted || busy !== null || !previewResult?.payload) return;
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
     try {
       const result = await shaApi.ilmPreview(claimId);
       setPreviewResult(result);
@@ -1209,7 +1226,7 @@ export function ClaimILMPanel({
     if (!visitStarted || !previewResult?.payload) return;
     const timer = setInterval(() => {
       void refreshPreviewSilently();
-    }, 20 * 60_000);
+    }, 3 * 60_000);
     return () => clearInterval(timer);
   }, [previewResult?.payload, refreshPreviewSilently, visitStarted]);
 
