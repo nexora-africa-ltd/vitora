@@ -36,7 +36,7 @@ import { useBenefitInterventions } from '@/lib/hooks/use-benefit-interventions';
 import type { InterventionOption } from '@/lib/hooks/use-benefit-interventions';
 import { useFacility } from '@/lib/context/facility-context';
 import { OtpWhitelistRequestSheet, WhitelistStatusBadge } from './otp-whitelist-request-sheet';
-import { ContactPicker } from './contact-picker';
+import { ContactPicker, DEFAULT_OTP_RECIPIENT } from './contact-picker';
 import type { SHAMember } from '@/lib/types/sha';
 import { extractDHAErrorMessage } from '@/lib/sha/error-parser';
 import { toCrId } from '@/lib/sha/ilm-parsers';
@@ -297,11 +297,15 @@ export function SHAConsentStep({
     }
 
     const interventionCode = selectedIntervention?.code || '';
+    const beneficiaryContactId =
+      selectedContactId && selectedContactId !== DEFAULT_OTP_RECIPIENT
+        ? selectedContactId
+        : undefined;
     sendOTP.mutate(
       {
         sha_member_id: memberId,
         ...(interventionCode ? { intervention_codes: [interventionCode] } : {}),
-        ...(selectedContactId ? { beneficiary_contact_id: selectedContactId } : {}),
+        ...(beneficiaryContactId ? { beneficiary_contact_id: beneficiaryContactId } : {}),
       },
       {
         onSuccess: (response) => {
@@ -671,7 +675,7 @@ export function SHAConsentStep({
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button
               onClick={handleSendOTP}
-              disabled={sendOTP.isPending || isCreatingMember}
+              disabled={sendOTP.isPending || isCreatingMember || (!!crId && !selectedContactId)}
               size="sm"
             >
               {(sendOTP.isPending || isCreatingMember) ? (
@@ -684,6 +688,7 @@ export function SHAConsentStep({
             <Button
               variant={isBiometricPrimary ? 'default' : 'outline'}
               onClick={handleBiometricStart}
+              disabled={!!crId && !selectedContactId}
               size="sm"
             >
               <Fingerprint className="mr-2 h-3.5 w-3.5" />
@@ -967,6 +972,7 @@ export function SHAConsentStep({
                 handleBiometricStart();
               }}
               variant="outline"
+              disabled={!!crId && !selectedContactId}
               size="sm"
             >
               <Fingerprint className="mr-1.5 h-3.5 w-3.5" />
@@ -974,7 +980,7 @@ export function SHAConsentStep({
             </Button>
             <Button
               onClick={handleSendOTP}
-              disabled={sendOTP.isPending || isCreatingMember}
+              disabled={sendOTP.isPending || isCreatingMember || (!!crId && !selectedContactId)}
               size="sm"
             >
               {(sendOTP.isPending || isCreatingMember) ? (

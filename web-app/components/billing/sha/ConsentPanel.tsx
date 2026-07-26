@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { cn } from '@/lib/utils';
 import { useSendConsentOTP, useStartVisit, useConsentDetail } from '@/lib/hooks/use-sha';
 import { shaApi } from '@/lib/api/sha';
@@ -41,7 +42,7 @@ import type { ConsentStatus, ClaimFlow } from '@/lib/types/sha';
 import { format, parseISO } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { useFacility } from '@/lib/context/facility-context';
-import { ContactPicker } from '@/components/patients/contact-picker';
+import { ContactPicker, DEFAULT_OTP_RECIPIENT } from '@/components/patients/contact-picker';
 import { toCrId } from '@/lib/sha/ilm-parsers';
 import { useBenefitInterventions } from '@/lib/hooks/use-benefit-interventions';
 
@@ -74,6 +75,11 @@ interface ConsentPanelProps {
   encounterId?: number;
   /** Intervention codes to include with the OTP request (determines DHA benefit package) */
   interventionCodes?: string[];
+  /** Optional set of interventions to constrain selection (e.g., selected claim interventions). */
+  allowedInterventions?: Array<{
+    code: string;
+    name: string;
+  }>;
   /**
    * Callback when consent is successfully obtained. The `credential` arg
    * carries the raw OTP / biometric GUID so downstream steps can call
@@ -142,6 +148,7 @@ export function ConsentPanel({
   encounterId,
   consentId: initialConsentId,
   interventionCodes,
+  allowedInterventions,
   onConsentObtained,
   flow = 'shif',
   className,
@@ -153,6 +160,9 @@ export function ConsentPanel({
   const [otpCode, setOtpCode] = useState('');
   const [consentId, setConsentId] = useState<number | undefined>(initialConsentId);
   const [error, setError] = useState<string | null>(null);
+  const [allowedInterventionCode, setAllowedInterventionCode] = useState('');
+
+  const hasAllowedInterventions = (allowedInterventions?.length || 0) > 0;
 
   // ---- Intervention selection: DHA benefits cascade ----
   const { facilityDetail } = useFacility();
@@ -165,7 +175,7 @@ export function ConsentPanel({
     enabled: !patientCrId && !!shaMemberId,
     staleTime: 5 * 60 * 1000,
   });
-  const resolvedCrId = patientCrId || (fallbackSHAMember && toCrId(fallbackSHAMember.sha_member_number));
+  const resolvedCrId = patientCrId || (fallbackSHAMember && toCrId(fallbackSHAMember.sha_member_number || fallbackSHAMember.sha_number));
 
   const {
     benefitPackageOptions,
@@ -178,24 +188,45 @@ export function ConsentPanel({
     setSelectedInterventionCode,
   } = useBenefitInterventions({
     patientCrId: resolvedCrId || '',
-    enabled: !!resolvedCrId,
+    enabled: !!resolvedCrId && !hasAllowedInterventions && !interventionCodes?.length,
   });
 
   const preselectedInterventionCode = interventionCodes?.[0] || '';
-  const selectedInterventionCode = preselectedInterventionCode || selectedIntervention?.code || '';
+  const selectedInterventionCode = preselectedInterventionCode
+    || (hasAllowedInterventions ? allowedInterventionCode : selectedIntervention?.code)
+    || '';
+
+  const allowedInterventionOptions = useMemo(
+    () => allowedInterventions || [],
+    [allowedInterventions]
+  );
 
   // Update selection when interventions load
   useEffect(() => {
-    if (preselectedInterventionCode) return;
+    if (preselectedInterventionCode || hasAllowedInterventions) return;
     if (!selectedInterventionCode && interventionOptions.length > 0) {
       setSelectedInterventionCode(interventionOptions[0]!.code);
     }
   }, [
     preselectedInterventionCode,
+    hasAllowedInterventions,
     selectedInterventionCode,
     interventionOptions,
     setSelectedInterventionCode,
   ]);
+
+  useEffect(() => {
+    if (!hasAllowedInterventions) {
+      if (allowedInterventionCode) {
+        setAllowedInterventionCode('');
+      }
+      return;
+    }
+
+    const hasSelected = allowedInterventionOptions.some((item) => item.code === allowedInterventionCode);
+    if (hasSelected) return;
+    setAllowedInterventionCode(allowedInterventionOptions[0]?.code || '');
+  }, [hasAllowedInterventions, allowedInterventionCode, allowedInterventionOptions]);
 
   // Biometric state
   const [biometricAuthGuid, setBiometricAuthGuid] = useState<string | null>(null);
@@ -249,6 +280,10 @@ export function ConsentPanel({
   const handleSendOTP = async () => {
     setError(null);
     setMethod('otp');
+    const beneficiaryContactId =
+      selectedContactId && selectedContactId !== DEFAULT_OTP_RECIPIENT
+        ? selectedContactId
+        : undefined;
     const codes = interventionCodes?.length
       ? interventionCodes
       : selectedInterventionCode ? [selectedInterventionCode] : [];
@@ -256,7 +291,7 @@ export function ConsentPanel({
       {
         sha_member_id: shaMemberId,
         ...(codes.length ? { intervention_codes: codes } : {}),
-        ...(selectedContactId ? { beneficiary_contact_id: selectedContactId } : {}),
+        ...(beneficiaryContactId ? { beneficiary_contact_id: beneficiaryContactId } : {}),
       },
       {
         onSuccess: (response) => {
@@ -375,7 +410,7 @@ export function ConsentPanel({
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
-  }, [biometricPolling, biometricAuthGuid, consentId, onConsentObtained, stopPolling]);
+  }, [biometricPolling, biometricAuthGuid, consentId, onConsentObtained, stopPolling, selectedInterventionCode]);
 
   const handleCancelBiometric = async () => {
     if (biometricAuthGuid) {
@@ -436,44 +471,62 @@ export function ConsentPanel({
             {/* Intervention select — shown when no interventions are pre-set */}
             {!interventionCodes?.length && (
               <div className="space-y-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Benefit Package</Label>
-                  <Select
-                    value={selectedBenefitPkgCode}
-                    onValueChange={setSelectedBenefitPkgCode}
-                    disabled={benefitPackagesLoading || benefitPackageOptions.length === 0}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder={benefitPackagesLoading ? 'Loading packages...' : 'Select benefit package'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {benefitPackageOptions.map((pkg) => (
-                        <SelectItem key={pkg.code} value={pkg.code} className="text-xs">
-                          {pkg.code} · {pkg.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Service / Intervention</Label>
-                  <Select
-                    value={selectedInterventionCode}
-                    onValueChange={setSelectedInterventionCode}
-                    disabled={interventionsLoading || interventionOptions.length === 0}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder={interventionsLoading ? 'Loading interventions...' : 'Select intervention'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {interventionOptions.map((opt) => (
-                        <SelectItem key={opt.code} value={opt.code} className="text-xs">
-                          {opt.code} · {opt.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {hasAllowedInterventions ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Service / Intervention</Label>
+                    <SearchableSelect
+                      value={selectedInterventionCode}
+                      onValueChange={(value) => setAllowedInterventionCode(value)}
+                      disabled={allowedInterventionOptions.length === 0}
+                      className="h-8 text-xs"
+                      placeholder="Select intervention"
+                      searchPlaceholder="Search interventions..."
+                      emptyMessage="No interventions found."
+                      options={allowedInterventionOptions.map((opt) => ({
+                        value: opt.code,
+                        label: `${opt.code} · ${opt.name}`,
+                      }))}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Benefit Package</Label>
+                      <Select
+                        value={selectedBenefitPkgCode}
+                        onValueChange={setSelectedBenefitPkgCode}
+                        disabled={benefitPackagesLoading || benefitPackageOptions.length === 0}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder={benefitPackagesLoading ? 'Loading packages...' : 'Select benefit package'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {benefitPackageOptions.map((pkg) => (
+                            <SelectItem key={pkg.code} value={pkg.code} className="text-xs">
+                              {pkg.code} · {pkg.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Service / Intervention</Label>
+                      <SearchableSelect
+                        value={selectedInterventionCode}
+                        onValueChange={(value) => setSelectedInterventionCode(value)}
+                        disabled={interventionsLoading || interventionOptions.length === 0}
+                        className="h-8 text-xs"
+                        placeholder={interventionsLoading ? 'Loading interventions...' : 'Select intervention'}
+                        searchPlaceholder="Search interventions..."
+                        emptyMessage="No interventions found."
+                        options={interventionOptions.map((opt) => ({
+                          value: opt.code,
+                          label: `${opt.code} · ${opt.name}`,
+                        }))}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             )}
             {resolvedCrId && (
@@ -489,7 +542,7 @@ export function ConsentPanel({
             <div className="flex flex-col sm:flex-row gap-2">
               <Button
                 onClick={handleSendOTP}
-                disabled={sendOTP.isPending}
+                disabled={sendOTP.isPending || (hasAllowedInterventions && !selectedInterventionCode) || (!!resolvedCrId && !selectedContactId)}
                 size="sm"
               >
                 {sendOTP.isPending ? (
@@ -502,6 +555,7 @@ export function ConsentPanel({
               <Button
                 variant="outline"
                 onClick={handleStartBiometric}
+                disabled={(hasAllowedInterventions && !selectedInterventionCode) || (!!resolvedCrId && !selectedContactId)}
                 size="sm"
               >
                 <Fingerprint className="mr-2 h-4 w-4" />
@@ -520,44 +574,62 @@ export function ConsentPanel({
             {/* Intervention select — also available during OTP entry */}
             {!interventionCodes?.length && (
               <div className="space-y-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Benefit Package</Label>
-                  <Select
-                    value={selectedBenefitPkgCode}
-                    onValueChange={setSelectedBenefitPkgCode}
-                    disabled={benefitPackagesLoading || benefitPackageOptions.length === 0}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder={benefitPackagesLoading ? 'Loading packages...' : 'Select benefit package'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {benefitPackageOptions.map((pkg) => (
-                        <SelectItem key={pkg.code} value={pkg.code} className="text-xs">
-                          {pkg.code} · {pkg.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Service / Intervention</Label>
-                  <Select
-                    value={selectedInterventionCode}
-                    onValueChange={setSelectedInterventionCode}
-                    disabled={interventionsLoading || interventionOptions.length === 0}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder={interventionsLoading ? 'Loading interventions...' : 'Select intervention'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {interventionOptions.map((opt) => (
-                        <SelectItem key={opt.code} value={opt.code} className="text-xs">
-                          {opt.code} · {opt.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {hasAllowedInterventions ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Service / Intervention</Label>
+                    <SearchableSelect
+                      value={selectedInterventionCode}
+                      onValueChange={(value) => setAllowedInterventionCode(value)}
+                      disabled={allowedInterventionOptions.length === 0}
+                      className="h-8 text-xs"
+                      placeholder="Select intervention"
+                      searchPlaceholder="Search interventions..."
+                      emptyMessage="No interventions found."
+                      options={allowedInterventionOptions.map((opt) => ({
+                        value: opt.code,
+                        label: `${opt.code} · ${opt.name}`,
+                      }))}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Benefit Package</Label>
+                      <Select
+                        value={selectedBenefitPkgCode}
+                        onValueChange={setSelectedBenefitPkgCode}
+                        disabled={benefitPackagesLoading || benefitPackageOptions.length === 0}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder={benefitPackagesLoading ? 'Loading packages...' : 'Select benefit package'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {benefitPackageOptions.map((pkg) => (
+                            <SelectItem key={pkg.code} value={pkg.code} className="text-xs">
+                              {pkg.code} · {pkg.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Service / Intervention</Label>
+                      <SearchableSelect
+                        value={selectedInterventionCode}
+                        onValueChange={(value) => setSelectedInterventionCode(value)}
+                        disabled={interventionsLoading || interventionOptions.length === 0}
+                        className="h-8 text-xs"
+                        placeholder={interventionsLoading ? 'Loading interventions...' : 'Select intervention'}
+                        searchPlaceholder="Search interventions..."
+                        emptyMessage="No interventions found."
+                        options={interventionOptions.map((opt) => ({
+                          value: opt.code,
+                          label: `${opt.code} · ${opt.name}`,
+                        }))}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             )}
             {resolvedCrId && (
