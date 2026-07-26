@@ -29,8 +29,10 @@ redaction are uniform. Side-effects on :class:`SHAPreauth` /
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Any
 
 from django.utils import timezone
@@ -40,6 +42,175 @@ from .ilm_client import IlmClient, IlmResponse
 from .multipart_builder import MultipartFile, build_multipart
 
 logger = logging.getLogger(__name__)
+
+
+def _coerce_iso_date(value: Any) -> str:
+    """Return ISO-8601 datetime (UTC midnight) when value is date-like, else ''."""
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return f"{value.date().isoformat()}T00:00:00Z"
+    if isinstance(value, date):
+        return f"{value.isoformat()}T00:00:00Z"
+    text = str(value).strip()
+    if not text:
+        return ""
+    if "T" in text:
+        text = text.split("T", 1)[0]
+    try:
+        return f"{date.fromisoformat(text).isoformat()}T00:00:00Z"
+    except ValueError:
+        return ""
+
+
+def _first_non_empty(mapping: dict[str, Any], keys: tuple[str, ...]) -> Any:
+    for key in keys:
+        if key not in mapping:
+            continue
+        value = mapping.get(key)
+        if value is None:
+            continue
+        if isinstance(value, str) and not value.strip():
+            continue
+        return value
+    return None
+
+
+def _is_blank(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    return False
+
+
+def _normalize_iso_datetime_fields(data: dict[str, Any], keys: tuple[str, ...]) -> None:
+    """Normalize known date/datetime fields to ISO-8601 datetime strings."""
+    for key in keys:
+        if key not in data:
+            continue
+        normalized = _coerce_iso_date(data.get(key))
+        if normalized:
+            data[key] = normalized
+
+
+def _parse_json_like(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if not text or text[0] not in ("[", "{"):
+        return value
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return value
+
+
+def _canonical_regulation_body(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    normalized = " ".join(text.lower().split())
+    mapping = {
+        "kmpdc": "KMPDC",
+        "kenya medical practitioners and dentists council": "KMPDC",
+        "clinical officers council": "COC",
+        "coc": "COC",
+        "nursing council": "NCK",
+        "nursing council of kenya": "NCK",
+        "nck": "NCK",
+    }
+    return mapping.get(normalized, text)
+
+
+def _normalize_preauth_structured_fields(data: dict[str, Any]) -> None:
+    for key in ("doctors", "diagnoses", "items", "attachments"):
+        parsed = _parse_json_like(data.get(key))
+        if parsed is not None:
+            data[key] = parsed
+
+    doctors = data.get("doctors")
+    if isinstance(doctors, list):
+        normalized_doctors: list[Any] = []
+        for entry in doctors:
+            if not isinstance(entry, dict):
+                normalized_doctors.append(entry)
+                continue
+            row = dict(entry)
+            body = _canonical_regulation_body(row.get("regulation_body"))
+            if body:
+                row["regulation_body"] = body
+            normalized_doctors.append(row)
+        data["doctors"] = normalized_doctors
+
+
+def _derive_service_window(extra_fields: dict[str, Any], claim: Any = None) -> tuple[str, str]:
+    claim_service_date = getattr(claim, "service_date", None)
+    claim_admission_date = getattr(claim, "admission_date", None)
+    claim_discharge_date = getattr(claim, "discharge_date", None)
+
+    service_start = _coerce_iso_date(
+        _first_non_empty(
+            extra_fields,
+            (
+                "ServiceStart",
+                "service_start",
+                "expected_service_start_date",
+                "service_date",
+                "start_date",
+            ),
+        )
+        or claim_service_date
+        or claim_admission_date
+        or timezone.localdate()
+    )
+    service_end = _coerce_iso_date(
+        _first_non_empty(
+            extra_fields,
+            (
+                "ServiceEnd",
+                "service_end",
+                "expected_service_end_date",
+                "end_date",
+                "discharge_date",
+            ),
+        )
+        or claim_discharge_date
+        or claim_service_date
+        or service_start
+    )
+
+    return service_start, service_end
+
+
+def _derive_provider_notification_email(
+    extra_fields: dict[str, Any], facility: Any = None, user: Any = None
+) -> str:
+    email = _first_non_empty(
+        extra_fields,
+        (
+            "ProviderNotificationEmail",
+            "provider_notification_email",
+            "provider_email",
+            "notification_email",
+        ),
+    )
+    if email:
+        return str(email).strip()
+
+    facility_email = (
+        getattr(facility, "dha_facility_email", "")
+        or getattr(facility, "dha_admin_email", "")
+        or getattr(getattr(facility, "organization", None), "contact_email", "")
+    )
+    if facility_email:
+        return str(facility_email).strip()
+
+    user_email = getattr(user, "email", "")
+    if user_email:
+        return str(user_email).strip()
+
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -225,12 +396,77 @@ class IlmPreauthService:
             "intervention_code": intervention_code,
         }
         if extra_fields:
-            data.update({k: ("" if v is None else str(v)) for k, v in extra_fields.items()})
-        multipart = build_multipart(files) if files else None
+            data.update(extra_fields)
+
+        attachments_value = data.get("attachments")
+        if files and (not isinstance(attachments_value, list) or len(attachments_value) == 0):
+            data["attachments"] = [
+                {
+                    "file_field_name": file.field_name,
+                    "document_title": file.filename,
+                    "document_type": "OTHER",
+                }
+                for file in files
+            ]
+
+        _normalize_preauth_structured_fields(data)
+
+        _normalize_iso_datetime_fields(
+            data,
+            (
+                "ServiceStart",
+                "service_start",
+                "expected_service_start_date",
+                "service_date",
+                "start_date",
+                "ServiceEnd",
+                "service_end",
+                "expected_service_end_date",
+                "end_date",
+                "discharge_date",
+            ),
+        )
+
+        service_start, service_end = _derive_service_window(extra_fields or {}, claim=claim)
+        provider_notification_email = _derive_provider_notification_email(
+            extra_fields or {}, facility=facility, user=user
+        )
+        if service_start:
+            for key in ("ServiceStart", "service_start", "expected_service_start_date"):
+                if _is_blank(data.get(key)):
+                    data[key] = service_start
+        if service_end:
+            for key in ("ServiceEnd", "service_end", "expected_service_end_date"):
+                if _is_blank(data.get(key)):
+                    data[key] = service_end
+        if provider_notification_email:
+            for key in (
+                "ProviderNotificationEmail",
+                "provider_notification_email",
+                "provider_email",
+                "notification_email",
+            ):
+                if _is_blank(data.get(key)):
+                    data[key] = provider_notification_email
+
+        # DHA expects multipart/form-data on /api/v1/preauths even when no binary
+        # files are attached yet. Encode scalar + structured fields as multipart
+        # tuples so requests generates multipart Content-Type with boundary.
+        multipart_fields: dict[str, Any] = {}
+        for key, value in data.items():
+            if isinstance(value, (dict, list, tuple)):
+                multipart_fields[key] = (None, json.dumps(value))
+            elif value is None:
+                multipart_fields[key] = (None, "")
+            else:
+                multipart_fields[key] = (None, str(value))
+
+        if files:
+            multipart_fields.update(build_multipart(files))
+
         response = self.client.post(
             PREAUTH_CREATE_PATH,
-            data=data,
-            files=multipart,
+            files=multipart_fields,
             consent_token=consent_token,
             facility=facility,
             user=user,

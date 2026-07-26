@@ -252,7 +252,10 @@ export function ConsentPanel({
     if (hasCheckedExisting.current || initialConsentId || step !== 'idle') return;
     hasCheckedExisting.current = true;
 
-    shaApi.getLatestConsent(shaMemberId, { encounterId }).then((data) => {
+    shaApi.getLatestConsent(shaMemberId, {
+      encounterId,
+      interventionCode: selectedInterventionCode || undefined,
+    }).then((data) => {
       if (data?.exists && data?.id) {
         setConsentId(data.id);
         if (data.status === 'VALIDATED') {
