@@ -828,6 +828,7 @@ export function DischargePanel({
       refetchAttachmentSyncStatus(),
       refetchIlmPreview(),
       refetchSubmitValidation(),
+      typeof admissionIdForPreview === 'number' ? refetchClinicalSummary() : Promise.resolve(),
     ]);
   }
 
@@ -952,11 +953,7 @@ export function DischargePanel({
       if (result.hadReplacementFile) {
         await runPostAttachmentAutomation({ pushLocalUpload: false });
       } else {
-        await Promise.all([
-          refetchLocalAttachments(),
-          refetchAttachmentSyncStatus(),
-          refetchSubmitValidation(),
-        ]);
+        await refreshDischargePanelData();
       }
       onChange?.();
       setAttachmentDialogOpen(false);
@@ -976,9 +973,7 @@ export function DischargePanel({
     },
     onSuccess: async () => {
       setError(null);
-      await refetchLocalAttachments();
-      await refetchAttachmentSyncStatus();
-      await refetchSubmitValidation();
+      await refreshDischargePanelData();
       onChange?.();
       setAttachmentDialogOpen(false);
     },
@@ -1008,7 +1003,7 @@ export function DischargePanel({
     onSuccess: async () => {
       setError(null);
       setDiagnosisCodeInput(emptyDiagnosisCodeValue());
-      await refetchIlmPreview();
+      await refreshDischargePanelData();
       onChange?.();
     },
     onError: (e: any) => {
@@ -1031,7 +1026,7 @@ export function DischargePanel({
     },
     onSuccess: async () => {
       setError(null);
-      await refetchIlmPreview();
+      await refreshDischargePanelData();
       onChange?.();
     },
     onError: (e: any) => {
@@ -1067,7 +1062,7 @@ export function DischargePanel({
       if (!idTypeNeedsRegulator(doctorIdTypeInput)) {
         setDoctorRegulationBodyInput('');
       }
-      await refetchIlmPreview();
+      await refreshDischargePanelData();
       onChange?.();
     },
     onError: (e: any) => {
@@ -1085,7 +1080,7 @@ export function DischargePanel({
     },
     onSuccess: async () => {
       setError(null);
-      await refetchIlmPreview();
+      await refreshDischargePanelData();
       onChange?.();
     },
     onError: (e: any) => {
@@ -1129,7 +1124,6 @@ export function DischargePanel({
       const attached = Number(result.attached || 0);
       const alreadyAttached = Number(result.already_attached || 0);
       await runPostAttachmentAutomation({ pushLocalUpload: true });
-      await refreshDischargePanelData();
       if (attached > 0) {
         setAttachmentSyncMessage(
           `Auto-generated and attached ${attached} document(s). Existing auto-attach types already present: ${alreadyAttached}.`
