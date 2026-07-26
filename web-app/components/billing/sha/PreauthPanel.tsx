@@ -67,6 +67,10 @@ interface PreauthPanelProps {
   patientCrId?: string;
   /** Active intervention codes on this claim (for combination-rule filtering) */
   activeInterventionCodes?: string[];
+  /** Preferred intervention code from surrounding workflow (consent/ILM context). */
+  preferredProcedureCode?: string;
+  /** Emits whenever procedure code selection changes. */
+  onProcedureCodeChange?: (code: string) => void;
   /** Callback on successful preauth */
   onPreauthComplete?: (preauthId: number, decision: PreauthDecision) => void;
   /** Custom class name */
@@ -123,6 +127,8 @@ export function PreauthPanel({
   shaMemberId,
   patientCrId,
   activeInterventionCodes = [],
+  preferredProcedureCode,
+  onProcedureCodeChange,
   onPreauthComplete,
   className,
 }: PreauthPanelProps) {
@@ -211,6 +217,16 @@ export function PreauthPanel({
       setEstimatedCost(String(selected.price));
     }
   }, [procedureCode, filteredPreauthInterventions, estimatedCost]);
+
+  useEffect(() => {
+    if (!preferredProcedureCode) return;
+    if (procedureCode === preferredProcedureCode) return;
+    setProcedureCode(preferredProcedureCode);
+  }, [preferredProcedureCode, procedureCode]);
+
+  useEffect(() => {
+    onProcedureCodeChange?.(procedureCode);
+  }, [procedureCode, onProcedureCodeChange]);
 
   // Notify parent when decision arrives
   useEffect(() => {

@@ -49,8 +49,8 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
   // Derive patient CR ID for DHA API calls (intervention lookup, etc.)
   const patientCrId = claim.dha_external_id || toCrId(claim.sha_member_number ?? '') || '';
 
-  // Intervention codes already attached to the claim — passed to ConsentPanel so
-  // it can pre-select the service and include them in the OTP/biometric request.
+  // Intervention codes already attached to the claim (active only) — used for
+  // combination checks/discharge context, but not as a prerequisite for preauth.
   const interventionCodes = useMemo(
     () => (claim.claim_interventions ?? []).filter((i) => i.status === 'active').map((i) => i.intervention_code),
     [claim.claim_interventions],
@@ -220,7 +220,7 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
               patientCrId={patientCrId || undefined}
               encounterId={typeof claim.encounter === 'number' ? claim.encounter : undefined}
               flow={flow.flow}
-              interventionCodes={interventionCodes}
+              interventionCodes={consentInterventionCode ? [consentInterventionCode] : undefined}
               onConsentObtained={(id, token, credential, interventionCode) => {
                 setConsentTokenId(id);
                 setConsentTokenStr(token);
@@ -243,6 +243,8 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
               }
               patientCrId={patientCrId || undefined}
               activeInterventionCodes={interventionCodes}
+              preferredProcedureCode={consentInterventionCode}
+              onProcedureCodeChange={setConsentInterventionCode}
               onPreauthComplete={onChange}
             />
           )}

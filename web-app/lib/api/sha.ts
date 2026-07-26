@@ -1649,9 +1649,34 @@ async function ilmPreauthCreate(body: {
   intervention_code: string;
   patient_pk: number;
   claim_pk?: number;
+  extra_fields?: Record<string, unknown>;
   payload?: Record<string, unknown>;
 }): Promise<IlmPreauthResponse> {
-  const response = await apiClient.post(`${ILM_BASE}/preauth/create/`, body);
+  const normalizeExtraFields = (input?: Record<string, unknown>): Record<string, string> => {
+    const source = input || {};
+    return Object.fromEntries(
+      Object.entries(source).map(([key, value]) => {
+        if (value == null) return [key, ''];
+        if (typeof value === 'string') return [key, value];
+        if (typeof value === 'number' || typeof value === 'boolean') return [key, String(value)];
+        return [key, JSON.stringify(value)];
+      })
+    );
+  };
+
+  const requestBody: Record<string, unknown> = {
+    consent_token: body.consent_token,
+    intervention_code: body.intervention_code,
+    patient_pk: body.patient_pk,
+    ...(typeof body.claim_pk === 'number' ? { claim_pk: body.claim_pk } : {}),
+  };
+
+  const normalizedExtraFields = normalizeExtraFields(body.extra_fields || body.payload);
+  if (Object.keys(normalizedExtraFields).length > 0) {
+    requestBody.extra_fields = normalizedExtraFields;
+  }
+
+  const response = await apiClient.post(`${ILM_BASE}/preauth/create/`, requestBody);
   return parseResponse(IlmPreauthResponseSchema, response.data, {
     context: 'shaApi.ilmPreauthCreate',
   });
