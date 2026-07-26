@@ -424,6 +424,12 @@ export const SHAInterventionSchema = z.object({
   is_oncology_preauth: z.boolean().optional(),
   is_imaging_preauth: z.boolean().optional(),
   is_optical_preauth: z.boolean().optional(),
+  // Required supporting docs for preauth (varies by source endpoint payload shape)
+  requiredPreauthDocumentTypes: z.array(z.string()).optional(),
+  required_preauth_document_types: z.array(z.string()).optional(),
+  required_document_types: z.array(z.string()).optional(),
+  applicable_document_types: z.array(z.string()).optional(),
+  applicableDocumentTypes: z.array(z.string()).optional(),
   // Hospital Level Tariffs
   level2_tariff: z.union([z.number(), z.string(), z.null()]).optional(),
   level3_tariff: z.union([z.number(), z.string(), z.null()]).optional(),

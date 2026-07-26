@@ -36,6 +36,11 @@ export interface InterventionOption {
   isOncologyPreauth?: boolean;
   isImagingPreauth?: boolean;
   isOpticalPreauth?: boolean;
+  requiredPreauthDocumentTypes?: string[];
+  required_preauth_document_types?: string[];
+  required_document_types?: string[];
+  applicable_document_types?: string[];
+  applicableDocumentTypes?: string[];
 }
 
 export interface BenefitPackageOption {
@@ -97,6 +102,16 @@ function getBooleanField(item: Record<string, unknown>, ...keys: string[]): bool
 function isCapitationPaymentMechanism(value: string | undefined): boolean {
   if (!value) return false;
   return value.trim().toUpperCase().replaceAll('_', ' ') === 'CAPITATION';
+}
+
+function getStringArrayField(item: Record<string, unknown>, ...keys: string[]): string[] {
+  for (const key of keys) {
+    const value = item[key];
+    if (Array.isArray(value)) {
+      return value.map((entry) => String(entry).trim()).filter(Boolean);
+    }
+  }
+  return [];
 }
 
 // ============================================================================
@@ -220,6 +235,31 @@ export function useBenefitInterventions({
         return !!code || !!name;
       })
       .map((i) => ({
+        ...(() => {
+          const rawData =
+            (i.raw_data && typeof i.raw_data === 'object' ? i.raw_data : null)
+            || (i.extras && typeof i.extras === 'object' ? i.extras : null);
+          const nested = rawData as Record<string, unknown> | null;
+          return {
+            requiredPreauthDocumentTypes: getStringArrayField(
+              i,
+              'requiredPreauthDocumentTypes',
+            ).concat(getStringArrayField(nested || {}, 'requiredPreauthDocumentTypes')),
+            required_preauth_document_types: getStringArrayField(
+              i,
+              'required_preauth_document_types',
+            ).concat(getStringArrayField(nested || {}, 'required_preauth_document_types')),
+            required_document_types: getStringArrayField(i, 'required_document_types').concat(
+              getStringArrayField(nested || {}, 'required_document_types'),
+            ),
+            applicable_document_types: getStringArrayField(i, 'applicable_document_types').concat(
+              getStringArrayField(nested || {}, 'applicable_document_types'),
+            ),
+            applicableDocumentTypes: getStringArrayField(i, 'applicableDocumentTypes').concat(
+              getStringArrayField(nested || {}, 'applicableDocumentTypes'),
+            ),
+          };
+        })(),
         code: getField(i, 'code', 'interventionCode', 'intervention_code'),
         name: getField(i, 'name', 'interventionName', 'intervention_name') || '',
         category: getField(i, 'paymentMechanism', 'payment_mechanism') || undefined,

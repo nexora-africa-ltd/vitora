@@ -440,6 +440,11 @@ export interface SHAIntervention {
   is_oncology_preauth?: boolean;
   is_imaging_preauth?: boolean;
   is_optical_preauth?: boolean;
+  requiredPreauthDocumentTypes?: string[];
+  required_preauth_document_types?: string[];
+  required_document_types?: string[];
+  applicable_document_types?: string[];
+  applicableDocumentTypes?: string[];
   // Hospital Level Tariffs (per KEPH level)
   level2_tariff?: number | string | null;
   level3_tariff?: number | string | null;
