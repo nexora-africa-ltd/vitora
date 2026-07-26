@@ -30,13 +30,23 @@ interface ContactPickerProps {
   /** Patient's DHA Client Registry ID */
   beneficiaryCrId: string;
   /** Called when user selects a contact */
-  onSelect: (contactId: string) => void;
+  onSelect: (contactId: string | undefined) => void;
   /** Currently selected contact ID */
   selectedContactId?: string;
   /** Patient date of birth (ISO string) — used to show minor hint */
   patientDateOfBirth?: string;
   /** Custom className */
   className?: string;
+}
+
+export const DEFAULT_OTP_RECIPIENT = '__default_otp_recipient__';
+
+function maskPhoneNumber(phone: string): string {
+  const value = phone.trim();
+  if (!value) return '';
+  if (value.includes('*')) return value;
+  if (value.length <= 6) return `${value.slice(0, 2)}***`;
+  return `${value.slice(0, 6)}***${value.slice(-3)}`;
 }
 
 // ============================================================================
@@ -53,6 +63,7 @@ export function ContactPicker({
   const [contacts, setContacts] = useState<BeneficiaryContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [defaultMaskedPhone, setDefaultMaskedPhone] = useState<string | null>(null);
 
   // Determine if patient is a minor (under 18)
   const isMinor = (() => {
@@ -73,21 +84,43 @@ export function ContactPicker({
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setDefaultMaskedPhone(null);
+    onSelect(undefined);
+
+    const loadDefaultPhone = async () => {
+      try {
+        const response = await shaApi.fetchFromClientRegistry({ cr_number: beneficiaryCrId });
+        if (cancelled) return;
+        const phone = response.client?.phone_number || '';
+        const masked = phone ? maskPhoneNumber(phone) : null;
+        setDefaultMaskedPhone(masked);
+        onSelect(DEFAULT_OTP_RECIPIENT);
+      } catch {
+        if (!cancelled) {
+          setDefaultMaskedPhone(null);
+          onSelect(DEFAULT_OTP_RECIPIENT);
+        }
+      }
+    };
 
     shaApi
       .getBeneficiaryContacts(beneficiaryCrId)
-      .then((result) => {
+      .then(async (result) => {
         if (cancelled) return;
         const fetched = result.contacts || [];
         setContacts(fetched);
-        // Auto-select if only one contact
         if (fetched.length === 1 && fetched[0]) {
           onSelect(fetched[0].id);
+          return;
+        }
+        if (fetched.length === 0) {
+          await loadDefaultPhone();
         }
       })
-      .catch((err) => {
+      .catch(async (err) => {
         if (cancelled) return;
         setError(getApiErrorMessage(err));
+        await loadDefaultPhone();
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -107,17 +140,64 @@ export function ContactPicker({
   }
 
   if (error) {
+    if (!defaultMaskedPhone) {
+      return (
+        <div className={cn('text-xs text-muted-foreground py-1', className)}>
+          Alternative contacts not found. OTP will be sent to default number.
+        </div>
+      );
+    }
+
     return (
-      <div className={cn('text-xs text-muted-foreground py-1', className)}>
-        Could not load contacts. OTP will be sent to the default number.
+      <div className={cn('space-y-2', className)}>
+        <p className="text-xs text-muted-foreground">
+          Could not load registered contacts. Confirm the default number for OTP delivery.
+        </p>
+        <RadioGroup value={selectedContactId} onValueChange={onSelect} className="space-y-1.5">
+          <div
+            className="flex items-center space-x-2 rounded-md border px-3 py-2 hover:bg-muted/50 cursor-pointer"
+            onClick={() => onSelect(DEFAULT_OTP_RECIPIENT)}
+          >
+            <RadioGroupItem value={DEFAULT_OTP_RECIPIENT} id="contact-default-error" />
+            <Label htmlFor="contact-default-error" className="flex items-center gap-2 cursor-pointer flex-1">
+              <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs font-mono">
+                {defaultMaskedPhone || 'Default number unavailable'}
+              </span>
+            </Label>
+          </div>
+        </RadioGroup>
       </div>
     );
   }
 
   if (contacts.length === 0) {
+    if (!defaultMaskedPhone) {
+      return (
+        <div className={cn('text-xs text-muted-foreground py-1', className)}>
+          Alternative contacts not found. OTP will be sent to default number.
+        </div>
+      );
+    }
+
     return (
-      <div className={cn('text-xs text-muted-foreground py-1', className)}>
-        No registered contacts found. OTP will be sent to the default number.
+      <div className={cn('space-y-2', className)}>
+        <Label className="text-xs font-medium">Confirm OTP recipient</Label>
+        <RadioGroup value={selectedContactId} onValueChange={onSelect} className="space-y-1.5">
+          <div
+            className="flex items-center space-x-2 rounded-md border px-3 py-2 hover:bg-muted/50 cursor-pointer"
+            onClick={() => onSelect(DEFAULT_OTP_RECIPIENT)}
+          >
+            <RadioGroupItem value={DEFAULT_OTP_RECIPIENT} id="contact-default-empty" />
+            <Label htmlFor="contact-default-empty" className="flex items-center gap-2 cursor-pointer flex-1">
+              <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs font-mono">
+                {defaultMaskedPhone || 'Default number unavailable'}
+              </span>
+              <span className="text-[10px] text-muted-foreground ml-auto">DEFAULT</span>
+            </Label>
+          </div>
+        </RadioGroup>
       </div>
     );
   }

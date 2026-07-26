@@ -2,7 +2,7 @@
  * New Pre-authorization Request Wizard (Enhanced)
  *
  * Multi-step form for creating a pre-authorization request.
- * Step 1: Select preauth type + Patient (with eligibility pre-check)
+ * Step 1: Select patient (+ optional claim link)
  * Step 2: Consent (embedded OTP/biometric flow via ConsentPanel)
  * Step 3: Clinical details (intervention search, ICD-10 picker, doctors, documents)
  * Step 4: Review and submit
@@ -12,6 +12,7 @@
  * - Eligibility pre-check before consent
  * - Consent token obtained via embedded ConsentPanel (OTP/biometric)
  * - Intervention code via searchable dropdown (SHA terminology)
+ * - Preauth type auto-derived from selected intervention flags
  * - Diagnoses via ICD-10 multi-select search
  * - Doctors via staff search (registration numbers)
  * - Duplicate detection before submit
@@ -131,6 +132,22 @@ interface InterventionOption {
   category?: string;
   price?: number;
   access_point?: string;
+  isSurgicalPreauth?: boolean;
+  isRenalPreauth?: boolean;
+  isOncologyPreauth?: boolean;
+  isImagingPreauth?: boolean;
+  isOpticalPreauth?: boolean;
+  is_surgical_preauth?: boolean;
+  is_renal_preauth?: boolean;
+  is_oncology_preauth?: boolean;
+  is_imaging_preauth?: boolean;
+  is_optical_preauth?: boolean;
+}
+
+interface ClaimInterventionOption {
+  code: string;
+  name: string;
+  preauthType: PreauthType;
 }
 
 interface DiagnosisChip {
@@ -161,7 +178,7 @@ export default function NewPreauthPage() {
   const [selectedType, setSelectedType] = useState<PreauthType | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ---- Step 1: Patient + Type ----
+  // ---- Step 1: Patient + Claim ----
   const [patientId, setPatientId] = useState<number | null>(
     urlPatientId ? Number(urlPatientId) : null
   );
@@ -194,6 +211,15 @@ export default function NewPreauthPage() {
 
   const totalSteps = 4;
 
+  const derivePreauthType = useCallback((intervention: Partial<InterventionOption>): PreauthType => {
+    if (intervention.isSurgicalPreauth || intervention.is_surgical_preauth) return 'surgical';
+    if (intervention.isRenalPreauth || intervention.is_renal_preauth) return 'renal';
+    if (intervention.isOncologyPreauth || intervention.is_oncology_preauth) return 'oncology';
+    if (intervention.isImagingPreauth || intervention.is_imaging_preauth) return 'imaging';
+    if (intervention.isOpticalPreauth || intervention.is_optical_preauth) return 'optical';
+    return 'normal';
+  }, []);
+
   // ---- Eligibility pre-check ----
   const { data: eligibility, isLoading: eligibilityLoading, error: eligibilityError } = useQuery({
     queryKey: ['patient-eligibility', patientId],
@@ -219,6 +245,32 @@ export default function NewPreauthPage() {
     },
     enabled: !!patientId,
   });
+
+  const selectedClaimIdNumber = useMemo(() => {
+    const parsed = Number(claimId);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }, [claimId]);
+
+  const { data: selectedClaim } = useQuery({
+    queryKey: ['preauth-selected-claim', selectedClaimIdNumber],
+    queryFn: () => shaApi.getClaim(selectedClaimIdNumber!),
+    enabled: selectedClaimIdNumber != null,
+    staleTime: 30_000,
+  });
+
+  const claimInterventionOptions = useMemo<ClaimInterventionOption[]>(() => {
+    const interventions = selectedClaim?.claim_interventions ?? [];
+    return interventions
+      .filter((item) => item.status === 'active')
+      .map((item) => ({
+        code: item.intervention_code,
+        name: item.intervention_name || item.intervention_code,
+        preauthType: derivePreauthType(item as unknown as Partial<InterventionOption>),
+      }));
+  }, [selectedClaim?.claim_interventions, derivePreauthType]);
+
+  const shouldUseClaimInterventionsForConsent =
+    selectedClaimIdNumber != null && claimInterventionOptions.length > 0;
 
   // ---- Intervention search ----
   const debouncedInterventionSearch = useDebounce(interventionSearch, 300);
@@ -277,7 +329,7 @@ export default function NewPreauthPage() {
 
   // ---- Validation ----
   const typeConfig = PREAUTH_TYPES.find((t) => t.id === selectedType);
-  const canProceedStep1 = selectedType !== null && patientId !== null;
+  const canProceedStep1 = patientId !== null;
   const canProceedStep2 = !!consentToken;
   const canProceedStep3 =
     interventionCode.trim().length > 0 &&
@@ -285,20 +337,49 @@ export default function NewPreauthPage() {
     (!typeConfig?.requiresDoctors || doctorChips.length > 0);
 
   // ---- Handlers ----
-  const handleConsentObtained = useCallback((id: number, token: string, _credential?: any) => {
+  const handleConsentObtained = useCallback((
+    id: number,
+    token: string,
+    _credential?: any,
+    consentInterventionCode?: string,
+  ) => {
     setConsentTokenId(id);
     setConsentToken(token);
-  }, []);
+
+    if (!consentInterventionCode) return;
+    setInterventionCode(consentInterventionCode);
+
+    const matchedClaimIntervention = claimInterventionOptions.find(
+      (option) => option.code === consentInterventionCode
+    );
+    setInterventionName(matchedClaimIntervention?.name || consentInterventionCode);
+    setSelectedType(matchedClaimIntervention?.preauthType || 'normal');
+    setInterventionPrice(null);
+    setInterventionSearch('');
+    setShowInterventionDropdown(false);
+  }, [claimInterventionOptions]);
 
   const selectIntervention = useCallback((item: InterventionOption) => {
     setInterventionCode(item.code);
     setInterventionName(item.name);
     setInterventionPrice(item.price ?? null);
+    setSelectedType(derivePreauthType(item));
     setInterventionSearch('');
     setShowInterventionDropdown(false);
     // Auto-add intervention code as the first tariff item
     setTariffChips((prev) => prev.includes(item.code) ? prev : [item.code, ...prev]);
-  }, []);
+  }, [derivePreauthType]);
+
+  useEffect(() => {
+    if (!shouldUseClaimInterventionsForConsent) return;
+    if (!interventionCode) return;
+    const stillValid = claimInterventionOptions.some((option) => option.code === interventionCode);
+    if (stillValid) return;
+    setInterventionCode('');
+    setInterventionName('');
+    setInterventionPrice(null);
+    setSelectedType(null);
+  }, [shouldUseClaimInterventionsForConsent, claimInterventionOptions, interventionCode]);
 
   const addDiagnosis = useCallback((item: { code: string; description: string }) => {
     setDiagnosisChips((prev) => {
@@ -342,9 +423,10 @@ export default function NewPreauthPage() {
     if (!canProceedStep3 || !consentToken || !patientId) return;
     setIsSubmitting(true);
     try {
-      const payload: Record<string, unknown> = {
-        preauth_type: selectedType,
-      };
+      const payload: Record<string, unknown> = {};
+      if (selectedType) {
+        payload.preauth_type = selectedType;
+      }
       if (diagnosisChips.length > 0) {
         payload.diagnoses = diagnosisChips.map((d) => d.code);
       }
@@ -368,7 +450,7 @@ export default function NewPreauthPage() {
 
       toast({
         title: 'Pre-authorization Submitted',
-        description: `${typeConfig?.label || selectedType} preauth for ${interventionCode} submitted to SHA.`,
+        description: `${typeConfig?.label || 'Selected'} preauth for ${interventionCode} submitted to SHA.`,
       });
       queryClient.invalidateQueries({ queryKey: ['preauths-list'] });
 
@@ -407,7 +489,7 @@ export default function NewPreauthPage() {
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
         title="New Pre-authorization"
-        helpContent="Submit a pre-authorization request to SHA. Select the type, obtain consent, and provide required clinical information."
+        helpContent="Submit a pre-authorization request to SHA. Link patient + claim, obtain consent, and provide required clinical information."
       />
 
       {/* Progress Steps */}
@@ -433,14 +515,14 @@ export default function NewPreauthPage() {
         ))}
       </div>
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>Type & Patient</span>
+        <span>Patient</span>
         <span>Consent</span>
         <span>Details</span>
         <span>Review</span>
       </div>
 
       {/* ================================================================ */}
-      {/* Step 1: Select Type & Patient */}
+      {/* Step 1: Select Patient */}
       {/* ================================================================ */}
       {step === 1 && (
         <div className="space-y-6">
@@ -539,35 +621,6 @@ export default function NewPreauthPage() {
             </CardContent>
           </Card>
 
-          {/* Type Selection */}
-          <div className="space-y-3">
-            <h3 className="text-base font-medium">Select Pre-authorization Type *</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {PREAUTH_TYPES.map((type) => {
-                const Icon = type.icon;
-                return (
-                  <Card
-                    key={type.id}
-                    className={cn(
-                      'cursor-pointer transition-colors hover:border-primary/50',
-                      selectedType === type.id && 'border-primary bg-primary/5'
-                    )}
-                    onClick={() => setSelectedType(type.id)}
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex items-start gap-2.5">
-                        <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', type.color)} />
-                        <div>
-                          <p className="text-sm font-medium">{type.label}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{type.description}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
         </div>
       )}
 
@@ -578,89 +631,11 @@ export default function NewPreauthPage() {
         <div className="space-y-4">
           <h3 className="text-lg font-medium">Obtain Patient Consent</h3>
 
-          {/* Intervention picker for OTP scope */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Select Benefit Package for Consent *</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="text-xs text-muted-foreground">
-                The DHA OTP is scoped to a benefit package. Select the intervention before sending OTP.
-              </p>
-              {interventionCode ? (
-                <div className="flex items-center justify-between rounded-md border p-2.5">
-                  <div>
-                    <p className="font-mono text-xs font-medium">{interventionCode}</p>
-                    <p className="text-xs text-muted-foreground">{interventionName}</p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setInterventionCode('');
-                      setInterventionName('');
-                      setInterventionPrice(null);
-                    }}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      value={interventionSearch}
-                      onChange={(e) => {
-                        setInterventionSearch(e.target.value);
-                        setShowInterventionDropdown(true);
-                      }}
-                      onFocus={() => setShowInterventionDropdown(true)}
-                      placeholder="Search SHA interventions (e.g. surgical, renal, imaging)..."
-                      className="pl-8 h-8 text-sm"
-                    />
-                  </div>
-                  {showInterventionDropdown && interventionSearch.length >= 2 && (
-                    <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border bg-popover shadow-md">
-                      {interventionLoading ? (
-                        <div className="p-2 text-center text-xs text-muted-foreground">
-                          <Loader2 className="inline h-3 w-3 animate-spin mr-1" /> Searching…
-                        </div>
-                      ) : interventionResults && interventionResults.length > 0 ? (
-                        interventionResults.map((item: any) => (
-                          <button
-                            key={item.code}
-                            type="button"
-                            className="w-full text-left px-3 py-2 text-xs hover:bg-accent border-b last:border-0"
-                            onClick={() => {
-                              setInterventionCode(item.code);
-                              setInterventionName(item.name || item.display || item.code);
-                              setInterventionPrice(item.price || null);
-                              setInterventionSearch('');
-                              setShowInterventionDropdown(false);
-                            }}
-                          >
-                            <span className="font-mono font-medium">{item.code}</span>
-                            <span className="ml-2 text-muted-foreground">{item.name || item.display}</span>
-                          </button>
-                        ))
-                      ) : (
-                        <div className="p-2 text-center text-xs text-muted-foreground">
-                          No results
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           {shaMemberId ? (
             <ConsentPanel
               shaMemberId={shaMemberId}
               consentId={consentTokenId}
-              interventionCodes={interventionCode ? [interventionCode] : undefined}
+              allowedInterventions={shouldUseClaimInterventionsForConsent ? claimInterventionOptions : undefined}
               onConsentObtained={handleConsentObtained}
             />
           ) : (
@@ -704,7 +679,7 @@ export default function NewPreauthPage() {
       {step === 3 && (
         <div className="space-y-4">
           <h3 className="text-lg font-medium">
-            {typeConfig?.label} Pre-authorization Details
+            {typeConfig?.label ? `${typeConfig.label} Pre-authorization Details` : 'Pre-authorization Details'}
           </h3>
 
           {/* Intervention Search */}
@@ -734,6 +709,7 @@ export default function NewPreauthPage() {
                         setInterventionCode('');
                         setInterventionName('');
                         setInterventionPrice(null);
+                        setSelectedType(null);
                       }}
                     >
                       <X className="h-3.5 w-3.5" />
@@ -799,6 +775,22 @@ export default function NewPreauthPage() {
               )}
             </CardContent>
           </Card>
+
+          {interventionCode && selectedType && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Pre-authorization Type</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border bg-muted/30 px-3 py-2">
+                  <p className="text-sm font-medium">{typeConfig?.label || selectedType}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Read-only, auto-derived from selected intervention flags.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Diagnoses */}
           <Card>
@@ -1037,10 +1029,12 @@ export default function NewPreauthPage() {
           <Card>
             <CardContent className="p-4 space-y-4">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="capitalize">
-                  <Activity className="mr-1 h-3 w-3" />
-                  {selectedType}
-                </Badge>
+                {selectedType && (
+                  <Badge variant="outline" className="capitalize">
+                    <Activity className="mr-1 h-3 w-3" />
+                    {selectedType}
+                  </Badge>
+                )}
                 {interventionPrice != null && (
                   <Badge variant="secondary" className="font-mono">
                     <DollarSign className="mr-0.5 h-3 w-3" />
