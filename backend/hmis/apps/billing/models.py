@@ -2366,13 +2366,13 @@ class SHAClaim(FacilityScopedModel):
         null=True, blank=True, help_text="Discharge date (for inpatient claims)"
     )
 
-    # Diagnosis (ICD-10)
+    # Diagnosis (ICD-11)
     primary_diagnosis_code = models.CharField(
-        max_length=10, help_text="Primary ICD-10 diagnosis code"
+        max_length=10, help_text="Primary ICD-11 diagnosis code"
     )
     primary_diagnosis_description = models.CharField(max_length=255)
     secondary_diagnosis_codes = models.JSONField(
-        default=list, blank=True, help_text="List of secondary ICD-10 diagnosis codes"
+        default=list, blank=True, help_text="List of secondary ICD-11 diagnosis codes"
     )
 
     # Amounts
