@@ -11,6 +11,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
+from django.core.files.base import ContentFile
 
 from hmis.apps.billing.models import SHAEmergencyClaim, SHAPreauth
 from hmis.apps.billing.services.consent_token_resolver import ResolvedConsent
@@ -21,6 +22,7 @@ from hmis.apps.billing.services.dha_errors import (
 )
 from hmis.apps.billing.services.ilm_client import IlmResponse
 from hmis.apps.billing.services.ilm_preauth_service import IlmPreauthResult
+from hmis.apps.billing.sha_ilm_preauth_views import _extract_preauth_attachments_from_claim
 from tests.billing.test_api.test_sha_api import (  # noqa: F401
     sample_sha_claim,
     sample_sha_member,
@@ -452,3 +454,28 @@ class TestEmergencyLocalBrowse:
         r = sha_client.get(self.URL)
         assert r.status_code == 200
         assert len(r.data["results"]) >= 1
+
+
+@pytest.mark.django_db
+class TestPreauthClaimAttachmentExtraction:
+    def test_deduplicates_duplicate_local_files(self, sample_sha_claim):
+        from hmis.apps.billing.models import SHAClaimAttachment
+
+        uploader = sample_sha_claim.created_by
+        content = b"duplicate attachment payload"
+        checksum = "4f5b730f0d8fb5f2f1d855f4de53f4893130e5b17766862797f2259f736f2a2a"
+
+        for name in ("doc-a.pdf", "doc-b.pdf"):
+            SHAClaimAttachment.objects.create(
+                claim=sample_sha_claim,
+                attachment_type=SHAClaimAttachment.AttachmentType.CLINICAL_NOTES,
+                name=name,
+                file=ContentFile(content, name=name),
+                mime_type="application/pdf",
+                checksum=checksum,
+                uploaded_by=uploader,
+            )
+
+        files, meta = _extract_preauth_attachments_from_claim(sample_sha_claim)
+        assert len(files) == 1
+        assert len(meta) == 1

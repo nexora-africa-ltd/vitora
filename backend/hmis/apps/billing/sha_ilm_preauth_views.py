@@ -10,6 +10,7 @@ convention used elsewhere in the ILM module.
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import json
 import logging
 import os
@@ -159,6 +160,7 @@ def _extract_preauth_attachments_from_claim(
 ) -> tuple[list[MultipartFile], list[dict[str, str]]]:
     multipart_files: list[MultipartFile] = []
     attachments_meta: list[dict[str, str]] = []
+    seen_signatures: set[str] = set()
 
     for idx, attachment in enumerate(claim.attachments.all(), start=1):
         file_field_name = f"preauth_file_{idx}"
@@ -177,6 +179,15 @@ def _extract_preauth_attachments_from_claim(
             file_obj.close()
         if not content:
             continue
+
+        checksum = str(getattr(attachment, "checksum", "") or "").strip().lower()
+        if not checksum:
+            checksum = hashlib.sha256(content).hexdigest()
+        fallback_signature = f"{filename.lower()}:{len(content)}:{str(getattr(attachment, 'mime_type', '') or '').lower()}"
+        signature = checksum or fallback_signature
+        if signature in seen_signatures:
+            continue
+        seen_signatures.add(signature)
 
         multipart_files.append(
             MultipartFile(

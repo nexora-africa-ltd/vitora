@@ -37,7 +37,7 @@ from typing import Any
 
 from django.utils import timezone
 
-from .dha_errors import DHANotFoundError
+from .dha_errors import DHANotFoundError, DHAValidationError
 from .ilm_client import IlmClient, IlmResponse
 from .multipart_builder import MultipartFile, build_multipart
 
@@ -142,6 +142,117 @@ def _normalize_preauth_structured_fields(data: dict[str, Any]) -> None:
                 row["regulation_body"] = body
             normalized_doctors.append(row)
         data["doctors"] = normalized_doctors
+
+
+def _pick_first(mapping: dict[str, Any], keys: tuple[str, ...]) -> Any:
+    for key in keys:
+        value = mapping.get(key)
+        if value is None:
+            continue
+        if isinstance(value, str) and not value.strip():
+            continue
+        return value
+    return None
+
+
+def _coerce_positive_int(value: Any, default: int = 1) -> int:
+    try:
+        parsed = int(str(value).strip())
+        return parsed if parsed > 0 else default
+    except (TypeError, ValueError):
+        return default
+
+
+def _coerce_money_string(value: Any) -> str:
+    if value is None:
+        return ""
+    text = str(value).strip()
+    return text
+
+
+def _parse_keph_level(value: Any) -> int | None:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        text = value.strip().upper()
+        if text.startswith("L") and text[1:].isdigit():
+            return int(text[1:])
+        if text.isdigit():
+            return int(text)
+    return None
+
+
+def _resolve_claim_unit_price(claim: Any, intervention_code: str) -> str:
+    if claim is None or not intervention_code:
+        return ""
+
+    intervention = (
+        claim.claim_interventions.filter(status="active", intervention_code=intervention_code)
+        .order_by("-updated_at", "-created_at")
+        .first()
+    )
+    if intervention is None:
+        return ""
+
+    level = _parse_keph_level(
+        getattr(getattr(claim, "facility", None), "level", None)
+        or getattr(claim, "facility_level", None)
+    )
+    tariff = intervention.tariff_for_level(level) if level else None
+    if tariff in (None, ""):
+        tariff = getattr(intervention, "tariff_amount", None)
+    return str(tariff).strip() if tariff not in (None, "") else ""
+
+
+def _normalize_preauth_items(
+    data: dict[str, Any],
+    *,
+    claim: Any = None,
+    intervention_code: str = "",
+) -> None:
+    items = data.get("items")
+    if not isinstance(items, list):
+        return
+
+    fallback_unit_price = _resolve_claim_unit_price(claim, intervention_code)
+    normalized_items: list[Any] = []
+    for row in items:
+        if not isinstance(row, dict):
+            normalized_items.append(row)
+            continue
+
+        normalized_row = dict(row)
+        item_code = _pick_first(normalized_row, ("item_code", "itemCode", "ItemCode"))
+        quantity = _coerce_positive_int(
+            _pick_first(normalized_row, ("quantity", "Quantity")),
+            default=1,
+        )
+        unit_price = _coerce_money_string(
+            _pick_first(normalized_row, ("unit_price", "unitPrice", "UnitPrice"))
+        )
+        if not unit_price:
+            unit_price = _coerce_money_string(fallback_unit_price)
+
+        if not unit_price:
+            code_hint = str(item_code or intervention_code or "(unknown)")
+            raise DHAValidationError(
+                f"Preauth item '{code_hint}' is missing unit_price; provide unit_price or ensure the claim intervention has tariff metadata.",
+                status_code=400,
+                path=PREAUTH_CREATE_PATH,
+                method="POST",
+            )
+
+        item_code_text = str(item_code or intervention_code).strip()
+        if item_code_text:
+            normalized_row["item_code"] = item_code_text
+            normalized_row["ItemCode"] = item_code_text
+        normalized_row["quantity"] = quantity
+        normalized_row["Quantity"] = quantity
+        normalized_row["unit_price"] = unit_price
+        normalized_row["UnitPrice"] = unit_price
+        normalized_items.append(normalized_row)
+
+    data["items"] = normalized_items
 
 
 def _derive_service_window(extra_fields: dict[str, Any], claim: Any = None) -> tuple[str, str]:
@@ -391,6 +502,24 @@ class IlmPreauthService:
         facility: Any = None,
         user: Any = None,
     ) -> IlmPreauthResult:
+        if claim is not None:
+            from hmis.apps.billing.models import SHAClaimIntervention
+
+            active_interventions = claim.claim_interventions.filter(
+                status=SHAClaimIntervention.InterventionStatus.ACTIVE
+            )
+            active_codes = {ci.intervention_code for ci in active_interventions}
+            if intervention_code not in active_codes:
+                available = sorted(active_codes)
+                available_text = ", ".join(available) if available else "none"
+                raise DHAValidationError(
+                    f"Intervention {intervention_code} is not registered for claim "
+                    f"{claim.claim_number}. Active interventions on this claim: {available_text}.",
+                    status_code=400,
+                    path=PREAUTH_CREATE_PATH,
+                    method="POST",
+                )
+
         data: dict[str, Any] = {
             "consent_token": consent_token,
             "intervention_code": intervention_code,
@@ -410,6 +539,7 @@ class IlmPreauthService:
             ]
 
         _normalize_preauth_structured_fields(data)
+        _normalize_preauth_items(data, claim=claim, intervention_code=intervention_code)
 
         _normalize_iso_datetime_fields(
             data,

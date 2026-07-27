@@ -437,7 +437,7 @@ export function ConsentPanel({
   // Render a notice instead of the OTP wizard.
   if (flow === 'eccif') {
     return (
-      <Card className={cn('relative overflow-hidden', className)}>
+      <Card className={cn('relative', className)}>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <ShieldCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
@@ -455,7 +455,7 @@ export function ConsentPanel({
   }
 
   return (
-    <Card className={cn('relative overflow-hidden', className)}>
+    <Card className={cn('relative', className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">

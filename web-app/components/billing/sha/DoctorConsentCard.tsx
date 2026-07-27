@@ -126,7 +126,7 @@ export function DoctorConsentCard({
   }
 
   return (
-    <Card className={cn('relative overflow-hidden', className)}>
+    <Card className={cn('relative', className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">

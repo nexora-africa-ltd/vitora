@@ -43,6 +43,7 @@ from hmis.apps.billing.document_types import (
 from hmis.apps.billing.facility_identifiers import resolve_fr_code
 from hmis.apps.billing.filters import SHAClaimFilter, SHAMemberFilter
 from hmis.apps.billing.models import (
+    ConsentToken,
     FacilityBillingConfig,
     SHAClaim,
     SHAClaimAttachment,
@@ -1516,7 +1517,36 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         except Exception:
             return normalized
 
-    def _resolve_diagnosis_intervention_code(self, claim: SHAClaim) -> str:
+    def _resolve_claim_intervention_code(self, claim: SHAClaim) -> str:
+        """Return an intervention code most likely to exist in the DHA visit.
+
+        Priority:
+        1. Most recent non-cancelled preauth on the claim.
+        2. Intervention codes stored on the active consent token.
+        3. First active claim intervention.
+        """
+        latest_preauth = claim.preauths.exclude(status="cancelled").order_by("-created_at").first()
+        if latest_preauth and latest_preauth.intervention_code:
+            return str(latest_preauth.intervention_code).strip()
+
+        from hmis.apps.billing.services.consent_token_resolver import resolve_for_claim
+
+        try:
+            consent = resolve_for_claim(claim)
+            consent_obj = (
+                ConsentToken.objects.filter(consent_token=consent.token)
+                .order_by("-validated_at")
+                .first()
+            )
+            if consent_obj and consent_obj.intervention_codes:
+                return str(consent_obj.intervention_codes[0]).strip()
+        except Exception as exc:  # noqa: S110 - best-effort fallback
+            logger.debug(
+                "Consent-token intervention fallback failed for claim %s: %s",
+                claim.id,
+                exc,
+            )
+
         intervention_code = (
             claim.claim_interventions.filter(status="active")
             .values_list("intervention_code", flat=True)
@@ -1525,12 +1555,15 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if intervention_code:
             return str(intervention_code).strip()
 
-        tariff_code = (
-            claim.items.filter(tariff__isnull=False).values_list("tariff__code", flat=True).first()
-        )
-        if tariff_code:
-            return str(tariff_code).strip()
+        return ""
 
+    def _resolve_diagnosis_intervention_code(self, claim: SHAClaim) -> str:
+        code = self._resolve_claim_intervention_code(claim)
+        if code:
+            return code
+        # Legacy fallback for the best-effort DHA diagnosis sync path.
+        # Attachments use _resolve_claim_intervention_code directly and require
+        # a real visit intervention, so they do not fall back to hardcoded codes.
         if claim.claim_type == SHAClaim.ClaimType.INPATIENT:
             return "SHA-07-001"
         return "SHA-01-001"
@@ -2104,11 +2137,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             )
         extra = {k: v for k, v in request.data.items() if k not in ("files", "file")}
         if not extra.get("intervention_code"):
-            active_intervention = (
-                claim.claim_interventions.filter(status="active").order_by("created_at").first()
-            )
-            if active_intervention:
-                extra["intervention_code"] = active_intervention.intervention_code
+            extra["intervention_code"] = self._resolve_claim_intervention_code(claim)
         try:
             result = self._ilm_service(facility=claim.facility).add_attachment(
                 claim,
@@ -2166,12 +2195,20 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             )
 
         service = self._ilm_service(facility=claim.facility)
-        active_intervention = (
-            claim.claim_interventions.filter(status="active").order_by("created_at").first()
-        )
-        intervention_code = (
-            str(active_intervention.intervention_code).strip() if active_intervention else ""
-        )
+
+        intervention_code = self._resolve_claim_intervention_code(claim)
+        if not intervention_code:
+            return Response(
+                {
+                    "error": "No active intervention found for this claim; cannot determine attachment intervention code.",
+                    "code": "no_active_intervention",
+                    "local_count": len(local_attachments),
+                    "uploaded": 0,
+                    "failed": len(local_attachments),
+                },
+                status=400,
+            )
+
         uploaded = 0
         failed = 0
         errors: list[dict[str, str]] = []
@@ -3210,7 +3247,10 @@ from hmis.apps.billing.services.client_registry import (
 )
 from hmis.apps.billing.services.dha_search import DHASearchService, SearchError
 from hmis.apps.billing.services.icd11_local import ICD11LocalService
-from hmis.apps.billing.services.intervention_fallback import search_local_interventions
+from hmis.apps.billing.services.intervention_fallback import (
+    get_local_intervention,
+    search_local_interventions,
+)
 from hmis.apps.billing.services.terminology import TerminologyError, TerminologyService
 
 
@@ -3252,6 +3292,7 @@ class TerminologySearchView(APIView):
         Types: icd11, loinc, ichi, interventions, drugs, active-components
         """
         search = request.query_params.get("search", "")
+        code = str(request.query_params.get("code", "") or "").strip()
         limit = int(request.query_params.get("limit", 50))
 
         # Allow browsing interventions by facility_level / payment_mechanism
@@ -3260,7 +3301,8 @@ class TerminologySearchView(APIView):
         if len(search) < 2 and not (
             terminology_type == "interventions"
             and (
-                request.query_params.get("facility_level")
+                code
+                or request.query_params.get("facility_level")
                 or request.query_params.get("payment_mechanism")
             )
         ):
@@ -3285,6 +3327,15 @@ class TerminologySearchView(APIView):
                 facility_level = request.query_params.get("facility_level")
                 offset = int(request.query_params.get("offset", 0))
                 payment_mechanism = request.query_params.get("payment_mechanism")
+                if code:
+                    intervention = get_local_intervention(
+                        code,
+                        facility_level=int(facility_level) if facility_level else None,
+                    )
+                    if intervention is None:
+                        return Response({"results": [], "count": 0})
+                    return Response({"results": [intervention], "count": 1})
+
                 excluded_payment_mechanisms: list[str] = []
                 if not payment_mechanism:
                     request_facility = getattr(request, "facility", None)
@@ -5559,14 +5610,23 @@ def _persist_consent_interventions(*, patient, facility, intervention_codes: lis
         return
 
     for code in intervention_codes:
+        from hmis.apps.billing.services.intervention_fallback import (
+            get_local_intervention_claim_defaults,
+        )
+
+        facility_level = getattr(getattr(claim, "facility", None), "level", None) or getattr(
+            claim,
+            "facility_level",
+            None,
+        )
+        defaults = {
+            "status": "active",
+            **get_local_intervention_claim_defaults(code, facility_level=facility_level),
+        }
         SHAClaimIntervention.objects.update_or_create(
             claim=claim,
             intervention_code=code,
-            defaults={
-                "intervention_name": "",
-                "benefit_code": code.rsplit("-", 1)[0] if "-" in code else "",
-                "status": "active",
-            },
+            defaults=defaults,
         )
 
     # Stamp the claim so the frontend knows a visit was started via consent

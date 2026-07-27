@@ -409,3 +409,70 @@ def get_local_intervention(code: str, facility_level: int | None = None) -> dict
     if record is None:
         return None
     return _record_to_intervention_kwargs(record, facility_level)
+
+
+def _coerce_tariff(value: object) -> Decimal | None:
+    if value in (None, ""):
+        return None
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _coerce_keph_level(value: object) -> int | None:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        text = value.strip().upper()
+        if text.startswith("L") and text[1:].isdigit():
+            return int(text[1:])
+        if text.isdigit():
+            return int(text)
+    return None
+
+
+def get_local_intervention_claim_defaults(code: str, facility_level: object = None) -> dict:
+    """Return SHAClaimIntervention defaults for a code from the local catalog.
+
+    Falls back to empty/safe defaults when the code is not in the catalog so
+    callers can always spread the result into update_or_create/create defaults.
+    """
+    info = get_local_intervention(code)
+    extras = info.get("raw_data", {}) if info else {}
+    payment_mechanism = str(extras.get("payment_mechanism", "")).strip()
+    access_point = str(extras.get("access_point", "")).strip()
+    applicable_document_types = extras.get("applicable_document_types")
+    if not isinstance(applicable_document_types, list):
+        applicable_document_types = []
+
+    level_int = _coerce_keph_level(facility_level)
+    tariff_amount = _get_tariff_for_level(extras, level_int)
+
+    def _flag(key: str) -> bool:
+        return str(extras.get(key, "")).strip().lower() == "true"
+
+    return {
+        "intervention_name": info.get("name", "") if info else "",
+        "benefit_code": info.get("benefit_code", "")
+        if info
+        else (code.rsplit("-", 1)[0] if "-" in code else ""),
+        "payment_mechanism": payment_mechanism,
+        "access_point": access_point,
+        "tariff_amount": tariff_amount,
+        "level2_tariff": _coerce_tariff(extras.get("level_2_tariff")),
+        "level3_tariff": _coerce_tariff(extras.get("level_3_tariff")),
+        "level4_tariff": _coerce_tariff(extras.get("level_4_tariff")),
+        "level5_tariff": _coerce_tariff(extras.get("level_5_tariff")),
+        "level6_tariff": _coerce_tariff(extras.get("level_6_tariff")),
+        "required_document_types": [
+            str(v).strip() for v in applicable_document_types if str(v).strip()
+        ],
+        "needs_preauth": _requires_preauth(extras),
+        "needs_manual_preauth_approval": _flag("needs_manual_preauth_approval"),
+        "is_surgical_preauth": _flag("requires_surgical_preauth"),
+        "is_renal_preauth": _flag("requires_renal_preauth"),
+        "is_oncology_preauth": _flag("requires_oncology_preauth"),
+        "is_imaging_preauth": _flag("requires_radiology_preauth"),
+        "is_optical_preauth": _flag("requires_optical_preauth"),
+    }
