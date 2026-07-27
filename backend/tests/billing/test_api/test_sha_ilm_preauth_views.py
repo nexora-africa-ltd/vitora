@@ -13,6 +13,7 @@ from unittest.mock import patch
 import pytest
 
 from hmis.apps.billing.models import SHAEmergencyClaim, SHAPreauth
+from hmis.apps.billing.services.consent_token_resolver import ResolvedConsent
 from hmis.apps.billing.services.dha_errors import (
     DHANotFoundError,
     DHAUnauthorizedError,
@@ -21,6 +22,7 @@ from hmis.apps.billing.services.dha_errors import (
 from hmis.apps.billing.services.ilm_client import IlmResponse
 from hmis.apps.billing.services.ilm_preauth_service import IlmPreauthResult
 from tests.billing.test_api.test_sha_api import (  # noqa: F401
+    sample_sha_claim,
     sample_sha_member,
     sha_client,
     user_with_sha_permissions,
@@ -100,6 +102,57 @@ class TestPreauthCreateEndpoint:
             assert r.status_code == 201
             assert r.data["record_id"] == 42
 
+    def test_uses_claim_consent_when_token_missing(self, sha_client, sample_sha_claim):
+        with (
+            patch(PA_SVC) as M,
+            patch("hmis.apps.billing.sha_ilm_preauth_views.resolve_for_claim") as resolver,
+        ):
+            resolver.return_value = ResolvedConsent(
+                token="claim-token-1",
+                consent_id=11,
+                method="OTP",
+                expires_at=None,
+            )
+            M.return_value.create_preauth.return_value = _ok({"preauth_id": "p9"}, record_id=42)
+
+            r = sha_client.post(
+                self.URL,
+                {
+                    "intervention_code": "INT-1",
+                    "patient_pk": sample_sha_claim.patient_id,
+                    "claim_pk": sample_sha_claim.id,
+                },
+                format="json",
+            )
+
+            assert r.status_code == 201
+            assert (
+                M.return_value.create_preauth.call_args.kwargs["consent_token"] == "claim-token-1"
+            )
+
+    def test_rejects_claim_consent_mismatch(self, sha_client, sample_sha_claim):
+        with patch("hmis.apps.billing.sha_ilm_preauth_views.resolve_for_claim") as resolver:
+            resolver.return_value = ResolvedConsent(
+                token="claim-token-1",
+                consent_id=11,
+                method="OTP",
+                expires_at=None,
+            )
+
+            r = sha_client.post(
+                self.URL,
+                {
+                    "consent_token": "different-token",
+                    "intervention_code": "INT-1",
+                    "patient_pk": sample_sha_claim.patient_id,
+                    "claim_pk": sample_sha_claim.id,
+                },
+                format="json",
+            )
+
+            assert r.status_code == 400
+            assert "does not match" in str(r.data.get("error", "")).lower()
+
     def test_validation_error_returns_400(self, sha_client, sample_patient):
         with patch(PA_SVC) as M:
             M.return_value.create_preauth.side_effect = DHAValidationError("bad", status_code=400)
@@ -113,6 +166,28 @@ class TestPreauthCreateEndpoint:
                 format="json",
             )
             assert r.status_code == 400
+
+    def test_visit_not_started_error_returns_structured_code(self, sha_client, sample_sha_claim):
+        with patch(PA_SVC) as M:
+            M.return_value.create_preauth.side_effect = DHAValidationError(
+                "POST /api/v1/preauths HTTP 400: failed to create preauth: "
+                "Kindly note the visit with consent token 6Q7K6WH2K4 doesnt exist, "
+                "ensure it exists and in these valid statuses AUTHORIZED, AUTHORIZED_PENDING_VISIT.",
+                status_code=400,
+            )
+            r = sha_client.post(
+                self.URL,
+                {
+                    "consent_token": "c-1",
+                    "intervention_code": "INT-1",
+                    "patient_pk": sample_sha_claim.patient_id,
+                    "claim_pk": sample_sha_claim.id,
+                },
+                format="json",
+            )
+            assert r.status_code == 400
+            assert r.data.get("code") == "dha_visit_not_started"
+            assert "active dha visit" in str(r.data.get("message", "")).lower()
 
 
 @pytest.mark.django_db

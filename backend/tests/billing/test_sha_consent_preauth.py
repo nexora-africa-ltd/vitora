@@ -859,3 +859,99 @@ class TestConsentDomainEvents:
         mock_publish.assert_called()
         call_args = mock_publish.call_args
         assert call_args.kwargs["event_type"] == "billing.preauth.submitted"
+
+
+class TestConsentLatestView:
+    """Tests for GET /api/sha/consent/latest/."""
+
+    @pytest.fixture
+    def today_claim(self, db, validated_consent, sample_facility, test_user):
+        """Create a claim whose encounter is linked to today's consent."""
+        from hmis.apps.billing.models import SHAClaim
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.create(
+            patient=validated_consent.patient,
+            facility=sample_facility,
+            encounter_type="OPD",
+            status="OPEN",
+        )
+        validated_consent.encounter = encounter
+        validated_consent.save(update_fields=["encounter"])
+        return SHAClaim.objects.create(
+            patient=validated_consent.patient,
+            sha_member=validated_consent.sha_member,
+            facility=sample_facility,
+            encounter=encounter,
+            claim_type=SHAClaim.ClaimType.OUTPATIENT,
+            primary_diagnosis_code="A00",
+            primary_diagnosis_description="Test diagnosis",
+            service_date=date.today(),
+            status=SHAClaim.ClaimStatus.DRAFT,
+            created_by=test_user,
+        )
+
+    @pytest.fixture
+    def old_claim(self, db, sample_patient, sha_member, sample_facility, test_user):
+        """Create a claim with a validated consent created yesterday."""
+        from hmis.apps.billing.models import ConsentToken, SHAClaim
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            facility=sample_facility,
+            encounter_type="OPD",
+            status="OPEN",
+        )
+        consent = ConsentToken.objects.create(
+            patient=sample_patient,
+            sha_member=sha_member,
+            facility=sample_facility,
+            consent_method=ConsentToken.ConsentMethod.OTP,
+            status=ConsentToken.ConsentStatus.VALIDATED,
+            consent_token="old-claim-token",
+            encounter=encounter,
+            created_by=test_user,
+        )
+        consent.created_at = timezone.now() - timedelta(days=1)
+        consent.validated_at = consent.created_at
+        consent.save(update_fields=["created_at", "validated_at"])
+        return SHAClaim.objects.create(
+            patient=sample_patient,
+            sha_member=sha_member,
+            facility=sample_facility,
+            encounter=encounter,
+            claim_type=SHAClaim.ClaimType.OUTPATIENT,
+            primary_diagnosis_code="A00",
+            primary_diagnosis_description="Test diagnosis",
+            service_date=date.today(),
+            status=SHAClaim.ClaimStatus.DRAFT,
+            created_by=test_user,
+        )
+
+    def test_latest_by_claim_pk_bypasses_today_filter(self, authenticated_client, old_claim):
+        """A claim-linked consent from a previous day should still be found."""
+        response = authenticated_client.get(
+            "/api/sha/consent/latest/",
+            {
+                "sha_member_id": old_claim.sha_member_id,
+                "claim_pk": old_claim.pk,
+            },
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["exists"] is True
+        assert response.data["consent_token"] == "old-claim-token"
+
+    def test_latest_by_claim_pk_404_when_claim_missing(self, authenticated_client, sha_member):
+        response = authenticated_client.get(
+            "/api/sha/consent/latest/",
+            {"sha_member_id": sha_member.pk, "claim_pk": 99999},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_latest_without_claim_pk_still_requires_today(self, authenticated_client, old_claim):
+        response = authenticated_client.get(
+            "/api/sha/consent/latest/",
+            {"sha_member_id": old_claim.sha_member_id},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND

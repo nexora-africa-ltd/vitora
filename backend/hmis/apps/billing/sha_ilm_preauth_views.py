@@ -21,6 +21,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.billing.models import SHAClaim, SHAEmergencyClaim, SHAMember, SHAPreauth
+from hmis.apps.billing.services.consent_token_resolver import (
+    ConsentTokenExpiredError,
+    ConsentTokenNotFoundError,
+    resolve_for_claim,
+)
 from hmis.apps.billing.services.dha_errors import (
     DHAClientError,
     DHAError,
@@ -296,17 +301,49 @@ class IlmPreauthCreateView(APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def post(self, request):
-        consent_token = request.data.get("consent_token")
+        consent_token = str(request.data.get("consent_token") or "").strip()
         intervention_code = request.data.get("intervention_code")
-        if not consent_token or not intervention_code:
+        if not intervention_code:
             return Response(
-                {"error": "consent_token and intervention_code are required"},
+                {"error": "intervention_code is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         patient = _resolve(Patient, request, "patient_pk")
         if not patient:
             return Response({"error": "patient_pk is required"}, status=status.HTTP_400_BAD_REQUEST)
         claim = _resolve(SHAClaim, request, "claim_pk")
+
+        resolved_claim_token = ""
+        if claim is not None:
+            try:
+                resolved_claim_token = resolve_for_claim(claim).token
+            except (ConsentTokenNotFoundError, ConsentTokenExpiredError):
+                resolved_claim_token = ""
+
+        if not consent_token:
+            consent_token = resolved_claim_token
+
+        if not consent_token:
+            return Response(
+                {
+                    "error": (
+                        "consent_token is required unless claim_pk resolves to a valid consent token"
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if resolved_claim_token and consent_token != resolved_claim_token:
+            return Response(
+                {
+                    "error": (
+                        "Provided consent_token does not match the active consent token "
+                        "for the linked claim"
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         raw_extra_fields = request.data.get("extra_fields") or {}
         if isinstance(raw_extra_fields, str):
             try:
@@ -363,6 +400,33 @@ class IlmPreauthCreateView(APIView):
                 claim=claim,
                 facility=_facility(request),
                 user=request.user,
+            )
+        except DHAValidationError as exc:
+            msg = (exc.message or "").lower()
+            if (
+                "consent token" in msg
+                and "visit" in msg
+                and ("doesnt exist" in msg or "doesn't exist" in msg)
+            ):
+                # DHA no longer recognizes this token as having an active visit.
+                # Clear our local flag so the frontend re-shows the consent flow.
+                if claim is not None and getattr(claim, "dha_visit_started_at", None) is not None:
+                    claim.dha_visit_started_at = None
+                    claim.save(update_fields=["dha_visit_started_at"])
+                return Response(
+                    {
+                        "error": "DHAValidationError",
+                        "code": "dha_visit_not_started",
+                        "message": (
+                            "The linked consent token does not have an active DHA visit. "
+                            "Please collect a fresh consent or start the visit before submitting the preauth."
+                        ),
+                        "status_code": exc.status_code,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            return _ilm_handle_error(
+                "preauth_create", exc, extra={"intervention_code": intervention_code}
             )
         except DHAError as exc:
             return _ilm_handle_error(

@@ -27,6 +27,11 @@ export interface InterventionOption {
   paymentMechanism?: string;
   accessPoint?: string;
   schemes?: string[];
+  fund?: string;
+  interventionFund?: string;
+  intervention_fund?: string;
+  supportedScheme?: string;
+  supported_scheme?: string;
   benefitCode?: string;
   needsPreauth?: boolean;
   needsManualPreauthApproval?: boolean;
@@ -112,6 +117,16 @@ function getStringArrayField(item: Record<string, unknown>, ...keys: string[]): 
     }
   }
   return [];
+}
+
+function getStringField(item: Record<string, unknown>, ...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = item[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return undefined;
 }
 
 // ============================================================================
@@ -282,7 +297,12 @@ export function useBenefitInterventions({
           getField(i, 'paymentMechanism', 'payment_mechanism') || undefined,
         accessPoint:
           getField(i, 'accessPoint', 'access_point') || undefined,
-        schemes: undefined,
+        schemes: getStringArrayField(i, 'schemes').concat(
+          getStringArrayField((i.raw_data as Record<string, unknown>) || {}, 'schemes'),
+        ),
+        fund: getStringField(i, 'fund'),
+        interventionFund: getStringField(i, 'interventionFund', 'intervention_fund'),
+        supportedScheme: getStringField(i, 'supportedScheme', 'supported_scheme'),
         benefitCode:
           getField(i, 'benefitCode', 'benefit_code') || undefined,
         needsPreauth: getBooleanField(i, 'needsPreauth', 'needs_preauth', 'requires_preauthorization'),

@@ -657,6 +657,27 @@ class SHAConsentService:
                 ilm_result = IlmClaimResult(response=response, payload=response_data)
                 for code in codes:
                     ilm_service._persist_intervention(claim, code, ilm_result)
+                    # Ensure the intervention is registered on the DHA side as
+                    # well. Some DHA environments require a separate call to
+                    # /api/v1/claims/interventions even when the codes were
+                    # supplied to /api/v1/claims/visit.
+                    try:
+                        ilm_service.add_intervention(claim, code, user=None)
+                    except Exception as add_exc:
+                        msg = str(add_exc).lower()
+                        if "already" in msg or "exists" in msg or "duplicate" in msg:
+                            logger.info(
+                                "Intervention %s already registered on DHA for claim %s",
+                                code,
+                                getattr(claim, "pk", None),
+                            )
+                        else:
+                            logger.warning(
+                                "Failed to add intervention %s to DHA claim %s after start_visit: %s",
+                                code,
+                                getattr(claim, "pk", None),
+                                add_exc,
+                            )
 
         logger.info(
             "ILM visit started for consent %s (patient: %s)",
