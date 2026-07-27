@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import json
+from datetime import date
 from unittest.mock import MagicMock
 
 import pytest
 
-from hmis.apps.billing.models import SHAEmergencyClaim, SHAMember, SHAPreauth
-from hmis.apps.billing.services.dha_errors import DHANotFoundError
+from hmis.apps.billing.models import (
+    SHAClaim,
+    SHAClaimIntervention,
+    SHAEmergencyClaim,
+    SHAMember,
+    SHAPreauth,
+)
+from hmis.apps.billing.services.dha_errors import DHANotFoundError, DHAValidationError
 from hmis.apps.billing.services.ilm_client import IlmResponse
 from hmis.apps.billing.services.ilm_preauth_service import (
     DOCTOR_CONSENT_PATH,
@@ -96,14 +104,226 @@ class TestCreatePreauth:
         )
         args, kwargs = mock_client.post.call_args
         assert args[0] == PREAUTH_CREATE_PATH
-        assert kwargs["data"]["consent_token"] == "c-create"
-        assert kwargs["data"]["intervention_code"] == "INT-001"
-        assert kwargs["data"]["notes"] == "hello"
+        assert kwargs["files"]["consent_token"] == (None, "c-create")
+        assert kwargs["files"]["intervention_code"] == (None, "INT-001")
+        assert kwargs["files"]["notes"] == (None, "hello")
         assert result.record_id is not None
         rec = SHAPreauth.objects.get(pk=result.record_id)
         assert rec.status == SHAPreauth.Status.SUBMITTED
         assert rec.dha_external_id == "p-99"
         assert rec.correlation_id == "corr-1"
+
+    def test_rejects_intervention_not_registered_on_claim(
+        self,
+        service,
+        mock_client,
+        db,
+        sample_patient,
+        sample_facility,
+        sample_organization,
+        sample_encounter,
+        sha_member,
+        test_user,
+    ):
+        mock_client.post.return_value = _resp(201, {"preauth_id": "p-99"})
+        claim = SHAClaim.objects.create(
+            patient=sample_patient,
+            sha_member=sha_member,
+            claim_type=SHAClaim.ClaimType.INPATIENT,
+            status=SHAClaim.ClaimStatus.DRAFT,
+            service_date=date.today(),
+            admission_date=date.today(),
+            primary_diagnosis_code="J18.9",
+            primary_diagnosis_description="Pneumonia",
+            facility=sample_facility,
+            organization=sample_organization,
+            encounter=sample_encounter,
+            created_by=test_user,
+        )
+        SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-19-197",
+            intervention_name="Bilateral nephrostomy tube insertion",
+            status=SHAClaimIntervention.InterventionStatus.ACTIVE,
+            needs_preauth=True,
+        )
+
+        with pytest.raises(DHAValidationError) as exc_info:
+            service.create_preauth(
+                consent_token="c-create",
+                intervention_code="SHA-19-277",
+                patient=sample_patient,
+                claim=claim,
+                facility=sample_facility,
+                user=test_user,
+            )
+
+        assert "SHA-19-277" in str(exc_info.value)
+        assert "SHA-19-197" in str(exc_info.value)
+        assert not mock_client.post.called
+
+    def test_accepts_intervention_registered_on_claim(
+        self,
+        service,
+        mock_client,
+        db,
+        sample_patient,
+        sample_facility,
+        sample_organization,
+        sample_encounter,
+        sha_member,
+        test_user,
+    ):
+        mock_client.post.return_value = _resp(201, {"preauth_id": "p-99"})
+        claim = SHAClaim.objects.create(
+            patient=sample_patient,
+            sha_member=sha_member,
+            claim_type=SHAClaim.ClaimType.INPATIENT,
+            status=SHAClaim.ClaimStatus.DRAFT,
+            service_date=date.today(),
+            admission_date=date.today(),
+            primary_diagnosis_code="J18.9",
+            primary_diagnosis_description="Pneumonia",
+            facility=sample_facility,
+            organization=sample_organization,
+            encounter=sample_encounter,
+            created_by=test_user,
+        )
+        SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-19-197",
+            intervention_name="Bilateral nephrostomy tube insertion",
+            status=SHAClaimIntervention.InterventionStatus.ACTIVE,
+            needs_preauth=True,
+        )
+
+        result = service.create_preauth(
+            consent_token="c-create",
+            intervention_code="SHA-19-197",
+            patient=sample_patient,
+            claim=claim,
+            facility=sample_facility,
+            user=test_user,
+        )
+
+        args, kwargs = mock_client.post.call_args
+        assert args[0] == PREAUTH_CREATE_PATH
+        assert kwargs["files"]["intervention_code"] == (None, "SHA-19-197")
+        assert result.record_id is not None
+
+    def test_populates_missing_item_unit_price_from_claim_intervention(
+        self,
+        service,
+        mock_client,
+        db,
+        sample_patient,
+        sample_facility,
+        sample_organization,
+        sample_encounter,
+        sha_member,
+        test_user,
+    ):
+        mock_client.post.return_value = _resp(201, {"preauth_id": "p-99"})
+        claim = SHAClaim.objects.create(
+            patient=sample_patient,
+            sha_member=sha_member,
+            claim_type=SHAClaim.ClaimType.INPATIENT,
+            status=SHAClaim.ClaimStatus.DRAFT,
+            service_date=date.today(),
+            admission_date=date.today(),
+            primary_diagnosis_code="J18.9",
+            primary_diagnosis_description="Pneumonia",
+            facility=sample_facility,
+            organization=sample_organization,
+            encounter=sample_encounter,
+            created_by=test_user,
+        )
+        SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-19-197",
+            intervention_name="Bilateral nephrostomy tube insertion",
+            status=SHAClaimIntervention.InterventionStatus.ACTIVE,
+            needs_preauth=True,
+            tariff_amount="28000.00",
+        )
+
+        service.create_preauth(
+            consent_token="c-create",
+            intervention_code="SHA-19-197",
+            patient=sample_patient,
+            claim=claim,
+            facility=sample_facility,
+            user=test_user,
+            extra_fields={
+                "items": [
+                    {
+                        "item_code": "SHA-19-197",
+                    }
+                ]
+            },
+        )
+
+        _, kwargs = mock_client.post.call_args
+        serialized_items = kwargs["files"]["items"][1]
+        items = json.loads(serialized_items)
+        assert items[0]["unit_price"] == "28000.00"
+        assert items[0]["UnitPrice"] == "28000.00"
+        assert items[0]["ItemCode"] == "SHA-19-197"
+        assert items[0]["Quantity"] == 1
+
+    def test_rejects_item_without_unit_price_when_no_claim_tariff(
+        self,
+        service,
+        mock_client,
+        db,
+        sample_patient,
+        sample_facility,
+        sample_organization,
+        sample_encounter,
+        sha_member,
+        test_user,
+    ):
+        mock_client.post.return_value = _resp(201, {"preauth_id": "p-99"})
+        claim = SHAClaim.objects.create(
+            patient=sample_patient,
+            sha_member=sha_member,
+            claim_type=SHAClaim.ClaimType.OUTPATIENT,
+            status=SHAClaim.ClaimStatus.DRAFT,
+            service_date=date.today(),
+            primary_diagnosis_code="J18.9",
+            primary_diagnosis_description="Pneumonia",
+            facility=sample_facility,
+            organization=sample_organization,
+            encounter=sample_encounter,
+            created_by=test_user,
+        )
+        SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-01-001",
+            intervention_name="Consultation",
+            status=SHAClaimIntervention.InterventionStatus.ACTIVE,
+            needs_preauth=True,
+        )
+
+        with pytest.raises(DHAValidationError) as exc_info:
+            service.create_preauth(
+                consent_token="c-create",
+                intervention_code="SHA-01-001",
+                patient=sample_patient,
+                claim=claim,
+                facility=sample_facility,
+                user=test_user,
+                extra_fields={
+                    "items": [
+                        {
+                            "item_code": "SHA-01-001",
+                        }
+                    ]
+                },
+            )
+
+        assert "missing unit_price" in str(exc_info.value)
+        assert not mock_client.post.called
 
 
 class TestCancelPreauth:

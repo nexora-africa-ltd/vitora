@@ -35,7 +35,6 @@ import {
   Pill,
   Activity,
   AlertTriangle,
-  Search,
   X,
   DollarSign,
   ShieldCheck,
@@ -69,9 +68,10 @@ import { encountersApi } from '@/lib/api/encounters';
 import { laboratoryApi } from '@/lib/api/laboratory';
 import { imagingApi } from '@/lib/api/imaging';
 import { useToast } from '@/lib/hooks/use-toast';
-import { useDebounce } from '@/lib/hooks/use-debounce';
-import { useBenefitInterventions } from '@/lib/hooks/use-benefit-interventions';
-import { toCrId } from '@/lib/sha/ilm-parsers';
+import {
+  type InterventionOption,
+  mapClaimInterventionToOption,
+} from '@/lib/sha/preauth-interventions';
 import { extractDHAErrorMessage } from '@/lib/sha/error-parser';
 import { usePatientEncounters } from '@/lib/hooks/use-patients';
 import { useFacility } from '@/lib/context/facility-context';
@@ -174,44 +174,6 @@ function toPreauthAttachmentDocumentType(doc: DraftDocument): string {
   if (required === 'MEDICAL_REPORT') return 'MEDICAL_REPORT';
   if (required === 'PREAUTH_FORM') return 'CLINICAL_DOCUMENTATION';
   return 'OTHER';
-}
-
-interface InterventionOption {
-  code: string;
-  name: string;
-  category?: string;
-  price?: number;
-  access_point?: string;
-  fund?: string;
-  interventionFund?: string;
-  intervention_fund?: string;
-  supportedScheme?: string;
-  supported_scheme?: string;
-  schemes?: string[];
-  isSurgicalPreauth?: boolean;
-  isRenalPreauth?: boolean;
-  isOncologyPreauth?: boolean;
-  isImagingPreauth?: boolean;
-  isOpticalPreauth?: boolean;
-  is_surgical_preauth?: boolean;
-  is_renal_preauth?: boolean;
-  is_oncology_preauth?: boolean;
-  is_imaging_preauth?: boolean;
-  is_optical_preauth?: boolean;
-  requiresSurgicalPreauth?: boolean;
-  requiresRenalPreauth?: boolean;
-  requiresOncologyPreauth?: boolean;
-  requiresRadiologyPreauth?: boolean;
-  requiresOpticalPreauth?: boolean;
-  requires_surgical_preauth?: boolean;
-  requires_renal_preauth?: boolean;
-  requires_oncology_preauth?: boolean;
-  requires_radiology_preauth?: boolean;
-  requires_optical_preauth?: boolean;
-  needsDoctorAuthorization?: boolean;
-  needs_doctor_authorization?: boolean;
-  needsManualPreauthApproval?: boolean;
-  needs_manual_preauth_approval?: boolean;
 }
 
 interface DiagnosisChip {
@@ -405,8 +367,6 @@ export default function NewPreauthPage() {
   const [interventionCode, setInterventionCode] = useState('');
   const [interventionName, setInterventionName] = useState('');
   const [interventionPrice, setInterventionPrice] = useState<number | null>(null);
-  const [interventionSearch, setInterventionSearch] = useState('');
-  const [showInterventionDropdown, setShowInterventionDropdown] = useState(false);
 
   const [diagnosisChips, setDiagnosisChips] = useState<DiagnosisChip[]>([]);
   const [diagnosisInput, setDiagnosisInput] = useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue());
@@ -506,7 +466,7 @@ export default function NewPreauthPage() {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }, [claimId]);
 
-  const { data: selectedClaim } = useQuery({
+  const { data: selectedClaim, isLoading: selectedClaimLoading } = useQuery({
     queryKey: ['preauth-context-claim', selectedClaimIdNumber],
     queryFn: () => shaApi.getClaim(selectedClaimIdNumber!),
     enabled: selectedClaimIdNumber != null,
@@ -622,26 +582,16 @@ export default function NewPreauthPage() {
     providerNotificationEmailTouched,
   ]);
 
-  const patientCrIdForBenefits = useMemo(() => {
-    return (
-      selectedClaim?.dha_external_id
-      || toCrId(selectedClaim?.sha_member_number || '')
-      || toCrId(eligibility?.member?.sha_number || '')
-      || ''
-    );
-  }, [selectedClaim?.dha_external_id, selectedClaim?.sha_member_number, eligibility?.member?.sha_number]);
-
-  const {
-    benefitPackageOptions,
-    benefitPackagesLoading,
-    selectedBenefitPkgCode,
-    setSelectedBenefitPkgCode,
-    interventionOptions,
-    interventionsLoading,
-  } = useBenefitInterventions({
-    patientCrId: patientCrIdForBenefits,
-    enabled: !!patientCrIdForBenefits,
-  });
+  const interventionOptions = useMemo<InterventionOption[]>(() => {
+    const raw = selectedClaim?.claim_interventions;
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((entry) => {
+        const status = String((entry as Record<string, unknown>).status || '').toLowerCase();
+        return status === 'active';
+      })
+      .map((entry) => mapClaimInterventionToOption(entry as Record<string, unknown>));
+  }, [selectedClaim?.claim_interventions]);
 
   useEffect(() => {
     if (hydratedDraftRef.current) return;
@@ -671,9 +621,6 @@ export default function NewPreauthPage() {
       if (typeof draft.interventionCode === 'string') setInterventionCode(draft.interventionCode);
       if (typeof draft.interventionName === 'string') setInterventionName(draft.interventionName);
       if (typeof draft.interventionPrice === 'number') setInterventionPrice(draft.interventionPrice);
-      if (typeof draft.selectedBenefitPkgCode === 'string') {
-        setSelectedBenefitPkgCode(draft.selectedBenefitPkgCode);
-      }
       if (Array.isArray(draft.diagnosisChips)) setDiagnosisChips(draft.diagnosisChips as DiagnosisChip[]);
       if (Array.isArray(draft.doctorChips)) setDoctorChips(draft.doctorChips as DoctorChip[]);
       if (Array.isArray(draft.tariffChips)) setTariffChips(draft.tariffChips.map(String));
@@ -733,7 +680,7 @@ export default function NewPreauthPage() {
     } catch {
       // Ignore malformed drafts and continue with a fresh form.
     }
-  }, [setSelectedBenefitPkgCode, urlClaimId, urlEncounterId, urlPatientId]);
+  }, [urlClaimId, urlEncounterId, urlPatientId]);
 
   useEffect(() => {
     if (!hydratedDraftRef.current) return;
@@ -747,7 +694,6 @@ export default function NewPreauthPage() {
       consentTokenId,
       consentedInterventionCode,
       shaMemberId,
-      selectedBenefitPkgCode,
       interventionCode,
       interventionName,
       interventionPrice,
@@ -787,7 +733,6 @@ export default function NewPreauthPage() {
     consentTokenId,
     consentedInterventionCode,
     shaMemberId,
-    selectedBenefitPkgCode,
     interventionCode,
     interventionName,
     interventionPrice,
@@ -807,23 +752,45 @@ export default function NewPreauthPage() {
   ]);
 
   const { data: selectedInterventionRecord } = useQuery({
-    queryKey: ['preauth-intervention-record', interventionCode],
+    queryKey: ['preauth-intervention-record', interventionCode, selectedClaimIdNumber],
     queryFn: async () => {
       if (!interventionCode) return null;
-      const result = await shaApi.searchInterventions({
-        search: interventionCode,
-        page_size: 20,
+
+      const selectedClaimRecord = selectedClaim as unknown as Record<string, unknown> | null;
+      const facilityRecord = selectedClaimRecord?.facility;
+      const facilityLevelFromFacility = facilityRecord && typeof facilityRecord === 'object'
+        ? (facilityRecord as Record<string, unknown>).level
+        : undefined;
+      const facilityLevelRaw =
+        selectedClaimRecord?.facility_level
+        ?? selectedClaimRecord?.facilityLevel
+        ?? facilityLevelFromFacility;
+      const facilityLevel = typeof facilityLevelRaw === 'number'
+        ? facilityLevelRaw
+        : typeof facilityLevelRaw === 'string'
+          ? Number(String(facilityLevelRaw).replace(/^L/i, ''))
+          : NaN;
+
+      const exact = await shaApi.searchInterventions({
+        code: interventionCode,
+        ...(Number.isFinite(facilityLevel) ? { facility_level: facilityLevel } : {}),
+        limit: 1,
       });
-      return (result.results || []).find((item) => item.code === interventionCode) || null;
+      const exactMatch = (exact.results || [])[0] || null;
+      if (exactMatch) return exactMatch;
+
+      const fallback = await shaApi.searchInterventions({
+        search: interventionCode,
+        limit: 200,
+      });
+      return (fallback.results || []).find((item) => item.code === interventionCode) || null;
     },
     enabled: !!interventionCode,
     staleTime: 30_000,
   });
 
   const interventionSelectOptions = useMemo(() => {
-    return interventionOptions
-      .filter((item) => item.needsPreauth)
-      .map((item) => {
+    return interventionOptions.map((item) => {
       const mechanism = item.paymentMechanism
         ? item.paymentMechanism.replaceAll('_', ' ').toUpperCase()
         : null;
@@ -832,15 +799,24 @@ export default function NewPreauthPage() {
         : mechanism === 'PER DIEM'
           ? 'PER DIEM'
           : mechanism;
+      const effectiveNeedsPreauth = item.needsPreauth ?? (
+        item.isSurgicalPreauth
+        || item.isRenalPreauth
+        || item.isOncologyPreauth
+        || item.isImagingPreauth
+        || item.isOpticalPreauth
+        || item.needsManualPreauthApproval
+        || false
+      );
       const flags: string[] = [];
       if (mechanismLabel) flags.push(mechanismLabel);
-      if (item.needsPreauth) flags.push('PREAUTH');
+      if (effectiveNeedsPreauth) flags.push('PREAUTH');
       return {
         value: item.code,
         label: `${item.code} - ${item.name}`,
         sublabel: flags.join(' • ') || undefined,
       };
-      });
+    });
   }, [interventionOptions]);
 
   const selectedRequiredDocumentTypes = useMemo(() => {
@@ -1034,9 +1010,37 @@ export default function NewPreauthPage() {
 
   const selectedInterventionTariff = useMemo(() => {
     if (interventionPrice != null) return interventionPrice;
+
+    const selectedFromBenefits = interventionOptions.find((entry) => entry.code === interventionCode);
+    if (selectedFromBenefits?.price != null) return selectedFromBenefits.price;
+
     const raw = selectedInterventionRecord as Record<string, unknown> | null;
     if (!raw) return null;
-    const candidates = [raw.overallTariff, raw.overall_tariff, raw.kephLevelTarriff, raw.keph_level_tarriff];
+
+    const rawData = raw.raw_data && typeof raw.raw_data === 'object'
+      ? raw.raw_data as Record<string, unknown>
+      : null;
+
+    const candidates = [
+      raw.price,
+      raw.tariff_amount,
+      raw.tariffAmount,
+      raw.overallTariff,
+      raw.overall_tariff,
+      raw.kephLevelTarriff,
+      raw.keph_level_tarriff,
+      raw.level2_tariff,
+      raw.level3_tariff,
+      raw.level4_tariff,
+      raw.level5_tariff,
+      raw.level6_tariff,
+      rawData?.level_2_tariff,
+      rawData?.level_3_tariff,
+      rawData?.level_4_tariff,
+      rawData?.level_5_tariff,
+      rawData?.level_6_tariff,
+      rawData?.['Tariff (KES)'],
+    ];
     for (const candidate of candidates) {
       if (typeof candidate === 'number' && Number.isFinite(candidate)) return candidate;
       if (typeof candidate === 'string') {
@@ -1045,7 +1049,7 @@ export default function NewPreauthPage() {
       }
     }
     return null;
-  }, [interventionPrice, selectedInterventionRecord]);
+  }, [interventionPrice, interventionCode, interventionOptions, selectedInterventionRecord]);
 
   const patientActiveFunds = useMemo(() => {
     const funds = new Set<string>();
@@ -1104,14 +1108,6 @@ export default function NewPreauthPage() {
     if (interventionFunds.length === 0 || patientActiveFunds.length === 0) return null;
     return interventionFunds.some((fund) => patientActiveFunds.includes(fund));
   }, [interventionFunds, patientActiveFunds]);
-
-  // ---- Intervention search ----
-  const debouncedInterventionSearch = useDebounce(interventionSearch, 300);
-  const { data: interventionResults, isLoading: interventionLoading } = useQuery({
-    queryKey: ['intervention-search', debouncedInterventionSearch],
-    queryFn: () => shaApi.searchInterventionCodes(debouncedInterventionSearch, 15),
-    enabled: debouncedInterventionSearch.length >= 2,
-  });
 
   // ---- Duplicate detection ----
   const { data: existingPreauths } = useQuery({
@@ -1228,8 +1224,6 @@ export default function NewPreauthPage() {
         })
       );
     }
-    setInterventionSearch('');
-    setShowInterventionDropdown(false);
     setTariffChips((prev) => (
       prev.includes(consentInterventionCode) ? prev : [consentInterventionCode, ...prev]
     ));
@@ -1254,8 +1248,6 @@ export default function NewPreauthPage() {
     setInterventionName(item.name);
     setInterventionPrice(item.price ?? null);
     setSelectedType(derivePreauthType(item));
-    setInterventionSearch('');
-    setShowInterventionDropdown(false);
     // Auto-add intervention code as the first tariff item
     setTariffChips((prev) => prev.includes(item.code) ? prev : [item.code, ...prev]);
   }, [derivePreauthType, consentToken, consentedInterventionCode, selectedType, toast]);
@@ -1289,20 +1281,23 @@ export default function NewPreauthPage() {
     previousInterventionCodeRef.current = interventionCode;
 
     const selectedFromBenefits = interventionOptions.find((entry) => entry.code === interventionCode);
-    const source = selectedFromBenefits
-      ? {
-          needsManualPreauthApproval: selectedFromBenefits.needsManualPreauthApproval,
-          needs_manual_preauth_approval: (selectedFromBenefits as unknown as Record<string, unknown>)
-            .needs_manual_preauth_approval as boolean | undefined,
-          isSurgicalPreauth: selectedFromBenefits.isSurgicalPreauth,
-          isRenalPreauth: selectedFromBenefits.isRenalPreauth,
-          isOncologyPreauth: selectedFromBenefits.isOncologyPreauth,
-          isImagingPreauth: selectedFromBenefits.isImagingPreauth,
-          isOpticalPreauth: selectedFromBenefits.isOpticalPreauth,
-        }
-      : (selectedInterventionRecord as unknown as Partial<InterventionOption> | null);
+    const source = {
+      ...((selectedInterventionRecord as unknown as Partial<InterventionOption> | null) || {}),
+      ...(selectedFromBenefits
+        ? {
+            needsManualPreauthApproval: selectedFromBenefits.needsManualPreauthApproval,
+            needs_manual_preauth_approval: (selectedFromBenefits as unknown as Record<string, unknown>)
+              .needs_manual_preauth_approval as boolean | undefined,
+            isSurgicalPreauth: selectedFromBenefits.isSurgicalPreauth,
+            isRenalPreauth: selectedFromBenefits.isRenalPreauth,
+            isOncologyPreauth: selectedFromBenefits.isOncologyPreauth,
+            isImagingPreauth: selectedFromBenefits.isImagingPreauth,
+            isOpticalPreauth: selectedFromBenefits.isOpticalPreauth,
+          }
+        : {}),
+    };
 
-    if (!source) return;
+    if (!Object.keys(source).length) return;
     const derivedType = derivePreauthType(source);
     if (derivedType !== selectedType) {
       setSelectedType(derivedType);
@@ -2089,7 +2084,11 @@ export default function NewPreauthPage() {
       if (tariffChips.length > 0) {
         extraFields.items = tariffChips.map((itemCode) => ({
           item_code: itemCode,
+          ItemCode: itemCode,
           unit_price: selectedInterventionTariff != null ? String(selectedInterventionTariff) : undefined,
+          UnitPrice: selectedInterventionTariff != null ? String(selectedInterventionTariff) : undefined,
+          quantity: 1,
+          Quantity: 1,
         }));
       }
       if (clinicalNotes.trim()) {
@@ -2203,7 +2202,6 @@ export default function NewPreauthPage() {
     setInterventionCode('');
     setInterventionName('');
     setInterventionPrice(null);
-    setInterventionSearch('');
 
     // Clinical
     setDiagnosisChips([]);
@@ -2237,15 +2235,6 @@ export default function NewPreauthPage() {
 
     hydratedDraftRef.current = false;
   };
-
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handler = () => {
-      setShowInterventionDropdown(false);
-    };
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
-  }, []);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -2430,109 +2419,51 @@ export default function NewPreauthPage() {
                   </div>
                 </div>
               ) : (
-                patientCrIdForBenefits ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="preauth-benefit-package">Benefit Package</Label>
-                      <select
-                        id="preauth-benefit-package"
-                        value={selectedBenefitPkgCode}
-                        onChange={(e) => setSelectedBenefitPkgCode(e.target.value)}
-                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                        disabled={benefitPackagesLoading || benefitPackageOptions.length === 0}
-                      >
-                        <option value="">
-                          {benefitPackagesLoading ? 'Loading packages...' : 'Select benefit package'}
-                        </option>
-                        {benefitPackageOptions.map((pkg) => (
-                          <option key={pkg.code} value={pkg.code}>
-                            {pkg.code} - {pkg.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="preauth-intervention">Intervention</Label>
-                      <SearchableSelect
-                        className="w-full"
-                        options={interventionSelectOptions}
-                        value={interventionCode}
-                        onValueChange={(value) => {
-                          const selected = interventionOptions.find((item) => item.code === value && item.needsPreauth);
-                          if (!selected) return;
-                          selectIntervention({
-                            code: selected.code,
-                            name: selected.name,
-                            price: selected.price,
-                            access_point: selected.accessPoint,
-                            isSurgicalPreauth: selected.isSurgicalPreauth,
-                            isRenalPreauth: selected.isRenalPreauth,
-                            isOncologyPreauth: selected.isOncologyPreauth,
-                            isImagingPreauth: selected.isImagingPreauth,
-                            isOpticalPreauth: selected.isOpticalPreauth,
-                            needsDoctorAuthorization: selected.needsDoctorAuthorization,
-                            needsManualPreauthApproval: selected.needsManualPreauthApproval,
-                            needs_manual_preauth_approval: (selected as unknown as Record<string, unknown>)
-                              .needs_manual_preauth_approval as boolean | undefined,
-                          });
-                        }}
-                        placeholder={interventionsLoading ? 'Loading interventions...' : 'Select intervention'}
-                        searchPlaceholder="Search intervention code or name..."
-                        emptyMessage="No preauth interventions found"
-                        disabled={interventionsLoading || interventionSelectOptions.length === 0}
-                      />
-                      {!interventionsLoading && interventionSelectOptions.length === 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          No interventions requiring pre-authorization are available under this package.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="relative" onClick={(e) => e.stopPropagation()}>
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="Search interventions by code or name..."
-                      value={interventionSearch}
-                      onChange={(e) => {
-                        setInterventionSearch(e.target.value);
-                        setShowInterventionDropdown(true);
+                <div className="space-y-1.5">
+                  <Label htmlFor="preauth-intervention">Intervention</Label>
+                  {selectedClaimLoading ? (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Loading claim interventions…
+                    </p>
+                  ) : interventionSelectOptions.length > 0 ? (
+                    <SearchableSelect
+                      className="w-full"
+                      options={interventionSelectOptions}
+                      value={interventionCode}
+                      onValueChange={(value) => {
+                        const selected = interventionOptions.find((item) => item.code === value);
+                        if (!selected) return;
+                        selectIntervention({
+                          code: selected.code,
+                          name: selected.name,
+                          price: selected.price,
+                          access_point: selected.accessPoint,
+                          isSurgicalPreauth: selected.isSurgicalPreauth,
+                          isRenalPreauth: selected.isRenalPreauth,
+                          isOncologyPreauth: selected.isOncologyPreauth,
+                          isImagingPreauth: selected.isImagingPreauth,
+                          isOpticalPreauth: selected.isOpticalPreauth,
+                          needsDoctorAuthorization: selected.needsDoctorAuthorization,
+                          needsManualPreauthApproval: selected.needsManualPreauthApproval,
+                          needs_manual_preauth_approval: (selected as unknown as Record<string, unknown>)
+                            .needs_manual_preauth_approval as boolean | undefined,
+                        });
                       }}
-                      onFocus={() => setShowInterventionDropdown(true)}
-                      className="pl-9"
+                      placeholder="Select intervention"
+                      searchPlaceholder="Search intervention code or name..."
+                      emptyMessage="No interventions found"
+                      disabled={selectedClaimLoading || interventionSelectOptions.length === 0}
                     />
-                    {showInterventionDropdown && debouncedInterventionSearch.length >= 2 && (
-                      <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-60 overflow-y-auto">
-                        {interventionLoading ? (
-                          <div className="p-3 text-sm text-muted-foreground">Searching...</div>
-                        ) : interventionResults && interventionResults.length > 0 ? (
-                          interventionResults.map((item) => (
-                            <button
-                              key={item.code}
-                              type="button"
-                              className="w-full px-3 py-2 text-left hover:bg-accent text-sm border-b last:border-0"
-                              onClick={() => selectIntervention(item)}
-                            >
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <span className="font-mono font-medium">{item.code}</span>
-                                  <p className="text-xs text-muted-foreground line-clamp-1">{item.name}</p>
-                                </div>
-                                {item.price != null && (
-                                  <span className="text-xs font-mono text-muted-foreground shrink-0 ml-2">
-                                    KES {item.price.toLocaleString()}
-                                  </span>
-                                )}
-                              </div>
-                            </button>
-                          ))
-                        ) : (
-                          <div className="p-3 text-sm text-muted-foreground">No interventions found</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
+                  ) : (
+                    <Alert variant="destructive" className="py-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription className="text-xs">
+                        This claim has no active interventions. Add the intervention to the claim
+                        (and to the DHA visit) before requesting preauth.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
               )}
 
               {interventionCode && selectedType && (

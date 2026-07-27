@@ -528,9 +528,12 @@ export interface TerminologySearchParams {
   search?: string;
   page?: number;
   page_size?: number;
+  limit?: number;
+  offset?: number;
 }
 
 export interface InterventionSearchParams extends TerminologySearchParams {
+  code?: string;
   facility_level?: number;
   category?: string;
 }
