@@ -959,12 +959,13 @@ async function getConsentDetail(consentId: number): Promise<ConsentToken> {
  */
 async function getLatestConsent(
   shaMemberId: number,
-  options?: { encounterId?: number; interventionCode?: string }
+  options?: { encounterId?: number; interventionCode?: string; claimPk?: number }
 ): Promise<ConsentToken & { exists: boolean }> {
   const response = await apiClient.get('/api/sha/consent/latest/', {
     params: {
       sha_member_id: shaMemberId,
       ...(typeof options?.encounterId === 'number' ? { encounter_id: options.encounterId } : {}),
+      ...(typeof options?.claimPk === 'number' ? { claim_pk: options.claimPk } : {}),
       ...(options?.interventionCode ? { intervention_code: options.interventionCode } : {}),
     },
   });
@@ -1646,7 +1647,7 @@ async function ilmPreauthFetch(params: {
 }
 
 async function ilmPreauthCreate(body: {
-  consent_token: string;
+  consent_token?: string;
   intervention_code: string;
   patient_pk: number;
   claim_pk?: number;
@@ -1667,11 +1668,13 @@ async function ilmPreauthCreate(body: {
   };
 
   const requestBody: Record<string, unknown> = {
-    consent_token: body.consent_token,
     intervention_code: body.intervention_code,
     patient_pk: body.patient_pk,
     ...(typeof body.claim_pk === 'number' ? { claim_pk: body.claim_pk } : {}),
   };
+  if (body.consent_token) {
+    requestBody.consent_token = body.consent_token;
+  }
 
   const normalizedExtraFields = normalizeExtraFields(body.extra_fields || body.payload);
   if (Object.keys(normalizedExtraFields).length > 0) {
@@ -1681,7 +1684,9 @@ async function ilmPreauthCreate(body: {
   let response;
   if (body.files && body.files.length > 0) {
     const formData = new FormData();
-    formData.append('consent_token', body.consent_token);
+    if (body.consent_token) {
+      formData.append('consent_token', body.consent_token);
+    }
     formData.append('intervention_code', body.intervention_code);
     formData.append('patient_pk', String(body.patient_pk));
     if (typeof body.claim_pk === 'number') {

@@ -5397,10 +5397,12 @@ class ConsentLatestView(APIView):
     Get the latest consent token for an SHA member from today.
 
     GET /api/sha/consent/latest/?sha_member_id=123
+    GET /api/sha/consent/latest/?sha_member_id=123&claim_pk=456
 
     Returns the most recent PENDING or VALIDATED consent token created today.
-    Used by the frontend to detect if an OTP was already sent (e.g. by
-    check-in automation) so the consent panel can skip to the OTP entry step.
+    When `claim_pk` is provided, resolves the active consent token for the
+    claim's encounter regardless of creation date, allowing non-elective
+    claim-linked preauths to reuse the consent token captured at check-in.
 
     Returns 200 with token data if found, or 404 if no token exists today.
     """
@@ -5408,7 +5410,11 @@ class ConsentLatestView(APIView):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
 
     def get(self, request):
-        from hmis.apps.billing.models import ConsentToken
+        from hmis.apps.billing.models import ConsentToken, SHAClaim
+        from hmis.apps.billing.services.consent_token_resolver import (
+            ConsentTokenNotFoundError,
+            resolve_for_claim,
+        )
         from hmis.apps.billing.sha_serializers import ConsentTokenSerializer
         from hmis.apps.core.mixins import resolve_request_tenant
 
@@ -5422,8 +5428,10 @@ class ConsentLatestView(APIView):
 
         sha_member_id = request.query_params.get("sha_member_id")
         encounter_id = request.query_params.get("encounter_id")
+        claim_id = request.query_params.get("claim_pk")
         intervention_code = str(request.query_params.get("intervention_code") or "").strip()
         encounter_pk = None
+        claim_pk = None
         if not sha_member_id:
             return Response(
                 {"error": "sha_member_id query parameter is required"},
@@ -5438,6 +5446,41 @@ class ConsentLatestView(APIView):
                     {"error": "encounter_id must be an integer"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+
+        if claim_id not in (None, ""):
+            try:
+                claim_pk = int(claim_id)
+            except (TypeError, ValueError):
+                return Response(
+                    {"error": "claim_pk must be an integer"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Claim-scoped lookup: bypass "today" filter and resolve the claim's
+        # encounter token. This supports non-elective preauths linked to an
+        # existing claim whose consent was collected on a prior day.
+        if claim_pk is not None:
+            try:
+                claim = SHAClaim.objects.get(
+                    pk=claim_pk,
+                    sha_member_id=sha_member_id,
+                    facility=facility,
+                )
+            except SHAClaim.DoesNotExist:
+                return Response(
+                    {"error": "Claim not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            try:
+                resolved = resolve_for_claim(claim)
+            except ConsentTokenNotFoundError:
+                return Response(
+                    {"exists": False, "message": "No validated consent token for this claim"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            consent = ConsentToken.objects.get(pk=resolved.consent_id)
+            serializer = ConsentTokenSerializer(consent)
+            return Response({**serializer.data, "exists": True})
 
         from django.db.models import Q
         from django.utils import timezone

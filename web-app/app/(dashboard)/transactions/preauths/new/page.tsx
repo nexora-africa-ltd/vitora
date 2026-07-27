@@ -157,6 +157,16 @@ function normalizeDoctorRegulationBody(value: string | undefined): string {
   return text;
 }
 
+function normalizeFundLabel(value: unknown): string {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const upper = raw.toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+  if (upper.includes('SHIF')) return 'SHIF';
+  if (upper.includes('UHC')) return 'UHC';
+  if (upper.includes('PMF') || upper.includes('PFMS')) return 'PMF';
+  return upper;
+}
+
 function toPreauthAttachmentDocumentType(doc: DraftDocument): string {
   const required = String(doc.requiredDocType || '').trim().toUpperCase();
   if (required === 'IMAGING_RESULT') return 'RADIOLOGY_REQUEST';
@@ -172,6 +182,12 @@ interface InterventionOption {
   category?: string;
   price?: number;
   access_point?: string;
+  fund?: string;
+  interventionFund?: string;
+  intervention_fund?: string;
+  supportedScheme?: string;
+  supported_scheme?: string;
+  schemes?: string[];
   isSurgicalPreauth?: boolean;
   isRenalPreauth?: boolean;
   isOncologyPreauth?: boolean;
@@ -194,6 +210,8 @@ interface InterventionOption {
   requires_optical_preauth?: boolean;
   needsDoctorAuthorization?: boolean;
   needs_doctor_authorization?: boolean;
+  needsManualPreauthApproval?: boolean;
+  needs_manual_preauth_approval?: boolean;
 }
 
 interface DiagnosisChip {
@@ -380,6 +398,8 @@ export default function NewPreauthPage() {
   const [consentTokenId, setConsentTokenId] = useState<number | undefined>();
   const [consentedInterventionCode, setConsentedInterventionCode] = useState('');
   const [shaMemberId, setShaMemberId] = useState<number | null>(null);
+  const [forceConsentRefresh, setForceConsentRefresh] = useState(false);
+  const [consentRefreshReason, setConsentRefreshReason] = useState<string | null>(null);
 
   // ---- Step 3: Clinical Details ----
   const [interventionCode, setInterventionCode] = useState('');
@@ -437,6 +457,7 @@ export default function NewPreauthPage() {
   }, [encounterId]);
 
   const derivePreauthType = useCallback((intervention: Partial<InterventionOption>): PreauthType => {
+    if (intervention.needsManualPreauthApproval || intervention.needs_manual_preauth_approval) return 'elective';
     if (intervention.isSurgicalPreauth || intervention.is_surgical_preauth || intervention.requiresSurgicalPreauth || intervention.requires_surgical_preauth) return 'surgical';
     if (intervention.isRenalPreauth || intervention.is_renal_preauth || intervention.requiresRenalPreauth || intervention.requires_renal_preauth) return 'renal';
     if (intervention.isOncologyPreauth || intervention.is_oncology_preauth || intervention.requiresOncologyPreauth || intervention.requires_oncology_preauth) return 'oncology';
@@ -492,6 +513,54 @@ export default function NewPreauthPage() {
     staleTime: 30_000,
   });
 
+  const { data: latestClaimConsent } = useQuery({
+    queryKey: [
+      'preauth-latest-consent',
+      shaMemberId,
+      selectedEncounterIdNumber,
+      selectedClaimIdNumber,
+      interventionCode,
+    ],
+    queryFn: async () => {
+      if (!shaMemberId) return null;
+      try {
+        return await shaApi.getLatestConsent(shaMemberId, {
+          claimPk: selectedClaimIdNumber ?? undefined,
+          encounterId: selectedEncounterIdNumber ?? undefined,
+          interventionCode: selectedType === 'elective' ? (interventionCode || undefined) : undefined,
+        });
+      } catch (error) {
+        const statusCode = (error as { response?: { status?: number } })?.response?.status;
+        if (statusCode === 404) return null;
+        throw error;
+      }
+    },
+    enabled: !!shaMemberId && selectedType !== 'elective',
+    staleTime: 30_000,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (selectedType === 'elective') return;
+    if (forceConsentRefresh) return;
+    if (consentToken) return; // keep an explicitly-collected fresh token
+    if (!latestClaimConsent?.consent_token || latestClaimConsent.status !== 'VALIDATED') return;
+    setConsentTokenId(latestClaimConsent.id);
+    setConsentToken(latestClaimConsent.consent_token);
+    if (!consentedInterventionCode && interventionCode) {
+      setConsentedInterventionCode(interventionCode);
+    }
+  }, [
+    selectedType,
+    forceConsentRefresh,
+    consentToken,
+    latestClaimConsent?.id,
+    latestClaimConsent?.consent_token,
+    latestClaimConsent?.status,
+    consentedInterventionCode,
+    interventionCode,
+  ]);
+
   useEffect(() => {
     if (!selectedClaim) return;
     if (!encounterId && selectedClaim.encounter) {
@@ -531,9 +600,12 @@ export default function NewPreauthPage() {
     setConsentedInterventionCode('');
     toast({
       title: 'Consent reset',
-      description: 'Encounter changed. Please obtain a new consent token for this visit context.',
+      description:
+        selectedType === 'elective'
+          ? 'Encounter changed. Please obtain consent again for the updated visit context.'
+          : 'Encounter changed. The active consent token will be re-linked if available.',
     });
-  }, [selectedEncounterIdNumber, consentToken, toast]);
+  }, [selectedEncounterIdNumber, consentToken, selectedType, toast]);
 
   useEffect(() => {
     if (providerNotificationEmailTouched || providerNotificationEmail) return;
@@ -975,6 +1047,64 @@ export default function NewPreauthPage() {
     return null;
   }, [interventionPrice, selectedInterventionRecord]);
 
+  const patientActiveFunds = useMemo(() => {
+    const funds = new Set<string>();
+
+    (eligibility?.eligible_schemes || []).forEach((scheme) => {
+      const normalized = normalizeFundLabel(scheme);
+      if (normalized) funds.add(normalized);
+    });
+
+    const schemeCategory = normalizeFundLabel(eligibility?.member?.scheme_category);
+    if (schemeCategory) funds.add(schemeCategory);
+
+    const directSchemes = (eligibility as unknown as { schemes?: Array<{ schemeName?: string }> })?.schemes || [];
+    directSchemes.forEach((entry) => {
+      const normalized = normalizeFundLabel(entry?.schemeName);
+      if (normalized) funds.add(normalized);
+    });
+
+    return Array.from(funds);
+  }, [eligibility]);
+
+  const interventionFunds = useMemo(() => {
+    const selectedFromBenefits = interventionOptions.find((entry) => entry.code === interventionCode);
+    const raw = selectedInterventionRecord as Record<string, unknown> | null;
+    const nestedRaw = raw?.raw_data && typeof raw.raw_data === 'object'
+      ? raw.raw_data as Record<string, unknown>
+      : null;
+
+    const rawFunds = [
+      selectedFromBenefits?.fund,
+      selectedFromBenefits?.interventionFund,
+      selectedFromBenefits?.intervention_fund,
+      selectedFromBenefits?.supportedScheme,
+      selectedFromBenefits?.supported_scheme,
+      ...(selectedFromBenefits?.schemes || []),
+      raw?.fund,
+      raw?.interventionFund,
+      raw?.intervention_fund,
+      raw?.supportedScheme,
+      raw?.supported_scheme,
+      ...(Array.isArray(raw?.schemes) ? raw.schemes : []),
+      nestedRaw?.fund,
+      nestedRaw?.interventionFund,
+      nestedRaw?.intervention_fund,
+      nestedRaw?.supportedScheme,
+      nestedRaw?.supported_scheme,
+      ...(Array.isArray(nestedRaw?.schemes) ? nestedRaw.schemes : []),
+    ];
+
+    return Array.from(new Set(rawFunds.map((value) => normalizeFundLabel(value)).filter(Boolean)));
+  }, [interventionOptions, interventionCode, selectedInterventionRecord]);
+
+  const isInterventionFundCovered = useMemo(() => {
+    const hasAllFundsCoverage = interventionFunds.some((fund) => fund === 'ALL' || fund === '*');
+    if (hasAllFundsCoverage) return true;
+    if (interventionFunds.length === 0 || patientActiveFunds.length === 0) return null;
+    return interventionFunds.some((fund) => patientActiveFunds.includes(fund));
+  }, [interventionFunds, patientActiveFunds]);
+
   // ---- Intervention search ----
   const debouncedInterventionSearch = useDebounce(interventionSearch, 300);
   const { data: interventionResults, isLoading: interventionLoading } = useQuery({
@@ -1011,22 +1141,54 @@ export default function NewPreauthPage() {
     return false;
   }, [interventionOptions, interventionCode, selectedInterventionRecord]);
 
+  const isElectiveIntervention = useMemo(() => {
+    const fromBenefit = interventionOptions.find((entry) => entry.code === interventionCode);
+    const fromBenefitLegacy = (fromBenefit as Record<string, unknown> | undefined)
+      ?.needs_manual_preauth_approval;
+    const fromBenefitFlag = fromBenefit?.needsManualPreauthApproval ?? fromBenefitLegacy;
+    if (typeof fromBenefitFlag === 'boolean') {
+      return fromBenefitFlag;
+    }
+    const raw = selectedInterventionRecord as Record<string, unknown> | null;
+    if (!raw) return selectedType === 'elective';
+    const candidate = raw.needsManualPreauthApproval ?? raw.needs_manual_preauth_approval;
+    if (typeof candidate === 'boolean') return candidate;
+    if (typeof candidate === 'string') return candidate.trim().toLowerCase() === 'true';
+    if (typeof candidate === 'number') return candidate !== 0;
+    return selectedType === 'elective';
+  }, [interventionCode, interventionOptions, selectedInterventionRecord, selectedType]);
+
   // ---- Validation ----
   const typeConfig = PREAUTH_TYPES.find((t) => t.id === selectedType);
    const hasPatientContext = patientId !== null && selectedClaimIdNumber !== null;
   const hasInterventionSelected = interventionCode.trim().length > 0;
   const hasConsent = !!consentToken;
+  const canUseClaimLinkedConsent = Boolean(selectedType !== 'elective' && selectedClaimIdNumber);
+  const canReuseClaimConsent = Boolean(
+    !forceConsentRefresh
+    && canUseClaimLinkedConsent
+    && (
+      (latestClaimConsent?.status === 'VALIDATED' && latestClaimConsent?.consent_token)
+      || selectedClaim?.consent_obtained
+    )
+  );
+  const hasConsentForWorkflow = hasConsent || canUseClaimLinkedConsent;
+  const effectiveConsentToken = consentToken || latestClaimConsent?.consent_token || '';
+  const consentTokenSourceLabel = canUseClaimLinkedConsent
+    ? 'Claim-linked token'
+    : 'Explicit consent token';
   const canProceedStep3 =
     interventionCode.trim().length > 0 &&
     diagnosisChips.length > 0 &&
     (!(typeConfig?.requiresDoctors || doctorAuthorizationRequired) || doctorChips.length > 0);
 
   const showInterventionSection = hasPatientContext;
-  const showConsentSection = showInterventionSection && hasInterventionSelected;
-  const showClinicalSection = showConsentSection && hasConsent;
+  const showConsentSection = showInterventionSection && hasInterventionSelected && (!canUseClaimLinkedConsent || forceConsentRefresh);
+  const showClinicalSection = showInterventionSection && hasInterventionSelected && hasConsentForWorkflow;
   const showReviewSection = showClinicalSection && canProceedStep3;
   const hasConsentInterventionMismatch = Boolean(
-    consentToken
+    selectedType === 'elective'
+    && consentToken
     && consentedInterventionCode
     && interventionCode
     && consentedInterventionCode.trim() !== interventionCode.trim()
@@ -1041,6 +1203,9 @@ export default function NewPreauthPage() {
   ) => {
     setConsentTokenId(id);
     setConsentToken(token);
+    setForceConsentRefresh(false);
+    setConsentRefreshReason(null);
+    queryClient.invalidateQueries({ queryKey: ['preauth-latest-consent'] });
 
     if (!consentInterventionCode) return;
     setConsentedInterventionCode(consentInterventionCode);
@@ -1052,6 +1217,9 @@ export default function NewPreauthPage() {
     if (matched) {
       setSelectedType(
         derivePreauthType({
+          needsManualPreauthApproval: matched.needsManualPreauthApproval,
+          needs_manual_preauth_approval: (matched as unknown as Record<string, unknown>)
+            .needs_manual_preauth_approval as boolean | undefined,
           isSurgicalPreauth: matched.isSurgicalPreauth,
           isRenalPreauth: matched.isRenalPreauth,
           isOncologyPreauth: matched.isOncologyPreauth,
@@ -1069,6 +1237,8 @@ export default function NewPreauthPage() {
 
   const selectIntervention = useCallback((item: InterventionOption) => {
     if (
+      selectedType === 'elective'
+      &&
       consentToken
       && consentedInterventionCode
       && consentedInterventionCode.trim() !== item.code.trim()
@@ -1088,7 +1258,7 @@ export default function NewPreauthPage() {
     setShowInterventionDropdown(false);
     // Auto-add intervention code as the first tariff item
     setTariffChips((prev) => prev.includes(item.code) ? prev : [item.code, ...prev]);
-  }, [derivePreauthType, consentToken, consentedInterventionCode, toast]);
+  }, [derivePreauthType, consentToken, consentedInterventionCode, selectedType, toast]);
 
   useEffect(() => {
     if (!interventionCode) {
@@ -1121,6 +1291,9 @@ export default function NewPreauthPage() {
     const selectedFromBenefits = interventionOptions.find((entry) => entry.code === interventionCode);
     const source = selectedFromBenefits
       ? {
+          needsManualPreauthApproval: selectedFromBenefits.needsManualPreauthApproval,
+          needs_manual_preauth_approval: (selectedFromBenefits as unknown as Record<string, unknown>)
+            .needs_manual_preauth_approval as boolean | undefined,
           isSurgicalPreauth: selectedFromBenefits.isSurgicalPreauth,
           isRenalPreauth: selectedFromBenefits.isRenalPreauth,
           isOncologyPreauth: selectedFromBenefits.isOncologyPreauth,
@@ -1880,9 +2053,12 @@ export default function NewPreauthPage() {
   ]);
 
   const handleSubmit = async () => {
+    const requiresExplicitConsentToken = selectedType === 'elective';
+    const consentTokenForSubmit = (effectiveConsentToken || '').trim();
     if (
       !canProceedStep3
-      || !consentToken
+      || (requiresExplicitConsentToken && !consentTokenForSubmit)
+      || (forceConsentRefresh && !consentTokenForSubmit)
       || !patientId
       || !selectedClaimIdNumber
       || !hasAllRequiredDocuments
@@ -1894,9 +2070,10 @@ export default function NewPreauthPage() {
       if (selectedType) {
         extraFields.preauth_type = selectedType;
       }
+      extraFields.needs_manual_preauth_approval = selectedType === 'elective';
       if (diagnosisChips.length > 0) {
         extraFields.diagnoses = diagnosisChips.map((d) => ({
-          consent_token: consentToken.trim(),
+          ...(consentTokenForSubmit ? { consent_token: consentTokenForSubmit } : {}),
           icd_code: d.code,
         }));
       }
@@ -1950,7 +2127,7 @@ export default function NewPreauthPage() {
       }
 
       const result = await shaApi.ilmPreauthCreate({
-        consent_token: consentToken.trim(),
+        ...(consentTokenForSubmit ? { consent_token: consentTokenForSubmit } : {}),
         intervention_code: interventionCode.trim(),
         patient_pk: patientId,
         claim_pk: selectedClaimIdNumber,
@@ -1976,14 +2153,89 @@ export default function NewPreauthPage() {
       }
     } catch (err) {
       const errorMessage = extractDHAErrorMessage(err);
-      toast({
-        title: 'Submission Failed',
-        description: errorMessage || 'Failed to submit pre-authorization',
-        variant: 'destructive',
-      });
+      const axiosData = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
+      const errorCode = typeof axiosData?.code === 'string' ? axiosData.code : '';
+      if (errorCode === 'dha_visit_not_started') {
+        const refreshReason =
+          errorMessage
+          || 'The linked consent token does not have an active DHA visit. Collect a fresh consent below and resubmit.';
+        setForceConsentRefresh(true);
+        setConsentRefreshReason(refreshReason);
+        setConsentToken('');
+        setConsentTokenId(undefined);
+        setConsentedInterventionCode('');
+        toast({
+          title: 'DHA Visit Not Started',
+          description: refreshReason,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Submission Failed',
+          description: errorMessage || 'Failed to submit pre-authorization',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleClearAll = () => {
+    if (!window.confirm('Clear all fields and start over?')) return;
+    window.localStorage.removeItem(PREAUTH_DRAFT_STORAGE_KEY);
+
+    // Patient / claim
+    setPatientId(null);
+    setClaimId('');
+    setEncounterId('');
+    setShaMemberId(null);
+
+    // Consent
+    setConsentToken('');
+    setConsentTokenId(undefined);
+    setConsentedInterventionCode('');
+    setForceConsentRefresh(false);
+    setConsentRefreshReason(null);
+
+    // Intervention
+    setSelectedType(null);
+    setInterventionCode('');
+    setInterventionName('');
+    setInterventionPrice(null);
+    setInterventionSearch('');
+
+    // Clinical
+    setDiagnosisChips([]);
+    setDiagnosisInput(emptyDiagnosisCodeValue());
+    setDoctorChips([]);
+    setSelectedStaffUserId(undefined);
+    setShowManualDoctorForm(false);
+    setManualDoctorName('');
+    setManualDoctorRegNumber('');
+    setManualDoctorIdType('registration_number');
+    setManualDoctorRegBody('KMPDC');
+    setManualLookupIdType('National ID');
+    setManualLookupIdNumber('');
+    setTariffChips([]);
+    setTariffInput('');
+    setServiceStartDate('');
+    setServiceEndDate('');
+    setProviderNotificationEmail('');
+    setProviderNotificationEmailTouched(false);
+    setClinicalNotes('');
+    setClinicalNotesTouched(false);
+
+    // Documents
+    setDocuments([]);
+    setLinkedEvidenceKeys([]);
+    setEvidenceClaimAttachmentIds({});
+    setEvidenceBusyKeys([]);
+    setGeneratedRequiredDocTypes([]);
+    setUploadedRequiredDocTypes([]);
+    setRequiredDocUploadBusyTypes([]);
+
+    hydratedDraftRef.current = false;
   };
 
   // Close dropdowns when clicking outside
@@ -2219,6 +2471,9 @@ export default function NewPreauthPage() {
                             isImagingPreauth: selected.isImagingPreauth,
                             isOpticalPreauth: selected.isOpticalPreauth,
                             needsDoctorAuthorization: selected.needsDoctorAuthorization,
+                            needsManualPreauthApproval: selected.needsManualPreauthApproval,
+                            needs_manual_preauth_approval: (selected as unknown as Record<string, unknown>)
+                              .needs_manual_preauth_approval as boolean | undefined,
                           });
                         }}
                         placeholder={interventionsLoading ? 'Loading interventions...' : 'Select intervention'}
@@ -2314,6 +2569,27 @@ export default function NewPreauthPage() {
                     )}
                   </div>
 
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Fund Coverage</p>
+                    {isInterventionFundCovered === true ? (
+                      <div className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-1 text-[11px] text-green-800 dark:bg-green-900/20 dark:text-green-300">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        {interventionFunds.includes('ALL') || interventionFunds.includes('*')
+                          ? 'Patient fund covers this intervention (ALL funds accepted)'
+                          : `Patient fund covers this intervention (${interventionFunds.join(', ')})`}
+                      </div>
+                    ) : isInterventionFundCovered === false ? (
+                      <div className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-[11px] text-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        Intervention fund ({interventionFunds.join(', ')}) does not match active patient fund ({patientActiveFunds.join(', ') || 'unknown'})
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground">
+                        Unable to confirm fund match yet.
+                      </p>
+                    )}
+                  </div>
+
                   {(showEvidenceSearch || preauthEvidenceOptions.length > 0) && (
                     <div className="space-y-2 pt-1">
                       <div className="flex items-center gap-2">
@@ -2405,15 +2681,40 @@ export default function NewPreauthPage() {
 
       {showConsentSection && (
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">3. Obtain Patient Consent</h3>
+          <h3 className="text-lg font-medium">
+            {selectedType === 'elective' ? '3. Obtain Patient Consent' : '3. Consent Context'}
+          </h3>
 
-          {shaMemberId ? (
+          {forceConsentRefresh && consentRefreshReason && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>DHA Visit Not Active</AlertTitle>
+              <AlertDescription className="text-xs">
+                {consentRefreshReason}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {canReuseClaimConsent ? (
+            <Card>
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center gap-2 rounded-md bg-green-50 dark:bg-green-900/10 p-3 text-sm text-green-800 dark:text-green-400">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>Using active claim consent token for normal same-day preauth.</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Intervention is not elective (`needsManualPreauthApproval` is false/absent), so preauth uses the existing visit consent token.
+                </p>
+              </CardContent>
+            </Card>
+          ) : shaMemberId ? (
             <ConsentPanel
               shaMemberId={shaMemberId}
               consentId={consentTokenId}
               encounterId={selectedEncounterIdNumber ?? undefined}
               interventionCodes={interventionCode ? [interventionCode] : undefined}
               onConsentObtained={handleConsentObtained}
+              disableAutoDetect={forceConsentRefresh}
             />
           ) : (
             <Card>
@@ -2444,7 +2745,7 @@ export default function NewPreauthPage() {
           {consentToken && (
             <div className="flex items-center gap-2 rounded-md bg-green-50 dark:bg-green-900/10 p-3 text-sm text-green-800 dark:text-green-400">
               <CheckCircle2 className="h-4 w-4" />
-              <span>Consent token obtained successfully</span>
+              <span>Consent token available</span>
             </div>
           )}
         </div>
@@ -2901,6 +3202,16 @@ export default function NewPreauthPage() {
                     {selectedType}
                   </Badge>
                 )}
+                <Badge className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400">
+                  <CheckCircle2 className="mr-1 h-3 w-3" />
+                  {consentTokenSourceLabel}
+                </Badge>
+                {isInterventionFundCovered === true && (
+                  <Badge className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400">
+                    <CheckCircle2 className="mr-1 h-3 w-3" />
+                    Fund covered
+                  </Badge>
+                )}
                 {interventionPrice != null && (
                   <Badge variant="secondary" className="font-mono">
                     <DollarSign className="mr-0.5 h-3 w-3" />
@@ -2922,8 +3233,34 @@ export default function NewPreauthPage() {
                   )}
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Consent Token</span>
-                  <p className="font-mono text-xs truncate max-w-[200px]">{consentToken.slice(0, 40)}...</p>
+                  <span className="text-muted-foreground">Fund Coverage</span>
+                  {isInterventionFundCovered === true ? (
+                    <p className="text-green-700 dark:text-green-400">Patient fund covers this intervention</p>
+                  ) : isInterventionFundCovered === false ? (
+                    <p className="text-amber-700 dark:text-amber-400">Fund mismatch: patient may not be covered</p>
+                  ) : (
+                    <p className="text-muted-foreground">Coverage not confirmed</p>
+                  )}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Token used for submit</span>
+                  <p className="font-mono text-xs truncate max-w-[200px]">
+                    {effectiveConsentToken ? `${effectiveConsentToken.slice(0, 40)}...` : 'Resolved on submit'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Claim-derived token</span>
+                  <p className="font-mono text-xs truncate max-w-[200px]">
+                    {latestClaimConsent?.consent_token
+                      ? `${latestClaimConsent.consent_token.slice(0, 40)}...`
+                      : 'Not available'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Fresh/session token</span>
+                  <p className="font-mono text-xs truncate max-w-[200px]">
+                    {consentToken ? `${consentToken.slice(0, 40)}...` : 'Not captured in this session'}
+                  </p>
                 </div>
                 {claimId && (
                   <div>
@@ -3188,14 +3525,24 @@ export default function NewPreauthPage() {
           Cancel
         </Button>
 
-        <Button onClick={handleSubmit} disabled={isSubmitting || !showReviewSection || hasDuplicate || !hasAllRequiredDocuments || hasConsentInterventionMismatch}>
-          {isSubmitting ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <FileCheck className="mr-2 h-4 w-4" />
-          )}
-          Submit to SHA
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleClearAll}
+            disabled={isSubmitting}
+          >
+            <X className="mr-2 h-4 w-4" />
+            Clear all
+          </Button>
+          <Button onClick={handleSubmit} disabled={isSubmitting || !showReviewSection || hasDuplicate || !hasAllRequiredDocuments || hasConsentInterventionMismatch}>
+            {isSubmitting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileCheck className="mr-2 h-4 w-4" />
+            )}
+            Submit to SHA
+          </Button>
+        </div>
       </div>
     </div>
   );

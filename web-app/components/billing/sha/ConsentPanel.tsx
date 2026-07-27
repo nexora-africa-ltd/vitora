@@ -97,6 +97,10 @@ interface ConsentPanelProps {
    * messaging. Defaults to SHIF when omitted.
    */
   flow?: ClaimFlow;
+  /** Skip auto-detection of an existing PENDING/VALIDATED consent. Useful when
+   * a previous claim-linked consent was rejected by DHA and a fresh consent is
+   * required. */
+  disableAutoDetect?: boolean;
   /** Custom class name */
   className?: string;
 }
@@ -151,6 +155,7 @@ export function ConsentPanel({
   allowedInterventions,
   onConsentObtained,
   flow = 'shif',
+  disableAutoDetect = false,
   className,
 }: ConsentPanelProps) {
   const [step, setStep] = useState<ConsentStep>(
@@ -249,7 +254,7 @@ export function ConsentPanel({
   // skip ahead to the "Enter OTP" step instead of showing "Send OTP".
   const hasCheckedExisting = useRef(false);
   useEffect(() => {
-    if (hasCheckedExisting.current || initialConsentId || step !== 'idle') return;
+    if (disableAutoDetect || hasCheckedExisting.current || initialConsentId || step !== 'idle') return;
     hasCheckedExisting.current = true;
 
     shaApi.getLatestConsent(shaMemberId, {
@@ -278,6 +283,7 @@ export function ConsentPanel({
     step,
     onConsentObtained,
     selectedInterventionCode,
+    disableAutoDetect,
   ]);
 
   const handleSendOTP = async () => {
