@@ -1,13 +1,16 @@
 """Tests for SHA claim intervention metadata enrichment and resolution."""
 
+import io
 import uuid
 from datetime import date
 from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
+from django.core.management import call_command
 from django.utils import timezone
 
 User = get_user_model()
@@ -74,6 +77,8 @@ class TestGetLocalInterventionClaimDefaults:
         defaults = get_local_intervention_claim_defaults("SHA-01-001")
         assert defaults["intervention_name"] != ""
         assert defaults["benefit_code"] != ""
+        assert isinstance(defaults["schemes"], list)
+        assert isinstance(defaults["intervention_payload"], dict)
 
 
 class TestPersistConsentInterventions:
@@ -302,6 +307,115 @@ class TestResolveClaimInterventionCode:
 
         code = self._viewset()._resolve_claim_intervention_code(claim)
         assert code == "SHA-01-001"
+
+
+@pytest.mark.django_db
+class TestBackfillClaimInterventionsIlmCommand:
+    def test_backfills_fund_and_full_payload(
+        self, sample_patient, sample_facility, sample_encounter, sample_organization
+    ):
+        from hmis.apps.billing.models import SHAClaimIntervention
+
+        sample_patient.cr_number = "CR8254672331312-6"
+        sample_patient.save(update_fields=["cr_number"])
+
+        claim = _make_sha_claim(
+            sample_patient, sample_facility, sample_encounter, sample_organization
+        )
+        intervention = SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-19-277",
+            intervention_name="",
+            benefit_code="SHA-19",
+            required_document_types=[],
+            payment_mechanism="",
+            access_point="",
+        )
+
+        payload = {
+            "code": "SHA-19-277",
+            "name": "Burr hole",
+            "payment_mechanism": "FEE FOR SERVICE",
+            "access_point": "OP",
+            "required_document_types": ["MEDICAL_REPORT"],
+            "overall_tariff": "1000.00",
+            "fund": "SHIF",
+            "intervention_fund": "SURGICAL",
+            "supported_scheme": "SHA",
+            "schemes": ["SHA", "SHIF"],
+            "raw_data": {"anything": "kept"},
+        }
+
+        with (
+            patch(
+                "hmis.apps.billing.management.commands.backfill_sha_claim_interventions_ilm.IlmRegistriesService.fetch_sub_benefits"
+            ) as mock_sub,
+            patch(
+                "hmis.apps.billing.management.commands.backfill_sha_claim_interventions_ilm.IlmRegistriesService.fetch_benefit_interventions"
+            ) as mock_interventions,
+        ):
+            mock_sub.return_value = SimpleNamespace(
+                payload={"results": [{"subBenefitCode": "SHA-19-SC-10"}]}
+            )
+            mock_interventions.return_value = SimpleNamespace(payload={"results": [payload]})
+
+            call_command(
+                "backfill_sha_claim_interventions_ilm",
+                "--claim-id",
+                str(claim.id),
+                "--commit",
+                "--max-sub-benefits",
+                "5",
+            )
+
+        intervention.refresh_from_db()
+        assert intervention.intervention_name == "Burr hole"
+        assert intervention.payment_mechanism == "FEE_FOR_SERVICE"
+        assert intervention.access_point == "OP"
+        assert intervention.required_document_types == ["MEDICAL_REPORT"]
+        assert intervention.fund == "SHIF"
+        assert intervention.intervention_fund == "SURGICAL"
+        assert intervention.supported_scheme == "SHA"
+        assert intervention.schemes == ["SHA", "SHIF"]
+        assert intervention.intervention_payload["code"] == "SHA-19-277"
+        assert intervention.intervention_payload["raw_data"]["anything"] == "kept"
+
+
+@pytest.mark.django_db
+class TestInterventionMetadataGapReportCommand:
+    def test_reports_claims_missing_fund_or_schemes(
+        self, sample_patient, sample_facility, sample_encounter, sample_organization
+    ):
+        from hmis.apps.billing.models import SHAClaimIntervention
+
+        claim = _make_sha_claim(
+            sample_patient, sample_facility, sample_encounter, sample_organization
+        )
+        SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-19-277",
+            status="active",
+            fund="",
+            schemes=[],
+        )
+        SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-03-002",
+            status="active",
+            fund="SHIF",
+            schemes=["SHA"],
+        )
+
+        stdout = io.StringIO()
+        call_command(
+            "report_sha_claim_intervention_fund_gaps", "--claim-id", str(claim.id), stdout=stdout
+        )
+        output = stdout.getvalue()
+
+        assert "Reported rows: 1" in output
+        assert "code=SHA-19-277" in output
+        assert "code=SHA-03-002" not in output
+        assert f"Claim IDs with gaps: {claim.id}" in output
 
 
 class TestPushLocalAttachments:

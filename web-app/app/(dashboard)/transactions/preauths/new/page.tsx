@@ -141,6 +141,15 @@ const PREAUTH_TYPES = [
 
 type PreauthType = (typeof PREAUTH_TYPES)[number]['id'];
 
+const ANAESTHESIA_OPTIONS = [
+  { value: 'GENERAL', label: 'General' },
+  { value: 'LOCAL', label: 'Local' },
+  { value: 'SPINAL_BLOCK', label: 'Spinal block' },
+  { value: 'SEDATION', label: 'Sedation' },
+] as const;
+
+type AnaesthesiaType = (typeof ANAESTHESIA_OPTIONS)[number]['value'];
+
 function normalizeDoctorRegulationBody(value: string | undefined): string {
   const text = String(value || '').trim();
   if (!text) return 'KMPDC';
@@ -386,6 +395,7 @@ export default function NewPreauthPage() {
   const [tariffInput, setTariffInput] = useState('');
   const [serviceStartDate, setServiceStartDate] = useState('');
   const [serviceEndDate, setServiceEndDate] = useState('');
+  const [typeOfAnaesthesia, setTypeOfAnaesthesia] = useState<AnaesthesiaType | ''>('');
   const [providerNotificationEmail, setProviderNotificationEmail] = useState('');
   const [providerNotificationEmailTouched, setProviderNotificationEmailTouched] = useState(false);
   const [clinicalNotes, setClinicalNotes] = useState('');
@@ -417,12 +427,89 @@ export default function NewPreauthPage() {
   }, [encounterId]);
 
   const derivePreauthType = useCallback((intervention: Partial<InterventionOption>): PreauthType => {
-    if (intervention.needsManualPreauthApproval || intervention.needs_manual_preauth_approval) return 'elective';
-    if (intervention.isSurgicalPreauth || intervention.is_surgical_preauth || intervention.requiresSurgicalPreauth || intervention.requires_surgical_preauth) return 'surgical';
-    if (intervention.isRenalPreauth || intervention.is_renal_preauth || intervention.requiresRenalPreauth || intervention.requires_renal_preauth) return 'renal';
-    if (intervention.isOncologyPreauth || intervention.is_oncology_preauth || intervention.requiresOncologyPreauth || intervention.requires_oncology_preauth) return 'oncology';
-    if (intervention.isImagingPreauth || intervention.is_imaging_preauth || intervention.requiresRadiologyPreauth || intervention.requires_radiology_preauth) return 'imaging';
-    if (intervention.isOpticalPreauth || intervention.is_optical_preauth || intervention.requiresOpticalPreauth || intervention.requires_optical_preauth) return 'optical';
+    const asRecord = intervention as Record<string, unknown>;
+    const nestedRaw = (
+      (asRecord.raw_data && typeof asRecord.raw_data === 'object' ? asRecord.raw_data : null)
+      || (asRecord.intervention_payload && typeof asRecord.intervention_payload === 'object'
+        ? asRecord.intervention_payload
+        : null)
+      || {}
+    ) as Record<string, unknown>;
+
+    const isFlagTrue = (...candidates: unknown[]): boolean => {
+      for (const value of candidates) {
+        if (value === true) return true;
+        if (typeof value === 'number' && value !== 0) return true;
+        if (typeof value === 'string') {
+          const normalized = value.trim().toLowerCase();
+          if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true;
+        }
+      }
+      return false;
+    };
+
+    if (isFlagTrue(
+      intervention.needsManualPreauthApproval,
+      intervention.needs_manual_preauth_approval,
+      nestedRaw.needsManualPreauthApproval,
+      nestedRaw.needs_manual_preauth_approval,
+    )) return 'elective';
+
+    if (isFlagTrue(
+      intervention.isSurgicalPreauth,
+      intervention.is_surgical_preauth,
+      intervention.requiresSurgicalPreauth,
+      intervention.requires_surgical_preauth,
+      nestedRaw.isSurgicalPreauth,
+      nestedRaw.is_surgical_preauth,
+      nestedRaw.requiresSurgicalPreauth,
+      nestedRaw.requires_surgical_preauth,
+    )) return 'surgical';
+
+    if (isFlagTrue(
+      intervention.isRenalPreauth,
+      intervention.is_renal_preauth,
+      intervention.requiresRenalPreauth,
+      intervention.requires_renal_preauth,
+      nestedRaw.isRenalPreauth,
+      nestedRaw.is_renal_preauth,
+      nestedRaw.requiresRenalPreauth,
+      nestedRaw.requires_renal_preauth,
+    )) return 'renal';
+
+    if (isFlagTrue(
+      intervention.isOncologyPreauth,
+      intervention.is_oncology_preauth,
+      intervention.requiresOncologyPreauth,
+      intervention.requires_oncology_preauth,
+      nestedRaw.isOncologyPreauth,
+      nestedRaw.is_oncology_preauth,
+      nestedRaw.requiresOncologyPreauth,
+      nestedRaw.requires_oncology_preauth,
+    )) return 'oncology';
+
+    if (isFlagTrue(
+      intervention.isImagingPreauth,
+      intervention.is_imaging_preauth,
+      intervention.requiresRadiologyPreauth,
+      intervention.requires_radiology_preauth,
+      nestedRaw.isImagingPreauth,
+      nestedRaw.is_imaging_preauth,
+      nestedRaw.requiresRadiologyPreauth,
+      nestedRaw.requires_radiology_preauth,
+    )) return 'imaging';
+
+    if (isFlagTrue(
+      intervention.isOpticalPreauth,
+      intervention.is_optical_preauth,
+      intervention.requiresOpticalPreauth,
+      intervention.requires_optical_preauth,
+      nestedRaw.isOpticalPreauth,
+      nestedRaw.is_optical_preauth,
+      nestedRaw.requiresOpticalPreauth,
+      nestedRaw.requires_optical_preauth,
+    )) return 'optical';
+
     return 'normal';
   }, []);
 
@@ -473,18 +560,39 @@ export default function NewPreauthPage() {
     staleTime: 30_000,
   });
 
-  const { data: latestClaimConsent } = useQuery({
+  const { data: selectedEncounterRecord } = useQuery({
+    queryKey: ['preauth-encounter-record', selectedEncounterIdNumber],
+    queryFn: () => encountersApi.get(selectedEncounterIdNumber!),
+    enabled: selectedEncounterIdNumber != null,
+    staleTime: 30_000,
+  });
+
+  const claimLinkedShaMemberId = useMemo(() => {
+    const raw = selectedClaim as unknown as Record<string, unknown> | null;
+    if (!raw) return null;
+    const candidate = raw.sha_member ?? raw.shaMember;
+    if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate > 0) return candidate;
+    if (typeof candidate === 'string') {
+      const parsed = Number(candidate);
+      if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    }
+    return null;
+  }, [selectedClaim]);
+
+  const effectiveShaMemberId = shaMemberId ?? claimLinkedShaMemberId;
+
+  const { data: latestClaimConsent, error: latestClaimConsentError } = useQuery({
     queryKey: [
       'preauth-latest-consent',
-      shaMemberId,
+      effectiveShaMemberId,
       selectedEncounterIdNumber,
       selectedClaimIdNumber,
       interventionCode,
     ],
     queryFn: async () => {
-      if (!shaMemberId) return null;
+      if (!effectiveShaMemberId) return null;
       try {
-        return await shaApi.getLatestConsent(shaMemberId, {
+        return await shaApi.getLatestConsent(effectiveShaMemberId, {
           claimPk: selectedClaimIdNumber ?? undefined,
           encounterId: selectedEncounterIdNumber ?? undefined,
           interventionCode: selectedType === 'elective' ? (interventionCode || undefined) : undefined,
@@ -495,10 +603,16 @@ export default function NewPreauthPage() {
         throw error;
       }
     },
-    enabled: !!shaMemberId && selectedType !== 'elective',
+    enabled: !!effectiveShaMemberId && selectedType !== 'elective',
     staleTime: 30_000,
     retry: false,
   });
+
+  useEffect(() => {
+    if (shaMemberId) return;
+    if (!claimLinkedShaMemberId) return;
+    setShaMemberId(claimLinkedShaMemberId);
+  }, [shaMemberId, claimLinkedShaMemberId]);
 
   useEffect(() => {
     if (selectedType === 'elective') return;
@@ -520,6 +634,33 @@ export default function NewPreauthPage() {
     consentedInterventionCode,
     interventionCode,
   ]);
+
+  const claimDerivedTokenStatus = useMemo(() => {
+    if (latestClaimConsent?.consent_token) {
+      return {
+        text: `${latestClaimConsent.consent_token.slice(0, 40)}...`,
+        helper: '',
+      };
+    }
+
+    const responseData = (
+      latestClaimConsentError as { response?: { data?: Record<string, unknown> } } | null
+    )?.response?.data;
+    const code = typeof responseData?.code === 'string' ? responseData.code : '';
+    const message = typeof responseData?.message === 'string' ? responseData.message : '';
+
+    if (code === 'claim_consent_expired' || message.toLowerCase().includes('expired')) {
+      return {
+        text: 'Expired',
+        helper: 'Claim-derived token expired; collect fresh consent.',
+      };
+    }
+
+    return {
+      text: 'Not available',
+      helper: '',
+    };
+  }, [latestClaimConsent?.consent_token, latestClaimConsentError]);
 
   useEffect(() => {
     if (!selectedClaim) return;
@@ -626,6 +767,13 @@ export default function NewPreauthPage() {
       if (Array.isArray(draft.tariffChips)) setTariffChips(draft.tariffChips.map(String));
       if (typeof draft.serviceStartDate === 'string') setServiceStartDate(draft.serviceStartDate);
       if (typeof draft.serviceEndDate === 'string') setServiceEndDate(draft.serviceEndDate);
+      if (typeof draft.typeOfAnaesthesia === 'string') {
+        const candidate = draft.typeOfAnaesthesia.toUpperCase();
+        const allowed = new Set(ANAESTHESIA_OPTIONS.map((item) => item.value));
+        if (allowed.has(candidate as AnaesthesiaType)) {
+          setTypeOfAnaesthesia(candidate as AnaesthesiaType);
+        }
+      }
       if (typeof draft.providerNotificationEmail === 'string') {
         setProviderNotificationEmail(draft.providerNotificationEmail);
       }
@@ -702,6 +850,7 @@ export default function NewPreauthPage() {
       tariffChips,
       serviceStartDate,
       serviceEndDate,
+      typeOfAnaesthesia,
       providerNotificationEmail,
       providerNotificationEmailTouched,
       clinicalNotes,
@@ -741,6 +890,7 @@ export default function NewPreauthPage() {
     tariffChips,
     serviceStartDate,
     serviceEndDate,
+    typeOfAnaesthesia,
     providerNotificationEmail,
     providerNotificationEmailTouched,
     clinicalNotes,
@@ -1154,9 +1304,51 @@ export default function NewPreauthPage() {
     return selectedType === 'elective';
   }, [interventionCode, interventionOptions, selectedInterventionRecord, selectedType]);
 
+  const extractedEncounterFields = useMemo(() => {
+    const encounter = selectedEncounterRecord as unknown as Record<string, unknown> | null;
+    if (!encounter) {
+      return {
+        chiefComplaint: '',
+        vitalSigns: '',
+        historyOfPresentIllness: '',
+        physicalExamination: '',
+        investigationReportDetails: '',
+      };
+    }
+    const chiefComplaint = String(encounter.chief_complaint || '').trim();
+    const historyOfPresentIllness = String(encounter.history_of_present_illness || '').trim();
+    const physicalExamination = String(encounter.physical_examination || '').trim();
+    const investigationReportDetails = String(encounter.notes || '').trim();
+    const vitalSegments: string[] = [];
+    if (encounter.temperature != null && String(encounter.temperature).trim()) {
+      vitalSegments.push(`Temp ${String(encounter.temperature).trim()}C`);
+    }
+    if (encounter.pulse != null && String(encounter.pulse).trim()) {
+      vitalSegments.push(`Pulse ${String(encounter.pulse).trim()} bpm`);
+    }
+    if (encounter.blood_pressure != null && String(encounter.blood_pressure).trim()) {
+      vitalSegments.push(`BP ${String(encounter.blood_pressure).trim()}`);
+    }
+    if (encounter.respiratory_rate != null && String(encounter.respiratory_rate).trim()) {
+      vitalSegments.push(`RR ${String(encounter.respiratory_rate).trim()}/min`);
+    }
+    if (encounter.spo2 != null && String(encounter.spo2).trim()) {
+      vitalSegments.push(`SpO2 ${String(encounter.spo2).trim()}%`);
+    }
+
+    return {
+      chiefComplaint,
+      vitalSigns: vitalSegments.join(', '),
+      historyOfPresentIllness,
+      physicalExamination,
+      investigationReportDetails,
+    };
+  }, [selectedEncounterRecord]);
+
   // ---- Validation ----
   const typeConfig = PREAUTH_TYPES.find((t) => t.id === selectedType);
-   const hasPatientContext = patientId !== null && selectedClaimIdNumber !== null;
+  const requiresAnaesthesiaSelection = selectedType === 'surgical';
+  const hasPatientContext = patientId !== null && selectedClaimIdNumber !== null;
   const hasInterventionSelected = interventionCode.trim().length > 0;
   const hasConsent = !!consentToken;
   const canUseClaimLinkedConsent = Boolean(selectedType !== 'elective' && selectedClaimIdNumber);
@@ -1176,7 +1368,8 @@ export default function NewPreauthPage() {
   const canProceedStep3 =
     interventionCode.trim().length > 0 &&
     diagnosisChips.length > 0 &&
-    (!(typeConfig?.requiresDoctors || doctorAuthorizationRequired) || doctorChips.length > 0);
+    (!(typeConfig?.requiresDoctors || doctorAuthorizationRequired) || doctorChips.length > 0) &&
+    (!requiresAnaesthesiaSelection || !!typeOfAnaesthesia);
 
   const showInterventionSection = hasPatientContext;
   const showConsentSection = showInterventionSection && hasInterventionSelected && (!canUseClaimLinkedConsent || forceConsentRefresh);
@@ -1255,6 +1448,7 @@ export default function NewPreauthPage() {
   useEffect(() => {
     if (!interventionCode) {
       if (selectedType !== null) setSelectedType(null);
+      if (typeOfAnaesthesia) setTypeOfAnaesthesia('');
       if (linkedEvidenceKeys.length > 0) setLinkedEvidenceKeys([]);
       if (Object.keys(evidenceClaimAttachmentIds).length > 0) setEvidenceClaimAttachmentIds({});
       if (generatedRequiredDocTypes.length > 0) setGeneratedRequiredDocTypes([]);
@@ -1270,6 +1464,7 @@ export default function NewPreauthPage() {
       previousInterventionCodeRef.current
       && previousInterventionCodeRef.current !== interventionCode
     ) {
+      if (typeOfAnaesthesia) setTypeOfAnaesthesia('');
       if (linkedEvidenceKeys.length > 0) setLinkedEvidenceKeys([]);
       if (Object.keys(evidenceClaimAttachmentIds).length > 0) setEvidenceClaimAttachmentIds({});
       if (generatedRequiredDocTypes.length > 0) setGeneratedRequiredDocTypes([]);
@@ -1321,7 +1516,14 @@ export default function NewPreauthPage() {
     showEvidenceSearch,
     activeEvidenceDocType,
     evidenceSearchTerm,
+    typeOfAnaesthesia,
   ]);
+
+  useEffect(() => {
+    if (selectedType === 'surgical') return;
+    if (!typeOfAnaesthesia) return;
+    setTypeOfAnaesthesia('');
+  }, [selectedType, typeOfAnaesthesia]);
 
   useEffect(() => {
     if (diagnosisChips.length > 0) return;
@@ -2058,6 +2260,7 @@ export default function NewPreauthPage() {
       || !selectedClaimIdNumber
       || !hasAllRequiredDocuments
       || hasConsentInterventionMismatch
+      || (selectedType === 'surgical' && !typeOfAnaesthesia)
     ) return;
     setIsSubmitting(true);
     try {
@@ -2087,12 +2290,45 @@ export default function NewPreauthPage() {
           ItemCode: itemCode,
           unit_price: selectedInterventionTariff != null ? String(selectedInterventionTariff) : undefined,
           UnitPrice: selectedInterventionTariff != null ? String(selectedInterventionTariff) : undefined,
-          quantity: 1,
-          Quantity: 1,
+          quantity: '1',
+          Quantity: '1',
         }));
       }
       if (clinicalNotes.trim()) {
         extraFields.clinical_notes = clinicalNotes;
+      }
+      if (selectedType === 'surgical') {
+        const chiefComplaint = extractedEncounterFields.chiefComplaint;
+        const vitalSigns = extractedEncounterFields.vitalSigns;
+        const historyOfPresentIllness = extractedEncounterFields.historyOfPresentIllness;
+        const physicalExamination = extractedEncounterFields.physicalExamination;
+        const investigationReportDetails = extractedEncounterFields.investigationReportDetails;
+
+        if (chiefComplaint) {
+          extraFields.chief_complaint = chiefComplaint;
+          extraFields.chiefComplaint = chiefComplaint;
+        }
+        if (vitalSigns) {
+          extraFields.vital_signs = vitalSigns;
+          extraFields.vitalSigns = vitalSigns;
+        }
+        if (historyOfPresentIllness) {
+          extraFields.history_of_present_illness = historyOfPresentIllness;
+          extraFields.historyOfPresentIllness = historyOfPresentIllness;
+        }
+        if (physicalExamination) {
+          extraFields.physical_examination = physicalExamination;
+          extraFields.physicalExamination = physicalExamination;
+        }
+        if (investigationReportDetails) {
+          extraFields.investigation_report_details = investigationReportDetails;
+          extraFields.investigationReportDetails = investigationReportDetails;
+        }
+        if (typeOfAnaesthesia) {
+          extraFields.type_of_anaesthesia = typeOfAnaesthesia;
+          extraFields.typeOfAnaesthesia = typeOfAnaesthesia;
+          extraFields.anaesthesiaType = typeOfAnaesthesia;
+        }
       }
       if (serviceStartDate) {
         const serviceStartIso = `${serviceStartDate}T00:00:00Z`;
@@ -2219,6 +2455,7 @@ export default function NewPreauthPage() {
     setTariffInput('');
     setServiceStartDate('');
     setServiceEndDate('');
+    setTypeOfAnaesthesia('');
     setProviderNotificationEmail('');
     setProviderNotificationEmailTouched(false);
     setClinicalNotes('');
@@ -2472,6 +2709,28 @@ export default function NewPreauthPage() {
                   <p className="text-xs text-muted-foreground">
                     Read-only, auto-derived from selected intervention flags.
                   </p>
+                </div>
+              )}
+
+              {interventionCode && selectedType === 'surgical' && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="type-of-anaesthesia">Type of Anaesthesia *</Label>
+                  <select
+                    id="type-of-anaesthesia"
+                    value={typeOfAnaesthesia}
+                    onChange={(e) => setTypeOfAnaesthesia(e.target.value as AnaesthesiaType | '')}
+                    className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="">— Select anaesthesia —</option>
+                    {ANAESTHESIA_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  {!typeOfAnaesthesia && (
+                    <p className="text-xs text-destructive">
+                      Type of anaesthesia is required for surgical preauth.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -3163,6 +3422,12 @@ export default function NewPreauthPage() {
                     <p className="text-xs text-muted-foreground">{interventionName}</p>
                   )}
                 </div>
+                {selectedType === 'surgical' && (
+                  <div>
+                    <span className="text-muted-foreground">Type of Anaesthesia</span>
+                    <p>{typeOfAnaesthesia || 'Not selected'}</p>
+                  </div>
+                )}
                 <div>
                   <span className="text-muted-foreground">Fund Coverage</span>
                   {isInterventionFundCovered === true ? (
@@ -3182,10 +3447,13 @@ export default function NewPreauthPage() {
                 <div>
                   <span className="text-muted-foreground">Claim-derived token</span>
                   <p className="font-mono text-xs truncate max-w-[200px]">
-                    {latestClaimConsent?.consent_token
-                      ? `${latestClaimConsent.consent_token.slice(0, 40)}...`
-                      : 'Not available'}
+                    {claimDerivedTokenStatus.text}
                   </p>
+                  {claimDerivedTokenStatus.helper && (
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                      {claimDerivedTokenStatus.helper}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <span className="text-muted-foreground">Fresh/session token</span>
@@ -3217,6 +3485,30 @@ export default function NewPreauthPage() {
                   <span className="text-muted-foreground">Provider Notification Email</span>
                   <p className="break-all">{providerNotificationEmail || 'Will use facility default'}</p>
                 </div>
+                {selectedType === 'surgical' && (
+                  <>
+                    <div className="sm:col-span-2">
+                      <span className="text-muted-foreground">Chief Complaint</span>
+                      <p>{extractedEncounterFields.chiefComplaint || 'Not available from encounter'}</p>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <span className="text-muted-foreground">Vital Signs</span>
+                      <p>{extractedEncounterFields.vitalSigns || 'Not available from encounter'}</p>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <span className="text-muted-foreground">History of Present Illness</span>
+                      <p>{extractedEncounterFields.historyOfPresentIllness || 'Not available from encounter'}</p>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <span className="text-muted-foreground">Physical Examination</span>
+                      <p>{extractedEncounterFields.physicalExamination || 'Not available from encounter'}</p>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <span className="text-muted-foreground">Investigation Report Details</span>
+                      <p>{extractedEncounterFields.investigationReportDetails || 'Not available from encounter'}</p>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Diagnoses */}

@@ -3131,6 +3131,33 @@ class SHAClaimIntervention(models.Model):
     is_imaging_preauth = models.BooleanField(default=False)
     is_optical_preauth = models.BooleanField(default=False)
 
+    # Fund / scheme metadata from ILM interventions payload
+    fund = models.CharField(
+        max_length=128,
+        blank=True,
+        help_text="Top-level fund label from ILM interventions payload",
+    )
+    intervention_fund = models.CharField(
+        max_length=128,
+        blank=True,
+        help_text="Intervention-specific fund label from ILM payload",
+    )
+    supported_scheme = models.CharField(
+        max_length=128,
+        blank=True,
+        help_text="Supported scheme label from ILM payload",
+    )
+    schemes = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Applicable schemes from ILM payload",
+    )
+    intervention_payload = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Raw ILM intervention payload preserved for future metadata needs",
+    )
+
     # Hospital Level Tariffs (per KEPH level)
     level2_tariff = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     level3_tariff = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
