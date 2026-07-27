@@ -108,6 +108,9 @@ export function mapClaimInterventionToOption(
     price,
     paymentMechanism: getString('payment_mechanism', 'paymentMechanism'),
     accessPoint: getString('access_point', 'accessPoint'),
+    fund: getString('fund'),
+    interventionFund: getString('intervention_fund', 'interventionFund'),
+    supportedScheme: getString('supported_scheme', 'supportedScheme'),
     schemes: getStringArray('schemes'),
     needsPreauth: getBoolean('needs_preauth', 'needsPreauth'),
     needsManualPreauthApproval: getBoolean(

@@ -459,23 +459,17 @@ class SHAClaimAutomationService:
                     intervention["code"],
                     facility_level=facility_level,
                 )
+                override_tariff = (
+                    Decimal(intervention["tariff"]) if intervention.get("tariff") else None
+                )
                 SHAClaimIntervention.objects.create(
                     claim=claim,
                     intervention_code=intervention["code"],
+                    **defaults,
                     intervention_name=intervention.get("name", "") or defaults["intervention_name"],
-                    tariff_amount=(
-                        Decimal(intervention["tariff"]) if intervention.get("tariff") else None
-                    ),
-                    benefit_code=defaults["benefit_code"],
-                    payment_mechanism=defaults["payment_mechanism"],
-                    access_point=defaults["access_point"],
-                    needs_preauth=defaults["needs_preauth"],
-                    needs_manual_preauth_approval=defaults["needs_manual_preauth_approval"],
-                    is_surgical_preauth=defaults["is_surgical_preauth"],
-                    is_renal_preauth=defaults["is_renal_preauth"],
-                    is_oncology_preauth=defaults["is_oncology_preauth"],
-                    is_imaging_preauth=defaults["is_imaging_preauth"],
-                    is_optical_preauth=defaults["is_optical_preauth"],
+                    tariff_amount=override_tariff
+                    if override_tariff is not None
+                    else defaults["tariff_amount"],
                 )
                 attached += 1
 

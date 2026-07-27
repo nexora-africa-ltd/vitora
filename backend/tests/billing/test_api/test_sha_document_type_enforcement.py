@@ -386,12 +386,20 @@ class TestSHAClaimDetailSerializerDocTypes:
             intervention_code="SHA-07-001",
             intervention_name="Medical Management",
             required_document_types=["clinical_notes"],
+            fund="SHIF",
+            intervention_fund="OPD",
+            supported_scheme="SHA",
+            schemes=["SHA", "SHIF"],
+            intervention_payload={"foo": "bar", "schemes": ["SHA"]},
         )
         response = sha_client.get(f"/api/sha/claims/{draft_claim.id}/")
         assert response.status_code == status.HTTP_200_OK
         assert "claim_interventions" in response.data
         assert len(response.data["claim_interventions"]) == 1
         assert response.data["claim_interventions"][0]["intervention_code"] == "SHA-07-001"
+        assert response.data["claim_interventions"][0]["fund"] == "SHIF"
+        assert response.data["claim_interventions"][0]["schemes"] == ["SHA", "SHIF"]
+        assert response.data["claim_interventions"][0]["intervention_payload"]["foo"] == "bar"
 
 
 # =============================================================================
@@ -413,6 +421,10 @@ class TestIlmInterventionPersistence:
             "intervention_name": "Appendectomy",
             "document_types": ["MEDICAL_REPORT", "OPERATIVE_NOTES"],
             "overall_tariff": "50000.00",
+            "fund": "SHIF",
+            "interventionFund": "SURGICAL",
+            "supportedScheme": "SHA",
+            "schemes": ["SHA", "SHIF"],
         }
 
         service = IlmClaimService()
@@ -433,6 +445,11 @@ class TestIlmInterventionPersistence:
         assert intervention.dha_intervention_id == "dha-int-123"
         assert intervention.benefit_code == "SHA-19"
         assert intervention.status == "active"
+        assert intervention.fund == "SHIF"
+        assert intervention.intervention_fund == "SURGICAL"
+        assert intervention.supported_scheme == "SHA"
+        assert intervention.schemes == ["SHA", "SHIF"]
+        assert intervention.intervention_payload == mock_response.json
 
     def test_retire_intervention_updates_status(self, draft_claim):
         """retire_intervention should mark persisted record as retired."""

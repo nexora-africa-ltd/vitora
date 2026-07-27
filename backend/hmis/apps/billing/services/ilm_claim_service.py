@@ -931,6 +931,14 @@ class IlmClaimService:
             access_point = payload.get("accessPoint") or payload.get("access_point") or ""
             needs_preauth = bool(payload.get("needsPreauth", False))
             needs_manual = bool(payload.get("needsManualPreauthApproval", False))
+            fund = payload.get("fund") or ""
+            intervention_fund = (
+                payload.get("interventionFund") or payload.get("intervention_fund") or ""
+            )
+            supported_scheme = (
+                payload.get("supportedScheme") or payload.get("supported_scheme") or ""
+            )
+            schemes = payload.get("schemes") if isinstance(payload.get("schemes"), list) else []
 
             SHAClaimIntervention.objects.update_or_create(
                 claim=claim,
@@ -952,6 +960,11 @@ class IlmClaimService:
                     "is_oncology_preauth": bool(payload.get("isOncologyPreauth", False)),
                     "is_imaging_preauth": bool(payload.get("isImagingPreauth", False)),
                     "is_optical_preauth": bool(payload.get("isOpticalPreauth", False)),
+                    "fund": str(fund)[:128],
+                    "intervention_fund": str(intervention_fund)[:128],
+                    "supported_scheme": str(supported_scheme)[:128],
+                    "schemes": [str(value).strip() for value in schemes if str(value).strip()],
+                    "intervention_payload": payload,
                     # Level tariffs
                     "level2_tariff": payload.get("level2Tariff"),
                     "level3_tariff": payload.get("level3Tariff"),

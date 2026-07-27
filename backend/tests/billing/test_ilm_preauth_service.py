@@ -269,7 +269,8 @@ class TestCreatePreauth:
         assert items[0]["unit_price"] == "28000.00"
         assert items[0]["UnitPrice"] == "28000.00"
         assert items[0]["ItemCode"] == "SHA-19-197"
-        assert items[0]["Quantity"] == 1
+        assert items[0]["quantity"] == "1"
+        assert items[0]["Quantity"] == "1"
 
     def test_rejects_item_without_unit_price_when_no_claim_tariff(
         self,
@@ -323,6 +324,176 @@ class TestCreatePreauth:
             )
 
         assert "missing unit_price" in str(exc_info.value)
+        assert not mock_client.post.called
+
+    def test_hydrates_surgical_fields_from_encounter(
+        self,
+        service,
+        mock_client,
+        sample_patient,
+        sample_facility,
+        sample_organization,
+        sample_encounter,
+        sha_member,
+        test_user,
+    ):
+        mock_client.post.return_value = _resp(201, {"preauth_id": "p-99"})
+
+        claim = SHAClaim.objects.create(
+            patient=sample_patient,
+            sha_member=sha_member,
+            claim_type=SHAClaim.ClaimType.INPATIENT,
+            status=SHAClaim.ClaimStatus.DRAFT,
+            service_date=date.today(),
+            admission_date=date.today(),
+            primary_diagnosis_code="J18.9",
+            primary_diagnosis_description="Pneumonia",
+            facility=sample_facility,
+            organization=sample_organization,
+            encounter=sample_encounter,
+            created_by=test_user,
+        )
+
+        claim.encounter.chief_complaint = "Acute abdominal pain"
+        claim.encounter.temperature = "37.2"
+        claim.encounter.pulse = 90
+        claim.encounter.blood_pressure = "120/80"
+        claim.encounter.respiratory_rate = 18
+        claim.encounter.spo2 = "98"
+        claim.encounter.history_of_present_illness = "Pain started 6 hours ago"
+        claim.encounter.physical_examination = "Guarding and rebound tenderness"
+        claim.encounter.notes = "US shows appendiceal inflammation"
+        claim.encounter.save(
+            update_fields=[
+                "chief_complaint",
+                "temperature",
+                "pulse",
+                "blood_pressure",
+                "respiratory_rate",
+                "spo2",
+                "history_of_present_illness",
+                "physical_examination",
+                "notes",
+            ]
+        )
+
+        SHAClaimIntervention.objects.update_or_create(
+            claim=claim,
+            intervention_code="SHA-19-277",
+            defaults={
+                "status": SHAClaimIntervention.InterventionStatus.ACTIVE,
+                "intervention_name": "Appendectomy",
+                "is_surgical_preauth": True,
+                "tariff_amount": "1000.00",
+            },
+        )
+
+        service.create_preauth(
+            consent_token="c-create",
+            intervention_code="SHA-19-277",
+            patient=claim.patient,
+            claim=claim,
+            facility=claim.facility,
+            user=test_user,
+            extra_fields={
+                "preauth_type": "surgical",
+                "type_of_anaesthesia": "GENERAL",
+                "items": [{"item_code": "SHA-19-277"}],
+            },
+        )
+
+        _, kwargs = mock_client.post.call_args
+        files = kwargs["files"]
+        assert files["chief_complaint"] == (None, "Acute abdominal pain")
+        assert files["chiefComplaint"] == (None, "Acute abdominal pain")
+        assert files["vital_signs"][1]
+        assert "Temp" in files["vital_signs"][1]
+        assert files["history_of_present_illness"] == (None, "Pain started 6 hours ago")
+        assert files["physical_examination"] == (None, "Guarding and rebound tenderness")
+        assert files["investigation_report_details"] == (
+            None,
+            "US shows appendiceal inflammation",
+        )
+        assert files["type_of_anaesthesia"] == (None, "GENERAL")
+
+    def test_rejects_surgical_preauth_when_required_fields_missing(
+        self,
+        service,
+        mock_client,
+        sample_patient,
+        sample_facility,
+        sample_organization,
+        sample_encounter,
+        sha_member,
+        test_user,
+    ):
+        mock_client.post.return_value = _resp(201, {"preauth_id": "p-99"})
+
+        claim = SHAClaim.objects.create(
+            patient=sample_patient,
+            sha_member=sha_member,
+            claim_type=SHAClaim.ClaimType.INPATIENT,
+            status=SHAClaim.ClaimStatus.DRAFT,
+            service_date=date.today(),
+            admission_date=date.today(),
+            primary_diagnosis_code="J18.9",
+            primary_diagnosis_description="Pneumonia",
+            facility=sample_facility,
+            organization=sample_organization,
+            encounter=sample_encounter,
+            created_by=test_user,
+        )
+
+        claim.encounter.chief_complaint = ""
+        claim.encounter.history_of_present_illness = ""
+        claim.encounter.physical_examination = ""
+        claim.encounter.notes = ""
+        claim.encounter.temperature = None
+        claim.encounter.pulse = None
+        claim.encounter.blood_pressure = ""
+        claim.encounter.respiratory_rate = None
+        claim.encounter.spo2 = None
+        claim.encounter.save(
+            update_fields=[
+                "chief_complaint",
+                "history_of_present_illness",
+                "physical_examination",
+                "notes",
+                "temperature",
+                "pulse",
+                "blood_pressure",
+                "respiratory_rate",
+                "spo2",
+            ]
+        )
+
+        SHAClaimIntervention.objects.update_or_create(
+            claim=claim,
+            intervention_code="SHA-19-277",
+            defaults={
+                "status": SHAClaimIntervention.InterventionStatus.ACTIVE,
+                "intervention_name": "Appendectomy",
+                "is_surgical_preauth": True,
+                "tariff_amount": "1000.00",
+            },
+        )
+
+        with pytest.raises(DHAValidationError) as exc_info:
+            service.create_preauth(
+                consent_token="c-create",
+                intervention_code="SHA-19-277",
+                patient=claim.patient,
+                claim=claim,
+                facility=claim.facility,
+                user=test_user,
+                extra_fields={
+                    "preauth_type": "surgical",
+                    "items": [{"item_code": "SHA-19-277", "unit_price": "1000.00"}],
+                },
+            )
+
+        assert "missing required fields" in str(exc_info.value)
+        assert "type_of_anaesthesia" in str(exc_info.value)
         assert not mock_client.post.called
 
 

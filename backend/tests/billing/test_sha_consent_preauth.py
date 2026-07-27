@@ -949,6 +949,34 @@ class TestConsentLatestView:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
+    def test_latest_by_claim_pk_without_sha_member_id(self, authenticated_client, old_claim):
+        response = authenticated_client.get(
+            "/api/sha/consent/latest/",
+            {
+                "claim_pk": old_claim.pk,
+            },
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["exists"] is True
+        assert response.data["consent_token"] == "old-claim-token"
+
+    def test_latest_by_claim_pk_returns_expired_message(self, authenticated_client, old_claim):
+        from hmis.apps.billing.models import ConsentToken
+
+        consent = ConsentToken.objects.get(encounter=old_claim.encounter)
+        consent.expires_at = timezone.now() - timedelta(minutes=5)
+        consent.save(update_fields=["expires_at"])
+
+        response = authenticated_client.get(
+            "/api/sha/consent/latest/",
+            {
+                "claim_pk": old_claim.pk,
+            },
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.data.get("code") == "claim_consent_expired"
+        assert "expired" in str(response.data.get("message", "")).lower()
+
     def test_latest_without_claim_pk_still_requires_today(self, authenticated_client, old_claim):
         response = authenticated_client.get(
             "/api/sha/consent/latest/",

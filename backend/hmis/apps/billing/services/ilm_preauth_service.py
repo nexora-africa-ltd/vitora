@@ -170,6 +170,151 @@ def _coerce_money_string(value: Any) -> str:
     return text
 
 
+def _coerce_non_empty_text(value: Any) -> str:
+    if value is None:
+        return ""
+    text = str(value).strip()
+    return text
+
+
+def _normalize_anaesthesia_choice(value: Any) -> str:
+    text = _coerce_non_empty_text(value).upper().replace("-", "_").replace(" ", "_")
+    if not text:
+        return ""
+    allowed = {"GENERAL", "LOCAL", "SPINAL_BLOCK", "SEDATION"}
+    aliases = {
+        "SPINAL": "SPINAL_BLOCK",
+        "SPINALBLOCK": "SPINAL_BLOCK",
+    }
+    normalized = aliases.get(text, text)
+    return normalized if normalized in allowed else ""
+
+
+def _set_text_fields_if_blank(data: dict[str, Any], keys: tuple[str, ...], value: Any) -> None:
+    text = _coerce_non_empty_text(value)
+    if not text:
+        return
+    for key in keys:
+        if _is_blank(data.get(key)):
+            data[key] = text
+
+
+def _has_non_blank(data: dict[str, Any], keys: tuple[str, ...]) -> bool:
+    return any(not _is_blank(data.get(key)) for key in keys)
+
+
+def _format_vital_signs(encounter: Any) -> str:
+    if encounter is None:
+        return ""
+    parts: list[str] = []
+    temperature = getattr(encounter, "temperature", None)
+    pulse = getattr(encounter, "pulse", None)
+    blood_pressure = getattr(encounter, "blood_pressure", None)
+    respiratory_rate = getattr(encounter, "respiratory_rate", None)
+    spo2 = getattr(encounter, "spo2", None)
+    if temperature not in (None, ""):
+        parts.append(f"Temp {temperature}C")
+    if pulse not in (None, ""):
+        parts.append(f"Pulse {pulse} bpm")
+    if _coerce_non_empty_text(blood_pressure):
+        parts.append(f"BP {blood_pressure}")
+    if respiratory_rate not in (None, ""):
+        parts.append(f"RR {respiratory_rate}/min")
+    if spo2 not in (None, ""):
+        parts.append(f"SpO2 {spo2}%")
+    return ", ".join(parts)
+
+
+def _is_surgical_preauth_request(
+    data: dict[str, Any],
+    *,
+    claim: Any = None,
+    intervention_code: str = "",
+) -> bool:
+    preauth_type = _coerce_non_empty_text(
+        data.get("preauth_type") or data.get("preauthType")
+    ).lower()
+    if preauth_type == "surgical":
+        return True
+
+    if claim is None or not intervention_code:
+        return False
+
+    intervention = (
+        claim.claim_interventions.filter(status="active", intervention_code=intervention_code)
+        .order_by("-updated_at", "-created_at")
+        .first()
+    )
+    return bool(getattr(intervention, "is_surgical_preauth", False))
+
+
+def _hydrate_surgical_clinical_fields_from_encounter(
+    data: dict[str, Any],
+    *,
+    claim: Any = None,
+) -> None:
+    encounter = getattr(claim, "encounter", None)
+    if encounter is None:
+        return
+
+    _set_text_fields_if_blank(
+        data,
+        ("chief_complaint", "chiefComplaint"),
+        getattr(encounter, "chief_complaint", ""),
+    )
+    _set_text_fields_if_blank(
+        data,
+        ("vital_signs", "vitalSigns"),
+        _format_vital_signs(encounter),
+    )
+    _set_text_fields_if_blank(
+        data,
+        ("history_of_present_illness", "historyOfPresentIllness"),
+        getattr(encounter, "history_of_present_illness", ""),
+    )
+    _set_text_fields_if_blank(
+        data,
+        ("physical_examination", "physicalExamination"),
+        getattr(encounter, "physical_examination", ""),
+    )
+    _set_text_fields_if_blank(
+        data,
+        ("investigation_report_details", "investigationReportDetails"),
+        getattr(encounter, "notes", ""),
+    )
+
+
+def _validate_required_surgical_fields(data: dict[str, Any]) -> None:
+    required_fields: dict[str, tuple[str, ...]] = {
+        "chief_complaint": ("chief_complaint", "chiefComplaint"),
+        "vital_signs": ("vital_signs", "vitalSigns"),
+        "history_of_present_illness": (
+            "history_of_present_illness",
+            "historyOfPresentIllness",
+        ),
+        "physical_examination": ("physical_examination", "physicalExamination"),
+        "investigation_report_details": (
+            "investigation_report_details",
+            "investigationReportDetails",
+        ),
+        "type_of_anaesthesia": (
+            "type_of_anaesthesia",
+            "typeOfAnaesthesia",
+            "anaesthesiaType",
+        ),
+    }
+    missing = [
+        name for name, aliases in required_fields.items() if not _has_non_blank(data, aliases)
+    ]
+    if missing:
+        raise DHAValidationError(
+            "Surgical preauth is missing required fields: " + ", ".join(missing),
+            status_code=400,
+            path=PREAUTH_CREATE_PATH,
+            method="POST",
+        )
+
+
 def _parse_keph_level(value: Any) -> int | None:
     if isinstance(value, int):
         return value
@@ -227,6 +372,7 @@ def _normalize_preauth_items(
             _pick_first(normalized_row, ("quantity", "Quantity")),
             default=1,
         )
+        quantity_text = str(quantity)
         unit_price = _coerce_money_string(
             _pick_first(normalized_row, ("unit_price", "unitPrice", "UnitPrice"))
         )
@@ -246,8 +392,8 @@ def _normalize_preauth_items(
         if item_code_text:
             normalized_row["item_code"] = item_code_text
             normalized_row["ItemCode"] = item_code_text
-        normalized_row["quantity"] = quantity
-        normalized_row["Quantity"] = quantity
+        normalized_row["quantity"] = quantity_text
+        normalized_row["Quantity"] = quantity_text
         normalized_row["unit_price"] = unit_price
         normalized_row["UnitPrice"] = unit_price
         normalized_items.append(normalized_row)
@@ -527,6 +673,20 @@ class IlmPreauthService:
         if extra_fields:
             data.update(extra_fields)
 
+        anaesthesia_value = _first_non_empty(
+            data,
+            ("type_of_anaesthesia", "typeOfAnaesthesia", "anaesthesiaType"),
+        )
+        normalized_anaesthesia = _normalize_anaesthesia_choice(anaesthesia_value)
+        if normalized_anaesthesia:
+            data["type_of_anaesthesia"] = normalized_anaesthesia
+            data["typeOfAnaesthesia"] = normalized_anaesthesia
+            data["anaesthesiaType"] = normalized_anaesthesia
+        else:
+            for key in ("type_of_anaesthesia", "typeOfAnaesthesia", "anaesthesiaType"):
+                if isinstance(data.get(key), str) and not str(data.get(key)).strip():
+                    data.pop(key, None)
+
         attachments_value = data.get("attachments")
         if files and (not isinstance(attachments_value, list) or len(attachments_value) == 0):
             data["attachments"] = [
@@ -540,6 +700,10 @@ class IlmPreauthService:
 
         _normalize_preauth_structured_fields(data)
         _normalize_preauth_items(data, claim=claim, intervention_code=intervention_code)
+
+        if _is_surgical_preauth_request(data, claim=claim, intervention_code=intervention_code):
+            _hydrate_surgical_clinical_fields_from_encounter(data, claim=claim)
+            _validate_required_surgical_fields(data)
 
         _normalize_iso_datetime_fields(
             data,

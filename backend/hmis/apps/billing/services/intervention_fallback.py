@@ -445,6 +445,9 @@ def get_local_intervention_claim_defaults(code: str, facility_level: object = No
     applicable_document_types = extras.get("applicable_document_types")
     if not isinstance(applicable_document_types, list):
         applicable_document_types = []
+    applicable_schemes = extras.get("applicable_schemes")
+    if not isinstance(applicable_schemes, list):
+        applicable_schemes = []
 
     level_int = _coerce_keph_level(facility_level)
     tariff_amount = _get_tariff_for_level(extras, level_int)
@@ -475,4 +478,9 @@ def get_local_intervention_claim_defaults(code: str, facility_level: object = No
         "is_oncology_preauth": _flag("requires_oncology_preauth"),
         "is_imaging_preauth": _flag("requires_radiology_preauth"),
         "is_optical_preauth": _flag("requires_optical_preauth"),
+        "fund": str(extras.get("fund", "")).strip()[:128],
+        "intervention_fund": str(extras.get("intervention_fund", "")).strip()[:128],
+        "supported_scheme": str(extras.get("supported_scheme", "")).strip()[:128],
+        "schemes": [str(v).strip() for v in applicable_schemes if str(v).strip()],
+        "intervention_payload": info or {},
     }

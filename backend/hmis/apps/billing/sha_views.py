@@ -5463,6 +5463,7 @@ class ConsentLatestView(APIView):
     def get(self, request):
         from hmis.apps.billing.models import ConsentToken, SHAClaim
         from hmis.apps.billing.services.consent_token_resolver import (
+            ConsentTokenExpiredError,
             ConsentTokenNotFoundError,
             resolve_for_claim,
         )
@@ -5483,12 +5484,6 @@ class ConsentLatestView(APIView):
         intervention_code = str(request.query_params.get("intervention_code") or "").strip()
         encounter_pk = None
         claim_pk = None
-        if not sha_member_id:
-            return Response(
-                {"error": "sha_member_id query parameter is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         if encounter_id not in (None, ""):
             try:
                 encounter_pk = int(encounter_id)
@@ -5507,16 +5502,24 @@ class ConsentLatestView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+        if sha_member_id in (None, "") and claim_pk is None:
+            return Response(
+                {"error": "sha_member_id query parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Claim-scoped lookup: bypass "today" filter and resolve the claim's
         # encounter token. This supports non-elective preauths linked to an
         # existing claim whose consent was collected on a prior day.
         if claim_pk is not None:
+            claim_lookup: dict[str, object] = {
+                "pk": claim_pk,
+                "facility": facility,
+            }
+            if sha_member_id not in (None, ""):
+                claim_lookup["sha_member_id"] = sha_member_id
             try:
-                claim = SHAClaim.objects.get(
-                    pk=claim_pk,
-                    sha_member_id=sha_member_id,
-                    facility=facility,
-                )
+                claim = SHAClaim.objects.get(**claim_lookup)
             except SHAClaim.DoesNotExist:
                 return Response(
                     {"error": "Claim not found"},
@@ -5524,6 +5527,15 @@ class ConsentLatestView(APIView):
                 )
             try:
                 resolved = resolve_for_claim(claim)
+            except ConsentTokenExpiredError as exc:
+                return Response(
+                    {
+                        "exists": False,
+                        "code": "claim_consent_expired",
+                        "message": str(exc) or "Claim-linked consent token expired",
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             except ConsentTokenNotFoundError:
                 return Response(
                     {"exists": False, "message": "No validated consent token for this claim"},
