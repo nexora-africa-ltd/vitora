@@ -18,6 +18,7 @@ export interface SearchableSelectOption {
   value: string;
   label: string;
   sublabel?: string;
+  disabled?: boolean;
 }
 
 interface SearchableSelectProps {
@@ -96,7 +97,9 @@ export function SearchableSelect({
                 <CommandItem
                   key={option.value}
                   value={option.value}
+                  disabled={option.disabled}
                   onSelect={() => {
+                    if (option.disabled) return;
                     onValueChange(option.value);
                     setOpen(false);
                   }}

@@ -82,9 +82,9 @@ class TestGetLocalInterventionClaimDefaults:
 
 
 class TestPersistConsentInterventions:
-    """Tests for _persist_consent_interventions metadata enrichment."""
+    """Tests for _persist_consent_interventions claim linkage behavior."""
 
-    def test_enriches_claim_intervention_metadata(
+    def test_creates_active_claim_intervention_without_overwriting_metadata(
         self, sample_patient, sample_facility, sample_encounter, sample_organization
     ):
         from hmis.apps.billing.models import SHAClaimIntervention
@@ -92,6 +92,15 @@ class TestPersistConsentInterventions:
 
         claim = _make_sha_claim(
             sample_patient, sample_facility, sample_encounter, sample_organization
+        )
+
+        existing = SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-01-001",
+            status="retired",
+            intervention_name="Existing Name",
+            required_document_types=["MEDICAL_REPORT"],
+            tariff_amount=Decimal("1234.00"),
         )
 
         _persist_consent_interventions(
@@ -102,8 +111,9 @@ class TestPersistConsentInterventions:
 
         intervention = SHAClaimIntervention.objects.get(claim=claim, intervention_code="SHA-01-001")
         assert intervention.status == "active"
-        assert intervention.intervention_name != ""
-        assert intervention.benefit_code != ""
+        assert intervention.intervention_name == existing.intervention_name
+        assert intervention.required_document_types == ["MEDICAL_REPORT"]
+        assert intervention.tariff_amount == Decimal("1234.00")
 
     def test_does_not_create_when_no_intervention_codes(
         self, sample_patient, sample_facility, sample_encounter, sample_organization
@@ -122,6 +132,26 @@ class TestPersistConsentInterventions:
         )
 
         assert SHAClaimIntervention.objects.filter(claim=claim).count() == 0
+
+    def test_creates_minimal_active_row_for_new_code(
+        self, sample_patient, sample_facility, sample_encounter, sample_organization
+    ):
+        from hmis.apps.billing.models import SHAClaimIntervention
+        from hmis.apps.billing.sha_views import _persist_consent_interventions
+
+        claim = _make_sha_claim(
+            sample_patient, sample_facility, sample_encounter, sample_organization
+        )
+
+        _persist_consent_interventions(
+            patient=sample_patient,
+            facility=sample_facility,
+            intervention_codes=["SHA-01-001"],
+        )
+
+        intervention = SHAClaimIntervention.objects.get(claim=claim, intervention_code="SHA-01-001")
+        assert intervention.status == "active"
+        assert intervention.required_document_types == []
 
 
 class TestAutoAttachInterventions:

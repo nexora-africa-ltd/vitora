@@ -221,6 +221,193 @@ def _has_preauth_attachments(value: Any) -> bool:
     return bool(value)
 
 
+def _normalize_preauth_attachments_meta(value: Any) -> list[dict[str, str]]:
+    if not isinstance(value, list):
+        return []
+    normalized: list[dict[str, str]] = []
+    for entry in value:
+        if not isinstance(entry, dict):
+            continue
+        field_name = str(entry.get("file_field_name") or "").strip()
+        if not field_name:
+            continue
+        item: dict[str, str] = {
+            "file_field_name": field_name,
+            "document_title": str(entry.get("document_title") or "").strip() or field_name,
+            "document_type": str(entry.get("document_type") or "").strip() or "OTHER",
+        }
+        attachment_id = entry.get("attachment_id")
+        if isinstance(attachment_id, int) or (
+            isinstance(attachment_id, str) and attachment_id.isdigit()
+        ):
+            item["attachment_id"] = str(attachment_id)
+        checksum = str(entry.get("checksum") or "").strip().lower()
+        if checksum:
+            item["checksum"] = checksum
+        normalized.append(item)
+    return normalized
+
+
+def _normalize_attachment_ids(value: Any) -> tuple[list[int], list[str]]:
+    if value is None:
+        return [], []
+
+    raw_items: list[Any] = value if isinstance(value, list) else [value]
+
+    normalized: list[int] = []
+    errors: list[str] = []
+    seen: set[int] = set()
+
+    for raw in raw_items:
+        try:
+            parsed = int(str(raw).strip())
+        except (TypeError, ValueError):
+            errors.append(f"Invalid attachment_id '{raw}'")
+            continue
+        if parsed <= 0:
+            errors.append(f"Invalid attachment_id '{raw}'")
+            continue
+        if parsed in seen:
+            continue
+        seen.add(parsed)
+        normalized.append(parsed)
+
+    return normalized, errors
+
+
+def _multipart_signature(file: MultipartFile) -> str:
+    digest = hashlib.sha256(file.content).hexdigest()
+    content_type = str(file.content_type or "").strip().lower()
+    return f"{digest}:{len(file.content)}:{content_type}"
+
+
+def _dedupe_and_reindex_preauth_payload(
+    *,
+    files: list[MultipartFile],
+    attachments_meta: list[dict[str, str]],
+) -> tuple[list[MultipartFile], list[dict[str, str]]]:
+    meta_by_field: dict[str, dict[str, str]] = {
+        str(row.get("file_field_name") or "").strip(): row
+        for row in attachments_meta
+        if str(row.get("file_field_name") or "").strip()
+    }
+
+    deduped_files: list[MultipartFile] = []
+    deduped_meta: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    for item in files:
+        signature = _multipart_signature(item)
+        if signature in seen:
+            continue
+        seen.add(signature)
+
+        next_idx = len(deduped_files) + 1
+        new_field_name = f"preauth_file_{next_idx}"
+        deduped_files.append(
+            MultipartFile(
+                field_name=new_field_name,
+                filename=item.filename,
+                content=item.content,
+                content_type=item.content_type,
+            )
+        )
+
+        source_meta = meta_by_field.get(item.field_name, {})
+        deduped_meta.append(
+            {
+                "file_field_name": new_field_name,
+                "document_title": str(source_meta.get("document_title") or item.filename),
+                "document_type": str(source_meta.get("document_type") or "OTHER"),
+                **{
+                    key: str(value)
+                    for key, value in source_meta.items()
+                    if key not in {"file_field_name", "document_title", "document_type"}
+                    and str(value).strip()
+                },
+            }
+        )
+
+    return deduped_files, deduped_meta
+
+
+def _extract_selected_preauth_attachments_from_claim(
+    claim: SHAClaim,
+    attachment_ids: list[int],
+) -> tuple[list[MultipartFile], list[dict[str, str]], list[dict[str, Any]], list[str]]:
+    if not attachment_ids:
+        return [], [], [], []
+
+    selected = {
+        attachment.id: attachment for attachment in claim.attachments.filter(id__in=attachment_ids)
+    }
+
+    files: list[MultipartFile] = []
+    meta: list[dict[str, str]] = []
+    resolved: list[dict[str, Any]] = []
+    errors: list[str] = []
+
+    for idx, attachment_id in enumerate(attachment_ids, start=1):
+        attachment = selected.get(attachment_id)
+        if attachment is None:
+            errors.append(f"Attachment {attachment_id} was not found on this claim")
+            continue
+
+        file_obj = getattr(attachment, "file", None)
+        if not file_obj:
+            errors.append(f"Attachment {attachment_id} has no file")
+            continue
+        file_obj.open("rb")
+        try:
+            content = file_obj.read()
+        finally:
+            file_obj.close()
+        if not content:
+            errors.append(f"Attachment {attachment_id} is empty")
+            continue
+
+        filename = (
+            str(getattr(attachment, "original_filename", "") or "").strip()
+            or os.path.basename(str(getattr(file_obj, "name", "") or ""))
+            or f"attachment-{attachment_id}.bin"
+        )
+        checksum = str(getattr(attachment, "checksum", "") or "").strip().lower()
+        if not checksum:
+            checksum = hashlib.sha256(content).hexdigest()
+        field_name = f"selected_claim_attachment_{idx}"
+        document_type = _to_preauth_document_type_for_claim(claim, attachment)
+
+        files.append(
+            MultipartFile(
+                field_name=field_name,
+                filename=filename,
+                content=content,
+                content_type=str(
+                    getattr(attachment, "mime_type", "") or "application/octet-stream"
+                ),
+            )
+        )
+        meta.append(
+            {
+                "file_field_name": field_name,
+                "document_title": str(getattr(attachment, "name", "") or filename),
+                "document_type": document_type,
+                "attachment_id": str(attachment_id),
+                "checksum": checksum,
+            }
+        )
+        resolved.append(
+            {
+                "id": attachment_id,
+                "title": str(getattr(attachment, "name", "") or filename),
+                "doc_type": document_type,
+                "checksum": checksum,
+            }
+        )
+
+    return files, meta, resolved, errors
+
+
 def _serialize_preauth(p: SHAPreauth) -> dict[str, Any]:
     return {
         "id": p.id,
@@ -362,8 +549,25 @@ class IlmPreauthCreateView(APIView):
             except json.JSONDecodeError:
                 raw_extra_fields = {}
         extra_fields = dict(raw_extra_fields) if isinstance(raw_extra_fields, dict) else {}
+
+        explicit_attachment_ids_value = extra_fields.get("attachment_ids")
+        if explicit_attachment_ids_value is None:
+            explicit_attachment_ids_value = request.data.get("attachment_ids")
+        explicit_attachment_ids, attachment_id_errors = _normalize_attachment_ids(
+            explicit_attachment_ids_value
+        )
+        if attachment_id_errors:
+            return Response(
+                {
+                    "error": "invalid_attachment_ids",
+                    "attachments": attachment_id_errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         multipart_files: list[MultipartFile] | None = None
         uploaded_files: list[MultipartFile] = []
+        uploaded_meta = _normalize_preauth_attachments_meta(extra_fields.get("attachments"))
         for field_name, uploaded in request.FILES.items():
             content = uploaded.read()
             if not content:
@@ -379,9 +583,8 @@ class IlmPreauthCreateView(APIView):
                 )
             )
         if uploaded_files:
-            multipart_files = uploaded_files
-            if not _has_preauth_attachments(extra_fields.get("attachments")):
-                extra_fields["attachments"] = [
+            if not uploaded_meta:
+                uploaded_meta = [
                     {
                         "file_field_name": f.field_name,
                         "document_title": f.filename,
@@ -389,16 +592,91 @@ class IlmPreauthCreateView(APIView):
                     }
                     for f in uploaded_files
                 ]
+            multipart_files, normalized_meta = _dedupe_and_reindex_preauth_payload(
+                files=uploaded_files,
+                attachments_meta=uploaded_meta,
+            )
+            extra_fields["attachments"] = normalized_meta
 
+        if claim and explicit_attachment_ids:
+            selected_files, selected_meta, _, selected_errors = (
+                _extract_selected_preauth_attachments_from_claim(claim, explicit_attachment_ids)
+            )
+            if selected_errors:
+                return Response(
+                    {
+                        "error": "invalid_attachment_ids",
+                        "attachments": selected_errors,
+                        "invalid_attachment_ids": explicit_attachment_ids,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if multipart_files:
+                merged_files, merged_meta = _dedupe_and_reindex_preauth_payload(
+                    files=[*multipart_files, *selected_files],
+                    attachments_meta=[
+                        *_normalize_preauth_attachments_meta(extra_fields.get("attachments")),
+                        *selected_meta,
+                    ],
+                )
+                multipart_files = merged_files
+                extra_fields["attachments"] = merged_meta
+            else:
+                merged_files, merged_meta = _dedupe_and_reindex_preauth_payload(
+                    files=selected_files,
+                    attachments_meta=selected_meta,
+                )
+                multipart_files = merged_files
+                extra_fields["attachments"] = merged_meta
+        # Strict explicit mode: never implicitly include all claim attachments.
+        # Back-compat legacy mode can opt-in with fallback_claim_attachments=true.
+        fallback_claim_attachments = str(
+            request.data.get("fallback_claim_attachments") or ""
+        ).strip().lower() in {"1", "true", "yes"}
         if (
             claim
+            and fallback_claim_attachments
             and not uploaded_files
-            and not _has_preauth_attachments(extra_fields.get("attachments"))
+            and not explicit_attachment_ids
         ):
             claim_files, attachments_meta = _extract_preauth_attachments_from_claim(claim)
             if claim_files and attachments_meta:
-                multipart_files = claim_files
-                extra_fields["attachments"] = attachments_meta
+                logger.warning(
+                    "ILM preauth create using legacy attachment fallback for claim=%s",
+                    claim.id,
+                )
+                merged_files, merged_meta = _dedupe_and_reindex_preauth_payload(
+                    files=claim_files,
+                    attachments_meta=attachments_meta,
+                )
+                multipart_files = merged_files
+                extra_fields["attachments"] = merged_meta
+
+        extra_fields.pop("attachment_ids", None)
+        extra_fields.pop("fallback_claim_attachments", None)
+
+        resolved_meta = _normalize_preauth_attachments_meta(extra_fields.get("attachments"))
+        extra_fields["attachments"] = [
+            {
+                "file_field_name": row["file_field_name"],
+                "document_title": row["document_title"],
+                "document_type": row["document_type"],
+            }
+            for row in resolved_meta
+        ]
+
+        resolved_attachment_payload = [
+            {
+                "id": int(row["attachment_id"])
+                if str(row.get("attachment_id", "")).isdigit()
+                else None,
+                "title": row.get("document_title", ""),
+                "doc_type": row.get("document_type", "OTHER"),
+                "checksum": row.get("checksum", ""),
+            }
+            for row in resolved_meta
+        ]
 
         try:
             result = IlmPreauthService().create_preauth(
@@ -443,7 +721,9 @@ class IlmPreauthCreateView(APIView):
             return _ilm_handle_error(
                 "preauth_create", exc, extra={"intervention_code": intervention_code}
             )
-        return _result_to_response(result, http_status=status.HTTP_201_CREATED)
+        response = _result_to_response(result, http_status=status.HTTP_201_CREATED)
+        response.data["resolved_attachments"] = resolved_attachment_payload
+        return response
 
 
 class IlmPreauthCancelView(APIView):

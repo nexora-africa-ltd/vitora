@@ -6,6 +6,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { AxiosError } from 'axios';
 import {
   AlertTriangle,
   Check,
@@ -155,6 +156,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
     sublabel?: string;
   } | null>(null);
   const [selectedEncounterId, setSelectedEncounterId] = useState('');
+  const [existingClaimHint, setExistingClaimHint] = useState<{ id: number; claimNumber?: string } | null>(null);
   const debouncedSearch = useDebounce(searchQuery, 300);
   const debouncedPatientSearch = useDebounce(patientSearchQuery, 300);
   const createClaim = useCreateClaim();
@@ -341,16 +343,18 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
 
   const encounterOptions = useMemo(() => {
     const all = (encountersData ?? []).map((encounter) => {
-      const hasClaim = claimedEncounterIds.has(encounter.id);
+      const existingClaim = encounterToClaim.get(encounter.id);
+      const hasClaim = !!existingClaim;
       return {
         value: String(encounter.id),
         hasClaim,
+        disabled: hasClaim,
         label: `#${encounter.id} ${encounter.chief_complaint || 'No chief complaint'}`,
-        sublabel: `${encounter.encounter_type} • ${encounter.status} • ${format(parseISO(encounter.encounter_date), 'MMM d, yyyy')}${hasClaim ? ' • has claim' : ''}`,
+        sublabel: `${encounter.encounter_type} • ${encounter.status} • ${format(parseISO(encounter.encounter_date), 'MMM d, yyyy')}${hasClaim ? ` • claimed (${existingClaim?.claim_number || `#${existingClaim?.id}`})` : ''}`,
       };
     });
-    return all.filter((option) => !option.hasClaim);
-  }, [claimedEncounterIds, encountersData]);
+    return all;
+  }, [encounterToClaim, encountersData]);
 
   const invoicesByEncounter = useMemo(() => {
     const map = new Map<number, { id: number; invoice_number: string }>();
@@ -400,6 +404,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
     }
 
     try {
+      setExistingClaimHint(null);
       const created = await createClaim.mutateAsync({
         encounter_id: selectedEncounterIdNumber,
         invoice_id: selectedInvoice.id,
@@ -411,8 +416,31 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
       setSelectedPatientId('');
       setSelectedPatientSnapshot(null);
       setSelectedEncounterId('');
+      setExistingClaimHint(null);
       router.push(`${basePath}/${created.id}`);
     } catch (error) {
+      if (error instanceof AxiosError) {
+        const data = error.response?.data;
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          const duplicateIdRaw = (data as Record<string, unknown>).existing_claim_id;
+          const duplicateClaimNumberRaw = (data as Record<string, unknown>).existing_claim_number;
+          const duplicateId =
+            typeof duplicateIdRaw === 'number'
+              ? duplicateIdRaw
+              : typeof duplicateIdRaw === 'string'
+                ? Number(duplicateIdRaw)
+                : NaN;
+          if (Number.isFinite(duplicateId) && duplicateId > 0) {
+            setExistingClaimHint({
+              id: duplicateId,
+              claimNumber:
+                typeof duplicateClaimNumberRaw === 'string' ? duplicateClaimNumberRaw : undefined,
+            });
+            toast.error('Encounter already has a claim. Open the existing claim instead.');
+            return;
+          }
+        }
+      }
       const message = error instanceof Error ? error.message : 'Failed to create SHA claim.';
       toast.error(message);
     }
@@ -446,6 +474,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                   setSelectedPatientId('');
                   setSelectedPatientSnapshot(null);
                   setSelectedEncounterId('');
+                  setExistingClaimHint(null);
                 }
               }}
             >
@@ -502,13 +531,14 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                                   <CommandItem
                                     key={option.value}
                                     value={option.value}
-                                    onSelect={() => {
-                                      setSelectedPatientId(option.value);
-                                      setSelectedPatientSnapshot(option);
-                                      setSelectedEncounterId('');
-                                      setPatientPickerOpen(false);
-                                      setPatientSearchQuery('');
-                                    }}
+                                     onSelect={() => {
+                                       setSelectedPatientId(option.value);
+                                       setSelectedPatientSnapshot(option);
+                                       setSelectedEncounterId('');
+                                       setExistingClaimHint(null);
+                                       setPatientPickerOpen(false);
+                                       setPatientSearchQuery('');
+                                     }}
                                   >
                                     <Check
                                       className={cn(
@@ -550,7 +580,10 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                     <SearchableSelect
                       options={encounterOptions}
                       value={selectedEncounterId}
-                      onValueChange={setSelectedEncounterId}
+                      onValueChange={(value) => {
+                        setSelectedEncounterId(value);
+                        setExistingClaimHint(null);
+                      }}
                       placeholder="Select encounter"
                       searchPlaceholder="Search encounter ID, complaint, status"
                       emptyMessage={
@@ -560,10 +593,33 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                       }
                       disabled={!selectedPatientIdNumber}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Encounters already linked to a claim are shown but cannot be selected.
+                    </p>
                     {selectedEncounterClaim && (
                       <p className="text-xs text-amber-700">
                         Encounter already linked to claim {selectedEncounterClaim.claim_number || `#${selectedEncounterClaim.id}`}. Choose a different encounter.
                       </p>
+                    )}
+                    {existingClaimHint && (
+                      <div className="flex items-center justify-between gap-2 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                        <span>
+                          This encounter already has claim {existingClaimHint.claimNumber || `#${existingClaimHint.id}`}.{' '}
+                          Open it to continue.
+                        </span>
+                        <Button
+                          type="button"
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-xs"
+                          onClick={() => {
+                            setShowCreateDialog(false);
+                            router.push(`${basePath}/${existingClaimHint.id}`);
+                          }}
+                        >
+                          Open claim
+                        </Button>
+                      </div>
                     )}
                   </div>
                   <div className="space-y-2">

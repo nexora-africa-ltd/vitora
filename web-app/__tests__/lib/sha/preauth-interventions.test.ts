@@ -21,7 +21,7 @@ describe('mapClaimInterventionToOption', () => {
       is_imaging_preauth: false,
       is_optical_preauth: false,
       tariff_amount: '15000.00',
-      required_document_types: ['MEDICAL_REPORT', 'LAB_RESULTS'],
+      required_preauth_document_types: ['MEDICAL_REPORT', 'LAB_RESULTS'],
     });
 
     expect(result).toEqual({
@@ -41,6 +41,28 @@ describe('mapClaimInterventionToOption', () => {
       isOpticalPreauth: false,
       requiredPreauthDocumentTypes: ['MEDICAL_REPORT', 'LAB_RESULTS'],
     });
+  });
+
+  it('ignores claim-form document types for preauth required docs', () => {
+    const result = mapClaimInterventionToOption({
+      intervention_code: 'SHA-19-197',
+      intervention_name: 'Bilateral nephrostomy tube insertion',
+      required_document_types: ['CLAIM_ONLY_DOC'],
+      applicable_document_types: ['CLAIM_APPLICABLE_DOC'],
+      applicableDocumentTypes: ['CLAIM_APPLICABLE_DOC_2'],
+    });
+
+    expect(result.requiredPreauthDocumentTypes).toBeUndefined();
+  });
+
+  it('maps requiredPreauthDocumentTypes from camelCase payload', () => {
+    const result = mapClaimInterventionToOption({
+      intervention_code: 'SHA-19-197',
+      intervention_name: 'Bilateral nephrostomy tube insertion',
+      requiredPreauthDocumentTypes: ['PREAUTH_FORM', 'MEDICAL_REPORT'],
+    });
+
+    expect(result.requiredPreauthDocumentTypes).toEqual(['PREAUTH_FORM', 'MEDICAL_REPORT']);
   });
 
   it('falls back to code when intervention_name is missing', () => {
