@@ -901,7 +901,11 @@ export default function NewPreauthPage() {
     documents,
   ]);
 
-  const { data: selectedInterventionRecord } = useQuery({
+  const {
+    data: selectedInterventionRecord,
+    isFetching: selectedInterventionRecordLoading,
+    error: selectedInterventionRecordError,
+  } = useQuery({
     queryKey: ['preauth-intervention-record', interventionCode, selectedClaimIdNumber],
     queryFn: async () => {
       if (!interventionCode) return null;
@@ -1200,6 +1204,18 @@ export default function NewPreauthPage() {
     }
     return null;
   }, [interventionPrice, interventionCode, interventionOptions, selectedInterventionRecord]);
+
+  const shouldShowTariffLookupWarning = useMemo(() => {
+    if (!interventionCode) return false;
+    if (selectedInterventionTariff != null) return false;
+    if (selectedInterventionRecordLoading) return false;
+    return true;
+  }, [
+    interventionCode,
+    selectedInterventionTariff,
+    selectedInterventionRecordLoading,
+    selectedInterventionRecordError,
+  ]);
 
   const patientActiveFunds = useMemo(() => {
     const funds = new Set<string>();
@@ -1599,6 +1615,11 @@ export default function NewPreauthPage() {
     doctorChips,
     clinicalNotes,
   ]);
+
+  useEffect(() => {
+    if (!interventionCode) return;
+    setTariffChips((prev) => (prev.includes(interventionCode) ? prev : [interventionCode, ...prev]));
+  }, [interventionCode]);
 
   useEffect(() => {
     const textarea = clinicalNotesRef.current;
@@ -2744,6 +2765,14 @@ export default function NewPreauthPage() {
                         : 'Not available'}
                     </span>
                   </div>
+                  {shouldShowTariffLookupWarning && (
+                    <Alert variant="destructive" className="py-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription className="text-xs">
+                        Unable to resolve tariff amount for this intervention. Verify tariff metadata on the linked claim intervention or SHA terminology catalog.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Required Preauth Documents</p>
                     {effectiveRequiredDocumentTypes.length > 0 ? (

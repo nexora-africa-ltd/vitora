@@ -380,6 +380,64 @@ class TestBackfillClaimInterventionsIlmCommand:
         assert intervention.intervention_payload["code"] == "SHA-19-277"
         assert intervention.intervention_payload["raw_data"]["anything"] == "kept"
 
+    def test_ignores_preauth_document_types_for_claim_required_docs(
+        self, sample_patient, sample_facility, sample_encounter, sample_organization
+    ):
+        from hmis.apps.billing.models import SHAClaimIntervention
+
+        sample_patient.cr_number = "CR8254672331312-6"
+        sample_patient.save(update_fields=["cr_number"])
+
+        claim = _make_sha_claim(
+            sample_patient, sample_facility, sample_encounter, sample_organization
+        )
+        intervention = SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-19-277",
+            intervention_name="",
+            benefit_code="SHA-19",
+            required_document_types=[],
+            payment_mechanism="",
+            access_point="",
+        )
+
+        payload = {
+            "code": "SHA-19-277",
+            "name": "Burr hole",
+            "payment_mechanism": "FEE FOR SERVICE",
+            "access_point": "OP",
+            "applicable_document_types": ["MEDICAL_REPORT", "CLINICAL_DOCUMENTATION"],
+            "requiredPreauthDocumentTypes": ["PREAUTH_APPROVAL_FORM", "LAB_ORDER"],
+        }
+
+        with (
+            patch(
+                "hmis.apps.billing.management.commands.backfill_sha_claim_interventions_ilm.IlmRegistriesService.fetch_sub_benefits"
+            ) as mock_sub,
+            patch(
+                "hmis.apps.billing.management.commands.backfill_sha_claim_interventions_ilm.IlmRegistriesService.fetch_benefit_interventions"
+            ) as mock_interventions,
+        ):
+            mock_sub.return_value = SimpleNamespace(
+                payload={"results": [{"subBenefitCode": "SHA-19-SC-10"}]}
+            )
+            mock_interventions.return_value = SimpleNamespace(payload={"results": [payload]})
+
+            call_command(
+                "backfill_sha_claim_interventions_ilm",
+                "--claim-id",
+                str(claim.id),
+                "--commit",
+                "--max-sub-benefits",
+                "5",
+            )
+
+        intervention.refresh_from_db()
+        assert intervention.required_document_types == [
+            "MEDICAL_REPORT",
+            "CLINICAL_DOCUMENTATION",
+        ]
+
 
 @pytest.mark.django_db
 class TestInterventionMetadataGapReportCommand:

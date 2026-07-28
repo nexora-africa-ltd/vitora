@@ -558,11 +558,12 @@ class Command(BaseCommand):
         }
 
     def _extract_document_types(self, payload: dict[str, Any]) -> list[str]:
+        # Claim submission should only enforce claim-level attachment fields.
+        # Preauth-specific document fields are handled in the preauth workflow.
         candidates = [
-            payload.get("requiredPreauthDocumentTypes"),
-            payload.get("required_preauth_document_types"),
             payload.get("required_document_types"),
             payload.get("applicable_document_types"),
+            payload.get("applicableDocumentTypes"),
             payload.get("document_types"),
         ]
         merged: list[str] = []
