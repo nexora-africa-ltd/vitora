@@ -390,6 +390,8 @@ interface ClaimILMPanelProps {
     memberNumber?: string;
     dhaInvoiceNumber?: string;
   }) => void;
+  /** Signals to parent that current consent token is expired and fresh consent is required. */
+  onConsentExpired?: () => void;
 }
 
 // =============================================================================
@@ -405,6 +407,7 @@ export function ClaimILMPanel({
   isActive = true,
   onChange,
   onPreviewContext,
+  onConsentExpired,
 }: ClaimILMPanelProps) {
   const { user } = useAuth();
   const { facilityDetail } = useFacility();
@@ -683,11 +686,6 @@ export function ClaimILMPanel({
     return 'OUTPATIENT';
   }, [activeInterventions, selectedIntervention, effectiveInterventionCode]);
 
-  const hasPerDiemIntervention = useMemo(
-    () => (claim.claim_interventions ?? []).some((item) => item.status === 'active' && item.is_per_diem),
-    [claim.claim_interventions],
-  );
-
   // Add intervention / diagnosis dialogs
   const [addInterventionOpen, setAddInterventionOpen] = useState(false);
   const [addDialogPkgCode, setAddDialogPkgCode] = useState('');
@@ -895,6 +893,7 @@ export function ClaimILMPanel({
       const code = (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
       if (code === 'consent_token_expired') {
         toast.error('Consent token has expired. Please re-consent the patient.');
+        onConsentExpired?.();
         // Re-fetch claim data so dha_visit_started_at (which the backend cleared)
         // is reflected in the UI, unblocking the consent + start-visit flow.
         onChange?.();
@@ -1015,12 +1014,15 @@ export function ClaimILMPanel({
   openVisitRef.current = openVisit;
 
   async function preview() {
-    if (serviceType === 'INPATIENT' && hasPerDiemIntervention && !claim.discharge_date) {
-      setError(
-        'DHA blocks preview for active inpatient PER DIEM claims before discharge. Complete discharge first, then retry preview.',
-      );
+    const latestTokenExpired =
+      latestConsentToken?.status === 'EXPIRED' || latestConsentToken?.is_valid === false;
+    const hasAnyConsentToken = Boolean(latestConsentToken?.consent_token || consentToken);
+    if (requiresConsent && (latestTokenExpired || !hasAnyConsentToken)) {
+      setError('Consent token has expired. Please re-consent the patient.');
+      onConsentExpired?.();
       return;
     }
+
     const result = await run('preview', () => shaApi.ilmPreview(claimId));
     if (result) {
       setPreviewResult(result);
@@ -1217,10 +1219,22 @@ export function ClaimILMPanel({
         });
       }
       void refetchPreSubmitValidation();
-    } catch {
+    } catch (e: unknown) {
+      const code = (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
+      if (code === 'consent_token_expired') {
+        onConsentExpired?.();
+      }
       // Non-blocking background refresh
     }
-  }, [busy, claimId, onPreviewContext, previewResult?.payload, refetchPreSubmitValidation, visitStarted]);
+  }, [
+    busy,
+    claimId,
+    onConsentExpired,
+    onPreviewContext,
+    previewResult?.payload,
+    refetchPreSubmitValidation,
+    visitStarted,
+  ]);
 
   useEffect(() => {
     if (!visitStarted || !previewResult?.payload) return;

@@ -92,7 +92,15 @@ export function mapClaimInterventionToOption(
     intervention.tariff_amount ??
     intervention.tariffAmount ??
     intervention.level2_tariff ??
-    intervention.level2Tariff;
+    intervention.level2Tariff ??
+    intervention.level3_tariff ??
+    intervention.level3Tariff ??
+    intervention.level4_tariff ??
+    intervention.level4Tariff ??
+    intervention.level5_tariff ??
+    intervention.level5Tariff ??
+    intervention.level6_tariff ??
+    intervention.level6Tariff;
   let price: number | undefined;
   if (typeof rawPrice === 'number' && Number.isFinite(rawPrice)) {
     price = rawPrice;

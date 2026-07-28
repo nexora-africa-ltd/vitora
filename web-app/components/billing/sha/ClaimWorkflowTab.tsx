@@ -1,7 +1,7 @@
 /**
  * ClaimWorkflowTab — Orchestrates the proactive DHA HIE workflow.
  *
- * Renders the pre-visit checks, consent + preauth (when applicable), the ILM
+ * Renders the pre-visit checks, consent (when applicable), the ILM
  * workflow panel, and discharge — but only the panels relevant to this
  * claim's flow and current state. Captures the consent OTP/biometric GUID
  * once and threads it down so downstream steps don't re-prompt the user.
@@ -14,7 +14,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ConsentPanel, type ConsentCredential } from './ConsentPanel';
-import { PreauthPanel } from './PreauthPanel';
 import { ClaimILMPanel } from './ClaimILMPanel';
 import { DischargePanel } from './DischargePanel';
 import { DhaAttachmentSyncPanel } from './DhaAttachmentSyncPanel';
@@ -35,9 +34,9 @@ interface ClaimWorkflowTabProps {
 }
 
 const TERMINAL_STATUSES = new Set(['paid', 'partial', 'cancelled', 'written_off']);
+const INPATIENT_PREFIXES = ['SHA-01', 'SHA-03', 'SHA-07', 'SHA-13', 'SHA-19', 'SHA-20'];
 
 export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: ClaimWorkflowTabProps) {
-  const [consentTokenId, setConsentTokenId] = useState<number | undefined>();
   const [consentTokenStr, setConsentTokenStr] = useState('');
   const [consentCredential, setConsentCredential] = useState<ConsentCredential>({});
   // Intervention code selected during consent — reused by ClaimILMPanel for start_visit
@@ -45,20 +44,24 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
   const [previewAuthorizationCode, setPreviewAuthorizationCode] = useState('');
   const [previewMemberNumber, setPreviewMemberNumber] = useState('');
   const [previewDhaInvoiceNumber, setPreviewDhaInvoiceNumber] = useState('');
+  const [forceConsentRefresh, setForceConsentRefresh] = useState(false);
 
   // Derive patient CR ID for DHA API calls (intervention lookup, etc.)
   const patientCrId = claim.dha_external_id || toCrId(claim.sha_member_number ?? '') || '';
 
-  // Intervention codes already attached to the claim (active only) — used for
-  // combination checks/discharge context, but not as a prerequisite for preauth.
-  const interventionCodes = useMemo(
-    () => (claim.claim_interventions ?? []).filter((i) => i.status === 'active').map((i) => i.intervention_code),
-    [claim.claim_interventions],
-  );
-
   const activeInterventions = useMemo(
     () => (claim.claim_interventions ?? []).filter((i) => i.status === 'active'),
     [claim.claim_interventions],
+  );
+
+  const hasPerDiemInpatientIntervention = useMemo(
+    () => activeInterventions.some((i) => {
+      if (!i.is_per_diem) return false;
+      if (i.access_point === 'IP') return true;
+      const prefix = i.intervention_code.split('-').slice(0, 2).join('-');
+      return INPATIENT_PREFIXES.includes(prefix);
+    }),
+    [activeInterventions],
   );
 
   const facilityLevel = useMemo(() => {
@@ -97,14 +100,18 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
   // The backend's consent_obtained already checks expiry — if it returns false
   // the token has expired and we must re-obtain consent, even if dha_visit_started_at is set.
   const consentObtained = !!consentTokenStr || !!claim.consent_obtained;
+  const needsConsentRefresh = forceConsentRefresh || !consentObtained;
 
   const showConsent =
-    flow.requiresConsent && !!claim.sha_member && !consentObtained && !visitStarted && !isTerminal;
-  const showPreauth = flow.requiresPreauth && !!claim.sha_member && !isTerminal;
+    flow.requiresConsent
+    && !!claim.sha_member
+    && needsConsentRefresh
+    && (!visitStarted || forceConsentRefresh)
+    && !isTerminal;
   const showIlm = !isTerminal;
   const showDischarge =
     flow.supportsInpatientDischarge &&
-    !!claim.admission_date &&
+    (!!claim.admission_date || hasPerDiemInpatientIntervention) &&
     !claim.discharge_date &&
     !isTerminal;
 
@@ -209,46 +216,22 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
         </Card>
       )}
 
-      {/* Consent + Preauth (side by side when both apply) */}
-      {(showConsent || showPreauth) && (
-        <div
-          className={`grid gap-4 ${showConsent && showPreauth ? 'lg:grid-cols-2' : ''}`}
-        >
-          {showConsent && (
-            <ConsentPanel
-              shaMemberId={claim.sha_member!}
-              patientCrId={patientCrId || undefined}
-              encounterId={typeof claim.encounter === 'number' ? claim.encounter : undefined}
-              flow={flow.flow}
-              interventionCodes={consentInterventionCode ? [consentInterventionCode] : undefined}
-              onConsentObtained={(id, token, credential, interventionCode) => {
-                setConsentTokenId(id);
-                setConsentTokenStr(token);
-                setConsentCredential(credential);
-                if (interventionCode) setConsentInterventionCode(interventionCode);
-                onChange();
-              }}
-            />
-          )}
-          {showPreauth && (
-            <PreauthPanel
-              claimId={claim.id}
-              consentTokenId={consentTokenId}
-              diagnosisCodes={
-                claim.primary_diagnosis_code ? [claim.primary_diagnosis_code] : []
-              }
-              isElective={flow.isElectivePreauth}
-              shaMemberId={
-                typeof claim.sha_member === 'number' ? claim.sha_member : undefined
-              }
-              patientCrId={patientCrId || undefined}
-              activeInterventionCodes={interventionCodes}
-              preferredProcedureCode={consentInterventionCode}
-              onProcedureCodeChange={setConsentInterventionCode}
-              onPreauthComplete={onChange}
-            />
-          )}
-        </div>
+      {/* Consent */}
+      {showConsent && (
+        <ConsentPanel
+          shaMemberId={claim.sha_member!}
+          patientCrId={patientCrId || undefined}
+          encounterId={typeof claim.encounter === 'number' ? claim.encounter : undefined}
+          flow={flow.flow}
+          interventionCodes={consentInterventionCode ? [consentInterventionCode] : undefined}
+          onConsentObtained={(_id, token, credential, interventionCode) => {
+            setConsentTokenStr(token);
+            setConsentCredential(credential);
+            setForceConsentRefresh(false);
+            if (interventionCode) setConsentInterventionCode(interventionCode);
+            onChange();
+          }}
+        />
       )}
 
       {/* Auto-suggested interventions from clinical data */}
@@ -274,6 +257,11 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
             if (ctx.authorizationCode) setPreviewAuthorizationCode(ctx.authorizationCode);
             if (ctx.memberNumber) setPreviewMemberNumber(ctx.memberNumber);
             if (ctx.dhaInvoiceNumber) setPreviewDhaInvoiceNumber(ctx.dhaInvoiceNumber);
+          }}
+          onConsentExpired={() => {
+            setConsentTokenStr('');
+            setConsentCredential({});
+            setForceConsentRefresh(true);
           }}
           onChange={onChange}
         />
@@ -305,7 +293,7 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
       )}
 
       {/* Quiet state — nothing to do */}
-      {!showConsent && !showPreauth && !showDischarge && !isDraft && (
+      {!showConsent && !showDischarge && !isDraft && (
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
