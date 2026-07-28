@@ -45,6 +45,7 @@ from hmis.apps.billing.filters import SHAClaimFilter, SHAMemberFilter
 from hmis.apps.billing.models import (
     ConsentToken,
     FacilityBillingConfig,
+    Invoice,
     SHAClaim,
     SHAClaimAttachment,
     SHAClaimItem,
@@ -72,6 +73,7 @@ from hmis.apps.core.kms import get_kms_provider
 from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import SHAPermission, WriteRequiresRolePermission
+from hmis.apps.encounters.models import Encounter
 from hmis.apps.licensing.permissions import requires_feature
 
 logger = logging.getLogger(__name__)
@@ -787,6 +789,128 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             queryset = queryset.filter(updated_at__gte=modified_since)
 
         return queryset
+
+    def create(self, request, *args, **kwargs):
+        """Create a claim with support for minimal encounter/invoice payloads.
+
+        The web app commonly sends `{encounter_id, invoice_id}` only. Hydrate
+        required serializer fields from the linked encounter/facility defaults.
+        """
+        incoming = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+        payload = incoming.dict() if hasattr(incoming, "dict") else dict(incoming)
+
+        encounter_raw = payload.get("encounter") or payload.get("encounter_id")
+        invoice_raw = payload.get("invoice") or payload.get("invoice_id")
+
+        encounter_obj = None
+        if encounter_raw not in (None, ""):
+            try:
+                encounter_id = int(encounter_raw)
+            except (TypeError, ValueError):
+                return Response(
+                    {"encounter": ["Encounter must be an integer."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            encounter_qs = Encounter.objects.select_related("patient", "facility")
+            if getattr(request, "facility", None) is not None:
+                encounter_qs = encounter_qs.filter(facility=request.facility)
+            encounter_obj = get_object_or_404(encounter_qs, pk=encounter_id)
+            payload["encounter"] = encounter_obj.id
+
+            payload.setdefault("patient", encounter_obj.patient_id)
+            payload.setdefault("service_date", str(encounter_obj.encounter_date))
+
+            encounter_type = str(getattr(encounter_obj, "encounter_type", "") or "").strip().upper()
+            is_ipd_encounter = encounter_type == "IPD"
+
+            payload.setdefault(
+                "claim_type",
+                SHAClaim.ClaimType.INPATIENT if is_ipd_encounter else SHAClaim.ClaimType.OUTPATIENT,
+            )
+            if is_ipd_encounter:
+                payload.setdefault("admission_date", str(encounter_obj.encounter_date))
+
+            payload.setdefault("primary_diagnosis_code", "PENDING")
+            payload.setdefault("primary_diagnosis_description", "Awaiting diagnosis")
+
+            if not payload.get("sha_member"):
+                sha_member = (
+                    SHAMember.objects.filter(
+                        patient_id=encounter_obj.patient_id,
+                        status=SHAMember.MembershipStatus.ACTIVE,
+                    )
+                    .order_by("-updated_at", "-id")
+                    .first()
+                )
+                if sha_member is not None:
+                    payload["sha_member"] = sha_member.id
+
+            facility = encounter_obj.facility or getattr(request, "facility", None)
+            if facility is not None:
+                fr_code = resolve_fr_code(facility, allow_settings_fallback=False).value
+                payload.setdefault(
+                    "facility_code",
+                    fr_code or getattr(facility, "mfl_code", ""),
+                )
+                level_raw = str(getattr(facility, "level", "") or "").strip().upper()
+                if level_raw and not level_raw.startswith("L"):
+                    level_raw = f"L{level_raw}"
+                if level_raw:
+                    payload.setdefault("facility_level", level_raw)
+
+            parent_claim_raw = payload.get("parent_claim")
+            is_root_claim = parent_claim_raw in (None, "")
+            if is_root_claim:
+                existing_root = (
+                    SHAClaim.objects.filter(
+                        encounter_id=encounter_obj.id,
+                        parent_claim__isnull=True,
+                    )
+                    .exclude(status=SHAClaim.ClaimStatus.CANCELLED)
+                    .order_by("-created_at")
+                    .first()
+                )
+                if existing_root is not None:
+                    return Response(
+                        {
+                            "encounter": [
+                                (
+                                    "This encounter already has a root SHA claim. "
+                                    "Use the existing claim or create an appeal/resubmission from it."
+                                )
+                            ],
+                            "existing_claim_id": existing_root.id,
+                            "existing_claim_number": existing_root.claim_number,
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+        if invoice_raw not in (None, ""):
+            try:
+                invoice_id = int(invoice_raw)
+            except (TypeError, ValueError):
+                return Response(
+                    {"invoice": ["Invoice must be an integer."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            invoice_qs = Invoice.objects.all()
+            if getattr(request, "facility", None) is not None:
+                invoice_qs = invoice_qs.filter(facility=request.facility)
+            invoice_obj = get_object_or_404(invoice_qs, pk=invoice_id)
+            if encounter_obj is not None and invoice_obj.encounter_id != encounter_obj.id:
+                return Response(
+                    {"invoice": ["Selected invoice is not linked to the selected encounter."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            payload["invoice"] = invoice_obj.id
+
+        serializer = self.get_serializer(data=payload)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     @action(detail=True, methods=["post"], url_path="validate")
     def validate_claim(self, request, pk=None):
@@ -5592,9 +5716,11 @@ def _persist_consent_interventions(*, patient, facility, intervention_codes: lis
     """Persist interventions from consent flow to the patient's draft claim.
 
     Called after consent start_visit succeeds. Finds the most recent draft
-    SHA claim for this patient + facility + today and attaches the
-    intervention codes so the claim immediately reflects active interventions
-    without waiting for a second DHA call from the ILM panel.
+    SHA claim for this patient + facility + today and attaches intervention
+    codes so the claim immediately reflects active interventions.
+
+    This helper intentionally does not hydrate tariff/doc metadata from local
+    fallback catalogs. Authoritative metadata is populated from DHA ILM calls.
 
     Also stamps dha_visit_started_at on the claim so the frontend's
     ClaimILMPanel knows the visit was already started and avoids a
@@ -5622,24 +5748,14 @@ def _persist_consent_interventions(*, patient, facility, intervention_codes: lis
         return
 
     for code in intervention_codes:
-        from hmis.apps.billing.services.intervention_fallback import (
-            get_local_intervention_claim_defaults,
-        )
-
-        facility_level = getattr(getattr(claim, "facility", None), "level", None) or getattr(
-            claim,
-            "facility_level",
-            None,
-        )
-        defaults = {
-            "status": "active",
-            **get_local_intervention_claim_defaults(code, facility_level=facility_level),
-        }
-        SHAClaimIntervention.objects.update_or_create(
+        intervention, _ = SHAClaimIntervention.objects.get_or_create(
             claim=claim,
             intervention_code=code,
-            defaults=defaults,
+            defaults={"status": "active"},
         )
+        if intervention.status != SHAClaimIntervention.InterventionStatus.ACTIVE:
+            intervention.status = SHAClaimIntervention.InterventionStatus.ACTIVE
+            intervention.save(update_fields=["status", "updated_at"])
 
     # Stamp the claim so the frontend knows a visit was started via consent
     # and the ILM panel won't try a second (duplicate) DHA start_visit.

@@ -133,8 +133,6 @@ export function mapClaimInterventionToOption(
     requiredPreauthDocumentTypes: getStringArray(
       'required_preauth_document_types',
       'requiredPreauthDocumentTypes',
-      'required_document_types',
-      'requiredDocumentTypes',
     ),
   };
 }

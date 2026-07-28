@@ -24,6 +24,7 @@ two coexist while the migration to ILM completes.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -40,6 +41,7 @@ logger = logging.getLogger(__name__)
 
 # Values the DHA API accepts for practitioner_regulation_body
 _DHA_VALID_REGULATORS = frozenset({"KMPDC", "COC", "PPB", "NCK", "KMLTTB", "KNDI"})
+_CR_NUMBER_RE = re.compile(r"^CR\d+-\d$")
 
 
 def _normalise_regulator(raw: str, default: str = "KMPDC") -> str:
@@ -910,75 +912,318 @@ class IlmClaimService:
     def _persist_intervention(
         self, claim: Any, intervention_code: str, result: IlmClaimResult
     ) -> None:
-        """Persist intervention data from HIE response to SHAClaimIntervention."""
+        """Persist intervention data from HIE response to SHAClaimIntervention.
+
+        The DHA start-visit payload is frequently sparse and may omit
+        intervention-level metadata (document types, tariffs, routing flags).
+        This method must therefore be non-destructive: never clear existing
+        metadata when keys are absent.
+        """
         if result.status_code >= 400:
             return
         try:
             from hmis.apps.billing.models import SHAClaimIntervention
+            from hmis.apps.billing.services.ilm_registries_service import IlmRegistriesService
 
             payload = result.payload if isinstance(result.payload, dict) else {}
-            # Extract document_types from response (DHA returns this per intervention)
-            document_types = payload.get("document_types") or []
-            intervention_name = payload.get("intervention_name") or payload.get("name") or ""
-            dha_id = payload.get("id") or payload.get("intervention_id") or ""
-            tariff_amount = payload.get("tariff_amount") or payload.get("overall_tariff")
             benefit_code = intervention_code.rsplit("-", 1)[0] if "-" in intervention_code else ""
 
-            # DHA routing flags (from /api/v1/patients/benefits/interventions)
-            payment_mechanism = (
-                payload.get("paymentMechanism") or payload.get("payment_mechanism") or ""
-            )
-            access_point = payload.get("accessPoint") or payload.get("access_point") or ""
-            needs_preauth = bool(payload.get("needsPreauth", False))
-            needs_manual = bool(payload.get("needsManualPreauthApproval", False))
-            fund = payload.get("fund") or ""
-            intervention_fund = (
-                payload.get("interventionFund") or payload.get("intervention_fund") or ""
-            )
-            supported_scheme = (
-                payload.get("supportedScheme") or payload.get("supported_scheme") or ""
-            )
-            schemes = payload.get("schemes") if isinstance(payload.get("schemes"), list) else []
-
-            SHAClaimIntervention.objects.update_or_create(
+            intervention, _ = SHAClaimIntervention.objects.get_or_create(
                 claim=claim,
                 intervention_code=intervention_code,
                 defaults={
-                    "intervention_name": str(intervention_name)[:255],
+                    "status": SHAClaimIntervention.InterventionStatus.ACTIVE,
                     "benefit_code": str(benefit_code)[:10],
-                    "status": "active",
-                    "required_document_types": list(document_types),
-                    "dha_intervention_id": str(dha_id)[:64],
-                    "tariff_amount": tariff_amount,
-                    # Routing flags
-                    "payment_mechanism": str(payment_mechanism)[:20],
-                    "access_point": str(access_point)[:4],
-                    "needs_preauth": needs_preauth,
-                    "needs_manual_preauth_approval": needs_manual,
-                    "is_surgical_preauth": bool(payload.get("isSurgicalPreauth", False)),
-                    "is_renal_preauth": bool(payload.get("isRenalPreauth", False)),
-                    "is_oncology_preauth": bool(payload.get("isOncologyPreauth", False)),
-                    "is_imaging_preauth": bool(payload.get("isImagingPreauth", False)),
-                    "is_optical_preauth": bool(payload.get("isOpticalPreauth", False)),
-                    "fund": str(fund)[:128],
-                    "intervention_fund": str(intervention_fund)[:128],
-                    "supported_scheme": str(supported_scheme)[:128],
-                    "schemes": [str(value).strip() for value in schemes if str(value).strip()],
-                    "intervention_payload": payload,
-                    # Level tariffs
-                    "level2_tariff": payload.get("level2Tariff"),
-                    "level3_tariff": payload.get("level3Tariff"),
-                    "level4_tariff": payload.get("level4Tariff"),
-                    "level5_tariff": payload.get("level5Tariff"),
-                    "level6_tariff": payload.get("level6Tariff"),
                 },
             )
+
+            updates = self._build_intervention_updates_from_payload(
+                intervention=intervention,
+                payload=payload,
+                prefer_existing=False,
+            )
+            if updates:
+                for key, value in updates.items():
+                    setattr(intervention, key, value)
+                intervention.save(update_fields=list(updates.keys()) + ["updated_at"])
+
+            if self._needs_intervention_enrichment(intervention):
+                registry_payload = self._resolve_intervention_payload_from_registries(
+                    claim=claim,
+                    intervention_code=intervention_code,
+                    service=IlmRegistriesService(),
+                )
+                if registry_payload:
+                    fill_updates = self._build_intervention_updates_from_payload(
+                        intervention=intervention,
+                        payload=registry_payload,
+                        prefer_existing=True,
+                    )
+                    if fill_updates:
+                        for key, value in fill_updates.items():
+                            setattr(intervention, key, value)
+                        intervention.save(update_fields=list(fill_updates.keys()) + ["updated_at"])
         except Exception:
             logger.exception(
                 "Failed to persist intervention %s for claim %s",
                 intervention_code,
                 getattr(claim, "pk", None),
             )
+
+    def _build_intervention_updates_from_payload(
+        self,
+        *,
+        intervention: Any,
+        payload: dict[str, Any],
+        prefer_existing: bool,
+    ) -> dict[str, Any]:
+        updates: dict[str, Any] = {}
+
+        if getattr(intervention, "status", "") != "active":
+            updates["status"] = "active"
+
+        benefit_code = str(getattr(intervention, "benefit_code", "") or "").strip()
+        if not benefit_code:
+            derived = str(getattr(intervention, "intervention_code", "") or "")
+            derived = derived.rsplit("-", 1)[0] if "-" in derived else ""
+            if derived:
+                updates["benefit_code"] = derived[:10]
+
+        def _set_if_present(field: str, value: Any) -> None:
+            if value is None:
+                return
+            if isinstance(value, str):
+                value = value.strip()
+                if not value:
+                    return
+            current = getattr(intervention, field, None)
+            if prefer_existing and current not in (None, "", [], {}):
+                return
+            if current != value:
+                updates[field] = value
+
+        _set_if_present(
+            "intervention_name",
+            str(payload.get("intervention_name") or payload.get("name") or "")[:255],
+        )
+        _set_if_present(
+            "dha_intervention_id",
+            str(payload.get("id") or payload.get("intervention_id") or "")[:64],
+        )
+        _set_if_present(
+            "payment_mechanism",
+            str(payload.get("paymentMechanism") or payload.get("payment_mechanism") or "")[:20],
+        )
+        _set_if_present(
+            "access_point",
+            str(payload.get("accessPoint") or payload.get("access_point") or "")[:4],
+        )
+        _set_if_present("fund", str(payload.get("fund") or "")[:128])
+        _set_if_present(
+            "intervention_fund",
+            str(payload.get("interventionFund") or payload.get("intervention_fund") or "")[:128],
+        )
+        _set_if_present(
+            "supported_scheme",
+            str(payload.get("supportedScheme") or payload.get("supported_scheme") or "")[:128],
+        )
+
+        schemes = payload.get("schemes")
+        if isinstance(schemes, list):
+            normalized_schemes = [str(value).strip() for value in schemes if str(value).strip()]
+            if normalized_schemes:
+                _set_if_present("schemes", normalized_schemes)
+
+        if payload:
+            _set_if_present("intervention_payload", payload)
+
+        # Do not erase required docs when the response omits the field.
+        docs_present = any(
+            key in payload
+            for key in (
+                "document_types",
+                "required_document_types",
+                "applicable_document_types",
+                "applicableDocumentTypes",
+            )
+        )
+        if docs_present:
+            docs: list[str] = []
+            for key in (
+                "required_document_types",
+                "applicable_document_types",
+                "applicableDocumentTypes",
+                "document_types",
+            ):
+                candidate = payload.get(key)
+                if not isinstance(candidate, list):
+                    continue
+                for item in candidate:
+                    value = str(item or "").strip().upper()
+                    if value and value not in docs:
+                        docs.append(value)
+            current_docs = list(getattr(intervention, "required_document_types", []) or [])
+            if (not prefer_existing or not current_docs) and current_docs != docs:
+                updates["required_document_types"] = docs
+
+        tariff_present = any(
+            key in payload
+            for key in ("tariff_amount", "tariffAmount", "overall_tariff", "overallTariff")
+        )
+        if tariff_present:
+            tariff_amount = (
+                payload.get("tariff_amount")
+                or payload.get("tariffAmount")
+                or payload.get("overall_tariff")
+                or payload.get("overallTariff")
+            )
+            if tariff_amount not in (None, ""):
+                _set_if_present("tariff_amount", tariff_amount)
+
+        for level_field, payload_key in (
+            ("level2_tariff", "level2Tariff"),
+            ("level3_tariff", "level3Tariff"),
+            ("level4_tariff", "level4Tariff"),
+            ("level5_tariff", "level5Tariff"),
+            ("level6_tariff", "level6Tariff"),
+        ):
+            if payload_key in payload and payload.get(payload_key) not in (None, ""):
+                _set_if_present(level_field, payload.get(payload_key))
+
+        bool_fields = (
+            ("needs_preauth", "needsPreauth"),
+            ("needs_manual_preauth_approval", "needsManualPreauthApproval"),
+            ("is_surgical_preauth", "isSurgicalPreauth"),
+            ("is_renal_preauth", "isRenalPreauth"),
+            ("is_oncology_preauth", "isOncologyPreauth"),
+            ("is_imaging_preauth", "isImagingPreauth"),
+            ("is_optical_preauth", "isOpticalPreauth"),
+        )
+        for bool_field, key in bool_fields:
+            if key in payload:
+                value = bool(payload.get(key))
+                current = bool(getattr(intervention, bool_field))
+                if (not prefer_existing or not current) and current != value:
+                    updates[bool_field] = value
+
+        return updates
+
+    @staticmethod
+    def _needs_intervention_enrichment(intervention: Any) -> bool:
+        docs_missing = not list(getattr(intervention, "required_document_types", []) or [])
+        tariff_missing = getattr(intervention, "tariff_amount", None) is None and all(
+            getattr(intervention, field, None) is None
+            for field in (
+                "level2_tariff",
+                "level3_tariff",
+                "level4_tariff",
+                "level5_tariff",
+                "level6_tariff",
+            )
+        )
+        return docs_missing or tariff_missing
+
+    def _resolve_intervention_payload_from_registries(
+        self,
+        *,
+        claim: Any,
+        intervention_code: str,
+        service: Any,
+    ) -> dict[str, Any] | None:
+        patient_id = self._resolve_patient_cr_number(claim)
+        if not patient_id:
+            return None
+
+        parent_benefit_code = (
+            intervention_code.rsplit("-", 1)[0] if "-" in intervention_code else ""
+        )
+        if not parent_benefit_code:
+            return None
+
+        try:
+            sub_result = service.fetch_sub_benefits(
+                patient_id=patient_id,
+                parent_benefit_code=parent_benefit_code,
+                patient=getattr(claim, "patient", None),
+                sha_member=getattr(claim, "sha_member", None),
+                facility=getattr(claim, "facility", None),
+                user=None,
+            )
+            sub_codes: list[str] = []
+            for item in self._extract_ilm_results(getattr(sub_result, "payload", None)):
+                code = str(
+                    item.get("subBenefitCode")
+                    or item.get("sub_benefit_code")
+                    or item.get("code")
+                    or ""
+                ).strip()
+                if code and code not in sub_codes:
+                    sub_codes.append(code)
+
+            for sub_code in sub_codes[:25]:
+                interventions_result = service.fetch_benefit_interventions(
+                    patient_id=patient_id,
+                    sub_benefit_code=sub_code,
+                    patient=getattr(claim, "patient", None),
+                    sha_member=getattr(claim, "sha_member", None),
+                    facility=getattr(claim, "facility", None),
+                    user=None,
+                )
+                for payload in self._extract_ilm_results(
+                    getattr(interventions_result, "payload", None)
+                ):
+                    code = str(
+                        payload.get("code")
+                        or payload.get("interventionCode")
+                        or payload.get("intervention_code")
+                        or ""
+                    ).strip()
+                    if code == intervention_code:
+                        return payload
+        except Exception:
+            logger.warning(
+                "Intervention metadata enrichment failed (fail-open) for claim=%s code=%s",
+                getattr(claim, "pk", None),
+                intervention_code,
+                exc_info=True,
+            )
+        return None
+
+    @staticmethod
+    def _extract_ilm_results(payload: Any) -> list[dict[str, Any]]:
+        queue: list[Any] = [payload]
+        while queue:
+            current = queue.pop(0)
+            if isinstance(current, list):
+                return [item for item in current if isinstance(item, dict)]
+            if not isinstance(current, dict):
+                continue
+            for key in ("results", "data", "interventions", "benefits", "items"):
+                value = current.get(key)
+                if isinstance(value, list):
+                    return [item for item in value if isinstance(item, dict)]
+                if isinstance(value, dict):
+                    queue.append(value)
+        return []
+
+    @staticmethod
+    def _resolve_patient_cr_number(claim: Any) -> str:
+        patient_cr = (
+            str(getattr(getattr(claim, "patient", None), "cr_number", "") or "").strip().upper()
+        )
+        if _CR_NUMBER_RE.match(patient_cr):
+            return patient_cr
+
+        sha_number = (
+            str(getattr(getattr(claim, "sha_member", None), "sha_number", "") or "").strip().upper()
+        )
+        if sha_number.startswith("SHA-"):
+            candidate = f"CR{sha_number[4:]}"
+            if _CR_NUMBER_RE.match(candidate):
+                return candidate
+        if _CR_NUMBER_RE.match(sha_number):
+            return sha_number
+        return ""
 
     def _update_intervention_status(
         self, claim: Any, intervention_code: str, new_status: str

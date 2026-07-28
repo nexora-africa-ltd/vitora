@@ -9,12 +9,12 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from django.utils import timezone
 
-from hmis.apps.billing.models import ConsentToken, SHAClaim, SHAMember
+from hmis.apps.billing.models import ConsentToken, SHAClaim, SHAClaimIntervention, SHAMember
 from hmis.apps.billing.services.consent_token_resolver import (
     ConsentTokenExpiredError,
     ConsentTokenNotFoundError,
@@ -297,6 +297,67 @@ class TestInterventions:
     def test_retire_intervention(self, service, mock_client, claim, consent):
         service.retire_intervention(claim, "SHA-12-001")
         assert mock_client.post.call_args[0][0] == INTERVENTION_RETIRE_PATH
+
+    def test_sparse_payload_does_not_erase_existing_metadata(self, service, claim):
+        intervention = SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-06-001",
+            status="active",
+            required_document_types=["MEDICAL_REPORT"],
+            tariff_amount=Decimal("900.00"),
+            intervention_name="Existing",
+        )
+
+        result = service.start_visit(
+            claim,
+            StartVisitParams(
+                otp="123456",
+                patient_id="CR-001",
+                intervention_codes=["SHA-06-001"],
+                service_type="OUTPATIENT",
+            ),
+        )
+        assert result.status_code == 200
+
+        intervention.refresh_from_db()
+        assert intervention.required_document_types == ["MEDICAL_REPORT"]
+        assert intervention.tariff_amount == Decimal("900.00")
+        assert intervention.intervention_name == "Existing"
+
+    def test_enriches_missing_metadata_from_registry_fail_open(self, service, claim):
+        claim.patient.cr_number = "CR1234567890123-1"
+        claim.patient.save(update_fields=["cr_number"])
+
+        with patch("hmis.apps.billing.services.ilm_registries_service.IlmRegistriesService") as M:
+            registry = M.return_value
+            registry.fetch_sub_benefits.return_value = MagicMock(
+                payload={"results": [{"sub_benefit_code": "SHA-06-SC-01"}]}
+            )
+            registry.fetch_benefit_interventions.return_value = MagicMock(
+                payload={
+                    "results": [
+                        {
+                            "code": "SHA-06-001",
+                            "document_types": ["MEDICAL_REPORT", "LAB_REPORT"],
+                            "overallTariff": "777.00",
+                        }
+                    ]
+                }
+            )
+
+            service.start_visit(
+                claim,
+                StartVisitParams(
+                    otp="123456",
+                    patient_id="CR-001",
+                    intervention_codes=["SHA-06-001"],
+                    service_type="OUTPATIENT",
+                ),
+            )
+
+        intervention = SHAClaimIntervention.objects.get(claim=claim, intervention_code="SHA-06-001")
+        assert intervention.required_document_types == ["MEDICAL_REPORT", "LAB_REPORT"]
+        assert intervention.tariff_amount == Decimal("777.00")
 
 
 @pytest.mark.django_db

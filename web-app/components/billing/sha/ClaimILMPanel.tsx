@@ -1001,8 +1001,8 @@ export function ClaimILMPanel({
         patient_id: patientCrId,
         intervention_codes: codes,
         service_type: serviceType,
-        ...(serviceType === 'INPATIENT' && claim.admission_date
-          ? { admission_date: claim.admission_date }
+        ...(serviceType === 'INPATIENT'
+          ? { admission_date: claim.admission_date || claim.service_date }
           : {}),
         ...(hasPractitioner ? practitionerFields : {}),
       }),

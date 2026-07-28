@@ -462,14 +462,18 @@ class SHAClaimAutomationService:
                 override_tariff = (
                     Decimal(intervention["tariff"]) if intervention.get("tariff") else None
                 )
+                create_values = {
+                    **defaults,
+                    "intervention_name": intervention.get("name", "")
+                    or defaults.get("intervention_name", ""),
+                    "tariff_amount": override_tariff
+                    if override_tariff is not None
+                    else defaults.get("tariff_amount"),
+                }
                 SHAClaimIntervention.objects.create(
                     claim=claim,
                     intervention_code=intervention["code"],
-                    **defaults,
-                    intervention_name=intervention.get("name", "") or defaults["intervention_name"],
-                    tariff_amount=override_tariff
-                    if override_tariff is not None
-                    else defaults["tariff_amount"],
+                    **create_values,
                 )
                 attached += 1
 

@@ -826,8 +826,91 @@ class TestEligibilityVerificationAPI:
 class TestClaimCreation:
     """Test claim creation from encounter."""
 
+    @staticmethod
+    def _clear_existing_claims_for_encounter(encounter_id: int):
+        from hmis.apps.billing.models import SHAClaim
+
+        SHAClaim.objects.filter(encounter_id=encounter_id).delete()
+
+    def test_create_claim_from_minimal_payload(
+        self, sha_client, sample_sha_member, sample_encounter
+    ):
+        """Should accept legacy payload with encounter_id/invoice_id and hydrate defaults."""
+        from hmis.apps.billing.models import Invoice
+
+        self._clear_existing_claims_for_encounter(sample_encounter.id)
+
+        invoice = Invoice.objects.create(
+            patient=sample_sha_member.patient,
+            encounter=sample_encounter,
+            invoice_date=date.today(),
+            due_date=date.today(),
+            status=Invoice.Status.DRAFT,
+            payment_type=Invoice.PaymentType.CASH,
+            created_by=sample_sha_member.created_by,
+            facility=sample_encounter.facility,
+            organization=sample_encounter.organization,
+        )
+
+        response = sha_client.post(
+            "/api/billing/claims/",
+            {
+                "encounter_id": sample_encounter.id,
+                "invoice_id": invoice.id,
+            },
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["patient"] == sample_sha_member.patient.id
+        assert response.data["encounter"] == sample_encounter.id
+        assert response.data["invoice"] == invoice.id
+        assert response.data["claim_type"] == "outpatient"
+        assert response.data["primary_diagnosis_code"] == "PENDING"
+
+    def test_create_claim_from_minimal_payload_ipd_sets_admission_date(
+        self, sha_client, sample_sha_member, sample_encounter
+    ):
+        """IPD minimal payload should infer inpatient claim_type + admission_date."""
+        from hmis.apps.billing.models import Invoice
+        from hmis.apps.encounters.models import Encounter
+
+        ipd_encounter = Encounter.objects.create(
+            patient=sample_sha_member.patient,
+            encounter_type="IPD",
+            chief_complaint="Requires admission",
+            organization=sample_encounter.organization,
+            facility=sample_encounter.facility,
+            encounter_date=date.today(),
+        )
+        self._clear_existing_claims_for_encounter(ipd_encounter.id)
+
+        invoice = Invoice.objects.create(
+            patient=sample_sha_member.patient,
+            encounter=ipd_encounter,
+            invoice_date=date.today(),
+            due_date=date.today(),
+            status=Invoice.Status.DRAFT,
+            payment_type=Invoice.PaymentType.CASH,
+            created_by=sample_sha_member.created_by,
+            facility=ipd_encounter.facility,
+            organization=ipd_encounter.organization,
+        )
+
+        response = sha_client.post(
+            "/api/billing/claims/",
+            {
+                "encounter_id": ipd_encounter.id,
+                "invoice_id": invoice.id,
+            },
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["claim_type"] == "inpatient"
+        assert response.data["admission_date"] == date.today().isoformat()
+
     def test_create_claim_from_encounter(self, sha_client, sample_sha_member, sample_encounter):
         """Should create claim from encounter."""
+        self._clear_existing_claims_for_encounter(sample_encounter.id)
         data = {
             "patient": sample_sha_member.patient.id,
             "sha_member": sample_sha_member.id,
@@ -849,7 +932,20 @@ class TestClaimCreation:
     def test_create_claim_auto_generates_claim_number(
         self, sha_client, sample_sha_member, sample_encounter
     ):
-        """Should auto-generate unique claim number."""
+        """Should auto-generate unique claim number across encounters."""
+        from hmis.apps.encounters.models import Encounter
+
+        self._clear_existing_claims_for_encounter(sample_encounter.id)
+
+        second_encounter = Encounter.objects.create(
+            patient=sample_sha_member.patient,
+            encounter_type="OPD",
+            chief_complaint="Follow-up review",
+            organization=sample_encounter.organization,
+            facility=sample_encounter.facility,
+        )
+        self._clear_existing_claims_for_encounter(second_encounter.id)
+
         data = {
             "patient": sample_sha_member.patient.id,
             "sha_member": sample_sha_member.id,
@@ -863,7 +959,13 @@ class TestClaimCreation:
         }
 
         response1 = sha_client.post("/api/sha/claims/", data)
-        response2 = sha_client.post("/api/sha/claims/", data)
+        response2 = sha_client.post(
+            "/api/sha/claims/",
+            {
+                **data,
+                "encounter": second_encounter.id,
+            },
+        )
 
         assert response1.status_code == status.HTTP_201_CREATED
         assert response2.status_code == status.HTTP_201_CREATED
@@ -873,6 +975,7 @@ class TestClaimCreation:
         self, sha_client, sample_sha_member, sample_encounter
     ):
         """Should require admission date for inpatient claims."""
+        self._clear_existing_claims_for_encounter(sample_encounter.id)
         data = {
             "patient": sample_sha_member.patient.id,
             "sha_member": sample_sha_member.id,
@@ -889,6 +992,47 @@ class TestClaimCreation:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "admission_date" in str(response.data).lower()
+
+    def test_blocks_second_root_claim_for_same_encounter(
+        self, sha_client, sample_sha_member, sample_encounter
+    ):
+        """Should block creating a second root claim for one encounter."""
+        from hmis.apps.billing.models import SHAClaim
+
+        self._clear_existing_claims_for_encounter(sample_encounter.id)
+        existing = SHAClaim.objects.create(
+            patient=sample_sha_member.patient,
+            sha_member=sample_sha_member,
+            encounter=sample_encounter,
+            claim_type="outpatient",
+            service_date=date.today(),
+            primary_diagnosis_code="J06.9",
+            primary_diagnosis_description="Acute upper respiratory infection",
+            facility_code="TEST-001",
+            facility_level="L3",
+            created_by=sample_sha_member.created_by,
+            facility=sample_encounter.facility,
+            organization=sample_encounter.organization,
+        )
+
+        response = sha_client.post(
+            "/api/sha/claims/",
+            {
+                "patient": sample_sha_member.patient.id,
+                "sha_member": sample_sha_member.id,
+                "encounter": sample_encounter.id,
+                "claim_type": "outpatient",
+                "service_date": date.today().isoformat(),
+                "primary_diagnosis_code": "J06.9",
+                "primary_diagnosis_description": "Acute upper respiratory infection",
+                "facility_code": "TEST-001",
+                "facility_level": "L3",
+            },
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "encounter" in response.data
+        assert response.data.get("existing_claim_id") == existing.id
 
 
 # =============================================================================

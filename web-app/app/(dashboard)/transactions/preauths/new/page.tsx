@@ -63,7 +63,7 @@ import { ConsentPanel } from '@/components/billing/sha/ConsentPanel';
 import { StaffSearchCombobox } from '@/components/clinics/staff-search-combobox';
 import { DiagnosisCodeInput, emptyDiagnosisCodeValue, type DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import { cn } from '@/lib/utils';
-import { shaApi } from '@/lib/api/sha';
+import { shaApi, type ClaimAttachment } from '@/lib/api/sha';
 import { encountersApi } from '@/lib/api/encounters';
 import { laboratoryApi } from '@/lib/api/laboratory';
 import { imagingApi } from '@/lib/api/imaging';
@@ -73,6 +73,7 @@ import {
   mapClaimInterventionToOption,
 } from '@/lib/sha/preauth-interventions';
 import { extractDHAErrorMessage } from '@/lib/sha/error-parser';
+import { toCrId } from '@/lib/sha/ilm-parsers';
 import { usePatientEncounters } from '@/lib/hooks/use-patients';
 import { useFacility } from '@/lib/context/facility-context';
 
@@ -176,6 +177,32 @@ function normalizeFundLabel(value: unknown): string {
   return upper;
 }
 
+function extractIlmResults(payload: unknown): Array<Record<string, unknown>> {
+  const queue: unknown[] = [payload];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (Array.isArray(current)) {
+      return current.filter(
+        (entry): entry is Record<string, unknown> => !!entry && typeof entry === 'object'
+      );
+    }
+    if (!current || typeof current !== 'object') continue;
+    const record = current as Record<string, unknown>;
+    for (const key of ['results', 'data', 'interventions', 'benefits', 'items']) {
+      const value = record[key];
+      if (Array.isArray(value)) {
+        return value.filter(
+          (entry): entry is Record<string, unknown> => !!entry && typeof entry === 'object'
+        );
+      }
+      if (value && typeof value === 'object') {
+        queue.push(value);
+      }
+    }
+  }
+  return [];
+}
+
 function toPreauthAttachmentDocumentType(doc: DraftDocument): string {
   const required = String(doc.requiredDocType || '').trim().toUpperCase();
   if (required === 'IMAGING_RESULT') return 'RADIOLOGY_REQUEST';
@@ -216,6 +243,35 @@ interface DraftDocument {
   claimFileUrl?: string;
   fileSizeBytes?: number;
   mimeType?: string;
+}
+
+function buildDocumentIdentity(name: string, size: number, mimeType: string): string {
+  const normalizedName = String(name || '').trim().toLowerCase();
+  const normalizedSize = Number.isFinite(size) ? size : 0;
+  const normalizedMime = String(mimeType || '').trim().toLowerCase();
+  return `${normalizedName}::${normalizedSize}::${normalizedMime}`;
+}
+
+function documentIdentityFromFile(file: File): string {
+  return buildDocumentIdentity(file.name, file.size, file.type);
+}
+
+function documentIdentityFromDraft(doc: DraftDocument): string {
+  return buildDocumentIdentity(
+    doc.file?.name || doc.displayName,
+    doc.fileSizeBytes ?? doc.file?.size ?? 0,
+    doc.mimeType ?? doc.file?.type ?? '',
+  );
+}
+
+function claimAttachmentSignature(attachment: ClaimAttachment): string {
+  const checksum = String(attachment.checksum || '').trim().toLowerCase();
+  if (checksum) return `sha256:${checksum}`;
+  return buildDocumentIdentity(
+    String(attachment.original_filename || attachment.name || '').trim(),
+    Number(attachment.file_size || 0),
+    String(attachment.mime_type || ''),
+  );
 }
 
 const PREAUTH_DOC_TO_ATTACHMENT_TYPE: Record<string, string> = {
@@ -560,6 +616,13 @@ export default function NewPreauthPage() {
     staleTime: 30_000,
   });
 
+  const { data: selectedClaimAttachments = [], isLoading: selectedClaimAttachmentsLoading } = useQuery({
+    queryKey: ['preauth-context-claim-attachments', selectedClaimIdNumber],
+    queryFn: () => shaApi.getClaimAttachments(selectedClaimIdNumber!),
+    enabled: selectedClaimIdNumber != null,
+    staleTime: 30_000,
+  });
+
   const { data: selectedEncounterRecord } = useQuery({
     queryKey: ['preauth-encounter-record', selectedEncounterIdNumber],
     queryFn: () => encountersApi.get(selectedEncounterIdNumber!),
@@ -580,6 +643,30 @@ export default function NewPreauthPage() {
   }, [selectedClaim]);
 
   const effectiveShaMemberId = shaMemberId ?? claimLinkedShaMemberId;
+
+  const patientCrId = useMemo(() => {
+    const claim = selectedClaim as unknown as Record<string, unknown> | null;
+    const member = (eligibility as unknown as { member?: Record<string, unknown> } | null)?.member || null;
+    const candidates = [
+      claim?.patient_cr_number,
+      claim?.patientCrNumber,
+      claim?.sha_member_number,
+      claim?.shaMemberNumber,
+      claim?.member_number,
+      claim?.memberNumber,
+      member?.cr_number,
+      member?.crNumber,
+      member?.sha_number,
+      member?.shaNumber,
+    ];
+    for (const candidate of candidates) {
+      const value = typeof candidate === 'string' ? candidate.trim() : '';
+      if (!value) continue;
+      const normalized = toCrId(value);
+      if (/^CR\d+-\d$/i.test(normalized)) return normalized.toUpperCase();
+    }
+    return '';
+  }, [selectedClaim, eligibility]);
 
   const { data: latestClaimConsent, error: latestClaimConsentError } = useQuery({
     queryKey: [
@@ -906,9 +993,55 @@ export default function NewPreauthPage() {
     isFetching: selectedInterventionRecordLoading,
     error: selectedInterventionRecordError,
   } = useQuery({
-    queryKey: ['preauth-intervention-record', interventionCode, selectedClaimIdNumber],
+    queryKey: [
+      'preauth-intervention-record',
+      interventionCode,
+      selectedClaimIdNumber,
+      patientCrId,
+      patientId,
+      effectiveShaMemberId,
+    ],
     queryFn: async () => {
       if (!interventionCode) return null;
+
+      if (patientCrId) {
+        const parentBenefitCode = interventionCode.includes('-')
+          ? interventionCode.split('-').slice(0, 2).join('-')
+          : '';
+        if (parentBenefitCode) {
+          try {
+            const subBenefits = await shaApi.ilmSubBenefits({
+              patient_id: patientCrId,
+              parent_benefit_code: parentBenefitCode,
+              ...(patientId ? { patient_pk: patientId } : {}),
+              ...(effectiveShaMemberId ? { sha_member_id: effectiveShaMemberId } : {}),
+            });
+            const subBenefitCodes = extractIlmResults(subBenefits.data)
+              .map((item) => String(item.subBenefitCode || item.sub_benefit_code || item.code || '').trim())
+              .filter(Boolean);
+
+            const claimType = String((selectedClaim as { claim_type?: string } | null)?.claim_type || '').toLowerCase();
+            const serviceType = claimType === 'inpatient' ? 'INPATIENT' : 'OUTPATIENT';
+
+            for (const subBenefitCode of subBenefitCodes.slice(0, 25)) {
+              const interventions = await shaApi.ilmBenefitInterventions({
+                patient_id: patientCrId,
+                sub_benefit_code: subBenefitCode,
+                ...(patientId ? { patient_pk: patientId } : {}),
+                ...(effectiveShaMemberId ? { sha_member_id: effectiveShaMemberId } : {}),
+                service_type: serviceType,
+              });
+              const match = extractIlmResults(interventions.data).find((item) => {
+                const code = String(item.code || item.interventionCode || item.intervention_code || '').trim();
+                return code === interventionCode;
+              });
+              if (match) return match;
+            }
+          } catch {
+            // Fall through to terminology lookup for non-doc metadata fallback.
+          }
+        }
+      }
 
       const selectedClaimRecord = selectedClaim as unknown as Record<string, unknown> | null;
       const facilityRecord = selectedClaimRecord?.facility;
@@ -987,15 +1120,10 @@ export default function NewPreauthPage() {
       ...(Array.isArray(selectedFromBenefits?.required_preauth_document_types)
         ? selectedFromBenefits.required_preauth_document_types
         : []),
-      ...(Array.isArray(selectedFromBenefits?.required_document_types)
-        ? selectedFromBenefits.required_document_types
-        : []),
       ...(Array.isArray(raw?.requiredPreauthDocumentTypes) ? raw.requiredPreauthDocumentTypes : []),
       ...(Array.isArray(raw?.required_preauth_document_types) ? raw.required_preauth_document_types : []),
-      ...(Array.isArray(raw?.required_document_types) ? raw.required_document_types : []),
       ...(Array.isArray(extras?.requiredPreauthDocumentTypes) ? extras.requiredPreauthDocumentTypes : []),
       ...(Array.isArray(extras?.required_preauth_document_types) ? extras.required_preauth_document_types : []),
-      ...(Array.isArray(extras?.required_document_types) ? extras.required_document_types : []),
     ];
     return Array.from(
       new Set(
@@ -1161,6 +1289,82 @@ export default function NewPreauthPage() {
     }
     return grouped;
   }, [documents, resolveRequiredDocTypeForDocument]);
+
+  const claimAttachmentById = useMemo(() => {
+    const map = new Map<number, ClaimAttachment>();
+    selectedClaimAttachments.forEach((attachment) => {
+      map.set(attachment.id, attachment);
+    });
+    return map;
+  }, [selectedClaimAttachments]);
+
+  const explicitClaimAttachmentIds = useMemo(() => {
+    const unique = new Set<number>();
+    documents.forEach((doc) => {
+      if (typeof doc.claimAttachmentId === 'number') unique.add(doc.claimAttachmentId);
+    });
+    return Array.from(unique);
+  }, [documents]);
+
+  const staleAttachmentRefs = useMemo(() => {
+    if (selectedClaimAttachmentsLoading) return [];
+    return explicitClaimAttachmentIds.filter((id) => !claimAttachmentById.has(id));
+  }, [claimAttachmentById, explicitClaimAttachmentIds, selectedClaimAttachmentsLoading]);
+
+  const resolvedPreauthAttachmentSummary = useMemo(() => {
+    const signatures = new Set<string>();
+    let fromClaim = 0;
+    let fromUploads = 0;
+    let dedupedOut = 0;
+
+    explicitClaimAttachmentIds.forEach((attachmentId) => {
+      const attachment = claimAttachmentById.get(attachmentId);
+      if (!attachment) return;
+      const signature = claimAttachmentSignature(attachment);
+      if (signatures.has(signature)) {
+        dedupedOut += 1;
+      } else {
+        signatures.add(signature);
+        fromClaim += 1;
+      }
+    });
+
+    const uploadableDocuments = documents.filter(
+      (doc) => doc.file && doc.file.size > 0 && typeof doc.claimAttachmentId !== 'number'
+    );
+    uploadableDocuments.forEach((doc) => {
+      const signature = documentIdentityFromDraft(doc);
+      if (signatures.has(signature)) {
+        dedupedOut += 1;
+      } else {
+        signatures.add(signature);
+        fromUploads += 1;
+      }
+    });
+
+    return {
+      total: signatures.size,
+      fromClaim,
+      fromUploads,
+      dedupedOut,
+    };
+  }, [claimAttachmentById, documents, explicitClaimAttachmentIds]);
+
+  const includedAttachmentRows = useMemo(() => {
+    return documents
+      .filter((doc) => typeof doc.claimAttachmentId === 'number' || (doc.file && doc.file.size > 0))
+      .map((doc) => {
+        const claimAttachment =
+          typeof doc.claimAttachmentId === 'number' ? claimAttachmentById.get(doc.claimAttachmentId) : undefined;
+        const stale = typeof doc.claimAttachmentId === 'number' && !claimAttachment;
+        return {
+          key: doc.key,
+          title: doc.displayName || doc.file.name,
+          sourceLabel: claimAttachment ? 'existing claim attachment' : 'new upload',
+          stale,
+        };
+      });
+  }, [claimAttachmentById, documents]);
 
   const selectedInterventionTariff = useMemo(() => {
     if (interventionPrice != null) return interventionPrice;
@@ -1819,11 +2023,47 @@ export default function NewPreauthPage() {
     }
   }, [documents]);
 
+  const hasDuplicateDocument = useCallback((file: File, options?: { ignoreKey?: string }): boolean => {
+    const identity = documentIdentityFromFile(file);
+    const ignoreKey = options?.ignoreKey;
+    return documents.some((doc) => (
+      doc.key !== ignoreKey && documentIdentityFromDraft(doc) === identity
+    ));
+  }, [documents]);
+
+  const removeStaleAttachmentRefs = useCallback(() => {
+    if (staleAttachmentRefs.length === 0) return;
+    setDocuments((prev) => prev.filter((doc) => (
+      !(typeof doc.claimAttachmentId === 'number' && staleAttachmentRefs.includes(doc.claimAttachmentId))
+    )));
+    toast({
+      title: 'Stale references removed',
+      description: `Removed ${staleAttachmentRefs.length} stale attachment reference${staleAttachmentRefs.length === 1 ? '' : 's'}.`,
+    });
+  }, [staleAttachmentRefs, toast]);
+
   const uploadRequiredDocument = useCallback(async (documentType: string, files: FileList | null) => {
     if (!files || files.length === 0) return;
     const selectedFiles = Array.from(files);
     const normalizedDocType = String(documentType || '').trim().toUpperCase();
     if (!normalizedDocType) return;
+
+    const seenBatchIdentities = new Set<string>();
+    const dedupedFiles = selectedFiles.filter((file) => {
+      const identity = documentIdentityFromFile(file);
+      if (seenBatchIdentities.has(identity)) return false;
+      seenBatchIdentities.add(identity);
+      return !hasDuplicateDocument(file);
+    });
+    const skippedCount = selectedFiles.length - dedupedFiles.length;
+
+    if (dedupedFiles.length === 0) {
+      toast({
+        title: 'Duplicate file skipped',
+        description: 'This document is already attached in the preauth form.',
+      });
+      return;
+    }
 
     setRequiredDocUploadBusyTypes((prev) => (
       prev.includes(normalizedDocType) ? prev : [...prev, normalizedDocType]
@@ -1833,7 +2073,7 @@ export default function NewPreauthPage() {
       const draftDocsToAdd: DraftDocument[] = [];
       if (selectedClaimIdNumber) {
         const attachmentType = PREAUTH_DOC_TO_ATTACHMENT_TYPE[normalizedDocType] || 'other';
-        for (const file of selectedFiles) {
+        for (const file of dedupedFiles) {
           const created = await shaApi.createClaimAttachment(selectedClaimIdNumber, {
             attachment_type: attachmentType,
             name: file.name,
@@ -1853,7 +2093,7 @@ export default function NewPreauthPage() {
         }
       } else {
         draftDocsToAdd.push(
-          ...selectedFiles.map((file) =>
+          ...dedupedFiles.map((file) =>
             makeDraftDocument(file, {
               requiredDocType: normalizedDocType,
               source: 'required_upload',
@@ -1869,7 +2109,7 @@ export default function NewPreauthPage() {
 
       toast({
         title: 'Required document uploaded',
-        description: `${normalizedDocType.replace(/_/g, ' ')} file${selectedFiles.length > 1 ? 's' : ''} added.`,
+        description: `${normalizedDocType.replace(/_/g, ' ')} file${dedupedFiles.length > 1 ? 's' : ''} added.${skippedCount > 0 ? ` Skipped ${skippedCount} duplicate file${skippedCount > 1 ? 's' : ''}.` : ''}`,
       });
     } catch (error) {
       toast({
@@ -1880,7 +2120,7 @@ export default function NewPreauthPage() {
     } finally {
       setRequiredDocUploadBusyTypes((prev) => prev.filter((entry) => entry !== normalizedDocType));
     }
-  }, [makeDraftDocument, selectedClaimIdNumber, toast]);
+  }, [hasDuplicateDocument, makeDraftDocument, selectedClaimIdNumber, toast]);
 
   const addEvidenceAsDocument = useCallback(async (option: PreauthEvidenceOption) => {
     if (linkedEvidenceKeys.includes(option.key)) return;
@@ -1892,6 +2132,15 @@ export default function NewPreauthPage() {
         `${option.documentType.toLowerCase()}-${safeName || option.key}`,
         option.exportText.split('\n'),
       );
+
+      if (hasDuplicateDocument(file)) {
+        toast({
+          title: 'Duplicate file skipped',
+          description: `${option.title} is already attached.`,
+        });
+        return;
+      }
+
       let createdAttachmentId: number | null = null;
       let createdAttachmentUrl: string | undefined;
       let createdAttachmentMimeType: string | undefined;
@@ -1943,7 +2192,7 @@ export default function NewPreauthPage() {
     } finally {
       setEvidenceBusyKeys((prev) => prev.filter((entry) => entry !== option.key));
     }
-  }, [linkedEvidenceKeys, makeDraftDocument, selectedClaimIdNumber, toast]);
+  }, [hasDuplicateDocument, linkedEvidenceKeys, makeDraftDocument, selectedClaimIdNumber, toast]);
 
   const attachFirstEvidenceForType = useCallback(async (documentType: string) => {
     const candidate = preauthEvidenceOptions.find(
@@ -2045,6 +2294,18 @@ export default function NewPreauthPage() {
     if (!activeDocument) return;
     const nextName = attachmentEditName.trim() || activeDocument.displayName || activeDocument.file.name;
 
+    if (
+      attachmentReplacementFile
+      && hasDuplicateDocument(attachmentReplacementFile, { ignoreKey: activeDocument.key })
+    ) {
+      toast({
+        title: 'Duplicate file skipped',
+        description: 'This replacement file is already attached.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setAttachmentDialogBusy(true);
     try {
       let updatedName = nextName;
@@ -2105,6 +2366,7 @@ export default function NewPreauthPage() {
     activeDocument,
     attachmentEditName,
     attachmentReplacementFile,
+    hasDuplicateDocument,
     selectedClaimIdNumber,
     toast,
   ]);
@@ -2222,6 +2484,14 @@ export default function NewPreauthPage() {
       contentLines,
     );
 
+    if (hasDuplicateDocument(file)) {
+      toast({
+        title: 'Duplicate file skipped',
+        description: `${documentType.replace(/_/g, ' ')} is already attached.`,
+      });
+      return;
+    }
+
     try {
       let createdAttachmentId: number | undefined;
       if (selectedClaimIdNumber) {
@@ -2260,6 +2530,7 @@ export default function NewPreauthPage() {
     selectedEncounterIdNumber,
     selectedClaim?.encounter,
     selectedClaimIdNumber,
+    hasDuplicateDocument,
     makeDraftDocument,
     patientId,
     interventionCode,
@@ -2369,11 +2640,19 @@ export default function NewPreauthPage() {
         extraFields.notification_email = providerNotificationEmail.trim();
       }
 
-      const uploadableDocuments = documents.filter((doc) => doc.file && doc.file.size > 0);
+      const explicitAttachmentIds = Array.from(new Set(
+        documents
+          .map((doc) => doc.claimAttachmentId)
+          .filter((id): id is number => typeof id === 'number')
+      ));
+      const uploadableDocuments = documents.filter(
+        (doc) => doc.file && doc.file.size > 0 && typeof doc.claimAttachmentId !== 'number'
+      );
       const uploadFiles = uploadableDocuments.map((doc, index) => ({
         field_name: `preauth_file_${index + 1}`,
         file: doc.file,
       }));
+      extraFields.attachment_ids = explicitAttachmentIds;
       if (uploadableDocuments.length > 0) {
         extraFields.attachments = uploadableDocuments.map((doc, index) => ({
           file_field_name: `preauth_file_${index + 1}`,
@@ -2423,6 +2702,25 @@ export default function NewPreauthPage() {
         toast({
           title: 'DHA Visit Not Started',
           description: refreshReason,
+          variant: 'destructive',
+        });
+      } else if (errorCode === 'invalid_attachment_ids') {
+        const invalidIdsRaw = axiosData?.invalid_attachment_ids;
+        const invalidIds = Array.isArray(invalidIdsRaw)
+          ? invalidIdsRaw
+            .map((value) => Number(value))
+            .filter((value) => Number.isFinite(value) && value > 0)
+          : [];
+        if (invalidIds.length > 0) {
+          setDocuments((prev) => prev.filter((doc) => (
+            !(typeof doc.claimAttachmentId === 'number' && invalidIds.includes(doc.claimAttachmentId))
+          )));
+        }
+        toast({
+          title: 'Stale attachments detected',
+          description: invalidIds.length > 0
+            ? `Removed ${invalidIds.length} stale attachment reference${invalidIds.length === 1 ? '' : 's'}. Review attachments and submit again.`
+            : 'Some selected claim attachments are no longer valid. Review attachments and submit again.',
           variant: 'destructive',
         });
       } else {
@@ -3436,6 +3734,65 @@ export default function NewPreauthPage() {
                     <DollarSign className="mr-0.5 h-3 w-3" />
                     KES {interventionPrice.toLocaleString()}
                   </Badge>
+                )}
+              </div>
+
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  <span className="font-medium">
+                    {resolvedPreauthAttachmentSummary.total} attachment{resolvedPreauthAttachmentSummary.total === 1 ? '' : 's'} will be submitted
+                  </span>
+                  {` (${resolvedPreauthAttachmentSummary.fromUploads} from this form, ${resolvedPreauthAttachmentSummary.fromClaim} existing on claim)`}
+                  {resolvedPreauthAttachmentSummary.dedupedOut > 0
+                    ? ` • ${resolvedPreauthAttachmentSummary.dedupedOut} duplicate${resolvedPreauthAttachmentSummary.dedupedOut === 1 ? '' : 's'} removed automatically.`
+                    : '.'}
+                </AlertDescription>
+              </Alert>
+
+              {staleAttachmentRefs.length > 0 && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="flex items-center justify-between gap-3">
+                    <span>
+                      {staleAttachmentRefs.length} stale attachment reference{staleAttachmentRefs.length === 1 ? '' : 's'} detected.
+                    </span>
+                    <Button type="button" size="sm" variant="outline" onClick={removeStaleAttachmentRefs}>
+                      Remove stale references
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="rounded-md border p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-sm font-medium">Included attachments</p>
+                  <span className="text-xs text-muted-foreground">{includedAttachmentRows.length} selected</span>
+                </div>
+                {includedAttachmentRows.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No attachments selected yet.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {includedAttachmentRows.map((row) => (
+                      <div key={row.key} className="flex items-center justify-between gap-2 rounded border px-2 py-1">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-medium">{row.title}</p>
+                          <p className={cn('text-[11px] text-muted-foreground', row.stale && 'text-destructive')}>
+                            {row.stale ? 'stale reference' : row.sourceLabel}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 text-[11px]"
+                          onClick={() => removeDocumentByKey(row.key)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
 

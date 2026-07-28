@@ -8,6 +8,7 @@ parameter validation, and DHAError → HTTP status mapping.
 
 from __future__ import annotations
 
+import json
 from unittest.mock import patch
 
 import pytest
@@ -190,6 +191,146 @@ class TestPreauthCreateEndpoint:
             assert r.status_code == 400
             assert r.data.get("code") == "dha_visit_not_started"
             assert "active dha visit" in str(r.data.get("message", "")).lower()
+
+    def test_dedupes_duplicate_uploaded_files_by_checksum(self, sha_client, sample_patient):
+        with patch(PA_SVC) as M:
+            M.return_value.create_preauth.return_value = _ok({"preauth_id": "p9"}, record_id=42)
+            file_a = ContentFile(b"same-content", name="doc-a.pdf")
+            file_b = ContentFile(b"same-content", name="doc-b.pdf")
+
+            payload = {
+                "consent_token": "c-1",
+                "intervention_code": "INT-1",
+                "patient_pk": str(sample_patient.id),
+                "extra_fields": json.dumps(
+                    {
+                        "attachments": [
+                            {
+                                "file_field_name": "preauth_file_1",
+                                "document_title": "Doc A",
+                                "document_type": "MEDICAL_REPORT",
+                            },
+                            {
+                                "file_field_name": "preauth_file_2",
+                                "document_title": "Doc B",
+                                "document_type": "MEDICAL_REPORT",
+                            },
+                        ]
+                    }
+                ),
+                "preauth_file_1": file_a,
+                "preauth_file_2": file_b,
+            }
+
+            r = sha_client.post(self.URL, payload, format="multipart")
+            assert r.status_code == 201
+
+            kwargs = M.return_value.create_preauth.call_args.kwargs
+            files = kwargs["files"]
+            attachments = kwargs["extra_fields"].get("attachments")
+            assert isinstance(files, list)
+            assert len(files) == 1
+            assert files[0].field_name == "preauth_file_1"
+            assert isinstance(attachments, list)
+            assert len(attachments) == 1
+            assert attachments[0]["file_field_name"] == "preauth_file_1"
+
+    def test_explicit_attachment_ids_only_without_fallback(self, sha_client, sample_sha_claim):
+        from hmis.apps.billing.models import SHAClaimAttachment
+
+        attachment = SHAClaimAttachment.objects.create(
+            claim=sample_sha_claim,
+            attachment_type=SHAClaimAttachment.AttachmentType.MEDICAL_REPORT,
+            name="Claim Medical Report",
+            description="Attached on claim",
+            file=ContentFile(b"claim-file", name="claim-report.pdf"),
+            file_size=len(b"claim-file"),
+            mime_type="application/pdf",
+            checksum="",
+            original_filename="claim-report.pdf",
+            uploaded_by=sample_sha_claim.created_by,
+        )
+
+        with (
+            patch(PA_SVC) as M,
+            patch("hmis.apps.billing.sha_ilm_preauth_views.resolve_for_claim") as resolver,
+        ):
+            resolver.return_value = ResolvedConsent(
+                token="claim-token-1",
+                consent_id=11,
+                method="OTP",
+                expires_at=None,
+            )
+            M.return_value.create_preauth.return_value = _ok({"preauth_id": "p9"}, record_id=42)
+
+            r = sha_client.post(
+                self.URL,
+                {
+                    "consent_token": "claim-token-1",
+                    "intervention_code": "INT-1",
+                    "patient_pk": sample_sha_claim.patient_id,
+                    "claim_pk": sample_sha_claim.id,
+                    "extra_fields": {
+                        "attachment_ids": [attachment.id],
+                    },
+                },
+                format="json",
+            )
+            assert r.status_code == 201
+
+            kwargs = M.return_value.create_preauth.call_args.kwargs
+            files = kwargs["files"]
+            attachments = kwargs["extra_fields"].get("attachments")
+            assert isinstance(files, list)
+            assert len(files) == 1
+            assert isinstance(attachments, list)
+            assert len(attachments) == 1
+            assert attachments[0]["file_field_name"] == files[0].field_name
+            assert r.data["resolved_attachments"][0]["id"] == attachment.id
+
+    def test_stale_attachment_ids_rejected(self, sha_client, sample_sha_claim):
+        with patch("hmis.apps.billing.sha_ilm_preauth_views.resolve_for_claim") as resolver:
+            resolver.return_value = ResolvedConsent(
+                token="claim-token-1",
+                consent_id=11,
+                method="OTP",
+                expires_at=None,
+            )
+
+            r = sha_client.post(
+                self.URL,
+                {
+                    "consent_token": "claim-token-1",
+                    "intervention_code": "INT-1",
+                    "patient_pk": sample_sha_claim.patient_id,
+                    "claim_pk": sample_sha_claim.id,
+                    "extra_fields": {"attachment_ids": [999999]},
+                },
+                format="json",
+            )
+
+            assert r.status_code == 400
+            assert r.data.get("error") == "invalid_attachment_ids"
+            assert "attachments" in r.data
+
+    def test_no_attachments_relies_on_dha_validation_error(self, sha_client, sample_patient):
+        with patch(PA_SVC) as M:
+            M.return_value.create_preauth.side_effect = DHAValidationError(
+                'POST /api/v1/preauths HTTP 400: failed to create preauth: {"attachments":["This field is required."]}',
+                status_code=400,
+            )
+            r = sha_client.post(
+                self.URL,
+                {
+                    "consent_token": "c-1",
+                    "intervention_code": "INT-1",
+                    "patient_pk": sample_patient.id,
+                    "extra_fields": {"attachment_ids": []},
+                },
+                format="json",
+            )
+            assert r.status_code == 400
+            assert "attachments" in str(r.data.get("message", "")).lower()
 
 
 @pytest.mark.django_db
