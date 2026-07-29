@@ -438,10 +438,10 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
         })
       : null;
   const canAmend = Boolean(report?.can_amend) && !amendLockedReason;
+  const hasSignedOrFinalizedReport =
+    Boolean(report?.signed_at) || report?.status === 'FINAL' || report?.status === 'AMENDED';
   const canSupersede =
-    Boolean(report) &&
-    (Boolean(report.signed_at) || report.status === 'FINAL' || report.status === 'AMENDED') &&
-    !report.superseded_by_report_number;
+    hasSignedOrFinalizedReport && !report?.superseded_by_report_number;
   const supersedeDisabledReason = report?.superseded_by_report_number
     ? `This report was already superseded by ${report.superseded_by_report_number}.`
     : null;
