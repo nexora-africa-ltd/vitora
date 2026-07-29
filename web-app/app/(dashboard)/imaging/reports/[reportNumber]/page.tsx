@@ -112,8 +112,6 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
     );
   }
 
-  const reportedByDisplay = report.reported_by_name || 'Unknown Reporter';
-
   if (error || !report) {
     return (
       <div className="text-center py-12">
@@ -128,6 +126,8 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
       </div>
     );
   }
+
+  const reportedByDisplay = report.reported_by_name || 'Unknown Reporter';
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
