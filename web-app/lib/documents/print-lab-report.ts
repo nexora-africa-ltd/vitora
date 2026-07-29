@@ -41,6 +41,14 @@ interface LabReportPatientInfo extends Omit<PatientInfo, 'full_name'> {
 
 export interface PrintLabReportData {
   order: LabOrder;
+  diagnosticReport?: {
+    report_number?: string;
+    status?: string;
+    conclusion?: string | null;
+    clinical_info?: string | null;
+    issued_by_name?: string;
+    issued_at?: string | null;
+  };
   patient?: LabReportPatientInfo;
   facility?: Partial<FacilityInfo>;
   /** Digital signature data. When provided, renders signer identity in the signature block. */
@@ -66,6 +74,7 @@ const LAB_REPORT_TEMPLATE = `
 
     <div class="doc-meta">
       <div class="title">LABORATORY REPORT</div>
+      <div>Report: {{report.number}}</div>
       <div>Order: {{order.number}}</div>
       <div>Date: {{report.date}}</div>
       <div class="status-badge {{report.status_class}}">{{report.status_label}}</div>
@@ -92,6 +101,11 @@ const LAB_REPORT_TEMPLATE = `
     <div class="muted">{{order.notes}}</div>
   </div>
 
+  <div class="section" style="{{report_clinical_info.display}}">
+    <div class="section-title">Clinical Information</div>
+    <div class="section-content">{{report.clinical_info}}</div>
+  </div>
+
   <div class="section">
     <div class="section-title">Results</div>
     <table>
@@ -108,6 +122,16 @@ const LAB_REPORT_TEMPLATE = `
         {{results.rows}}
       </tbody>
     </table>
+  </div>
+
+  <div class="section" style="{{report_conclusion.display}}">
+    <div class="section-title">Conclusion</div>
+    <div class="section-content">{{report.conclusion}}</div>
+  </div>
+
+  <div class="section" style="{{report_issued.display}}">
+    <div class="section-title">Report Details</div>
+    <div class="muted">Issued by {{report.issued_by_name}} at {{report.issued_at}}</div>
   </div>
 
   <div class="signature-block">
@@ -230,6 +254,12 @@ body {
 
 .muted { color: #64748b; font-size: 10px; white-space: pre-wrap; }
 
+.section-content {
+  color: #0f172a;
+  font-size: 10px;
+  white-space: pre-wrap;
+}
+
 table { width: 100%; border-collapse: collapse; font-size: 10px; }
 
 th, td {
@@ -328,6 +358,24 @@ function computeReportStatus(order: LabOrder): { label: string; cssClass: string
       };
 }
 
+function mapDiagnosticReportStatus(status: string | undefined): { label: string; cssClass: string } | null {
+  if (!status) return null;
+  const normalized = status.toUpperCase();
+  if (normalized === 'FINAL' || normalized === 'AMENDED') {
+    return { label: labReportStatusLabels.FINAL!, cssClass: labReportStatusClasses.FINAL! };
+  }
+  if (normalized === 'PRELIMINARY') {
+    return {
+      label: labReportStatusLabels.PRELIMINARY!,
+      cssClass: labReportStatusClasses.PRELIMINARY!,
+    };
+  }
+  if (normalized === 'CANCELLED') {
+    return { label: 'Cancelled', cssClass: 'status-draft' };
+  }
+  return { label: labReportStatusLabels.DRAFT!, cssClass: labReportStatusClasses.DRAFT! };
+}
+
 function buildResultsRows(order: LabOrder): { rowsHtml: string; hasCritical: boolean } {
   const items = getOrderItems(order);
 
@@ -337,7 +385,11 @@ function buildResultsRows(order: LabOrder): { rowsHtml: string; hasCritical: boo
       const result = getResultForItem(item);
 
       const testName = escapeHtml(item.test_name || item.test_code || '');
-      const value = result?.text_value || result?.option_value || result?.numeric_value;
+      const value =
+        result?.formatted_value ??
+        result?.text_value ??
+        result?.option_value ??
+        result?.numeric_value;
       const valueStr = value === null || value === undefined ? '' : escapeHtml(String(value));
 
       const flag = result?.result_flag ? escapeHtml(String(result.result_flag)) : '';
@@ -362,7 +414,7 @@ function buildResultsRows(order: LabOrder): { rowsHtml: string; hasCritical: boo
 
 function buildTemplateData(data: PrintLabReportData): Record<string, unknown> {
   const { order } = data;
-  const reportStatus = computeReportStatus(order);
+  const reportStatus = mapDiagnosticReportStatus(data.diagnosticReport?.status) || computeReportStatus(order);
   const { rowsHtml, hasCritical } = buildResultsRows(order);
 
   const patientName =
@@ -377,6 +429,10 @@ function buildTemplateData(data: PrintLabReportData): Record<string, unknown> {
   const reportDate = order.completed_at || order.ordered_at;
 
   const notes = order.clinical_notes || '';
+  const reportConclusion = data.diagnosticReport?.conclusion || '';
+  const reportClinicalInfo = data.diagnosticReport?.clinical_info || '';
+  const reportIssuedAt = data.diagnosticReport?.issued_at ? formatDateTime(data.diagnosticReport.issued_at) : '';
+  const reportIssuedBy = data.diagnosticReport?.issued_by_name || '';
 
   return {
     facility: {
@@ -391,9 +447,14 @@ function buildTemplateData(data: PrintLabReportData): Record<string, unknown> {
       notes: escapeHtml(notes),
     },
     report: {
+      number: escapeHtml(data.diagnosticReport?.report_number || ''),
       date: escapeHtml(reportDate ? formatDate(reportDate) : ''),
       status_label: reportStatus.label,
       status_class: reportStatus.cssClass,
+      conclusion: escapeHtml(reportConclusion),
+      clinical_info: escapeHtml(reportClinicalInfo),
+      issued_at: escapeHtml(reportIssuedAt),
+      issued_by_name: escapeHtml(reportIssuedBy),
     },
     patient: {
       name: escapeHtml(patientName),
@@ -406,6 +467,15 @@ function buildTemplateData(data: PrintLabReportData): Record<string, unknown> {
     },
     notes: {
       display: notes ? '' : 'display:none;',
+    },
+    report_conclusion: {
+      display: reportConclusion ? '' : 'display:none;',
+    },
+    report_clinical_info: {
+      display: reportClinicalInfo ? '' : 'display:none;',
+    },
+    report_issued: {
+      display: reportIssuedBy || reportIssuedAt ? '' : 'display:none;',
     },
     results: {
       rows: rowsHtml,

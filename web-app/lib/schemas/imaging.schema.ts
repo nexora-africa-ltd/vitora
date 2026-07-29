@@ -556,6 +556,9 @@ export const RadiologyReportSchema = z.object({
   id: z.number(),
   report_number: z.string(),
   imaging_order: z.number(),
+  supersedes: z.number().nullable().optional(),
+  supersedes_report_number: z.string().nullable().optional(),
+  superseded_by_report_number: z.string().nullable().optional(),
   order_number: z.string(),
   study: z.number().nullable().optional(),
 

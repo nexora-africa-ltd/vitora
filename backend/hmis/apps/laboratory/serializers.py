@@ -1112,6 +1112,10 @@ class DiagnosticReportSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     is_finalized = serializers.BooleanField(read_only=True)
     pdf_url = serializers.SerializerMethodField()
+    supersedes_report_number = serializers.CharField(
+        source="supersedes.report_number", read_only=True
+    )
+    superseded_by_report_number = serializers.SerializerMethodField()
 
     class Meta:
         model = DiagnosticReport
@@ -1139,6 +1143,9 @@ class DiagnosticReportSerializer(serializers.ModelSerializer):
             "pdf_file",
             "pdf_url",
             "fhir_resource_id",
+            "supersedes",
+            "supersedes_report_number",
+            "superseded_by_report_number",
             "created_at",
             "updated_at",
         ]
@@ -1158,6 +1165,10 @@ class DiagnosticReportSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def get_superseded_by_report_number(self, obj) -> str | None:
+        newer = obj.superseding_reports.order_by("-created_at").first()
+        return newer.report_number if newer else None
 
     def get_patient_name(self, obj) -> str:
         """Get patient full name from lab order."""
@@ -1218,6 +1229,14 @@ class DiagnosticReportCreateSerializer(serializers.ModelSerializer):
             "clinical_info",
             "fhir_resource_id",
         ]
+
+    def validate_lab_order(self, value):
+        """Only completed lab orders can produce a formal diagnostic report."""
+        if value.status != "COMPLETED":
+            raise serializers.ValidationError(
+                "Diagnostic reports can only be created for completed lab orders."
+            )
+        return value
 
     def create(self, validated_data):
         """Create report with issued_by set to current user."""

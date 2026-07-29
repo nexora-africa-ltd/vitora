@@ -91,7 +91,6 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
     }).then((data) => {
       if (data?.consent_token) {
         setConsentTokenStr(data.consent_token);
-        setConsentTokenId(data.id);
       }
     }).catch(() => { /* Non-fatal */ });
   }, [claim.consent_obtained, claim.sha_member, claim.encounter, consentTokenStr, visitStarted]);

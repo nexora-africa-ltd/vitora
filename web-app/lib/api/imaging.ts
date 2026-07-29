@@ -821,6 +821,21 @@ export const imagingApi = {
       const data = parseResponse(PaginatedRadiologyReportSchema, response.data, {
         context: 'imagingApi.getReportByOrder',
       }) as PaginatedResponse<RadiologyReport>;
+
+      const activeRevision = data.results.find(
+        (report) => !report.superseded_by_report_number
+      );
+      if (activeRevision) {
+        return activeRevision;
+      }
+
+      const latestDraft = data.results.find(
+        (report) => report.status === 'DRAFT' || report.status === 'PRELIMINARY'
+      );
+      if (latestDraft) {
+        return latestDraft;
+      }
+
       return data.results[0] ?? null;
     } catch (error: any) {
       if (error?.response?.status === 404) {
@@ -884,6 +899,18 @@ export const imagingApi = {
     );
     return parseResponse(RadiologyReportSchema, response.data, {
       context: 'imagingApi.amendReport',
+    }) as RadiologyReport;
+  },
+
+  /**
+   * Create a superseding draft revision for a finalized report.
+   */
+  async supersedeReport(reportNumber: string): Promise<RadiologyReport> {
+    const response = await apiClient.post<RadiologyReport>(
+      `/api/imaging/reports/${reportNumber}/supersede/`
+    );
+    return parseResponse(RadiologyReportSchema, response.data, {
+      context: 'imagingApi.supersedeReport',
     }) as RadiologyReport;
   },
 

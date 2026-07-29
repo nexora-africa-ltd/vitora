@@ -1813,11 +1813,12 @@ class RadiologyReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             "imaging_order",
             "imaging_order__patient",
             "study",
+            "supersedes",
             "reported_by",
             "last_amended_by",
             "critical_communicated_by",
         )
-        .prefetch_related("amendments", "imaging_order__items__procedure")
+        .prefetch_related("amendments", "superseding_reports", "imaging_order__items__procedure")
     )
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [filters.DjangoFilterBackend]
@@ -1848,23 +1849,43 @@ class RadiologyReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 "imaging_order",
                 "imaging_order__patient",
                 "study",
+                "supersedes",
                 "reported_by",
                 "last_amended_by",
                 "critical_communicated_by",
             )
-            .prefetch_related("amendments", "imaging_order__items__procedure")
+            .prefetch_related(
+                "amendments", "superseding_reports", "imaging_order__items__procedure"
+            )
         )
 
         # Filter by imaging order if provided
         order_number = self.request.query_params.get("order", None)
         if order_number:
             queryset = queryset.filter(imaging_order__order_number=order_number)
+            active = queryset.filter(superseding_reports__isnull=True).order_by("-created_at")
+            if active.exists():
+                return active
 
         return queryset
 
     def create(self, request, *args, **kwargs):
         """Create a new radiology report draft."""
         from .serializers import RadiologyReportCreateSerializer, RadiologyReportSerializer
+
+        imaging_order_id = request.data.get("imaging_order")
+        if imaging_order_id:
+            existing = (
+                RadiologyReport.objects.filter(
+                    imaging_order_id=imaging_order_id,
+                    superseding_reports__isnull=True,
+                )
+                .order_by("-created_at")
+                .first()
+            )
+            if existing is not None:
+                output_serializer = RadiologyReportSerializer(existing)
+                return Response(output_serializer.data, status=status.HTTP_200_OK)
 
         serializer = RadiologyReportCreateSerializer(
             data=request.data, context={"request": request}
@@ -2058,6 +2079,53 @@ class RadiologyReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+    @action(detail=True, methods=["post"])
+    def supersede(self, request, report_number=None):
+        """Create a new draft report revision that supersedes this finalized report."""
+        from .serializers import RadiologyReportSerializer
+
+        report = self.get_object()
+        if report.status not in ("FINAL", "AMENDED"):
+            return Response(
+                {"detail": "Only finalized reports can be superseded."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        existing = report.superseding_reports.order_by("-created_at").first()
+        if existing is not None:
+            serializer = RadiologyReportSerializer(existing)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        superseding = RadiologyReport.objects.create(
+            imaging_order=report.imaging_order,
+            study=report.study,
+            technique=report.technique,
+            comparison=report.comparison,
+            findings=report.findings,
+            impression=report.impression,
+            recommendations=report.recommendations,
+            is_critical=report.is_critical,
+            critical_finding_description=report.critical_finding_description,
+            reported_by=request.user,
+            supersedes=report,
+        )
+
+        AuditLog.log(
+            action="radiology_report_supersede",
+            user=request.user,
+            resource_type="RadiologyReport",
+            resource_id=superseding.id,
+            ip_address=get_client_ip(request),
+            details={
+                "report_number": superseding.report_number,
+                "supersedes_report_number": report.report_number,
+                "order_number": report.imaging_order.order_number,
+            },
+        )
+
+        serializer = RadiologyReportSerializer(superseding)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"], url_path="communicate-critical")
     def communicate_critical(self, request, report_number=None):

@@ -243,6 +243,9 @@ export interface DiagnosticReport {
   pdf_file?: string | null;
   pdf_url?: string | null;
   fhir_resource_id?: string | null;
+  supersedes?: number | null;
+  supersedes_report_number?: string | null;
+  superseded_by_report_number?: string | null;
   created_at: string;
   updated_at: string;
 }

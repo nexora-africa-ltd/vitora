@@ -1714,13 +1714,17 @@ export default function NewPreauthPage() {
 
     if (!Object.keys(source).length) return;
     const derivedType = derivePreauthType(source);
+    const selectedInterventionName =
+      typeof (selectedInterventionRecord as Record<string, unknown> | null)?.name === 'string'
+        ? String((selectedInterventionRecord as Record<string, unknown>).name)
+        : '';
     if (derivedType !== selectedType) {
       setSelectedType(derivedType);
     }
     if (!interventionName && selectedFromBenefits?.name) {
       setInterventionName(selectedFromBenefits.name);
-    } else if (!interventionName && selectedInterventionRecord?.name) {
-      setInterventionName(selectedInterventionRecord.name);
+    } else if (!interventionName && selectedInterventionName) {
+      setInterventionName(selectedInterventionName);
     }
   }, [
     interventionCode,

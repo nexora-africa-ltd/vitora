@@ -291,6 +291,9 @@ export const DiagnosticReportSchema = z.object({
   pdf_file: z.string().nullable().optional(),
   pdf_url: z.string().nullable().optional(),
   fhir_resource_id: z.string().nullable().optional(),
+  supersedes: z.number().nullable().optional(),
+  supersedes_report_number: z.string().nullable().optional(),
+  superseded_by_report_number: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
