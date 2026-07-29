@@ -238,7 +238,7 @@ export default function ImagingReportsPage() {
               key: 'reported_by_name',
               header: 'Reported By',
               sortable: true,
-              cell: (r) => r.reported_by_name,
+              cell: (r) => r.reported_by_name || 'Unknown Reporter',
               hideOnMobile: true,
             },
             {

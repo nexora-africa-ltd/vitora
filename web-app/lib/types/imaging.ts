@@ -685,6 +685,9 @@ export interface RadiologyReport {
   id: number;
   report_number: string;
   imaging_order: number;
+  supersedes?: number | null;
+  supersedes_report_number?: string | null;
+  superseded_by_report_number?: string | null;
   order_number: string;
   study?: number | null;
 

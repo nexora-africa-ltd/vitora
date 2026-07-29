@@ -179,6 +179,9 @@ class TestDiagnosticReportMethods:
 
     def test_finalize_report(self, sample_lab_order, test_user):
         """Should finalize report and set issued_at."""
+        sample_lab_order.status = "COMPLETED"
+        sample_lab_order.save(update_fields=["status"])
+
         report = DiagnosticReport.objects.create(
             lab_order=sample_lab_order,
             issued_by=test_user,
@@ -371,6 +374,9 @@ class TestDiagnosticReportCreateAPI:
 
     def test_create_diagnostic_report(self, authenticated_client, sample_lab_order, test_user):
         """Should create diagnostic report with minimal data."""
+        sample_lab_order.status = "COMPLETED"
+        sample_lab_order.save(update_fields=["status"])
+
         response = authenticated_client.post(
             "/api/lab/diagnostic-reports/",
             {
@@ -386,6 +392,9 @@ class TestDiagnosticReportCreateAPI:
 
     def test_create_diagnostic_report_with_content(self, authenticated_client, sample_lab_order):
         """Should create diagnostic report with conclusion and clinical info."""
+        sample_lab_order.status = "COMPLETED"
+        sample_lab_order.save(update_fields=["status"])
+
         response = authenticated_client.post(
             "/api/lab/diagnostic-reports/",
             {
@@ -404,6 +413,9 @@ class TestDiagnosticReportCreateAPI:
         self, authenticated_client, sample_lab_order, test_user
     ):
         """Should auto-set issued_by to current user."""
+        sample_lab_order.status = "COMPLETED"
+        sample_lab_order.save(update_fields=["status"])
+
         response = authenticated_client.post(
             "/api/lab/diagnostic-reports/",
             {
@@ -414,6 +426,46 @@ class TestDiagnosticReportCreateAPI:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["issued_by"] == test_user.id
+
+    def test_create_requires_completed_order(self, authenticated_client, sample_lab_order):
+        """Should reject report creation when order is not completed."""
+        response = authenticated_client.post(
+            "/api/lab/diagnostic-reports/",
+            {
+                "lab_order": sample_lab_order.id,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "completed" in str(response.data).lower()
+
+    def test_create_is_idempotent_for_same_active_order(
+        self, authenticated_client, sample_lab_order
+    ):
+        """Should return existing active report instead of creating duplicates."""
+        sample_lab_order.status = "COMPLETED"
+        sample_lab_order.save(update_fields=["status"])
+
+        first = authenticated_client.post(
+            "/api/lab/diagnostic-reports/",
+            {
+                "lab_order": sample_lab_order.id,
+            },
+            format="json",
+        )
+        assert first.status_code == status.HTTP_201_CREATED
+
+        second = authenticated_client.post(
+            "/api/lab/diagnostic-reports/",
+            {
+                "lab_order": sample_lab_order.id,
+            },
+            format="json",
+        )
+
+        assert second.status_code == status.HTTP_200_OK
+        assert second.data["id"] == first.data["id"]
 
 
 @pytest.mark.django_db
@@ -456,7 +508,7 @@ class TestDiagnosticReportUpdateAPI:
     """Tests for updating diagnostic reports."""
 
     def test_update_draft_report(self, authenticated_client, sample_lab_order, test_user):
-        """Should allow updating draft report."""
+        """Should allow updating draft report and return full report payload."""
         report = DiagnosticReport.objects.create(
             lab_order=sample_lab_order,
             issued_by=test_user,
@@ -473,6 +525,43 @@ class TestDiagnosticReportUpdateAPI:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["conclusion"] == "Updated conclusion"
+        assert response.data["id"] == report.id
+        assert response.data["report_number"] == report.report_number
+        assert response.data["lab_order"] == sample_lab_order.id
+        assert response.data["issued_by"] == test_user.id
+        assert response.data["lab_order_number"] == sample_lab_order.order_number
+
+    def test_put_update_returns_full_report_payload(
+        self, authenticated_client, sample_lab_order, test_user
+    ):
+        """Should return full serializer fields on PUT updates."""
+        report = DiagnosticReport.objects.create(
+            lab_order=sample_lab_order,
+            issued_by=test_user,
+            status="DRAFT",
+            clinical_info="Initial context",
+            conclusion="Initial conclusion",
+        )
+
+        response = authenticated_client.put(
+            f"/api/lab/diagnostic-reports/{report.report_number}/",
+            {
+                "status": "DRAFT",
+                "conclusion": "Rewritten conclusion",
+                "clinical_info": "Updated context",
+                "fhir_resource_id": "",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == report.id
+        assert response.data["report_number"] == report.report_number
+        assert response.data["lab_order"] == sample_lab_order.id
+        assert response.data["lab_order_number"] == sample_lab_order.order_number
+        assert response.data["patient_name"] == sample_lab_order.patient.full_name
+        assert response.data["conclusion"] == "Rewritten conclusion"
+        assert response.data["clinical_info"] == "Updated context"
 
     def test_update_final_report_restricted(
         self, authenticated_client, sample_lab_order, test_user
@@ -502,6 +591,9 @@ class TestDiagnosticReportActionsAPI:
 
     def test_finalize_action(self, authenticated_client, sample_lab_order, test_user):
         """Should finalize draft report via action endpoint."""
+        sample_lab_order.status = "COMPLETED"
+        sample_lab_order.save(update_fields=["status"])
+
         report = DiagnosticReport.objects.create(
             lab_order=sample_lab_order,
             issued_by=test_user,
@@ -517,6 +609,24 @@ class TestDiagnosticReportActionsAPI:
         report.refresh_from_db()
         assert report.status == "FINAL"
         assert report.issued_at is not None
+
+    def test_finalize_requires_completed_order(
+        self, authenticated_client, sample_lab_order, test_user
+    ):
+        """Should reject finalize when related order is not completed."""
+        report = DiagnosticReport.objects.create(
+            lab_order=sample_lab_order,
+            issued_by=test_user,
+            status="DRAFT",
+        )
+
+        response = authenticated_client.post(
+            f"/api/lab/diagnostic-reports/{report.report_number}/finalize/",
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "completed" in str(response.data).lower()
 
     def test_amend_action(self, authenticated_client, sample_lab_order, test_user):
         """Should amend finalized report via action endpoint."""
@@ -584,6 +694,62 @@ class TestDiagnosticReportActionsAPI:
         assert report.pdf_file is not None
         assert "pdf_url" in response.data
 
+    def test_supersede_action_creates_new_draft_revision(
+        self, authenticated_client, sample_lab_order, test_user
+    ):
+        """Should create a new draft report linked to the finalized source report."""
+        sample_lab_order.status = "COMPLETED"
+        sample_lab_order.save(update_fields=["status"])
+
+        report = DiagnosticReport.objects.create(
+            lab_order=sample_lab_order,
+            issued_by=test_user,
+            status="FINAL",
+            issued_at=timezone.now(),
+            conclusion="Initial signed conclusion",
+            clinical_info="Clinical context",
+        )
+
+        response = authenticated_client.post(
+            f"/api/lab/diagnostic-reports/{report.report_number}/supersede/",
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["status"] == "DRAFT"
+        assert response.data["supersedes"] == report.id
+        assert response.data["supersedes_report_number"] == report.report_number
+
+        report.refresh_from_db()
+        assert report.status == "FINAL"
+
+    def test_supersede_action_idempotent_when_revision_exists(
+        self, authenticated_client, sample_lab_order, test_user
+    ):
+        """Should return existing superseding revision for repeated supersede calls."""
+        sample_lab_order.status = "COMPLETED"
+        sample_lab_order.save(update_fields=["status"])
+
+        report = DiagnosticReport.objects.create(
+            lab_order=sample_lab_order,
+            issued_by=test_user,
+            status="FINAL",
+            issued_at=timezone.now(),
+        )
+        existing = DiagnosticReport.objects.create(
+            lab_order=sample_lab_order,
+            issued_by=test_user,
+            supersedes=report,
+        )
+
+        response = authenticated_client.post(
+            f"/api/lab/diagnostic-reports/{report.report_number}/supersede/",
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == existing.id
+
 
 @pytest.mark.django_db
 class TestDiagnosticReportNestedAPI:
@@ -610,6 +776,9 @@ class TestDiagnosticReportNestedAPI:
 
     def test_create_report_for_order(self, authenticated_client, sample_lab_order, test_user):
         """Should create report for a specific lab order via nested endpoint."""
+        sample_lab_order.status = "COMPLETED"
+        sample_lab_order.save(update_fields=["status"])
+
         # LabOrderViewSet uses order_number as lookup_field
         response = authenticated_client.post(
             f"/api/lab/orders/{sample_lab_order.order_number}/reports/",

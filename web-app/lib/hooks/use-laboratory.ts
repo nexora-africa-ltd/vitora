@@ -826,6 +826,26 @@ export function useCancelDiagnosticReport() {
 }
 
 /**
+ * Hook for creating a superseding diagnostic report revision.
+ */
+export function useSupersedeDiagnosticReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (reportNumber: string) => laboratoryApi.supersedeDiagnosticReport(reportNumber),
+    onSuccess: (newReport: DiagnosticReport) => {
+      queryClient.invalidateQueries({ queryKey: ['diagnostic-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['diagnostic-reports', newReport.report_number] });
+      if (newReport.supersedes_report_number) {
+        queryClient.invalidateQueries({
+          queryKey: ['diagnostic-reports', newReport.supersedes_report_number],
+        });
+      }
+    },
+  });
+}
+
+/**
  * Hook for generating and downloading a diagnostic report PDF.
  */
 export function useGenerateReportPdf() {

@@ -1988,6 +1988,14 @@ class DiagnosticReport(models.Model):
         related_name="reports",
         help_text="Lab order this report is for",
     )
+    supersedes = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="superseding_reports",
+        help_text="Earlier report superseded by this report revision",
+    )
 
     # Status
     status = models.CharField(
@@ -2068,6 +2076,7 @@ class DiagnosticReport(models.Model):
             models.Index(fields=["report_number"]),
             models.Index(fields=["status"]),
             models.Index(fields=["lab_order"]),
+            models.Index(fields=["supersedes"]),
             models.Index(fields=["issued_at"]),
         ]
 
@@ -2096,6 +2105,10 @@ class DiagnosticReport(models.Model):
             raise ValidationError("Report is already final.")
         if self.status == self.Status.CANCELLED:
             raise ValidationError("Cannot finalize a cancelled report.")
+        if self.lab_order.status != "COMPLETED":
+            raise ValidationError(
+                "Cannot finalize report before the related lab order is completed."
+            )
 
         self.status = self.Status.FINAL
         self.issued_at = timezone.now()

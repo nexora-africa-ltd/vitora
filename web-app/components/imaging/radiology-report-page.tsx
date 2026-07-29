@@ -49,6 +49,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   ArrowLeft,
   FileText,
@@ -61,6 +62,7 @@ import {
   Edit,
   Phone,
   History,
+  CopyPlus,
 } from 'lucide-react';
 import { toast } from '@/lib/hooks';
 import { formatDateTime } from '@/lib/utils/format';
@@ -72,6 +74,7 @@ import {
   useSignRadiologyReport,
   useAmendRadiologyReport,
   useCommunicateCritical,
+  useSupersedeRadiologyReport,
 } from '@/lib/hooks/use-imaging';
 import {
   RadiologyReport,
@@ -84,9 +87,34 @@ import { imagingApi } from '@/lib/api/imaging';
 import { printRadiologyReport } from '@/lib/documents';
 import { SignatureBadge } from '@/components/shared/signature-badge';
 import { useFacility } from '@/lib/context/facility-context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
+import { signaturesApi } from '@/lib/api/certificates';
 
 interface RadiologyReportPageProps {
   orderNumber: string;
+}
+
+const CLINICAL_ROLE_CODES = new Set([
+  'DOCTOR',
+  'MEDICAL_DOCTOR',
+  'NURSE',
+  'CLINICAL_OFFICER',
+  'RADIOLOGIST',
+  'RADIOGRAPHER',
+]);
+
+function getAmendLockedMessage(params: {
+  isAdmin: boolean;
+  isSuperuser: boolean;
+  isClinical: boolean;
+}): string {
+  if (params.isAdmin || params.isSuperuser) {
+    return 'Compliance lock: finalized or digitally signed reports are immutable. Create a superseding report revision instead.';
+  }
+  if (params.isClinical) {
+    return 'This report has been finalized/signed and is locked. Request a new revision workflow if a correction is required.';
+  }
+  return 'Amendments are disabled after a report is finalized or digitally signed.';
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -99,6 +127,7 @@ const STATUS_COLORS: Record<string, string> = {
 export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
   const router = useRouter();
   const { facilityDetail } = useFacility();
+  const { isAdmin, isSuperuser, roleCategory, role } = usePermissions();
 
   // Form state
   const [technique, setTechnique] = useState('');
@@ -126,9 +155,16 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
   const signReport = useSignRadiologyReport();
   const amendReport = useAmendRadiologyReport();
   const communicateCritical = useCommunicateCritical();
+  const supersedeReport = useSupersedeRadiologyReport();
 
   const isLoading = orderLoading || reportLoading;
-  const isMutating = createReport.isPending || updateReport.isPending || signReport.isPending || amendReport.isPending || communicateCritical.isPending;
+  const isMutating =
+    createReport.isPending ||
+    updateReport.isPending ||
+    signReport.isPending ||
+    amendReport.isPending ||
+    communicateCritical.isPending ||
+    supersedeReport.isPending;
 
   // Populate form when report loads
   useEffect(() => {
@@ -193,6 +229,30 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
     if (!report) return;
 
     try {
+      const hasUnsavedChanges =
+        technique !== (report.technique || '') ||
+        comparison !== (report.comparison || '') ||
+        findings !== (report.findings || '') ||
+        impression !== (report.impression || '') ||
+        recommendations !== (report.recommendations || '') ||
+        isCritical !== report.is_critical ||
+        criticalDescription !== (report.critical_finding_description || '');
+
+      if (report.can_edit && hasUnsavedChanges) {
+        await updateReport.mutateAsync({
+          reportNumber: report.report_number,
+          data: {
+            technique,
+            comparison,
+            findings,
+            impression,
+            recommendations,
+            is_critical: isCritical,
+            critical_finding_description: isCritical ? criticalDescription : '',
+          },
+        });
+      }
+
       await signReport.mutateAsync(report.report_number);
       toast({ title: 'Report signed and finalized' });
       refetchReport();
@@ -264,6 +324,23 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
     if (!report || !order) return;
 
     try {
+      let signatureData:
+        | { signer_full_name: string; signed_at: string; certificate_serial?: string; is_valid?: boolean }
+        | undefined;
+      try {
+        const sigs = await signaturesApi.forDocument('RadiologyReport', report.id);
+        if (sigs.length > 0 && sigs[0]) {
+          signatureData = {
+            signer_full_name: sigs[0].signer_full_name,
+            signed_at: sigs[0].signed_at,
+            certificate_serial: sigs[0].certificate_serial,
+            is_valid: sigs[0].is_valid,
+          };
+        }
+      } catch {
+        // Signature fetch failed — print without digital-signature metadata.
+      }
+
       await printRadiologyReport({
         report,
         patient: {
@@ -286,6 +363,7 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
               license: facilityDetail.mfl_code || '',
             }
           : undefined,
+        signature: signatureData,
       });
     } catch (error) {
       toast({
@@ -300,6 +378,25 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
     if (!report) return;
     const url = imagingApi.getReportPdfUrl(report.report_number);
     window.open(url, '_blank');
+  };
+
+  const handleSupersede = async () => {
+    if (!report) return;
+
+    try {
+      const next = await supersedeReport.mutateAsync(report.report_number);
+      toast({
+        title: 'Superseding report created',
+        description: `${next.report_number} is ready as a new draft revision.`,
+      });
+      refetchReport();
+    } catch (error) {
+      toast({
+        title: 'Error creating superseding report',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (isLoading) {
@@ -329,8 +426,25 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
   }
 
   const canEdit = !report || report.can_edit;
+  const isClinicalRole =
+    roleCategory === 'CLINICAL' || CLINICAL_ROLE_CODES.has((role || '').toUpperCase());
   const canSign = report?.can_sign;
-  const canAmend = report?.can_amend;
+  const amendLockedReason =
+    report && (Boolean(report.signed_at) || report.status === 'FINAL' || report.status === 'AMENDED')
+      ? getAmendLockedMessage({
+          isAdmin,
+          isSuperuser,
+          isClinical: isClinicalRole,
+        })
+      : null;
+  const canAmend = Boolean(report?.can_amend) && !amendLockedReason;
+  const canSupersede =
+    Boolean(report) &&
+    (Boolean(report.signed_at) || report.status === 'FINAL' || report.status === 'AMENDED') &&
+    !report.superseded_by_report_number;
+  const supersedeDisabledReason = report?.superseded_by_report_number
+    ? `This report was already superseded by ${report.superseded_by_report_number}.`
+    : null;
   const showCriticalAlert = report?.is_critical && !report.critical_communicated;
 
   return (
@@ -631,6 +745,22 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
                 </AlertDialog>
               )}
 
+              {amendLockedReason ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button variant="outline" disabled>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Amend Report
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{amendLockedReason}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : null}
+
               {canAmend && (
                 <Button
                   variant="outline"
@@ -639,6 +769,29 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
                   <Edit className="h-4 w-4 mr-2" />
                   Amend Report
                 </Button>
+              )}
+
+              {canSupersede && (
+                <Button variant="outline" onClick={handleSupersede} disabled={supersedeReport.isPending}>
+                  <CopyPlus className="h-4 w-4 mr-2" />
+                  {supersedeReport.isPending ? 'Creating...' : 'Create Superseding Report'}
+                </Button>
+              )}
+
+              {supersedeDisabledReason && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button variant="outline" disabled>
+                          <CopyPlus className="h-4 w-4 mr-2" />
+                          Create Superseding Report
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{supersedeDisabledReason}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
             </div>
 

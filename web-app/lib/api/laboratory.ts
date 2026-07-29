@@ -751,6 +751,47 @@ export const laboratoryApi = {
   },
 
   /**
+   * Create a superseding draft report revision from a finalized report.
+   */
+  async supersedeDiagnosticReport(reportNumber: string): Promise<DiagnosticReport> {
+    const response = await apiClient.post<DiagnosticReport>(
+      `/api/lab/diagnostic-reports/${reportNumber}/supersede/`
+    );
+    const payload = response.data as unknown;
+
+    if (payload && typeof payload === 'object') {
+      const withDetail = payload as { detail?: unknown; error?: unknown; message?: unknown; results?: unknown };
+      if (typeof withDetail.detail === 'string') {
+        throw new Error(withDetail.detail);
+      }
+      if (typeof withDetail.error === 'string') {
+        throw new Error(withDetail.error);
+      }
+      if (typeof withDetail.message === 'string') {
+        throw new Error(withDetail.message);
+      }
+      if (Array.isArray(withDetail.results)) {
+        const first = withDetail.results[0];
+        if (first) {
+          return parseResponse(DiagnosticReportSchema, first, {
+            context: 'laboratoryApi.supersedeDiagnosticReport.results[0]',
+          });
+        }
+      }
+    }
+
+    if (Array.isArray(payload) && payload[0]) {
+      return parseResponse(DiagnosticReportSchema, payload[0], {
+        context: 'laboratoryApi.supersedeDiagnosticReport[0]',
+      });
+    }
+
+    return parseResponse(DiagnosticReportSchema, payload, {
+      context: 'laboratoryApi.supersedeDiagnosticReport',
+    });
+  },
+
+  /**
    * Generate and download a diagnostic report PDF.
    */
   async downloadDiagnosticReportPdf(reportNumber: string): Promise<Blob> {

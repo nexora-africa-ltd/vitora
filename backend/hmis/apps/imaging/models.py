@@ -916,10 +916,10 @@ class RadiologyReport(models.Model):
     report_number = models.CharField(max_length=30, unique=True, editable=False)
 
     # Relationships
-    imaging_order = models.OneToOneField(
+    imaging_order = models.ForeignKey(
         ImagingOrder,
         on_delete=models.PROTECT,
-        related_name="report",
+        related_name="reports",
         help_text="The imaging order this report is for",
     )
     study = models.ForeignKey(
@@ -1014,6 +1014,15 @@ class RadiologyReport(models.Model):
         help_text="When the report was signed/finalized",
     )
 
+    supersedes = models.ForeignKey(
+        "self",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="superseding_reports",
+        help_text="Previous finalized report revision superseded by this draft/report",
+    )
+
     # Amendment tracking
     amendment_count = models.PositiveIntegerField(
         default=0,
@@ -1050,6 +1059,7 @@ class RadiologyReport(models.Model):
             models.Index(fields=["status"]),
             models.Index(fields=["is_critical"]),
             models.Index(fields=["reported_by"]),
+            models.Index(fields=["supersedes"]),
         ]
 
     def __str__(self):

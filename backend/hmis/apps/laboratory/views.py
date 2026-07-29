@@ -932,6 +932,17 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             return Response(serializer.data)
 
         # POST: Create new report
+        existing = (
+            order.reports.exclude(status=DiagnosticReport.Status.CANCELLED)
+            .order_by("-created_at")
+            .first()
+        )
+        if existing is not None and existing.superseding_reports.exists():
+            existing = None
+        if existing is not None:
+            serializer = DiagnosticReportSerializer(existing, context={"request": request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
         # Copy request data and add lab_order from URL
         data = request.data.copy()
         data["lab_order"] = order.id
@@ -1887,6 +1898,20 @@ class DiagnosticReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """Create a new diagnostic report and return full representation."""
+        lab_order_id = request.data.get("lab_order")
+        if lab_order_id:
+            existing = (
+                self.get_queryset()
+                .filter(lab_order_id=lab_order_id)
+                .exclude(status=DiagnosticReport.Status.CANCELLED)
+                .filter(superseding_reports__isnull=True)
+                .order_by("-created_at")
+                .first()
+            )
+            if existing is not None:
+                serializer = DiagnosticReportSerializer(existing, context={"request": request})
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         report = serializer.save()
@@ -1894,6 +1919,21 @@ class DiagnosticReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         # Return the full report representation
         output_serializer = DiagnosticReportSerializer(report, context={"request": request})
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        """Update a diagnostic report and return full representation."""
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        report = serializer.save()
+        output_serializer = DiagnosticReportSerializer(report, context={"request": request})
+        return Response(output_serializer.data)
+
+    def partial_update(self, request, *args, **kwargs):
+        """Partially update a diagnostic report and return full representation."""
+        kwargs["partial"] = True
+        return self.update(request, *args, **kwargs)
 
     @action(detail=True, methods=["post"])
     def finalize(self, request, report_number=None):
@@ -2090,6 +2130,31 @@ class DiagnosticReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 "pdf_url": request.build_absolute_uri(report.pdf_file.url),
             }
         )
+
+    @action(detail=True, methods=["post"])
+    def supersede(self, request, report_number=None):
+        """Create a new draft report revision that supersedes this finalized report."""
+        report = self.get_object()
+        if not report.is_finalized:
+            return Response(
+                {"detail": "Only finalized reports can be superseded."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        existing = report.superseding_reports.order_by("-created_at").first()
+        if existing is not None:
+            serializer = DiagnosticReportSerializer(existing, context={"request": request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        superseding = DiagnosticReport.objects.create(
+            lab_order=report.lab_order,
+            issued_by=request.user,
+            conclusion=report.conclusion,
+            clinical_info=report.clinical_info,
+            supersedes=report,
+        )
+        serializer = DiagnosticReportSerializer(superseding, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 # ============================================================================

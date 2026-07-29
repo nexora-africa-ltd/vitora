@@ -548,9 +548,19 @@ export function useUpdateRadiologyReport() {
       data: RadiologyReportUpdateData;
     }) => imagingApi.updateReport(reportNumber, data),
     onSuccess: (updatedReport) => {
+      queryClient.setQueryData(
+        imagingKeys.reportByOrder(updatedReport.order_number),
+        updatedReport
+      );
       queryClient.invalidateQueries({ queryKey: imagingKeys.reports() });
       queryClient.invalidateQueries({
         queryKey: imagingKeys.reportDetail(updatedReport.report_number),
+      });
+      queryClient.invalidateQueries({
+        queryKey: imagingKeys.reportByOrder(updatedReport.order_number),
+      });
+      queryClient.invalidateQueries({
+        queryKey: imagingKeys.orderDetail(updatedReport.order_number),
       });
     },
   });
@@ -594,6 +604,34 @@ export function useAmendRadiologyReport() {
       queryClient.invalidateQueries({ queryKey: imagingKeys.reports() });
       queryClient.invalidateQueries({
         queryKey: imagingKeys.reportDetail(amendedReport.report_number),
+      });
+    },
+  });
+}
+
+/**
+ * Hook for creating a superseding report revision.
+ */
+export function useSupersedeRadiologyReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (reportNumber: string) => imagingApi.supersedeReport(reportNumber),
+    onSuccess: (newReport) => {
+      queryClient.invalidateQueries({ queryKey: imagingKeys.reports() });
+      queryClient.invalidateQueries({
+        queryKey: imagingKeys.reportByOrder(newReport.order_number),
+      });
+      queryClient.invalidateQueries({
+        queryKey: imagingKeys.orderDetail(newReport.order_number),
+      });
+      if (newReport.supersedes_report_number) {
+        queryClient.invalidateQueries({
+          queryKey: imagingKeys.reportDetail(newReport.supersedes_report_number),
+        });
+      }
+      queryClient.invalidateQueries({
+        queryKey: imagingKeys.reportDetail(newReport.report_number),
       });
     },
   });

@@ -995,14 +995,18 @@ export function ClaimILMPanel({
       setError('Select an intervention below before opening the visit.');
       return;
     }
+    const inpatientAdmissionDate =
+      (typeof claim.admission_date === 'string' && claim.admission_date.trim())
+      || (typeof claim.service_date === 'string' && claim.service_date.trim())
+      || undefined;
     await run('startVisit', () =>
       shaApi.ilmStartVisit(claimId, {
         ...credential,
         patient_id: patientCrId,
         intervention_codes: codes,
         service_type: serviceType,
-        ...(serviceType === 'INPATIENT'
-          ? { admission_date: claim.admission_date || claim.service_date }
+        ...(serviceType === 'INPATIENT' && inpatientAdmissionDate
+          ? { admission_date: inpatientAdmissionDate }
           : {}),
         ...(hasPractitioner ? practitionerFields : {}),
       }),

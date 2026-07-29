@@ -24,6 +24,7 @@ import { REPORT_STATUS_LABELS } from '@/lib/types/imaging';
 import { formatDateTime } from '@/lib/utils/format';
 import { printRadiologyReport } from '@/lib/documents';
 import { useToast } from '@/lib/hooks';
+import { signaturesApi } from '@/lib/api/certificates';
 
 interface PageProps {
   params: Promise<{ reportNumber: string }>;
@@ -48,6 +49,23 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
     if (!report) return;
 
     try {
+      let signatureData:
+        | { signer_full_name: string; signed_at: string; certificate_serial?: string; is_valid?: boolean }
+        | undefined;
+      try {
+        const sigs = await signaturesApi.forDocument('RadiologyReport', report.id);
+        if (sigs.length > 0 && sigs[0]) {
+          signatureData = {
+            signer_full_name: sigs[0].signer_full_name,
+            signed_at: sigs[0].signed_at,
+            certificate_serial: sigs[0].certificate_serial,
+            is_valid: sigs[0].is_valid,
+          };
+        }
+      } catch {
+        // Signature fetch failed — print without digital-signature metadata.
+      }
+
       await printRadiologyReport({
         report,
         patient: {
@@ -70,6 +88,7 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
               license: facilityDetail.mfl_code || '',
             }
           : undefined,
+        signature: signatureData,
       });
     } catch (error) {
       toast({
@@ -92,6 +111,8 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
       </div>
     );
   }
+
+  const reportedByDisplay = report.reported_by_name || 'Unknown Reporter';
 
   if (error || !report) {
     return (
@@ -264,7 +285,7 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
               </div>
               <div>
                 <p className="text-muted-foreground">Reported By</p>
-                <p className="font-medium">{report.reported_by_name || '—'}</p>
+                <p className="font-medium">{reportedByDisplay}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Signed At</p>

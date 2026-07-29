@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +31,7 @@ import {
 import {
   AlertTriangle,
   CheckCircle2,
+  CopyPlus,
   ExternalLink,
   PenLine,
   Printer,
@@ -35,6 +45,8 @@ import {
   useFinalizeDiagnosticReport,
   useAmendDiagnosticReport,
   useCancelDiagnosticReport,
+  useUpdateDiagnosticReport,
+  useSupersedeDiagnosticReport,
   useLabOrder,
 } from '@/lib/hooks/use-laboratory';
 import { useToast } from '@/lib/hooks';
@@ -43,9 +55,36 @@ import { SignatureBadge } from '@/components/shared/signature-badge';
 import { useFacility } from '@/lib/context/facility-context';
 import { printLabReport } from '@/lib/documents';
 import { signaturesApi } from '@/lib/api/certificates';
+import { laboratoryApi } from '@/lib/api/laboratory';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 interface DiagnosticReportDetailProps {
   reportNumber: string;
+}
+
+const CLINICAL_ROLE_CODES = new Set([
+  'DOCTOR',
+  'MEDICAL_DOCTOR',
+  'NURSE',
+  'CLINICAL_OFFICER',
+  'LAB_TECH',
+  'LAB_TECHNICIAN',
+  'PATHOLOGIST',
+]);
+
+function getAmendLockedMessage(params: {
+  isAdmin: boolean;
+  isSuperuser: boolean;
+  isClinical: boolean;
+}): string {
+  if (params.isAdmin || params.isSuperuser) {
+    return 'Compliance lock: finalized or digitally signed reports are immutable. Create a superseding report revision instead.';
+  }
+  if (params.isClinical) {
+    return 'This report has been finalized/signed and is locked. Request a new revision workflow if a correction is required.';
+  }
+  return 'Amendments are disabled after a report is finalized or digitally signed.';
 }
 
 export function DiagnosticReportDetail({
@@ -55,14 +94,30 @@ export function DiagnosticReportDetail({
   const { toast } = useToast();
   const [amendConclusion, setAmendConclusion] = useState('');
   const [cancelReason, setCancelReason] = useState('');
+  const [draftEditOpen, setDraftEditOpen] = useState(false);
+  const [draftConclusion, setDraftConclusion] = useState('');
+  const [draftClinicalInfo, setDraftClinicalInfo] = useState('');
 
   const { data: report, isLoading, error } = useDiagnosticReport(reportNumber);
+  const { isAdmin, isSuperuser, roleCategory, role } = usePermissions();
   const finalizeReport = useFinalizeDiagnosticReport();
+  const updateReport = useUpdateDiagnosticReport();
   const amendReport = useAmendDiagnosticReport();
   const cancelReport = useCancelDiagnosticReport();
+  const supersedeReport = useSupersedeDiagnosticReport();
+  const { data: reportSignatures = [] } = useQuery({
+    queryKey: ['document-signatures', 'DiagnosticReport', report?.id],
+    queryFn: () => signaturesApi.forDocument('DiagnosticReport', report!.id),
+    enabled: Boolean(report?.id),
+  });
   const { facilityDetail } = useFacility();
   const labOrderNumber = report?.lab_order_number ?? '';
   const { data: labOrder } = useLabOrder(labOrderNumber);
+
+  useEffect(() => {
+    setDraftConclusion(report?.conclusion || '');
+    setDraftClinicalInfo(report?.clinical_info || '');
+  }, [report?.conclusion, report?.clinical_info]);
 
   if (isLoading) {
     return <ReportDetailSkeleton />;
@@ -87,23 +142,77 @@ export function DiagnosticReportDetail({
   }
 
   const canFinalize = report.status === 'DRAFT' || report.status === 'PRELIMINARY';
-  const canAmend = report.is_finalized;
+  const canEditDraft = report.status === 'DRAFT' || report.status === 'PRELIMINARY';
+  const canAmend = false;
   const canCancel =
     report.status !== 'CANCELLED' && report.status !== 'FINAL' && report.status !== 'AMENDED';
   const canPrint = report.status !== 'CANCELLED';
+  const isSigned = reportSignatures.length > 0;
+  const isClinicalRole =
+    roleCategory === 'CLINICAL' || CLINICAL_ROLE_CODES.has((role || '').toUpperCase());
+  const amendDisabledReason =
+    report.is_finalized || isSigned
+      ? getAmendLockedMessage({
+          isAdmin,
+          isSuperuser,
+          isClinical: isClinicalRole,
+        })
+      : null;
+  const canSupersede = (report.is_finalized || isSigned) && !report.superseded_by_report_number;
+  const supersedeDisabledReason = report.superseded_by_report_number
+    ? `This report was already superseded by ${report.superseded_by_report_number}.`
+    : null;
 
   const handleFinalize = async () => {
     try {
       await finalizeReport.mutateAsync(report.report_number);
+
+      // Keep UX aligned with CA/PKI expectations: finalize + digital sign when possible.
+      try {
+        const existingSignatures = await signaturesApi.forDocument('DiagnosticReport', report.id);
+        if (existingSignatures.length === 0) {
+          await signaturesApi.sign({
+            document_type: 'DiagnosticReport',
+            document_id: report.id,
+          });
+        }
+      } catch {
+        // Finalization succeeded; signature can still be added manually via SignatureBadge.
+      }
+
       toast({
         title: 'Report finalized',
-        description: 'The diagnostic report has been finalized.',
+        description: 'The diagnostic report has been finalized and prepared for signing.',
       });
     } catch (error) {
       toast({
         title: 'Error',
         description:
           error instanceof Error ? error.message : 'Failed to finalize report',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    try {
+      await updateReport.mutateAsync({
+        reportNumber: report.report_number,
+        data: {
+          conclusion: draftConclusion,
+          clinical_info: draftClinicalInfo,
+        },
+      });
+      toast({
+        title: 'Draft updated',
+        description: 'Your report draft changes were saved.',
+      });
+      setDraftEditOpen(false);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to update report draft',
         variant: 'destructive',
       });
     }
@@ -180,10 +289,31 @@ export function DiagnosticReportDetail({
       return;
     }
     try {
+      const latestResults = await laboratoryApi.getOrderResults(report.lab_order_number);
+      const resultByOrderItem = new Map(latestResults.map((result) => [String(result.order_item), result]));
+      const printableOrder = {
+        ...labOrder,
+        items: labOrder.items.map((item) => {
+          const resolvedResult = resultByOrderItem.get(String(item.id)) ?? item.result ?? null;
+          return {
+            ...item,
+            result: resolvedResult,
+            has_result: resolvedResult !== null,
+          };
+        }),
+      };
+
       // Fetch signature data for the report (if signed)
       let signatureData: { signer_full_name: string; signed_at: string; certificate_serial?: string; is_valid?: boolean } | undefined;
       try {
-        const sigs = await signaturesApi.forDocument('DiagnosticReport', report.id);
+        let sigs = await signaturesApi.forDocument('DiagnosticReport', report.id);
+        if (sigs.length === 0) {
+          const listing = await signaturesApi.list({
+            document_type: 'DiagnosticReport',
+            page_size: 200,
+          });
+          sigs = listing.results.filter((sig) => sig.document_id === report.id);
+        }
         if (sigs.length > 0 && sigs[0]) {
           signatureData = {
             signer_full_name: sigs[0].signer_full_name,
@@ -196,7 +326,15 @@ export function DiagnosticReportDetail({
         // Signature fetch failed — print without signature info
       }
       await printLabReport({
-        order: labOrder,
+        order: printableOrder,
+        diagnosticReport: {
+          report_number: report.report_number,
+          status: report.status,
+          conclusion: report.conclusion,
+          clinical_info: report.clinical_info,
+          issued_by_name: report.issued_by_name,
+          issued_at: report.issued_at,
+        },
         patient: {
           full_name: report.patient_name,
           mrn: report.patient_mrn || '',
@@ -218,6 +356,34 @@ export function DiagnosticReportDetail({
         title: 'Error',
         description:
           error instanceof Error ? error.message : 'Failed to print report',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSupersede = async () => {
+    try {
+      const next = await supersedeReport.mutateAsync(report.report_number);
+      toast({
+        title: 'Superseding report created',
+        description: `${next.report_number} is ready as a new draft revision.`,
+      });
+      router.push(`/laboratory/reports/${next.report_number}`);
+    } catch (error) {
+      let message = 'Failed to create superseding report';
+      if (error instanceof Error) {
+        message = error.message;
+      } else if (error && typeof error === 'object' && 'response' in error) {
+        const maybeAxios = error as { response?: { data?: { detail?: string; error?: string; message?: string } } };
+        message =
+          maybeAxios.response?.data?.detail ||
+          maybeAxios.response?.data?.error ||
+          maybeAxios.response?.data?.message ||
+          message;
+      }
+      toast({
+        title: 'Error',
+        description: message,
         variant: 'destructive',
       });
     }
@@ -267,6 +433,93 @@ export function DiagnosticReportDetail({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+            )}
+
+            {canEditDraft && (
+              <Dialog open={draftEditOpen} onOpenChange={setDraftEditOpen}>
+                <Button variant="outline" onClick={() => setDraftEditOpen(true)}>
+                  <PenLine className="h-4 w-4 mr-2" />
+                  Edit Draft
+                </Button>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Edit Draft Report</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="draft-conclusion">Conclusion</Label>
+                      <Textarea
+                        id="draft-conclusion"
+                        value={draftConclusion}
+                        onChange={(e) => setDraftConclusion(e.target.value)}
+                        placeholder="Enter report conclusion..."
+                        className="min-h-[120px]"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="draft-clinical-info">Clinical Information</Label>
+                      <Textarea
+                        id="draft-clinical-info"
+                        value={draftClinicalInfo}
+                        onChange={(e) => setDraftClinicalInfo(e.target.value)}
+                        placeholder="Enter clinical context..."
+                        className="min-h-[100px]"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setDraftEditOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSaveDraft} disabled={updateReport.isPending}>
+                      {updateReport.isPending ? 'Saving...' : 'Save Draft'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+
+            {amendDisabledReason && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button variant="outline" disabled>
+                        <PenLine className="h-4 w-4 mr-2" />
+                        Amend
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{amendDisabledReason}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
+            {canSupersede && (
+              <Button
+                variant="outline"
+                onClick={handleSupersede}
+                disabled={supersedeReport.isPending}
+              >
+                <CopyPlus className="h-4 w-4 mr-2" />
+                {supersedeReport.isPending ? 'Creating...' : 'Create Superseding Report'}
+              </Button>
+            )}
+
+            {supersedeDisabledReason && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button variant="outline" disabled>
+                        <CopyPlus className="h-4 w-4 mr-2" />
+                        Create Superseding Report
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{supersedeDisabledReason}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
 
             {canAmend && (

@@ -158,11 +158,8 @@ class ImagingOrderSerializer(serializers.ModelSerializer):
         return obj.ordered_by.get_full_name() or obj.ordered_by.username
 
     def get_report_summary(self, obj) -> dict | None:
-        """Return report findings/impression if a report exists."""
-        try:
-            report = obj.report
-        except self.Meta.model.report.RelatedObjectDoesNotExist:
-            return None
+        """Return findings/impression from the most recent report revision."""
+        report = obj.reports.order_by("-created_at").first()
         if report is None:
             return None
         return {
@@ -550,6 +547,10 @@ class RadiologyReportSerializer(serializers.ModelSerializer):
     modality = serializers.SerializerMethodField()
     study_description = serializers.SerializerMethodField()
     amendments = ReportAmendmentSerializer(many=True, read_only=True)
+    supersedes_report_number = serializers.CharField(
+        source="supersedes.report_number", read_only=True
+    )
+    superseded_by_report_number = serializers.SerializerMethodField()
     can_edit = serializers.BooleanField(read_only=True)
     can_sign = serializers.BooleanField(read_only=True)
     can_amend = serializers.BooleanField(read_only=True)
@@ -560,6 +561,9 @@ class RadiologyReportSerializer(serializers.ModelSerializer):
             "id",
             "report_number",
             "imaging_order",
+            "supersedes",
+            "supersedes_report_number",
+            "superseded_by_report_number",
             "order_number",
             "study",
             "patient_name",
@@ -617,7 +621,11 @@ class RadiologyReportSerializer(serializers.ModelSerializer):
         ]
 
     def get_reported_by_name(self, obj) -> str:
-        return obj.reported_by.get_full_name() or obj.reported_by.username
+        return obj.reported_by.get_full_name().strip() or "Unknown Reporter"
+
+    def get_superseded_by_report_number(self, obj) -> str | None:
+        latest = obj.superseding_reports.order_by("-created_at").first()
+        return latest.report_number if latest else None
 
     def get_last_amended_by_name(self, obj) -> str:
         if obj.last_amended_by:
@@ -674,13 +682,16 @@ class RadiologyReportCreateSerializer(serializers.ModelSerializer):
         ]
 
     def validate_imaging_order(self, value):
-        """Ensure order is COMPLETED and doesn't already have a report."""
+        """Ensure order is COMPLETED and doesn't already have an active report."""
         if value.status not in ("COMPLETED", "REPORTED"):
             raise serializers.ValidationError(
                 "Cannot create report for an order that is not completed."
             )
-        # Check if report already exists
-        if RadiologyReport.objects.filter(imaging_order=value).exists():
+        has_active = RadiologyReport.objects.filter(
+            imaging_order=value,
+            superseding_reports__isnull=True,
+        ).exists()
+        if has_active:
             raise serializers.ValidationError("A report already exists for this imaging order.")
         return value
 

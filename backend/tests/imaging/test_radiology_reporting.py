@@ -218,6 +218,23 @@ class TestRadiologyReportAPI:
         assert response.data["report_number"].startswith("RPT-")
         assert response.data["findings"] == "Clear lung fields"
 
+    def test_create_report_idempotent_for_existing_active_report(
+        self, authenticated_client, draft_report
+    ):
+        """Should return existing active report instead of creating duplicate."""
+        url = reverse("radiology-report-list")
+        data = {
+            "imaging_order": draft_report.imaging_order_id,
+            "findings": "Another draft",
+            "impression": "Another impression",
+        }
+
+        response = authenticated_client.post(url, data, format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == draft_report.id
+        assert response.data["report_number"] == draft_report.report_number
+
     def test_create_report_requires_completed_order(
         self, authenticated_client, sample_patient, sample_encounter, test_user, imaging_procedure
     ):
@@ -376,6 +393,65 @@ class TestRadiologyReportAPI:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 1
         assert response.data["results"][0]["order_number"] == order_number
+
+    def test_supersede_creates_new_draft_revision(self, authenticated_client, signed_report):
+        """Should create a superseding draft linked to the finalized report."""
+        url = reverse("radiology-report-supersede", args=[signed_report.report_number])
+
+        response = authenticated_client.post(url)
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["status"] == "DRAFT"
+        assert response.data["supersedes"] == signed_report.id
+        assert response.data["supersedes_report_number"] == signed_report.report_number
+
+    def test_supersede_is_idempotent_for_same_source_report(
+        self, authenticated_client, signed_report, radiologist
+    ):
+        """Should return existing superseding draft for repeated supersede calls."""
+        existing = RadiologyReport.objects.create(
+            imaging_order=signed_report.imaging_order,
+            reported_by=radiologist,
+            findings=signed_report.findings,
+            impression=signed_report.impression,
+            supersedes=signed_report,
+        )
+
+        url = reverse("radiology-report-supersede", args=[signed_report.report_number])
+        response = authenticated_client.post(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == existing.id
+
+    def test_supersede_requires_finalized_report(self, authenticated_client, draft_report):
+        """Should reject superseding non-finalized report."""
+        url = reverse("radiology-report-supersede", args=[draft_report.report_number])
+
+        response = authenticated_client.post(url)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_list_reports_by_order_returns_active_revision(
+        self, authenticated_client, signed_report, radiologist
+    ):
+        """Order-filtered listing should prioritize active (non-superseded) revision."""
+        superseding = RadiologyReport.objects.create(
+            imaging_order=signed_report.imaging_order,
+            reported_by=radiologist,
+            findings="Updated superseding findings",
+            impression="Updated superseding impression",
+            supersedes=signed_report,
+        )
+
+        url = reverse("radiology-report-list")
+        response = authenticated_client.get(
+            url, {"order": signed_report.imaging_order.order_number}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) >= 1
+        assert response.data["results"][0]["id"] == superseding.id
+        assert response.data["results"][0]["findings"] == "Updated superseding findings"
 
 
 class TestReportAmendmentModel:
