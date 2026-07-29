@@ -162,6 +162,7 @@ export function hasChildren(item: NavItemType): item is NavItemWithChildren {
  */
 const _allNavItems: NavItemType[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard, moduleKey: 'dashboard' },
+  { label: 'Document Hub', href: '/document-hub', icon: FileText, actionKey: 'core.view_document_hub' },
   { label: 'Clinics & ER Check-in', href: '/patients/checkin', icon: UserCheck, moduleKey: 'checkin' },
   {
     label: 'Patients',

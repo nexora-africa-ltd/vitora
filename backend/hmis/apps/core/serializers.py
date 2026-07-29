@@ -15,6 +15,7 @@ from .models import (
     County,
     Department,
     DHIS2Config,
+    DocumentShare,
     DocumentSignature,
     Facility,
     FeatureFlag,
@@ -1706,6 +1707,109 @@ class VerifySignatureRequestSerializer(serializers.Serializer):
                 "Provide either 'signature_id' or both 'document_type' and 'document_id'."
             )
         return data
+
+
+class DocumentShareSerializer(serializers.ModelSerializer):
+    """Serializer for document shares."""
+
+    shared_by_name = serializers.SerializerMethodField()
+    shared_with_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DocumentShare
+        fields = [
+            "id",
+            "document_type",
+            "document_id",
+            "shared_by",
+            "shared_by_name",
+            "shared_with",
+            "shared_with_name",
+            "permission",
+            "note",
+            "expires_at",
+            "revoked_at",
+            "revoked_by",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "shared_by",
+            "shared_by_name",
+            "shared_with_name",
+            "revoked_at",
+            "revoked_by",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_shared_by_name(self, obj) -> str:
+        return obj.shared_by.get_full_name().strip() or obj.shared_by.username
+
+    def get_shared_with_name(self, obj) -> str:
+        return obj.shared_with.get_full_name().strip() or obj.shared_with.username
+
+
+class DocumentShareCreateSerializer(serializers.ModelSerializer):
+    """Create serializer for document shares."""
+
+    class Meta:
+        model = DocumentShare
+        fields = ["document_type", "document_id", "shared_with", "permission", "note", "expires_at"]
+
+    def validate_document_type(self, value):
+        from .services.signing_service import SIGNABLE_DOCUMENT_TYPES
+
+        shareable_types = set(SIGNABLE_DOCUMENT_TYPES) | {
+            "Invoice",
+            "SHAClaim",
+            "SHAPreauth",
+            "SHAClaimAttachment",
+            "CreditNote",
+            "Receipt",
+            "Payment",
+        }
+        if value not in shareable_types:
+            raise serializers.ValidationError("Unsupported document type.")
+        return value
+
+    def validate_shared_with(self, value):
+        request = self.context.get("request")
+        if request and value.pk == request.user.pk:
+            raise serializers.ValidationError("You cannot share a document with yourself.")
+        return value
+
+    def validate(self, attrs):
+        from .services.signing_service import SIGNABLE_DOCUMENT_TYPES
+
+        if (
+            attrs.get("permission") == DocumentShare.Permission.SIGN
+            and attrs.get("document_type") not in SIGNABLE_DOCUMENT_TYPES
+        ):
+            raise serializers.ValidationError(
+                {"permission": "SIGN permission is only available for signable document types."}
+            )
+        return attrs
+
+
+class DocumentHubItemSerializer(serializers.Serializer):
+    """Normalized Document Hub item."""
+
+    document_type = serializers.CharField()
+    document_id = serializers.IntegerField()
+    document_number = serializers.CharField()
+    title = serializers.CharField()
+    patient_name = serializers.CharField(allow_blank=True)
+    status = serializers.CharField(allow_blank=True)
+    owner_name = serializers.CharField(allow_blank=True)
+    is_signed = serializers.BooleanField()
+    signed_at = serializers.DateTimeField(allow_null=True)
+    can_sign = serializers.BooleanField()
+    is_shared_with_me = serializers.BooleanField()
+    share_permission = serializers.CharField(allow_null=True)
+    shared_by_name = serializers.CharField(allow_null=True)
+    shared_at = serializers.DateTimeField(allow_null=True)
 
 
 class RevokeCertificateRequestSerializer(serializers.Serializer):

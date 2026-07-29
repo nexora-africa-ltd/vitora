@@ -4,10 +4,23 @@ Tests for X.509 PKI and document digital signatures.
 DHA Compliance: Gap #32 — Digital Signatures (Sprint 3.C)
 """
 
+from datetime import date, timedelta
+from decimal import Decimal
+
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 
+from hmis.apps.billing.models import (
+    CreditNote,
+    Invoice,
+    Payment,
+    Receipt,
+    SHAClaim,
+    SHAClaimAttachment,
+    SHAMember,
+)
 from hmis.apps.core.models import (
     AuditLog,
     CertificateAuthority,
@@ -20,6 +33,49 @@ from hmis.apps.core.services.signing_service import DocumentSigningService
 from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
+
+
+def _create_sha_claim_attachment(sample_patient, sample_encounter, test_user):
+    sha_member = SHAMember.objects.create(
+        patient=sample_patient,
+        sha_number="SHA-CORE-ATT-0001",
+        national_id="12345678",
+        membership_type=SHAMember.MembershipType.PRINCIPAL,
+        status=SHAMember.MembershipStatus.ACTIVE,
+        coverage_start_date=date.today() - timedelta(days=365),
+        coverage_end_date=date.today() + timedelta(days=365),
+        eligibility_valid_until=date.today() + timedelta(days=30),
+        created_by=test_user,
+    )
+    claim = SHAClaim.objects.create(
+        patient=sample_patient,
+        sha_member=sha_member,
+        encounter=sample_encounter,
+        claim_type="outpatient",
+        service_date=date.today(),
+        primary_diagnosis_code="J06.9",
+        primary_diagnosis_description="Acute upper respiratory infection",
+        facility_code="MFL-12345",
+        facility_level="L3",
+        created_by=test_user,
+    )
+    content = b"%PDF-1.4 core-signing-attachment"
+    return SHAClaimAttachment.objects.create(
+        claim=claim,
+        attachment_type=SHAClaimAttachment.AttachmentType.CLINICAL_NOTES,
+        name="Clinical Notes",
+        description="Read-only SHA attachment",
+        file=SimpleUploadedFile(
+            name="clinical_notes.pdf",
+            content=content,
+            content_type="application/pdf",
+        ),
+        file_size=len(content),
+        mime_type="application/pdf",
+        checksum="",
+        original_filename="clinical_notes.pdf",
+        uploaded_by=test_user,
+    )
 
 
 @pytest.fixture
@@ -213,6 +269,27 @@ class TestDocumentSigning:
         assert sig.document_type == "Prescription"
         assert sig.signer == test_user
 
+    def test_sign_sha_claim_attachment(
+        self,
+        user_cert,
+        test_user,
+        sample_patient,
+        sample_encounter,
+        signing_service,
+    ):
+        """SHA claim attachments are signable using a file-hash-bound payload."""
+        attachment = _create_sha_claim_attachment(sample_patient, sample_encounter, test_user)
+
+        sig = signing_service.sign_document(
+            document_type="SHAClaimAttachment",
+            document_id=attachment.pk,
+            user=test_user,
+        )
+
+        assert sig.document_type == "SHAClaimAttachment"
+        assert sig.document_id == attachment.pk
+        assert sig.signer == test_user
+
     def test_verify_valid_signature(self, user_cert, test_user, sample_lab_result, signing_service):
         """Verifying an unmodified signed document returns valid=True."""
         sig = signing_service.sign_document(
@@ -375,6 +452,349 @@ class TestPKIAPI:
         )
         response = authenticated_client.get("/api/core/signatures/")
         assert response.status_code == status.HTTP_200_OK
+
+    def test_create_document_share_defaults_to_view(
+        self, authenticated_client, sample_lab_result, another_user
+    ):
+        """Creating a share defaults to VIEW permission."""
+        response = authenticated_client.post(
+            "/api/core/document-shares/",
+            {
+                "document_type": "LabResult",
+                "document_id": sample_lab_result.pk,
+                "shared_with": another_user.pk,
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["permission"] == "VIEW"
+
+    def test_view_share_cannot_sign(
+        self,
+        api_client,
+        another_user,
+        sample_lab_result,
+        authenticated_client,
+        root_ca,
+        pki_service,
+    ):
+        """Recipient with VIEW share cannot sign."""
+        authenticated_client.post(
+            "/api/core/document-shares/",
+            {
+                "document_type": "LabResult",
+                "document_id": sample_lab_result.pk,
+                "shared_with": another_user.pk,
+                "permission": "VIEW",
+            },
+            format="json",
+        )
+
+        pki_service.issue_user_certificate(user=another_user, ca=root_ca, validity_years=1)
+        api_client.force_authenticate(user=another_user)
+
+        response = api_client.post(
+            "/api/core/signatures/sign/",
+            {"document_type": "LabResult", "document_id": sample_lab_result.pk},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "not authorized" in str(response.data).lower()
+
+    def test_sign_share_can_sign(
+        self,
+        api_client,
+        another_user,
+        sample_lab_result,
+        authenticated_client,
+        root_ca,
+        pki_service,
+    ):
+        """Recipient with SIGN share can sign."""
+        authenticated_client.post(
+            "/api/core/document-shares/",
+            {
+                "document_type": "LabResult",
+                "document_id": sample_lab_result.pk,
+                "shared_with": another_user.pk,
+                "permission": "SIGN",
+            },
+            format="json",
+        )
+
+        pki_service.issue_user_certificate(user=another_user, ca=root_ca, validity_years=1)
+        api_client.force_authenticate(user=another_user)
+
+        response = api_client.post(
+            "/api/core/signatures/sign/",
+            {"document_type": "LabResult", "document_id": sample_lab_result.pk},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_document_hub_shared_tab(
+        self, api_client, authenticated_client, another_user, sample_lab_result
+    ):
+        """Shared document should appear in recipient's Shared With Me tab."""
+        share_resp = authenticated_client.post(
+            "/api/core/document-shares/",
+            {
+                "document_type": "LabResult",
+                "document_id": sample_lab_result.pk,
+                "shared_with": another_user.pk,
+            },
+            format="json",
+        )
+        assert share_resp.status_code in (status.HTTP_200_OK, status.HTTP_201_CREATED)
+
+        api_client.force_authenticate(user=another_user)
+        response = api_client.get("/api/core/document-hub/?tab=shared")
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get("results", response.data)
+        assert any(
+            item["document_type"] == "LabResult" and item["document_id"] == sample_lab_result.pk
+            for item in results
+        )
+
+    def test_sha_attachment_preview_endpoint_allows_shared_view(
+        self,
+        api_client,
+        authenticated_client,
+        another_user,
+        sample_patient,
+        sample_encounter,
+        test_user,
+    ):
+        """Recipient with active share can access SHA attachment preview payload."""
+        attachment = _create_sha_claim_attachment(sample_patient, sample_encounter, test_user)
+
+        share_response = authenticated_client.post(
+            "/api/core/document-shares/",
+            {
+                "document_type": "SHAClaimAttachment",
+                "document_id": attachment.pk,
+                "shared_with": another_user.pk,
+                "permission": "VIEW",
+            },
+            format="json",
+        )
+        assert share_response.status_code in (status.HTTP_200_OK, status.HTTP_201_CREATED)
+
+        api_client.force_authenticate(user=another_user)
+        response = api_client.get(f"/api/core/document-hub/sha-attachments/{attachment.pk}/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == attachment.pk
+        assert response.data["attachment_type"] == attachment.attachment_type
+        assert response.data["file_url"]
+
+    def test_document_hub_mine_includes_invoice(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+        test_user,
+    ):
+        """Billing invoices created by user should appear in Mine tab."""
+        invoice = Invoice.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            status=Invoice.Status.DRAFT,
+            payment_type=Invoice.PaymentType.CASH,
+            due_date=sample_encounter.created_at.date(),
+            created_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get("/api/core/document-hub/?tab=mine")
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get("results", response.data)
+        assert any(
+            item["document_type"] == "Invoice" and item["document_id"] == invoice.pk
+            for item in results
+        )
+
+    def test_invoice_share_cannot_use_sign_permission(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+        test_user,
+        another_user,
+    ):
+        """Non-signable billing docs should reject SIGN share permission."""
+        invoice = Invoice.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            status=Invoice.Status.DRAFT,
+            payment_type=Invoice.PaymentType.CASH,
+            due_date=sample_encounter.created_at.date(),
+            created_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.post(
+            "/api/core/document-shares/",
+            {
+                "document_type": "Invoice",
+                "document_id": invoice.pk,
+                "shared_with": another_user.pk,
+                "permission": "SIGN",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "sign permission" in str(response.data).lower()
+
+    def test_document_hub_mine_includes_credit_note_receipt_and_payment(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+        test_user,
+    ):
+        """Additional billing artifacts should appear in Mine tab for their owner fields."""
+        invoice = Invoice.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            status=Invoice.Status.DRAFT,
+            payment_type=Invoice.PaymentType.CASH,
+            due_date=sample_encounter.created_at.date(),
+            total_amount=Decimal("1000.00"),
+            balance_due=Decimal("1000.00"),
+            created_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        payment = Payment.objects.create(
+            invoice=invoice,
+            method=Payment.Method.CASH,
+            amount=Decimal("500.00"),
+            status=Payment.Status.COMPLETED,
+            received_by=test_user,
+        )
+        receipt = Receipt.objects.create(
+            payment=payment,
+            invoice=invoice,
+            patient=sample_patient,
+            amount=Decimal("500.00"),
+            payment_method=Payment.Method.CASH,
+            facility_name="Test Facility",
+            facility_address="Nairobi",
+            facility_phone="0700000000",
+            patient_name=f"{sample_patient.first_name} {sample_patient.last_name}".strip(),
+            patient_mrn=sample_patient.mrn,
+            issued_by=test_user,
+        )
+        credit_note = CreditNote.objects.create(
+            invoice=invoice,
+            patient=sample_patient,
+            amount=Decimal("100.00"),
+            reason=CreditNote.Reason.OTHER,
+            reason_detail="Manual adjustment",
+            requested_by=test_user,
+        )
+
+        response = authenticated_client.get("/api/core/document-hub/?tab=mine")
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get("results", response.data)
+        assert any(
+            item["document_type"] == "Payment" and item["document_id"] == payment.pk
+            for item in results
+        )
+        assert any(
+            item["document_type"] == "Receipt" and item["document_id"] == receipt.pk
+            for item in results
+        )
+        assert any(
+            item["document_type"] == "CreditNote" and item["document_id"] == credit_note.pk
+            for item in results
+        )
+
+    @pytest.mark.parametrize("document_type", ["CreditNote", "Receipt", "Payment"])
+    def test_non_signable_billing_artifacts_reject_sign_share_permission(
+        self,
+        document_type,
+        authenticated_client,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+        test_user,
+        another_user,
+    ):
+        """Non-signable billing artifacts should reject SIGN share permission."""
+        invoice = Invoice.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            status=Invoice.Status.DRAFT,
+            payment_type=Invoice.PaymentType.CASH,
+            due_date=sample_encounter.created_at.date(),
+            total_amount=Decimal("1000.00"),
+            balance_due=Decimal("1000.00"),
+            created_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        payment = Payment.objects.create(
+            invoice=invoice,
+            method=Payment.Method.CASH,
+            amount=Decimal("500.00"),
+            status=Payment.Status.COMPLETED,
+            received_by=test_user,
+        )
+        receipt = Receipt.objects.create(
+            payment=payment,
+            invoice=invoice,
+            patient=sample_patient,
+            amount=Decimal("500.00"),
+            payment_method=Payment.Method.CASH,
+            facility_name="Test Facility",
+            facility_address="Nairobi",
+            facility_phone="0700000000",
+            patient_name=f"{sample_patient.first_name} {sample_patient.last_name}".strip(),
+            patient_mrn=sample_patient.mrn,
+            issued_by=test_user,
+        )
+        credit_note = CreditNote.objects.create(
+            invoice=invoice,
+            patient=sample_patient,
+            amount=Decimal("100.00"),
+            reason=CreditNote.Reason.OTHER,
+            reason_detail="Manual adjustment",
+            requested_by=test_user,
+        )
+        document_ids = {
+            "Payment": payment.pk,
+            "Receipt": receipt.pk,
+            "CreditNote": credit_note.pk,
+        }
+
+        response = authenticated_client.post(
+            "/api/core/document-shares/",
+            {
+                "document_type": document_type,
+                "document_id": document_ids[document_type],
+                "shared_with": another_user.pk,
+                "permission": "SIGN",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "sign permission" in str(response.data).lower()
 
 
 class TestPKIManagementCommands:

@@ -34,6 +34,8 @@ from .views import (
     AuditLogViewSet,
     CertificateViewSet,
     DepartmentViewSet,
+    DocumentHubViewSet,
+    DocumentShareViewSet,
     DocumentSignatureViewSet,
     FacilityViewSet,
     FeatureFlagViewSet,
@@ -59,6 +61,8 @@ router.register(r"features", FeatureFlagViewSet, basename="featureflag")
 router.register(r"facilities", FacilityViewSet, basename="facility")
 router.register(r"certificates", CertificateViewSet, basename="certificate")
 router.register(r"signatures", DocumentSignatureViewSet, basename="documentsignature")
+router.register(r"document-hub", DocumentHubViewSet, basename="document-hub")
+router.register(r"document-shares", DocumentShareViewSet, basename="document-share")
 router.register(r"invitations", StaffInvitationViewSet, basename="staffinvitation")
 router.register(r"join-requests", OrgJoinRequestViewSet, basename="orgjoinrequest")
 

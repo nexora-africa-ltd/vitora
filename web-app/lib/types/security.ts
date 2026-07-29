@@ -142,3 +142,48 @@ export interface SignatureVerificationResult {
   signed_at: string;
   details: string;
 }
+
+export type DocumentSharePermission = 'VIEW' | 'SIGN';
+
+export interface DocumentShare {
+  id: number;
+  document_type: string;
+  document_id: number;
+  shared_by: number;
+  shared_by_name: string;
+  shared_with: number;
+  shared_with_name: string;
+  permission: DocumentSharePermission;
+  note: string;
+  expires_at: string | null;
+  revoked_at: string | null;
+  revoked_by: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateDocumentShareData {
+  document_type: string;
+  document_id: number;
+  shared_with: number;
+  permission?: DocumentSharePermission;
+  note?: string;
+  expires_at?: string | null;
+}
+
+export interface DocumentHubItem {
+  document_type: string;
+  document_id: number;
+  document_number: string;
+  title: string;
+  patient_name: string;
+  status: string;
+  owner_name: string;
+  is_signed: boolean;
+  signed_at: string | null;
+  can_sign: boolean;
+  is_shared_with_me: boolean;
+  share_permission: DocumentSharePermission | null;
+  shared_by_name: string | null;
+  shared_at: string | null;
+}
