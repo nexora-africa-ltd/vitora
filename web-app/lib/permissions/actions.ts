@@ -322,6 +322,38 @@ export const ACTION_PERMISSIONS = {
   'admin.manage_facilities': ['ADMIN', 'ORG-ADMIN'],
   'admin.manage_schedules': ['ADMIN', 'ORG-ADMIN'],
   'admin.view_reports': ['ADMIN', 'ORG-ADMIN', 'HR_OFFICER', 'COMPLIANCE_OFFICER'],
+
+  // === Core Document Hub ===
+  'core.view_document_hub': [
+    'ADMIN',
+    'ORG-ADMIN',
+    'DOCTOR',
+    'CONSULTANT',
+    'CLINICAL_OFFICER',
+    'NURSE',
+    'LAB_TECH',
+    'LAB_SCIENTIST',
+    'PATHOLOGIST',
+    'PHARMACIST',
+    'RADIOLOGIST',
+    'RADIOGRAPHER',
+    'RECORDS_CLERK',
+    'RECEPTIONIST',
+  ],
+  'core.share_documents': [
+    'ADMIN',
+    'ORG-ADMIN',
+    'DOCTOR',
+    'CONSULTANT',
+    'CLINICAL_OFFICER',
+    'NURSE',
+    'LAB_TECH',
+    'LAB_SCIENTIST',
+    'PATHOLOGIST',
+    'PHARMACIST',
+    'RADIOLOGIST',
+    'RADIOGRAPHER',
+  ],
 } as const;
 
 export type ActionKey = keyof typeof ACTION_PERMISSIONS;

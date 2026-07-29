@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+from django.db.models import Q
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +50,7 @@ SIGNABLE_DOCUMENT_TYPES = {
     "Discharge",
     "RadiologyReport",
     "SickNote",
+    "SHAClaimAttachment",
 }
 
 
@@ -91,6 +94,9 @@ class DocumentSigningService:
 
         # Get the document
         document = self._get_document(document_type, document_id)
+
+        if not self.user_can_sign_document(user, document_type, document):
+            raise ValueError("You are not authorized to sign this document.")
 
         # Serialize content to canonical form
         content = self.get_signable_content(document_type, document)
@@ -143,6 +149,44 @@ class DocumentSigningService:
             f"(cert: {cert.serial_number[:8]}...)"
         )
         return doc_sig
+
+    def user_can_sign_document(self, user, document_type: str, document) -> bool:
+        """Return whether the user can sign based on ownership or active SIGN share."""
+        if getattr(user, "is_superuser", False):
+            return True
+        if self._is_document_owner(user, document_type, document):
+            return True
+        return self._has_active_sign_share(user, document_type, document.pk)
+
+    def _is_document_owner(self, user, document_type: str, document) -> bool:
+        owner_attr = {
+            "LabResult": "entered_by_id",
+            "Prescription": "prescribed_by_id",
+            "Discharge": "discharged_by_id",
+            "RadiologyReport": "reported_by_id",
+            "DiagnosticReport": "issued_by_id",
+            "SickNote": "issued_by_id",
+            "ClinicalReferral": "referred_by_id",
+            "SHAClaimAttachment": "uploaded_by_id",
+        }.get(document_type)
+        if owner_attr is None:
+            return False
+        return getattr(document, owner_attr, None) == user.id
+
+    def _has_active_sign_share(self, user, document_type: str, document_id: int) -> bool:
+        from hmis.apps.core.models import DocumentShare
+
+        return (
+            DocumentShare.objects.filter(
+                document_type=document_type,
+                document_id=document_id,
+                shared_with=user,
+                permission=DocumentShare.Permission.SIGN,
+                revoked_at__isnull=True,
+            )
+            .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=timezone.now()))
+            .exists()
+        )
 
     def verify_signature(self, signature_record) -> VerificationResult:
         """
@@ -278,6 +322,7 @@ class DocumentSigningService:
             "DiagnosticReport": self._extract_diagnostic_report,
             "SickNote": self._extract_sick_note,
             "ClinicalReferral": self._extract_clinical_referral,
+            "SHAClaimAttachment": self._extract_sha_claim_attachment,
         }
 
         extractor = extractors.get(document_type)
@@ -297,6 +342,7 @@ class DocumentSigningService:
             "DiagnosticReport": ("laboratory", "DiagnosticReport"),
             "SickNote": ("sick_notes", "SickNote"),
             "ClinicalReferral": ("referrals", "ClinicalReferral"),
+            "SHAClaimAttachment": ("billing", "SHAClaimAttachment"),
         }
 
         app_model = model_map.get(document_type)
@@ -444,4 +490,39 @@ class DocumentSigningService:
             "provisional_diagnosis": doc.provisional_diagnosis,
             "status": doc.status,
             "referred_by_id": doc.referred_by_id,
+        }
+
+    def _extract_sha_claim_attachment(self, doc) -> dict:
+        """Extract signable content from a SHA claim attachment.
+
+        Uses a hybrid payload: immutable metadata + cryptographic file hash.
+        This is superior to metadata-only signing because it proves the binary
+        attachment has not changed, while still binding context (claim/type).
+        """
+
+        file_sha256 = (doc.checksum or "").strip()
+        if not file_sha256 and getattr(doc, "file", None):
+            hasher = hashlib.sha256()
+            try:
+                with doc.file.open("rb") as f:
+                    for chunk in iter(lambda: f.read(8192), b""):
+                        hasher.update(chunk)
+                file_sha256 = hasher.hexdigest()
+            except Exception:
+                file_sha256 = ""
+
+        return {
+            "type": "SHAClaimAttachment",
+            "id": doc.pk,
+            "claim_id": doc.claim_id,
+            "claim_number": getattr(doc.claim, "claim_number", ""),
+            "attachment_type": doc.attachment_type,
+            "name": doc.name,
+            "description": doc.description or "",
+            "mime_type": doc.mime_type or "",
+            "file_size": doc.file_size,
+            "original_filename": doc.original_filename or "",
+            "uploaded_by_id": doc.uploaded_by_id,
+            "created_at": str(doc.created_at) if doc.created_at else None,
+            "file_sha256": file_sha256,
         }

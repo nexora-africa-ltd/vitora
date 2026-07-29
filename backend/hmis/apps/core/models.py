@@ -4758,6 +4758,76 @@ class DocumentSignature(models.Model):
         return f"Sig on {self.document_type}#{self.document_id} by {self.signer.username}"
 
 
+class DocumentShare(models.Model):
+    """User-to-user share for a signable clinical document."""
+
+    class Permission(models.TextChoices):
+        VIEW = "VIEW", "View"
+        SIGN = "SIGN", "Sign"
+
+    document_type = models.CharField(max_length=50, db_index=True)
+    document_id = models.BigIntegerField(db_index=True)
+    shared_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="document_shares_sent",
+        help_text="User who shared the document",
+    )
+    shared_with = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="document_shares_received",
+        help_text="User who received access to the document",
+    )
+    permission = models.CharField(
+        max_length=10,
+        choices=Permission.choices,
+        default=Permission.VIEW,
+        db_index=True,
+    )
+    note = models.TextField(blank=True, default="")
+    expires_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="document_shares_revoked",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Document Share"
+        verbose_name_plural = "Document Shares"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["document_type", "document_id"]),
+            models.Index(fields=["shared_with", "permission"]),
+            models.Index(fields=["shared_by"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["document_type", "document_id", "shared_with"],
+                condition=models.Q(revoked_at__isnull=True),
+                name="unique_active_document_share",
+            )
+        ]
+
+    @property
+    def is_active(self) -> bool:
+        return self.revoked_at is None and (
+            self.expires_at is None or self.expires_at > timezone.now()
+        )
+
+    def __str__(self) -> str:
+        return (
+            f"{self.document_type}#{self.document_id} shared to "
+            f"{self.shared_with.username} ({self.permission})"
+        )
+
+
 # ============================================================================
 # Staff Invitation & Password Reset Models
 # ============================================================================

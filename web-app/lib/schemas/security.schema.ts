@@ -136,3 +136,53 @@ export const SignatureVerificationResultSchema = z.object({
   signed_at: z.string(),
   details: z.string(),
 });
+
+export const DocumentSharePermissionSchema = z.enum(['VIEW', 'SIGN']);
+
+export const DocumentShareSchema = z.object({
+  id: z.number(),
+  document_type: z.string(),
+  document_id: z.number(),
+  shared_by: z.number(),
+  shared_by_name: z.string(),
+  shared_with: z.number(),
+  shared_with_name: z.string(),
+  permission: DocumentSharePermissionSchema,
+  note: z.string(),
+  expires_at: z.string().nullable(),
+  revoked_at: z.string().nullable(),
+  revoked_by: z.number().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const DocumentHubItemSchema = z.object({
+  document_type: z.string(),
+  document_id: z.number(),
+  document_number: z.string(),
+  title: z.string(),
+  patient_name: z.string(),
+  status: z.string(),
+  owner_name: z.string(),
+  is_signed: z.boolean(),
+  signed_at: z.string().nullable(),
+  can_sign: z.boolean(),
+  is_shared_with_me: z.boolean(),
+  share_permission: DocumentSharePermissionSchema.nullable(),
+  shared_by_name: z.string().nullable(),
+  shared_at: z.string().nullable(),
+});
+
+export const PaginatedDocumentHubItemSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(DocumentHubItemSchema),
+});
+
+export const PaginatedDocumentShareSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(DocumentShareSchema),
+});

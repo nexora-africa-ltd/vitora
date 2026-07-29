@@ -16,6 +16,10 @@ import {
   PaginatedUserCertificateSchema,
   DocumentSignatureSchema,
   DocumentSignatureArraySchema,
+  DocumentShareSchema,
+  PaginatedDocumentShareSchema,
+  DocumentHubItemSchema,
+  PaginatedDocumentHubItemSchema,
   PaginatedDocumentSignatureSchema,
   SignatureVerificationResultSchema,
 } from '@/lib/schemas/security.schema';
@@ -26,6 +30,9 @@ import type {
   RevokeCertificateData,
   CreateIntermediateCAData,
   DocumentSignature,
+  DocumentShare,
+  DocumentHubItem,
+  CreateDocumentShareData,
   SignDocumentData,
   SignatureVerificationResult,
 } from '@/lib/types/security';
@@ -143,6 +150,40 @@ export const signaturesApi = {
     });
     return parseResponse(DocumentSignatureArraySchema, response.data, {
       context: 'signaturesApi.forDocument',
+    });
+  },
+
+  listDocumentHub: async (params?: {
+    tab?: 'mine' | 'shared' | 'signed' | 'pending';
+    q?: string;
+    document_type?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<PaginatedResponse<DocumentHubItem>> => {
+    const response = await apiClient.get('/api/core/document-hub/', { params });
+    return parseResponse(PaginatedDocumentHubItemSchema, response.data, {
+      context: 'signaturesApi.listDocumentHub',
+    });
+  },
+
+  listDocumentShares: async (params?: Record<string, unknown>): Promise<PaginatedResponse<DocumentShare>> => {
+    const response = await apiClient.get('/api/core/document-shares/', { params });
+    return parseResponse(PaginatedDocumentShareSchema, response.data, {
+      context: 'signaturesApi.listDocumentShares',
+    });
+  },
+
+  shareDocument: async (data: CreateDocumentShareData): Promise<DocumentShare> => {
+    const response = await apiClient.post('/api/core/document-shares/', data);
+    return parseResponse(DocumentShareSchema, response.data, {
+      context: 'signaturesApi.shareDocument',
+    });
+  },
+
+  revokeDocumentShare: async (shareId: number): Promise<DocumentShare> => {
+    const response = await apiClient.post(`/api/core/document-shares/${shareId}/revoke/`);
+    return parseResponse(DocumentShareSchema, response.data, {
+      context: 'signaturesApi.revokeDocumentShare',
     });
   },
 };
