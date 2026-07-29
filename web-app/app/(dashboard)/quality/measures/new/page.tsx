@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { qualityApi } from '@/lib/api/quality';
 import { toast } from '@/lib/hooks/use-toast';
 import type { QualityMeasureCreateData } from '@/lib/types/quality';
@@ -88,7 +89,10 @@ export default function NewQualityMeasurePage() {
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="code">Code *</Label>
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="code">Code *</Label>
+                  <HelpPopover content="Unique identifier for this measure. Use a stable naming convention such as KE-CQM-001 so the measure can be referenced consistently in dashboards and reports." />
+                </div>
                 <Input
                   id="code"
                   placeholder="e.g., KE-CQM-001"
@@ -98,7 +102,10 @@ export default function NewQualityMeasurePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="name">Name *</Label>
+                  <HelpPopover content="Human-readable measure title shown to users and in reports, for example 'ANC 4+ Visits Rate'." />
+                </div>
                 <Input
                   id="name"
                   placeholder="e.g., ANC 4+ Visits Rate"
@@ -109,7 +116,10 @@ export default function NewQualityMeasurePage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <div className="flex items-center gap-1">
+                <Label htmlFor="description">Description</Label>
+                <HelpPopover content="Optional plain-language explanation of what the measure tracks, why it matters, and how teams should interpret it." />
+              </div>
               <Textarea
                 id="description"
                 placeholder="Describe what this measure tracks..."
@@ -120,7 +130,10 @@ export default function NewQualityMeasurePage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
-                <Label>Domain</Label>
+                <div className="flex items-center gap-1">
+                  <Label>Domain</Label>
+                  <HelpPopover content="Categorizes the measure into a quality area (clinical, patient safety, efficiency, etc.) to improve filtering and governance." />
+                </div>
                 <Select
                   value={formData.domain}
                   onValueChange={(v) =>
@@ -141,7 +154,10 @@ export default function NewQualityMeasurePage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Status</Label>
+                <div className="flex items-center gap-1">
+                  <Label>Status</Label>
+                  <HelpPopover content="DRAFT for setup/testing, ACTIVE for live reporting, RETIRED for historical measures no longer monitored." />
+                </div>
                 <Select
                   value={formData.status}
                   onValueChange={(v) =>
@@ -159,7 +175,10 @@ export default function NewQualityMeasurePage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Reporting Period</Label>
+                <div className="flex items-center gap-1">
+                  <Label>Reporting Period</Label>
+                  <HelpPopover content="Defines how often performance is evaluated and summarized: monthly, quarterly, or annual." />
+                </div>
                 <Select
                   value={formData.reporting_period}
                   onValueChange={(v) =>
@@ -192,7 +211,10 @@ export default function NewQualityMeasurePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="numerator">Numerator Logic *</Label>
+              <div className="flex items-center gap-1">
+                <Label htmlFor="numerator">Numerator Logic *</Label>
+                <HelpPopover content="Define the events or patients counted as successes. Example: patients with at least 4 ANC visits." />
+              </div>
               <Textarea
                 id="numerator"
                 placeholder="Describe the numerator population..."
@@ -205,7 +227,10 @@ export default function NewQualityMeasurePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="denominator">Denominator Logic *</Label>
+              <div className="flex items-center gap-1">
+                <Label htmlFor="denominator">Denominator Logic *</Label>
+                <HelpPopover content="Define the eligible population the measure applies to. This is the total group against which numerator performance is measured." />
+              </div>
               <Textarea
                 id="denominator"
                 placeholder="Describe the denominator population..."
@@ -218,7 +243,10 @@ export default function NewQualityMeasurePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="exclusion">Exclusion Logic</Label>
+              <div className="flex items-center gap-1">
+                <Label htmlFor="exclusion">Exclusion Logic</Label>
+                <HelpPopover content="Optional criteria for removing specific cases from denominator calculations, such as contraindications or incomplete data." />
+              </div>
               <Textarea
                 id="exclusion"
                 placeholder="Describe any exclusion criteria..."
@@ -240,7 +268,10 @@ export default function NewQualityMeasurePage() {
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="target">Target Percentage (%)</Label>
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="target">Target Percentage (%)</Label>
+                  <HelpPopover content="Desired benchmark performance. Teams should aim to meet or exceed this percentage." />
+                </div>
                 <Input
                   id="target"
                   type="number"
@@ -258,7 +289,10 @@ export default function NewQualityMeasurePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="low_threshold">Low Threshold (%)</Label>
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="low_threshold">Low Threshold (%)</Label>
+                  <HelpPopover content="Minimum acceptable performance. Results below this threshold can be highlighted as underperforming." />
+                </div>
                 <Input
                   id="low_threshold"
                   type="number"
@@ -287,7 +321,10 @@ export default function NewQualityMeasurePage() {
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="dhis2">DHIS2 Indicator ID</Label>
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="dhis2">DHIS2 Indicator ID</Label>
+                  <HelpPopover content="Optional external indicator identifier for mapping this measure to DHIS2/KHIS reporting pipelines." />
+                </div>
                 <Input
                   id="dhis2"
                   placeholder="e.g., dE4xK23b..."
@@ -298,7 +335,10 @@ export default function NewQualityMeasurePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="reference">Reference URL</Label>
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="reference">Reference URL</Label>
+                  <HelpPopover content="Optional link to policy, guideline, or specification describing how this measure should be calculated and interpreted." />
+                </div>
                 <Input
                   id="reference"
                   type="url"
