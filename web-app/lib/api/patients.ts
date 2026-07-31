@@ -17,7 +17,7 @@ import {
   PatientQRCodeSchema,
   VitalsHistoryResponseSchema,
 } from '@/lib/schemas/patient.schema';
-import type { Patient, PatientCreateData, PatientUpdateData, PatientListParams, EmergencyContact, PatientEncounter, DuplicateCheckResult, DuplicateCheckParams, HouseholdMembersResponse } from '@/lib/types/patient';
+import type { Patient, PatientCreateData, PatientUpdateData, PatientListParams, EmergencyContact, PatientEncounter, DuplicateCheckResult, DuplicateCheckParams, HouseholdMembersResponse, ContactPatientSmsPayload, ContactPatientSmsResponse } from '@/lib/types/patient';
 import type { PaginatedResponse } from '@/lib/types';
 import type { VitalsDataPoint, TimeRange } from '@/components/shared/vitals-trend-chart';
 
@@ -220,5 +220,13 @@ export const patientsApi = {
     return parseResponse(VitalsHistoryResponseSchema, response.data, {
       context: 'patientsApi.getVitalsHistory',
     });
+  },
+
+  /**
+   * Send a custom SMS message to a patient.
+   */
+  async contactPatient(id: IdParam, payload: ContactPatientSmsPayload): Promise<ContactPatientSmsResponse> {
+    const response = await apiClient.post<ContactPatientSmsResponse>(`/api/patients/${id}/contact-patient/`, payload);
+    return response.data;
   },
 };

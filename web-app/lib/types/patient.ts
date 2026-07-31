@@ -238,3 +238,13 @@ export interface HouseholdMembersResponse {
   count: number;
   results: HouseholdMember[];
 }
+
+export interface ContactPatientSmsPayload {
+  message: string;
+}
+
+export interface ContactPatientSmsResponse {
+  status: 'success';
+  message: string;
+  sms_sent: boolean;
+}

@@ -731,6 +731,20 @@ export interface ClinicEnrollmentListParams {
   search?: string;
 }
 
+export interface EnrollmentSmsTriggerResult {
+  checked: number;
+  errors: number;
+  overdue_found?: number;
+  alerts_sent?: number;
+  reminders_sent?: number;
+}
+
+export interface EnrollmentSmsTriggerResponse {
+  status: 'success';
+  message: string;
+  result: EnrollmentSmsTriggerResult;
+}
+
 // =============================================================================
 // PUBLIC QUEUE DISPLAY (No PII)
 // =============================================================================

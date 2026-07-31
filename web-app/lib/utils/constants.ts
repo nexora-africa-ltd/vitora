@@ -34,6 +34,17 @@ export const ENABLE_AI =
   (process.env.NEXT_PUBLIC_ENV !== 'production' &&
     process.env.NEXT_PUBLIC_ENABLE_AI !== 'false');
 
+/**
+ * SMS feature flag.
+ * Keep disabled until SMS provider setup is complete.
+ * Set NEXT_PUBLIC_ENABLE_SMS=true to force-enable SMS actions.
+ * Defaults to enabled in non-production environments (dev/staging).
+ */
+export const ENABLE_SMS =
+  process.env.NEXT_PUBLIC_ENABLE_SMS === 'true' ||
+  (process.env.NEXT_PUBLIC_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_ENABLE_SMS !== 'false');
+
 // Gender options
 export const GENDER_OPTIONS = [
   { value: 'M', label: 'Male' },

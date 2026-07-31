@@ -30,6 +30,7 @@ from .dashboard_views import (
     revenue_breakdown,
 )
 from .history_views import EncounterHistoryView, PatientHistoryView
+from .sms.views import AfricasTalkingSMSCallbackView
 from .views import (
     AuditLogViewSet,
     CertificateViewSet,
@@ -105,4 +106,9 @@ urlpatterns = [
     path("setup/initialize/", setup_initialize, name="setup-initialize"),
     # --- Onboarding checklist (authenticated) ---
     path("onboarding/status/", onboarding_status, name="onboarding-status"),
+    path(
+        "sms/africastalking/callback/",
+        AfricasTalkingSMSCallbackView.as_view(),
+        name="sms-africastalking-callback",
+    ),
 ] + router.urls

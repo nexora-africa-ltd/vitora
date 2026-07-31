@@ -9,7 +9,7 @@ from django.db import transaction
 from django.db.models import Count, Max, Min
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, status, viewsets
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -159,6 +159,59 @@ class PatientViewSet(
         )
 
         return response
+
+    @action(detail=True, methods=["post"], url_path="contact-patient")
+    def contact_patient(self, request, pk=None):
+        """Send a custom SMS message to the patient phone number."""
+
+        class ContactPatientSerializer(serializers.Serializer):
+            message = serializers.CharField(min_length=1, max_length=500)
+
+        serializer = ContactPatientSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        patient = self.get_object()
+        phone = (getattr(patient, "phone_number", "") or "").strip()
+        if not phone:
+            return Response(
+                {"detail": "Patient has no phone number on file."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from hmis.apps.core.sms_gateway import send_sms
+
+        message = serializer.validated_data["message"].strip()
+        sms_sent = send_sms(phone, message)
+
+        AuditLog.log(
+            action="patient_contact_sms",
+            user=request.user,
+            resource_type="Patient",
+            resource_id=patient.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=patient.id,
+            details={
+                "patient_mrn": patient.mrn,
+                "sms_sent": sms_sent,
+                "message_preview": message[:120],
+            },
+        )
+
+        if not sms_sent:
+            return Response(
+                {"detail": "SMS delivery failed."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(
+            {
+                "status": "success",
+                "message": "SMS sent to patient.",
+                "sms_sent": True,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     def create(self, request, *args, **kwargs):
         """

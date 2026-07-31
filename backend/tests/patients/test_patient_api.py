@@ -214,6 +214,61 @@ class TestPatientAPIEndpoints:
         assert response.data["phone_number"] == "+254712345678"
         assert response.data["first_name"] == "John"  # Original data preserved
 
+    def test_contact_patient_sms_success(self, auth_client, sample_organization, monkeypatch):
+        """Test POST /api/patients/{id}/contact-patient/ sends SMS with custom message."""
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
+            organization=sample_organization,
+        )
+        patient.phone_number = "0712345678"
+        patient.save()
+
+        captured = {"phone": None, "message": None}
+
+        def _fake_send_sms(phone, message, sender_id=None):
+            captured["phone"] = phone
+            captured["message"] = message
+            return True
+
+        monkeypatch.setattr("hmis.apps.core.sms_gateway.send_sms", _fake_send_sms)
+
+        response = auth_client.post(
+            f"/api/patients/{patient.id}/contact-patient/",
+            {"message": "Please return to the clinic tomorrow at 9 AM."},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["sms_sent"] is True
+        assert captured["phone"] == "0712345678"
+        assert "tomorrow" in captured["message"]
+
+    def test_contact_patient_sms_fails_without_phone(self, auth_client, sample_organization):
+        """Test POST /api/patients/{id}/contact-patient/ fails when patient has no phone."""
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="Jane",
+            last_name="Doe",
+            date_of_birth=date(1992, 2, 2),
+            gender="F",
+            organization=sample_organization,
+        )
+
+        response = auth_client.post(
+            f"/api/patients/{patient.id}/contact-patient/",
+            {"message": "Please contact the facility."},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "no phone number" in str(response.data["detail"]).lower()
+
     def test_delete_patient(self, auth_client, sample_organization, auth_user):
         """Test DELETE /api/patients/{id}/ - Delete a patient."""
         from django.contrib.auth.models import Permission

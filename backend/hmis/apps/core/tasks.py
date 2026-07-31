@@ -387,19 +387,19 @@ def send_overdue_appointment_alerts():
 
         if should_alert:
             try:
-                # Send alert (placeholder - implement actual notification)
-                _send_overdue_alert(enrollment)
+                sent = _send_overdue_alert(enrollment)
+                if sent:
+                    enrollment.last_reminder_sent = timezone.now()
+                    enrollment.missed_appointment_alerts += 1
+                    enrollment.save(
+                        update_fields=["last_reminder_sent", "missed_appointment_alerts"]
+                    )
 
-                # Update tracking
-                enrollment.last_reminder_sent = timezone.now()
-                enrollment.missed_appointment_alerts += 1
-                enrollment.save(update_fields=["last_reminder_sent", "missed_appointment_alerts"])
-
-                results["alerts_sent"] += 1
-                logger.info(
-                    f"Sent overdue alert for enrollment {enrollment.id} "
-                    f"(patient: {enrollment.patient.mrn}, clinic: {enrollment.clinic.name})"
-                )
+                    results["alerts_sent"] += 1
+                    logger.info(
+                        f"Sent overdue alert for enrollment {enrollment.id} "
+                        f"(patient: {enrollment.patient.mrn}, clinic: {enrollment.clinic.name})"
+                    )
             except Exception as e:
                 results["errors"] += 1
                 logger.error(f"Failed to send alert for enrollment {enrollment.id}: {e}")
@@ -416,16 +416,29 @@ def _send_overdue_alert(enrollment):
     """
     Send an overdue appointment alert for an enrollment.
 
-    This is a placeholder that can be extended to:
-    - Send SMS via Africa's Talking
-    - Send email notifications
-    - Create in-app notifications
-    - Notify clinic staff
-
     Args:
         enrollment: ClinicEnrollment instance
+
+    Returns:
+        bool: True when SMS was sent successfully.
     """
     from hmis.apps.core.models import AuditLog
+    from hmis.apps.core.sms_gateway import send_sms
+
+    phone = (getattr(enrollment.patient, "phone_number", "") or "").strip()
+    message = (
+        f"Vitora HMIS: You missed your {enrollment.clinic.name} appointment on "
+        f"{enrollment.next_appointment}. Please visit the clinic as soon as possible."
+    )
+
+    sms_sent = False
+    if phone:
+        sms_sent = send_sms(phone, message)
+    else:
+        logger.info(
+            "Skipping overdue SMS for enrollment %s: patient phone number missing",
+            enrollment.id,
+        )
 
     # Log the alert for audit purposes
     AuditLog.log(
@@ -442,13 +455,10 @@ def _send_overdue_alert(enrollment):
             "next_appointment": str(enrollment.next_appointment),
             "days_overdue": enrollment.days_overdue(),
             "alerts_count": enrollment.missed_appointment_alerts + 1,
+            "sms_sent": sms_sent,
         },
     )
-
-    # TODO: Implement actual notification channels
-    # - SMS: Use Africa's Talking API
-    # - Email: Use Django email
-    # - In-app: Create Notification model entry
+    return sms_sent
 
 
 @shared_task(name="core.send_upcoming_appointment_reminders")
@@ -495,10 +505,11 @@ def send_upcoming_appointment_reminders():
 
         if should_remind:
             try:
-                _send_appointment_reminder(enrollment)
-                enrollment.last_reminder_sent = timezone.now()
-                enrollment.save(update_fields=["last_reminder_sent"])
-                results["reminders_sent"] += 1
+                sent = _send_appointment_reminder(enrollment)
+                if sent:
+                    enrollment.last_reminder_sent = timezone.now()
+                    enrollment.save(update_fields=["last_reminder_sent"])
+                    results["reminders_sent"] += 1
             except Exception as e:
                 results["errors"] += 1
                 logger.error(f"Failed to send reminder for enrollment {enrollment.id}: {e}")
@@ -514,10 +525,29 @@ def _send_appointment_reminder(enrollment):
 
     Args:
         enrollment: ClinicEnrollment instance
+
+    Returns:
+        bool: True when SMS was sent successfully.
     """
     from datetime import date
 
     from hmis.apps.core.models import AuditLog
+    from hmis.apps.core.sms_gateway import send_sms
+
+    phone = (getattr(enrollment.patient, "phone_number", "") or "").strip()
+    message = (
+        f"Vitora HMIS: Reminder for your {enrollment.clinic.name} appointment on "
+        f"{enrollment.next_appointment}."
+    )
+
+    sms_sent = False
+    if phone:
+        sms_sent = send_sms(phone, message)
+    else:
+        logger.info(
+            "Skipping appointment reminder SMS for enrollment %s: patient phone number missing",
+            enrollment.id,
+        )
 
     days_until = enrollment.days_to_edd() if enrollment.edd else None
     if days_until is None and enrollment.next_appointment:
@@ -534,8 +564,10 @@ def _send_appointment_reminder(enrollment):
             "clinic": enrollment.clinic.name,
             "next_appointment": str(enrollment.next_appointment),
             "days_until": days_until,
+            "sms_sent": sms_sent,
         },
     )
+    return sms_sent
 
 
 @shared_task(name="core.generate_defaulter_list")

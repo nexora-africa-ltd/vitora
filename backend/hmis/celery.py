@@ -41,6 +41,8 @@ app.conf.task_routes = {
     "hmis.apps.core.tasks.cleanup_synced_entries": {"queue": "maintenance"},
     "hmis.apps.core.tasks.retry_failed_entries": {"queue": "maintenance"},
     "hmis.apps.core.tasks.full_sync": {"queue": "sync"},
+    "core.send_overdue_appointment_alerts": {"queue": "monitoring"},
+    "core.send_upcoming_appointment_reminders": {"queue": "monitoring"},
     # Surveillance tasks
     "hmis.apps.surveillance.tasks.generate_idsr_weekly_report": {"queue": "reporting"},
     "hmis.apps.surveillance.tasks.check_overdue_notifications": {"queue": "monitoring"},

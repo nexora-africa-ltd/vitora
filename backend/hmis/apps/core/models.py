@@ -1937,6 +1937,40 @@ class Notification(models.Model):
             self.save(update_fields=["is_read", "read_at"])
 
 
+class SMSDeliveryCallback(TimeStampedModel):
+    """Stores inbound SMS delivery callbacks from providers."""
+
+    class DeliveryStatus(models.TextChoices):
+        DELIVERED = "DELIVERED", "Delivered"
+        FAILED = "FAILED", "Failed"
+        PENDING = "PENDING", "Pending"
+        UNKNOWN = "UNKNOWN", "Unknown"
+
+    provider = models.CharField(max_length=40, default="africastalking", db_index=True)
+    provider_message_id = models.CharField(max_length=120, blank=True, default="", db_index=True)
+    status = models.CharField(max_length=80, blank=True, default="", db_index=True)
+    delivery_status = models.CharField(
+        max_length=20,
+        choices=DeliveryStatus.choices,
+        default=DeliveryStatus.UNKNOWN,
+        db_index=True,
+    )
+    phone_last4 = models.CharField(max_length=4, blank=True, default="", db_index=True)
+    network_code = models.CharField(max_length=20, blank=True, default="")
+    retry_count = models.PositiveIntegerField(default=0)
+    failure_reason = models.TextField(blank=True, default="")
+    callback_payload = models.JSONField(default=dict, blank=True)
+    callback_ip = models.GenericIPAddressField(null=True, blank=True)
+    token_valid = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        msg_id = self.provider_message_id or "n/a"
+        return f"SMS callback {self.provider} {msg_id} {self.delivery_status}"
+
+
 class PushSubscription(models.Model):
     """
     Web Push subscription for browser push notifications.

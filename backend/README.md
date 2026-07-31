@@ -426,6 +426,9 @@ MPESA_CALLBACK_URL=https://your-domain/api/billing/mpesa/callback/
 # AfricasTalking SMS
 AT_API_KEY=your-api-key
 AT_USERNAME=sandbox
+AT_SMS_CALLBACK_TOKEN=change-me
+# Configure AT delivery callback URL in dashboard:
+# https://<your-domain>/api/core/sms/africastalking/callback/?token=<AT_SMS_CALLBACK_TOKEN>
 
 # TibaBot AI
 TIBABOT_ENABLED=true

@@ -6,8 +6,9 @@ Provides both a class-based interface (SMSGateway) for advanced use cases
 and simple module-level functions (send_sms, send_bulk_sms) for convenience.
 
 Configuration required in Django settings:
-    AT_USERNAME: Africa's Talking application username
-    AT_API_KEY: API key for authenticating with Africa's Talking
+    SMS_BACKEND: Python path to backend class implementing send(message, recipients, sender_id)
+    AT_USERNAME: Africa's Talking application username (for AfricasTalkingSMSBackend)
+    AT_API_KEY: API key for authenticating with Africa's Talking (for AfricasTalkingSMSBackend)
     SMS_SENDER_ID: Sender ID to be used when sending SMS messages (optional)
     SMS_ENABLED: Whether SMS sending is enabled (default: True in production)
 """
@@ -15,6 +16,7 @@ Configuration required in Django settings:
 import logging
 
 from django.conf import settings
+from django.utils.module_loading import import_string
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +39,11 @@ def _get_sms_client():
 
     _initialized = True
 
-    # Safety: never use real SMS client during tests.
-    if getattr(settings, "TESTING", False):
-        logger.info("SMS sending disabled (TESTING=True)")
+    backend_path = getattr(settings, "SMS_BACKEND", "")
+
+    # Safety: in tests, only allow the explicit mock backend.
+    if getattr(settings, "TESTING", False) and not backend_path.endswith("MockSMSBackend"):
+        logger.info("SMS sending disabled (TESTING=True, non-mock backend)")
         return None
 
     # Check if SMS is enabled
@@ -47,29 +51,19 @@ def _get_sms_client():
         logger.info("SMS sending is disabled (SMS_ENABLED=False)")
         return None
 
-    # Check for required settings
-    username = getattr(settings, "AT_USERNAME", None)
-    api_key = getattr(settings, "AT_API_KEY", None)
-
-    if not username or not api_key:
-        logger.warning(
-            "Africa's Talking credentials not configured. "
-            "Set AT_USERNAME and AT_API_KEY in settings."
-        )
-        return None
-
     try:
-        import africastalking
-
-        africastalking.initialize(username=username, api_key=api_key)
-        _sms_client = africastalking.SMS
-        logger.info("Africa's Talking SMS client initialized successfully")
+        BackendClass = import_string(backend_path)
+        _sms_client = BackendClass()
+        logger.info("SMS backend initialized successfully: %s", backend_path)
         return _sms_client
     except ImportError:
-        logger.warning("africastalking package not installed. Run: pip install africastalking")
+        logger.warning("SMS backend import failed. Check SMS_BACKEND and installed packages.")
+        return None
+    except ValueError as e:
+        logger.warning("SMS backend configuration error: %s", e)
         return None
     except Exception as e:
-        logger.error(f"Failed to initialize Africa's Talking client: {e}")
+        logger.error(f"Failed to initialize SMS backend: {e}")
         return None
 
 

@@ -52,6 +52,7 @@ import type {
   ClinicRoom,
   ClinicRoomCreateData,
   PublicQueueResponse,
+  EnrollmentSmsTriggerResponse,
 } from '@/lib/types/clinic';
 import type { ProcedureOrderListItem } from '@/lib/types/procedure';
 import type { PaginatedResponse } from '@/lib/types';
@@ -409,6 +410,22 @@ export const clinicsApi = {
   getDefaulters: async (): Promise<PaginatedResponse<ClinicEnrollment>> => {
     const response = await apiClient.get<PaginatedResponse<ClinicEnrollment>>('/api/clinic-enrollments/defaulters/');
     return parseResponse(PaginatedClinicEnrollmentSchema, response.data, { context: 'clinicsApi.getDefaulters' });
+  },
+
+  /**
+   * Manually trigger overdue appointment SMS alerts.
+   */
+  triggerOverdueAlerts: async (): Promise<EnrollmentSmsTriggerResponse> => {
+    const response = await apiClient.post<EnrollmentSmsTriggerResponse>('/api/clinic-enrollments/trigger-overdue-alerts/');
+    return response.data;
+  },
+
+  /**
+   * Manually trigger upcoming appointment reminder SMS.
+   */
+  triggerUpcomingReminders: async (): Promise<EnrollmentSmsTriggerResponse> => {
+    const response = await apiClient.post<EnrollmentSmsTriggerResponse>('/api/clinic-enrollments/trigger-upcoming-reminders/');
+    return response.data;
   },
 
   // -------------------------------------------------------------------------

@@ -34,6 +34,7 @@ import type {
   ClinicEnrollmentListParams,
   ClinicQueueStats,
   ClinicDashboardStats,
+  EnrollmentSmsTriggerResponse,
 } from '@/lib/types/clinic';
 
 // =============================================================================
@@ -646,5 +647,28 @@ export function useDefaulters() {
   return useQuery({
     queryKey: clinicKeys.defaulters(),
     queryFn: () => clinicsApi.getDefaulters(),
+  });
+}
+
+export function useTriggerOverdueAlerts() {
+  const queryClient = useQueryClient();
+
+  return useMutation<EnrollmentSmsTriggerResponse>({
+    mutationFn: () => clinicsApi.triggerOverdueAlerts(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: clinicKeys.overdueEnrollments() });
+      queryClient.invalidateQueries({ queryKey: clinicKeys.enrollments() });
+    },
+  });
+}
+
+export function useTriggerUpcomingReminders() {
+  const queryClient = useQueryClient();
+
+  return useMutation<EnrollmentSmsTriggerResponse>({
+    mutationFn: () => clinicsApi.triggerUpcomingReminders(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: clinicKeys.enrollments() });
+    },
   });
 }

@@ -1136,6 +1136,36 @@ class TestClinicEnrollmentViewSet:
         assert response.data["last_visit_date"] == str(date.today())
         assert response.data["total_visits"] == sample_clinic_enrollment.total_visits + 1
 
+    def test_trigger_overdue_alerts_manual(self, authenticated_client, monkeypatch):
+        """Can manually trigger overdue appointment SMS from UI/API."""
+
+        def _fake_task():
+            return {"checked": 10, "overdue_found": 3, "alerts_sent": 2, "errors": 0}
+
+        monkeypatch.setattr("hmis.apps.core.tasks.send_overdue_appointment_alerts", _fake_task)
+
+        url = reverse("clinicenrollment-trigger-overdue-alerts")
+        response = authenticated_client.post(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "success"
+        assert response.data["result"]["alerts_sent"] == 2
+
+    def test_trigger_upcoming_reminders_manual(self, authenticated_client, monkeypatch):
+        """Can manually trigger upcoming appointment reminder SMS from UI/API."""
+
+        def _fake_task():
+            return {"checked": 8, "reminders_sent": 5, "errors": 1}
+
+        monkeypatch.setattr("hmis.apps.core.tasks.send_upcoming_appointment_reminders", _fake_task)
+
+        url = reverse("clinicenrollment-trigger-upcoming-reminders")
+        response = authenticated_client.post(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "success"
+        assert response.data["result"]["reminders_sent"] == 5
+
 
 # ============================================================================
 # TestClinicEnrollmentFilters - Tests for new filter parameters

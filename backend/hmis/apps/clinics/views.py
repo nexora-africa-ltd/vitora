@@ -928,6 +928,8 @@ class ClinicEnrollmentViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     - PATCH /api/clinic-enrollments/{id}/ - Update enrollment
     - GET /api/clinic-enrollments/overdue/ - Get overdue patients
     - GET /api/clinic-enrollments/defaulters/ - Get defaulters
+    - POST /api/clinic-enrollments/trigger-overdue-alerts/ - Manually send overdue SMS alerts
+    - POST /api/clinic-enrollments/trigger-upcoming-reminders/ - Manually send upcoming SMS reminders
     - POST /api/clinic-enrollments/{id}/record-visit/ - Record visit
     """
 
@@ -1005,6 +1007,36 @@ class ClinicEnrollmentViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
         serializer = ClinicEnrollmentListSerializer(queryset, many=True)
         return Response({"results": serializer.data})
+
+    @action(detail=False, methods=["post"], url_path="trigger-overdue-alerts")
+    def trigger_overdue_alerts(self, request):
+        """Manually trigger SMS alerts for overdue appointments."""
+        from hmis.apps.core.tasks import send_overdue_appointment_alerts
+
+        result = send_overdue_appointment_alerts()
+        return Response(
+            {
+                "status": "success",
+                "message": "Overdue appointment SMS run completed.",
+                "result": result,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["post"], url_path="trigger-upcoming-reminders")
+    def trigger_upcoming_reminders(self, request):
+        """Manually trigger SMS reminders for upcoming appointments."""
+        from hmis.apps.core.tasks import send_upcoming_appointment_reminders
+
+        result = send_upcoming_appointment_reminders()
+        return Response(
+            {
+                "status": "success",
+                "message": "Upcoming appointment reminder SMS run completed.",
+                "result": result,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=True, methods=["post"], url_path="record-visit")
     def record_visit(self, request, pk=None):

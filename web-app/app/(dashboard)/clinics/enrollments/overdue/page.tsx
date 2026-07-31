@@ -16,8 +16,8 @@ import {
   Phone,
   ChevronRight,
   RefreshCw,
+  Send,
 } from 'lucide-react';
-import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,8 +30,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useOverdueEnrollments } from '@/lib/hooks/use-clinics';
+import {
+  useOverdueEnrollments,
+  useTriggerOverdueAlerts,
+  useTriggerUpcomingReminders,
+} from '@/lib/hooks/use-clinics';
 import { cn } from '@/lib/utils/cn';
+import { toast } from 'sonner';
 
 function getDaysOverdue(dateString: string): number {
   const appointmentDate = new Date(dateString);
@@ -43,6 +48,8 @@ function getDaysOverdue(dateString: string): number {
 export default function OverdueEnrollmentsPage() {
   const router = useRouter();
   const { data, isLoading, refetch } = useOverdueEnrollments();
+  const triggerOverdue = useTriggerOverdueAlerts();
+  const triggerUpcoming = useTriggerUpcomingReminders();
 
   const enrollments = data?.results ?? [];
 
@@ -62,6 +69,43 @@ export default function OverdueEnrollmentsPage() {
             Patients who have missed their scheduled appointments
           </p>
         </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={triggerOverdue.isPending}
+          onClick={() => {
+            triggerOverdue.mutate(undefined, {
+              onSuccess: (data) => {
+                toast.success(
+                  `Sent ${data.result.alerts_sent ?? 0} overdue SMS alerts (${data.result.checked} checked).`
+                );
+                refetch();
+              },
+              onError: () => toast.error('Failed to trigger overdue SMS alerts'),
+            });
+          }}
+        >
+          <Send className="h-4 w-4 mr-2" />
+          Send Overdue SMS
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={triggerUpcoming.isPending}
+          onClick={() => {
+            triggerUpcoming.mutate(undefined, {
+              onSuccess: (data) => {
+                toast.success(
+                  `Sent ${data.result.reminders_sent ?? 0} upcoming reminder SMS (${data.result.checked} checked).`
+                );
+              },
+              onError: () => toast.error('Failed to trigger upcoming reminder SMS'),
+            });
+          }}
+        >
+          <Send className="h-4 w-4 mr-2" />
+          Send Upcoming SMS
+        </Button>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh

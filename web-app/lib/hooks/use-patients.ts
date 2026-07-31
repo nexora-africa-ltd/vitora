@@ -9,7 +9,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { patientsApi } from '@/lib/api/patients';
-import type { Patient, PatientListParams, PatientCreateData, PatientUpdateData, DuplicateCheckParams, EmergencyContact, PatientEncounter } from '@/lib/types/patient';
+import type { Patient, PatientListParams, PatientCreateData, PatientUpdateData, DuplicateCheckParams, EmergencyContact, PatientEncounter, ContactPatientSmsResponse } from '@/lib/types/patient';
 import type { TimeRange } from '@/components/shared/vitals-trend-chart';
 import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
 import { useOfflineMutation } from '@/lib/powersync/use-offline-mutation';
@@ -421,5 +421,11 @@ export function usePatientVitalsHistory(patientId: string | number, range: TimeR
     queryFn: () => patientsApi.getVitalsHistory(patientId, range),
     enabled: !!patientId,
     staleTime: 30_000, // 30s — vitals can change frequently for inpatients
+  });
+}
+
+export function useContactPatientSms() {
+  return useMutation<ContactPatientSmsResponse, Error, { id: string | number; message: string }>({
+    mutationFn: ({ id, message }) => patientsApi.contactPatient(id, { message }),
   });
 }

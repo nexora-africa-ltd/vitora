@@ -43,8 +43,24 @@ import {
 } from '@/components/ui/tooltip';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useQuery } from '@tanstack/react-query';
-import { usePatientEmergencyContacts } from '@/lib/hooks/use-patients';
+import { useContactPatientSms, usePatientEmergencyContacts } from '@/lib/hooks/use-patients';
 import { usePatientPrescriptions } from '@/lib/hooks/use-pharmacy';
 import { usePatientLabOrders } from '@/lib/hooks/use-laboratory';
 import { usePatientProcedureOrders } from '@/lib/hooks/use-procedures';
@@ -79,6 +95,8 @@ import { VitalsTrendChart } from '@/components/shared/vitals-trend-chart';
 import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
 import { shaApi } from '@/lib/api/sha';
 import { cn } from '@/lib/utils';
+import { ENABLE_SMS } from '@/lib/utils/constants';
+import { toast } from 'sonner';
 import type { PaginatedResponse } from '@/lib/types';
 import type { Prescription, PrescriptionStatus } from '@/lib/types/pharmacy';
 import type { LabOrder, LabOrderStatus } from '@/lib/types/laboratory';
@@ -93,6 +111,9 @@ export default function PatientDetailPage() {
   const router = useRouter();
   const patientId = String(params.id);
   const [showDependents, setShowDependents] = useState(false);
+  const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [contactTemplate, setContactTemplate] = useState<'follow_up' | 'appointment' | 'lab_results' | 'medication' | 'custom'>('follow_up');
+  const [contactMessage, setContactMessage] = useState('');
 
   // Use patient context instead of independent fetch
   const { patient, isLoading, error } = usePatientContext();
@@ -100,8 +121,9 @@ export default function PatientDetailPage() {
   // Vitals history for trend chart
   const { data: vitalsHistory, isLoading: isLoadingVitals } = usePatientVitalsHistory(patient?.id ?? patientId, 'all');
   const { canEditPatient } = usePermissions();
-  const { hasModule } = useFacility();
+  const { hasModule, facility } = useFacility();
   const { data: emergencyContacts } = usePatientEmergencyContacts(patient?.id ?? 0);
+  const contactPatientSms = useContactPatientSms();
 
   // Pull-to-refresh support
   const { refresh, isRefreshing } = usePageRefresh();
@@ -147,6 +169,26 @@ export default function PatientDetailPage() {
   const prescriptions = prescriptionsData ?? [];
   const labOrders = labOrdersData ?? [];
   const procedureOrders = procedureOrdersData?.results ?? [];
+
+  const facilityLabel = facility?.name || 'your facility';
+
+  const getTemplateMessage = (
+    template: 'follow_up' | 'appointment' | 'lab_results' | 'medication' | 'custom'
+  ) => {
+    if (template === 'appointment') {
+      return `Dear ${patient.first_name}, this is a reminder for your upcoming appointment at ${facilityLabel}. Please arrive on time or contact us if you need to reschedule.`;
+    }
+    if (template === 'lab_results') {
+      return `Dear ${patient.first_name}, your test results are ready at ${facilityLabel}. Please visit the facility or contact your care team for next steps.`;
+    }
+    if (template === 'medication') {
+      return `Dear ${patient.first_name}, please remember to take your medication as prescribed. Contact ${facilityLabel} if you have any concerns.`;
+    }
+    if (template === 'custom') {
+      return contactMessage;
+    }
+    return `Dear ${patient.first_name}, this is a reminder from ${facilityLabel}. Please contact the facility for follow-up care.`;
+  };
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
@@ -237,6 +279,20 @@ export default function PatientDetailPage() {
               Delete
             </Button>
           )}
+          {ENABLE_SMS && (
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setContactTemplate('follow_up');
+                setContactMessage(getTemplateMessage('follow_up'));
+                setContactDialogOpen(true);
+              }}
+            >
+              <Phone className="mr-2 h-4 w-4" />
+              Contact Patient
+            </Button>
+          )}
           {hasModule('blood_bank') && (
             <Button variant="outline" asChild className="w-full sm:w-auto">
               <Link href={`/blood-bank/requests/new?patient=${patient.id}`}>
@@ -257,6 +313,85 @@ export default function PatientDetailPage() {
           )}
           <IPSViewer patientId={patient.id} patientMrn={patient.mrn} />
         </div>
+
+        {ENABLE_SMS && (
+          <Dialog open={contactDialogOpen} onOpenChange={setContactDialogOpen}>
+            <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Contact Patient</DialogTitle>
+              <DialogDescription>
+                Send a custom SMS to {patient.first_name} {patient.last_name}.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3">
+              <div className="text-sm text-muted-foreground">
+                Recipient: {patient.phone_number ? formatPhoneNumber(patient.phone_number) : 'No phone number on file'}
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="sms-template">Template</Label>
+                <Select
+                  value={contactTemplate}
+                  onValueChange={(value: 'follow_up' | 'appointment' | 'lab_results' | 'medication' | 'custom') => {
+                    setContactTemplate(value);
+                    if (value !== 'custom') {
+                      setContactMessage(getTemplateMessage(value));
+                    }
+                  }}
+                >
+                  <SelectTrigger id="sms-template">
+                    <SelectValue placeholder="Select template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="follow_up">Follow-up Reminder</SelectItem>
+                    <SelectItem value="appointment">Appointment Reminder</SelectItem>
+                    <SelectItem value="lab_results">Lab Results Ready</SelectItem>
+                    <SelectItem value="medication">Medication Adherence</SelectItem>
+                    <SelectItem value="custom">Custom Message</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Textarea
+                value={contactMessage}
+                onChange={(e) => setContactMessage(e.target.value)}
+                placeholder="Type your SMS message"
+                rows={5}
+              />
+              <div className="text-xs text-muted-foreground">{contactMessage.length}/500 characters</div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setContactDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!patient.phone_number) {
+                    toast.error('Patient has no phone number on file');
+                    return;
+                  }
+
+                  contactPatientSms.mutate(
+                    { id: patient.id, message: contactMessage.trim() },
+                    {
+                      onSuccess: () => {
+                        toast.success('SMS sent to patient');
+                        setContactDialogOpen(false);
+                      },
+                      onError: () => {
+                        toast.error('Failed to send SMS to patient');
+                      },
+                    }
+                  );
+                }}
+                disabled={contactPatientSms.isPending || !contactMessage.trim() || contactMessage.length > 500}
+              >
+                Send SMS
+              </Button>
+            </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
 
         {/* SHA Eligibility Banner */}
         <EligibilityBanner patientId={patient.id} />

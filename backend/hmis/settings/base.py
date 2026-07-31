@@ -1075,6 +1075,7 @@ AT_USERNAME = os.getenv("AT_USERNAME", "")
 AT_API_KEY = os.getenv("AT_API_KEY", "")
 SMS_SENDER_ID = os.getenv("SMS_SENDER_ID", "VitoraHMIS")
 SMS_BACKEND = os.getenv("SMS_BACKEND", "hmis.apps.core.sms.backends.MockSMSBackend")
+AT_SMS_CALLBACK_TOKEN = os.getenv("AT_SMS_CALLBACK_TOKEN", "")
 
 # DHIS2 API Configuration (Sprint 1.3-1.4 Track A)
 DHIS2_BASE_URL = os.getenv("DHIS2_BASE_URL", os.getenv("DHIS2_API_URL", ""))

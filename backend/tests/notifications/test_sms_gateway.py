@@ -1,9 +1,17 @@
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest  # type: ignore
-from django.conf import settings
+from django.test import override_settings
 
-from hmis.apps.core.sms_gateway import SMSGateway, send_bulk_sms, send_sms
+from hmis.apps.core.sms_gateway import SMSGateway
+
+
+@pytest.fixture(autouse=True)
+def enforce_mock_sms_backend(settings):
+    settings.AT_USERNAME = ""
+    settings.AT_API_KEY = ""
+    settings.SMS_ENABLED = True
+    settings.SMS_BACKEND = "hmis.apps.core.sms.backends.MockSMSBackend"
 
 
 class TestSMSGatewayInitialization:
@@ -206,3 +214,38 @@ class TestSMSIntegration:
 
         # The underlying send_sms returns False for empty messages
         mock_logger.warning.assert_called()
+
+
+class TestSMSTestSafety:
+    @override_settings(
+        TESTING=True,
+        SMS_ENABLED=True,
+        SMS_BACKEND="hmis.apps.core.sms.backends.AfricasTalkingSMSBackend",
+    )
+    def test_testing_blocks_non_mock_backend(self):
+        from hmis.apps.core import sms_gateway
+
+        sms_gateway._initialized = False
+        sms_gateway._sms_client = None
+
+        assert sms_gateway._get_sms_client() is None
+
+    @override_settings(
+        TESTING=True, SMS_ENABLED=True, SMS_BACKEND="hmis.apps.core.sms.backends.MockSMSBackend"
+    )
+    @patch("hmis.apps.core.sms_gateway.import_string")
+    def test_testing_allows_mock_backend(self, mock_import_string):
+        from hmis.apps.core import sms_gateway
+
+        backend_cls = Mock()
+        backend_instance = Mock()
+        backend_cls.return_value = backend_instance
+        mock_import_string.return_value = backend_cls
+
+        sms_gateway._initialized = False
+        sms_gateway._sms_client = None
+
+        client = sms_gateway._get_sms_client()
+
+        assert client == backend_instance
+        mock_import_string.assert_called_once_with("hmis.apps.core.sms.backends.MockSMSBackend")

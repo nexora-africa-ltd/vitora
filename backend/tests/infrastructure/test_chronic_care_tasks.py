@@ -8,7 +8,6 @@ Sprint 2.4: Chronic Care Enrollment Enhancements
 """
 
 from datetime import date, timedelta
-from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -75,7 +74,7 @@ def sample_patient_for_alerts(db, sample_organization):
         county=county, name="Alert Test SubCounty"
     )
 
-    return Patient.objects.create(
+    patient = Patient.objects.create(
         first_name="Alert",
         last_name="Patient",
         date_of_birth=date(1990, 1, 1),
@@ -84,6 +83,22 @@ def sample_patient_for_alerts(db, sample_organization):
         sub_county=sub_county,
         organization=sample_organization,
     )
+    patient.phone_number = "0712345678"
+    patient.save()
+    return patient
+
+
+@pytest.fixture(autouse=True)
+def enable_mock_sms(settings):
+    settings.SMS_ENABLED = True
+    settings.TESTING = True
+    settings.AT_USERNAME = ""
+    settings.AT_API_KEY = ""
+    settings.SMS_BACKEND = "hmis.apps.core.sms.backends.MockSMSBackend"
+    from hmis.apps.core import sms_gateway
+
+    sms_gateway._initialized = False
+    sms_gateway._sms_client = None
 
 
 # ============================================================================
@@ -168,7 +183,7 @@ class TestSendOverdueAppointmentAlerts:
 
         initial_alert_count = enrollment.missed_appointment_alerts
 
-        result = send_overdue_appointment_alerts()
+        send_overdue_appointment_alerts()
 
         # Refresh and verify no new alert
         enrollment.refresh_from_db()
@@ -221,6 +236,32 @@ class TestSendOverdueAppointmentAlerts:
 
         new_count = AuditLog.objects.filter(action="overdue_appointment_alert").count()
         assert new_count > initial_count
+
+    def test_skips_overdue_sms_when_phone_missing(
+        self, ccc_clinic_for_alerts, sample_patient_for_alerts, alert_test_user
+    ):
+        """Task should skip SMS send when patient phone number is missing."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+        from hmis.apps.core.tasks import send_overdue_appointment_alerts
+
+        sample_patient_for_alerts.phone_number = ""
+        sample_patient_for_alerts.save()
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic_for_alerts,
+            patient=sample_patient_for_alerts,
+            enrollment_number="CCC-NO-PHONE-ALERT-1",
+            enrollment_date=date.today() - timedelta(days=60),
+            status="ACTIVE",
+            next_appointment=date.today() - timedelta(days=7),
+            enrolled_by=alert_test_user,
+        )
+
+        result = send_overdue_appointment_alerts()
+        enrollment.refresh_from_db()
+
+        assert result["alerts_sent"] == 0
+        assert enrollment.last_reminder_sent is None
 
 
 # ============================================================================
