@@ -687,6 +687,9 @@ access_point: z.preprocess(
     preauth_type: z.string().optional(),
     is_per_diem: z.boolean().optional(),
     is_elective_preauth: z.boolean().optional(),
+    preauth_exists: z.boolean().optional(),
+    preauth_status: z.string().optional().default(''),
+    preauth_approved: z.boolean().optional(),
     created_at: z.string(),
     updated_at: z.string(),
   })).optional().default([]),
@@ -1080,6 +1083,18 @@ export const SHAClaimItemArrayResponseSchema = z.object({
 export const IlmCallResultSchema = z.object({
   status_code: z.number(),
   payload: z.unknown().optional(),
+  reconciliation_summary: z.object({
+    reconciled: z.boolean(),
+    reason: z.string(),
+    created: z.number().optional(),
+    updated: z.number().optional(),
+    restored: z.number().optional(),
+    retired: z.number().optional(),
+    created_codes: z.array(z.string()).optional(),
+    updated_codes: z.array(z.string()).optional(),
+    restored_codes: z.array(z.string()).optional(),
+    retired_codes: z.array(z.string()).optional(),
+  }).optional(),
 });
 
 export type IlmCallResult = z.infer<typeof IlmCallResultSchema>;

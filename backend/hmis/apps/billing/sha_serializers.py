@@ -14,6 +14,7 @@ from hmis.apps.billing.models import (
     SHAClaimItem,
     SHAEligibilityCheck,
     SHAMember,
+    SHAPreauth,
     SHATariff,
 )
 
@@ -473,6 +474,9 @@ class SHAClaimInterventionSerializer(serializers.ModelSerializer):
     preauth_type = serializers.CharField(read_only=True)
     is_per_diem = serializers.BooleanField(read_only=True)
     is_elective_preauth = serializers.BooleanField(read_only=True)
+    preauth_exists = serializers.SerializerMethodField()
+    preauth_status = serializers.SerializerMethodField()
+    preauth_approved = serializers.SerializerMethodField()
 
     class Meta:
         model = SHAClaimIntervention
@@ -509,6 +513,9 @@ class SHAClaimInterventionSerializer(serializers.ModelSerializer):
             "preauth_type",
             "is_per_diem",
             "is_elective_preauth",
+            "preauth_exists",
+            "preauth_status",
+            "preauth_approved",
             "created_at",
             "updated_at",
         ]
@@ -522,6 +529,39 @@ class SHAClaimInterventionSerializer(serializers.ModelSerializer):
             if data.get(field) == "":
                 data.pop(field, None)
         return data
+
+    def _preauth_status_lookup(self, claim: SHAClaim) -> dict[str, str]:
+        cache = self.context.setdefault("_preauth_status_lookup", {})
+        claim_key = str(claim.pk)
+        if claim_key in cache:
+            return cache[claim_key]
+
+        rows = (
+            SHAPreauth.objects.filter(claim=claim)
+            .order_by("intervention_code", "-updated_at", "-created_at", "-id")
+            .values("intervention_code", "status")
+        )
+
+        lookup: dict[str, str] = {}
+        for row in rows:
+            code = str(row.get("intervention_code") or "").strip()
+            status = str(row.get("status") or "").strip()
+            if code and code not in lookup:
+                lookup[code] = status
+
+        cache[claim_key] = lookup
+        return lookup
+
+    def get_preauth_exists(self, obj) -> bool:
+        lookup = self._preauth_status_lookup(obj.claim)
+        return obj.intervention_code in lookup
+
+    def get_preauth_status(self, obj) -> str:
+        lookup = self._preauth_status_lookup(obj.claim)
+        return lookup.get(obj.intervention_code, "")
+
+    def get_preauth_approved(self, obj) -> bool:
+        return self.get_preauth_status(obj) == SHAPreauth.Status.APPROVED
 
 
 class SHAClaimDetailSerializer(SHAClaimSerializer):

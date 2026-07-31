@@ -359,6 +359,92 @@ class TestInterventions:
         assert intervention.required_document_types == ["MEDICAL_REPORT", "LAB_REPORT"]
         assert intervention.tariff_amount == Decimal("777.00")
 
+    def test_reconcile_from_preview_upserts_and_retires(self, service, claim):
+        SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-07-001",
+            intervention_name="Legacy local intervention",
+            status=SHAClaimIntervention.InterventionStatus.ACTIVE,
+        )
+        SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-19-197",
+            intervention_name="Old name",
+            status=SHAClaimIntervention.InterventionStatus.ACTIVE,
+        )
+
+        summary = service.reconcile_interventions_from_preview(
+            claim,
+            {
+                "payload": {
+                    "interventions": [
+                        {
+                            "id": "bf919afd-1b89-4a01-b5dc-9e821db3e525",
+                            "intervention_code": "SHA-19-197",
+                            "intervention_name": "Bilateral nephrostomy tube insertion",
+                            "intervention_payment_mechanism": "FEE FOR SERVICE",
+                            "keph_level_tarrif": "72800",
+                            "needs_preauth": True,
+                            "requires_surgical_preauth": False,
+                            "sub_benefit_code": "SHA-19-SC-08",
+                            "intervention_fund": "ALL",
+                            "supported_scheme": "BOTH",
+                            "applicable_document_types": ["CLAIM_FORM", "FINAL_BILL"],
+                        },
+                        {
+                            "id": "eecfcce3-09c1-4f95-aa94-28c38e648e2e",
+                            "intervention_code": "SHA-19-277",
+                            "intervention_name": "Burr hole(s): subdural hematoma, brain abscess",
+                            "intervention_payment_mechanism": "FEE FOR SERVICE",
+                            "keph_level_tarrif": "268800",
+                            "needs_preauth": True,
+                            "supported_scheme": "BOTH",
+                            "applicable_document_types": ["CLAIM_FORM"],
+                        },
+                    ]
+                }
+            },
+        )
+
+        assert summary["reconciled"] is True
+        assert summary["created"] == 1
+        assert summary["retired"] == 1
+
+        retired = SHAClaimIntervention.objects.get(claim=claim, intervention_code="SHA-07-001")
+        assert retired.status == SHAClaimIntervention.InterventionStatus.RETIRED
+
+        existing = SHAClaimIntervention.objects.get(claim=claim, intervention_code="SHA-19-197")
+        assert existing.status == SHAClaimIntervention.InterventionStatus.ACTIVE
+        assert existing.intervention_name == "Bilateral nephrostomy tube insertion"
+        assert existing.dha_intervention_id == "bf919afd-1b89-4a01-b5dc-9e821db3e525"
+        assert existing.payment_mechanism == SHAClaimIntervention.PaymentMechanism.FEE_FOR_SERVICE
+        assert existing.tariff_amount == Decimal("72800")
+        assert existing.required_document_types == ["CLAIM_FORM", "FINAL_BILL"]
+
+        created = SHAClaimIntervention.objects.get(claim=claim, intervention_code="SHA-19-277")
+        assert created.status == SHAClaimIntervention.InterventionStatus.ACTIVE
+        assert created.payment_mechanism == SHAClaimIntervention.PaymentMechanism.FEE_FOR_SERVICE
+        assert created.tariff_amount == Decimal("268800")
+
+    def test_reconcile_from_preview_skips_when_interventions_missing(self, service, claim):
+        SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-07-001",
+            status=SHAClaimIntervention.InterventionStatus.ACTIVE,
+        )
+
+        summary = service.reconcile_interventions_from_preview(claim, {"payload": {"foo": "bar"}})
+
+        assert summary["reconciled"] is False
+        assert summary["reason"] == "missing_interventions_field"
+        assert (
+            SHAClaimIntervention.objects.get(
+                claim=claim,
+                intervention_code="SHA-07-001",
+            ).status
+            == SHAClaimIntervention.InterventionStatus.ACTIVE
+        )
+
 
 @pytest.mark.django_db
 class TestVirtualClaimLine:

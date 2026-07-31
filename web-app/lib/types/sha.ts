@@ -826,6 +826,11 @@ export interface Claim {
     is_oncology_preauth?: boolean;
     is_imaging_preauth?: boolean;
     is_optical_preauth?: boolean;
+    fund?: string;
+    intervention_fund?: string;
+    supported_scheme?: string;
+    schemes?: string[];
+    intervention_payload?: Record<string, unknown>;
     level2_tariff?: string | null;
     level3_tariff?: string | null;
     level4_tariff?: string | null;
@@ -835,6 +840,9 @@ export interface Claim {
     preauth_type?: string;
     is_per_diem?: boolean;
     is_elective_preauth?: boolean;
+    preauth_exists?: boolean;
+    preauth_status?: string;
+    preauth_approved?: boolean;
     created_at?: string;
     updated_at?: string;
   }>;

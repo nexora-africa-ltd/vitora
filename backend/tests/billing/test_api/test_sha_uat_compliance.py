@@ -111,12 +111,25 @@ class TestPreviewBeforeSubmit:
             mock_result.response.ok = True
             mock_result.status_code = 200
             mock_result.payload = {"claim_diagnoses": [{"icd_code": "J06.9"}]}
+            svc.return_value.reconcile_interventions_from_preview.return_value = {
+                "reconciled": True,
+                "created": 0,
+                "updated": 0,
+                "restored": 0,
+                "retired": 0,
+            }
             svc.return_value.preview.return_value = mock_result
             response = sha_client.post(f"/api/sha/claims/{claim.id}/ilm/preview/")
 
         assert response.status_code == status.HTTP_200_OK
+        assert response.data["reconciliation_summary"]["reconciled"] is True
         claim.refresh_from_db()
         assert claim.previewed_at is not None
+        svc.return_value.reconcile_interventions_from_preview.assert_called_once_with(
+            claim,
+            mock_result.payload,
+            user=ANY,
+        )
 
     def test_ilm_preview_syncs_local_diagnosis_when_preview_has_none(
         self, sha_client, sample_sha_claim_for_uat

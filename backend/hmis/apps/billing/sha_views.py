@@ -1408,11 +1408,16 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     def _ilm_response(self, result):
         from rest_framework.response import Response as _R
 
+        response_payload = {
+            "status_code": result.status_code,
+            "payload": result.payload,
+        }
+        reconciliation_summary = getattr(result, "reconciliation_summary", None)
+        if isinstance(reconciliation_summary, dict):
+            response_payload["reconciliation_summary"] = reconciliation_summary
+
         return _R(
-            {
-                "status_code": result.status_code,
-                "payload": result.payload,
-            },
+            response_payload,
             status=(
                 status.HTTP_200_OK if result.status_code < 400 else status.HTTP_502_BAD_GATEWAY
             ),
@@ -2471,6 +2476,21 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                         claim.id,
                         _stringify_error(exc),
                     )
+
+        if result.status_code < 400:
+            try:
+                reconciliation_summary = ilm_service.reconcile_interventions_from_preview(
+                    claim,
+                    result.payload,
+                    user=request.user,
+                )
+                result.reconciliation_summary = reconciliation_summary
+            except Exception as exc:  # noqa: BLE001 - fail-open, preview should still return
+                logger.warning(
+                    "Failed to reconcile claim interventions from preview for claim %s: %s",
+                    claim.id,
+                    _stringify_error(exc),
+                )
 
         # Stamp previewed_at on success (DHA UAT: preview required before submit)
         if result.response and result.status_code < 400:

@@ -35,7 +35,16 @@ interface Intervention {
   dha_intervention_id?: string;
   tariff_amount?: string | null;
   payment_mechanism?: string;
+  access_point?: 'IP' | 'OP' | 'BOTH' | string;
+  needs_preauth?: boolean;
+  fund?: string;
+  intervention_fund?: string;
+  supported_scheme?: string;
+  schemes?: string[];
   is_per_diem?: boolean;
+  preauth_exists?: boolean;
+  preauth_status?: string;
+  preauth_approved?: boolean;
   level2_tariff?: string | null;
   level3_tariff?: string | null;
   level4_tariff?: string | null;
@@ -81,6 +90,29 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
       return `No per-diem tariff defined for Level ${facilityLevel}. Claim submission will fail.`;
     }
     return null;
+  }
+
+  function getKephTariff(intervention: Intervention): string | null {
+    if (!facilityLevel) return intervention.tariff_amount ?? null;
+    const tariffMap: Record<number, string | null | undefined> = {
+      2: intervention.level2_tariff,
+      3: intervention.level3_tariff,
+      4: intervention.level4_tariff,
+      5: intervention.level5_tariff,
+      6: intervention.level6_tariff,
+    };
+    return tariffMap[facilityLevel] ?? intervention.tariff_amount ?? null;
+  }
+
+  function formatKes(amount: string | null | undefined): string {
+    if (!amount) return 'N/A';
+    const parsed = Number(amount);
+    if (!Number.isFinite(parsed)) return amount;
+    return `KES ${parsed.toLocaleString()}`;
+  }
+
+  function labelize(value: string): string {
+    return value.replaceAll('_', ' ').toLowerCase();
   }
 
   async function handleRetire(code: string) {
@@ -183,11 +215,70 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
               <p className="text-sm text-muted-foreground truncate mt-0.5">
                 {intervention.intervention_name}
               </p>
-              {intervention.tariff_amount && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Tariff: KES {parseFloat(intervention.tariff_amount).toLocaleString()}
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {intervention.dha_intervention_id ? (
+                  <Badge variant="secondary" className="text-[10px] h-5 font-mono">
+                    ILM ID {intervention.dha_intervention_id}
+                  </Badge>
+                ) : null}
+                {intervention.payment_mechanism ? (
+                  <Badge variant="outline" className="text-[10px] h-5">
+                    {labelize(intervention.payment_mechanism)}
+                  </Badge>
+                ) : null}
+                {intervention.access_point ? (
+                  <Badge variant="outline" className="text-[10px] h-5">
+                    {intervention.access_point}
+                  </Badge>
+                ) : null}
+                {intervention.needs_preauth ? (
+                  <Badge variant="outline" className="text-[10px] h-5 border-amber-300 text-amber-700">
+                    Preauth required
+                  </Badge>
+                ) : null}
+                {intervention.preauth_exists ? (
+                  <Badge
+                    variant="outline"
+                    className={
+                      intervention.preauth_approved
+                        ? 'text-[10px] h-5 border-emerald-300 text-emerald-700'
+                        : 'text-[10px] h-5 border-amber-300 text-amber-700'
+                    }
+                  >
+                    {intervention.preauth_approved
+                      ? 'Preauth approved'
+                      : `Preauth ${labelize(intervention.preauth_status || 'pending')}`}
+                  </Badge>
+                ) : null}
+              </div>
+              <div className="mt-1 grid grid-cols-1 gap-x-4 gap-y-0.5 text-xs text-muted-foreground md:grid-cols-2">
+                <p>
+                  KEPH tariff ({facilityLevel ? `L${facilityLevel}` : 'facility'}):{' '}
+                  <span className="font-medium text-foreground">{formatKes(getKephTariff(intervention))}</span>
                 </p>
-              )}
+                <p>
+                  Base tariff:{' '}
+                  <span className="font-medium text-foreground">{formatKes(intervention.tariff_amount)}</span>
+                </p>
+                {(intervention.fund || intervention.intervention_fund) ? (
+                  <p>
+                    Fund:{' '}
+                    <span className="font-medium text-foreground">
+                      {intervention.intervention_fund || intervention.fund}
+                    </span>
+                  </p>
+                ) : null}
+                {intervention.supported_scheme ? (
+                  <p>
+                    Scheme: <span className="font-medium text-foreground">{intervention.supported_scheme}</span>
+                  </p>
+                ) : null}
+              </div>
+              {intervention.schemes && intervention.schemes.length > 0 ? (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Schemes: {intervention.schemes.join(', ')}
+                </p>
+              ) : null}
               {(() => {
                 const warning = getMissingTariffWarning(intervention);
                 return warning ? (
@@ -250,6 +341,11 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
                   <p className="text-sm text-muted-foreground truncate mt-0.5">
                     {intervention.intervention_name}
                   </p>
+                  {intervention.dha_intervention_id ? (
+                    <p className="mt-0.5 text-xs text-muted-foreground font-mono">
+                      ILM ID: {intervention.dha_intervention_id}
+                    </p>
+                  ) : null}
                 </div>
                 <Button
                   variant="outline"

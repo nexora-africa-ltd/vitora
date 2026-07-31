@@ -276,6 +276,28 @@ function formatErr(e: unknown): string {
   return err?.message ?? 'Request failed';
 }
 
+function formatReconciliationSummary(summary: {
+  reconciled?: boolean;
+  reason?: string;
+  created?: number;
+  updated?: number;
+  restored?: number;
+  retired?: number;
+} | null | undefined): string {
+  if (!summary) return '';
+  if (!summary.reconciled) {
+    return summary.reason === 'missing_interventions_field'
+      ? 'Preview returned without interventions list; no local intervention sync was applied.'
+      : 'Intervention sync skipped due to incomplete preview payload.';
+  }
+
+  const created = summary.created ?? 0;
+  const updated = summary.updated ?? 0;
+  const restored = summary.restored ?? 0;
+  const retired = summary.retired ?? 0;
+  return `Interventions synchronized from DHA preview: +${created} created, ${updated} updated, ${restored} restored, ${retired} retired.`;
+}
+
 function extractInterventionCombinationError(e: unknown): string | null {
   const data = (e as { response?: { data?: { error?: unknown; message?: unknown } } })?.response?.data;
   const rawError =
@@ -1801,7 +1823,15 @@ export function ClaimILMPanel({
             </div>
 
             {!!previewResult?.payload && (
-              <ClaimPreviewPanel payload={previewResult.payload} />
+              <>
+                <Alert>
+                  <AlertTitle className="text-sm">Intervention reconciliation</AlertTitle>
+                  <AlertDescription className="text-xs">
+                    {formatReconciliationSummary(previewResult.reconciliation_summary)}
+                  </AlertDescription>
+                </Alert>
+                <ClaimPreviewPanel payload={previewResult.payload} />
+              </>
             )}
 
             {applyPreviewResult?.success && (

@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 from .consent_token_resolver import ConsentTokenExpiredError, resolve_for_claim
@@ -710,6 +710,149 @@ class IlmClaimService:
         )
         return result
 
+    def reconcile_interventions_from_preview(
+        self,
+        claim: Any,
+        payload: Any,
+        *,
+        user: Any = None,
+    ) -> dict[str, Any]:
+        """Reconcile local claim interventions against ILM preview payload."""
+        from hmis.apps.billing.models import SHAClaimIntervention
+
+        preview_payload = payload if isinstance(payload, dict) else {}
+        if isinstance(preview_payload.get("payload"), dict):
+            preview_payload = preview_payload["payload"]
+        elif isinstance(preview_payload.get("data"), dict):
+            preview_payload = preview_payload["data"]
+
+        if "interventions" not in preview_payload:
+            return {
+                "reconciled": False,
+                "reason": "missing_interventions_field",
+                "created": 0,
+                "updated": 0,
+                "restored": 0,
+                "retired": 0,
+            }
+
+        raw_interventions = preview_payload.get("interventions")
+        if not isinstance(raw_interventions, list):
+            return {
+                "reconciled": False,
+                "reason": "invalid_interventions_shape",
+                "created": 0,
+                "updated": 0,
+                "restored": 0,
+                "retired": 0,
+            }
+
+        remote_by_code: dict[str, dict[str, Any]] = {}
+        for item in raw_interventions:
+            if not isinstance(item, dict):
+                continue
+            code = str(
+                item.get("intervention_code")
+                or item.get("interventionCode")
+                or item.get("code")
+                or ""
+            ).strip()
+            if code and code not in remote_by_code:
+                remote_by_code[code] = item
+
+        created_codes: list[str] = []
+        updated_codes: list[str] = []
+        restored_codes: list[str] = []
+        retired_codes: list[str] = []
+
+        with transaction.atomic():
+            existing_rows = list(
+                SHAClaimIntervention.objects.select_for_update().filter(claim=claim)
+            )
+            existing_by_code = {row.intervention_code: row for row in existing_rows}
+
+            for code, remote_item in remote_by_code.items():
+                base_benefit_code = code.rsplit("-", 1)[0] if "-" in code else ""
+                intervention, created = SHAClaimIntervention.objects.get_or_create(
+                    claim=claim,
+                    intervention_code=code,
+                    defaults={
+                        "status": SHAClaimIntervention.InterventionStatus.ACTIVE,
+                        "benefit_code": str(base_benefit_code)[:10],
+                    },
+                )
+                if created:
+                    created_codes.append(code)
+
+                updates = self._build_intervention_updates_from_payload(
+                    intervention=intervention,
+                    payload=remote_item,
+                    prefer_existing=False,
+                )
+
+                keph_tariff = (
+                    remote_item.get("keph_level_tarrif")
+                    or remote_item.get("keph_level_tariff")
+                    or remote_item.get("intervention_overall_tariff")
+                    or remote_item.get("overallTariff")
+                    or remote_item.get("overall_tariff")
+                )
+                facility_level_raw = str(getattr(claim, "facility_level", "") or "").strip().upper()
+                level_digits = "".join(ch for ch in facility_level_raw if ch.isdigit())
+                level_field = (
+                    f"level{level_digits}_tariff"
+                    if level_digits in {"2", "3", "4", "5", "6"}
+                    else ""
+                )
+                if keph_tariff not in (None, "") and level_field:
+                    if getattr(intervention, level_field, None) in (None, ""):
+                        updates[level_field] = keph_tariff
+
+                if intervention.status != SHAClaimIntervention.InterventionStatus.ACTIVE:
+                    updates["status"] = SHAClaimIntervention.InterventionStatus.ACTIVE
+                    restored_codes.append(code)
+
+                if updates:
+                    for field, value in updates.items():
+                        setattr(intervention, field, value)
+                    intervention.save(update_fields=list(updates.keys()) + ["updated_at"])
+                    if not created:
+                        updated_codes.append(code)
+
+            for code, local_row in existing_by_code.items():
+                if code in remote_by_code:
+                    continue
+                if local_row.status != SHAClaimIntervention.InterventionStatus.ACTIVE:
+                    continue
+                local_row.status = SHAClaimIntervention.InterventionStatus.RETIRED
+                local_row.save(update_fields=["status", "updated_at"])
+                retired_codes.append(code)
+
+        summary = {
+            "reconciled": True,
+            "reason": "ok",
+            "created": len(created_codes),
+            "updated": len(updated_codes),
+            "restored": len(restored_codes),
+            "retired": len(retired_codes),
+            "created_codes": created_codes,
+            "updated_codes": updated_codes,
+            "restored_codes": restored_codes,
+            "retired_codes": retired_codes,
+        }
+
+        if created_codes or updated_codes or restored_codes or retired_codes:
+            logger.info(
+                "ILM preview intervention reconcile claim=%s created=%s updated=%s restored=%s retired=%s actor=%s",
+                getattr(claim, "pk", None),
+                created_codes,
+                updated_codes,
+                restored_codes,
+                retired_codes,
+                getattr(user, "id", None),
+            )
+        return summary
+
     def preview_payer_claim(self, claim: Any, *, user: Any = None) -> IlmClaimResult:
         """Fetch the payer's adjudication view of this claim from DHA.
 
@@ -1002,30 +1145,50 @@ class IlmClaimService:
             if current != value:
                 updates[field] = value
 
+        def _first(*keys: str) -> Any:
+            for key in keys:
+                if key in payload and payload.get(key) not in (None, ""):
+                    return payload.get(key)
+            return None
+
         _set_if_present(
             "intervention_name",
-            str(payload.get("intervention_name") or payload.get("name") or "")[:255],
+            str(
+                _first(
+                    "intervention_name",
+                    "interventionName",
+                    "name",
+                    "display_name",
+                    "displayName",
+                )
+                or ""
+            )[:255],
         )
         _set_if_present(
             "dha_intervention_id",
-            str(payload.get("id") or payload.get("intervention_id") or "")[:64],
+            str(_first("id", "intervention_id", "interventionId") or "")[:64],
+        )
+        payment_mechanism = _first(
+            "paymentMechanism",
+            "payment_mechanism",
+            "intervention_payment_mechanism",
         )
         _set_if_present(
             "payment_mechanism",
-            str(payload.get("paymentMechanism") or payload.get("payment_mechanism") or "")[:20],
+            self._normalize_payment_mechanism(str(payment_mechanism or ""))[:20],
         )
         _set_if_present(
             "access_point",
-            str(payload.get("accessPoint") or payload.get("access_point") or "")[:4],
+            str(_first("accessPoint", "access_point") or "").upper()[:4],
         )
-        _set_if_present("fund", str(payload.get("fund") or "")[:128])
+        _set_if_present("fund", str(_first("fund") or "")[:128])
         _set_if_present(
             "intervention_fund",
-            str(payload.get("interventionFund") or payload.get("intervention_fund") or "")[:128],
+            str(_first("interventionFund", "intervention_fund") or "")[:128],
         )
         _set_if_present(
             "supported_scheme",
-            str(payload.get("supportedScheme") or payload.get("supported_scheme") or "")[:128],
+            str(_first("supportedScheme", "supported_scheme") or "")[:128],
         )
 
         schemes = payload.get("schemes")
@@ -1068,14 +1231,25 @@ class IlmClaimService:
 
         tariff_present = any(
             key in payload
-            for key in ("tariff_amount", "tariffAmount", "overall_tariff", "overallTariff")
+            for key in (
+                "tariff_amount",
+                "tariffAmount",
+                "overall_tariff",
+                "overallTariff",
+                "intervention_overall_tariff",
+                "keph_level_tariff",
+                "keph_level_tarrif",
+            )
         )
         if tariff_present:
-            tariff_amount = (
-                payload.get("tariff_amount")
-                or payload.get("tariffAmount")
-                or payload.get("overall_tariff")
-                or payload.get("overallTariff")
+            tariff_amount = _first(
+                "tariff_amount",
+                "tariffAmount",
+                "overall_tariff",
+                "overallTariff",
+                "intervention_overall_tariff",
+                "keph_level_tariff",
+                "keph_level_tarrif",
             )
             if tariff_amount not in (None, ""):
                 _set_if_present("tariff_amount", tariff_amount)
@@ -1091,22 +1265,74 @@ class IlmClaimService:
                 _set_if_present(level_field, payload.get(payload_key))
 
         bool_fields = (
-            ("needs_preauth", "needsPreauth"),
-            ("needs_manual_preauth_approval", "needsManualPreauthApproval"),
-            ("is_surgical_preauth", "isSurgicalPreauth"),
-            ("is_renal_preauth", "isRenalPreauth"),
-            ("is_oncology_preauth", "isOncologyPreauth"),
-            ("is_imaging_preauth", "isImagingPreauth"),
-            ("is_optical_preauth", "isOpticalPreauth"),
+            ("needs_preauth", ("needsPreauth", "needs_preauth")),
+            (
+                "needs_manual_preauth_approval",
+                ("needsManualPreauthApproval", "needs_manual_preauth_approval"),
+            ),
+            (
+                "is_surgical_preauth",
+                ("isSurgicalPreauth", "is_surgical_preauth", "requires_surgical_preauth"),
+            ),
+            (
+                "is_renal_preauth",
+                ("isRenalPreauth", "is_renal_preauth", "requires_renal_preauth"),
+            ),
+            (
+                "is_oncology_preauth",
+                ("isOncologyPreauth", "is_oncology_preauth", "requires_oncology_preauth"),
+            ),
+            (
+                "is_imaging_preauth",
+                (
+                    "isImagingPreauth",
+                    "is_imaging_preauth",
+                    "requires_imaging_preauth",
+                    "requires_radiology_preauth",
+                ),
+            ),
+            (
+                "is_optical_preauth",
+                ("isOpticalPreauth", "is_optical_preauth", "requires_optical_preauth"),
+            ),
         )
-        for bool_field, key in bool_fields:
-            if key in payload:
-                value = bool(payload.get(key))
+        for bool_field, keys in bool_fields:
+            value = self._coerce_bool(_first(*keys))
+            if value is not None:
                 current = bool(getattr(intervention, bool_field))
                 if (not prefer_existing or not current) and current != value:
                     updates[bool_field] = value
 
         return updates
+
+    @staticmethod
+    def _coerce_bool(value: Any) -> bool | None:
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(value)
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"true", "1", "yes", "y"}:
+                return True
+            if normalized in {"false", "0", "no", "n"}:
+                return False
+        return None
+
+    @staticmethod
+    def _normalize_payment_mechanism(value: str) -> str:
+        normalized = value.strip().upper().replace("-", " ").replace("_", " ")
+        if not normalized:
+            return ""
+        if normalized in {"FEE FOR SERVICE", "FIXED FEE FOR SERVICE"}:
+            return "FEE_FOR_SERVICE"
+        if normalized == "PER DIEM":
+            return "PER_DIEM"
+        if normalized == "CAPITATION":
+            return "CAPITATION"
+        return normalized.replace(" ", "_")
 
     @staticmethod
     def _needs_intervention_enrichment(intervention: Any) -> bool:

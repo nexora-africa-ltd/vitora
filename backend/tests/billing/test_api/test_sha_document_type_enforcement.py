@@ -29,6 +29,7 @@ from hmis.apps.billing.models import (
     SHAClaimIntervention,
     SHAClaimItem,
     SHAMember,
+    SHAPreauth,
     SHATariff,
 )
 from tests.conftest import ensure_staff_profile
@@ -392,6 +393,15 @@ class TestSHAClaimDetailSerializerDocTypes:
             schemes=["SHA", "SHIF"],
             intervention_payload={"foo": "bar", "schemes": ["SHA"]},
         )
+        SHAPreauth.objects.create(
+            claim=draft_claim,
+            patient=draft_claim.patient,
+            sha_member=draft_claim.sha_member,
+            facility=draft_claim.facility,
+            consent_token="TEST-CONSENT",
+            intervention_code="SHA-07-001",
+            status=SHAPreauth.Status.APPROVED,
+        )
         response = sha_client.get(f"/api/sha/claims/{draft_claim.id}/")
         assert response.status_code == status.HTTP_200_OK
         assert "claim_interventions" in response.data
@@ -400,6 +410,9 @@ class TestSHAClaimDetailSerializerDocTypes:
         assert response.data["claim_interventions"][0]["fund"] == "SHIF"
         assert response.data["claim_interventions"][0]["schemes"] == ["SHA", "SHIF"]
         assert response.data["claim_interventions"][0]["intervention_payload"]["foo"] == "bar"
+        assert response.data["claim_interventions"][0]["preauth_exists"] is True
+        assert response.data["claim_interventions"][0]["preauth_status"] == "approved"
+        assert response.data["claim_interventions"][0]["preauth_approved"] is True
 
 
 # =============================================================================

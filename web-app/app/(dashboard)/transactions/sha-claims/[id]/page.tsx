@@ -18,6 +18,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { getApiErrorMessage } from '@/lib/api/client';
+import { shaApi } from '@/lib/api/sha';
 
 import { useClaim, useResubmitClaim } from '@/lib/hooks/use-sha';
 import { useClaimFlow } from '@/lib/hooks/use-claim-flow';
@@ -87,6 +88,8 @@ export default function ClaimDetailPage() {
   const [activeTab, setActiveTab] = React.useState<TabId>('overview');
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [payerNeedsAttention, setPayerNeedsAttention] = React.useState(false);
+  const [syncingFromDha, setSyncingFromDha] = React.useState(false);
+  const [interventionSyncSummary, setInterventionSyncSummary] = React.useState<string>('');
 
   const effectiveStatus = claim ? getEffectiveClaimStatus(claim) : null;
   const adjudicationNeedsAttention =
@@ -163,6 +166,40 @@ export default function ClaimDetailPage() {
       });
     }
   }, [claim?.status, claimId, resubmitMutation, refetch, toast]);
+
+  const handleFetchInterventionsFromDha = useCallback(async () => {
+    setSyncingFromDha(true);
+    try {
+      const result = await shaApi.ilmPreview(claimId);
+      const summary = result.reconciliation_summary;
+      if (summary?.reconciled) {
+        const created = summary.created ?? 0;
+        const updated = summary.updated ?? 0;
+        const restored = summary.restored ?? 0;
+        const retired = summary.retired ?? 0;
+        setInterventionSyncSummary(
+          `DHA sync complete: +${created} created, ${updated} updated, ${restored} restored, ${retired} retired.`,
+        );
+      } else {
+        setInterventionSyncSummary('DHA preview succeeded, but intervention reconciliation was skipped.');
+      }
+      await refetch();
+      toast({
+        title: 'Fetched from DHA',
+        description: 'Interventions refreshed from latest DHA preview.',
+      });
+    } catch (e) {
+      const message = extractShaInlineError(e);
+      setInterventionSyncSummary('');
+      toast({
+        title: 'Fetch from DHA failed',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncingFromDha(false);
+    }
+  }, [claimId, refetch, toast]);
 
   const isMutating = resubmitMutation.isPending;
 
@@ -300,6 +337,30 @@ export default function ClaimDetailPage() {
 
           <TabsContent value="interventions" className="mt-4 sm:mt-6">
             <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
+                <p className="text-xs text-muted-foreground">
+                  Refresh this tab from DHA preview to reconcile local intervention rows with ILM source-of-truth.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleFetchInterventionsFromDha}
+                  disabled={syncingFromDha || isRefetching}
+                >
+                  {syncingFromDha ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  Fetch from DHA
+                </Button>
+              </div>
+              {interventionSyncSummary ? (
+                <Alert>
+                  <AlertTitle>Intervention reconciliation</AlertTitle>
+                  <AlertDescription>{interventionSyncSummary}</AlertDescription>
+                </Alert>
+              ) : null}
               {claim.claim_interventions && claim.claim_interventions.length > 0 ? (
                 <InterventionsList
                   claimId={claim.id}
