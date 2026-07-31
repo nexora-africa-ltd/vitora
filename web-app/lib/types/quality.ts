@@ -29,6 +29,24 @@ export type ReportingPeriod = 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
 /** Export format */
 export type ExportFormat = 'csv' | 'json' | 'qrda';
 
+export type QualityEvaluationRuleType =
+  | 'bp_control'
+  | 'lab_threshold'
+  | 'wait_time'
+  | 'visit_count'
+  | 'enrollment_active'
+  | 'stock_availability'
+  | 'skilled_birth_attendance'
+  | 'tb_treatment_success'
+  | 'immunization_completeness'
+  | 'maternal_mortality_ratio'
+  | 'idsr_timeliness';
+
+export interface QualityEvaluationRule {
+  type: QualityEvaluationRuleType;
+  params: Record<string, unknown>;
+}
+
 /** Import format */
 export type ImportFormat = 'csv' | 'json';
 
@@ -186,6 +204,7 @@ export interface QualityMeasure {
   dhis2_indicator_id: string;
   reference_url: string;
   applicable_clinic_types: string[];
+  evaluation_rule: QualityEvaluationRule | null;
   created_at: string;
   updated_at: string;
 }
@@ -205,6 +224,27 @@ export interface QualityMeasureCreateData {
   dhis2_indicator_id?: string;
   reference_url?: string;
   applicable_clinic_types?: string[];
+  evaluation_rule?: QualityEvaluationRule | null;
+}
+
+export interface QualityRulePreviewRequest {
+  evaluation_rule: QualityEvaluationRule;
+  clinic_id: number;
+  year: number;
+  period: number;
+  period_type: ReportingPeriod;
+}
+
+export interface QualityRulePreviewResponse {
+  evaluation_rule: QualityEvaluationRule;
+  clinic_id: number;
+  year: number;
+  period: number;
+  period_type: ReportingPeriod;
+  numerator: number;
+  denominator: number;
+  percentage: string;
+  notes: string;
 }
 
 export interface QualityMeasureListParams {

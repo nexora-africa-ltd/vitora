@@ -34,6 +34,8 @@ import type {
   AnnualReportGenerateData,
   QualityMeasure,
   QualityMeasureCreateData,
+  QualityRulePreviewRequest,
+  QualityRulePreviewResponse,
   QualityMeasureListParams,
   QualityMeasureResult,
   QualityMeasureResultCreateData,
@@ -196,6 +198,14 @@ export const qualityApi = {
 
   deleteMeasure: async (id: number): Promise<void> => {
     await apiClient.delete(`${BASE}/measures/${id}/`);
+  },
+
+  previewRule: async (data: QualityRulePreviewRequest): Promise<QualityRulePreviewResponse> => {
+    const response = await apiClient.post<QualityRulePreviewResponse>(
+      `${BASE}/measures/preview-rule/`,
+      data,
+    );
+    return response.data;
   },
 
   importMeasures: async (

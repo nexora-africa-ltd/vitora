@@ -158,6 +158,68 @@ class QualityMeasureSerializer(serializers.ModelSerializer):
     reporting_period_display = serializers.CharField(
         source="get_reporting_period_display", read_only=True
     )
+    evaluation_rule = serializers.JSONField(required=False, allow_null=True)
+
+    SUPPORTED_RULE_TYPES = {
+        "bp_control",
+        "lab_threshold",
+        "wait_time",
+        "visit_count",
+        "enrollment_active",
+        "stock_availability",
+        "skilled_birth_attendance",
+        "tb_treatment_success",
+        "immunization_completeness",
+        "maternal_mortality_ratio",
+        "idsr_timeliness",
+    }
+
+    _RULE_REQUIRED_PARAMS = {
+        "bp_control": set(),
+        "lab_threshold": {"threshold"},
+        "wait_time": set(),
+        "visit_count": set(),
+        "enrollment_active": set(),
+        "stock_availability": set(),
+        "skilled_birth_attendance": set(),
+        "tb_treatment_success": set(),
+        "immunization_completeness": set(),
+        "maternal_mortality_ratio": set(),
+        "idsr_timeliness": set(),
+    }
+
+    _RULE_ALLOWED_PARAMS = {
+        "bp_control": {"systolic_max", "diastolic_max", "clinic_types", "enrollment_required"},
+        "lab_threshold": {"test_name", "test_code", "threshold", "comparison", "clinic_types"},
+        "wait_time": {"max_minutes", "data_source"},
+        "visit_count": {"min_visits", "enrollment_status"},
+        "enrollment_active": {"target_status", "missed_threshold_days"},
+        "stock_availability": {"tracer_only", "stock_out_threshold"},
+        "skilled_birth_attendance": {
+            "require_documented_attendant",
+            "delivery_status",
+            "include_outcomes",
+        },
+        "tb_treatment_success": {
+            "success_statuses",
+            "success_keywords",
+            "use_outcome_reason",
+            "require_outcome_date",
+            "cohort_statuses",
+        },
+        "immunization_completeness": {
+            "vaccine_program",
+            "max_patient_age_years",
+            "strict_due_in_period",
+        },
+        "maternal_mortality_ratio": {"ratio_multiplier", "delivery_status"},
+        "idsr_timeliness": {
+            "submission_statuses",
+            "include_approved",
+            "deadline_days_after_week_end",
+            "require_dhis2_timestamp",
+        },
+    }
 
     class Meta:
         model = QualityMeasure
@@ -180,6 +242,7 @@ class QualityMeasureSerializer(serializers.ModelSerializer):
             "dhis2_indicator_id",
             "reference_url",
             "applicable_clinic_types",
+            "evaluation_rule",
             "created_at",
             "updated_at",
         ]
@@ -191,6 +254,54 @@ class QualityMeasureSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def validate_evaluation_rule(self, value):
+        if value in (None, ""):
+            return None
+
+        if not isinstance(value, dict):
+            raise serializers.ValidationError(
+                "evaluation_rule must be an object with keys 'type' and 'params'."
+            )
+
+        rule_type = value.get("type")
+        params = value.get("params", {})
+
+        if rule_type not in self.SUPPORTED_RULE_TYPES:
+            raise serializers.ValidationError(f"Unsupported evaluation rule type '{rule_type}'.")
+
+        if not isinstance(params, dict):
+            raise serializers.ValidationError("evaluation_rule.params must be an object.")
+
+        required = self._RULE_REQUIRED_PARAMS.get(rule_type, set())
+        missing = sorted(required - set(params.keys()))
+        if missing:
+            raise serializers.ValidationError(
+                f"Missing required params for '{rule_type}': {', '.join(missing)}"
+            )
+
+        allowed = self._RULE_ALLOWED_PARAMS.get(rule_type, set())
+        extra = sorted(set(params.keys()) - allowed)
+        if extra:
+            raise serializers.ValidationError(
+                f"Unsupported params for '{rule_type}': {', '.join(extra)}"
+            )
+
+        if rule_type == "lab_threshold":
+            comparison = params.get("comparison")
+            if comparison is not None and comparison not in {"lt", "lte", "gt", "gte"}:
+                raise serializers.ValidationError(
+                    "lab_threshold.comparison must be one of: lt, lte, gt, gte"
+                )
+
+        if rule_type == "wait_time":
+            data_source = params.get("data_source")
+            if data_source is not None and data_source not in {"clinic_visit", "triage_assessment"}:
+                raise serializers.ValidationError(
+                    "wait_time.data_source must be one of: clinic_visit, triage_assessment"
+                )
+
+        return {"type": rule_type, "params": params}
 
 
 class QualityMeasureResultSerializer(serializers.ModelSerializer):

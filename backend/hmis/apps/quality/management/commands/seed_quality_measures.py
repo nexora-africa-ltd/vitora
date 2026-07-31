@@ -41,7 +41,14 @@ KENYA_QUALITY_MEASURES = [
         "low_threshold": 60,
         "reporting_period": "QUARTERLY",
         "applicable_clinic_types": ["ANC", "PNC"],
-        "evaluation_rule": None,
+        "evaluation_rule": {
+            "type": "skilled_birth_attendance",
+            "params": {
+                "require_documented_attendant": True,
+                "delivery_status": "COMPLETED",
+                "include_outcomes": ["LIVE_BIRTH", "STILLBIRTH", "NEONATAL_DEATH"],
+            },
+        },
     },
     {
         "code": "KE-CQM-003",
@@ -85,7 +92,22 @@ KENYA_QUALITY_MEASURES = [
         "low_threshold": 75,
         "reporting_period": "QUARTERLY",
         "applicable_clinic_types": ["TB"],
-        "evaluation_rule": None,
+        "evaluation_rule": {
+            "type": "tb_treatment_success",
+            "params": {
+                "success_statuses": ["COMPLETED"],
+                "success_keywords": ["cured", "treatment complete", "completed"],
+                "use_outcome_reason": True,
+                "require_outcome_date": True,
+                "cohort_statuses": [
+                    "COMPLETED",
+                    "TRANSFERRED_OUT",
+                    "LOST_TO_FOLLOW_UP",
+                    "DECEASED",
+                    "SUSPENDED",
+                ],
+            },
+        },
     },
     {
         "code": "KE-CQM-005",
@@ -143,7 +165,14 @@ KENYA_QUALITY_MEASURES = [
         "low_threshold": 70,
         "reporting_period": "QUARTERLY",
         "applicable_clinic_types": ["CWC", "IMMUNIZATION"],
-        "evaluation_rule": None,
+        "evaluation_rule": {
+            "type": "immunization_completeness",
+            "params": {
+                "vaccine_program": "KEPI",
+                "max_patient_age_years": 5,
+                "strict_due_in_period": True,
+            },
+        },
     },
     {
         "code": "KE-CQM-008",
@@ -174,7 +203,13 @@ KENYA_QUALITY_MEASURES = [
         "low_threshold": None,
         "reporting_period": "ANNUAL",
         "applicable_clinic_types": ["ANC", "PNC"],
-        "evaluation_rule": None,
+        "evaluation_rule": {
+            "type": "maternal_mortality_ratio",
+            "params": {
+                "ratio_multiplier": 100000,
+                "delivery_status": "COMPLETED",
+            },
+        },
     },
     {
         "code": "KE-CQM-010",
@@ -193,7 +228,15 @@ KENYA_QUALITY_MEASURES = [
         "reporting_period": "QUARTERLY",
         "applicable_clinic_types": [],
         "dhis2_indicator_id": "IDSR_TIMELINESS",
-        "evaluation_rule": None,
+        "evaluation_rule": {
+            "type": "idsr_timeliness",
+            "params": {
+                "submission_statuses": ["SUBMITTED"],
+                "include_approved": False,
+                "deadline_days_after_week_end": 1,
+                "require_dhis2_timestamp": True,
+            },
+        },
     },
     {
         "code": "KE-CQM-011",

@@ -165,6 +165,24 @@ export const QualityMeasureSchema = z.object({
   dhis2_indicator_id: z.string(),
   reference_url: z.string(),
   applicable_clinic_types: z.array(z.string()),
+  evaluation_rule: z
+    .object({
+      type: z.enum([
+        'bp_control',
+        'lab_threshold',
+        'wait_time',
+        'visit_count',
+        'enrollment_active',
+        'stock_availability',
+        'skilled_birth_attendance',
+        'tb_treatment_success',
+        'immunization_completeness',
+        'maternal_mortality_ratio',
+        'idsr_timeliness',
+      ]),
+      params: z.record(z.unknown()),
+    })
+    .nullable(),
   created_at: z.string(),
   updated_at: z.string(),
 });

@@ -12,6 +12,11 @@ Supported rule types:
 - visit_count: Minimum visit count (e.g., ANC 4+ visits)
 - enrollment_active: Active enrollment rate (e.g., defaulter rate)
 - stock_availability: Medicine stock-out tracking
+- skilled_birth_attendance: Deliveries with documented skilled attendant
+- tb_treatment_success: TB cohort treatment success using enrollment outcomes
+- immunization_completeness: Under-5 KEPI schedule completeness in period
+- maternal_mortality_ratio: Maternal deaths per live births (scaled ratio)
+- idsr_timeliness: Weekly IDSR reports submitted by deadline
 
 Each rule type has a corresponding evaluator function that returns
 (numerator, denominator, notes) for a given clinic and reporting period.
@@ -249,13 +254,44 @@ def evaluate_wait_time(
 
     Rule params:
         max_minutes: int (default 30)
+        data_source: str ("clinic_visit" [default] | "triage_assessment")
 
-    Denominator: Completed visits in period with both registered_at and consultation_started_at
-    Numerator: Those where wait time <= max_minutes
+    clinic_visit source:
+      Denominator: Completed visits in period with both registered_at and consultation_started_at
+      Numerator: Those where wait time <= max_minutes
+
+    triage_assessment source:
+      Denominator: Triage assessments in period with arrival_time and triage_start_time
+      Numerator: Those where triage wait <= max_minutes
     """
-    from hmis.apps.clinics.models import ClinicVisit
-
     max_minutes = params.get("max_minutes", 30)
+    data_source = params.get("data_source", "clinic_visit")
+
+    if data_source == "triage_assessment":
+        from hmis.apps.triage.models import TriageAssessment
+
+        assessments = TriageAssessment.objects.filter(
+            assigned_clinic_id=clinic_id,
+            arrival_time__date__gte=start_date,
+            arrival_time__date__lte=end_date,
+            triage_start_time__isnull=False,
+        )
+
+        denominator = assessments.count()
+        if denominator == 0:
+            return EvaluationResult(0, 0, "No triage assessments with timing data")
+
+        numerator = 0
+        for assessment in assessments.only("arrival_time", "triage_start_time"):
+            wait = (assessment.triage_start_time - assessment.arrival_time).total_seconds() / 60
+            if wait <= max_minutes:
+                numerator += 1
+
+        return EvaluationResult(
+            numerator, denominator, f"Triage started within {max_minutes} minutes"
+        )
+
+    from hmis.apps.clinics.models import ClinicVisit
 
     visits = ClinicVisit.objects.filter(
         session__clinic_id=clinic_id,
@@ -424,6 +460,304 @@ def evaluate_stock_availability(
 
 
 # =============================================================================
+# Evaluator: Skilled Birth Attendance
+# =============================================================================
+
+
+def evaluate_skilled_birth_attendance(
+    clinic_id: int, start_date: date, end_date: date, params: dict[str, Any]
+) -> EvaluationResult:
+    """Evaluate skilled birth attendance among facility deliveries.
+
+    Rule params:
+        require_documented_attendant: bool (default True)
+        delivery_status: str (default "COMPLETED")
+        include_outcomes: list[str] (default ["LIVE_BIRTH", "STILLBIRTH", "NEONATAL_DEATH"])
+    """
+    from hmis.apps.clinics.models import Clinic
+    from hmis.apps.mch.models import Delivery
+
+    clinic = Clinic.objects.filter(pk=clinic_id).only("facility_id").first()
+    facility_id = clinic.facility_id if clinic else None
+    if not facility_id:
+        return EvaluationResult(0, 0, "Clinic has no facility mapping")
+
+    require_documented_attendant = bool(params.get("require_documented_attendant", True))
+    delivery_status = str(params.get("delivery_status", "COMPLETED"))
+    include_outcomes = params.get("include_outcomes") or [
+        "LIVE_BIRTH",
+        "STILLBIRTH",
+        "NEONATAL_DEATH",
+    ]
+
+    deliveries = Delivery.objects.filter(
+        registration__facility_id=facility_id,
+        delivery_date__gte=start_date,
+        delivery_date__lte=end_date,
+    )
+
+    if delivery_status:
+        deliveries = deliveries.filter(status=delivery_status)
+
+    if include_outcomes:
+        deliveries = deliveries.filter(delivery_outcome__in=include_outcomes)
+
+    denominator = deliveries.count()
+    if denominator == 0:
+        return EvaluationResult(0, 0, "No eligible deliveries found")
+
+    if require_documented_attendant:
+        numerator = deliveries.exclude(delivered_by__isnull=True).count()
+        notes = "Deliveries with documented skilled attendant"
+    else:
+        numerator = denominator
+        notes = "All eligible deliveries counted as skilled attendance"
+
+    return EvaluationResult(numerator, denominator, notes)
+
+
+# =============================================================================
+# Evaluator: TB Treatment Success
+# =============================================================================
+
+
+def evaluate_tb_treatment_success(
+    clinic_id: int, start_date: date, end_date: date, params: dict[str, Any]
+) -> EvaluationResult:
+    """Evaluate TB treatment success from enrollment outcomes.
+
+    Rule params:
+        success_statuses: list[str] (default ["COMPLETED"])
+        success_keywords: list[str] (default treatment success keywords)
+        use_outcome_reason: bool (default True)
+        require_outcome_date: bool (default True)
+        cohort_statuses: list[str] (default treatment-closed statuses)
+    """
+    from hmis.apps.clinics.models import ClinicEnrollment
+
+    success_statuses = set(params.get("success_statuses") or ["COMPLETED"])
+    success_keywords = [
+        str(item).strip().lower()
+        for item in (params.get("success_keywords") or ["cured", "treatment complete", "completed"])
+        if str(item).strip()
+    ]
+    use_outcome_reason = bool(params.get("use_outcome_reason", True))
+    require_outcome_date = bool(params.get("require_outcome_date", True))
+    cohort_statuses = params.get("cohort_statuses") or [
+        "COMPLETED",
+        "TRANSFERRED_OUT",
+        "LOST_TO_FOLLOW_UP",
+        "DECEASED",
+        "SUSPENDED",
+    ]
+
+    cohort = ClinicEnrollment.objects.filter(clinic_id=clinic_id, status__in=cohort_statuses)
+    if require_outcome_date:
+        cohort = cohort.filter(
+            outcome_date__isnull=False,
+            outcome_date__gte=start_date,
+            outcome_date__lte=end_date,
+        )
+
+    denominator = cohort.count()
+    if denominator == 0:
+        return EvaluationResult(0, 0, "No TB cohort outcomes in period")
+
+    success_query = Q(status__in=success_statuses)
+    if use_outcome_reason and success_keywords:
+        reason_query = Q()
+        for keyword in success_keywords:
+            reason_query |= Q(outcome_reason__icontains=keyword)
+        success_query |= reason_query
+
+    numerator = cohort.filter(success_query).count()
+    return EvaluationResult(numerator, denominator, "TB treatment outcomes marked as success")
+
+
+# =============================================================================
+# Evaluator: Immunization Completeness
+# =============================================================================
+
+
+def evaluate_immunization_completeness(
+    clinic_id: int, start_date: date, end_date: date, params: dict[str, Any]
+) -> EvaluationResult:
+    """Evaluate under-5 immunization completeness for due KEPI doses.
+
+    Rule params:
+        vaccine_program: str (default "KEPI")
+        max_patient_age_years: int (default 5)
+        strict_due_in_period: bool (default True)
+    """
+    from hmis.apps.clinics.models import Clinic
+    from hmis.apps.immunizations.models import ImmunizationRecord
+
+    clinic = Clinic.objects.filter(pk=clinic_id).only("facility_id").first()
+    facility_id = clinic.facility_id if clinic else None
+    if not facility_id:
+        return EvaluationResult(0, 0, "Clinic has no facility mapping")
+
+    vaccine_program = str(params.get("vaccine_program", "KEPI"))
+    max_patient_age_years = int(params.get("max_patient_age_years", 5) or 5)
+    strict_due_in_period = bool(params.get("strict_due_in_period", True))
+
+    due_filter = Q(
+        facility_id=facility_id,
+        vaccine__program=vaccine_program,
+    )
+    if strict_due_in_period:
+        due_filter &= Q(scheduled_date__gte=start_date, scheduled_date__lte=end_date)
+    else:
+        due_filter &= Q(scheduled_date__lte=end_date)
+
+    if max_patient_age_years > 0:
+        cutoff_birth_date = end_date - timedelta(days=max_patient_age_years * 365)
+        due_filter &= Q(patient__date_of_birth__gte=cutoff_birth_date)
+
+    due_records = ImmunizationRecord.objects.filter(due_filter)
+    per_patient = due_records.values("patient_id").annotate(
+        total_due=Count("id"),
+        total_administered=Count("id", filter=Q(status="ADMINISTERED")),
+    )
+    denominator = per_patient.count()
+    if denominator == 0:
+        return EvaluationResult(0, 0, "No due immunization records found")
+
+    numerator = sum(
+        1
+        for row in per_patient
+        if int(row.get("total_due") or 0) > 0
+        and int(row.get("total_due") or 0) == int(row.get("total_administered") or 0)
+    )
+    return EvaluationResult(numerator, denominator, "Patients complete for due immunization doses")
+
+
+# =============================================================================
+# Evaluator: Maternal Mortality Ratio
+# =============================================================================
+
+
+def evaluate_maternal_mortality_ratio(
+    clinic_id: int, start_date: date, end_date: date, params: dict[str, Any]
+) -> EvaluationResult:
+    """Evaluate maternal mortality ratio using delivery outcomes.
+
+    Rule params:
+        ratio_multiplier: int (default 100000)
+        delivery_status: str (default "COMPLETED")
+    """
+    from hmis.apps.clinics.models import Clinic
+    from hmis.apps.mch.models import Delivery
+
+    clinic = Clinic.objects.filter(pk=clinic_id).only("facility_id").first()
+    facility_id = clinic.facility_id if clinic else None
+    if not facility_id:
+        return EvaluationResult(0, 0, "Clinic has no facility mapping")
+
+    ratio_multiplier = int(params.get("ratio_multiplier", 100000) or 100000)
+    delivery_status = str(params.get("delivery_status", "COMPLETED"))
+
+    base_qs = Delivery.objects.filter(
+        registration__facility_id=facility_id,
+        delivery_date__gte=start_date,
+        delivery_date__lte=end_date,
+    )
+    if delivery_status:
+        base_qs = base_qs.filter(status=delivery_status)
+
+    maternal_deaths = base_qs.filter(delivery_outcome="MATERNAL_DEATH").count()
+    live_births = base_qs.filter(delivery_outcome="LIVE_BIRTH").count()
+
+    if live_births == 0:
+        return EvaluationResult(0, 0, "No live births in period")
+
+    scaled_numerator = maternal_deaths * ratio_multiplier
+    return EvaluationResult(
+        scaled_numerator,
+        live_births,
+        f"Maternal deaths per {ratio_multiplier} live births",
+    )
+
+
+# =============================================================================
+# Evaluator: IDSR Reporting Timeliness
+# =============================================================================
+
+
+def evaluate_idsr_timeliness(
+    clinic_id: int, start_date: date, end_date: date, params: dict[str, Any]
+) -> EvaluationResult:
+    """Evaluate IDSR weekly report timeliness.
+
+    Rule params:
+        submission_statuses: list[str] (default ["SUBMITTED"])
+        include_approved: bool (default False)
+        deadline_days_after_week_end: int (default 1)
+        require_dhis2_timestamp: bool (default True)
+    """
+    from hmis.apps.clinics.models import Clinic
+    from hmis.apps.surveillance.models import IDSRWeeklyReport
+
+    clinic = Clinic.objects.filter(pk=clinic_id).only("facility_id").first()
+    facility_id = clinic.facility_id if clinic else None
+    if not facility_id:
+        return EvaluationResult(0, 0, "Clinic has no facility mapping")
+
+    submission_statuses = set(params.get("submission_statuses") or ["SUBMITTED"])
+    include_approved = bool(params.get("include_approved", False))
+    if include_approved:
+        submission_statuses.add("APPROVED")
+    deadline_days_after_week_end = int(params.get("deadline_days_after_week_end", 1) or 1)
+    require_dhis2_timestamp = bool(params.get("require_dhis2_timestamp", True))
+
+    expected_weeks: set[tuple[int, int]] = set()
+    cursor = start_date
+    while cursor <= end_date:
+        iso = cursor.isocalendar()
+        expected_weeks.add((iso.year, iso.week))
+        cursor += timedelta(days=1)
+
+    denominator = len(expected_weeks)
+    if denominator == 0:
+        return EvaluationResult(0, 0, "No expected epidemiological weeks in period")
+
+    reports = IDSRWeeklyReport.objects.filter(
+        facility_ref_id=facility_id,
+        week_end_date__gte=start_date,
+        week_start_date__lte=end_date,
+    ).order_by("-updated_at")
+
+    report_map: dict[tuple[int, int], Any] = {}
+    for report in reports:
+        key = (int(report.epi_year), int(report.epi_week))
+        if key in expected_weeks and key not in report_map:
+            report_map[key] = report
+
+    numerator = 0
+    for key in expected_weeks:
+        report = report_map.get(key)
+        if not report or report.status not in submission_statuses:
+            continue
+
+        if require_dhis2_timestamp:
+            submitted_date = report.dhis2_submitted_at.date() if report.dhis2_submitted_at else None
+        else:
+            submitted_date = (
+                report.dhis2_submitted_at.date()
+                if report.dhis2_submitted_at
+                else report.updated_at.date()
+            )
+        if not submitted_date:
+            continue
+
+        deadline_date = report.week_end_date + timedelta(days=deadline_days_after_week_end)
+        if submitted_date <= deadline_date:
+            numerator += 1
+
+    return EvaluationResult(numerator, denominator, "IDSR reports submitted by weekly deadline")
+
+
+# =============================================================================
 # Evaluator Registry
 # =============================================================================
 
@@ -434,6 +768,11 @@ EVALUATOR_REGISTRY: dict[str, Callable[..., EvaluationResult]] = {
     "visit_count": evaluate_visit_count,
     "enrollment_active": evaluate_enrollment_active,
     "stock_availability": evaluate_stock_availability,
+    "skilled_birth_attendance": evaluate_skilled_birth_attendance,
+    "tb_treatment_success": evaluate_tb_treatment_success,
+    "immunization_completeness": evaluate_immunization_completeness,
+    "maternal_mortality_ratio": evaluate_maternal_mortality_ratio,
+    "idsr_timeliness": evaluate_idsr_timeliness,
 }
 
 
