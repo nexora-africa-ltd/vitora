@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { AlertCircle, CheckCircle2, KeyRound, Loader2 } from 'lucide-react';
 import { HelpPopover } from '@/components/shared/help-popover';
 
@@ -25,10 +26,24 @@ export default function ActivatePage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [eulaAccepted, setEulaAccepted] = useState(false);
+  const [showEula, setShowEula] = useState(false);
+  const [eulaText, setEulaText] = useState('Loading EULA...');
+  const [eulaVersion, setEulaVersion] = useState('');
 
   // Resolve installation ID on mount (Tauri keystore → localStorage fallback)
   useEffect(() => {
     licensingApi.getInstallationIdAsync().then((id) => setInstallationId(id));
+    licensingApi
+      .getHubEula()
+      .then((payload) => {
+        setEulaText(payload.content || 'EULA text is unavailable.');
+        setEulaVersion(payload.version || '');
+      })
+      .catch(() => {
+        setEulaText('Could not load EULA right now. Please retry or contact support.');
+        setEulaVersion('');
+      });
   }, []);
 
   async function handleActivate(e: React.FormEvent) {
@@ -40,6 +55,8 @@ export default function ActivatePage() {
       const response = await licensingApi.activate({
         activation_code: code.trim(),
         installation_id: installationId.trim(),
+        eula_accepted: eulaAccepted,
+        eula_version: eulaVersion,
       });
 
       // Store the license token
@@ -119,7 +136,45 @@ export default function ActivatePage() {
                 </div>
               )}
 
-              <Button type="submit" className="w-full" disabled={isSubmitting || !code.trim()}>
+              <div className="space-y-2 rounded-md border border-border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    Hub EULA version: <span className="font-mono">{eulaVersion || 'unavailable'}</span>
+                  </span>
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="h-auto p-0 text-xs"
+                    onClick={() => setShowEula((prev) => !prev)}
+                  >
+                    {showEula ? 'Hide EULA text' : 'View EULA text'}
+                  </Button>
+                </div>
+
+                {showEula ? (
+                  <pre className="max-h-56 overflow-auto rounded-md bg-muted p-3 text-[11px] whitespace-pre-wrap">
+                    {eulaText}
+                  </pre>
+                ) : null}
+
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="eula-accepted"
+                    checked={eulaAccepted}
+                    onCheckedChange={(checked) => setEulaAccepted(Boolean(checked))}
+                    disabled={isSubmitting}
+                  />
+                  <Label htmlFor="eula-accepted" className="text-xs leading-relaxed">
+                    I have read and agree to the Hub End-User License Agreement (EULA).
+                  </Label>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isSubmitting || !code.trim() || !eulaAccepted || !eulaVersion}
+              >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />

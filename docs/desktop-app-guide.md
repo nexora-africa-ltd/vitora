@@ -2,7 +2,7 @@
 
 > **Version**: 0.1.0 (Tauri v2)
 > **Platforms**: Windows (x64), Linux (x64), macOS (ARM64)
-> **Last Updated**: June 2026
+> **Last Updated**: July 2026
 
 ---
 
@@ -166,6 +166,7 @@ The desktop app supports four operating modes configured during first-run:
 ### LAN Hub Mode
 - Best for: Small facilities where one PC serves as both workstation and hub
 - The installer sets up Django as a local service
+- Hub activation now requires EULA acceptance (`GET /api/licensing/eula/` then `POST /api/licensing/activate/` with `eula_accepted=true` and `eula_version="2026-07-31"`)
 - Desktop app connects to localhost
 
 ### Admin Desktop Settings
@@ -453,6 +454,14 @@ Tauri's updater doesn't have built-in rollback. To downgrade:
 - Verify hub URL in config matches the actual hub IP/port
 - The hub must be running (check `systemctl status vitora-hub` on Linux or `Get-Service VitoraHub` on Windows)
 - Ensure the hub's `CORS_ALLOW_ALL_ORIGINS = True` is set (default in hub settings)
+
+### "hub_not_activated" or Activation Errors
+
+**Cause**: The hub has not completed licensing activation, or activation payload is missing required EULA fields.
+
+- Re-run the hub installer and complete EULA acceptance when prompted
+- For non-interactive installs, set `EULA_ACCEPTED=true` and ensure activation includes `eula_version="2026-07-31"`
+- Confirm the hub can reach the cloud licensing endpoints (`/api/licensing/eula/`, `/api/licensing/activate/`, `/api/licensing/check-in/`)
 
 ### System Tray Icon Missing (Linux)
 

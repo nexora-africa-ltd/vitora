@@ -21,3 +21,9 @@ export const ActivationResponseSchema = z.object({
   expires_at: z.number(),
   check_in_by: z.number(),
 });
+
+export const HubEulaResponseSchema = z.object({
+  version: z.string(),
+  title: z.string(),
+  content: z.string(),
+});

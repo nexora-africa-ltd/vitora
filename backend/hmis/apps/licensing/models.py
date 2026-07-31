@@ -90,6 +90,17 @@ class Installation(TimeStampedModel):
         default=Status.PENDING,
     )
     activated_at = models.DateTimeField(null=True, blank=True)
+    eula_accepted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the Hub EULA was accepted during activation.",
+    )
+    eula_version = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="Version of the EULA accepted during activation.",
+    )
 
     # ------------------------------------------------------------------
     # License Token

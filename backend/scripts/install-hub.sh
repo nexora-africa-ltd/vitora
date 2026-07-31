@@ -34,6 +34,7 @@ LOG_DIR="/var/log/vitora"
 DB_DIR="/var/lib/vitora"
 VERSION=""
 DELIVERY_MODE="native"  # native | container
+DEFAULT_EULA_VERSION="2026-07-31"
 
 # Colors
 RED='\033[0;31m'
@@ -194,6 +195,36 @@ download() {
     fi
 }
 
+fetch_eula_version() {
+    local cloud_url="$1"
+    local eula_version=""
+    if [[ "$DOWNLOADER" == "curl" ]]; then
+        eula_version=$(curl -fsSL "${cloud_url}/api/licensing/eula/" | python3 -c "import json,sys; print(json.load(sys.stdin).get('version',''))" 2>/dev/null || true)
+    else
+        eula_version=$(wget -qO- "${cloud_url}/api/licensing/eula/" | python3 -c "import json,sys; print(json.load(sys.stdin).get('version',''))" 2>/dev/null || true)
+    fi
+    echo "$eula_version"
+}
+
+show_eula_text() {
+    local cloud_url="$1"
+    local eula_text=""
+    if [[ "$DOWNLOADER" == "curl" ]]; then
+        eula_text=$(curl -fsSL "${cloud_url}/api/licensing/eula/" | python3 -c "import json,sys; print(json.load(sys.stdin).get('content',''))" 2>/dev/null || true)
+    else
+        eula_text=$(wget -qO- "${cloud_url}/api/licensing/eula/" | python3 -c "import json,sys; print(json.load(sys.stdin).get('content',''))" 2>/dev/null || true)
+    fi
+    if [[ -n "$eula_text" ]]; then
+        if command -v less >/dev/null 2>&1; then
+            printf "%s\n" "$eula_text" | less
+        else
+            printf "%s\n" "$eula_text"
+        fi
+    else
+        warn "Could not retrieve EULA text from ${cloud_url}/api/licensing/eula/."
+    fi
+}
+
 # --- Resolve version ---
 resolve_version() {
     if [[ -n "$VERSION" ]]; then
@@ -240,6 +271,11 @@ if [[ "$NON_INTERACTIVE" == "true" ]]; then
     # Non-interactive requires activation code as env var
     ACTIVATION_CODE="${ACTIVATION_CODE:?ACTIVATION_CODE environment variable required in non-interactive mode}"
     CLOUD_URL="${CLOUD_URL:-https://api.vitora.digital}"
+    EULA_ACCEPTED_VALUE="${EULA_ACCEPTED:-false}"
+    if [[ ! "$EULA_ACCEPTED_VALUE" =~ ^(true|TRUE|1|yes|YES)$ ]]; then
+        error "Non-interactive mode requires EULA_ACCEPTED=true"
+        exit 1
+    fi
 else
     echo "This installer will activate a hub by connecting to the Vitora cloud."
     echo "You need an activation code from your cloud admin panel."
@@ -251,23 +287,48 @@ else
     CLOUD_URL="${CLOUD_URL:-https://api.vitora.digital}"
 
     echo ""
+    read -rp "View the Hub EULA now? [Y/n]: " view_eula
+    if [[ -z "$view_eula" || "$view_eula" =~ ^[Yy]$ ]]; then
+        show_eula_text "$CLOUD_URL"
+    fi
+
+    echo ""
+    echo "You must accept the Hub EULA to proceed with activation."
+    read -rp "Type ACCEPT to continue: " eula_confirm
+    [[ "$eula_confirm" == "ACCEPT" ]] || { info "Cancelled (EULA not accepted)."; exit 0; }
+
+    echo ""
     read -rp "Proceed with activation and installation? [y/N]: " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "Cancelled."; exit 0; }
 fi
+
+EULA_VERSION="${EULA_VERSION:-$(fetch_eula_version "$CLOUD_URL")}"
+EULA_VERSION="${EULA_VERSION:-$DEFAULT_EULA_VERSION}"
+info "Using EULA version: ${EULA_VERSION}"
 
 # --- Activate with Cloud ---
 step "Activating hub with cloud..."
 INSTALLATION_ID="hub-$(hostname)-$(date +%s)"
 
 ACTIVATION_RESPONSE=$(mktemp)
+ACTIVATION_PAYLOAD=$(python3 - <<PY
+import json
+print(json.dumps({
+    "activation_code": "${ACTIVATION_CODE}",
+    "installation_id": "${INSTALLATION_ID}",
+    "eula_accepted": True,
+    "eula_version": "${EULA_VERSION}",
+}))
+PY
+)
 HTTP_CODE=$($DOWNLOADER == "curl" && \
     curl -sf -o "$ACTIVATION_RESPONSE" -w "%{http_code}" \
         -X POST "${CLOUD_URL}/api/licensing/activate/" \
         -H "Content-Type: application/json" \
-        -d "{\"activation_code\": \"${ACTIVATION_CODE}\", \"installation_id\": \"${INSTALLATION_ID}\"}" \
+        -d "$ACTIVATION_PAYLOAD" \
     || wget -q -O "$ACTIVATION_RESPONSE" --server-response \
         --header="Content-Type: application/json" \
-        --post-data="{\"activation_code\": \"${ACTIVATION_CODE}\", \"installation_id\": \"${INSTALLATION_ID}\"}" \
+        --post-data="$ACTIVATION_PAYLOAD" \
         "${CLOUD_URL}/api/licensing/activate/" 2>&1 | awk '/^  HTTP/{print $2}' | tail -1
 )
 

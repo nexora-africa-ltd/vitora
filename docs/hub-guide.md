@@ -163,7 +163,7 @@ powershell -ExecutionPolicy Bypass -File install-hub-windows.ps1 -NonInteractive
 ### What the Installer Does
 
 1. **Pre-checks**: Verifies root/admin, Python 3.11+, network tools
-2. **Activation**: Calls `/api/licensing/activate/` with your activation code
+2. **EULA + Activation**: Fetches `/api/licensing/eula/`, requires acceptance, then calls `/api/licensing/activate/`
 3. **Downloads**: Fetches versioned artifact from CDN (`https://get.vitora.digital/hub/`)
 4. **Extracts**: Unpacks to `/opt/vitora` (Linux) or `C:\VitoraHub` (Windows)
 5. **Hardens**: Sets restrictive file permissions (root-only write)
@@ -186,8 +186,10 @@ Admin Panel (Cloud)          Installer                    Hub
       │ Generate Activation Code │                        │
       │◄─────────────────────────│                        │
       │                          │                        │
+      │   GET /api/licensing/eula/                        │
       │   POST /api/licensing/activate/                   │
-      │   {activation_code, installation_id}              │
+      │   {activation_code, installation_id,              │
+      │    eula_accepted: true, eula_version}             │
       │──────────────────────────────────────────────────▶│
       │                          │                        │
       │   Response: {license_token, org, facility,        │
@@ -229,7 +231,7 @@ When running in hub mode, certain integrations route through the cloud:
 ### Exempt Paths (Always Accessible Regardless of License)
 
 ```
-/api/licensing/    — check-in, activation, status
+/api/licensing/    — eula, check-in, activation, status
 /api/token/        — JWT login
 /api/auth/         — cookie auth
 /api/hub/          — hub health, wipe check

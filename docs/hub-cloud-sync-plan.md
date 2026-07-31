@@ -94,19 +94,21 @@ Today, hubs operate in complete isolation from the cloud:
 │                                                                          │
 │ 1. Run installer (downloads backend, creates venv, etc.)                │
 │ 2. Installer prompts: "Enter activation code" (ONLY input needed)       │
-│ 3. Installer calls POST /api/licensing/activate/                         │
-│    → Request:  { activation_code, installation_id (auto-generated) }    │
-│    → Response: { license_jwt, organization, facility, sync_url }        │
-│ 4. Installer writes .env from activation response:                      │
+│ 3. Installer fetches GET /api/licensing/eula/ and captures acceptance    │
+│ 4. Installer calls POST /api/licensing/activate/                         │
+│    → Request:  { activation_code, installation_id,                       │
+│                 eula_accepted: true, eula_version }                      │
+│    → Response: { license_token, organization, facility, sync_url }      │
+│ 5. Installer writes .env from activation response:                      │
 │    HUB_ID=<installation_id>                                             │
 │    HUB_ORGANIZATION_ID=<org.id from cloud>                              │
 │    HUB_FACILITY_ID=<facility.id from cloud>                             │
 │    SYNC_SERVER_URL=<sync_url from cloud>                                │
 │    LICENSE_TOKEN=<jwt>                                                   │
-│ 5. Installer runs migrate + collectstatic                               │
-│ 6. Installer seeds local DB with org + facility from activation data    │
-│ 7. Installer prompts: "Create local admin account" (username/password)  │
-│ 8. Start service                                                        │
+│ 6. Installer runs migrate + collectstatic                               │
+│ 7. Installer seeds local DB with org + facility from activation data    │
+│ 8. Installer prompts: "Create local admin account" (username/password)  │
+│ 9. Start service                                                        │
 └─────────────────────────────────────────────────────────────────────────┘
                                     │
                               first boot
@@ -129,7 +131,7 @@ Today, hubs operate in complete isolation from the cloud:
 Current response:
 ```json
 {
-  "token": "<license_jwt>",
+  "license_token": "<license_jwt>",
   "installation_id": "...",
   "status": "ACTIVE"
 }
@@ -138,7 +140,7 @@ Current response:
 New response (expanded):
 ```json
 {
-  "token": "<license_jwt>",
+  "license_token": "<license_jwt>",
   "installation_id": "abc123",
   "status": "ACTIVE",
   "sync_url": "https://api.vitora.digital/api/sync",
@@ -192,7 +194,7 @@ INSTALLATION_ID="hub-$(hostname)-$(date +%s)"
 # Call cloud activation endpoint
 RESPONSE=$(curl -sf -X POST "$CDN_BASE/api/licensing/activate/" \
   -H "Content-Type: application/json" \
-  -d "{\"activation_code\": \"$ACTIVATION_CODE\", \"installation_id\": \"$INSTALLATION_ID\"}")
+  -d "{\"activation_code\": \"$ACTIVATION_CODE\", \"installation_id\": \"$INSTALLATION_ID\", \"eula_accepted\": true, \"eula_version\": \"2026-07-31\"}")
 
 if [ $? -ne 0 ]; then
     error "Activation failed. Check your code and internet connection."
@@ -200,7 +202,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Parse response
-LICENSE_TOKEN=$(echo "$RESPONSE" | jq -r '.token')
+LICENSE_TOKEN=$(echo "$RESPONSE" | jq -r '.license_token')
 ORG_ID=$(echo "$RESPONSE" | jq -r '.organization.id')
 FACILITY_ID=$(echo "$RESPONSE" | jq -r '.facility.id')
 SYNC_URL=$(echo "$RESPONSE" | jq -r '.sync_url')

@@ -13,7 +13,9 @@ Endpoints:
 
 import secrets
 import uuid
+from pathlib import Path
 
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import (
@@ -44,6 +46,16 @@ from .tokens import (
     verify_license_token,
 )
 
+HUB_EULA_VERSION = "2026-07-31"
+
+
+def _load_hub_eula_text() -> str:
+    eula_path = Path(settings.BASE_DIR) / "scripts" / "HUB-EULA.txt"
+    try:
+        return eula_path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
 
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
@@ -61,6 +73,16 @@ def activate_installation(request: Request) -> Response:
     data = serializer.validated_data
     activation_code = data["activation_code"]
     installation_id = data["installation_id"]
+    requested_eula_version = data["eula_version"].strip()
+
+    if requested_eula_version != HUB_EULA_VERSION:
+        return Response(
+            {
+                "error": "EULA version mismatch. Please review and accept the current EULA.",
+                "required_eula_version": HUB_EULA_VERSION,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     # Find the pending installation by activation code (case-insensitive)
     try:
@@ -84,6 +106,8 @@ def activate_installation(request: Request) -> Response:
     installation.installation_id = installation_id
     installation.status = Installation.Status.ACTIVE
     installation.activated_at = timezone.now()
+    installation.eula_accepted_at = timezone.now()
+    installation.eula_version = requested_eula_version
     installation.name = data.get("name") or installation.name
     installation.app_version = data.get("app_version", "")
     installation.os_info = data.get("os_info", "")
@@ -106,6 +130,21 @@ def activate_installation(request: Request) -> Response:
 
     return Response(
         build_activation_bootstrap_payload(installation, token, decoded, request=request),
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["GET"])
+@permission_classes([permissions.AllowAny])
+def hub_eula(request: Request) -> Response:
+    """Return the active Hub EULA text and version for activation UIs/installers."""
+    del request
+    return Response(
+        {
+            "version": HUB_EULA_VERSION,
+            "title": "Vitora Hub End-User License Agreement",
+            "content": _load_hub_eula_text(),
+        },
         status=status.HTTP_200_OK,
     )
 

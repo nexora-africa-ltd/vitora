@@ -732,7 +732,8 @@ GET    /api/mfa/backup-codes/                        # Get backup codes
 
 ### Licensing (Desktop Hub)
 ```
-POST   /api/licensing/activate/                      # Activate license key
+GET    /api/licensing/eula/                          # Fetch current Hub EULA text + version
+POST   /api/licensing/activate/                      # Activate installation (requires eula_accepted + eula_version)
 GET    /api/licensing/status/                        # License status
 POST   /api/licensing/check-in/                      # Periodic license check-in
 ```

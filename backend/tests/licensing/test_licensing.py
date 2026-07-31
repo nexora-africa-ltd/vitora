@@ -39,6 +39,8 @@ from hmis.apps.licensing.tokens import (
     verify_license_token,
 )
 
+HUB_EULA_VERSION = "2026-07-31"
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -239,6 +241,8 @@ class TestActivation:
                 "name": "Reception Hub",
                 "app_version": "0.1.2",
                 "os_info": "Linux x86_64",
+                "eula_accepted": True,
+                "eula_version": HUB_EULA_VERSION,
             },
             format="json",
         )
@@ -256,6 +260,8 @@ class TestActivation:
         assert pending_installation.installation_id == str(client_uuid)
         assert pending_installation.activation_code == ""  # Cleared
         assert pending_installation.license_jwt != ""
+        assert pending_installation.eula_accepted_at is not None
+        assert pending_installation.eula_version == HUB_EULA_VERSION
 
     def test_activation_returns_hub_bootstrap_payload(self, api_client, pending_installation):
         """Activation should return org/facility data needed to seed a local hub."""
@@ -268,6 +274,8 @@ class TestActivation:
                 "activation_code": "TEST-ACTIVATION-CODE",
                 "app_version": "0.2.0",
                 "os_info": "Windows 11",
+                "eula_accepted": True,
+                "eula_version": HUB_EULA_VERSION,
             },
             format="json",
         )
@@ -308,6 +316,8 @@ class TestActivation:
             {
                 "installation_id": str(uuid.uuid4()),
                 "activation_code": "TEST-ACTIVATION-CODE",
+                "eula_accepted": True,
+                "eula_version": HUB_EULA_VERSION,
             },
             format="json",
         )
@@ -330,6 +340,8 @@ class TestActivation:
             {
                 "installation_id": str(uuid.uuid4()),
                 "activation_code": "TEST-ACTIVATION-CODE",
+                "eula_accepted": True,
+                "eula_version": HUB_EULA_VERSION,
             },
             format="json",
             HTTP_HOST="api.vitora.digital",
@@ -346,6 +358,8 @@ class TestActivation:
             {
                 "installation_id": str(uuid.uuid4()),
                 "activation_code": "INVALID-CODE-FAKE",
+                "eula_accepted": True,
+                "eula_version": HUB_EULA_VERSION,
             },
             format="json",
         )
@@ -361,6 +375,8 @@ class TestActivation:
             {
                 "installation_id": str(uuid.uuid4()),
                 "activation_code": "TEST-ACTIVATION-CODE",
+                "eula_accepted": True,
+                "eula_version": HUB_EULA_VERSION,
             },
             format="json",
         )
@@ -371,6 +387,8 @@ class TestActivation:
             {
                 "installation_id": str(uuid.uuid4()),
                 "activation_code": "TEST-ACTIVATION-CODE",
+                "eula_accepted": True,
+                "eula_version": HUB_EULA_VERSION,
             },
             format="json",
         )
@@ -381,6 +399,44 @@ class TestActivation:
         """Missing required fields should return 400."""
         response = api_client.post("/api/licensing/activate/", {}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_rejects_activation_when_eula_not_accepted(self, api_client):
+        """Activation should require explicit EULA acceptance."""
+        response = api_client.post(
+            "/api/licensing/activate/",
+            {
+                "installation_id": str(uuid.uuid4()),
+                "activation_code": "TEST-ACTIVATION-CODE",
+                "eula_accepted": False,
+                "eula_version": HUB_EULA_VERSION,
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "eula_accepted" in response.data
+
+    def test_rejects_activation_on_eula_version_mismatch(self, api_client):
+        """Activation should fail when client accepts an outdated EULA version."""
+        response = api_client.post(
+            "/api/licensing/activate/",
+            {
+                "installation_id": str(uuid.uuid4()),
+                "activation_code": "TEST-ACTIVATION-CODE",
+                "eula_accepted": True,
+                "eula_version": "2026-01-01",
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["required_eula_version"] == HUB_EULA_VERSION
+
+    def test_hub_eula_endpoint_returns_current_eula(self, api_client):
+        """EULA endpoint should expose active version and agreement text."""
+        response = api_client.get("/api/licensing/eula/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["version"] == HUB_EULA_VERSION
+        assert response.data["title"] == "Vitora Hub End-User License Agreement"
+        assert isinstance(response.data["content"], str)
 
 
 class TestSeedFromActivationCommand:
@@ -703,7 +759,12 @@ class TestGenerateActivationCode:
         hub_id = "hub-CUSTOMER-PC-1734512000"
         activate_response = api_client.post(
             "/api/licensing/activate/",
-            {"activation_code": activation_code, "installation_id": hub_id},
+            {
+                "activation_code": activation_code,
+                "installation_id": hub_id,
+                "eula_accepted": True,
+                "eula_version": HUB_EULA_VERSION,
+            },
             format="json",
         )
         assert activate_response.status_code == status.HTTP_200_OK, activate_response.data

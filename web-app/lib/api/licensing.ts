@@ -1,6 +1,10 @@
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
-import { ActivationResponseSchema, LicenseStatusSchema } from '@/lib/schemas/licensing.schema';
+import {
+  ActivationResponseSchema,
+  HubEulaResponseSchema,
+  LicenseStatusSchema,
+} from '@/lib/schemas/licensing.schema';
 import {
   isDesktop,
   getInstallationId as getTauriInstallationId,
@@ -17,6 +21,7 @@ import type {
   InstallationDetail,
   InstallationListItem,
   LicenseStatus,
+  HubEulaResponse,
   PaginatedInstallations,
 } from '@/lib/types/licensing';
 
@@ -36,6 +41,14 @@ export const licensingApi = {
     // Store the license token locally
     this.storeToken(result.license_token);
     return result;
+  },
+
+  /** Fetch active Hub EULA text/version for activation UX. */
+  async getHubEula(): Promise<HubEulaResponse> {
+    const response = await apiClient.get('/api/licensing/eula/');
+    return parseResponse(HubEulaResponseSchema, response.data, {
+      context: 'licensingApi.getHubEula',
+    });
   },
 
   /**

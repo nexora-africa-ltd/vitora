@@ -35,6 +35,22 @@ class ActivationRequestSerializer(serializers.Serializer):
         required=False,
         default="",
     )
+    eula_accepted = serializers.BooleanField(
+        required=True,
+        help_text="Must be true to confirm acceptance of the Hub EULA.",
+    )
+    eula_version = serializers.CharField(
+        max_length=32,
+        required=True,
+        help_text="Version of the EULA accepted by the installer/user.",
+    )
+
+    def validate_eula_accepted(self, value: bool) -> bool:
+        if not value:
+            raise serializers.ValidationError(
+                "EULA acceptance is required to activate this installation."
+            )
+        return value
 
 
 class CheckInRequestSerializer(serializers.Serializer):
@@ -158,6 +174,8 @@ class InstallationDetailSerializer(serializers.ModelSerializer):
             "status",
             "activation_code",
             "activated_at",
+            "eula_accepted_at",
+            "eula_version",
             "activated_by",
             "last_check_in",
             "check_in_ip",

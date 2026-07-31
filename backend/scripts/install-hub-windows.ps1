@@ -137,6 +137,11 @@ if ($NonInteractive) {
         exit 1
     }
     if ($env:CLOUD_URL) { $CloudUrl = $env:CLOUD_URL }
+    $eulaAccepted = $env:EULA_ACCEPTED
+    if (-not $eulaAccepted -or $eulaAccepted.ToLower() -notin @('true', '1', 'yes')) {
+        Write-Err "Non-interactive mode requires: EULA_ACCEPTED=true"
+        exit 1
+    }
 } else {
     Write-Host "This installer will activate a hub by connecting to the Vitora cloud."
     Write-Host "You need an activation code from your cloud admin panel."
@@ -148,12 +153,44 @@ if ($NonInteractive) {
     if ($cloudInput) { $CloudUrl = $cloudInput }
 
     Write-Host ""
+    $viewEula = Read-Host "View the Hub EULA now? [Y/n]"
+    if (-not $viewEula -or $viewEula -match '^[Yy]$') {
+        try {
+            $eulaPayload = Invoke-RestMethod -Uri "$CloudUrl/api/licensing/eula/" -Method GET -UseBasicParsing
+            if ($eulaPayload.content) {
+                $eulaPayload.content | Out-Host -Paging
+            }
+        } catch {
+            Write-Warn "Could not retrieve EULA text from $CloudUrl/api/licensing/eula/"
+        }
+    }
+
+    Write-Host ""
+    Write-Host "You must accept the Hub EULA to proceed with activation."
+    $acceptText = Read-Host "Type ACCEPT to continue"
+    if ($acceptText -ne 'ACCEPT') {
+        Write-Info "Cancelled (EULA not accepted)."
+        exit 0
+    }
+
+    Write-Host ""
     $confirm = Read-Host "Proceed with activation and installation? [y/N]"
     if ($confirm -notmatch "^[Yy]$") {
         Write-Info "Cancelled."
         exit 0
     }
 }
+
+$EulaVersion = if ($env:EULA_VERSION) { $env:EULA_VERSION } else { "" }
+if (-not $EulaVersion) {
+    try {
+        $eulaInfo = Invoke-RestMethod -Uri "$CloudUrl/api/licensing/eula/" -Method GET -UseBasicParsing
+        $EulaVersion = [string]$eulaInfo.version
+    } catch {
+        $EulaVersion = "2026-07-31"
+    }
+}
+Write-Info "Using EULA version: $EulaVersion"
 
 # --- Activate with Cloud ---
 Write-Step "A" "Activating hub with cloud..."
@@ -163,6 +200,8 @@ try {
     $activationBody = @{
         activation_code = $ActivationCode
         installation_id = $InstallationId
+        eula_accepted = $true
+        eula_version = $EulaVersion
     } | ConvertTo-Json
 
     $activationResponse = Invoke-RestMethod -Uri "$CloudUrl/api/licensing/activate/" `

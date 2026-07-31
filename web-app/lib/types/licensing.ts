@@ -31,9 +31,17 @@ export interface ActivationResponse {
 export interface ActivationRequest {
   installation_id: string;
   activation_code: string;
+  eula_accepted: boolean;
+  eula_version: string;
   name?: string;
   app_version?: string;
   os_info?: string;
+}
+
+export interface HubEulaResponse {
+  version: string;
+  title: string;
+  content: string;
 }
 
 export interface CheckInRequest {
