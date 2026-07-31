@@ -53,6 +53,7 @@ import { SHAConsentStep } from '@/components/patients/sha-consent-step';
 import { SHABenefitsAlert } from '@/components/billing/sha';
 import { useBenefitsAvailable, deriveBenefitsState } from '@/lib/hooks/use-sha';
 import { shaApi } from '@/lib/api/sha';
+import { useQuery } from '@tanstack/react-query';
 import { emptyDiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import { MultiDiagnosisInput, type DiagnosisEntry } from '@/components/shared/multi-diagnosis-input';
@@ -86,6 +87,25 @@ export default function NewAdmissionPage() {
   // Fetch patient details if patient ID is provided
   const { data: patientData } = usePatient(patientId || 0);
   const { data: activeAdmission, isLoading: activeAdmissionCheckLoading } = useActiveAdmissionForPatient(patientId);
+  const {
+    data: orgActiveAdmissionConflict,
+    isLoading: orgActiveAdmissionCheckLoading,
+    refetch: refetchOrgActiveAdmissionConflict,
+  } = useQuery({
+    queryKey: ['new-admission-org-active-admission-conflict', patientId],
+    enabled: typeof patientId === 'number',
+    queryFn: async () => shaApi.getConsentAdmissionConflict(patientId!),
+    staleTime: 30_000,
+  });
+
+  const orgActiveAdmission = orgActiveAdmissionConflict?.has_active_admission
+    ? orgActiveAdmissionConflict.admission
+    : null;
+  const hasOrgActiveAdmissionConflict = !!orgActiveAdmission;
+  const orgConflictIsDifferentAdmission = !!(
+    orgActiveAdmission
+    && (!activeAdmission || activeAdmission.id !== orgActiveAdmission.id)
+  );
 
   // Form state
   const [wardId, setWardId] = useState<string>('');
@@ -563,7 +583,8 @@ export default function NewAdmissionPage() {
     && hasDiagnosis
     && !!user
     && hasRequiredMaternityContext
-    && !activeAdmission;
+    && !activeAdmission
+    && !hasOrgActiveAdmissionConflict;
 
   const admittingDiagnosis = primaryDiagnosisValue.icd11Code
     || primaryDiagnosisValue.icd10Display?.split(' - ')[0]
@@ -593,6 +614,18 @@ export default function NewAdmissionPage() {
     const admissionDate = new Date().toISOString();
 
     try {
+      const conflict = await refetchOrgActiveAdmissionConflict();
+      if (conflict.data?.has_active_admission) {
+        const existing = conflict.data.admission;
+        const location = [existing?.facility_name, existing?.ward_name, existing?.bed_number]
+          .filter(Boolean)
+          .join(' / ');
+        toast.error('Active admission already exists in this organization', {
+          description: `Resolve admission${existing?.admission_number ? ` ${existing.admission_number}` : ''}${location ? ` at ${location}` : ''} before creating a new one.`,
+        });
+        return;
+      }
+
       await createAdmission.mutateAsync({
         patient: patientId,
         ward: Number(wardId),
@@ -787,6 +820,9 @@ export default function NewAdmissionPage() {
             {patientId && activeAdmissionCheckLoading && (
               <p className="text-xs text-muted-foreground">Checking active admissions for this patient...</p>
             )}
+            {patientId && orgActiveAdmissionCheckLoading && (
+              <p className="text-xs text-muted-foreground">Checking organization-wide active admissions...</p>
+            )}
             {activeAdmission && (
               <Alert className="border-amber-300 bg-amber-50/70 dark:border-amber-800 dark:bg-amber-950/30">
                 <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
@@ -802,6 +838,26 @@ export default function NewAdmissionPage() {
                   </div>
                   <Button asChild variant="outline" size="sm" className="mt-1">
                     <Link href={`/admissions/${activeAdmission.id}`}>View active admission</Link>
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+            {orgConflictIsDifferentAdmission && orgActiveAdmission && (
+              <Alert className="border-destructive/50 bg-destructive/10">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                <AlertDescription className="space-y-2">
+                  <p>
+                    This patient already has an active admission in another facility
+                    {orgActiveAdmission.admission_number ? ` (${orgActiveAdmission.admission_number})` : ''}.
+                    Resolve or discharge it before creating a new admission here.
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    {orgActiveAdmission.facility_name && <span>Facility: {orgActiveAdmission.facility_name}</span>}
+                    {orgActiveAdmission.ward_name && <span>Ward: {orgActiveAdmission.ward_name}</span>}
+                    {orgActiveAdmission.bed_number && <span>Bed: {orgActiveAdmission.bed_number}</span>}
+                  </div>
+                  <Button asChild variant="outline" size="sm" className="mt-1">
+                    <Link href={`/admissions/${orgActiveAdmission.id}`}>View org-wide active admission</Link>
                   </Button>
                 </AlertDescription>
               </Alert>

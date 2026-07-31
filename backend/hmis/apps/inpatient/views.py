@@ -1678,8 +1678,8 @@ class AdmissionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mode
         admission = self.get_object()
         orders = (
             ImagingOrder.objects.filter(self._admission_order_q(admission))
-            .select_related("patient", "encounter", "ordered_by", "report")
-            .prefetch_related("items__procedure")
+            .select_related("patient", "encounter", "ordered_by")
+            .prefetch_related("items__procedure", "reports")
             .distinct()
         )
         serializer = ImagingOrderSerializer(orders, many=True)
@@ -1733,8 +1733,8 @@ class AdmissionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mode
 
         imaging_orders = (
             ImagingOrder.objects.filter(q)
-            .select_related("patient", "encounter", "ordered_by", "report")
-            .prefetch_related("items__procedure")
+            .select_related("patient", "encounter", "ordered_by")
+            .prefetch_related("items__procedure", "reports")
             .distinct()
         )
 
