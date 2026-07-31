@@ -45,6 +45,7 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
   const [previewMemberNumber, setPreviewMemberNumber] = useState('');
   const [previewDhaInvoiceNumber, setPreviewDhaInvoiceNumber] = useState('');
   const [forceConsentRefresh, setForceConsentRefresh] = useState(false);
+  const [consentLookupChecked, setConsentLookupChecked] = useState(false);
 
   // Derive patient CR ID for DHA API calls (intervention lookup, etc.)
   const patientCrId = claim.dha_external_id || toCrId(claim.sha_member_number ?? '') || '';
@@ -79,12 +80,28 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
   // but the local state doesn't have the token string yet
   const fetchedConsentRef = useRef(false);
   useEffect(() => {
-    if (fetchedConsentRef.current || consentTokenStr || !claim.consent_obtained) return;
-    if (!claim.sha_member || visitStarted) return;
+    fetchedConsentRef.current = false;
+    setConsentLookupChecked(false);
+  }, [claim.id]);
+
+  useEffect(() => {
+    if (fetchedConsentRef.current || consentTokenStr) {
+      setConsentLookupChecked(true);
+      return;
+    }
+
+    if (!claim.sha_member || visitStarted || !flow.requiresConsent) {
+      setConsentLookupChecked(true);
+      return;
+    }
+
     fetchedConsentRef.current = true;
 
     const memberId = typeof claim.sha_member === 'number' ? claim.sha_member : undefined;
-    if (!memberId) return;
+    if (!memberId) {
+      setConsentLookupChecked(true);
+      return;
+    }
 
     shaApi.getLatestConsent(memberId, {
       encounterId: typeof claim.encounter === 'number' ? claim.encounter : undefined,
@@ -92,8 +109,12 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
       if (data?.consent_token) {
         setConsentTokenStr(data.consent_token);
       }
-    }).catch(() => { /* Non-fatal */ });
-  }, [claim.consent_obtained, claim.sha_member, claim.encounter, consentTokenStr, visitStarted]);
+    }).catch(() => {
+      // Non-fatal — no existing valid token found.
+    }).finally(() => {
+      setConsentLookupChecked(true);
+    });
+  }, [claim.sha_member, claim.encounter, consentTokenStr, visitStarted, flow.requiresConsent]);
 
   // Hide consent panel if a valid (non-expired) token exists.
   // The backend's consent_obtained already checks expiry — if it returns false
@@ -105,6 +126,7 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
     flow.requiresConsent
     && !!claim.sha_member
     && needsConsentRefresh
+    && (consentLookupChecked || forceConsentRefresh)
     && (!visitStarted || forceConsentRefresh)
     && !isTerminal;
   const showIlm = !isTerminal;

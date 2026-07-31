@@ -402,6 +402,7 @@ class SHAClaimSerializer(serializers.ModelSerializer):
         """Check if a valid (non-expired) consent token exists for this claim."""
         if not obj.sha_member_id:
             return False
+        from django.db.models import Q
         from django.utils import timezone
 
         from hmis.apps.billing.models import ConsentToken
@@ -410,25 +411,31 @@ class SHAClaimSerializer(serializers.ModelSerializer):
 
         # Prefer encounter-linked token (most precise — survives SHA member reuse)
         if obj.encounter_id:
-            valid = ConsentToken.objects.filter(
-                encounter_id=obj.encounter_id,
-                status=ConsentToken.ConsentStatus.VALIDATED,
-                expires_at__gt=now,
-            ).exists()
+            valid = (
+                ConsentToken.objects.filter(
+                    encounter_id=obj.encounter_id,
+                    status=ConsentToken.ConsentStatus.VALIDATED,
+                )
+                .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+                .exists()
+            )
             if valid:
                 return True
 
         # Fallback: check sha_member + today (OTP-flow consents, or claims without encounter)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        return ConsentToken.objects.filter(
-            sha_member_id=obj.sha_member_id,
-            created_at__gte=today_start,
-            status__in=[
-                ConsentToken.ConsentStatus.PENDING,
-                ConsentToken.ConsentStatus.VALIDATED,
-            ],
-            expires_at__gt=now,
-        ).exists()
+        return (
+            ConsentToken.objects.filter(
+                sha_member_id=obj.sha_member_id,
+                created_at__gte=today_start,
+                status__in=[
+                    ConsentToken.ConsentStatus.PENDING,
+                    ConsentToken.ConsentStatus.VALIDATED,
+                ],
+            )
+            .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+            .exists()
+        )
 
     def get_encounter_clinician(self, obj: SHAClaim) -> dict | None:
         """Return licence details for the clinician assigned to the encounter."""

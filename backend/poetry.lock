@@ -4828,7 +4828,9 @@ files = [
 ]
 
 [package.dependencies]
+celery = {version = ">=3", optional = true, markers = "extra == \"celery\""}
 certifi = "*"
+django = {version = ">=1.8", optional = true, markers = "extra == \"django\""}
 urllib3 = ">=1.26.11"
 
 [package.extras]
@@ -5768,4 +5770,4 @@ azure = ["azure-identity", "azure-keyvault-keys"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "274bd1f019fad877874cd394526c3e0ea66347ca1ae8eef47ea5f3d06e575bb2"
+content-hash = "31face8374e573d89883df360fc5147c6ad711ecfa975f7c736233ab18c44a20"

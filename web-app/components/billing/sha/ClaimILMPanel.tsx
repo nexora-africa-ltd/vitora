@@ -664,6 +664,8 @@ export function ClaimILMPanel({
   // OTP for start_visit — auto-filled from consent credential
   const [startOtp, setStartOtp] = useState(consentCredential?.otp ?? '');
   const [startAuthGuid, setStartAuthGuid] = useState(consentCredential?.authGuid ?? '');
+  const [startOtpServerMessage, setStartOtpServerMessage] = useState<string | null>(null);
+  const [reuseExistingConsentStart, setReuseExistingConsentStart] = useState(false);
   // Sync local credential state when consent is obtained via the parent
   // (ConsentPanel) after this panel has already mounted.
   useEffect(() => {
@@ -1006,6 +1008,8 @@ export function ClaimILMPanel({
     if (!claim.sha_member) return;
     setBusy('resendOtp');
     setError(null);
+    setStartOtpServerMessage(null);
+    setReuseExistingConsentStart(false);
     try {
       const memberId = typeof claim.sha_member === 'number' ? claim.sha_member : 0;
       // Pass intervention codes so the OTP targets the right benefit package.
@@ -1020,9 +1024,26 @@ export function ClaimILMPanel({
         sha_member_id: memberId,
         ...(codes.length ? { intervention_codes: codes } : {}),
       });
+      const serverMessage = result.message?.trim();
+      if (serverMessage) {
+        setStartOtpServerMessage(serverMessage);
+      }
+
+      const reusedByStatus = String(result.status || '').toUpperCase() === 'VALIDATED';
+      const reusedByMessage = (serverMessage || '').toLowerCase().includes('reused');
+      if (reusedByStatus || reusedByMessage) {
+        setStartOtp('');
+        setReuseExistingConsentStart(true);
+        toast.success(serverMessage || 'Existing active consent was reused. Refreshing visit status...');
+        await openVisitRef.current({ forceReuseExistingConsent: true });
+        onChange?.();
+        return;
+      }
+
       // If sandbox/UAT, auto-fill the OTP
       if (result.sandbox_otp) {
         setStartOtp(result.sandbox_otp);
+        setReuseExistingConsentStart(false);
       }
       setError(null);
     } catch (e: unknown) {
@@ -1030,7 +1051,7 @@ export function ClaimILMPanel({
     } finally {
       setBusy(null);
     }
-  }, [claim.sha_member, interventionCodes, consentInterventionCode]);
+  }, [claim.sha_member, interventionCodes, consentInterventionCode, onChange]);
 
   const handleStartBiometric = useCallback(async () => {
     setBiometricBusy(true);
@@ -1056,21 +1077,24 @@ export function ClaimILMPanel({
     }
   }, [claim.sha_member, facilityDetail?.workstation_id, facilityAgentNationalId]);
 
-  async function openVisit() {
+  async function openVisitWithOptions(options?: { forceReuseExistingConsent?: boolean }) {
     if (!patientCrId) return;
     if (visitStarted) return;
     // DHA start_visit accepts either otp (6-digit code) or auth_guid (biometric).
     // The consent token is the OUTPUT of start_visit, never an input.
     // Priority: biometric auth_guid → manually entered OTP → OTP from consent flow.
     const credential: Record<string, string> = {};
+    let reuseExistingConsent = false;
     if (startAuthGuid) {
       credential.auth_guid = startAuthGuid;
     } else if (startOtp) {
       credential.otp = startOtp;
     } else if (consentCredential?.otp) {
       credential.otp = consentCredential.otp;
+    } else if (options?.forceReuseExistingConsent || reuseExistingConsentStart || tokenIsCurrentlyUsable) {
+      reuseExistingConsent = true;
     }
-    if (Object.keys(credential).length === 0) {
+    if (Object.keys(credential).length === 0 && !reuseExistingConsent) {
       setError('Enter the OTP sent to the patient, or use biometric consent.');
       return;
     }
@@ -1097,6 +1121,7 @@ export function ClaimILMPanel({
     await run('startVisit', () =>
       shaApi.ilmStartVisit(claimId, {
         ...credential,
+        ...(reuseExistingConsent ? { reuse_existing_consent: true } : {}),
         patient_id: patientCrId,
         intervention_codes: codes,
         service_type: serviceType,
@@ -1107,10 +1132,14 @@ export function ClaimILMPanel({
       }),
     );
   }
+
+  async function openVisit() {
+    await openVisitWithOptions();
+  }
   // Ref to the latest openVisit so callbacks/effects that schedule async work
   // (sandbox biometric auto-open, auto-open effect) always use current state.
-  const openVisitRef = useRef(openVisit);
-  openVisitRef.current = openVisit;
+  const openVisitRef = useRef(openVisitWithOptions);
+  openVisitRef.current = openVisitWithOptions;
 
   async function preview() {
     const latestTokenExpired =
@@ -1407,7 +1436,7 @@ export function ClaimILMPanel({
   // Minimal requirements to attempt start_visit (DHA needs OTP + patient_id + intervention)
   const canAttemptVisit =
     !!patientCrId &&
-    !!(startOtp || startAuthGuid || consentToken) &&
+    !!(startOtp || startAuthGuid || consentToken || reuseExistingConsentStart || tokenIsCurrentlyUsable) &&
     !!effectiveInterventionCode;
 
   const panelTitle = flow
@@ -1676,6 +1705,12 @@ export function ClaimILMPanel({
                 ) : (
                   /* No credential yet — show OTP entry + Send OTP + Biometric */
                   <div className="space-y-2">
+                    {startOtpServerMessage && (
+                      <Alert>
+                        <AlertTitle className="text-sm">Consent update</AlertTitle>
+                        <AlertDescription className="text-xs">{startOtpServerMessage}</AlertDescription>
+                      </Alert>
+                    )}
                     <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
                       <div className="space-y-1">
                         <Label htmlFor="ilm-start-otp" className="text-xs">
@@ -1693,7 +1728,7 @@ export function ClaimILMPanel({
                           placeholder="Enter 6-digit OTP received by patient"
                         />
                       </div>
-                      {startOtp ? (
+                      {startOtp || tokenIsCurrentlyUsable ? (
                         <Button
                           onClick={openVisit}
                           disabled={!canAttemptVisit || busy !== null}
@@ -1723,9 +1758,14 @@ export function ClaimILMPanel({
                         </Button>
                       )}
                     </div>
-                    {!startOtp && (
+                    {!startOtp && !tokenIsCurrentlyUsable && (
                       <p className="text-[11px] text-muted-foreground">
                         Ask the patient for the OTP sent to their phone. If they didn&apos;t receive it or it expired, click &quot;Send OTP&quot;.
+                      </p>
+                    )}
+                    {!startOtp && tokenIsCurrentlyUsable && (
+                      <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                        Existing validated consent found. Click &quot;Validate &amp; Open Visit&quot; to continue without re-entering OTP.
                       </p>
                     )}
                     <div className="relative py-1">

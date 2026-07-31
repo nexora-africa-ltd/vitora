@@ -165,6 +165,8 @@ export function ConsentPanel({
   const [otpCode, setOtpCode] = useState('');
   const [consentId, setConsentId] = useState<number | undefined>(initialConsentId);
   const [error, setError] = useState<string | null>(null);
+  const [otpServerMessage, setOtpServerMessage] = useState<string | null>(null);
+  const [isReusedConsent, setIsReusedConsent] = useState(false);
   const [allowedInterventionCode, setAllowedInterventionCode] = useState('');
 
   const hasAllowedInterventions = (allowedInterventions?.length || 0) > 0;
@@ -288,6 +290,8 @@ export function ConsentPanel({
 
   const handleSendOTP = async () => {
     setError(null);
+    setOtpServerMessage(null);
+    setIsReusedConsent(false);
     setMethod('otp');
     const beneficiaryContactId =
       selectedContactId && selectedContactId !== DEFAULT_OTP_RECIPIENT
@@ -305,6 +309,40 @@ export function ConsentPanel({
       {
         onSuccess: (response) => {
           setConsentId(response.consent_id);
+          const serverMessage = response.message?.trim();
+          if (serverMessage) {
+            setOtpServerMessage(serverMessage);
+          }
+
+          const reusedByStatus = String(response.status || '').toUpperCase() === 'VALIDATED';
+          const reusedByMessage = (serverMessage || '').toLowerCase().includes('reused');
+          const reused = reusedByStatus || reusedByMessage;
+          setIsReusedConsent(reused);
+
+          if (reused) {
+            setStep('validated');
+            setOtpCode('');
+            setSandboxOtp(null);
+
+            void shaApi
+              .getConsentDetail(response.consent_id)
+              .then((detail) => {
+                if (detail?.consent_token) {
+                  onConsentObtained?.(
+                    detail.id,
+                    detail.consent_token,
+                    {},
+                    selectedInterventionCode,
+                  );
+                }
+              })
+              .catch(() => {
+                // Non-fatal: keep UI in validated state and let parent refresh paths recover.
+              });
+
+            return;
+          }
+
           // In sandbox/UAT, DHA returns the OTP in the response — auto-fill for convenience
           if (response.sandbox_otp) {
             setOtpCode(response.sandbox_otp);
@@ -654,6 +692,11 @@ export function ConsentPanel({
                 Sandbox OTP auto-filled from DHA UAT — click Verify to proceed
               </p>
             )}
+            {otpServerMessage && (
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                {otpServerMessage}
+              </p>
+            )}
             <div className="space-y-2">
               <Label htmlFor="otp-code">OTP Code</Label>
               <div className="flex gap-2">
@@ -814,13 +857,16 @@ export function ConsentPanel({
         )}
 
         {/* Step 3: Consent validated */}
-        {step === 'validated' && consentDetail && (
+        {step === 'validated' && (
           <div className="space-y-2">
             <div className="rounded-md bg-green-50 dark:bg-green-900/10 p-3 space-y-1">
               <p className="text-sm font-medium text-green-800 dark:text-green-400">
                 Consent obtained successfully
                 {method === 'biometric' && ' (biometric)'}
               </p>
+              {isReusedConsent && otpServerMessage && (
+                <p className="text-xs text-green-700 dark:text-green-500">{otpServerMessage}</p>
+              )}
               {consentDetail?.expires_at && (
                 <p className="text-xs text-green-700 dark:text-green-500">
                   Valid until {format(parseISO(consentDetail.expires_at), 'dd MMM yyyy, HH:mm')}

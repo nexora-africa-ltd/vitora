@@ -106,13 +106,26 @@ import {
   type ProcedureOrderListItem,
 } from '@/lib/types/procedure';
 
+type SmsTemplate = 'follow_up' | 'appointment' | 'lab_results' | 'medication' | 'custom';
+const SMS_TEMPLATES: readonly SmsTemplate[] = [
+  'follow_up',
+  'appointment',
+  'lab_results',
+  'medication',
+  'custom',
+];
+
+function isSmsTemplate(value: string): value is SmsTemplate {
+  return (SMS_TEMPLATES as readonly string[]).includes(value);
+}
+
 export default function PatientDetailPage() {
   const params = useParams();
   const router = useRouter();
   const patientId = String(params.id);
   const [showDependents, setShowDependents] = useState(false);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
-  const [contactTemplate, setContactTemplate] = useState<'follow_up' | 'appointment' | 'lab_results' | 'medication' | 'custom'>('follow_up');
+  const [contactTemplate, setContactTemplate] = useState<SmsTemplate>('follow_up');
   const [contactMessage, setContactMessage] = useState('');
 
   // Use patient context instead of independent fetch
@@ -172,9 +185,7 @@ export default function PatientDetailPage() {
 
   const facilityLabel = facility?.name || 'your facility';
 
-  const getTemplateMessage = (
-    template: 'follow_up' | 'appointment' | 'lab_results' | 'medication' | 'custom'
-  ) => {
+  const getTemplateMessage = (template: SmsTemplate) => {
     if (template === 'appointment') {
       return `Dear ${patient.first_name}, this is a reminder for your upcoming appointment at ${facilityLabel}. Please arrive on time or contact us if you need to reschedule.`;
     }
@@ -332,7 +343,8 @@ export default function PatientDetailPage() {
                 <Label htmlFor="sms-template">Template</Label>
                 <Select
                   value={contactTemplate}
-                  onValueChange={(value: 'follow_up' | 'appointment' | 'lab_results' | 'medication' | 'custom') => {
+                  onValueChange={(value) => {
+                    if (!isSmsTemplate(value)) return;
                     setContactTemplate(value);
                     if (value !== 'custom') {
                       setContactMessage(getTemplateMessage(value));

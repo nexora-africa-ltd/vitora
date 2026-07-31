@@ -16,7 +16,7 @@ from io import BytesIO
 
 from django.core.files.base import ContentFile
 from django.db import models
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -1909,10 +1909,19 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         claim = self.get_object()
         d = request.data
+
+        def _as_bool(value) -> bool:
+            if isinstance(value, bool):
+                return value
+            if value is None:
+                return False
+            return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
         try:
             params = StartVisitParams(
                 otp=str(d.get("otp", "")),
                 auth_guid=str(d.get("auth_guid", "")),
+                reuse_existing_consent=_as_bool(d.get("reuse_existing_consent", False)),
                 patient_id=str(d.get("patient_id", "")),
                 intervention_codes=list(d.get("intervention_codes") or []),
                 service_type=str(d.get("service_type", "OUTPATIENT")),
@@ -5346,14 +5355,17 @@ class ConsentSendOTPView(APIView):
                 break
 
         now = timezone.now()
-        existing_active = CT.objects.filter(
-            patient=sha_member.patient,
-            facility=facility,
-            access_point=derived_access_point,
-            status=CT.ConsentStatus.VALIDATED,
-            created_at__date=date.today(),
-            expires_at__gt=now,
-        ).exists()
+        existing_active = (
+            CT.objects.filter(
+                patient=sha_member.patient,
+                facility=facility,
+                access_point=derived_access_point,
+                status=CT.ConsentStatus.VALIDATED,
+                created_at__date=date.today(),
+            )
+            .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+            .exists()
+        )
         if existing_active:
             # Reuse existing VALIDATED consent instead of blocking — idempotent.
             # PENDING consents always re-call DHA so a fresh OTP is generated.
@@ -5364,8 +5376,8 @@ class ConsentSendOTPView(APIView):
                     access_point=derived_access_point,
                     status=CT.ConsentStatus.VALIDATED,
                     created_at__date=date.today(),
-                    expires_at__gt=now,
                 )
+                .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
                 .order_by("-created_at")
                 .first()
             )
@@ -5743,10 +5755,10 @@ class ConsentLatestView(APIView):
             )
             .filter(
                 Q(status=ConsentToken.ConsentStatus.PENDING)
-                | Q(
-                    status=ConsentToken.ConsentStatus.VALIDATED,
-                    expires_at__gt=now,
-                ),
+                | (
+                    Q(status=ConsentToken.ConsentStatus.VALIDATED)
+                    & (Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+                )
             )
             .order_by("-created_at")
         )

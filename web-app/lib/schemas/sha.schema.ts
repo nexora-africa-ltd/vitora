@@ -1103,6 +1103,7 @@ export type IlmCallResult = z.infer<typeof IlmCallResultSchema>;
 export const IlmStartVisitRequestSchema = z.object({
   otp: z.string().optional(),
   auth_guid: z.string().optional(),
+  reuse_existing_consent: z.boolean().optional(),
   patient_id: z.string().min(1),
   intervention_codes: z.array(z.string().min(1)),
   service_type: z.enum(['OUTPATIENT', 'INPATIENT']).default('OUTPATIENT'),
@@ -1112,10 +1113,13 @@ export const IlmStartVisitRequestSchema = z.object({
   practitioner_identification_number: z.string().optional(),
   practitioner_identification_type: z.string().optional(),
   practitioner_regulation_body: z.string().optional(),
-}).refine(
-  (data) => (!!data.otp) !== (!!data.auth_guid),
-  { message: 'Exactly one of otp or auth_guid must be provided', path: ['otp'] },
-);
+}).refine((data) => {
+  if (data.reuse_existing_consent) return true;
+  return (!!data.otp) !== (!!data.auth_guid);
+}, {
+  message: 'Provide exactly one of otp or auth_guid, unless reuse_existing_consent is true',
+  path: ['otp'],
+});
 
 export type IlmStartVisitRequest = z.infer<typeof IlmStartVisitRequestSchema>;
 

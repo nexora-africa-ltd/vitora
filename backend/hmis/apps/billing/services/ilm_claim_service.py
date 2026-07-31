@@ -32,7 +32,11 @@ from django.conf import settings
 from django.db import models, transaction
 from django.utils import timezone
 
-from .consent_token_resolver import ConsentTokenExpiredError, resolve_for_claim
+from .consent_token_resolver import (
+    ConsentTokenExpiredError,
+    ConsentTokenNotFoundError,
+    resolve_for_claim,
+)
 from .dha_errors import DHAValidationError
 from .ilm_client import IlmClient, IlmResponse
 from .multipart_builder import MultipartFile, build_multipart
@@ -115,6 +119,7 @@ CLOSE_PATH = "/api/v1/claims/close"
 class StartVisitParams:
     otp: str = ""
     auth_guid: str = ""  # Biometric authorization GUID (alternative to OTP)
+    reuse_existing_consent: bool = False
     patient_id: str = ""
     intervention_codes: list[str] = field(default_factory=list)
     service_type: str = "OUTPATIENT"  # OUTPATIENT | INPATIENT
@@ -193,11 +198,38 @@ class IlmClaimService:
         *,
         user: Any = None,
     ) -> IlmClaimResult:
-        # DHA accepts either otp (OTP consent) or auth_guid (biometric consent)
-        if not params.otp and not params.auth_guid:
-            raise ValueError("Either otp or auth_guid must be provided")
+        # DHA accepts either otp (OTP consent) or auth_guid (biometric consent).
+        # If neither is provided but the claim already has a valid encounter-
+        # linked consent token, allow a local visit reactivation path.
         if params.otp and params.auth_guid:
             raise ValueError("Provide either otp or auth_guid, not both")
+
+        if not params.otp and not params.auth_guid:
+            try:
+                consent = resolve_for_claim(claim)
+            except (ConsentTokenNotFoundError, ConsentTokenExpiredError) as exc:
+                raise ValueError("Either otp or auth_guid must be provided") from exc
+
+            update_fields: list[str] = []
+            if hasattr(claim, "dha_visit_started_at"):
+                claim.dha_visit_started_at = timezone.now()
+                update_fields.append("dha_visit_started_at")
+            if not getattr(claim, "consent_obtained", False):
+                claim.consent_obtained = True
+                update_fields.append("consent_obtained")
+            if update_fields:
+                claim.save(update_fields=update_fields)
+
+            payload = {
+                "message": "Existing validated consent reused; visit marked active.",
+                "consent_token": consent.token,
+                "authorization_code": consent.token,
+                "reused_existing_consent": True,
+            }
+            return IlmClaimResult(
+                response=IlmResponse(status_code=200, headers={}, json=payload),
+                payload=payload,
+            )
 
         # ---------------------------------------------------------------
         # Capitated codes (SHA-12-xxx / SHA-08-001/002/003) are handled by
