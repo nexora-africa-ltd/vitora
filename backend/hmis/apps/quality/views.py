@@ -41,6 +41,7 @@ from .serializers import (
     QualityMeasureSerializer,
     QuarterlyReportSerializer,
 )
+from .services.evaluation import EVALUATOR_REGISTRY, get_period_date_range
 from .services.import_export import (
     export_measures_to_csv,
     export_measures_to_json,
@@ -342,6 +343,96 @@ class QualityMeasureViewSet(viewsets.ModelViewSet):
                 "total": QualityMeasure.objects.count(),
             },
             status=status.HTTP_201_CREATED if created > 0 else status.HTTP_200_OK,
+        )
+
+    @extend_schema(summary="Preview evaluation result for a structured rule")
+    @action(detail=False, methods=["post"], url_path="preview-rule")
+    def preview_rule(self, request: Request) -> Response:
+        """Run a dry preview of one evaluation_rule against clinic+period.
+
+        This endpoint does not persist measure results; it only returns a preview.
+        """
+
+        payload = request.data if isinstance(request.data, dict) else {}
+        rule = payload.get("evaluation_rule")
+        clinic_id = payload.get("clinic_id")
+        year = payload.get("year")
+        period = payload.get("period")
+        period_type = payload.get("period_type")
+
+        if not isinstance(rule, dict):
+            return Response(
+                {"detail": "evaluation_rule object is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        rule_type = rule.get("type")
+        params = rule.get("params", {})
+        if not isinstance(params, dict):
+            return Response(
+                {"detail": "evaluation_rule.params must be an object."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if rule_type not in EVALUATOR_REGISTRY:
+            return Response(
+                {"detail": f"Unsupported evaluation rule type '{rule_type}'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            clinic_id_int = int(clinic_id)
+            year_int = int(year)
+            period_int = int(period)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "clinic_id, year, and period must be integers."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if period_type not in {"MONTHLY", "QUARTERLY", "ANNUAL"}:
+            return Response(
+                {"detail": "period_type must be MONTHLY, QUARTERLY, or ANNUAL."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from hmis.apps.clinics.models import Clinic
+
+        if not Clinic.objects.filter(pk=clinic_id_int).exists():
+            return Response(
+                {"detail": "Clinic not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        evaluator = EVALUATOR_REGISTRY[rule_type]
+        try:
+            start_date, end_date = get_period_date_range(year_int, period_int, period_type)
+        except ValueError:
+            return Response(
+                {"detail": "Invalid year/period combination for selected period_type."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            result = evaluator(clinic_id_int, start_date, end_date, params)
+        except Exception:
+            return Response(
+                {"detail": "Failed to evaluate rule preview with provided configuration."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {
+                "evaluation_rule": {"type": rule_type, "params": params},
+                "clinic_id": clinic_id_int,
+                "year": year_int,
+                "period": period_int,
+                "period_type": period_type,
+                "numerator": result.numerator,
+                "denominator": result.denominator,
+                "percentage": str(result.percentage),
+                "notes": result.notes,
+            }
         )
 
 

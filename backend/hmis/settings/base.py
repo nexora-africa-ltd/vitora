@@ -1095,3 +1095,56 @@ DICOM_SCP_BIND_HOST = os.getenv("DICOM_SCP_BIND_HOST", "0.0.0.0")  # noqa: S104
 DICOM_SCP_ALLOWED_PEERS = [
     p.strip() for p in os.getenv("DICOM_SCP_ALLOWED_PEERS", "").split(",") if p.strip()
 ]
+
+
+def _get_env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _get_env_float(name: str, default: float) -> float:
+    value = os.getenv(name)
+    if value is None or not value.strip():
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        return default
+
+
+# =============================================================================
+# Sentry Error Monitoring (Strict Privacy Mode)
+# =============================================================================
+SENTRY_DSN = os.getenv("SENTRY_DSN", "").strip()
+SENTRY_ENABLED = _get_env_bool("SENTRY_ENABLED", True)
+SENTRY_ENVIRONMENT = os.getenv("SENTRY_ENVIRONMENT", os.getenv("DJANGO_ENV", "development")).strip()
+SENTRY_RELEASE = os.getenv("SENTRY_RELEASE", os.getenv("GITHUB_SHA", "")).strip()
+SENTRY_SAMPLE_RATE = _get_env_float("SENTRY_SAMPLE_RATE", 1.0)
+SENTRY_TRACES_SAMPLE_RATE = _get_env_float("SENTRY_TRACES_SAMPLE_RATE", 0.0)
+SENTRY_PROFILES_SAMPLE_RATE = _get_env_float("SENTRY_PROFILES_SAMPLE_RATE", 0.0)
+SENTRY_DEBUG = _get_env_bool("SENTRY_DEBUG", False)
+SENTRY_MAX_BREADCRUMBS = int(os.getenv("SENTRY_MAX_BREADCRUMBS", "50"))
+
+# Strict privacy defaults (do not relax here):
+# - No default PII collection
+# - No request body capture
+# - Local variables excluded from stack frames
+SENTRY_SEND_DEFAULT_PII = False
+SENTRY_MAX_REQUEST_BODY_SIZE = "never"
+SENTRY_INCLUDE_LOCAL_VARIABLES = False
+
+if SENTRY_ENABLED and SENTRY_DSN and os.getenv("DJANGO_ENV", "development") != "hub":
+    from hmis.sentry import initialize_sentry
+
+    initialize_sentry(
+        dsn=SENTRY_DSN,
+        environment=SENTRY_ENVIRONMENT,
+        release=SENTRY_RELEASE,
+        sample_rate=SENTRY_SAMPLE_RATE,
+        traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
+        profiles_sample_rate=SENTRY_PROFILES_SAMPLE_RATE,
+        debug=SENTRY_DEBUG,
+        max_breadcrumbs=SENTRY_MAX_BREADCRUMBS,
+    )

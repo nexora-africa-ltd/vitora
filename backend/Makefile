@@ -703,7 +703,7 @@ staging-deploy:
 	az containerapp update -n $(ACA_STAGING_NAME) -g $(ACA_RG) \
 		--image $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG && \
 	echo "=== Syncing staging environment variables ===" && \
-	DJANGO_SETTINGS_MODULE=hmis.settings.staging ACA_NAME=$(ACA_STAGING_NAME) bash scripts/azure-update-env.sh && \
+	SENTRY_RELEASE="$$(git rev-parse HEAD)" DJANGO_SETTINGS_MODULE=hmis.settings.staging ACA_NAME=$(ACA_STAGING_NAME) bash scripts/azure-update-env.sh && \
 	echo "✅ Deployed $$TAG to STAGING ($(ACA_STAGING_NAME)). Wait ~60s for rollout."
 
 # Post-deploy verification suite
@@ -747,7 +747,7 @@ prod-deploy:
 	az containerapp update -n $(ACA_PROD_NAME) -g $(ACA_RG) \
 		--image $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG && \
 	echo "=== Syncing production environment variables ===" && \
-	ACA_NAME=$(ACA_PROD_NAME) bash scripts/azure-update-env-production.sh && \
+	SENTRY_RELEASE="$$(git rev-parse HEAD)" ACA_NAME=$(ACA_PROD_NAME) bash scripts/azure-update-env-production.sh && \
 	echo "✅ Deployed $$TAG to PRODUCTION ($(ACA_PROD_NAME)). Wait ~60s for rollout."
 
 prod-env:

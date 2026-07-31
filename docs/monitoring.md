@@ -176,7 +176,30 @@ if (typeof window !== 'undefined' && window.umami) {
 
 ---
 
-## 3. File Reference
+## 3. Sentry (Backend Error Monitoring)
+
+Backend Sentry runs in strict privacy mode:
+
+- `send_default_pii=false`
+- request headers/cookies/body are filtered before send
+- local variables in stack frames are disabled
+
+Recommended backend environment variables:
+
+```env
+SENTRY_DSN=
+SENTRY_ENVIRONMENT=staging
+SENTRY_RELEASE=
+SENTRY_SAMPLE_RATE=1.0
+SENTRY_TRACES_SAMPLE_RATE=0.0
+SENTRY_PROFILES_SAMPLE_RATE=0.0
+```
+
+For first rollout, keep traces/profiles at `0.0` and verify that incoming events contain no PHI/PII.
+
+---
+
+## 4. File Reference
 
 | File | Purpose |
 |------|---------|
@@ -193,10 +216,12 @@ if (typeof window !== 'undefined' && window.umami) {
 | `web-app/app/layout.tsx` | `<UmamiAnalytics />` in root layout |
 | `vitora-marketing/components/analytics/umami.tsx` | Umami script component (marketing) |
 | `vitora-marketing/app/layout.tsx` | `<UmamiAnalytics />` in root layout |
+| `backend/hmis/sentry.py` | Backend Sentry initialization + privacy scrubbers |
+| `backend/hmis/settings/base.py` | Backend Sentry env configuration + initialization |
 
 ---
 
-## 4. Grafana Dashboard Panels
+## 5. Grafana Dashboard Panels
 
 The pre-provisioned dashboard includes:
 

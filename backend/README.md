@@ -432,6 +432,14 @@ TIBABOT_ENABLED=true
 TIBABOT_API_KEY=your-api-key
 TIBABOT_API_URL=https://tibabot.vitora.nexora.africa
 
+# Sentry (strict privacy mode)
+SENTRY_DSN=
+SENTRY_ENVIRONMENT=staging
+SENTRY_RELEASE=
+SENTRY_SAMPLE_RATE=1.0
+SENTRY_TRACES_SAMPLE_RATE=0.0
+SENTRY_PROFILES_SAMPLE_RATE=0.0
+
 # KMS
 KMS_PROVIDER=local
 
@@ -473,7 +481,9 @@ mpesa-consumer-key, mpesa-consumer-secret, mpesa-passkey
 DJANGO_SETTINGS_MODULE, ALLOWED_HOSTS, CORS_ALLOWED_ORIGINS, CSRF_TRUSTED_ORIGINS,
 DEMO_MODE, CELERY_TASK_ALWAYS_EAGER, PORT, SHA_ENABLED, SHA_API_BASE_URL,
 SHA_AGENT, SHA_FHIR_BASE_URL, SHA_API_TIMEOUT, AT_USERNAME, KMS_PROVIDER,
-TIBABOT_ENABLED, TIBABOT_API_URL, MPESA_ENVIRONMENT, MPESA_SHORTCODE, MPESA_CALLBACK_URL
+TIBABOT_ENABLED, TIBABOT_API_URL, MPESA_ENVIRONMENT, MPESA_SHORTCODE, MPESA_CALLBACK_URL,
+SENTRY_DSN, SENTRY_ENVIRONMENT, SENTRY_RELEASE, SENTRY_SAMPLE_RATE,
+SENTRY_TRACES_SAMPLE_RATE, SENTRY_PROFILES_SAMPLE_RATE
 \`\`\`
 
 ### GitHub Actions Variables
@@ -482,6 +492,8 @@ Set these in **Settings → Environments → staging → Variables**:
 - \`CORS_ALLOWED_ORIGINS\` — Comma-separated frontend origins
 - \`CSRF_TRUSTED_ORIGINS\` — Comma-separated trusted origins
 - \`MPESA_CALLBACK_URL\` — Public callback URL for M-Pesa
+- \`SENTRY_DSN\` — Backend Sentry DSN (leave empty to disable)
+- \`SENTRY_TRACES_SAMPLE_RATE\` — Keep \`0.0\` for strict privacy-first rollout
 
 ### Seeding Demo Data
 Data persists in Neon PostgreSQL. Only seed once (or after a DB reset):

@@ -113,7 +113,8 @@ Verify these are correct in `hmis/settings/production.py`:
   - For Celery task queue + Django Channels WebSocket
   - Set `REDIS_URL` with `rediss://` scheme
 - [ ] **Sentry** project created for error tracking
-  - `SENTRY_DSN` set in web-app build args
+  - `SENTRY_DSN` set for backend runtime environment
+  - `SENTRY_DSN` (and `NEXT_PUBLIC_SENTRY_DSN` if used) set for web deployment
 - [ ] **Email provider** configured (Resend API key set)
 - [ ] **SMS provider** configured (Africa's Talking production credentials)
 - [ ] **M-Pesa** production credentials (if billing enabled)

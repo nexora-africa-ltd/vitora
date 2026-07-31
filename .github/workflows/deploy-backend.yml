@@ -159,6 +159,14 @@ jobs:
             SETUP_WIZARD_ENABLED=true
             ADMIN_SESSION_TIMEOUT_SECONDS=${{ vars.ADMIN_SESSION_TIMEOUT_SECONDS || '900' }}
             DJANGO_LOG_LEVEL=INFO
+            SENTRY_DSN=${{ vars.SENTRY_DSN || '' }}
+            SENTRY_ENABLED=${{ vars.SENTRY_ENABLED || 'true' }}
+            SENTRY_ENVIRONMENT=${{ env.DEPLOY_ENV }}
+            SENTRY_RELEASE=${{ github.sha }}
+            SENTRY_SAMPLE_RATE=${{ vars.SENTRY_SAMPLE_RATE || '1.0' }}
+            SENTRY_TRACES_SAMPLE_RATE=${{ vars.SENTRY_TRACES_SAMPLE_RATE || '0.0' }}
+            SENTRY_PROFILES_SAMPLE_RATE=${{ vars.SENTRY_PROFILES_SAMPLE_RATE || '0.0' }}
+            SENTRY_MAX_BREADCRUMBS=${{ vars.SENTRY_MAX_BREADCRUMBS || '50' }}
             SMS_BACKEND=${{ env.DEPLOY_ENV == 'production' && 'hmis.apps.core.sms.backends.AfricasTalkingSMSBackend' || 'hmis.apps.core.sms.backends.MockSMSBackend' }}
             SMS_SENDER_ID=VitoraHMIS
             PRICING_REQUIRE_SIGNED_NONCE=${{ env.DEPLOY_ENV == 'production' && 'true' || 'false' }}
