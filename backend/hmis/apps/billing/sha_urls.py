@@ -72,6 +72,7 @@ from hmis.apps.billing.sha_views import (
     BiometricAuthorizeView,
     BiometricCancelView,
     ClientRegistryView,
+    ConsentAdmissionConflictView,
     ConsentDetailView,
     ConsentLatestView,
     ConsentSendOTPView,
@@ -124,6 +125,11 @@ urlpatterns = [
     path("consent/validate-otp/", ConsentValidateOTPView.as_view(), name="consent-validate-otp"),
     path("consent/start-visit/", StartVisitView.as_view(), name="consent-start-visit"),
     path("consent/latest/", ConsentLatestView.as_view(), name="consent-latest"),
+    path(
+        "consent/admission-conflict/",
+        ConsentAdmissionConflictView.as_view(),
+        name="consent-admission-conflict",
+    ),
     path("consent/authorize/", BiometricAuthorizeView.as_view(), name="consent-authorize"),
     path(
         "consent/authorize/<str:auth_guid>/status/",

@@ -983,3 +983,31 @@ class TestConsentLatestView:
             {"sha_member_id": old_claim.sha_member_id},
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+class TestConsentAdmissionConflictView:
+    """Tests for GET /api/sha/consent/admission-conflict/."""
+
+    def test_reports_existing_active_admission(self, authenticated_client, sample_admission):
+        response = authenticated_client.get(
+            "/api/sha/consent/admission-conflict/",
+            {"patient_id": sample_admission.patient_id},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["has_active_admission"] is True
+        assert response.data["admission"]["id"] == sample_admission.id
+        assert response.data["admission"]["facility_id"] == sample_admission.facility_id
+
+    def test_reports_no_active_admission(self, authenticated_client):
+        response = authenticated_client.get(
+            "/api/sha/consent/admission-conflict/",
+            {"patient_id": 99999999},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["has_active_admission"] is False
+
+    def test_requires_patient_id(self, authenticated_client):
+        response = authenticated_client.get("/api/sha/consent/admission-conflict/")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST

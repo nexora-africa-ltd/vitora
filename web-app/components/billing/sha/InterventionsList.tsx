@@ -115,10 +115,19 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
     return value.replaceAll('_', ' ').toLowerCase();
   }
 
+  async function syncInterventionsFromDhaPreview(): Promise<void> {
+    try {
+      await shaApi.ilmPreview(claimId);
+    } catch {
+      // Best effort only — local list still updates via onChange/refetch.
+    }
+  }
+
   async function handleRetire(code: string) {
     setBusyCode(code);
     try {
       await shaApi.ilmRetireIntervention(claimId, { intervention_code: code });
+      await syncInterventionsFromDhaPreview();
       toast({
         title: 'Intervention retired',
         description: `${code} has been retired from this claim.`,
@@ -139,6 +148,7 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
     setBusyCode(code);
     try {
       await shaApi.ilmRestoreIntervention(claimId, { intervention_code: code });
+      await syncInterventionsFromDhaPreview();
       toast({
         title: 'Intervention restored',
         description: `${code} has been restored to this claim.`,
@@ -163,6 +173,7 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
       await shaApi.ilmRetireIntervention(claimId, { intervention_code: transferFrom });
       // Step 2: Add new intervention
       await shaApi.ilmAddIntervention(claimId, { intervention_code: transferTo.trim() });
+      await syncInterventionsFromDhaPreview();
       toast({
         title: 'Intervention transferred',
         description: `Switched from ${transferFrom} to ${transferTo.trim()}.`,

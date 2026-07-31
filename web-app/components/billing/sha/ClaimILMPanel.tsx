@@ -515,6 +515,7 @@ export function ClaimILMPanel({
   const [materializePreviewResult, setMaterializePreviewResult] =
     useState<IlmMaterializePreviewInvoiceResponse | null>(null);
   const [replacePreviewLines, setReplacePreviewLines] = useState(true);
+  const [restartSessionBusy, setRestartSessionBusy] = useState(false);
 
   const { data: latestConsentToken } = useQuery({
     queryKey: ['sha-latest-consent-for-workflow', claim.sha_member, claim.encounter, claim.updated_at],
@@ -618,6 +619,47 @@ export function ClaimILMPanel({
     requiresConsent,
     visitStarted,
   ]);
+
+  const tokenIsCurrentlyUsable = useMemo(() => {
+    if (!requiresConsent) return true;
+
+    const tokenValue = latestConsentToken?.consent_token || consentToken || '';
+    if (!tokenValue) return false;
+
+    if (latestConsentToken?.status === 'EXPIRED' || latestConsentToken?.is_valid === false) {
+      return false;
+    }
+
+    const expiresAt = latestConsentToken?.expires_at;
+    if (!expiresAt) return true;
+
+    try {
+      return parseISO(expiresAt).getTime() > Date.now();
+    } catch {
+      return true;
+    }
+  }, [
+    latestConsentToken?.consent_token,
+    latestConsentToken?.expires_at,
+    latestConsentToken?.is_valid,
+    latestConsentToken?.status,
+    consentToken,
+    requiresConsent,
+  ]);
+
+  // Clear stale consent-expired inline error once a fresh valid token is available.
+  useEffect(() => {
+    if (!error) return;
+    const lower = error.toLowerCase();
+    const isConsentExpiredError =
+      lower.includes('consent token has expired') ||
+      lower.includes('consent_token_expired') ||
+      lower.includes('token expired');
+    if (!isConsentExpiredError) return;
+    if (tokenIsCurrentlyUsable) {
+      setError(null);
+    }
+  }, [error, tokenIsCurrentlyUsable]);
 
   // OTP for start_visit — auto-filled from consent credential
   const [startOtp, setStartOtp] = useState(consentCredential?.otp ?? '');
@@ -927,6 +969,37 @@ export function ClaimILMPanel({
       setBusy(null);
     }
   }
+
+  const handleRestartVisitSession = useCallback(async () => {
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm(
+        'Restart DHA visit session? This will expire the current encounter token and require fresh consent.',
+      );
+      if (!confirmed) return;
+    }
+
+    setRestartSessionBusy(true);
+    setError(null);
+    try {
+      const result = await shaApi.ilmRestartVisitSession(claimId);
+      setPreviewResult(null);
+      setApplyPreviewResult(null);
+      setMaterializePreviewResult(null);
+      setPreviewDhaInvoiceNumber('');
+      setStartOtp('');
+      setStartAuthGuid('');
+      setDischargeOtp('');
+      setDischargeOtpRefreshed(false);
+      onConsentExpired?.();
+      onChange?.();
+      toast.success(result.message || 'DHA visit session restarted. Please re-consent the patient.');
+    } catch (e: unknown) {
+      setError(formatErr(e));
+      toast.error('Failed to restart DHA visit session.');
+    } finally {
+      setRestartSessionBusy(false);
+    }
+  }, [claimId, onChange, onConsentExpired]);
 
   // ---- Action handlers ----
   const handleResendOtp = useCallback(async () => {
@@ -1377,6 +1450,22 @@ export function ClaimILMPanel({
                 Token: {tokenStatus.label}
               </Badge>
               <span className="text-[11px] text-muted-foreground">{tokenStatus.detail}</span>
+              {requiresConsent && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="h-6 px-2 text-[10px]"
+                  onClick={handleRestartVisitSession}
+                  disabled={restartSessionBusy || busy !== null}
+                >
+                  {restartSessionBusy ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                  )}
+                  Restart DHA session
+                </Button>
+              )}
             </div>
           </div>
           <VisitStatusPill visitStarted={visitStarted} startedAt={claim.dha_visit_started_at} />

@@ -359,7 +359,7 @@ class TestInterventions:
         assert intervention.required_document_types == ["MEDICAL_REPORT", "LAB_REPORT"]
         assert intervention.tariff_amount == Decimal("777.00")
 
-    def test_reconcile_from_preview_upserts_and_retires(self, service, claim):
+    def test_reconcile_from_preview_upserts_without_retiring_absent_codes(self, service, claim):
         SHAClaimIntervention.objects.create(
             claim=claim,
             intervention_code="SHA-07-001",
@@ -408,10 +408,10 @@ class TestInterventions:
 
         assert summary["reconciled"] is True
         assert summary["created"] == 1
-        assert summary["retired"] == 1
+        assert summary["retired"] == 0
 
-        retired = SHAClaimIntervention.objects.get(claim=claim, intervention_code="SHA-07-001")
-        assert retired.status == SHAClaimIntervention.InterventionStatus.RETIRED
+        preserved = SHAClaimIntervention.objects.get(claim=claim, intervention_code="SHA-07-001")
+        assert preserved.status == SHAClaimIntervention.InterventionStatus.ACTIVE
 
         existing = SHAClaimIntervention.objects.get(claim=claim, intervention_code="SHA-19-197")
         assert existing.status == SHAClaimIntervention.InterventionStatus.ACTIVE
@@ -444,6 +444,39 @@ class TestInterventions:
             ).status
             == SHAClaimIntervention.InterventionStatus.ACTIVE
         )
+
+    def test_reconcile_marks_remote_inactive_intervention_as_retired(self, service, claim):
+        existing = SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-19-196",
+            intervention_name="Ballon Angioplasty",
+            status=SHAClaimIntervention.InterventionStatus.ACTIVE,
+        )
+
+        summary = service.reconcile_interventions_from_preview(
+            claim,
+            {
+                "payload": {
+                    "interventions": [
+                        {
+                            "id": "df47e6d2-78a3-4895-bdf1-26ff4ba0a89d",
+                            "intervention_code": "SHA-19-196",
+                            "intervention_name": "Ballon Angioplasty",
+                            "workflow_state": "INACTIVE",
+                            "intervention_payment_mechanism": "FEE FOR SERVICE",
+                        }
+                    ]
+                }
+            },
+        )
+
+        assert summary["reconciled"] is True
+        assert summary["retired"] == 1
+        assert "SHA-19-196" in summary["retired_codes"]
+        assert "SHA-19-196" not in summary["updated_codes"]
+
+        existing.refresh_from_db()
+        assert existing.status == SHAClaimIntervention.InterventionStatus.RETIRED
 
 
 @pytest.mark.django_db
@@ -762,6 +795,33 @@ class TestConsentResolution:
     def test_missing_consent_raises(self, service, claim):
         with pytest.raises(ConsentTokenNotFoundError):
             service.add_intervention(claim, "SHA-12-001")
+
+    def test_claim_resolution_does_not_fallback_to_patient_token(
+        self,
+        service,
+        claim,
+        test_user,
+        mock_client,
+    ):
+        # Token exists for patient/member but not linked to claim encounter.
+        ConsentToken.objects.create(
+            patient=claim.patient,
+            sha_member=claim.sha_member,
+            encounter=None,
+            facility=claim.facility,
+            consent_method=ConsentToken.ConsentMethod.OTP,
+            status=ConsentToken.ConsentStatus.VALIDATED,
+            identification_number="12345678",
+            consent_token="PATIENT-LEVEL-TOKEN",
+            validated_at=timezone.now(),
+            expires_at=timezone.now() + timedelta(hours=1),
+            created_by=test_user,
+        )
+
+        with pytest.raises(ConsentTokenNotFoundError):
+            service.add_intervention(claim, "SHA-12-001")
+
+        mock_client.post.assert_not_called()
 
     def test_expired_consent_raises(self, service, claim, test_user):
         ConsentToken.objects.create(

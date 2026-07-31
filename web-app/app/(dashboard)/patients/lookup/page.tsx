@@ -243,6 +243,18 @@ export default function PatientLookupPage() {
           />
         </div>
       )}
+      {!crClient && (eligibilityLoading || eligibility) && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-primary" />
+            <p className="text-sm font-medium">SHA Eligibility Result</p>
+          </div>
+          <EligibilityOnlyCard
+            eligibility={eligibility}
+            eligibilityLoading={eligibilityLoading}
+          />
+        </div>
+      )}
       {crResult && !crResult.found && (
         <Alert>
           <Globe className="h-4 w-4" />
@@ -330,7 +342,7 @@ export default function PatientLookupPage() {
       )}
 
       {/* Empty State */}
-      {hasSearched && !isLoading && patients.length === 0 && !crClient && (
+      {hasSearched && !isLoading && patients.length === 0 && !crClient && !eligibility && !eligibilityLoading && (
         <Card>
           <CardContent className="py-8 text-center">
             <User className="mx-auto h-10 w-10 text-muted-foreground/40" />
@@ -371,6 +383,72 @@ export default function PatientLookupPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+function EligibilityOnlyCard({
+  eligibility,
+  eligibilityLoading,
+}: {
+  eligibility: DirectEligibilityCheckResponse | null;
+  eligibilityLoading: boolean;
+}) {
+  return (
+    <Card className="border-primary/30 overflow-hidden">
+      <CardContent className="py-4 bg-primary/5 space-y-3">
+        {eligibilityLoading && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Checking SHA eligibility...
+          </div>
+        )}
+
+        {eligibility && (
+          <>
+            <div className="flex items-center gap-2 flex-wrap">
+              {eligibility.is_eligible ? (
+                <Badge variant="default" className="gap-1.5 bg-green-600 hover:bg-green-600 text-white">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Eligible
+                </Badge>
+              ) : (
+                <Badge variant="destructive" className="gap-1.5">
+                  <ShieldX className="h-3.5 w-3.5" />
+                  Not Eligible
+                </Badge>
+              )}
+              {eligibility.sha_number && (
+                <Badge variant="outline" size="sm" className="font-mono text-[10px]">
+                  SHA: {eligibility.sha_number}
+                </Badge>
+              )}
+              {eligibility.member_cr_number && (
+                <Badge variant="outline" size="sm" className="font-mono text-[10px]">
+                  CR: {eligibility.member_cr_number}
+                </Badge>
+              )}
+            </div>
+
+            {(eligibility.full_name || eligibility.gender || eligibility.date_of_birth || eligibility.age != null) && (
+              <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2 gap-y-1">
+                {eligibility.full_name && <span className="font-medium text-foreground">{eligibility.full_name}</span>}
+                {eligibility.gender && <span>{eligibility.gender === 'M' ? 'Male' : eligibility.gender === 'F' ? 'Female' : eligibility.gender}</span>}
+                {eligibility.date_of_birth && <span>DOB: {eligibility.date_of_birth}</span>}
+                {eligibility.age != null && <span>{eligibility.age}y</span>}
+              </div>
+            )}
+
+            {eligibility.reason && (
+              <p className="text-xs text-muted-foreground">{eligibility.reason}</p>
+            )}
+          </>
+        )}
+
+        {eligibility?.is_eligible && eligibility.sha_number && (
+          <BenefitsPanel crNumber={eligibility.sha_number} />
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

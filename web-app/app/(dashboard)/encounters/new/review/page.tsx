@@ -51,6 +51,8 @@ import { SmartSuggestionBatch } from '@/components/shared/smart-suggestion-batch
 import { LEGACY_TRIAGE_FLOW } from '@/lib/utils/constants';
 import { SHAConsentStep } from '@/components/patients/sha-consent-step';
 import { encountersApi } from '@/lib/api/encounters';
+import { shaApi } from '@/lib/api/sha';
+import { useQuery } from '@tanstack/react-query';
 import type { DiagnosisFormData } from '@/lib/types/encounter-form';
 import type { CreateDiagnosisData } from '@/lib/api/encounters';
 
@@ -122,6 +124,7 @@ export default function NewEncounterReviewPage() {
   const [showTriageModal, setShowTriageModal] = useState(false);
   const [createdEncounterId, setCreatedEncounterId] = useState<number | null>(null);
   const [showAutopopulate, setShowAutopopulate] = useState(false);
+  const [admissionConflictHint, setAdmissionConflictHint] = useState<string | null>(null);
 
   // Smart suggestions (AI autopopulate)
   const {
@@ -143,6 +146,36 @@ export default function NewEncounterReviewPage() {
   const completion = getSectionCompletion();
   const admission = getAdmission();
   const isIPD = details.encounter_type === 'IPD';
+
+  const {
+    data: activeAdmissionConflict,
+    isLoading: loadingActiveAdmissionConflict,
+    refetch: refetchActiveAdmissionConflict,
+  } = useQuery({
+    queryKey: ['encounter-review-active-admission-conflict', patientData?.id],
+    enabled: isIPD && typeof patientData?.id === 'number',
+    queryFn: async () => shaApi.getConsentAdmissionConflict(patientData!.id),
+    staleTime: 30_000,
+  });
+
+  const hasOrgActiveAdmissionConflict = !!activeAdmissionConflict?.has_active_admission;
+  const activeAdmissionConflictMessage = useMemo(() => {
+    if (admissionConflictHint) return admissionConflictHint;
+    if (!hasOrgActiveAdmissionConflict || !activeAdmissionConflict?.admission) return null;
+
+    const existing = activeAdmissionConflict.admission;
+    const place = [existing.facility_name, existing.ward_name, existing.bed_number]
+      .filter(Boolean)
+      .join(' / ');
+
+    return `Patient already has an active admission (${existing.admission_number})${place ? ` at ${place}` : ''}. Resolve or discharge that admission before creating another IPD admission.`;
+  }, [activeAdmissionConflict?.admission, admissionConflictHint, hasOrgActiveAdmissionConflict]);
+
+  useEffect(() => {
+    if (!hasOrgActiveAdmissionConflict && admissionConflictHint) {
+      setAdmissionConflictHint(null);
+    }
+  }, [admissionConflictHint, hasOrgActiveAdmissionConflict]);
 
   // Check if required sections are complete
   const canCreate = useMemo(() => {
@@ -236,6 +269,25 @@ export default function NewEncounterReviewPage() {
     }
 
     try {
+      if (isIPD && typeof patientData?.id === 'number') {
+        const conflict = await refetchActiveAdmissionConflict();
+        if (conflict.data?.has_active_admission) {
+          const existing = conflict.data.admission;
+          const place = [existing?.facility_name, existing?.ward_name, existing?.bed_number]
+            .filter(Boolean)
+            .join(' / ');
+          setAdmissionConflictHint(
+            `Patient already has an active admission${existing?.admission_number ? ` (${existing.admission_number})` : ''}${place ? ` at ${place}` : ''}.`
+          );
+          toast({
+            title: 'Active admission found',
+            description: 'Resolve the existing admission before creating another IPD admission.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+
       const result = await createEncounter.mutateAsync({
         ...formData,
         status: 'IN_PROGRESS',
@@ -287,7 +339,16 @@ export default function NewEncounterReviewPage() {
               description: `Patient admitted to ${admission.wardName || 'ward'}, bed ${admission.bedNumber || admission.bedId}.`,
               action: <ToastAction altText="View encounter" onClick={() => router.push(`/encounters/${result.id}`)}>View</ToastAction>,
             });
-          } catch {
+          } catch (admissionError: unknown) {
+            const data = (admissionError as { response?: { data?: { detail?: string; error?: string } } })
+              ?.response?.data;
+            const admissionErrorMessage =
+              data?.detail || data?.error || (admissionError as Error)?.message || '';
+            if (/active admission/i.test(admissionErrorMessage)) {
+              setAdmissionConflictHint(
+                'Patient already has an active admission in this organization. Resolve it before creating another IPD admission.'
+              );
+            }
             // Encounter created but admission failed — still redirect
             toast({
               title: 'Encounter Created',
@@ -375,6 +436,8 @@ export default function NewEncounterReviewPage() {
     clearSession,
     router,
     user,
+    patientData?.id,
+    refetchActiveAdmissionConflict,
   ]);
 
   // Handle triage modal response
@@ -770,6 +833,14 @@ export default function NewEncounterReviewPage() {
           </Alert>
         )}
 
+        {isIPD && activeAdmissionConflictMessage && (
+          <Alert variant="destructive" className="bg-destructive/10">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Active Admission Conflict</AlertTitle>
+            <AlertDescription>{activeAdmissionConflictMessage}</AlertDescription>
+          </Alert>
+        )}
+
         {/* Vitals Info Banner */}
         {vitalsRecorded ? (
           <Alert className="border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950">
@@ -829,7 +900,11 @@ export default function NewEncounterReviewPage() {
             <ShiftGate>
             <Button
               onClick={handleCreate}
-              disabled={createEncounter.isPending || !canCreate}
+              disabled={
+                createEncounter.isPending
+                || !canCreate
+                || (isIPD && (loadingActiveAdmissionConflict || hasOrgActiveAdmissionConflict))
+              }
             >
               {createEncounter.isPending ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

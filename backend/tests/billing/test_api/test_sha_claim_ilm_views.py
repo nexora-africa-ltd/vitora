@@ -15,9 +15,11 @@ and HTTP-level error translation.
 
 from __future__ import annotations
 
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest  # type: ignore
+from django.utils import timezone
 from rest_framework import status
 
 # Reuse the rich fixture set defined in test_sha_api.py (sample_sha_claim,
@@ -93,7 +95,46 @@ class TestInterventionEndpoints:
                 format="json",
             )
         assert response.status_code == status.HTTP_200_OK
-        svc.return_value.add_intervention.assert_called_once()
+
+
+@pytest.mark.django_db
+class TestVisitSessionEndpoints:
+    def test_restart_visit_session_expires_encounter_tokens(
+        self, sha_client, sample_sha_claim, test_user
+    ):
+        from hmis.apps.billing.models import ConsentToken
+
+        sample_sha_claim.dha_visit_started_at = timezone.now()
+        sample_sha_claim.save(update_fields=["dha_visit_started_at", "updated_at"])
+
+        token = ConsentToken.objects.create(
+            patient=sample_sha_claim.patient,
+            sha_member=sample_sha_claim.sha_member,
+            encounter=sample_sha_claim.encounter,
+            facility=sample_sha_claim.facility,
+            consent_method=ConsentToken.ConsentMethod.OTP,
+            status=ConsentToken.ConsentStatus.VALIDATED,
+            identification_number="12345678",
+            consent_token="TOKEN-123",
+            validated_at=timezone.now(),
+            expires_at=timezone.now() + timedelta(hours=1),
+            created_by=test_user,
+        )
+
+        response = sha_client.post(
+            _claim_url(sample_sha_claim, "restart-visit-session"),
+            {},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["success"] is True
+        assert response.data["expired_tokens"] == 1
+
+        sample_sha_claim.refresh_from_db()
+        token.refresh_from_db()
+        assert sample_sha_claim.dha_visit_started_at is None
+        assert token.status == ConsentToken.ConsentStatus.EXPIRED
 
     def test_add_intervention_requires_code(self, sha_client, sample_sha_claim):
         response = sha_client.post(

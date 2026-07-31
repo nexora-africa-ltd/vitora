@@ -415,6 +415,7 @@ async function checkPatientEligibility(
             checked_at: new Date().toISOString(),
             verified_name: directResponse.full_name || undefined,
             coverage_end_date: directResponse.coverage_end_date || undefined,
+            whitelisted_for_otp: directResponse.whitelisted_for_otp,
             message: directResponse.is_eligible
               ? 'SHA coverage verified via direct lookup'
               : directResponse.reason || 'Patient is not eligible for SHA coverage',
@@ -437,6 +438,7 @@ async function checkPatientEligibility(
                 checked_at: new Date().toISOString(),
                 verified_name: fallbackResponse.full_name || undefined,
                 coverage_end_date: fallbackResponse.coverage_end_date || undefined,
+                whitelisted_for_otp: fallbackResponse.whitelisted_for_otp,
                 message: fallbackResponse.is_eligible
                   ? 'SHA coverage verified via direct lookup'
                   : fallbackResponse.reason || 'Patient is not eligible for SHA coverage',
@@ -972,6 +974,39 @@ async function getLatestConsent(
   return response.data;
 }
 
+async function getConsentAdmissionConflict(patientId: number): Promise<{
+  has_active_admission: boolean;
+  admission?: {
+    id: number;
+    admission_number: string;
+    admission_date: string;
+    facility_id: number;
+    facility_name: string;
+    ward_id: number;
+    ward_name: string;
+    bed_id: number;
+    bed_number: string;
+  };
+}> {
+  const response = await apiClient.get('/api/sha/consent/admission-conflict/', {
+    params: { patient_id: patientId },
+  });
+  return response.data as {
+    has_active_admission: boolean;
+    admission?: {
+      id: number;
+      admission_number: string;
+      admission_date: string;
+      facility_id: number;
+      facility_name: string;
+      ward_id: number;
+      ward_name: string;
+      bed_id: number;
+      bed_number: string;
+    };
+  };
+}
+
 /**
  * Initiate biometric authorization via DHA HIE.
  * Returns auth_guid and iframe_url for fingerprint capture.
@@ -1435,6 +1470,21 @@ async function ilmPreview(claimId: number): Promise<IlmCallResult> {
     { params: { _ts: Date.now() } },
   );
   return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmPreview' });
+}
+
+async function ilmRestartVisitSession(claimId: number): Promise<{
+  success: boolean;
+  message: string;
+  cleared_visit_started: boolean;
+  expired_tokens: number;
+}> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/restart-visit-session/`, {});
+  return response.data as {
+    success: boolean;
+    message: string;
+    cleared_visit_started: boolean;
+    expired_tokens: number;
+  };
 }
 
 export interface IlmApplyPreviewLinesResponse {
@@ -2125,6 +2175,7 @@ export const shaApi = {
   startVisit,
   getConsentDetail,
   getLatestConsent,
+  getConsentAdmissionConflict,
   authorizeBiometric,
   getBiometricAuthStatus,
   cancelBiometricAuth,
@@ -2153,6 +2204,7 @@ export const shaApi = {
   ilmPushLocalAttachments,
   ilmAttachmentSyncStatus,
   ilmPreview,
+  ilmRestartVisitSession,
   ilmApplyPreviewLines,
   ilmMaterializePreviewInvoice,
   ilmPreviewPayerClaim,

@@ -2000,6 +2000,46 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
 
+    @action(detail=True, methods=["post"], url_path="ilm/restart-visit-session")
+    def ilm_restart_visit_session(self, request, pk=None):
+        """Reset local DHA visit session markers so staff can re-consent/restart.
+
+        This is intentionally local-only (no DHA call): it clears encounter-linked
+        VALIDATED consent tokens and visit-started marker to force a fresh consent
+        + start_visit cycle from the UI.
+        """
+        claim = self.get_object()
+
+        cleared_visit_started = False
+        if getattr(claim, "dha_visit_started_at", None) is not None:
+            claim.dha_visit_started_at = None
+            claim.save(update_fields=["dha_visit_started_at", "updated_at"])
+            cleared_visit_started = True
+
+        expired_tokens = 0
+        encounter = getattr(claim, "encounter", None)
+        if encounter is not None:
+            tokens_qs = ConsentToken.objects.filter(
+                encounter=encounter,
+                status=ConsentToken.ConsentStatus.VALIDATED,
+            )
+            expired_tokens = tokens_qs.count()
+            if expired_tokens:
+                tokens_qs.update(
+                    status=ConsentToken.ConsentStatus.EXPIRED,
+                    expires_at=timezone.now(),
+                )
+
+        return Response(
+            {
+                "success": True,
+                "message": "DHA visit session reset. Re-consent and start visit again.",
+                "cleared_visit_started": cleared_visit_started,
+                "expired_tokens": expired_tokens,
+            },
+            status=status.HTTP_200_OK,
+        )
+
     @action(detail=True, methods=["post"], url_path="ilm/interventions/virtual-claim-line")
     def ilm_add_virtual_claim_line(self, request, pk=None):
         """Add a PHC virtual claim line (DHA HIE user-journey Scenario C).
@@ -5730,6 +5770,66 @@ class ConsentLatestView(APIView):
 
         serializer = ConsentTokenSerializer(consent)
         return Response({**serializer.data, "exists": True})
+
+
+class ConsentAdmissionConflictView(APIView):
+    """Check if patient has an active admission in any facility in org."""
+
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+
+    def get(self, request):
+        from hmis.apps.core.mixins import resolve_request_tenant
+        from hmis.apps.inpatient.models import Admission
+
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+        if organization is None and facility is not None:
+            organization = getattr(facility, "organization", None)
+
+        if organization is None:
+            return Response({"error": "Organization context is required"}, status=403)
+
+        patient_id = request.query_params.get("patient_id")
+        if not patient_id:
+            return Response({"error": "patient_id query parameter is required"}, status=400)
+
+        try:
+            patient_pk = int(patient_id)
+        except (TypeError, ValueError):
+            return Response({"error": "patient_id must be an integer"}, status=400)
+
+        active = (
+            Admission.objects.select_related("facility", "ward", "bed")
+            .filter(
+                organization=organization,
+                patient_id=patient_pk,
+                admission_status="ACTIVE",
+            )
+            .order_by("-admission_date")
+            .first()
+        )
+
+        if not active:
+            return Response({"has_active_admission": False}, status=200)
+
+        return Response(
+            {
+                "has_active_admission": True,
+                "admission": {
+                    "id": active.id,
+                    "admission_number": active.admission_number,
+                    "admission_date": active.admission_date,
+                    "facility_id": active.facility_id,
+                    "facility_name": getattr(active.facility, "name", ""),
+                    "ward_id": active.ward_id,
+                    "ward_name": getattr(active.ward, "name", ""),
+                    "bed_id": active.bed_id,
+                    "bed_number": getattr(active.bed, "bed_number", ""),
+                },
+            },
+            status=200,
+        )
 
 
 def _persist_consent_interventions(*, patient, facility, intervention_codes: list[str]) -> None:

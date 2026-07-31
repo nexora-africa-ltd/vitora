@@ -69,11 +69,28 @@ def resolve_for_encounter(encounter: Any) -> ResolvedConsent:
 
 
 def resolve_for_claim(claim: Any) -> ResolvedConsent:
-    """Return the consent token attached to a claim (via its encounter)."""
+    """Return the active consent token attached to a claim's encounter.
+
+    Claim ILM operations must stay pinned to the encounter-scoped visit token.
+    Do not fall back to patient-level tokens here, otherwise requests can be
+    sent with a token from a different visit and trigger DHA combination or
+    "intervention not found for consent token" errors.
+    """
+    from hmis.apps.billing.models import ConsentToken
+
     encounter = getattr(claim, "encounter", None)
     if encounter is None:
         raise ConsentTokenNotFoundError(f"Claim {getattr(claim, 'pk', '?')} has no encounter")
-    return resolve_for_encounter(encounter)
+
+    consent = (
+        ConsentToken.objects.filter(
+            encounter=encounter,
+            status=ConsentToken.ConsentStatus.VALIDATED,
+        )
+        .order_by("-validated_at")
+        .first()
+    )
+    return _validate_or_raise(consent)
 
 
 def resolve_for_patient(patient: Any) -> ResolvedConsent:

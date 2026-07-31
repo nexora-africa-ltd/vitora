@@ -766,18 +766,37 @@ class IlmClaimService:
         retired_codes: list[str] = []
 
         with transaction.atomic():
-            existing_rows = list(
-                SHAClaimIntervention.objects.select_for_update().filter(claim=claim)
-            )
-            existing_by_code = {row.intervention_code: row for row in existing_rows}
+            list(SHAClaimIntervention.objects.select_for_update().filter(claim=claim))
 
             for code, remote_item in remote_by_code.items():
+                remote_state = (
+                    str(
+                        remote_item.get("workflow_state")
+                        or remote_item.get("workflowState")
+                        or remote_item.get("status")
+                        or ""
+                    )
+                    .strip()
+                    .upper()
+                )
+                remote_is_active = remote_state not in {
+                    "INACTIVE",
+                    "RETIRED",
+                    "CANCELLED",
+                    "REMOVED",
+                    "DELETED",
+                    "CLOSED",
+                }
                 base_benefit_code = code.rsplit("-", 1)[0] if "-" in code else ""
                 intervention, created = SHAClaimIntervention.objects.get_or_create(
                     claim=claim,
                     intervention_code=code,
                     defaults={
-                        "status": SHAClaimIntervention.InterventionStatus.ACTIVE,
+                        "status": (
+                            SHAClaimIntervention.InterventionStatus.ACTIVE
+                            if remote_is_active
+                            else SHAClaimIntervention.InterventionStatus.RETIRED
+                        ),
                         "benefit_code": str(base_benefit_code)[:10],
                     },
                 )
@@ -808,9 +827,13 @@ class IlmClaimService:
                     if getattr(intervention, level_field, None) in (None, ""):
                         updates[level_field] = keph_tariff
 
-                if intervention.status != SHAClaimIntervention.InterventionStatus.ACTIVE:
-                    updates["status"] = SHAClaimIntervention.InterventionStatus.ACTIVE
-                    restored_codes.append(code)
+                if remote_is_active:
+                    if intervention.status != SHAClaimIntervention.InterventionStatus.ACTIVE:
+                        updates["status"] = SHAClaimIntervention.InterventionStatus.ACTIVE
+                        restored_codes.append(code)
+                elif intervention.status != SHAClaimIntervention.InterventionStatus.RETIRED:
+                    updates["status"] = SHAClaimIntervention.InterventionStatus.RETIRED
+                    retired_codes.append(code)
 
                 if updates:
                     for field, value in updates.items():
@@ -819,24 +842,21 @@ class IlmClaimService:
                     if not created:
                         updated_codes.append(code)
 
-            for code, local_row in existing_by_code.items():
-                if code in remote_by_code:
-                    continue
-                if local_row.status != SHAClaimIntervention.InterventionStatus.ACTIVE:
-                    continue
-                local_row.status = SHAClaimIntervention.InterventionStatus.RETIRED
-                local_row.save(update_fields=["status", "updated_at"])
-                retired_codes.append(code)
+            # Do not retire by omission alone.
+            # DHA preview can return a partial/shape-shifted interventions list for
+            # certain flows, and dropping local rows on absence causes intervention
+            # flip-flop (added -> disappears after preview). We only retire when DHA
+            # explicitly reports inactive/retired workflow state for that code.
 
         summary = {
             "reconciled": True,
             "reason": "ok",
             "created": len(created_codes),
-            "updated": len(updated_codes),
+            "updated": len([code for code in updated_codes if code not in retired_codes]),
             "restored": len(restored_codes),
             "retired": len(retired_codes),
             "created_codes": created_codes,
-            "updated_codes": updated_codes,
+            "updated_codes": [code for code in updated_codes if code not in retired_codes],
             "restored_codes": restored_codes,
             "retired_codes": retired_codes,
         }

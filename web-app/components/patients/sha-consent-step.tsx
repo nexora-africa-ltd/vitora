@@ -29,6 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
 import { useSendConsentOTP, useStartVisit } from '@/lib/hooks/use-sha';
@@ -117,12 +118,18 @@ export function SHAConsentStep({
   const [eligibilityInfo, setEligibilityInfo] = useState<{
     verifiedName?: string;
     coverageEndDate?: string;
+    whitelistedForOtp?: boolean;
   } | null>(null);
   const [consentId, setConsentId] = useState<number | null>(null);
   const [otpCode, setOtpCode] = useState('');
   const [otpServerMessage, setOtpServerMessage] = useState<string | null>(null);
   const [isReusedConsent, setIsReusedConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [admissionConflict, setAdmissionConflict] = useState<{
+    message: string;
+    admissionNumber?: string;
+    location?: string;
+  } | null>(null);
   const [isCreatingMember, setIsCreatingMember] = useState(false);
 
   // ---- Shared cascading benefit-package → intervention fetch ----
@@ -152,7 +159,6 @@ export function SHAConsentStep({
   const [whitelistOpen, setWhitelistOpen] = useState(false);
   // Existing whitelist status (checked on mount when SHA eligible)
   const [existingWhitelistStatus, setExistingWhitelistStatus] = useState<string | null>(null);
-  const [isCheckingWhitelist, setIsCheckingWhitelist] = useState(false);
 
   // Inline biometric state (matches claims ConsentPanel pattern)
   const [biometricIframeUrl, setBiometricIframeUrl] = useState<string | null>(null);
@@ -178,6 +184,39 @@ export function SHAConsentStep({
     return numLevel >= 4;
   }, [facilityLevel]);
   const isDependentWorkflow = workflowMemberType === 'dependent';
+  const requiresContactSelectionForOtp = !isBiometricPrimary && !!crId;
+
+  const checkActiveAdmissionConflict = useCallback(
+    async (serviceType: 'INPATIENT' | 'OUTPATIENT') => {
+      if (serviceType !== 'INPATIENT') return false;
+
+      try {
+        const result = await shaApi.getConsentAdmissionConflict(patientId);
+        if (!result.has_active_admission) {
+          setAdmissionConflict(null);
+          return false;
+        }
+
+        const admission = result.admission;
+        const location = [admission?.facility_name, admission?.ward_name, admission?.bed_number]
+          .filter(Boolean)
+          .join(' / ');
+        const message = `Patient already has an active admission${admission?.admission_number ? ` (${admission.admission_number})` : ''}${location ? ` at ${location}` : ''}. Resolve it before starting a new inpatient SHA visit.`;
+        setAdmissionConflict({
+          message,
+          admissionNumber: admission?.admission_number,
+          location: location || undefined,
+        });
+        setError(message);
+        onError?.(message);
+        return true;
+      } catch {
+        // Non-blocking if preflight check fails unexpectedly.
+        return false;
+      }
+    },
+    [onError, patientId]
+  );
 
   // Check SHA eligibility on mount
   const checkEligibility = useCallback(async () => {
@@ -208,7 +247,9 @@ export function SHAConsentStep({
         setEligibilityInfo({
           verifiedName: result.verified_name,
           coverageEndDate: result.coverage_end_date,
+          whitelistedForOtp: result.whitelisted_for_otp,
         });
+        setExistingWhitelistStatus(result.whitelisted_for_otp ? 'APPROVED' : null);
         setStep('ready');
       } else if (result.is_eligible) {
         // Eligible via direct DHA check but no local SHAMember record yet.
@@ -216,7 +257,9 @@ export function SHAConsentStep({
         setEligibilityInfo({
           verifiedName: result.verified_name,
           coverageEndDate: result.coverage_end_date,
+          whitelistedForOtp: result.whitelisted_for_otp,
         });
+        setExistingWhitelistStatus(result.whitelisted_for_otp ? 'APPROVED' : null);
         setStep('ready');
       } else {
         setStep('not_eligible');
@@ -236,29 +279,6 @@ export function SHAConsentStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId]);
 
-  // Check for existing whitelist requests once we have SHA member info
-  useEffect(() => {
-    if (step !== 'ready' || !shaMember) return;
-    if (!crId) return;
-    let cancelled = false;
-    setIsCheckingWhitelist(true);
-    shaApi
-      .listLocalOtpWhitelists({ status: 'requested' })
-      .then((result) => {
-        if (cancelled) return;
-        // Check if any pending whitelist matches this patient
-        const match = result.results?.find(
-          (r) => r.patient === patientId || r.beneficiary_cr_id === crId
-        );
-        if (match) {
-          setExistingWhitelistStatus(match.status?.toUpperCase() || 'REQUESTED');
-        }
-      })
-      .catch(() => { /* best effort */ })
-      .finally(() => { if (!cancelled) setIsCheckingWhitelist(false); });
-    return () => { cancelled = true; };
-  }, [step, shaMember, patientId, crId]);
-
   // Cleanup intervals on unmount
   useEffect(() => {
     isMountedRef.current = true;
@@ -273,6 +293,9 @@ export function SHAConsentStep({
     setError(null);
     setOtpServerMessage(null);
     setIsReusedConsent(false);
+
+    const hasAdmissionConflict = await checkActiveAdmissionConflict(deriveServiceType(selectedIntervention));
+    if (hasAdmissionConflict) return;
 
     // If we don't have an SHAMember yet, create one on-demand
     let memberId = shaMember?.id;
@@ -349,9 +372,16 @@ export function SHAConsentStep({
     );
   };
 
-  const handleValidateOTP = () => {
+  const handleValidateOTP = async () => {
     if (!consentId || !otpCode.trim()) return;
     setError(null);
+
+    const hasAdmissionConflict = await checkActiveAdmissionConflict(deriveServiceType(selectedIntervention));
+    if (hasAdmissionConflict) {
+      setStep('otp_sent');
+      return;
+    }
+
     setStep('validating');
 
     const interventionCode = selectedIntervention?.code || '';
@@ -417,6 +447,10 @@ export function SHAConsentStep({
 
   const handleBiometricStart = async () => {
     setError(null);
+
+    const hasAdmissionConflict = await checkActiveAdmissionConflict(deriveServiceType(selectedIntervention));
+    if (hasAdmissionConflict) return;
+
     setStep('biometric_pending');
     const memberId = shaMember?.id;
     if (!memberId) {
@@ -630,7 +664,10 @@ export function SHAConsentStep({
               ) : interventionOptions.length > 0 ? (
                 <select
                   value={selectedIntervention?.code || ''}
-                  onChange={(e) => setSelectedInterventionCode(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedInterventionCode(e.target.value);
+                    setAdmissionConflict(null);
+                  }}
                   className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
                 >
                   <option value="">Select intervention...</option>
@@ -671,11 +708,22 @@ export function SHAConsentStep({
 
           {error && <p className="text-xs text-destructive">{error}</p>}
 
+          {admissionConflict && (
+            <Alert variant="destructive">
+              <AlertTitle>Active admission conflict</AlertTitle>
+              <AlertDescription>{admissionConflict.message}</AlertDescription>
+            </Alert>
+          )}
+
           {/* Action buttons: always show both biometric and OTP options */}
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button
               onClick={handleSendOTP}
-              disabled={sendOTP.isPending || isCreatingMember || (!!crId && !selectedContactId)}
+              disabled={
+                sendOTP.isPending ||
+                isCreatingMember ||
+                (requiresContactSelectionForOtp && !selectedContactId)
+              }
               size="sm"
             >
               {(sendOTP.isPending || isCreatingMember) ? (
@@ -688,7 +736,6 @@ export function SHAConsentStep({
             <Button
               variant={isBiometricPrimary ? 'default' : 'outline'}
               onClick={handleBiometricStart}
-              disabled={!!crId && !selectedContactId}
               size="sm"
             >
               <Fingerprint className="mr-2 h-3.5 w-3.5" />
@@ -736,7 +783,7 @@ export function SHAConsentStep({
                   }
                   return;
                 }
-                handleValidateOTP();
+                void handleValidateOTP();
               }}
               disabled={step === 'validating' || (!isReusedConsent && otpCode.length < 4)}
               size="sm"
@@ -972,7 +1019,6 @@ export function SHAConsentStep({
                 handleBiometricStart();
               }}
               variant="outline"
-              disabled={!!crId && !selectedContactId}
               size="sm"
             >
               <Fingerprint className="mr-1.5 h-3.5 w-3.5" />
@@ -980,7 +1026,11 @@ export function SHAConsentStep({
             </Button>
             <Button
               onClick={handleSendOTP}
-              disabled={sendOTP.isPending || isCreatingMember || (!!crId && !selectedContactId)}
+              disabled={
+                sendOTP.isPending ||
+                isCreatingMember ||
+                (requiresContactSelectionForOtp && !selectedContactId)
+              }
               size="sm"
             >
               {(sendOTP.isPending || isCreatingMember) ? (

@@ -247,6 +247,7 @@ export interface EligibilityCheckResponse {
   billable_schemes?: string[];
   coverage_caveat?: string;
   coverage_blocked?: boolean;
+  whitelisted_for_otp?: boolean;
   // PFMS
   is_pfms_eligible?: boolean;
   pfms_category?: string | null;

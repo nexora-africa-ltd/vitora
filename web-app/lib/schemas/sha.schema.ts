@@ -259,6 +259,7 @@ export const EligibilityCheckResponseSchema = z.object({
   billable_schemes: z.array(z.string()).optional(),
   coverage_caveat: z.string().optional(),
   coverage_blocked: z.boolean().optional(),
+  whitelisted_for_otp: z.boolean().optional(),
   // PFMS
   is_pfms_eligible: z.boolean().optional(),
   pfms_category: z.string().nullable().optional(),
