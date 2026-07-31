@@ -29,7 +29,14 @@ function handleGlobalError(error: unknown): void {
         details: { transformError: [transformMessage] },
       };
     }
-    const payload = {
+    const payload: {
+      message: string;
+      status: number;
+      code: string;
+      method?: string;
+      url?: string;
+      details?: Record<string, string[]>;
+    } = {
       message: apiError.message || 'Unknown API error',
       status: Number.isFinite(apiError.status) ? apiError.status : -1,
       code: apiError.code || 'UNKNOWN_ERROR',
@@ -41,12 +48,25 @@ function handleGlobalError(error: unknown): void {
           : undefined,
     };
 
+    const compactPayload = Object.fromEntries(
+      Object.entries(payload).filter(([, value]) => value !== undefined && value !== null)
+    );
+
+    if (Object.keys(compactPayload).length === 0) {
+      console.warn('[Query Error] API: empty payload', {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+      });
+      return;
+    }
+
     // React Query often surfaces expected 4xx states during UI flows.
     // Keep those as warnings to avoid noisy Next.js dev overlays.
     if (payload.status >= 500) {
-      console.error('[Query Error] API:', payload);
+      console.error('[Query Error] API:', compactPayload);
     } else {
-      console.warn('[Query Error] API:', payload);
+      console.warn('[Query Error] API:', compactPayload);
     }
   } else if (error instanceof ZodError) {
     const context = (error as ZodError & { context?: string }).context;
