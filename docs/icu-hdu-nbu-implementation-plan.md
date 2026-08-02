@@ -183,22 +183,22 @@ Implement ICU, HDU, and NBU clinical workflows as first-class capabilities insid
 
 ## Backend
 
-- [ ] Add `HDU` and `NBU` to ward type choices.
-- [ ] Add facility flags `has_hdu`, `has_nbu`.
-- [ ] Add module-to-feature mapping for `hdu`, `nbu`.
-- [ ] Add migration scripts and backfill safeguards.
+- [x] Add `HDU` and `NBU` to ward type choices.
+- [x] Add facility flags `has_hdu`, `has_nbu`.
+- [x] Add module-to-feature mapping for `hdu`, `nbu`.
+- [x] Add migration scripts and backfill safeguards.
 - [x] Update serializers and validation logic.
-- [ ] Update API filters and response capability maps.
+- [x] Update API filters and response capability maps.
 - [x] Implement/extend transfer validation rules.
 - [x] Extend critical-care timeline event capture.
 
 ## Frontend
 
-- [ ] Add HDU/NBU toggles in facility settings.
-- [ ] Update facility detail/edit pages with new capabilities.
-- [ ] Add ICU/HDU/NBU labels and filters in admissions/wards UI.
+- [x] Add HDU/NBU toggles in facility settings.
+- [x] Update facility detail/edit pages with new capabilities.
+- [x] Add ICU/HDU/NBU labels and filters in admissions/wards UI.
 - [x] Add transfer UI support for new pathways.
-- [ ] Add capability-based visibility for critical-care controls.
+- [x] Add capability-based visibility for critical-care controls.
 
 ## Billing + Claims
 
@@ -210,7 +210,7 @@ Implement ICU, HDU, and NBU clinical workflows as first-class capabilities insid
 
 - [x] Unit tests for model/serializer changes.
 - [x] Integration tests for admission/transfer/discharge pathways.
-- [ ] E2E tests for toggle-to-workflow behavior.
+- [x] E2E tests for toggle-to-workflow behavior.
 - [x] Regression tests for existing ICU and inpatient flows.
 
 ## Operations

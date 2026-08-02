@@ -974,6 +974,7 @@ export interface AdmissionListParams {
   admission_status?: string;
   patient?: number;
   ward?: number;
+  ward_type?: InpatientWardType;
   payer_type?: string;
   ordering?: string;
   search?: string;

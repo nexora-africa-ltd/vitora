@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { inpatientApi } from '@/lib/api/inpatient';
+import { useFacility } from '@/lib/context/facility-context';
 import { useCriticalCareWorkflowHealth } from '@/lib/hooks/use-inpatient';
 import type { Admission, CriticalCareTransferMatrixRow, CriticalCareWardLoad } from '@/lib/types/inpatient';
 
@@ -22,6 +23,7 @@ function WardTypeBadge({ wardType }: { wardType: string }) {
 }
 
 export default function CriticalCareWorkflowPage() {
+  const { hasModule } = useFacility();
   const { data, isLoading } = useCriticalCareWorkflowHealth(30);
   const [selectedTransferRow, setSelectedTransferRow] = useState<CriticalCareTransferMatrixRow | null>(null);
   const [selectedWard, setSelectedWard] = useState<CriticalCareWardLoad | null>(null);
@@ -55,6 +57,7 @@ export default function CriticalCareWorkflowPage() {
 
   const transferDetails = transferDrilldown.data?.results ?? [];
   const wardAdmissions = wardAdmissionsDrilldown.data?.results ?? [];
+  const criticalCareEnabled = hasModule('icu') || hasModule('hdu') || hasModule('nbu');
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -63,7 +66,21 @@ export default function CriticalCareWorkflowPage() {
         helpContent="Phase 3 monitoring dashboard for ICU/HDU/NBU transfer safety, review backlogs, and current ward load."
       />
 
-      {isLoading ? (
+      {!criticalCareEnabled ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Critical care modules are disabled</CardTitle>
+            <CardDescription>
+              Enable ICU, HDU, or NBU in facility settings to access this dashboard.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link href="/settings?tab=facility">Open Facility Settings</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, index) => (
             <Skeleton key={index} className="h-28" />

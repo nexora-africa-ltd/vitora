@@ -26,19 +26,23 @@ import { EntityCard, EntityGrid } from '@/components/shared/entity-card';
 import { useAdmissionRecommendations, useAdmissions } from '@/lib/hooks/use-inpatient';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useFacility } from '@/lib/context/facility-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { formatDate } from '@/lib/utils/format';
-import type { Admission, AdmissionRecommendation, AdmissionRecommendationUrgency } from '@/lib/types/inpatient';
+import type { Admission, AdmissionRecommendation, AdmissionRecommendationUrgency, InpatientWardType } from '@/lib/types/inpatient';
 
 export default function AdmissionsPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { hasModule } = useFacility();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ACTIVE');
+  const [wardTypeFilter, setWardTypeFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [recommendationsViewMode, setRecommendationsViewMode] = useState<ViewMode>('list');
 
   const debouncedSearch = useDebounce(search, 300);
+  const wardTypeParam = wardTypeFilter !== 'all' ? wardTypeFilter as InpatientWardType : undefined;
 
   const {
     data: recommendations,
@@ -52,9 +56,12 @@ export default function AdmissionsPage() {
     error: admissionsError,
   } = useAdmissions({
     admission_status: statusFilter || undefined,
+    ward_type: wardTypeParam,
     ordering: '-admission_date',
     search: debouncedSearch || undefined,
   });
+
+  const hasCriticalCareModule = hasModule('icu') || hasModule('hdu') || hasModule('nbu');
 
   // Compute stats from loaded data
   const stats = useMemo(() => {
@@ -95,13 +102,15 @@ export default function AdmissionsPage() {
                   <span className="sm:hidden">Bulk</span>
                 </Link>
               </Button>
-              <Button variant="outline" asChild>
-                <Link href="/inpatient/critical-care">
-                  <Activity className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Critical Care Dashboard</span>
-                  <span className="sm:hidden">Critical Care</span>
-                </Link>
-              </Button>
+              {hasCriticalCareModule && (
+                <Button variant="outline" asChild>
+                  <Link href="/inpatient/critical-care">
+                    <Activity className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Critical Care Dashboard</span>
+                    <span className="sm:hidden">Critical Care</span>
+                  </Link>
+                </Button>
+              )}
               <PermissionGate action="inpatient.accept_interfacility_transfer">
                 <Button variant="outline" asChild>
                   <Link href="/admissions/inter-facility-transfers/destination-queue">
@@ -182,6 +191,22 @@ export default function AdmissionsPage() {
                 <SelectItem value="DISCHARGED">Discharged</SelectItem>
                 <SelectItem value="TRANSFERRED_OUT">Transferred</SelectItem>
                 <SelectItem value="DECEASED">Deceased</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={wardTypeFilter} onValueChange={setWardTypeFilter}>
+              <SelectTrigger className="w-[180px]" aria-label="Ward Type">
+                <SelectValue placeholder="Ward Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Ward Types</SelectItem>
+                <SelectItem value="MEDICAL">Medical</SelectItem>
+                <SelectItem value="SURGICAL">Surgical</SelectItem>
+                <SelectItem value="PEDIATRIC">Pediatric</SelectItem>
+                <SelectItem value="MATERNITY">Maternity</SelectItem>
+                <SelectItem value="HDU">HDU</SelectItem>
+                <SelectItem value="ICU">ICU</SelectItem>
+                <SelectItem value="NBU">NBU</SelectItem>
+                <SelectItem value="ISOLATION">Isolation</SelectItem>
               </SelectContent>
             </Select>
             <ViewToggle value={viewMode} onChange={setViewMode} />

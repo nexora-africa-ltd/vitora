@@ -512,6 +512,66 @@ class TestAdmissionAPI:
         for admission in response.data["results"]:
             assert admission["admission_status"] == "ACTIVE"
 
+    def test_filter_admissions_by_ward_type(
+        self,
+        authenticated_client,
+        sample_admission,
+        sample_patient_no_history,
+        sample_facility,
+        sample_organization,
+        test_user,
+    ):
+        """Should filter admissions by ward type via ?ward_type=."""
+        from decimal import Decimal
+
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.inpatient.models import Bed, Ward
+
+        icu_ward = Ward.objects.create(
+            name="ICU Filter Ward",
+            code="ICU-FLT-01",
+            ward_type="ICU",
+            capacity=4,
+            daily_rate=Decimal("2000.00"),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        icu_bed = Bed.objects.create(
+            ward=icu_ward,
+            bed_number="ICU-FLT-B1",
+            status="AVAILABLE",
+            status_changed_by=test_user,
+        )
+        ipd_encounter = Encounter.objects.create(
+            patient=sample_patient_no_history,
+            encounter_type="IPD",
+            encounter_date=timezone.now().date(),
+            chief_complaint="Escalation for ICU support",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        Admission.objects.create(
+            patient=sample_patient_no_history,
+            ipd_encounter=ipd_encounter,
+            admission_date=timezone.now(),
+            admitting_diagnosis="R57.9",
+            admitting_diagnosis_text="Shock, unspecified",
+            admitting_officer=test_user,
+            attending_doctor=test_user,
+            ward=icu_ward,
+            bed=icu_bed,
+            payer_type="CASH",
+            admission_status="ACTIVE",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get("/api/inpatient/admissions/?ward_type=ICU")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["count"] >= 1
+        assert all(item["ward_type"] == "ICU" for item in response.data["results"])
+
     def test_critical_care_workflow_health_returns_transfer_and_review_metrics(
         self,
         authenticated_client,

@@ -44,7 +44,7 @@ export default function WardsPage() {
   const { toast } = useToast();
   const { facility } = useFacility();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedWard, setSelectedWard] = useState<string>('all');
+  const [selectedWardType, setSelectedWardType] = useState<string>('all');
 
   const { data: wards, isLoading: wardsLoading } = useInpatientWards();
   const { data: admissions, isLoading: admissionsLoading } = useAdmissions({
@@ -58,15 +58,15 @@ export default function WardsPage() {
   }, [wards]);
 
   const filteredWards = useMemo(() => {
-    if (!searchQuery && selectedWard === 'all') return wardsList;
+    if (!searchQuery && selectedWardType === 'all') return wardsList;
 
     return wardsList.filter((ward: any) => {
       const matchesSearch = !searchQuery ||
         ward.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesFilter = selectedWard === 'all' || ward.id === Number(selectedWard);
+      const matchesFilter = selectedWardType === 'all' || ward.ward_type === selectedWardType;
       return matchesSearch && matchesFilter;
     });
-  }, [wardsList, searchQuery, selectedWard]);
+  }, [wardsList, searchQuery, selectedWardType]);
 
   const totalBeds = useMemo(() => {
     return wardsList.reduce((sum: number, ward: any) => sum + (ward.total_beds || 0), 0);
@@ -197,18 +197,21 @@ export default function WardsPage() {
             className="pl-9"
           />
         </div>
-        <Select value={selectedWard} onValueChange={setSelectedWard}>
+        <Select value={selectedWardType} onValueChange={setSelectedWardType}>
           <SelectTrigger className="w-full sm:w-[200px]">
             <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filter by ward" />
+            <SelectValue placeholder="Filter by ward type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Wards</SelectItem>
-            {wardsList.map((ward: any) => (
-              <SelectItem key={ward.id} value={String(ward.id)}>
-                {ward.name}
-              </SelectItem>
-            ))}
+            <SelectItem value="all">All Ward Types</SelectItem>
+            <SelectItem value="MEDICAL">Medical</SelectItem>
+            <SelectItem value="SURGICAL">Surgical</SelectItem>
+            <SelectItem value="PEDIATRIC">Pediatric</SelectItem>
+            <SelectItem value="MATERNITY">Maternity</SelectItem>
+            <SelectItem value="HDU">HDU</SelectItem>
+            <SelectItem value="ICU">ICU</SelectItem>
+            <SelectItem value="NBU">NBU</SelectItem>
+            <SelectItem value="ISOLATION">Isolation</SelectItem>
           </SelectContent>
         </Select>
       </div>

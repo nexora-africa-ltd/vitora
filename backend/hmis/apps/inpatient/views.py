@@ -1470,6 +1470,13 @@ class AdmissionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mode
         "ICU": 3,
     }
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        ward_type = str(self.request.query_params.get("ward_type", "") or "").strip()
+        if ward_type:
+            queryset = queryset.filter(ward__ward_type=ward_type)
+        return queryset
+
     def perform_create(self, serializer):
         """Create admission, enforce ward compatibility override rules, and log action.
 
