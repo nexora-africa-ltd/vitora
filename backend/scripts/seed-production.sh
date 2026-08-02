@@ -107,8 +107,14 @@ python manage.py seed_imaging_catalog
 echo "==> Seeding lab analyzer templates..."
 python manage.py seed_analyzer_templates
 
+echo "==> Seeding lab worksheet templates..."
+python manage.py seed_worksheet_templates
+
 echo "==> Seeding lab auto-verify defaults..."
 python manage.py seed_autoverify_defaults
+
+echo "==> Seeding ER bed catalog..."
+python manage.py seed_er_beds
 
 # ---------------------------------------------------------------------------
 # 6. PKI / Security Infrastructure
