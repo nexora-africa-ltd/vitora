@@ -17,12 +17,14 @@ import {
 import { useBloodRequests } from '@/lib/hooks/use-blood-bank';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useFacility } from '@/lib/context/facility-context';
 import { formatDate } from '@/lib/utils/format';
 import type { BloodRequestListItem } from '@/lib/types/blood-bank';
 import { REQUEST_STATUS_COLORS, URGENCY_COLORS, COMPONENT_LABELS } from '@/lib/types/blood-bank';
 
 export default function BloodRequestsPage() {
   const router = useRouter();
+  const { hasModule } = useFacility();
   const { refresh, isRefreshing } = usePageRefresh();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -115,13 +117,15 @@ export default function BloodRequestsPage() {
           title="Blood Requests"
           helpContent="View and manage blood product requests. Track from request through cross-matching to transfusion."
           actions={
-            <PermissionGate action="blood_bank.create_request">
-              <Button onClick={() => router.push('/blood-bank/requests/new')}>
-                <Plus className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">New Request</span>
-                <span className="sm:hidden">New</span>
-              </Button>
-            </PermissionGate>
+            hasModule('blood_bank') ? (
+              <PermissionGate action="blood_bank.create_request">
+                <Button onClick={() => router.push('/blood-bank/requests/new')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">New Request</span>
+                  <span className="sm:hidden">New</span>
+                </Button>
+              </PermissionGate>
+            ) : null
           }
         />
 

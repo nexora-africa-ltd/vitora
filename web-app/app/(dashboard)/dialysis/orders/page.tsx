@@ -17,12 +17,14 @@ import {
 import { useDialysisOrders } from '@/lib/hooks/use-dialysis';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useFacility } from '@/lib/context/facility-context';
 import { formatDate } from '@/lib/utils/format';
 import type { DialysisOrder } from '@/lib/types/dialysis';
 import { ORDER_STATUS_COLORS, DIALYSIS_TYPE_LABELS, FREQUENCY_LABELS } from '@/lib/types/dialysis';
 
 export default function DialysisOrdersPage() {
   const router = useRouter();
+  const { hasModule } = useFacility();
   const { refresh, isRefreshing } = usePageRefresh();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -93,13 +95,15 @@ export default function DialysisOrdersPage() {
           title="Dialysis Orders"
           helpContent="Standing dialysis prescriptions define treatment parameters (flow rates, duration, frequency) for ongoing patients."
           actions={
-            <PermissionGate action="dialysis.create_order">
-              <Button onClick={() => router.push('/dialysis/orders/new')}>
-                <Plus className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">New Order</span>
-                <span className="sm:hidden">New</span>
-              </Button>
-            </PermissionGate>
+            hasModule('dialysis') ? (
+              <PermissionGate action="dialysis.create_order">
+                <Button onClick={() => router.push('/dialysis/orders/new')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">New Order</span>
+                  <span className="sm:hidden">New</span>
+                </Button>
+              </PermissionGate>
+            ) : null
           }
         />
 
