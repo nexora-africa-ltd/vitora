@@ -62,16 +62,16 @@ The Kenya Emergency Triage Assessment (KETA) scale uses 5 priority levels:
 npm install
 
 # Run all triage feature tests
-npm run test:e2e -- --grep "@triage"
+npm run e2e -- --grep "@triage"
 
 # Run only smoke tests
-npm run test:e2e -- --grep "@smoke"
+npm run e2e -- --grep "@smoke"
 
 # Run specific feature file
-npm run test:e2e -- features/triage/triage-assessment.feature
+npm run e2e -- features/triage/triage-assessment.feature
 
 # Run scenarios with specific tag
-npm run test:e2e -- --grep "@keta"
+npm run e2e -- --grep "@keta"
 ```
 
 ### Using Jest with jest-cucumber
@@ -159,9 +159,9 @@ Feature: New Triage Feature
 
 ## Related Documentation
 
-- [Sprint 1.5-1.6 Track E Deliverables](/docs/sprint-1.5-1.6-track-e-triage-deliverables.md)
-- [TDD Guidelines](/docs/tdd-guidelines.md)
-- [Coding Standards](/docs/coding-standards.md)
+- [Sprint 1.5-1.6 Track E Deliverables](../../../docs/sprint-1.5-1.6-track-e-triage-deliverables.md)
+- [TDD Guidelines](../../../docs/tdd-guidelines.md)
+- [Coding Standards](../../../docs/coding-standards.md)
 
 ---
 

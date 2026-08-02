@@ -29,7 +29,7 @@ Vitora HMIS supports **two authentication methods** that serve different purpose
 │   ┌─────────────────────────────┐      ┌─────────────────────────┐  │
 │   │  • web-app (Next.js)        │      │  • Third-party EHRs     │  │
 │   │  • mobile-app (React Native)│      │  • Health apps          │  │
-│   │  • desktop-app (Electron)   │      │  • Research tools       │  │
+│   │  • desktop-app (Tauri)      │      │  • Research tools       │  │
 │   └──────────────┬──────────────┘      └──────────────┬──────────┘  │
 │                  │                                    │             │
 │                  ▼                                    ▼             │

@@ -4,8 +4,8 @@ Django REST API backend for Vitora Hospital Management Information System.
 
 ![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)
 ![Django](https://img.shields.io/badge/Django-5.x-green.svg)
-![Tests](https://img.shields.io/badge/tests-3624%20passing-brightgreen.svg)
-![Coverage](https://img.shields.io/badge/coverage-87%25-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-automated-brightgreen.svg)
+![Coverage](https://img.shields.io/badge/coverage-core%20modules%20%E2%89%A580%25-brightgreen.svg)
 
 ---
 
@@ -187,7 +187,7 @@ backend/
 │   │   ├── production.py       # DEBUG=False, PostgreSQL
 │   │   └── test.py             # Test configuration
 │   ├── urls.py                 # API routes
-│   └── apps/                   # 10 Django apps
+│   └── apps/                   # 39 Django apps
 │       ├── billing/            # Invoices, payments, SHA
 │       ├── clinical_templates/ # Clinical templates
 │       ├── clinics/            # 8 clinic types
@@ -198,7 +198,7 @@ backend/
 │       ├── patients/           # Patient registration
 │       ├── pharmacy/           # Drugs, dispensing
 │       └── triage/             # Emergency triage
-├── tests/                      # Test suite (3,624+ tests)
+├── tests/                      # Large pytest suite
 │   ├── conftest.py             # Pytest fixtures
 │   └── test_*.py               # Test files
 ├── data/                       # CSV imports, templates
@@ -215,6 +215,8 @@ backend/
 ---
 
 ## 📦 Django Apps
+
+The table below highlights core platform apps; additional apps are available under `hmis/apps/`.
 
 | App | Description | Key Models |
 |-----|-------------|------------|

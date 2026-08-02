@@ -84,19 +84,19 @@ Support for Kenya Essential Medicines List (KEML):
 npm install
 
 # Run all pharmacy feature tests
-npm run test:e2e -- --grep "@pharmacy"
+npm run e2e -- --grep "@pharmacy"
 
 # Run only smoke tests
-npm run test:e2e -- --grep "@pharmacy @smoke"
+npm run e2e -- --grep "@pharmacy @smoke"
 
 # Run specific feature file
-npm run test:e2e -- features/pharmacy/dispensing.feature
+npm run e2e -- features/pharmacy/dispensing.feature
 
 # Run scenarios with specific tag
-npm run test:e2e -- --grep "@fefo"
+npm run e2e -- --grep "@fefo"
 
 # Run controlled drug scenarios
-npm run test:e2e -- --grep "@controlled"
+npm run e2e -- --grep "@controlled"
 ```
 
 ### Using Jest with jest-cucumber

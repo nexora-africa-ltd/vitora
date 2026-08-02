@@ -76,7 +76,7 @@ The pin set currently matches the live Render certificate chain served by both `
 To validate a native build profile locally or in CI:
 
 ```bash
-cd /home/thande/dev/vitora/mobile
+cd mobile
 npx expo prebuild --platform android --no-install
 eas build --platform android --profile preview
 eas build --platform android --profile production
@@ -103,7 +103,7 @@ done
 
 ### Important config link
 
-EAS matches the Expo project using two values in [app.json](/home/thande/dev/vitora/mobile/app.json):
+EAS matches the Expo project using two values in [`app.json`](./app.json):
 
 - `expo.slug`
 - `expo.extra.eas.projectId`
@@ -116,7 +116,7 @@ Project config: Slug for project identified by "extra.eas.projectId" (...) does 
 
 ### When the slug changes
 
-If you rename the app slug, do not hand-edit only one side of the linkage. Keep the intended slug in [app.json](/home/thande/dev/vitora/mobile/app.json) and then relink the EAS project:
+If you rename the app slug, do not hand-edit only one side of the linkage. Keep the intended slug in [`app.json`](./app.json) and then relink the EAS project:
 
 ```bash
 npx eas project:init --force
@@ -134,7 +134,7 @@ For this repo, the intended mobile identity is:
 If `eas build` ever complains about `hmis-android` or another old slug, relink with:
 
 ```bash
-cd /home/thande/dev/vitora/mobile
+cd mobile
 npx eas project:init --force
 eas build --platform all
 ```

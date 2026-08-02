@@ -1,6 +1,6 @@
 # Vitora HMIS — Architecture Diagrams
 
-> **Last Updated**: July 2026
+> **Last Updated**: August 2026
 > **Purpose**: Visual reference for the full system architecture
 
 ---
@@ -517,7 +517,7 @@ graph LR
 graph TB
     subgraph NextJS["Next.js 16 App Router"]
         LAYOUT["Root Layout<br/>(Providers, Auth Guard)"]
-        DASH["(dashboard) Group<br/>(38 Route Groups)"]
+        DASH["(dashboard) Group<br/>(40+ Route Groups)"]
         LOGIN_PAGE["Login Page"]
         ONBOARD["Onboarding Flow"]
     end
@@ -532,7 +532,7 @@ graph TB
 
     subgraph DataLayer["Data Layer"]
         API_CLIENT["API Client<br/>(Axios + Interceptors)"]
-        ZOD["Zod Schemas<br/>(62 files, runtime validation)"]
+        ZOD["Zod Schemas<br/>(66 files, runtime validation)"]
         HOOKS["Custom Hooks<br/>(usePowerSyncQuery,<br/>usePermissions, etc.)"]
         POWERSYNC_SDK["PowerSync SDK<br/>(Offline reads)"]
     end

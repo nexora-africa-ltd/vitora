@@ -5,7 +5,7 @@ Next.js web frontend for Vitora Hospital Management Information System.
 ![Next.js](https://img.shields.io/badge/Next.js-16.x-black.svg)
 ![React](https://img.shields.io/badge/React-19.x-61dafb.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)
-![Tests](https://img.shields.io/badge/tests-142%20files-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-automated-brightgreen.svg)
 
 ---
 
@@ -24,7 +24,7 @@ Next.js web frontend for Vitora Hospital Management Information System.
 
 ## ✨ Features
 
-### Modules (21 Route Groups)
+### Modules (40+ Dashboard Route Groups)
 | Module | Status | Description |
 |--------|--------|-------------|
 | **Dashboard** | ✅ | Overview stats, activity feed |
@@ -42,8 +42,8 @@ Next.js web frontend for Vitora Hospital Management Information System.
 | **Finance** | ✅ | Financial management |
 | **Insurance** | ✅ | Insurance/SHA management |
 | **Notifications** | ✅ | Alert center |
-| **Imaging** | 📋 | Planned (Phase 2) |
-| **Theatre** | 📋 | Planned (Phase 2) |
+| **Imaging** | ✅ | DICOM/PACS and imaging workflows |
+| **Theatre** | ✅ | Theatre scheduling and case workflows |
 
 ### Technical Features
 - **App Router**: Next.js 16 with React 19
@@ -91,7 +91,7 @@ Open [http://localhost:3009](http://localhost:3009)
 \`\`\`
 web-app/
 ├── app/                        # Next.js App Router
-│   ├── (dashboard)/            # Protected routes (21 modules)
+│   ├── (dashboard)/            # Protected routes (40+ modules)
 │   │   ├── layout.tsx          # Dashboard layout with sidebar
 │   │   ├── page.tsx            # Main dashboard
 │   │   ├── patients/           # Patient management
@@ -116,7 +116,7 @@ web-app/
 │   └── shared/                 # LoadingSpinner, EmptyState, PageHeader
 │
 ├── lib/
-│   ├── api/                    # 18 API client modules
+│   ├── api/                    # 70+ API client modules
 │   │   ├── billing.ts
 │   │   ├── clinics.ts
 │   │   ├── encounters.ts
@@ -131,7 +131,7 @@ web-app/
 │   ├── hooks/                  # Custom React hooks
 │   └── utils/                  # Utilities
 │
-├── features/                   # BDD feature files (~750 scenarios)
+├── features/                   # BDD feature files
 │   ├── patients/
 │   ├── pharmacy/
 │   ├── triage/
@@ -187,8 +187,8 @@ npm run test:coverage       # With coverage report
 
 ### E2E Tests (Playwright)
 \`\`\`bash
-npm run test:e2e            # Run E2E tests
-npm run test:e2e:ui         # With UI mode
+npm run e2e                 # Run E2E tests
+npm run e2e:ui              # With UI mode
 \`\`\`
 
 ### BDD Tests (Cucumber)

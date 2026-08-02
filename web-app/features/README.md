@@ -30,7 +30,7 @@ features/
 | **Patients** | 5 | ~280 | Registration, search, OPD, IPD, queue management |
 | **Pharmacy** | 6 | ~290 | Drug catalog, stock, prescriptions, dispensing, alerts |
 | **Triage** | 6 | ~180 | Assessment, categories, alerts, queue, thresholds |
-| **Total** | 17 | **~750** | |
+| **Total** | 18 | **~750** | |
 
 ## Tags Reference
 

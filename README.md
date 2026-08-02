@@ -5,7 +5,7 @@
 
 # Kenya HMIS (Hospital Management Information System)
 _Comprehensive Technical Blueprint & Implementation Guide (Kenya-Tailored)_
-_Last Updated: May 14, 2026_
+_Last Updated: August 2, 2026_
 
 ---
 
@@ -17,7 +17,7 @@ _Last Updated: May 14, 2026_
 4. [Local Development Setup](#4-local-development-setup)
 5. [Backend (Django + DRF) Implementation](#5-backend-django--drf-implementation)
 6. [Frontend (Next.js) Implementation](#6-frontend-nextjs-implementation)
-7. [Desktop App (Electron) Implementation](#7-desktop-app-electron-implementation)
+7. [Desktop App (Tauri) Implementation](#7-desktop-app-tauri-implementation)
 8. [Mobile App (React Native) Implementation](#8-mobile-app-react-native-implementation)
 9. [Database Schema (Core Modules)](#9-database-schema-core-modules)
 10. [Security & Privacy (Kenya Data Protection Act)](#10-security--privacy-kenya-data-protection-act)
@@ -43,14 +43,14 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 **Core Vision**:
 - **Offline-First Standalone Desktop Application**: Runs fully on local machines or hospital servers without internet, supporting essential workflows (patient records, appointments, billing, reporting). Uses lightweight embedded databases like SQLite for single-site setups or PostgreSQL for multi-department loads. Ensures continuity during outages, ideal for Kenya's infrastructure challenges.
 - **Optional Cloud Integration**: Enables sync with a cloud backend for multi-location access, centralized analytics, secure off-site backups, and real-time collaboration. Background synchronization handles conflicts gracefully, allowing hospitals to start standalone and scale gradually.
-- **Flexible Architecture**: Desktop GUI via Electron (wrapping frontend for quick deployment); backend via Python Django (primary). Mobile app option for out-of-office tasks like rural outreach.
+- **Flexible Architecture**: Desktop GUI via Tauri v2 (wrapping the web app with a native shell + sidecar); backend via Python Django (primary). Mobile app option for out-of-office tasks like rural outreach.
 - **Kenya-First with Global Standards**: FHIR R4-compliant interoperability, KHIS (DHIS2) aggregate reporting, Social Health Authority (SHA) claims integration, and strong auditability/privacy under the Kenya Data Protection Act (2019).
 - **Why This Approach**: Hospitals can adopt affordably (standalone first, no cloud costs initially), ensuring uninterrupted care while enabling growth. Forward-looking for AI (e.g., sepsis predictions) and analytics, aligned with Kenya's health goals and global standards like WHO digital health guidelines.
 
 ### 1.2 Target Stack
 | Layer | Technology | Status |
 |-------|------------|--------|
-| Desktop GUI | Electron (Node.js) with embedded Django backend | ✅ Complete |
+| Desktop GUI | Tauri v2 + Next.js standalone sidecar | ✅ Complete |
 | Web Frontend | Next.js 16+, React 19, TypeScript, TailwindCSS, shadcn/ui | ✅ Complete |
 | Mobile | React Native 0.81 (Expo 54), WatermelonDB, Offline sync | ✅ Complete |
 | Backend | Python 3.12, Django 5.x, Django REST Framework, Celery | ✅ Complete |
@@ -86,7 +86,7 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 ### 2.1 Implementation Progress
 
 #### ✅ Phase 0 Complete (Foundation)
-- Offline-first desktop application with Electron
+- Offline-first desktop application with Tauri
 - JWT authentication with refresh tokens
 - Patient registration with auto-MRN generation (MRN-YYYYMMDD-XXXX)
 - Encounter management with vitals capture
@@ -132,12 +132,12 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 | Component | Tests | Coverage |
 |-----------|-------|----------|
 | Backend (Django) | 10,241+ functions (494 files) | Core modules 80%+ |
-| Web App (Jest + Playwright) | 679 test files (27 E2E) | Unit + E2E |
+| Web App (Jest + Playwright + Cucumber) | Automated test suites across unit, BDD, and E2E | Unit + E2E |
 | Desktop (Jest) | 66+ | 70%+ |
-| Mobile (Jest) | 348 test files | - |
+| Mobile (Jest) | Automated test suites for APIs, components, and flows | - |
 | **Total** | **7,500+** | **Core modules 80%+** |
 
-> *Overall backend coverage reflects rapid codebase expansion across 38 apps. Core modules (patients, encounters, billing, triage, pharmacy, laboratory) retain higher coverage. Improving coverage for newer modules is an ongoing priority.
+> *Overall backend coverage reflects rapid codebase expansion across many apps. Core modules (patients, encounters, billing, triage, pharmacy, laboratory) retain higher coverage. Improving coverage for newer modules is an ongoing priority.
 
 ### 2.3 Key Metrics Achieved
 - ✅ 10,241+ backend test functions across 494 test files
@@ -146,10 +146,10 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 - ✅ All 15 SHA/DHA APIs integrated
 - ✅ Offline-first architecture validated
 - ✅ Full RBAC with department-scoped permissions
-- ✅ 38 route groups in web dashboard (404 pages)
-- ✅ 49 API client modules with Zod validation
-- ✅ 62 Zod schema files for runtime response validation
-- ✅ 38 Django backend apps with 458 migrations
+- ✅ 40+ dashboard route groups in the web app
+- ✅ 70+ API client modules with schema validation
+- ✅ Dozens of Zod schema files for runtime response validation
+- ✅ 39 Django backend apps with extensive migration history
 - ✅ 4 CI/CD workflows (CI, CodeQL, FHIR, Security)
 - ✅ AI/TibaBot integration with 20+ clinical AI endpoints
 - ✅ MFA, PKI, emergency access, tamper-resistant audit
@@ -179,7 +179,7 @@ vitora/
 │   │   │   └── test.py             # Test configuration
 │   │   ├── urls.py                 # API routes
 │   │   ├── celery.py               # Celery configuration
-│   │   └── apps/                   # 27 Django apps
+│   │   └── apps/                   # 39 Django apps
 │   │       ├── core/               # AuditLog, Sync, Locations, RBAC, Permissions
 │   │       ├── patients/           # Patient, EmergencyContact
 │   │       ├── encounters/         # Encounter, Diagnosis, TreatmentPlan
@@ -210,21 +210,17 @@ vitora/
 │   ├── tests/                      # Pytest test suites (285 files, 6,465+ tests)
 │   └── data/                       # CSV imports, clinical templates
 │
-├── desktop-app/                    # Electron desktop application
+├── desktop-app/                    # Tauri v2 desktop application
 │   ├── package.json
-│   ├── jest.config.js
-│   ├── playwright.config.js
-│   ├── src/
-│   │   ├── main/               # Electron main process
-│   │   ├── preload/            # Context bridge
-│   │   └── renderer/           # UI layer
-│   └── tests/
+│   ├── scripts/                    # Node sidecar + standalone bundling helpers
+│   ├── src-tauri/                  # Rust shell, capabilities, plugins
+│   └── README.md
 │
 ├── web-app/                        # Next.js 16 web frontend (React 19)
 │   ├── package.json
 │   ├── next.config.js
 │   ├── tailwind.config.js
-│   ├── app/                        # 38 route groups
+│   ├── app/                        # 40+ route groups
 │   │   ├── (dashboard)/            # Protected routes
 │   │   │   ├── patients/
 │   │   │   ├── encounters/
@@ -334,7 +330,7 @@ npm run dev
 
 # Run tests
 npm test                    # Jest unit tests
-npm run test:e2e            # Playwright E2E tests
+npm run e2e                 # Playwright E2E tests
 npm run test:coverage       # Coverage report
 
 # Build for distribution
@@ -389,7 +385,7 @@ SHA_CLIENT_SECRET=your-client-secret
 - [ ] Backend: \`python manage.py runserver\` starts on port 9088
 - [ ] Tests: \`make test\` passes with ≥80% coverage
 - [ ] Quality: \`make quality\` passes (ruff, mypy, bandit)
-- [ ] Desktop: \`npm run dev\` opens Electron window
+- [ ] Desktop: \`npm run dev\` opens the Tauri window
 - [ ] Login: Can authenticate with test user
 - [ ] Offline: App works without network connection
 
@@ -960,7 +956,7 @@ All API clients include Zod validation schemas:
 \`\`\`
 web-app/
 ├── app/
-│   ├── (dashboard)/           # Protected routes with auth (38 route groups)
+│   ├── (dashboard)/           # Protected routes with auth (40+ route groups)
 │   │   ├── layout.tsx         # Sidebar + Header layout
 │   │   ├── page.tsx           # Dashboard with stats
 │   │   ├── patients/          # Patient management
@@ -988,8 +984,8 @@ web-app/
 │   ├── ui/                    # shadcn/ui components
 │   └── shared/                # LoadingSpinner, EmptyState, PageHeader
 └── lib/
-    ├── api/                   # 69 API client modules with interceptors
-    ├── schemas/               # 62 Zod validation schemas
+    ├── api/                   # 70+ API client modules with interceptors
+    ├── schemas/               # 60+ Zod validation schemas
     ├── types/                 # 37 TypeScript type definitions
     ├── auth/                  # AuthProvider, AuthGuard, useAuth
     └── hooks/                 # Custom hooks
@@ -1015,53 +1011,35 @@ web-app/
 
 ---
 
-## 7. Desktop App (Electron) Implementation
+## 7. Desktop App (Tauri) Implementation
 
 ### 7.1 Architecture
-The desktop app embeds the Django backend and provides offline-first functionality:
+The desktop app uses a Tauri v2 shell with a bundled Node.js sidecar that serves the Next.js standalone build.
 
 \`\`\`
 desktop-app/
-├── src/
-│   ├── main/
-│   │   └── index.js           # Main process
-│   │       - Spawns Django backend on startup
-│   │       - Manages window lifecycle
-│   │       - IPC handlers for token management
-│   │       - Auto-update mechanism
-│   ├── preload/
-│   │   └── preload.js         # Context bridge
-│   │       - Exposes safe APIs to renderer
-│   │       - electronAPI.login(), logout(), getToken()
-│   │       - electronAPI.showNotification()
-│   └── renderer/
-│       ├── index.html         # Main HTML
-│       ├── app.js             # UI logic
-│       │   - Login form
-│       │   - Patient registration
-│       │   - Encounter management
-│       │   - Offline queue display
-│       └── styles.css         # Styling with dark mode
+├── scripts/
+│   ├── download-node.js       # Downloads Node.js binary for target platform
+│   └── bundle-standalone.js   # Bundles web-app standalone output
+├── src-tauri/
+│   ├── src/lib.rs             # Sidecar startup, tray, updater, native plugins
+│   ├── capabilities/          # Desktop permissions
+│   └── tauri.conf.json        # Tauri configuration
+└── package.json               # Build/dev scripts
 \`\`\`
 
 ### 7.2 Features
-- **Backend Integration**: Spawns Django on port 9088
-- **Token Management**: Encrypted electron-store for JWT tokens
-- **Auto-refresh**: Tokens refreshed 5 min before expiry
-- **Offline Queue**: Visual indicator of pending sync items
-- **Dark Mode**: System preference with manual toggle
-- **System Tray**: Background sync status indicator
-- **Auto-update**: Electron auto-updater for releases
+- **Native shell**: Tauri window + system tray integration
+- **Sidecar runtime**: Bundled Node.js process serves Next.js standalone app
+- **Desktop capabilities**: Native notifications, file export, printing, deep links
+- **Updater**: Signed update checks via Tauri updater
+- **Config-first boot**: First-run API URL setup for facility deployments
 
-### 7.3 IPC Handlers
-\`\`\`javascript
-// Main process handlers
-ipcMain.handle('auth:login', async (event, credentials) => { ... });
-ipcMain.handle('auth:logout', async () => { ... });
-ipcMain.handle('auth:getToken', async () => { ... });
-ipcMain.handle('sync:getStatus', async () => { ... });
-ipcMain.handle('sync:forceSync', async () => { ... });
-\`\`\`
+### 7.3 Source of Truth
+For current desktop build, release, and runtime details see:
+- `desktop-app/README.md`
+- `desktop-app/src-tauri/tauri.conf.json`
+- `desktop-app/package.json`
 
 ---
 
@@ -1313,7 +1291,7 @@ Vitora uses a **hybrid approach**: PowerSync for offline-first data sync + WebSo
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  ┌──────────────────────────────────────────────────────────┐   │
-│  │                    Frontend (Electron/Web/Mobile)         │   │
+│  │                    Frontend (Tauri/Web/Mobile)            │   │
 │  │                                                           │   │
 │  │  ┌─────────────────┐       ┌─────────────────┐           │   │
 │  │  │  PowerSync      │       │  WebSocket      │           │   │
@@ -1535,7 +1513,7 @@ python manage.py runserver
 cd desktop-app
 npm run dev            # Development
 npm test               # Unit tests
-npm run test:e2e       # E2E tests
+npm run e2e            # E2E tests
 npm run build:linux    # Build for Linux
 
 # Web

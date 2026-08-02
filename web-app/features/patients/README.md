@@ -188,19 +188,19 @@ Within each priority level, patients are ordered by wait time (longest first).
 
 ```bash
 # Run all patient feature tests
-npm run test:e2e -- --grep "@patients"
+npm run e2e -- --grep "@patients"
 
 # Run only smoke tests
-npm run test:e2e -- --grep "@patients @smoke"
+npm run e2e -- --grep "@patients @smoke"
 
 # Run specific feature
-npm run test:e2e -- features/patients/outpatient-opd.feature
+npm run e2e -- features/patients/outpatient-opd.feature
 
 # Run inpatient scenarios
-npm run test:e2e -- --grep "@ipd"
+npm run e2e -- --grep "@ipd"
 
 # Run queue management tests
-npm run test:e2e -- --grep "@queue"
+npm run e2e -- --grep "@queue"
 ```
 
 ## Mapping to Components

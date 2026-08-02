@@ -17,7 +17,7 @@ This module provides functionality for:
 
 ## Clinical Templates in the Clinic Flow
 
-Clinical templates (from [backend/data/clinical_templates](backend/data/clinical_templates)) are used to pre-fill an encounter's structure when a clinician starts a consultation.
+Clinical templates (from [backend/data/clinical_templates](../../../data/clinical_templates)) are used to pre-fill an encounter's structure when a clinician starts a consultation.
 
 ### Where It Happens
 
