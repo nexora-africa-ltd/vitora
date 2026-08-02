@@ -908,6 +908,91 @@ class TestClaimCreation:
         assert response.data["claim_type"] == "inpatient"
         assert response.data["admission_date"] == date.today().isoformat()
 
+    def test_create_claim_from_minimal_payload_emergency_defaults_to_eccif(
+        self, sha_client, sample_sha_member, sample_encounter
+    ):
+        """EMERGENCY minimal payload should infer emergency type and ECCIF routing."""
+        from hmis.apps.billing.models import Invoice
+        from hmis.apps.encounters.models import Encounter
+
+        emergency_encounter = Encounter.objects.create(
+            patient=sample_sha_member.patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Road traffic accident",
+            organization=sample_encounter.organization,
+            facility=sample_encounter.facility,
+            encounter_date=date.today(),
+        )
+        self._clear_existing_claims_for_encounter(emergency_encounter.id)
+
+        invoice = Invoice.objects.create(
+            patient=sample_sha_member.patient,
+            encounter=emergency_encounter,
+            invoice_date=date.today(),
+            due_date=date.today(),
+            status=Invoice.Status.DRAFT,
+            payment_type=Invoice.PaymentType.CASH,
+            created_by=sample_sha_member.created_by,
+            facility=emergency_encounter.facility,
+            organization=emergency_encounter.organization,
+        )
+
+        response = sha_client.post(
+            "/api/billing/claims/",
+            {
+                "encounter_id": emergency_encounter.id,
+                "invoice_id": invoice.id,
+            },
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["claim_type"] == "emergency"
+        assert response.data["claim_flow"] == "eccif"
+        assert response.data["is_emergency_claim"] is True
+
+    def test_create_claim_manual_claim_type_override_is_honored(
+        self, sha_client, sample_sha_member, sample_encounter
+    ):
+        """Manual claim_type in minimal payload should override encounter default."""
+        from hmis.apps.billing.models import Invoice
+        from hmis.apps.encounters.models import Encounter
+
+        emergency_encounter = Encounter.objects.create(
+            patient=sample_sha_member.patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Severe asthma exacerbation",
+            organization=sample_encounter.organization,
+            facility=sample_encounter.facility,
+            encounter_date=date.today(),
+        )
+        self._clear_existing_claims_for_encounter(emergency_encounter.id)
+
+        invoice = Invoice.objects.create(
+            patient=sample_sha_member.patient,
+            encounter=emergency_encounter,
+            invoice_date=date.today(),
+            due_date=date.today(),
+            status=Invoice.Status.DRAFT,
+            payment_type=Invoice.PaymentType.CASH,
+            created_by=sample_sha_member.created_by,
+            facility=emergency_encounter.facility,
+            organization=emergency_encounter.organization,
+        )
+
+        response = sha_client.post(
+            "/api/billing/claims/",
+            {
+                "encounter_id": emergency_encounter.id,
+                "invoice_id": invoice.id,
+                "claim_type": "outpatient",
+            },
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["claim_type"] == "outpatient"
+        assert response.data["claim_flow"] == "eccif"
+        assert response.data["is_emergency_claim"] is True
+
     def test_create_claim_from_encounter(self, sha_client, sample_sha_member, sample_encounter):
         """Should create claim from encounter."""
         self._clear_existing_claims_for_encounter(sample_encounter.id)

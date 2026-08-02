@@ -55,6 +55,7 @@ from hmis.apps.billing.models import (
 )
 from hmis.apps.billing.renderers import CSVRenderer, XLSXRenderer
 from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
+from hmis.apps.billing.services.sha_flow_router import determine_flow
 from hmis.apps.billing.sha_serializers import (
     SHAClaimAppealSerializer,
     SHAClaimAttachmentSerializer,
@@ -803,6 +804,9 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         invoice_raw = payload.get("invoice") or payload.get("invoice_id")
 
         encounter_obj = None
+        selected_sha_member = None
+        resolved_claim_flow = None
+        resolved_is_emergency_claim = None
         if encounter_raw not in (None, ""):
             try:
                 encounter_id = int(encounter_raw)
@@ -823,12 +827,31 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
             encounter_type = str(getattr(encounter_obj, "encounter_type", "") or "").strip().upper()
             is_ipd_encounter = encounter_type == "IPD"
+            is_emergency_encounter = encounter_type == "EMERGENCY"
 
-            payload.setdefault(
-                "claim_type",
-                SHAClaim.ClaimType.INPATIENT if is_ipd_encounter else SHAClaim.ClaimType.OUTPATIENT,
-            )
+            auto_claim_type = SHAClaim.ClaimType.OUTPATIENT
             if is_ipd_encounter:
+                auto_claim_type = SHAClaim.ClaimType.INPATIENT
+            elif is_emergency_encounter:
+                auto_claim_type = SHAClaim.ClaimType.EMERGENCY
+
+            raw_claim_type = payload.get("claim_type")
+            if raw_claim_type not in (None, ""):
+                normalized_claim_type = str(raw_claim_type).strip().lower()
+                allowed_claim_types = {choice for choice, _ in SHAClaim.ClaimType.choices}
+                if normalized_claim_type not in allowed_claim_types:
+                    allowed_values = ", ".join(sorted(allowed_claim_types))
+                    return Response(
+                        {"claim_type": [f"Invalid claim_type. Allowed values: {allowed_values}."]},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                payload["claim_type"] = normalized_claim_type
+            else:
+                payload["claim_type"] = auto_claim_type
+
+            resolved_claim_type = str(payload.get("claim_type") or "").strip().lower()
+
+            if resolved_claim_type == SHAClaim.ClaimType.INPATIENT:
                 payload.setdefault("admission_date", str(encounter_obj.encounter_date))
 
             payload.setdefault("primary_diagnosis_code", "PENDING")
@@ -845,6 +868,9 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 )
                 if sha_member is not None:
                     payload["sha_member"] = sha_member.id
+                    selected_sha_member = sha_member
+            elif payload.get("sha_member"):
+                selected_sha_member = SHAMember.objects.filter(pk=payload.get("sha_member")).first()
 
             facility = encounter_obj.facility or getattr(request, "facility", None)
             if facility is not None:
@@ -858,6 +884,27 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                     level_raw = f"L{level_raw}"
                 if level_raw:
                     payload.setdefault("facility_level", level_raw)
+
+            # Resolve claim flow for this create path so emergency encounters are
+            # consistently marked as ECCIF claims even when created from minimal
+            # dialog payloads.
+            eligibility_data = (
+                getattr(selected_sha_member, "eligibility_response", None)
+                if selected_sha_member is not None
+                else None
+            )
+            if facility is not None:
+                resolved_claim_flow = determine_flow(
+                    encounter_obj,
+                    facility,
+                    eligibility_data=eligibility_data,
+                )
+            else:
+                resolved_claim_flow = SHAClaim.ClaimFlow.PHC
+
+            if resolved_claim_type == SHAClaim.ClaimType.EMERGENCY:
+                resolved_claim_flow = SHAClaim.ClaimFlow.ECCIF
+            resolved_is_emergency_claim = resolved_claim_flow == SHAClaim.ClaimFlow.ECCIF
 
             parent_claim_raw = payload.get("parent_claim")
             is_root_claim = parent_claim_raw in (None, "")
@@ -908,9 +955,24 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         serializer = self.get_serializer(data=payload)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        claim = serializer.save()
+
+        update_fields = []
+        if resolved_claim_flow and claim.claim_flow != resolved_claim_flow:
+            claim.claim_flow = resolved_claim_flow
+            update_fields.append("claim_flow")
+        if (
+            resolved_is_emergency_claim is not None
+            and claim.is_emergency_claim != resolved_is_emergency_claim
+        ):
+            claim.is_emergency_claim = resolved_is_emergency_claim
+            update_fields.append("is_emergency_claim")
+        if update_fields:
+            claim.save(update_fields=[*update_fields, "updated_at"])
+
+        response_data = self.get_serializer(claim).data
+        headers = self.get_success_headers(response_data)
+        return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
 
     @action(detail=True, methods=["post"], url_path="validate")
     def validate_claim(self, request, pk=None):

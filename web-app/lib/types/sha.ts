@@ -704,6 +704,8 @@ export type ClaimStatus =
   | 'written_off'
   | 'cancelled';
 
+export type SHAClaimType = 'outpatient' | 'inpatient' | 'emergency';
+
 /**
  * SHA Claim interface - matches backend SHAClaimSerializer.
  *
@@ -915,6 +917,7 @@ export interface ClaimItem {
 export interface ClaimCreateRequest {
   invoice_id?: number;
   encounter_id: number;
+  claim_type?: SHAClaimType;
 }
 
 export interface ClaimCreateResponse {

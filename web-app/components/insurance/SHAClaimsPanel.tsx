@@ -67,7 +67,7 @@ import { useSHAClaimSocket } from '@/lib/hooks/use-websocket';
 import { usePatientSearch } from '@/lib/hooks/use-checkin';
 import { usePatientEncounters } from '@/lib/hooks/use-patients';
 import { useInvoices } from '@/lib/hooks/billing';
-import type { Claim, ClaimStatus } from '@/lib/types/sha';
+import type { Claim, ClaimStatus, SHAClaimType } from '@/lib/types/sha';
 import { formatCurrency } from '@/lib/utils/format';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
@@ -77,6 +77,13 @@ const EMPTY_CLAIMS: Claim[] = [];
 
 function claimAmountValue(claim: Claim): number {
   return parseFloat(claim.claimed_amount ?? claim.total_amount ?? '0');
+}
+
+function inferClaimType(encounterType: string | null | undefined): SHAClaimType {
+  const normalized = String(encounterType || '').trim().toUpperCase();
+  if (normalized === 'IPD') return 'inpatient';
+  if (normalized === 'EMERGENCY') return 'emergency';
+  return 'outpatient';
 }
 
 interface SHAClaimsPanelProps {
@@ -156,6 +163,8 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
     sublabel?: string;
   } | null>(null);
   const [selectedEncounterId, setSelectedEncounterId] = useState('');
+  const [selectedClaimType, setSelectedClaimType] = useState<SHAClaimType>('outpatient');
+  const [claimTypeOverridden, setClaimTypeOverridden] = useState(false);
   const [existingClaimHint, setExistingClaimHint] = useState<{ id: number; claimNumber?: string } | null>(null);
   const debouncedSearch = useDebounce(searchQuery, 300);
   const debouncedPatientSearch = useDebounce(patientSearchQuery, 300);
@@ -371,6 +380,11 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
 
   const selectedEncounterClaim =
     selectedEncounterIdNumber != null ? encounterToClaim.get(selectedEncounterIdNumber) : undefined;
+  const selectedEncounter =
+    selectedEncounterIdNumber != null
+      ? (encountersData ?? []).find((encounter) => encounter.id === selectedEncounterIdNumber)
+      : undefined;
+  const autoClaimType = inferClaimType(selectedEncounter?.encounter_type);
   const selectedInvoice =
     selectedEncounterIdNumber != null ? invoicesByEncounter.get(selectedEncounterIdNumber) : undefined;
   const canCreateClaim =
@@ -408,6 +422,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
       const created = await createClaim.mutateAsync({
         encounter_id: selectedEncounterIdNumber,
         invoice_id: selectedInvoice.id,
+        claim_type: selectedClaimType,
       });
       toast.success('SHA claim created.');
       setShowCreateDialog(false);
@@ -416,6 +431,8 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
       setSelectedPatientId('');
       setSelectedPatientSnapshot(null);
       setSelectedEncounterId('');
+      setSelectedClaimType('outpatient');
+      setClaimTypeOverridden(false);
       setExistingClaimHint(null);
       router.push(`${basePath}/${created.id}`);
     } catch (error) {
@@ -452,6 +469,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
     selectedEncounterClaim,
     selectedEncounterIdNumber,
     selectedInvoice,
+    selectedClaimType,
     selectedPatientIdNumber,
   ]);
 
@@ -474,6 +492,8 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                   setSelectedPatientId('');
                   setSelectedPatientSnapshot(null);
                   setSelectedEncounterId('');
+                  setSelectedClaimType('outpatient');
+                  setClaimTypeOverridden(false);
                   setExistingClaimHint(null);
                 }
               }}
@@ -531,14 +551,16 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                                   <CommandItem
                                     key={option.value}
                                     value={option.value}
-                                     onSelect={() => {
-                                       setSelectedPatientId(option.value);
-                                       setSelectedPatientSnapshot(option);
-                                       setSelectedEncounterId('');
-                                       setExistingClaimHint(null);
-                                       setPatientPickerOpen(false);
-                                       setPatientSearchQuery('');
-                                     }}
+                                    onSelect={() => {
+                                      setSelectedPatientId(option.value);
+                                      setSelectedPatientSnapshot(option);
+                                      setSelectedEncounterId('');
+                                      setSelectedClaimType('outpatient');
+                                      setClaimTypeOverridden(false);
+                                      setExistingClaimHint(null);
+                                      setPatientPickerOpen(false);
+                                      setPatientSearchQuery('');
+                                    }}
                                   >
                                     <Check
                                       className={cn(
@@ -582,6 +604,10 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                       value={selectedEncounterId}
                       onValueChange={(value) => {
                         setSelectedEncounterId(value);
+                        const encounter = (encountersData ?? []).find((entry) => String(entry.id) === value);
+                        if (!claimTypeOverridden) {
+                          setSelectedClaimType(inferClaimType(encounter?.encounter_type));
+                        }
                         setExistingClaimHint(null);
                       }}
                       placeholder="Select encounter"
@@ -621,6 +647,29 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                         </Button>
                       </div>
                     )}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Claim type</label>
+                    <Select
+                      value={selectedClaimType}
+                      onValueChange={(value) => {
+                        setSelectedClaimType(value as SHAClaimType);
+                        setClaimTypeOverridden(true);
+                      }}
+                      disabled={!selectedEncounterIdNumber}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select claim type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="outpatient">Outpatient</SelectItem>
+                        <SelectItem value="inpatient">Inpatient</SelectItem>
+                        <SelectItem value="emergency">Emergency (ECCIF)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Auto-detected from encounter: {selectedEncounterIdNumber ? autoClaimType : 'select encounter first'}. You can override before creating the claim.
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium" htmlFor="new-claim-invoice-id">Invoice (auto from encounter)</label>
