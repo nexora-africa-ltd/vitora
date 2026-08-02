@@ -422,6 +422,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Reports', href: '/imaging/reports', icon: FileText, actionKey: 'imaging.view_orders' },
       { label: 'DICOM Studies', href: '/imaging/studies', icon: ImageIcon, actionKey: 'imaging.view_studies' },
       { label: 'Equipment', href: '/imaging/equipment', icon: Cpu, actionKey: 'imaging.manage_equipment' },
+      { label: 'Settings', href: '/imaging/settings', icon: Settings, actionKey: 'imaging.manage_equipment' },
       { label: 'Walk-in Patients', href: '/imaging/standalone/walk-in', icon: UserPlus, actionKey: 'imaging.view_orders', facilityModule: 'imaging_standalone' },
       { label: 'Standalone Order', href: '/imaging/standalone/new-order', icon: ScanLine, actionKey: 'imaging.view_orders', facilityModule: 'imaging_standalone' },
       { label: 'External Orders', href: '/imaging/standalone/external-orders', icon: Inbox, actionKey: 'imaging.view_orders', facilityModule: 'imaging_standalone' },

@@ -8,6 +8,7 @@ shared ingest service, and publishes ``imaging.instance.received`` events
 over the existing WebSocket layer.
 
 Settings:
+    ImagingIntegrationSettings (preferred, from /imaging/settings)
     DICOM_SCP_AE_TITLE       (default "VITORA")
     DICOM_SCP_PORT           (default 11112)
     DICOM_SCP_BIND_HOST      (default "0.0.0.0")
@@ -31,6 +32,67 @@ from django.core.management.base import BaseCommand
 logger = logging.getLogger(__name__)
 
 
+def _normalize_allowed_peers(value: str | list[str] | tuple[str, ...] | None) -> set[str]:
+    if not value:
+        return set()
+    if isinstance(value, (list, tuple)):
+        candidates = value
+    else:
+        candidates = value.split(",")
+    return {str(v).strip().upper() for v in candidates if str(v).strip()}
+
+
+def _load_listener_profile_from_db(ae_title_hint: str | None = None):
+    """
+    Load preferred listener profile from ImagingIntegrationSettings.
+
+    Selection strategy:
+    - If ae_title_hint is provided, match an enabled row by AE title.
+    - Else if exactly one enabled row exists, use it.
+    - Else if multiple enabled rows exist, treat as ambiguous and return None.
+    """
+    from hmis.apps.imaging.models import ImagingIntegrationSettings
+
+    enabled = ImagingIntegrationSettings.objects.filter(listener_enabled=True)
+    if ae_title_hint:
+        match = enabled.filter(ae_title__iexact=ae_title_hint).first()
+        if match:
+            return match
+        return None
+
+    count = enabled.count()
+    if count == 1:
+        return enabled.first()
+    if count > 1:
+        logger.warning(
+            "Multiple enabled ImagingIntegrationSettings rows found; falling back to environment defaults. "
+            "Pass --ae-title to target one profile explicitly."
+        )
+    return None
+
+
+def resolve_listener_config(options: dict) -> tuple[str, int, str, set[str]]:
+    """Resolve listener config with precedence: CLI > DB profile > env defaults."""
+    env_ae_title = getattr(settings, "DICOM_SCP_AE_TITLE", "VITORA")
+    env_port = int(getattr(settings, "DICOM_SCP_PORT", 11112))
+    env_bind = getattr(settings, "DICOM_SCP_BIND_HOST", "0.0.0.0")  # noqa: S104
+    env_allowed_peers = _normalize_allowed_peers(
+        getattr(settings, "DICOM_SCP_ALLOWED_PEERS", []) or []
+    )
+
+    db_profile = _load_listener_profile_from_db(options.get("ae_title"))
+
+    ae_title = options.get("ae_title") or (getattr(db_profile, "ae_title", None) or env_ae_title)
+    port = options.get("port") or (getattr(db_profile, "port", None) or env_port)
+    bind = options.get("bind") or (getattr(db_profile, "bind_host", None) or env_bind)
+    allowed_peers = (
+        _normalize_allowed_peers(getattr(db_profile, "allowed_peers", ""))
+        if db_profile
+        else env_allowed_peers
+    )
+    return str(ae_title), int(port), str(bind), allowed_peers
+
+
 class Command(BaseCommand):
     help = "Run the DICOM C-STORE SCP listener for incoming PACS pushes."
 
@@ -46,10 +108,7 @@ class Command(BaseCommand):
             self.stderr.write("pynetdicom is not installed. Run: poetry add pynetdicom")
             return
 
-        ae_title = options["ae_title"] or getattr(settings, "DICOM_SCP_AE_TITLE", "VITORA")
-        port = options["port"] or int(getattr(settings, "DICOM_SCP_PORT", 11112))
-        bind = options["bind"] or getattr(settings, "DICOM_SCP_BIND_HOST", "0.0.0.0")  # noqa: S104
-        allowed_peers = set(getattr(settings, "DICOM_SCP_ALLOWED_PEERS", []) or [])
+        ae_title, port, bind, allowed_peers = resolve_listener_config(options)
 
         ae = AE(ae_title=ae_title)
 
@@ -59,7 +118,7 @@ class Command(BaseCommand):
 
         def handle_store(event):
             calling_aet = event.assoc.requestor.ae_title.strip() if event.assoc else ""
-            if allowed_peers and calling_aet not in allowed_peers:
+            if allowed_peers and calling_aet.upper() not in allowed_peers:
                 logger.warning("C-STORE rejected from non-allow-listed peer: %s", calling_aet)
                 return 0xA700  # Refused: Out of resources
 

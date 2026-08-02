@@ -444,6 +444,23 @@ export const PaginatedImagingEquipmentSchema = z.object({
   results: z.array(ImagingEquipmentSchema),
 });
 
+export const ImagingIntegrationSettingsSchema = z.object({
+  id: z.number(),
+  listener_enabled: z.boolean(),
+  ae_title: z.string(),
+  bind_host: z.string(),
+  port: z.number(),
+  allowed_peers: z.string(),
+  allowed_peers_list: z.array(z.string()),
+  notes: z.string().nullable().optional(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export type ImagingIntegrationSettingsSchemaType = z.infer<
+  typeof ImagingIntegrationSettingsSchema
+>;
+
 /**
  * Study share link schema.
  */

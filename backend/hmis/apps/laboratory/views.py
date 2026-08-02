@@ -48,6 +48,7 @@ from .permissions import (
     LaboratoryModuleRequired,
     LISCollectSamplePermission,
     LISEnterResultsPermission,
+    LISIntegrationSettingsPermission,
     LISManageCatalogPermission,
     LISReleaseResultsPermission,
 )
@@ -1765,7 +1766,12 @@ class InstrumentViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Model
     """
 
     queryset = Instrument.objects.all()
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISIntegrationSettingsPermission,
+        WriteRequiresRolePermission,
+    ]
     filterset_class = InstrumentFilter
     tenant_scope = "facility"
 
@@ -2228,7 +2234,12 @@ class SpecimenRejectionReasonViewSet(TenantScopedViewMixin, viewsets.ModelViewSe
 
     queryset = SpecimenRejectionReason.objects.all()
     serializer_class = SpecimenRejectionReasonSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISIntegrationSettingsPermission,
+        WriteRequiresRolePermission,
+    ]
     tenant_scope = "facility"
 
     def get_queryset(self):
@@ -2250,7 +2261,12 @@ class ResultCommentTemplateViewSet(TenantScopedViewMixin, viewsets.ModelViewSet)
 
     queryset = ResultCommentTemplate.objects.prefetch_related("applicable_tests").all()
     serializer_class = ResultCommentTemplateSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISIntegrationSettingsPermission,
+        WriteRequiresRolePermission,
+    ]
     tenant_scope = "facility"
 
     def get_queryset(self):
@@ -2275,7 +2291,12 @@ class ReferralLabViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = ReferralLab.objects.all()
     serializer_class = ReferralLabSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISIntegrationSettingsPermission,
+        WriteRequiresRolePermission,
+    ]
     tenant_scope = "facility"
 
     def get_queryset(self):
@@ -2300,7 +2321,12 @@ class LabBarcodeConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = LabBarcodeConfig.objects.all()
     serializer_class = LabBarcodeConfigSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISIntegrationSettingsPermission,
+        WriteRequiresRolePermission,
+    ]
     tenant_scope = "facility"
 
     def list(self, request, *args, **kwargs):
@@ -2332,7 +2358,12 @@ class LabWorkflowSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = LabWorkflowSettings.objects.all()
     serializer_class = LabWorkflowSettingsSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISIntegrationSettingsPermission,
+        WriteRequiresRolePermission,
+    ]
     tenant_scope = "facility"
 
     def list(self, request, *args, **kwargs):

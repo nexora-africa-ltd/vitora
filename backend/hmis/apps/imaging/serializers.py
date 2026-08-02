@@ -4,6 +4,7 @@ Serializers for imaging models.
 """
 
 import logging
+import re
 
 from rest_framework import serializers
 
@@ -11,6 +12,7 @@ from .models import (
     DICOMInstance,
     DICOMSeries,
     DICOMStudy,
+    ImagingIntegrationSettings,
     ImagingOrder,
     ImagingOrderItem,
     ImagingProcedure,
@@ -806,3 +808,52 @@ class ImagingEquipmentSerializer(serializers.ModelSerializer):
 
     def get_studies_count(self, obj) -> int:
         return obj.studies.count()
+
+
+class ImagingIntegrationSettingsSerializer(serializers.ModelSerializer):
+    """Serializer for per-facility DICOM integration settings."""
+
+    allowed_peers_list = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = ImagingIntegrationSettings
+        fields = [
+            "id",
+            "listener_enabled",
+            "ae_title",
+            "bind_host",
+            "port",
+            "allowed_peers",
+            "allowed_peers_list",
+            "notes",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "allowed_peers_list", "created_at", "updated_at"]
+
+    def get_allowed_peers_list(self, obj) -> list[str]:
+        return [p for p in (obj.allowed_peers or "").split(",") if p]
+
+    def validate_ae_title(self, value: str) -> str:
+        cleaned = (value or "").strip().upper()
+        if not re.fullmatch(r"[A-Z0-9_-]{1,16}", cleaned):
+            raise serializers.ValidationError(
+                "AE Title must be 1-16 chars using A-Z, 0-9, underscore, or hyphen."
+            )
+        return cleaned
+
+    def validate_allowed_peers(self, value: str) -> str:
+        peers = []
+        seen = set()
+        for raw_peer in (value or "").split(","):
+            peer = raw_peer.strip().upper()
+            if not peer:
+                continue
+            if not re.fullmatch(r"[A-Z0-9_-]{1,16}", peer):
+                raise serializers.ValidationError(
+                    f"Invalid AE title in allowed peers: '{raw_peer.strip()}'"
+                )
+            if peer not in seen:
+                seen.add(peer)
+                peers.append(peer)
+        return ",".join(peers)

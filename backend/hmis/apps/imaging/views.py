@@ -36,6 +36,7 @@ from .models import (
     DICOMInstance,
     DICOMSeries,
     DICOMStudy,
+    ImagingIntegrationSettings,
     ImagingOrder,
     ImagingProcedure,
     RadiologyReport,
@@ -50,6 +51,7 @@ from .serializers import (
     DICOMSeriesListSerializer,
     DICOMStudyDetailSerializer,
     DICOMStudySerializer,
+    ImagingIntegrationSettingsSerializer,
     ImagingOrderCreateSerializer,
     ImagingOrderSerializer,
     ImagingProcedureCreateSerializer,
@@ -79,6 +81,46 @@ def get_client_ip(request):
     if x_forwarded_for:
         return x_forwarded_for.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR", "127.0.0.1")
+
+
+def _has_dicom_read_permission(user) -> bool:
+    """Require explicit DICOM read permission for raw instance/frame endpoints."""
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    return user.has_perm("imaging.view_dicominstance") or user.has_perm("imaging.view_dicomstudy")
+
+
+def _can_access_instance_for_tenant(request, instance: DICOMInstance) -> bool:
+    """Enforce org/facility scoping for raw DICOM access (deny by default)."""
+    user = request.user
+    if user.is_superuser:
+        return True
+
+    resolve_request_tenant(request)
+    org = getattr(request, "organization", None)
+    facility = getattr(request, "facility", None)
+
+    study = instance.series.study
+    patient = study.patient
+    patient_org_id = getattr(patient, "organization_id", None)
+    patient_facility_id = getattr(patient, "registered_at_facility_id", None)
+
+    # Deny by default if tenant context is absent.
+    if not org and not facility:
+        return False
+
+    if org and patient_org_id != getattr(org, "id", None):
+        return False
+
+    # If facility context is present, patient registration facility must match.
+    if facility:
+        req_facility_id = getattr(facility, "id", None)
+        if not patient_facility_id or patient_facility_id != req_facility_id:
+            return False
+
+    return True
 
 
 class ImagingResourceViewSet(viewsets.ReadOnlyModelViewSet):
@@ -1497,12 +1539,47 @@ class DICOMRetrieveView(APIView):
     def get(self, request, sop_instance_uid):
         """Retrieve a DICOM instance file by SOP Instance UID."""
         try:
-            instance = DICOMInstance.objects.select_related("series__study").get(
+            instance = DICOMInstance.objects.select_related("series__study__patient").get(
                 sop_instance_uid=sop_instance_uid
             )
         except DICOMInstance.DoesNotExist:
             return Response(
                 {"error": "DICOM instance not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not _has_dicom_read_permission(request.user):
+            AuditLog.log(
+                action="dicom_retrieve_denied",
+                user=request.user,
+                resource_type="DICOMInstance",
+                resource_id=instance.pk,
+                ip_address=get_client_ip(request),
+                details={
+                    "reason": "missing_read_permission",
+                    "sop_instance_uid": sop_instance_uid,
+                },
+            )
+            return Response(
+                {"error": "You do not have permission to view DICOM instances."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not _can_access_instance_for_tenant(request, instance):
+            AuditLog.log(
+                action="dicom_retrieve_denied",
+                user=request.user,
+                resource_type="DICOMInstance",
+                resource_id=instance.pk,
+                ip_address=get_client_ip(request),
+                details={
+                    "reason": "tenant_scope_denied",
+                    "sop_instance_uid": sop_instance_uid,
+                    "study_instance_uid": instance.series.study.study_instance_uid,
+                },
+            )
+            return Response(
+                {"error": "DICOM instance not found for this tenant context."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -1599,12 +1676,47 @@ class DICOMFrameRenderView(APIView):
         from PIL import Image
 
         try:
-            instance = DICOMInstance.objects.select_related("series__study").get(
+            instance = DICOMInstance.objects.select_related("series__study__patient").get(
                 sop_instance_uid=sop_instance_uid
             )
         except DICOMInstance.DoesNotExist:
             return Response(
                 {"error": "DICOM instance not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not _has_dicom_read_permission(request.user):
+            AuditLog.log(
+                action="dicom_frame_denied",
+                user=request.user,
+                resource_type="DICOMInstance",
+                resource_id=instance.pk,
+                ip_address=get_client_ip(request),
+                details={
+                    "reason": "missing_read_permission",
+                    "sop_instance_uid": sop_instance_uid,
+                },
+            )
+            return Response(
+                {"error": "You do not have permission to view DICOM instances."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not _can_access_instance_for_tenant(request, instance):
+            AuditLog.log(
+                action="dicom_frame_denied",
+                user=request.user,
+                resource_type="DICOMInstance",
+                resource_id=instance.pk,
+                ip_address=get_client_ip(request),
+                details={
+                    "reason": "tenant_scope_denied",
+                    "sop_instance_uid": sop_instance_uid,
+                    "study_instance_uid": instance.series.study.study_instance_uid,
+                },
+            )
+            return Response(
+                {"error": "DICOM instance not found for this tenant context."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -2728,3 +2840,43 @@ class ImagingEquipmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             instance.save(update_fields=["is_active", "updated_at"])
             return Response(status=status.HTTP_204_NO_CONTENT)
         return super().destroy(request, *args, **kwargs)
+
+
+class ImagingIntegrationSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """
+    Per-facility DICOM integration settings.
+
+    GET    /api/imaging/settings/current/      -> get or create current facility config
+    PATCH  /api/imaging/settings/{id}/         -> update config
+    """
+
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    tenant_scope = "facility"
+    queryset = ImagingIntegrationSettings.objects.all()
+    serializer_class = ImagingIntegrationSettingsSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    @action(detail=False, methods=["get"], url_path="current")
+    def current(self, request):
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response(
+                {"error": "No facility context available"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        settings_obj, _created = ImagingIntegrationSettings.objects.get_or_create(
+            facility=facility,
+            defaults={
+                "organization": getattr(facility, "organization", None),
+                "ae_title": getattr(settings, "DICOM_SCP_AE_TITLE", "VITORA"),
+                "bind_host": getattr(settings, "DICOM_SCP_BIND_HOST", "0.0.0.0"),  # noqa: S104
+                "port": int(getattr(settings, "DICOM_SCP_PORT", 11112)),
+                "allowed_peers": ",".join(getattr(settings, "DICOM_SCP_ALLOWED_PEERS", []) or []),
+            },
+        )
+        serializer = self.get_serializer(settings_obj)
+        return Response(serializer.data)

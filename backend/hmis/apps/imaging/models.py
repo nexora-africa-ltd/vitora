@@ -14,6 +14,7 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -1330,6 +1331,62 @@ class ImagingEquipment(FacilityScopedModel):
         if not self.next_calibration_due:
             return False
         return self.next_calibration_due < timezone.now().date()
+
+
+class ImagingIntegrationSettings(FacilityScopedModel):
+    """
+    Per-facility configuration for DICOM device integration.
+
+    These values are used by the imaging settings UI as the canonical facility
+    profile for C-STORE listener configuration (AE title, bind host, port,
+    and allowed calling peers).
+    """
+
+    listener_enabled = models.BooleanField(
+        default=False,
+        help_text="Whether this facility expects inbound DICOM C-STORE pushes.",
+    )
+    ae_title = models.CharField(
+        max_length=16,
+        default="VITORA",
+        help_text="DICOM Called AE Title for this facility listener.",
+    )
+    bind_host = models.CharField(
+        max_length=255,
+        default="0.0.0.0",  # noqa: S104
+        help_text="Host/interface the listener should bind to.",
+    )
+    port = models.PositiveIntegerField(
+        default=11112,
+        validators=[MinValueValidator(1), MaxValueValidator(65535)],
+        help_text="TCP port for inbound DICOM associations.",
+    )
+    allowed_peers = models.TextField(
+        blank=True,
+        default="",
+        help_text="Comma-separated allow-list of calling AE titles. Empty means allow all.",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Operational notes for implementers (firewall, NAT, vendor details).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Imaging Integration Settings"
+        verbose_name_plural = "Imaging Integration Settings"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility"],
+                name="unique_imaging_integration_settings_per_facility",
+            )
+        ]
+
+    def __str__(self):
+        fac = getattr(self.facility, "name", None) or "Unscoped"
+        return f"Imaging integration settings ({fac})"
 
 
 # ============================================================================

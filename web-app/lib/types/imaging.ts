@@ -537,6 +537,19 @@ export interface ImagingEquipment {
   updated_at: string;
 }
 
+export interface ImagingIntegrationSettings {
+  id: number;
+  listener_enabled: boolean;
+  ae_title: string;
+  bind_host: string;
+  port: number;
+  allowed_peers: string;
+  allowed_peers_list: string[];
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 /**
  * Study share link.
  */

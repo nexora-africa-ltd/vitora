@@ -22,3 +22,17 @@ def _enable_imaging_module(db, request):
         update_fields.append("has_imaging_standalone")
     if update_fields:
         facility.save(update_fields=update_fields)
+
+
+@pytest.fixture(autouse=True)
+def _grant_dicom_read_perms(db, request):
+    """Grant DICOM read permissions to test users used in imaging tests."""
+    from django.contrib.auth.models import Permission
+
+    perm_study = Permission.objects.get(codename="view_dicomstudy")
+    perm_instance = Permission.objects.get(codename="view_dicominstance")
+
+    for fixture_name in ("test_user", "another_user"):
+        if fixture_name in request.fixturenames:
+            user = request.getfixturevalue(fixture_name)
+            user.user_permissions.add(perm_study, perm_instance)

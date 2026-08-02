@@ -13,6 +13,7 @@ from .views import (
     DICOMUploadView,
     ImagingCalendarView,
     ImagingEquipmentViewSet,
+    ImagingIntegrationSettingsViewSet,
     ImagingOrderViewSet,
     ImagingProcedureViewSet,
     ImagingResourceViewSet,
@@ -28,6 +29,7 @@ router.register(r"procedures", ImagingProcedureViewSet, basename="imaging-proced
 router.register(r"orders", ImagingOrderViewSet, basename="imaging-order")
 router.register(r"resources", ImagingResourceViewSet, basename="imaging-resource")
 router.register(r"equipment", ImagingEquipmentViewSet, basename="imaging-equipment")
+router.register(r"settings", ImagingIntegrationSettingsViewSet, basename="imaging-settings")
 router.register(r"studies", DICOMStudyViewSet, basename="dicom-study")
 router.register(r"reports", RadiologyReportViewSet, basename="radiology-report")
 

@@ -16,8 +16,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
-from hmis.apps.laboratory.permissions import LaboratoryModuleRequired, LISConfigPermission
+from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
+from hmis.apps.laboratory.permissions import (
+    LaboratoryModuleRequired,
+    LISConfigPermission,
+    LISIntegrationSettingsPermission,
+)
 
 from .models import AnalyzerDriverTemplate, AnalyzerMessage, InstrumentChannel
 from .serializers import (
@@ -76,7 +80,12 @@ class InstrumentChannelViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewset
     """
 
     queryset = InstrumentChannel.objects.select_related("instrument").all()
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISIntegrationSettingsPermission,
+        LISConfigPermission,
+    ]
     filterset_class = InstrumentChannelFilter
     tenant_scope = "facility"
 
@@ -189,7 +198,12 @@ class AnalyzerMessageViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSe
     queryset = AnalyzerMessage.objects.select_related(
         "channel", "channel__instrument", "specimen"
     ).all()
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISIntegrationSettingsPermission,
+        LISConfigPermission,
+    ]
     filterset_class = AnalyzerMessageFilter
     tenant_scope = "facility"
 
@@ -210,7 +224,24 @@ class AnalyzerMessageViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSe
         serializer = IngestMessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        channel = InstrumentChannel.objects.get(id=serializer.validated_data["channel_id"])
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        if not facility and not request.user.is_superuser:
+            return Response(
+                {"detail": "No facility context available for analyzer ingest."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        channel_qs = InstrumentChannel.objects.all()
+        if facility and not request.user.is_superuser:
+            channel_qs = channel_qs.filter(facility=facility)
+
+        channel = channel_qs.filter(id=serializer.validated_data["channel_id"]).first()
+        if channel is None:
+            return Response(
+                {"detail": "Instrument channel not found for this facility."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         raw_data = serializer.validated_data["raw_data"]
 
         # Process the message
@@ -275,12 +306,24 @@ class AnalyzerDashboardView(APIView):
     Returns connection status summary and per-channel health info.
     """
 
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISIntegrationSettingsPermission,
+        LISConfigPermission,
+    ]
+    required_permission = "laboratory.view_instrumentchannel"
 
     def get(self, request):
+        resolve_request_tenant(request)
         facility = getattr(request, "facility", None)
+        if not facility and not request.user.is_superuser:
+            return Response(
+                {"detail": "No facility context available for analyzer dashboard."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         channels = InstrumentChannel.objects.filter(is_active=True).select_related("instrument")
-        if facility:
+        if facility and not request.user.is_superuser:
             channels = channels.filter(facility=facility)
 
         # Get health for each channel
@@ -294,7 +337,7 @@ class AnalyzerDashboardView(APIView):
 
         today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
         today_messages = AnalyzerMessage.objects.filter(timestamp__gte=today_start)
-        if facility:
+        if facility and not request.user.is_superuser:
             today_messages = today_messages.filter(facility=facility)
 
         # Aggregate status counts

@@ -35,6 +35,7 @@ import {
   RadiologyReportAmendData,
   CommunicateCriticalData,
   ImagingEquipment,
+  ImagingIntegrationSettings,
   StudyShareLink,
   CreateShareLinkData,
 } from '@/lib/types/imaging';
@@ -65,6 +66,7 @@ import {
   RadiologyReportSchema,
   PaginatedRadiologyReportSchema,
   ImagingEquipmentSchema,
+  ImagingIntegrationSettingsSchema,
   PaginatedImagingEquipmentSchema,
   StudyShareLinkSchema,
   StudyShareLinkListResponseSchema,
@@ -769,6 +771,34 @@ export const imagingApi = {
    */
   async deleteEquipment(id: number): Promise<void> {
     await apiClient.delete(`/api/imaging/equipment/${id}/`);
+  },
+
+  /**
+   * Get or create the current facility DICOM integration settings.
+   */
+  async getIntegrationSettings(): Promise<ImagingIntegrationSettings> {
+    const response = await apiClient.get<ImagingIntegrationSettings>(
+      '/api/imaging/settings/current/'
+    );
+    return parseResponse(ImagingIntegrationSettingsSchema, response.data, {
+      context: 'imagingApi.getIntegrationSettings',
+    }) as ImagingIntegrationSettings;
+  },
+
+  /**
+   * Update current facility DICOM integration settings.
+   */
+  async updateIntegrationSettings(
+    id: number,
+    data: Partial<ImagingIntegrationSettings>
+  ): Promise<ImagingIntegrationSettings> {
+    const response = await apiClient.patch<ImagingIntegrationSettings>(
+      `/api/imaging/settings/${id}/`,
+      data
+    );
+    return parseResponse(ImagingIntegrationSettingsSchema, response.data, {
+      context: 'imagingApi.updateIntegrationSettings',
+    }) as ImagingIntegrationSettings;
   },
 
   // ============ Radiology Reports (Phase D) ============

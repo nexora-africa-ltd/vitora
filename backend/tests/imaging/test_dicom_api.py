@@ -20,6 +20,7 @@ from unittest.mock import patch
 
 import pydicom
 import pytest  # type: ignore
+from django.contrib.auth.models import Permission
 from django.core.files.uploadedfile import SimpleUploadedFile
 from pydicom.uid import generate_uid
 from rest_framework import status
@@ -224,6 +225,89 @@ def sample_dicom_instance(db, sample_dicom_series, temp_media_dir):
         columns=256,
         bits_allocated=16,
         photometric_interpretation="MONOCHROME2",
+    )
+
+
+@pytest.fixture
+def foreign_tenant_dicom_instance(
+    db,
+    another_user,
+    sample_county,
+    sample_sub_county,
+    temp_media_dir,
+):
+    """Create a DICOM instance belonging to a different organization/facility."""
+    from hmis.apps.core.models import Facility, Organization, SubscriptionPlan
+    from hmis.apps.imaging.models import DICOMInstance, DICOMSeries, DICOMStudy
+    from hmis.apps.imaging.services.pacs import PACSStorageService
+    from hmis.apps.patients.models import Patient
+    from tests.conftest import ensure_staff_profile
+
+    plan, _ = SubscriptionPlan.objects.get_or_create(
+        code="TEST_FOREIGN_ORG",
+        defaults={"name": "Test Foreign Org", "features": {"imaging": True}},
+    )
+    foreign_org = Organization.objects.create(
+        name="Foreign Org",
+        slug="foreign-org",
+        contact_email="foreign@example.com",
+        subscription_plan=plan,
+    )
+    foreign_facility = Facility.objects.create(
+        organization=foreign_org,
+        name="Foreign Facility",
+        mfl_code=f"F-{uuid.uuid4().hex[:8]}",
+        level="3",
+        county=sample_county,
+        sub_county=sample_sub_county,
+        is_active=True,
+    )
+    ensure_staff_profile(another_user, foreign_org, foreign_facility, employee_id="FOREIGN-USER")
+
+    patient = Patient.objects.create(
+        organization=foreign_org,
+        registered_at_facility=foreign_facility,
+        first_name="Foreign",
+        last_name="Patient",
+        date_of_birth=date(1990, 1, 1),
+        gender="M",
+        county=sample_county,
+        sub_county=sample_sub_county,
+    )
+
+    study_uid = f"1.2.826.0.1.3680043.8.1055.9.{uuid.uuid4().int % 10**12}"
+    series_uid = f"1.2.826.0.1.3680043.8.1055.8.{uuid.uuid4().int % 10**12}"
+    sop_uid = f"1.2.826.0.1.3680043.8.1055.7.{uuid.uuid4().int % 10**12}"
+
+    study = DICOMStudy.objects.create(
+        study_instance_uid=study_uid,
+        patient=patient,
+        study_date=date(2026, 2, 7),
+        study_description="Foreign Study",
+        modality="XR",
+        uploaded_by=another_user,
+    )
+    series = DICOMSeries.objects.create(
+        study=study,
+        series_instance_uid=series_uid,
+        modality="XR",
+    )
+
+    dcm_path = create_test_dicom_file(
+        study_instance_uid=study_uid,
+        series_instance_uid=series_uid,
+        sop_instance_uid=sop_uid,
+    )
+    pacs = PACSStorageService(base_path=temp_media_dir)
+    stored_path = pacs.store_file(dcm_path, study_uid, series_uid, sop_uid=sop_uid, move=True)
+
+    return DICOMInstance.objects.create(
+        series=series,
+        sop_instance_uid=sop_uid,
+        sop_class_uid="1.2.840.10008.5.1.4.1.1.1",
+        file_path=stored_path,
+        file_size=os.path.getsize(os.path.join(temp_media_dir, stored_path)),
+        transfer_syntax_uid="1.2.840.10008.1.2.1",
     )
 
 
@@ -593,6 +677,29 @@ class TestWADORSEndpoint:
 
         assert AuditLog.objects.filter(action="dicom_retrieve").exists()
 
+    def test_retrieve_requires_explicit_read_permission(
+        self, authenticated_client, test_user, sample_dicom_instance
+    ):
+        """Should return 403 when user lacks explicit DICOM read permission."""
+        test_user.user_permissions.remove(
+            Permission.objects.get(codename="view_dicomstudy"),
+            Permission.objects.get(codename="view_dicominstance"),
+        )
+
+        response = authenticated_client.get(
+            f"/api/imaging/dicom/{sample_dicom_instance.sop_instance_uid}/"
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_retrieve_cross_tenant_instance_denied(
+        self, authenticated_client, foreign_tenant_dicom_instance
+    ):
+        """Should not allow reading an instance from another tenant."""
+        response = authenticated_client.get(
+            f"/api/imaging/dicom/{foreign_tenant_dicom_instance.sop_instance_uid}/"
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
 
 # ============================================================================
 # Study-Order Linkage Tests (C.2.4)
@@ -822,3 +929,26 @@ class TestDICOMFrameRenderingEndpoint:
 
         # Should either return 400 or render first frame as fallback
         assert response.status_code in (status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST)
+
+    def test_render_frame_requires_explicit_read_permission(
+        self, authenticated_client, test_user, sample_dicom_instance
+    ):
+        """Should return 403 when user lacks explicit DICOM read permission."""
+        test_user.user_permissions.remove(
+            Permission.objects.get(codename="view_dicomstudy"),
+            Permission.objects.get(codename="view_dicominstance"),
+        )
+
+        response = authenticated_client.get(
+            f"/api/imaging/dicom/{sample_dicom_instance.sop_instance_uid}/frame/"
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_render_frame_cross_tenant_instance_denied(
+        self, authenticated_client, foreign_tenant_dicom_instance
+    ):
+        """Should not allow rendering an instance from another tenant."""
+        response = authenticated_client.get(
+            f"/api/imaging/dicom/{foreign_tenant_dicom_instance.sop_instance_uid}/frame/"
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND

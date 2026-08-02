@@ -111,3 +111,50 @@ def _grant_lab_scientist_role(db, request):
             profile.organization = sample_organization
         profile.save(update_fields=["primary_role", "primary_facility", "organization"])
     return profile
+
+
+@pytest.fixture(autouse=True)
+def _grant_lab_integration_perms(db, request):
+    """Grant explicit lab integration read/write model permissions used by hardened endpoints."""
+    from django.contrib.auth.models import Permission
+
+    codenames = [
+        "view_instrument",
+        "add_instrument",
+        "change_instrument",
+        "delete_instrument",
+        "view_specimenrejectionreason",
+        "add_specimenrejectionreason",
+        "change_specimenrejectionreason",
+        "delete_specimenrejectionreason",
+        "view_resultcommenttemplate",
+        "add_resultcommenttemplate",
+        "change_resultcommenttemplate",
+        "delete_resultcommenttemplate",
+        "view_referrallab",
+        "add_referrallab",
+        "change_referrallab",
+        "delete_referrallab",
+        "view_labbarcodeconfig",
+        "add_labbarcodeconfig",
+        "change_labbarcodeconfig",
+        "delete_labbarcodeconfig",
+        "view_labworkflowsettings",
+        "add_labworkflowsettings",
+        "change_labworkflowsettings",
+        "delete_labworkflowsettings",
+        "view_instrumentchannel",
+        "add_instrumentchannel",
+        "change_instrumentchannel",
+        "delete_instrumentchannel",
+        "view_analyzermessage",
+        "add_analyzermessage",
+    ]
+    perms = list(Permission.objects.filter(codename__in=codenames))
+    if not perms:
+        return
+
+    for fixture_name in ("test_user", "another_user"):
+        if fixture_name in request.fixturenames:
+            user = request.getfixturevalue(fixture_name)
+            user.user_permissions.add(*perms)

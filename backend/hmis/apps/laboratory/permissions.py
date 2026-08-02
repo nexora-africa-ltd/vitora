@@ -10,6 +10,7 @@ Gates LIS features based on:
 
 import logging
 
+from django.apps import apps
 from django.conf import settings
 from rest_framework.permissions import BasePermission
 
@@ -244,3 +245,75 @@ class LISWorksheetPermission(_RoleBasedPermission):
         "ORG-ADMIN",
         "LIS_ADMIN",
     }
+
+
+class LISIntegrationSettingsPermission(BasePermission):
+    """
+    Explicit read/write gating for lab integration/config endpoints.
+
+    - Safe methods require explicit model `view_*` permission.
+    - Write methods require explicit model add/change/delete permission.
+    - Superusers and admin roles bypass.
+    """
+
+    message = "You do not have permission to access laboratory integration settings."
+    ADMIN_ROLE_CODES = {"ADMIN", "ORG-ADMIN", "OWNER", "LIS_ADMIN"}
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser:
+            return True
+
+        profile = getattr(request.user, "staff_profile", None)
+        if (
+            profile
+            and getattr(profile, "primary_role", None)
+            and profile.primary_role.code in self.ADMIN_ROLE_CODES
+        ):
+            return True
+
+        model = self._resolve_model(view)
+        if model is None:
+            required_perm = getattr(view, "required_permission", "")
+            return bool(required_perm and request.user.has_perm(required_perm))
+
+        codename_prefix = self._action_codename_prefix(request.method)
+        perm = f"{model._meta.app_label}.{codename_prefix}_{model._meta.model_name}"
+        return request.user.has_perm(perm)
+
+    @staticmethod
+    def _action_codename_prefix(method: str) -> str:
+        if method in ("GET", "HEAD", "OPTIONS"):
+            return "view"
+        if method == "POST":
+            return "add"
+        if method in ("PUT", "PATCH"):
+            return "change"
+        if method == "DELETE":
+            return "delete"
+        return "view"
+
+    @staticmethod
+    def _resolve_model(view):
+        queryset = getattr(view, "queryset", None)
+        if queryset is not None and hasattr(queryset, "model"):
+            return queryset.model
+
+        get_queryset = getattr(view, "get_queryset", None)
+        if callable(get_queryset):
+            try:
+                qs = get_queryset()
+                if hasattr(qs, "model"):
+                    return qs.model
+            except Exception:
+                return None
+
+        model_label = getattr(view, "required_model_label", "")
+        if model_label:
+            try:
+                return apps.get_model(model_label)
+            except Exception:
+                return None
+
+        return None
