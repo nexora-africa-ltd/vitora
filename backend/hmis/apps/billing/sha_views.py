@@ -851,7 +851,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
             resolved_claim_type = str(payload.get("claim_type") or "").strip().lower()
 
-            if resolved_claim_type == SHAClaim.ClaimType.INPATIENT:
+            if resolved_claim_type == SHAClaim.ClaimType.INPATIENT and raw_claim_type in (None, ""):
                 payload.setdefault("admission_date", str(encounter_obj.encounter_date))
 
             payload.setdefault("primary_diagnosis_code", "PENDING")

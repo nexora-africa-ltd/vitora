@@ -130,6 +130,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "dhis2_indicator_id",
                 "domain",
                 "domain_display",
+                "evaluation_rule",
                 "exclusion_logic",
                 "id",
                 "low_threshold",

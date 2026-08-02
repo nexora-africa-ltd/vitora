@@ -84,6 +84,7 @@ from hmis.apps.ai.serializers import (
     ICUPredictPatientDataSerializer,
     ICUPredictRequestSerializer,
     ICUPredictResponseSerializer,
+    ICUQSOFALiteRequestSerializer,
     InvestigationSuggestRequestSerializer,
     LabFlagSerializer,
     LabInterpretRequestSerializer,
@@ -1094,6 +1095,17 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "sepsis_probability",
                 "sofa_breakdown",
                 "sofa_score",
+            }
+        ),
+    ),
+    (
+        ICUQSOFALiteRequestSerializer,
+        frozenset(
+            {
+                "altered_mentation",
+                "gcs_total",
+                "respiratory_rate",
+                "systolic_bp",
             }
         ),
     ),

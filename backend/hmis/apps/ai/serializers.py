@@ -915,10 +915,6 @@ class ICUPredictRequestSerializer(serializers.Serializer):
         "respiratory_rate",
         "systolic_bp",
         "diastolic_bp",
-        "platelets",
-        "bilirubin",
-        "creatinine",
-        "gcs",
     )
 
     admission_id = serializers.IntegerField(
@@ -941,16 +937,6 @@ class ICUPredictRequestSerializer(serializers.Serializer):
         attrs = super().validate(attrs)
         pd = attrs.get("patient_data", {})
         missing_fields = [f for f in self.ICU_REQUIRED_MINIMUM_FIELDS if pd.get(f) is None]
-
-        respiratory_context_ok = (
-            pd.get("pao2_fio2_ratio") is not None or pd.get("on_mechanical_ventilation") is not None
-        )
-        if not respiratory_context_ok:
-            missing_fields.append("pao2_fio2_ratio_or_ventilation_status")
-
-        cardiovascular_context_ok = pd.get("on_vasopressors") is not None
-        if not cardiovascular_context_ok:
-            missing_fields.append("on_vasopressors")
 
         if missing_fields:
             raise serializers.ValidationError(

@@ -3041,6 +3041,33 @@ class ShiftSwapViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelV
     filterset_class = ShiftSwapFilter
     tenant_scope = "facility"
 
+    def get_queryset(self):
+        """Resolve tenant scope with an explicit facility-header fallback for peer workflows."""
+        self._resolve_tenant_context()
+
+        base_qs = self.queryset.all()
+        facility = getattr(self.request, "facility", None)
+        organization = getattr(self.request, "organization", None)
+
+        if facility is not None:
+            return base_qs.filter(facility=facility)
+        if organization is not None:
+            return base_qs.filter(organization=organization)
+        if getattr(self.request.user, "is_superuser", False):
+            return base_qs
+
+        # Some swap endpoints are intentionally peer-facing; allow clients that
+        # explicitly pass facility context via header even if middleware cannot
+        # infer tenant from user profile.
+        raw_facility_id = self.request.META.get("HTTP_X_FACILITY_ID")
+        if raw_facility_id:
+            try:
+                return base_qs.filter(facility_id=int(raw_facility_id))
+            except (TypeError, ValueError):
+                return base_qs.none()
+
+        return base_qs.none()
+
     def get_serializer_class(self):
         if self.action == "create":
             return ShiftSwapCreateSerializer

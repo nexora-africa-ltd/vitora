@@ -20,6 +20,7 @@ from hmis.apps.imaging.serializers import (
     DICOMStudySerializer,
     ImagingCalendarSerializer,
     ImagingEquipmentSerializer,
+    ImagingIntegrationSettingsSerializer,
     ImagingOrderCreateSerializer,
     ImagingOrderItemCreateSerializer,
     ImagingOrderItemSerializer,
@@ -239,6 +240,23 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "software_versions",
                 "station_name",
                 "studies_count",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        ImagingIntegrationSettingsSerializer,
+        frozenset(
+            {
+                "ae_title",
+                "allowed_peers",
+                "allowed_peers_list",
+                "bind_host",
+                "created_at",
+                "id",
+                "listener_enabled",
+                "notes",
+                "port",
                 "updated_at",
             }
         ),
@@ -468,6 +486,9 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "status",
                 "study",
                 "study_description",
+                "superseded_by_report_number",
+                "supersedes",
+                "supersedes_report_number",
                 "technique",
                 "updated_at",
             }

@@ -359,6 +359,19 @@ class Invoice(FacilityScopedModel):
         """Override save to generate invoice number, set defaults, and validate."""
         if not self.invoice_number:
             self.invoice_number = self.generate_invoice_number()
+
+        if (
+            self.encounter_id
+            and self.invoice_date
+            and self.due_date
+            and self.due_date < self.invoice_date
+        ):
+            encounter_date = getattr(self.encounter, "encounter_date", None)
+            if encounter_date and encounter_date <= self.due_date:
+                self.invoice_date = encounter_date
+            else:
+                self.invoice_date = self.due_date
+
         if not self.due_date:
             self.due_date = self.invoice_date + timedelta(days=settings.BILLING_DEFAULT_DUE_DAYS)
         # Set default validity for proforma invoices

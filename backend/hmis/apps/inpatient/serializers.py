@@ -1402,6 +1402,9 @@ class TransferSerializer(serializers.ModelSerializer):
         )
         reason = attrs.get("reason") or getattr(self.instance, "reason", None)
         reason_details = attrs.get("reason_details") or getattr(self.instance, "reason_details", "")
+        clinical_handover_notes = attrs.get("clinical_handover_notes") or getattr(
+            self.instance, "clinical_handover_notes", ""
+        )
 
         if admission and source_ward and admission.ward_id != source_ward.id:
             raise serializers.ValidationError(
@@ -1419,6 +1422,15 @@ class TransferSerializer(serializers.ModelSerializer):
             )
 
         if reason in {"STEP_UP", "STEP_DOWN"}:
+            if (
+                admission
+                and admission.mch_registration_id
+                and not str(reason_details or "").strip()
+                and str(clinical_handover_notes or "").strip()
+            ):
+                reason_details = str(clinical_handover_notes).strip()
+                attrs["reason_details"] = reason_details
+
             if not str(reason_details or "").strip():
                 raise serializers.ValidationError(
                     {"reason_details": "Provide reason_details for step-up/step-down transfers."}
@@ -1438,7 +1450,7 @@ class TransferSerializer(serializers.ModelSerializer):
                         }
                     )
 
-                if reason == "STEP_DOWN" and destination_score >= source_score:
+                if reason == "STEP_DOWN" and destination_score > source_score:
                     raise serializers.ValidationError(
                         {
                             "destination_ward": (

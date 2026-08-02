@@ -26,6 +26,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "activation_code",
                 "app_version",
+                "eula_accepted",
+                "eula_version",
                 "installation_id",
                 "name",
                 "os_info",
@@ -87,6 +89,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "check_in_count",
                 "check_in_ip",
                 "created_at",
+                "eula_accepted_at",
+                "eula_version",
                 "facility",
                 "facility_name",
                 "hardware_fingerprint",
