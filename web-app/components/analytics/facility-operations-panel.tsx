@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import Link from 'next/link';
 import { AlertTriangle, ArrowRightLeft, BedDouble, FileClock } from 'lucide-react';
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePharmacyQueueProjection, useWardOccupancyProjection } from '@/lib/hooks/use-analytics';
+import { useInpatientWards } from '@/lib/hooks/use-inpatient';
 import type { WardOccupancyProjectionRow } from '@/lib/types/analytics';
 
 function getOccupancyTone(rate: number) {
@@ -18,7 +20,13 @@ function getOccupancyTone(rate: number) {
 
 export function FacilityOperationsPanel() {
   const { data: wards = [], isLoading: wardsLoading } = useWardOccupancyProjection();
+  const { data: inpatientWards } = useInpatientWards();
   const { data: pharmacyRows = [], isLoading: pharmacyLoading } = usePharmacyQueueProjection();
+
+  const wardNameById = useMemo(() => {
+    const rows = ((inpatientWards as any)?.results ?? inpatientWards ?? []) as Array<{ id: number; name: string }>;
+    return new Map(rows.map((row) => [row.id, row.name]));
+  }, [inpatientWards]);
 
   const wardSummary = useMemo(() => {
     return wards.reduce(
@@ -118,7 +126,14 @@ export function FacilityOperationsPanel() {
                   header: 'Ward',
                   sortable: true,
                   sortType: 'number',
-                  cell: (ward) => <span className="font-medium">Ward {ward.ward_id}</span>,
+                  cell: (ward) => {
+                    const wardName = wardNameById.get(ward.ward_id) ?? `Ward ${ward.ward_id}`;
+                    return (
+                      <Link href={`/wards/${ward.ward_id}`} className="font-medium text-primary hover:underline">
+                        {wardName}
+                      </Link>
+                    );
+                  },
                 },
                 {
                   key: 'occupancy_rate',
@@ -160,7 +175,9 @@ export function FacilityOperationsPanel() {
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="font-medium">Ward {ward.ward_id}</div>
+                        <Link href={`/wards/${ward.ward_id}`} className="font-medium text-primary hover:underline">
+                          {wardNameById.get(ward.ward_id) ?? `Ward ${ward.ward_id}`}
+                        </Link>
                         <div className="text-xs text-muted-foreground">
                           {ward.occupied_beds} occupied of {ward.total_beds}
                         </div>

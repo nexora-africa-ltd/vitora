@@ -26,6 +26,7 @@ import { organizationsApi } from '@/lib/api/organizations';
 import { useUser } from '@/lib/auth';
 import { useFacility } from '@/lib/context/facility-context';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useInterfacilityTransfersEnabled } from '@/lib/hooks/use-interfacility-transfers-enabled';
 import { getApiErrorMessage } from '@/lib/api/client';
 import {
   useAdmission,
@@ -61,6 +62,7 @@ export default function CreateInterFacilityTransferPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();
+  const interfacilityTransfersEnabled = useInterfacilityTransfersEnabled();
 
   const admissionId = params.id;
   const { data: admission } = useAdmission(admissionId);
@@ -113,6 +115,23 @@ export default function CreateInterFacilityTransferPage() {
   const [escortRequired, setEscortRequired] = useState(false);
   const [escortName, setEscortName] = useState('');
   const [submitImmediately, setSubmitImmediately] = useState(true);
+
+  if (!interfacilityTransfersEnabled) {
+    return (
+      <div className="container mx-auto py-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Inter-facility transfers are disabled</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              This workflow is currently hidden behind the inter-facility transfers feature toggle.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const isPending = createTransfer.isPending || submitTransfer.isPending;
   const transfers = transferList?.results ?? [];

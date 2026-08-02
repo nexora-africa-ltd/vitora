@@ -7,6 +7,7 @@ import { useNavigationMode } from '@/lib/context/navigation-mode-context';
 import { useSubscription } from '@/lib/hooks/use-subscription';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { useNetworkStatus } from '@/lib/hooks/use-network-status';
+import { useInterfacilityTransfersEnabled } from '@/lib/hooks/use-interfacility-transfers-enabled';
 import {
   mainNavItems,
   hasChildren,
@@ -31,6 +32,7 @@ export function useNavigationItems(): NavigationResult {
   const { hasFeature } = useSubscription();
   const { data: clinicsData } = useClinics({ page_size: 200, status: 'ACTIVE' });
   const { isSustainedOffline } = useNetworkStatus();
+  const interfacilityTransfersEnabled = useInterfacilityTransfersEnabled();
 
   // Derive the set of active clinic types from fetched clinics
   const activeClinicTypes = useMemo(() => {
@@ -46,7 +48,10 @@ export function useNavigationItems(): NavigationResult {
       isSuperuser,
     };
 
-    const isAllowed = (item: { moduleKey?: string; facilityModule?: string; actionKey?: string; planFeature?: string; requiresInternet?: boolean; visibleWhen?: (ctx: NavItemVisibilityContext) => boolean }): boolean => {
+    const isAllowed = (item: { moduleKey?: string; facilityModule?: string; actionKey?: string; planFeature?: string; featureFlag?: string | boolean; requiresInternet?: boolean; visibleWhen?: (ctx: NavItemVisibilityContext) => boolean }): boolean => {
+      if (item.featureFlag === 'interfacility_transfers' && !interfacilityTransfersEnabled) {
+        return false;
+      }
       if (item.moduleKey && !canAccessModule(item.moduleKey as never)) return false;
       if (item.facilityModule && !hasModule(item.facilityModule as never)) return false;
       if (item.actionKey && !canPerformAction(item.actionKey as never)) return false;
@@ -97,5 +102,6 @@ export function useNavigationItems(): NavigationResult {
     navigationMode,
     isClinicalNavigationEligible,
     isSustainedOffline,
+    interfacilityTransfersEnabled,
   ]);
 }

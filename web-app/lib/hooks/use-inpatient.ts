@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { inpatientApi } from '@/lib/api/inpatient';
 import type {
   Admission,
+  AdmissionClinicalSummary,
   AdmissionCreateInput,
   CriticalCareWorkflowHealth,
   AdmissionListParams,
@@ -97,6 +98,8 @@ export const inpatientQueryKeys = {
   activeAdmissionForPatient: (patientId: number) =>
     [...inpatientQueryKeys.all, 'admissions', 'active-by-patient', patientId] as const,
   admission: (id: string | number) => [...inpatientQueryKeys.all, 'admissions', id] as const,
+  admissionClinicalSummary: (admissionId: string | number) =>
+    [...inpatientQueryKeys.admission(admissionId), 'clinical-summary'] as const,
   admissionICUReadiness: (admissionId: string | number) =>
     [...inpatientQueryKeys.admission(admissionId), 'icu-readiness'] as const,
   criticalCareWorkflowHealth: (days = 30) =>
@@ -437,6 +440,14 @@ export function useAdmission(admissionId: string | number | undefined) {
     queryKey: inpatientQueryKeys.admission(admissionId!),
     enabled: admissionId !== undefined,
     queryFn: () => inpatientApi.getAdmission(admissionId!),
+  });
+}
+
+export function useAdmissionClinicalSummary(admissionId: string | number | undefined) {
+  return useQuery<AdmissionClinicalSummary>({
+    queryKey: inpatientQueryKeys.admissionClinicalSummary(admissionId!),
+    enabled: admissionId !== undefined,
+    queryFn: () => inpatientApi.getAdmissionClinicalSummary(admissionId!),
   });
 }
 

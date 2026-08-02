@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, Clock, AlertTriangle, User, X, BedDouble } from 'lucide-react';
+import { Check, Clock, AlertTriangle, User, X, BedDouble, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -115,6 +115,14 @@ export default function AdmissionRecommendationsPage() {
       <PageHeader
         title="Admission Recommendations"
         helpContent="Review and approve pending admission recommendations from OPD encounters, and process IPD encounters awaiting admission."
+        actions={(
+          <Button asChild>
+            <Link href="/admissions/recommendations/new">
+              <Plus className="h-4 w-4 mr-2" />
+              New Recommendation
+            </Link>
+          </Button>
+        )}
       />
 
       {/* Stats */}

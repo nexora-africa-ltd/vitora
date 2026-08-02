@@ -50,6 +50,7 @@ import {
 } from '@/components/ui/select';
 import {
   useAdmission,
+  useAdmissionClinicalSummary,
   useAdmissionICUReadiness,
   useAdmissionWardRounds,
   useBeds,
@@ -76,6 +77,7 @@ import { useICULabs } from '@/lib/hooks/use-ai';
 import { useMCHRegistration } from '@/lib/hooks/use-mch';
 import { PartographTab } from '@/components/mch/partograph-tab';
 import { DeliveryTab } from '@/components/mch/delivery-tab';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import { buildAdmissionAIClinicalNotes, getLatestWardRound } from '@/lib/utils/inpatient-ai-context';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -83,6 +85,7 @@ import { useAuth } from '@/lib/auth/context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useFacility } from '@/lib/context/facility-context';
 import { useCommentCount } from '@/lib/hooks/use-comment-count';
+import { useInterfacilityTransfersEnabled } from '@/lib/hooks/use-interfacility-transfers-enabled';
 import { CommentThread } from '@/components/comments';
 import type { BedOverrideRequest, NursingCarePlanEntryCreateData, OverrideReason, ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
 import type { AIQuickAction } from '@/lib/types/ai';
@@ -171,10 +174,12 @@ export default function AdmissionDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { hasModule } = useFacility();
+  const interfacilityTransfersEnabled = useInterfacilityTransfersEnabled();
   const admissionRouteId = String(params.id);
 
   const { data: admission, isLoading, error } = useAdmission(admissionRouteId);
   const admissionId = admission?.id ?? 0;
+  const { data: clinicalSummary, isLoading: isClinicalSummaryLoading } = useAdmissionClinicalSummary(admissionId || undefined);
   const admissionCommentCount = useCommentCount('admission', admissionId);
   const { data: wardRounds, isLoading: wardRoundsLoading } = useAdmissionWardRounds(admissionId);
   const sourceEncounterId = admission?.source_encounter ?? admission?.opd_encounter ?? 0;
@@ -745,14 +750,16 @@ export default function AdmissionDetailPage() {
           </Button>
           </PermissionGate>
 
-          <PermissionGate action="inpatient.submit_interfacility_transfer">
-          <Button variant="outline" asChild>
-            <Link href={`/admissions/${admission.id}/inter-facility-transfer`}>
-              <MoveRight className="h-4 w-4 mr-2" />
-              Inter-Facility Transfer
-            </Link>
-          </Button>
-          </PermissionGate>
+          {interfacilityTransfersEnabled && (
+            <PermissionGate action="inpatient.submit_interfacility_transfer">
+            <Button variant="outline" asChild>
+              <Link href={`/admissions/${admission.id}/inter-facility-transfer`}>
+                <MoveRight className="h-4 w-4 mr-2" />
+                Inter-Facility Transfer
+              </Link>
+            </Button>
+            </PermissionGate>
+          )}
 
           {/* Blood Bank — only when module enabled */}
           {hasModule('blood_bank') && (
@@ -1021,6 +1028,39 @@ export default function AdmissionDetailPage() {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <CardTitle>Clinical Timeline Summary</CardTitle>
+                <HelpPopover content="Consolidated clinical events from transfers, reviews, rounds, and admission records." />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isClinicalSummaryLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : !clinicalSummary || clinicalSummary.entries.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No clinical summary entries available for this admission.</p>
+              ) : (
+                <div className="space-y-3">
+                  {clinicalSummary.entries.map((entry, index) => (
+                    <div key={`${entry.timestamp}-${entry.source}-${index}`} className="rounded-md border p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Badge variant="outline">{entry.source}</Badge>
+                        <span className="text-xs text-muted-foreground">{formatDateTime(entry.timestamp)}</span>
+                      </div>
+                      <p className="mt-2 text-sm whitespace-pre-wrap">{entry.content}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">By {entry.author}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Diet & Special Instructions */}
           <div className="grid gap-4 md:grid-cols-2">

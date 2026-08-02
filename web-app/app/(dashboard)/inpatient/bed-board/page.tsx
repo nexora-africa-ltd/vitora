@@ -50,6 +50,35 @@ import { useSupervisorAlerts } from '@/lib/hooks';
 import { formatDateTime } from '@/lib/utils/format';
 import type { Admission, NursingKardex, ShiftHandover } from '@/lib/types/inpatient';
 
+function getCleaningAgeBadgeMeta(cleaningSince?: string | null): {
+  label: string;
+  variant: 'secondary' | 'warning' | 'destructive';
+} {
+  if (!cleaningSince) {
+    return { label: 'Cleaning age unknown', variant: 'secondary' };
+  }
+
+  const startedAt = new Date(cleaningSince).getTime();
+  if (Number.isNaN(startedAt)) {
+    return { label: 'Cleaning age unknown', variant: 'secondary' };
+  }
+
+  const elapsedMs = Date.now() - startedAt;
+  const elapsedMinutes = Math.max(0, Math.floor(elapsedMs / 60000));
+
+  const hours = Math.floor(elapsedMinutes / 60);
+  const minutes = elapsedMinutes % 60;
+  const elapsedLabel = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
+  if (elapsedMinutes >= 120) {
+    return { label: `${elapsedLabel} in cleaning`, variant: 'destructive' };
+  }
+  if (elapsedMinutes >= 60) {
+    return { label: `${elapsedLabel} in cleaning`, variant: 'warning' };
+  }
+  return { label: `${elapsedLabel} in cleaning`, variant: 'secondary' };
+}
+
 type WardPlanningSnapshot = {
   highFallRiskCount: number;
   highPressureRiskCount: number;
@@ -334,26 +363,34 @@ export default function InpatientBedBoardPage() {
                     No beds are currently waiting for housekeeping turnover.
                   </div>
                 ) : (
-                  cleaningBeds.slice(0, 8).map((bed: any) => (
-                    <div key={bed.id} className="rounded-xl border bg-muted/20 p-4">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="text-sm font-semibold">{bed.ward_name} • {bed.bed_number}</p>
-                          <p className="text-xs text-muted-foreground">{bed.notes || 'Awaiting room turnover'}</p>
-                          {bed.status_changed_at && (
-                            <p className="mt-1 text-xs text-muted-foreground">Entered cleaning {formatDateTime(bed.status_changed_at)}</p>
-                          )}
+                  cleaningBeds.slice(0, 8).map((bed: any) => {
+                    const cleaningAge = getCleaningAgeBadgeMeta(bed.status_changed_at);
+                    return (
+                      <div key={bed.id} className="rounded-xl border bg-muted/20 p-4">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-sm font-semibold">{bed.ward_name} • {bed.bed_number}</p>
+                            <p className="text-xs text-muted-foreground">{bed.notes || 'Awaiting room turnover'}</p>
+                            <div className="mt-2">
+                              <Badge variant={cleaningAge.variant}>
+                                {cleaningAge.label}
+                              </Badge>
+                            </div>
+                            {bed.status_changed_at && (
+                              <p className="mt-1 text-xs text-muted-foreground">Entered cleaning {formatDateTime(bed.status_changed_at)}</p>
+                            )}
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => markBedAvailable.mutate(bed.id)}
+                            disabled={markBedAvailable.isPending}
+                          >
+                            Mark ready
+                          </Button>
                         </div>
-                        <Button
-                          size="sm"
-                          onClick={() => markBedAvailable.mutate(bed.id)}
-                          disabled={markBedAvailable.isPending}
-                        >
-                          Mark ready
-                        </Button>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </CardContent>
             </Card>

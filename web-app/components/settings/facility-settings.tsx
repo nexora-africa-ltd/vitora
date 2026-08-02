@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { useAuth, type FacilityModules } from '@/lib/auth/context';
 import { useFacility } from '@/lib/context/facility-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useInterfacilityTransfersPreference } from '@/lib/hooks/use-interfacility-transfers-enabled';
 import { billingApi } from '@/lib/api/billing';
 import { facilitiesApi, toUserFacility } from '@/lib/api/facilities';
 import { API_BASE_URL } from '@/lib/utils/constants';
@@ -355,6 +356,12 @@ export function FacilitySettingsTab() {
   } = useFacility();
   const [form, setForm] = useState<FacilityFormState | null>(null);
   const [hideCapitationInterventions, setHideCapitationInterventions] = useState(false);
+  const {
+    isEnabled: interfacilityTransfersEnabled,
+    isSystemEnabled: interfacilityTransfersSystemEnabled,
+    localOverride: interfacilityTransfersLocalOverride,
+    setLocalOverride: setInterfacilityTransfersLocalOverride,
+  } = useInterfacilityTransfersPreference();
 
   // Logo upload state
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -461,6 +468,15 @@ export function FacilitySettingsTab() {
       toast.error(error.message || 'Failed to update facility settings');
     },
   });
+
+  const interfacilityToggleDisabled = !canManageFacility || updateMutation.isPending || !interfacilityTransfersSystemEnabled;
+  const interfacilityToggleDisabledReason = !canManageFacility
+    ? 'You need facility management privileges to change this setting.'
+    : updateMutation.isPending
+      ? 'Please wait for the current save operation to finish.'
+      : !interfacilityTransfersSystemEnabled
+        ? 'Disabled because inpatient module is off for this facility.'
+        : null;
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -828,6 +844,35 @@ export function FacilitySettingsTab() {
                 onCheckedChange={setHideCapitationInterventions}
               />
             </div>
+
+            <div className="flex items-center justify-between rounded-xl border border-primary/10 px-4 py-3 md:col-span-2">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Inter-facility transfers</p>
+                <p className="text-sm text-muted-foreground">
+                  Show transfer queue and transfer actions for this facility on this workstation.
+                  {!interfacilityTransfersSystemEnabled
+                    ? ' Inpatient module is currently disabled.'
+                    : ''}
+                </p>
+              </div>
+              <Switch
+                checked={interfacilityTransfersLocalOverride}
+                disabled={interfacilityToggleDisabled}
+                onCheckedChange={setInterfacilityTransfersLocalOverride}
+              />
+            </div>
+
+            {interfacilityToggleDisabledReason && (
+              <p className="text-xs text-muted-foreground md:col-span-2">
+                {interfacilityToggleDisabledReason}
+              </p>
+            )}
+
+            {interfacilityTransfersSystemEnabled && !interfacilityTransfersEnabled && (
+              <p className="text-xs text-muted-foreground md:col-span-2">
+                Inter-facility transfer navigation is hidden because it is disabled for this facility context on this browser.
+              </p>
+            )}
           </section>
 
           <section className="space-y-4">

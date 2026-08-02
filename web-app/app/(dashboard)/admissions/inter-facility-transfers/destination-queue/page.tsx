@@ -33,6 +33,7 @@ import {
 import type { InterFacilityTransfer } from '@/lib/types/inpatient';
 import { useFacility } from '@/lib/context/facility-context';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useInterfacilityTransfersEnabled } from '@/lib/hooks/use-interfacility-transfers-enabled';
 import { getApiErrorMessage } from '@/lib/api/client';
 
 const OPEN_QUEUE_STATUSES = new Set(['PENDING_ACCEPTANCE', 'ACCEPTED', 'IN_TRANSIT']);
@@ -425,6 +426,7 @@ function TransferHistoryCard({
 
 export default function InterFacilityDestinationQueuePage() {
   const { facility } = useFacility();
+  const interfacilityTransfersEnabled = useInterfacilityTransfersEnabled();
   const { data, isLoading } = useInterFacilityDestinationQueue();
   const { data: transfersResponse, isLoading: isHistoryLoading } = useInterFacilityTransfers({
     ordering: '-updated_at',
@@ -438,6 +440,23 @@ export default function InterFacilityDestinationQueuePage() {
   }, [queue, transfersResponse?.results]);
   const inboundHistory = history.filter((item) => item.destination_facility === facility?.id);
   const outboundHistory = history.filter((item) => item.source_facility === facility?.id);
+
+  if (!interfacilityTransfersEnabled) {
+    return (
+      <div className="container mx-auto py-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Inter-facility transfers are disabled</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Destination queue is hidden because the inter-facility transfers feature toggle is off.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6">

@@ -122,6 +122,8 @@ export interface NavItem {
   facilityModule?: keyof FacilityModules;
   /** Subscription plan feature gate (e.g. 'ai_assistant') */
   planFeature?: string;
+  /** Runtime feature flag gate (e.g. 'interfacility_transfers') */
+  featureFlag?: string;
   /** Custom visibility predicate based on facility attributes */
   visibleWhen?: (ctx: NavItemVisibilityContext) => boolean;
   /**
@@ -143,7 +145,7 @@ export interface NavItemWithChildren {
   planFeature?: string;
   children: NavItem[];
   /** When set, the item is only included if the flag is true. */
-  featureFlag?: boolean;
+  featureFlag?: boolean | string;
   /**
    * When true, the entire section is hidden if the device has been offline for 10+ minutes.
    * Use for sections that are entirely internet-dependent (SHA, DHIS2, AI).
@@ -315,6 +317,7 @@ const _allNavItems: NavItemType[] = [
         href: '/admissions/inter-facility-transfers/destination-queue',
         icon: ArrowLeftRight,
         actionKey: 'inpatient.accept_interfacility_transfer',
+        featureFlag: 'interfacility_transfers',
       },
       { label: 'Recommendations', href: '/admissions/recommendations', icon: ListOrdered, actionKey: 'inpatient.view_admissions' },
       { label: 'Handover', href: '/admissions/handover', icon: ArrowLeftRight, actionKey: 'inpatient.view_ward' },

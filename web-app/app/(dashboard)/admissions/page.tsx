@@ -27,6 +27,7 @@ import { useAdmissionRecommendations, useAdmissions } from '@/lib/hooks/use-inpa
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useFacility } from '@/lib/context/facility-context';
+import { useInterfacilityTransfersEnabled } from '@/lib/hooks/use-interfacility-transfers-enabled';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { formatDate } from '@/lib/utils/format';
 import type { Admission, AdmissionRecommendation, AdmissionRecommendationUrgency, InpatientWardType } from '@/lib/types/inpatient';
@@ -35,6 +36,7 @@ export default function AdmissionsPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
   const { hasModule } = useFacility();
+  const interfacilityTransfersEnabled = useInterfacilityTransfersEnabled();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ACTIVE');
   const [wardTypeFilter, setWardTypeFilter] = useState<string>('all');
@@ -111,14 +113,16 @@ export default function AdmissionsPage() {
                   </Link>
                 </Button>
               )}
-              <PermissionGate action="inpatient.accept_interfacility_transfer">
-                <Button variant="outline" asChild>
-                  <Link href="/admissions/inter-facility-transfers/destination-queue">
-                    <span className="hidden sm:inline">Destination Queue</span>
-                    <span className="sm:hidden">Queue</span>
-                  </Link>
-                </Button>
-              </PermissionGate>
+              {interfacilityTransfersEnabled && (
+                <PermissionGate action="inpatient.accept_interfacility_transfer">
+                  <Button variant="outline" asChild>
+                    <Link href="/admissions/inter-facility-transfers/destination-queue">
+                      <span className="hidden sm:inline">Destination Queue</span>
+                      <span className="sm:hidden">Queue</span>
+                    </Link>
+                  </Button>
+                </PermissionGate>
+              )}
               <Button asChild>
                 <Link href="/admissions/new">
                   <Plus className="h-4 w-4 mr-2" />
