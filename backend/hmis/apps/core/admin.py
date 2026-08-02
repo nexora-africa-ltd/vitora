@@ -1790,6 +1790,8 @@ class FacilityAdmin(admin.ModelAdmin):
                     "has_theatre",
                     "has_dialysis",
                     "has_icu",
+                    "has_hdu",
+                    "has_nbu",
                     "has_maternity",
                     "has_mortuary",
                     "has_blood_bank",

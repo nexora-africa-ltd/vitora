@@ -28,7 +28,9 @@ const WARD_TYPES: { value: InpatientWardType; label: string }[] = [
   { value: 'SURGICAL', label: 'Surgical Ward' },
   { value: 'PEDIATRIC', label: 'Pediatric Ward' },
   { value: 'MATERNITY', label: 'Maternity Ward' },
+  { value: 'HDU', label: 'High Dependency Unit' },
   { value: 'ICU', label: 'Intensive Care Unit' },
+  { value: 'NBU', label: 'Newborn Unit' },
   { value: 'ISOLATION', label: 'Isolation Ward' },
 ];
 
@@ -50,7 +52,9 @@ const WARD_TYPE_DEFAULTS: Record<string, {
 }> = {
   MATERNITY: { gender_restriction: 'FEMALE_ONLY', maternity_designated: true, min_age_years: 12, max_age_years: 55 },
   ISOLATION: { isolation_capable: true },
+  HDU: { isolation_capable: true, oxygen_equipped: true, ventilator_capable: false },
   ICU: { isolation_capable: true, oxygen_equipped: true, ventilator_capable: true },
+  NBU: { isolation_capable: true, oxygen_equipped: true, ventilator_capable: false, min_age_years: 0, max_age_years: 1 },
   PEDIATRIC: { min_age_years: 0, max_age_years: 14 },
 };
 

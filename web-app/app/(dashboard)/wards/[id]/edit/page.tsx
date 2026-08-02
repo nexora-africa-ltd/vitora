@@ -38,7 +38,9 @@ const WARD_TYPES: { value: InpatientWardType; label: string }[] = [
   { value: 'SURGICAL', label: 'Surgical' },
   { value: 'PEDIATRIC', label: 'Pediatric' },
   { value: 'MATERNITY', label: 'Maternity' },
+  { value: 'HDU', label: 'High Dependency Unit (HDU)' },
   { value: 'ICU', label: 'Intensive Care Unit (ICU)' },
+  { value: 'NBU', label: 'Newborn Unit (NBU)' },
   { value: 'ISOLATION', label: 'Isolation' },
 ];
 
@@ -51,7 +53,7 @@ const GENDER_RESTRICTIONS = [
 const wardSchema = z.object({
   name: z.string().min(1, 'Ward name is required'),
   code: z.string().min(1, 'Ward code is required'),
-  ward_type: z.enum(['MEDICAL', 'SURGICAL', 'PEDIATRIC', 'MATERNITY', 'ICU', 'ISOLATION']),
+  ward_type: z.enum(['MEDICAL', 'SURGICAL', 'PEDIATRIC', 'MATERNITY', 'HDU', 'ICU', 'NBU', 'ISOLATION']),
   floor: z.string().optional(),
   capacity: z.coerce.number().min(1, 'Capacity must be at least 1'),
   daily_rate: z.string().min(1, 'Daily rate is required'),

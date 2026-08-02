@@ -278,6 +278,49 @@ const mockBedOccupancy = {
 // =============================================================================
 
 async function setupInpatientMocks(page: Page) {
+  const facilityModules = {
+    outpatient: true,
+    inpatient: true,
+    emergency: true,
+    pharmacy: true,
+    laboratory: true,
+    imaging: true,
+    theatre: true,
+    dialysis: false,
+    icu: true,
+    hdu: true,
+    nbu: true,
+    maternity: true,
+    mortuary: false,
+    blood_bank: false,
+    inventory: true,
+    lis_standalone: false,
+    pharmacy_standalone: false,
+    imaging_standalone: false,
+    triage: true,
+    scheduling: true,
+    surveillance: false,
+    immunizations: true,
+    allied_health: false,
+    quality: true,
+    billing: true,
+    private_insurance: true,
+    moh_reporting: true,
+    ai_assistant: true,
+    cds: true,
+    procedures: true,
+    analytics: true,
+  };
+
+  const assignedFacility = {
+    id: 1,
+    mfl_code: '12345',
+    name: 'Test County Hospital',
+    level: '4',
+    modules: facilityModules,
+    sha_contracted: true,
+  };
+
   // Auth mock
   await page.route('**/api/token/**', async (route) => {
     await route.fulfill({
@@ -286,7 +329,55 @@ async function setupInpatientMocks(page: Page) {
       body: JSON.stringify({
         access: 'mock-access-token',
         refresh: 'mock-refresh-token',
-        user: { id: 1, username: TEST_USER.username },
+        user: {
+          id: 1,
+          username: TEST_USER.username,
+          email: 'test@vitora.health',
+          first_name: 'Test',
+          last_name: 'User',
+          is_staff: true,
+          is_superuser: true,
+          role: 'ADMIN',
+          permissions: ['inpatient.add_admissionrecommendation'],
+          facility: assignedFacility,
+        },
+      }),
+    });
+  });
+
+  await page.route('**/api/staff/me/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        user_info: {
+          id: 1,
+          username: TEST_USER.username,
+          email: 'test@vitora.health',
+          first_name: 'Test',
+          last_name: 'User',
+          is_staff: true,
+          is_superuser: true,
+          role: 'ADMIN',
+          permissions: ['inpatient.add_admissionrecommendation'],
+          facility: assignedFacility,
+        },
+      }),
+    });
+  });
+
+  await page.route('**/api/facilities/1/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 1,
+        name: 'Test County Hospital',
+        mfl_code: '12345',
+        level: '4',
+        organization: 1,
+        organization_name: 'Test Org',
+        modules: facilityModules,
       }),
     });
   });
@@ -295,7 +386,6 @@ async function setupInpatientMocks(page: Page) {
   await page.route('**/api/inpatient/wards/**', async (route) => {
     if (route.request().method() === 'GET') {
       const url = route.request().url();
-
       // Handle ward beds endpoint: /api/inpatient/wards/{id}/beds/
       if (url.includes('/beds')) {
         await route.fulfill({
@@ -1244,6 +1334,7 @@ test.describe('Patient Transfer', () => {
     await expect(page.getByText('ICU', { exact: true }).first()).toBeVisible();
     await expect(page.getByText(/respiratory deterioration/i).first()).toBeVisible();
   });
+
 });
 
 // =============================================================================
@@ -1540,6 +1631,27 @@ test.describe('Ward Compatibility', () => {
     await expect(page.getByText(/gender/i)).toBeVisible();
     await expect(page.getByText(/age range/i)).toBeVisible();
     await expect(page.getByText(/isolation/i)).toBeVisible();
+  });
+});
+
+// =============================================================================
+// CRITICAL-CARE MODULE VISIBILITY TESTS
+// =============================================================================
+
+test.describe('Critical-Care Workflow Visibility', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupInpatientMocks(page);
+  });
+
+  test('HDU and NBU workflow options appear when facility modules are enabled', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+
+    await page.goto('/admissions/recommendations/new?encounter=1&patient_name=Jane%20Doe&patient_mrn=MRN-20260101-0001');
+    await expect(page.getByRole('heading', { name: /recommend for admission/i })).toBeVisible();
+
+    await page.getByText('Preferred Ward Type').locator('..').getByRole('combobox').click();
+    await expect(page.getByRole('option', { name: 'HDU' })).toBeVisible();
+    await expect(page.getByRole('option', { name: 'NBU' })).toBeVisible();
   });
 });
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AlertTriangle, Save } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
@@ -18,9 +18,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useUser } from '@/lib/auth';
+import { useFacility } from '@/lib/context/facility-context';
 import { useCreateAdmissionRecommendation } from '@/lib/hooks/use-inpatient';
 import { AdmissionSuccessModal, type AdmissionSuccessData } from '@/components/inpatient';
 import { getApiErrorMessage } from '@/lib/api/client';
+import type { InpatientWardType } from '@/lib/types/inpatient';
 
 /**
  * Parse DRF error response to extract user-friendly messages.
@@ -53,6 +55,7 @@ function parseRecommendationError(error: unknown): string {
 export default function NewAdmissionRecommendationPage() {
   const searchParams = useSearchParams();
   const user = useUser();
+  const { hasModule } = useFacility();
 
   const encounterIdParam = searchParams.get('encounter');
   const encounterId = encounterIdParam ? Number(encounterIdParam) : null;
@@ -63,13 +66,43 @@ export default function NewAdmissionRecommendationPage() {
   const [provisionalDiagnosis, setProvisionalDiagnosis] = useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue());
   const [urgency, setUrgency] = useState<'ROUTINE' | 'URGENT' | 'EMERGENCY'>('URGENT');
   const [preferredWardType, setPreferredWardType] = useState<
-    'MEDICAL' | 'SURGICAL' | 'PEDIATRIC' | 'MATERNITY' | 'ICU' | 'ISOLATION'
+    'MEDICAL' | 'SURGICAL' | 'PEDIATRIC' | 'MATERNITY' | 'HDU' | 'ICU' | 'NBU' | 'ISOLATION'
   >('MEDICAL');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState<AdmissionSuccessData | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const createRecommendation = useCreateAdmissionRecommendation();
+  const preferredWardOptions = useMemo<Array<{ value: InpatientWardType; label: string }>>(() => {
+    const options: Array<{ value: InpatientWardType; label: string }> = [
+      { value: 'MEDICAL', label: 'Medical' },
+      { value: 'SURGICAL', label: 'Surgical' },
+      { value: 'PEDIATRIC', label: 'Pediatric' },
+      { value: 'MATERNITY', label: 'Maternity' },
+    ];
+
+    if (hasModule('icu')) {
+      options.push({ value: 'ICU', label: 'ICU' });
+    }
+    if (hasModule('hdu')) {
+      options.push({ value: 'HDU', label: 'HDU' });
+    }
+    if (hasModule('nbu')) {
+      options.push({ value: 'NBU', label: 'NBU' });
+    }
+
+    options.push({ value: 'ISOLATION', label: 'Isolation' });
+    return options;
+  }, [hasModule]);
+
+  const preferredWardValues = useMemo(() => new Set(preferredWardOptions.map((option) => option.value)), [preferredWardOptions]);
+
+  useEffect(() => {
+    if (!preferredWardValues.has(preferredWardType)) {
+      setPreferredWardType('MEDICAL');
+    }
+  }, [preferredWardType, preferredWardValues]);
+
   const hasValidDiagnosis = !!(provisionalDiagnosis.icd10Code || provisionalDiagnosis.icd11Code);
   const canSubmit = !!encounterId && !!reason && hasValidDiagnosis && !!user;
 
@@ -162,12 +195,11 @@ export default function NewAdmissionRecommendationPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="MEDICAL">Medical</SelectItem>
-                  <SelectItem value="SURGICAL">Surgical</SelectItem>
-                  <SelectItem value="PEDIATRIC">Pediatric</SelectItem>
-                  <SelectItem value="MATERNITY">Maternity</SelectItem>
-                  <SelectItem value="ICU">ICU</SelectItem>
-                  <SelectItem value="ISOLATION">Isolation</SelectItem>
+                  {preferredWardOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

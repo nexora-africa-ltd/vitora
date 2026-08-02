@@ -1326,6 +1326,17 @@ class InterFacilityTransferEventSerializer(serializers.ModelSerializer):
 class TransferSerializer(serializers.ModelSerializer):
     """Serializer for Transfer model."""
 
+    _CARE_LEVEL_SCORE = {
+        "MEDICAL": 1,
+        "SURGICAL": 1,
+        "PEDIATRIC": 1,
+        "MATERNITY": 1,
+        "ISOLATION": 1,
+        "HDU": 2,
+        "NBU": 2,
+        "ICU": 3,
+    }
+
     admission = PublicIdOrPkRelatedField(queryset=Admission.objects.all())
 
     admission_number = serializers.CharField(source="admission.admission_number", read_only=True)
@@ -1337,8 +1348,12 @@ class TransferSerializer(serializers.ModelSerializer):
         source="admission.mch_registration.mch_number", read_only=True
     )
     source_ward_name = serializers.CharField(source="source_ward.name", read_only=True)
+    source_ward_type = serializers.CharField(source="source_ward.ward_type", read_only=True)
     source_bed_number = serializers.CharField(source="source_bed.bed_number", read_only=True)
     destination_ward_name = serializers.CharField(source="destination_ward.name", read_only=True)
+    destination_ward_type = serializers.CharField(
+        source="destination_ward.ward_type", read_only=True
+    )
     destination_bed_number = serializers.CharField(
         source="destination_bed.bed_number", read_only=True
     )
@@ -1358,10 +1373,12 @@ class TransferSerializer(serializers.ModelSerializer):
             "mch_registration_number",
             "source_ward",
             "source_ward_name",
+            "source_ward_type",
             "source_bed",
             "source_bed_number",
             "destination_ward",
             "destination_ward_name",
+            "destination_ward_type",
             "destination_bed",
             "destination_bed_number",
             "reason",
@@ -1380,6 +1397,11 @@ class TransferSerializer(serializers.ModelSerializer):
         admission = attrs.get("admission") or getattr(self.instance, "admission", None)
         source_ward = attrs.get("source_ward") or getattr(self.instance, "source_ward", None)
         source_bed = attrs.get("source_bed") or getattr(self.instance, "source_bed", None)
+        destination_ward = attrs.get("destination_ward") or getattr(
+            self.instance, "destination_ward", None
+        )
+        reason = attrs.get("reason") or getattr(self.instance, "reason", None)
+        reason_details = attrs.get("reason_details") or getattr(self.instance, "reason_details", "")
 
         if admission and source_ward and admission.ward_id != source_ward.id:
             raise serializers.ValidationError(
@@ -1390,6 +1412,54 @@ class TransferSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"source_bed": "Source bed must match the admission's current bed."}
             )
+
+        if source_ward and destination_ward and source_ward.id == destination_ward.id:
+            raise serializers.ValidationError(
+                {"destination_ward": "Destination ward must be different from source ward."}
+            )
+
+        if reason in {"STEP_UP", "STEP_DOWN"}:
+            if not str(reason_details or "").strip():
+                raise serializers.ValidationError(
+                    {"reason_details": "Provide reason_details for step-up/step-down transfers."}
+                )
+
+            if source_ward and destination_ward:
+                source_score = self._CARE_LEVEL_SCORE.get(str(source_ward.ward_type), 1)
+                destination_score = self._CARE_LEVEL_SCORE.get(str(destination_ward.ward_type), 1)
+
+                if reason == "STEP_UP" and destination_score <= source_score:
+                    raise serializers.ValidationError(
+                        {
+                            "destination_ward": (
+                                "STEP_UP transfer must move to a higher-acuity ward "
+                                f"(current: {source_ward.ward_type}, destination: {destination_ward.ward_type})."
+                            )
+                        }
+                    )
+
+                if reason == "STEP_DOWN" and destination_score >= source_score:
+                    raise serializers.ValidationError(
+                        {
+                            "destination_ward": (
+                                "STEP_DOWN transfer must move to a lower-acuity ward "
+                                f"(current: {source_ward.ward_type}, destination: {destination_ward.ward_type})."
+                            )
+                        }
+                    )
+
+        if admission and destination_ward and destination_ward.ward_type == "NBU":
+            patient_dob = getattr(admission.patient, "date_of_birth", None)
+            if patient_dob is not None:
+                from datetime import date
+
+                age_years = (date.today() - patient_dob).days // 365
+                if age_years > 1:
+                    raise serializers.ValidationError(
+                        {
+                            "destination_ward": "NBU destination is only allowed for newborn/infant patients."
+                        }
+                    )
 
         return attrs
 
@@ -2037,6 +2107,40 @@ class ConstraintOverrideMetricsSerializer(serializers.Serializer):
     common_reasons = serializers.ListField(
         child=serializers.DictField(),
         help_text="Most common override reasons with counts",
+    )
+
+
+class CriticalCareTransferMatrixRowSerializer(serializers.Serializer):
+    """Aggregated transfer counts by ward-type transition."""
+
+    from_ward_type = serializers.CharField(help_text="Source ward type")
+    to_ward_type = serializers.CharField(help_text="Destination ward type")
+    count = serializers.IntegerField(help_text="Number of transfers in this transition")
+
+
+class CriticalCareWardLoadSerializer(serializers.Serializer):
+    """Current active load for a ward relevant to critical-care flow."""
+
+    ward_id = serializers.IntegerField(help_text="Ward ID")
+    ward_name = serializers.CharField(help_text="Ward name")
+    ward_type = serializers.CharField(help_text="Ward type")
+    active_admissions = serializers.IntegerField(help_text="Currently active admissions in ward")
+    occupancy_rate = serializers.FloatField(help_text="Current occupancy rate percentage")
+
+
+class CriticalCareWorkflowHealthSerializer(serializers.Serializer):
+    """Response serializer for ICU/HDU/NBU workflow health metrics."""
+
+    period_days = serializers.IntegerField(help_text="Reporting window in days")
+    generated_at = serializers.DateTimeField(help_text="Generation timestamp")
+    totals = serializers.DictField(help_text="Top-level critical-care workflow counters")
+    transfer_matrix = CriticalCareTransferMatrixRowSerializer(
+        many=True,
+        help_text="Transfer counts grouped by source and destination ward type",
+    )
+    ward_load = CriticalCareWardLoadSerializer(
+        many=True,
+        help_text="Current load snapshot for ICU/HDU/NBU wards",
     )
 
 

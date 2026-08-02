@@ -53,6 +53,8 @@ class InpatientClinicalSummaryComposer:
         max_ward_rounds: int = 20,
         max_shift_notes: int = 20,
         max_handover_notes: int = 20,
+        max_transfers: int = 20,
+        max_review_requests: int = 20,
     ) -> list[ClinicalSummaryEntry]:
         entries: list[ClinicalSummaryEntry] = []
 
@@ -63,6 +65,8 @@ class InpatientClinicalSummaryComposer:
         entries.extend(cls._ward_round_entries(admission, limit=max_ward_rounds))
         entries.extend(cls._kardex_shift_entries(admission, limit=max_shift_notes))
         entries.extend(cls._kardex_handover_entries(admission, limit=max_handover_notes))
+        entries.extend(cls._transfer_entries(admission, limit=max_transfers))
+        entries.extend(cls._review_request_entries(admission, limit=max_review_requests))
 
         return sorted(entries, key=lambda item: item.timestamp)
 
@@ -204,6 +208,110 @@ class InpatientClinicalSummaryComposer:
                     content="\n".join(sections),
                 )
             )
+        return entries
+
+    @staticmethod
+    def _transfer_entries(admission, *, limit: int) -> list[ClinicalSummaryEntry]:
+        transfers = list(
+            admission.transfers.select_related(
+                "source_ward", "destination_ward", "transferred_by"
+            ).order_by("-transfer_date", "-created_at")[:limit]
+        )
+        transfers.reverse()
+
+        entries: list[ClinicalSummaryEntry] = []
+        for transfer in transfers:
+            reason_display = transfer.get_reason_display()
+            details = (transfer.reason_details or "").strip()
+            handover = (transfer.clinical_handover_notes or "").strip()
+            notes = details or handover or "No additional transfer notes."
+            author = (
+                transfer.transferred_by.get_full_name().strip()
+                or transfer.transferred_by.username
+                or "Unknown clinician"
+            )
+            entries.append(
+                ClinicalSummaryEntry(
+                    timestamp=transfer.transfer_date,
+                    source="Ward Transfer",
+                    author=author,
+                    content=(
+                        f"{transfer.source_ward.name} -> {transfer.destination_ward.name}\n"
+                        f"Reason: {reason_display}\n"
+                        f"Notes: {notes}"
+                    ),
+                )
+            )
+        return entries
+
+    @staticmethod
+    def _review_request_entries(admission, *, limit: int) -> list[ClinicalSummaryEntry]:
+        review_requests = list(
+            admission.review_requests.select_related(
+                "requested_by", "assigned_to", "acknowledged_by"
+            ).order_by("-requested_at", "-created_at")[:limit]
+        )
+        review_requests.reverse()
+
+        entries: list[ClinicalSummaryEntry] = []
+        for review in review_requests:
+            requested_by = (
+                review.requested_by.get_full_name().strip()
+                or review.requested_by.username
+                or "Unknown clinician"
+            )
+            assignee = ""
+            if review.assigned_to is not None:
+                assignee = (
+                    review.assigned_to.get_full_name().strip()
+                    or review.assigned_to.username
+                    or "assigned clinician"
+                )
+
+            request_content = [
+                f"Type: {review.get_review_type_display()} ({review.get_urgency_display()})",
+                f"Reason: {review.reason}",
+            ]
+            if assignee:
+                request_content.append(f"Assigned to: {assignee}")
+            entries.append(
+                ClinicalSummaryEntry(
+                    timestamp=review.requested_at,
+                    source="Review Request",
+                    author=requested_by,
+                    content="\n".join(request_content),
+                )
+            )
+
+            if review.acknowledged_at is not None:
+                acknowledged_by = "Care team"
+                if review.acknowledged_by is not None:
+                    acknowledged_by = (
+                        review.acknowledged_by.get_full_name().strip()
+                        or review.acknowledged_by.username
+                        or "Care team"
+                    )
+                entries.append(
+                    ClinicalSummaryEntry(
+                        timestamp=review.acknowledged_at,
+                        source="Review Request Acknowledged",
+                        author=acknowledged_by,
+                        content=(
+                            f"{review.get_review_type_display()} review acknowledged"
+                            + (f" (assigned: {assignee})" if assignee else "")
+                        ),
+                    )
+                )
+
+            if review.completed_at is not None:
+                entries.append(
+                    ClinicalSummaryEntry(
+                        timestamp=review.completed_at,
+                        source="Review Request Completed",
+                        author=assignee or "Care team",
+                        content=(f"{review.get_review_type_display()} review marked complete"),
+                    )
+                )
         return entries
 
 

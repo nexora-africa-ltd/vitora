@@ -331,6 +331,12 @@ class SmartBedAllocationService:
         elif ward_type == "ICU":
             # ICU is appropriate for any age but is specialized
             age_fit = 15
+        elif ward_type == "HDU":
+            # HDU is specialized but less restrictive than ICU
+            age_fit = 15
+        elif ward_type == "NBU":
+            # NBU should strongly prefer newborns/infants
+            age_fit = 25 if patient_age <= 1 else 3
         elif ward_type in ("MEDICAL", "SURGICAL"):
             # General wards — moderate fit for adults, less for children
             age_fit = 20 if patient_age > 14 else 10
@@ -365,13 +371,17 @@ class SmartBedAllocationService:
 
         # ---- Specialization penalty (0-25) ----
         # General wards are preferred when no special needs are present.
-        # Specialized wards (ICU, ISOLATION) should rank lower unless needed.
+        # Specialized wards (ICU/HDU/NBU/ISOLATION) should rank lower unless needed.
         has_special_needs = requires_isolation or requires_oxygen or requires_ventilator
         spec_score = 25.0
 
         if not has_special_needs:
             if ward_type == "ICU":
                 spec_score = 5  # heavy penalty — ICU beds are scarce
+            elif ward_type == "HDU":
+                spec_score = 10  # moderate-heavy penalty
+            elif ward_type == "NBU":
+                spec_score = 5 if patient_age <= 1 else 2
             elif ward_type == "ISOLATION":
                 spec_score = 10  # moderate penalty
         else:
@@ -379,6 +389,10 @@ class SmartBedAllocationService:
             if (
                 ward_type == "ICU"
                 and (requires_ventilator or requires_oxygen)
+                or ward_type == "HDU"
+                and requires_oxygen
+                or ward_type == "NBU"
+                and patient_age <= 1
                 or ward_type == "ISOLATION"
                 and requires_isolation
             ):

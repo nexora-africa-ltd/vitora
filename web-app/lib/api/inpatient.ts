@@ -9,6 +9,7 @@ import {
   BedSchema,
   AdmissionRecommendationSchema,
   AdmissionSchema,
+  CriticalCareWorkflowHealthSchema,
   AdmissionClinicalSummarySchema,
   AdmissionICUReadinessSchema,
   ClearanceStatusSchema,
@@ -69,6 +70,7 @@ import type { Prescription } from '@/lib/types/pharmacy';
 import type {
   Admission,
   AdmissionClinicalSummary,
+  CriticalCareWorkflowHealth,
   AdmissionICUReadiness,
   AdmissionCreateInput,
   AdmissionListParams,
@@ -352,6 +354,16 @@ export const inpatientApi = {
     );
     return parseResponse(AdmissionICUReadinessSchema, response.data, {
       context: 'inpatientApi.getAdmissionICUReadiness',
+    });
+  },
+
+  async getCriticalCareWorkflowHealth(days = 30): Promise<CriticalCareWorkflowHealth> {
+    const response = await apiClient.get<CriticalCareWorkflowHealth>(
+      '/api/inpatient/admissions/critical-care-workflow-health/',
+      { params: { days } }
+    );
+    return parseResponse(CriticalCareWorkflowHealthSchema, response.data, {
+      context: 'inpatientApi.getCriticalCareWorkflowHealth',
     });
   },
 

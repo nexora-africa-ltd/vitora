@@ -96,7 +96,9 @@ class Ward(FacilityScopedModel, TimeStampedModel):
         ("SURGICAL", "Surgical Ward"),
         ("PEDIATRIC", "Pediatric Ward"),
         ("MATERNITY", "Maternity Ward"),
+        ("HDU", "High Dependency Unit"),
         ("ICU", "Intensive Care Unit"),
+        ("NBU", "Newborn Unit"),
         ("ISOLATION", "Isolation Ward"),
     ]
 
@@ -110,6 +112,7 @@ class Ward(FacilityScopedModel, TimeStampedModel):
     # Default age ranges by ward type (applied only on create, and only for unset values)
     WARD_TYPE_AGE_DEFAULTS = {
         "PEDIATRIC": {"min_age_years": 0, "max_age_years": 14},
+        "NBU": {"min_age_years": 0, "max_age_years": 1},
         "MATERNITY": {"min_age_years": 12, "max_age_years": 55},
     }
 
@@ -125,6 +128,16 @@ class Ward(FacilityScopedModel, TimeStampedModel):
         "ICU": {
             "oxygen_equipped": True,
             "ventilator_capable": True,
+            "isolation_capable": True,
+        },
+        "HDU": {
+            "oxygen_equipped": True,
+            "ventilator_capable": False,
+            "isolation_capable": True,
+        },
+        "NBU": {
+            "oxygen_equipped": True,
+            "ventilator_capable": False,
             "isolation_capable": True,
         },
         "PEDIATRIC": {},  # age defaults handled separately via WARD_TYPE_AGE_DEFAULTS

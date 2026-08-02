@@ -86,7 +86,7 @@ def _to_dha_document_type(
     original_filename: str = "",
 ) -> str:
     haystack = _normalize_attachment_name(f"{attachment_name} {original_filename}")
-    if "critical care" in haystack or "icu" in haystack:
+    if "critical care" in haystack or "icu" in haystack or "hdu" in haystack or "nbu" in haystack:
         return "CRITICAL_CARE_UNIT_CASE"
     if "final bill" in haystack:
         return "FINAL_BILL"

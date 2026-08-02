@@ -50,6 +50,8 @@ export interface FacilityDetail extends FacilityListItem {
   has_theatre: boolean;
   has_dialysis: boolean;
   has_icu: boolean;
+  has_hdu: boolean;
+  has_nbu: boolean;
   has_maternity: boolean;
   has_mortuary: boolean;
   has_blood_bank: boolean;
@@ -127,6 +129,8 @@ export interface FacilityUpdateData {
   has_theatre?: boolean;
   has_dialysis?: boolean;
   has_icu?: boolean;
+  has_hdu?: boolean;
+  has_nbu?: boolean;
   has_maternity?: boolean;
   has_mortuary?: boolean;
   has_blood_bank?: boolean;
@@ -175,6 +179,8 @@ export interface FacilityCreateData {
   has_theatre?: boolean;
   has_dialysis?: boolean;
   has_icu?: boolean;
+  has_hdu?: boolean;
+  has_nbu?: boolean;
   has_maternity?: boolean;
   has_mortuary?: boolean;
   has_blood_bank?: boolean;

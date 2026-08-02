@@ -81,6 +81,8 @@ const MODULE_FIELDS: Array<{
   { key: 'theatre', field: 'has_theatre', title: 'Theatre', description: 'Surgical theatre and peri-operative workflows.' },
   { key: 'dialysis', field: 'has_dialysis', title: 'Dialysis', description: 'Renal dialysis treatment capability.' },
   { key: 'icu', field: 'has_icu', title: 'ICU', description: 'Intensive care services and monitoring.' },
+  { key: 'hdu', field: 'has_hdu', title: 'HDU', description: 'High dependency monitoring and step-down critical care.' },
+  { key: 'nbu', field: 'has_nbu', title: 'NBU', description: 'Newborn unit and neonatal inpatient support.' },
   { key: 'maternity', field: 'has_maternity', title: 'Maternity', description: 'Maternal and obstetric services.' },
   { key: 'mortuary', field: 'has_mortuary', title: 'Mortuary', description: 'Mortuary and post-mortem support.' },
   { key: 'blood_bank', field: 'has_blood_bank', title: 'Blood Bank', description: 'Blood storage and transfusion services.' },
@@ -140,6 +142,8 @@ interface FacilityFormState {
   has_theatre: boolean;
   has_dialysis: boolean;
   has_icu: boolean;
+  has_hdu: boolean;
+  has_nbu: boolean;
   has_maternity: boolean;
   has_mortuary: boolean;
   has_blood_bank: boolean;
@@ -185,6 +189,8 @@ function createFormState(facility: FacilityDetail): FacilityFormState {
     has_theatre: facility.has_theatre,
     has_dialysis: facility.has_dialysis,
     has_icu: facility.has_icu,
+    has_hdu: facility.has_hdu,
+    has_nbu: facility.has_nbu,
     has_maternity: facility.has_maternity,
     has_mortuary: facility.has_mortuary,
     has_blood_bank: facility.has_blood_bank,
@@ -251,6 +257,8 @@ function NoFacilityState() {
         theatre: false,
         dialysis: false,
         icu: false,
+        hdu: false,
+        nbu: false,
         maternity: false,
         mortuary: false,
         blood_bank: false,

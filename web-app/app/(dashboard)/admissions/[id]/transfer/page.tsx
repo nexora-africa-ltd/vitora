@@ -40,7 +40,14 @@ import {
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
-import type { CompatibilityCheckResult, CompatibleWardInfo, IncompatibleWardInfo, TransferReason } from '@/lib/types/inpatient';
+import type {
+  CompatibilityCheckResult,
+  CompatibleWardInfo,
+  IncompatibleWardInfo,
+  InpatientWard,
+  InpatientWardType,
+  TransferReason
+} from '@/lib/types/inpatient';
 
 const TRANSFER_REASONS: { value: TransferReason; label: string }[] = [
   { value: 'STEP_UP', label: 'Step Up Care (e.g., to ICU)' },
@@ -50,6 +57,37 @@ const TRANSFER_REASONS: { value: TransferReason; label: string }[] = [
   { value: 'PATIENT_REQUEST', label: 'Patient Request' },
   { value: 'OTHER', label: 'Other' },
 ];
+
+const CARE_LEVEL_SCORE: Record<InpatientWardType, number> = {
+  MEDICAL: 1,
+  SURGICAL: 1,
+  PEDIATRIC: 1,
+  MATERNITY: 1,
+  ISOLATION: 1,
+  HDU: 2,
+  NBU: 2,
+  ICU: 3,
+};
+
+const WARD_TYPE_LABELS: Record<InpatientWardType, string> = {
+  MEDICAL: 'Medical',
+  SURGICAL: 'Surgical',
+  PEDIATRIC: 'Pediatric',
+  MATERNITY: 'Maternity',
+  ISOLATION: 'Isolation',
+  HDU: 'HDU',
+  NBU: 'NBU',
+  ICU: 'ICU',
+};
+
+function deriveTransitionReason(source?: InpatientWardType, destination?: InpatientWardType): TransferReason | null {
+  if (!source || !destination) return null;
+  const sourceScore = CARE_LEVEL_SCORE[source] ?? 1;
+  const destinationScore = CARE_LEVEL_SCORE[destination] ?? 1;
+  if (destinationScore > sourceScore) return 'STEP_UP';
+  if (destinationScore < sourceScore) return 'STEP_DOWN';
+  return null;
+}
 
 export default function TransferPage() {
   const params = useParams();
@@ -82,6 +120,22 @@ export default function TransferPage() {
   const [bulkCheckComplete, setBulkCheckComplete] = useState(false);
 
   const selectedWardId = useMemo(() => (targetWardId ? Number(targetWardId) : undefined), [targetWardId]);
+  const wardsList = useMemo<InpatientWard[]>(() => (
+    Array.isArray(wards) ? wards : (wards?.results ?? [])
+  ), [wards]);
+  const wardById = useMemo(() => {
+    const lookup: Record<number, InpatientWard> = {};
+    for (const ward of wardsList) lookup[ward.id] = ward;
+    return lookup;
+  }, [wardsList]);
+  const sourceWardType = useMemo<InpatientWardType | undefined>(() => {
+    if (!admission) return undefined;
+    return admission.ward_type ?? wardById[admission.ward]?.ward_type;
+  }, [admission, wardById]);
+  const selectedWardType = useMemo<InpatientWardType | undefined>(() => (
+    selectedWardId ? wardById[selectedWardId]?.ward_type : undefined
+  ), [selectedWardId, wardById]);
+  const suggestedReason = useMemo(() => deriveTransitionReason(sourceWardType, selectedWardType), [sourceWardType, selectedWardType]);
   const { data: beds } = useBeds({ ward: selectedWardId, status: 'AVAILABLE' });
 
   // Get transfers list from paginated response
@@ -118,6 +172,14 @@ export default function TransferPage() {
     setCompatibilityResult(null);
     setCompatibilityOverridden(false);
 
+    if (wardId) {
+      const destinationWardType = wardById[Number(wardId)]?.ward_type;
+      const transitionReason = deriveTransitionReason(sourceWardType, destinationWardType);
+      if (transitionReason) {
+        setTransferReason(transitionReason);
+      }
+    }
+
     if (!wardId || !admission?.patient) return;
 
     try {
@@ -134,7 +196,7 @@ export default function TransferPage() {
     } catch (error) {
       console.error('Failed to check compatibility:', error);
     }
-  }, [admission?.patient, checkCompatibility]);
+  }, [admission?.patient, checkCompatibility, sourceWardType, wardById]);
 
   const handleSubmit = async () => {
     if (!admission || !targetWardId || !targetBedId || !clinicalJustification) {
@@ -160,6 +222,7 @@ export default function TransferPage() {
         destination_ward: Number(targetWardId),
         destination_bed: Number(targetBedId),
         reason: transferReason,
+        reason_details: clinicalJustification,
         clinical_handover_notes: clinicalJustification,
         transfer_date: new Date().toISOString(),
         transferred_by: user?.id,
@@ -231,7 +294,12 @@ export default function TransferPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Current Ward</p>
-              <p className="font-medium">{admission.ward_name}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium">{admission.ward_name}</p>
+                {sourceWardType && (
+                  <Badge variant="outline" className="text-xs">{WARD_TYPE_LABELS[sourceWardType]}</Badge>
+                )}
+              </div>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Current Bed</p>
@@ -313,6 +381,9 @@ export default function TransferPage() {
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
                         <span>{w.ward_name}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {WARD_TYPE_LABELS[w.ward_type]}
+                        </Badge>
                         <Badge variant="outline" className="text-xs ml-auto bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
                           {w.available_beds} beds
                         </Badge>
@@ -330,6 +401,9 @@ export default function TransferPage() {
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
                         <span>{w.ward_name}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {WARD_TYPE_LABELS[w.ward_type]}
+                        </Badge>
                         <Badge variant="secondary" className="text-xs ml-auto bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
                           {w.violations.length} restriction{w.violations.length !== 1 ? 's' : ''}
                         </Badge>
@@ -421,6 +495,11 @@ export default function TransferPage() {
           {/* Transfer Reason */}
           <div className="space-y-2">
             <Label>Transfer Reason *</Label>
+            {suggestedReason && (
+              <p className="text-xs text-muted-foreground">
+                Suggested from ward acuity: <span className="font-medium">{suggestedReason === 'STEP_UP' ? 'Step Up Care' : 'Step Down Care'}</span>
+              </p>
+            )}
             <Select value={transferReason} onValueChange={(v) => setTransferReason(v as TransferReason)}>
               <SelectTrigger>
                 <SelectValue />

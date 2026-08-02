@@ -165,11 +165,12 @@ class AdmissionAttachmentService:
         ward_type = str(getattr(ward, "ward_type", "") or "").strip().upper()
         ward_name = str(getattr(ward, "name", "") or "").strip().upper()
         ward_code = str(getattr(ward, "code", "") or "").strip().upper()
-        if ward_type in {"ICU", "HDU", "CRITICAL_CARE"}:
+        if ward_type in {"ICU", "HDU", "NBU", "CRITICAL_CARE"}:
             return True
         haystack = f"{ward_name} {ward_code} {ward_type}"
         return any(
-            token in haystack for token in ["ICU", "HDU", "CRITICAL CARE", "HIGH DEPENDENCY"]
+            token in haystack
+            for token in ["ICU", "HDU", "NBU", "CRITICAL CARE", "HIGH DEPENDENCY", "NEWBORN"]
         )
 
     @staticmethod
@@ -198,7 +199,7 @@ class AdmissionAttachmentService:
         critical_intervals: list[tuple[datetime, datetime, str]],
     ) -> GeneratedAttachmentResult:
         if not critical_intervals:
-            return GeneratedAttachmentResult(None, False, False, "no_icu_hdu_stay")
+            return GeneratedAttachmentResult(None, False, False, "no_icu_hdu_nbu_stay")
 
         manual_existing = (
             claim.attachments.filter(
@@ -232,7 +233,7 @@ class AdmissionAttachmentService:
             attachment_name=f"Critical Care Unit Case - {claim.claim_number}",
             marker=AUTO_CRITICAL_CARE_MARKER,
             description=(
-                "Auto-generated critical care unit case notes from admission-scoped ICU/HDU "
+                "Auto-generated critical care unit case notes from admission-scoped ICU/HDU/NBU "
                 "timeline and chronological clinical events"
             ),
             content=content,
@@ -326,7 +327,9 @@ class AdmissionAttachmentService:
         events = cls._collect_admission_events(admission=admission, start=start, end=end)
         events = [event for event in events if cls._in_any_interval(event[0], critical_intervals)]
         if not events:
-            lines.append("- No ICU/HDU-specific clinical events captured in this admission window.")
+            lines.append(
+                "- No ICU/HDU/NBU-specific clinical events captured in this admission window."
+            )
         else:
             for timestamp, source, content in sorted(events, key=lambda item: item[0]):
                 lines.append(

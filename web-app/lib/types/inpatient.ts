@@ -5,7 +5,9 @@ export type InpatientWardType =
   | 'SURGICAL'
   | 'PEDIATRIC'
   | 'MATERNITY'
+  | 'HDU'
   | 'ICU'
+  | 'NBU'
   | 'ISOLATION';
 
 export interface InpatientWard {
@@ -156,6 +158,40 @@ export interface AdmissionClinicalSummary {
   generated_at: string;
   entries: AdmissionClinicalSummaryEntry[];
   rendered_text: string;
+}
+
+export interface CriticalCareTransferMatrixRow {
+  from_ward_type: string;
+  to_ward_type: string;
+  count: number;
+}
+
+export interface CriticalCareWardLoad {
+  ward_id: number;
+  ward_name: string;
+  ward_type: string;
+  active_admissions: number;
+  occupancy_rate: number;
+}
+
+export interface CriticalCareWorkflowHealth {
+  period_days: number;
+  generated_at: string;
+  totals: {
+    active_admissions: number;
+    critical_admissions: number;
+    current_icu: number;
+    current_hdu: number;
+    current_nbu: number;
+    transfers_total: number;
+    step_up_transfers: number;
+    step_down_transfers: number;
+    lateral_transfers: number;
+    review_requests_pending: number;
+    review_requests_overdue: number;
+  };
+  transfer_matrix: CriticalCareTransferMatrixRow[];
+  ward_load: CriticalCareWardLoad[];
 }
 
 /**
@@ -395,10 +431,12 @@ export interface Transfer {
   mch_registration_number?: string;
   source_ward: number;
   source_ward_name?: string;
+  source_ward_type?: InpatientWardType;
   source_bed: number;
   source_bed_number?: string;
   destination_ward: number;
   destination_ward_name?: string;
+  destination_ward_type?: InpatientWardType;
   destination_bed: number;
   destination_bed_number?: string;
   reason: TransferReason;
@@ -419,6 +457,7 @@ export interface TransferCreateData {
   destination_ward: number;
   destination_bed: number;
   reason: TransferReason;
+  reason_details?: string;
   clinical_handover_notes: string;
   transfer_date: string;
   transferred_by?: number;
@@ -961,6 +1000,8 @@ export interface TransferListParams {
   admission?: string | number;
   source_ward?: number;
   destination_ward?: number;
+  source_ward_type?: string;
+  destination_ward_type?: string;
   reason?: TransferReason;
   ordering?: string;
   page?: number;

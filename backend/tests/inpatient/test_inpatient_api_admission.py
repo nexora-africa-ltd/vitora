@@ -415,6 +415,70 @@ class TestAdmissionAPI:
         assert "missing_required" in response.data
         assert "missing_advisory" in response.data
 
+    def test_clinical_summary_includes_transfer_and_review_request_events(
+        self,
+        authenticated_client,
+        sample_admission,
+        test_user,
+        another_user,
+        sample_facility,
+        sample_organization,
+    ):
+        from decimal import Decimal
+
+        from hmis.apps.inpatient.models import Bed, ReviewRequest, Transfer, Ward
+
+        destination_ward = Ward.objects.create(
+            name="HDU Ward",
+            code="HDU-02",
+            ward_type="HDU",
+            capacity=6,
+            daily_rate=Decimal("1500.00"),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        destination_bed = Bed.objects.create(
+            ward=destination_ward,
+            bed_number="HDU-02-B1",
+            bed_type="HDU",
+            status="AVAILABLE",
+        )
+
+        Transfer.objects.create(
+            admission=sample_admission,
+            source_ward=sample_admission.ward,
+            source_bed=sample_admission.bed,
+            destination_ward=destination_ward,
+            destination_bed=destination_bed,
+            reason="STEP_UP",
+            reason_details="Escalation to HDU for high-acuity monitoring.",
+            transferred_by=test_user,
+            transfer_date=timezone.now(),
+            clinical_handover_notes="Needs closer observation and respiratory support.",
+        )
+
+        review_request = ReviewRequest.objects.create(
+            admission=sample_admission,
+            review_type="TRANSFER_REVIEW",
+            urgency="URGENT",
+            reason="Review escalation criteria and ongoing HDU treatment plan.",
+            requested_by=test_user,
+            assigned_to=another_user,
+        )
+        review_request.acknowledge(another_user)
+        review_request.complete()
+
+        response = authenticated_client.get(
+            f"/api/inpatient/admissions/{sample_admission.id}/clinical-summary/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+        sources = [entry["source"] for entry in response.data["entries"]]
+        assert "Ward Transfer" in sources
+        assert "Review Request" in sources
+        assert "Review Request Acknowledged" in sources
+        assert "Review Request Completed" in sources
+
     def test_icu_readiness_requires_predictor_minimum_fields(
         self,
         authenticated_client,
@@ -447,6 +511,97 @@ class TestAdmissionAPI:
         assert response.status_code == status.HTTP_200_OK
         for admission in response.data["results"]:
             assert admission["admission_status"] == "ACTIVE"
+
+    def test_critical_care_workflow_health_returns_transfer_and_review_metrics(
+        self,
+        authenticated_client,
+        sample_admission,
+        test_user,
+        sample_facility,
+        sample_organization,
+    ):
+        from decimal import Decimal
+
+        from hmis.apps.inpatient.models import Bed, ReviewRequest, Transfer, Ward
+
+        hdu_ward = Ward.objects.create(
+            name="HDU Metrics Ward",
+            code="HDU-MET-01",
+            ward_type="HDU",
+            capacity=6,
+            daily_rate=Decimal("1200.00"),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        icu_ward = Ward.objects.create(
+            name="ICU Metrics Ward",
+            code="ICU-MET-01",
+            ward_type="ICU",
+            capacity=4,
+            daily_rate=Decimal("2000.00"),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        hdu_bed = Bed.objects.create(ward=hdu_ward, bed_number="HDU-MET-B1", status="AVAILABLE")
+        icu_bed = Bed.objects.create(ward=icu_ward, bed_number="ICU-MET-B1", status="AVAILABLE")
+
+        Transfer.objects.create(
+            admission=sample_admission,
+            source_ward=sample_admission.ward,
+            source_bed=sample_admission.bed,
+            destination_ward=hdu_ward,
+            destination_bed=hdu_bed,
+            reason="STEP_UP",
+            reason_details="Escalate to HDU",
+            transferred_by=test_user,
+            transfer_date=timezone.now(),
+            clinical_handover_notes="Escalated monitoring",
+        )
+        Transfer.objects.create(
+            admission=sample_admission,
+            source_ward=sample_admission.ward,
+            source_bed=sample_admission.bed,
+            destination_ward=icu_ward,
+            destination_bed=icu_bed,
+            reason="STEP_UP",
+            reason_details="Escalate to ICU",
+            transferred_by=test_user,
+            transfer_date=timezone.now(),
+            clinical_handover_notes="Higher-acuity support",
+        )
+
+        ReviewRequest.objects.create(
+            admission=sample_admission,
+            review_type="TRANSFER_REVIEW",
+            urgency="URGENT",
+            reason="Monitor after escalation",
+            requested_by=test_user,
+            status="PENDING",
+        )
+
+        response = authenticated_client.get(
+            "/api/inpatient/admissions/critical-care-workflow-health/?days=30"
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+        data = response.data
+        assert data["period_days"] == 30
+        assert data["totals"]["transfers_total"] >= 2
+        assert data["totals"]["step_up_transfers"] >= 2
+        assert data["totals"]["review_requests_pending"] >= 1
+        assert any(row["to_ward_type"] == "HDU" for row in data["transfer_matrix"])
+        assert any(row["to_ward_type"] == "ICU" for row in data["transfer_matrix"])
+
+    def test_critical_care_workflow_health_clamps_invalid_days(
+        self,
+        authenticated_client,
+        sample_admission,
+    ):
+        response = authenticated_client.get(
+            "/api/inpatient/admissions/critical-care-workflow-health/?days=9999"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["period_days"] == 365
 
     def test_filter_active_admission_for_patient_returns_only_current_stay(
         self,

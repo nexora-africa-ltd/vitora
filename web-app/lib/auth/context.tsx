@@ -16,6 +16,8 @@ export interface FacilityModules {
   theatre: boolean;
   dialysis: boolean;
   icu: boolean;
+  hdu: boolean;
+  nbu: boolean;
   maternity: boolean;
   mortuary: boolean;
   blood_bank: boolean;

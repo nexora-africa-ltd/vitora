@@ -24,7 +24,9 @@ export const InpatientWardTypeSchema = z.enum([
   'SURGICAL',
   'PEDIATRIC',
   'MATERNITY',
+  'HDU',
   'ICU',
+  'NBU',
   'ISOLATION',
 ]);
 
@@ -270,6 +272,42 @@ export const AdmissionClinicalSummarySchema = z.object({
 
 export type AdmissionClinicalSummarySchemaType = z.infer<typeof AdmissionClinicalSummarySchema>;
 
+export const CriticalCareTransferMatrixRowSchema = z.object({
+  from_ward_type: z.string(),
+  to_ward_type: z.string(),
+  count: z.number(),
+});
+
+export const CriticalCareWardLoadSchema = z.object({
+  ward_id: z.number(),
+  ward_name: z.string(),
+  ward_type: z.string(),
+  active_admissions: z.number(),
+  occupancy_rate: z.number(),
+});
+
+export const CriticalCareWorkflowHealthSchema = z.object({
+  period_days: z.number(),
+  generated_at: z.string(),
+  totals: z.object({
+    active_admissions: z.number(),
+    critical_admissions: z.number(),
+    current_icu: z.number(),
+    current_hdu: z.number(),
+    current_nbu: z.number(),
+    transfers_total: z.number(),
+    step_up_transfers: z.number(),
+    step_down_transfers: z.number(),
+    lateral_transfers: z.number(),
+    review_requests_pending: z.number(),
+    review_requests_overdue: z.number(),
+  }),
+  transfer_matrix: z.array(CriticalCareTransferMatrixRowSchema),
+  ward_load: z.array(CriticalCareWardLoadSchema),
+});
+
+export type CriticalCareWorkflowHealthSchemaType = z.infer<typeof CriticalCareWorkflowHealthSchema>;
+
 // =============================================================================
 // DISCHARGE SCHEMAS
 // =============================================================================
@@ -372,10 +410,12 @@ export const TransferSchema = z.object({
   mch_registration_number: z.string().optional(),
   source_ward: z.number(),
   source_ward_name: z.string().optional(),
+  source_ward_type: InpatientWardTypeSchema.optional(),
   source_bed: z.number(),
   source_bed_number: z.string().optional(),
   destination_ward: z.number(),
   destination_ward_name: z.string().optional(),
+  destination_ward_type: InpatientWardTypeSchema.optional(),
   destination_bed: z.number(),
   destination_bed_number: z.string().optional(),
   reason: TransferReasonSchema,

@@ -81,6 +81,8 @@ const FacilityModulesSchema = z.object({
   theatre: z.boolean(),
   dialysis: z.boolean(),
   icu: z.boolean(),
+  hdu: z.boolean().default(false),
+  nbu: z.boolean().default(false),
   maternity: z.boolean(),
   mortuary: z.boolean(),
   blood_bank: z.boolean(),

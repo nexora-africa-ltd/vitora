@@ -55,7 +55,9 @@ const wardTypeLabels: Record<InpatientWardType, string> = {
   SURGICAL: 'Surgical Ward',
   PEDIATRIC: 'Pediatric Ward',
   MATERNITY: 'Maternity Ward',
+  HDU: 'High Dependency Unit',
   ICU: 'Intensive Care Unit',
+  NBU: 'Newborn Unit',
   ISOLATION: 'Isolation Ward',
 };
 

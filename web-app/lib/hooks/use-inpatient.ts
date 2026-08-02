@@ -7,6 +7,7 @@ import { inpatientApi } from '@/lib/api/inpatient';
 import type {
   Admission,
   AdmissionCreateInput,
+  CriticalCareWorkflowHealth,
   AdmissionListParams,
   AdmissionRecommendation,
   AdmissionRecommendationListParams,
@@ -98,6 +99,8 @@ export const inpatientQueryKeys = {
   admission: (id: string | number) => [...inpatientQueryKeys.all, 'admissions', id] as const,
   admissionICUReadiness: (admissionId: string | number) =>
     [...inpatientQueryKeys.admission(admissionId), 'icu-readiness'] as const,
+  criticalCareWorkflowHealth: (days = 30) =>
+    [...inpatientQueryKeys.all, 'critical-care-workflow-health', days] as const,
   discharges: (params?: DischargeListParams) =>
     [...inpatientQueryKeys.all, 'discharges', params] as const,
   discharge: (id: number) => [...inpatientQueryKeys.all, 'discharges', id] as const,
@@ -442,6 +445,13 @@ export function useAdmissionICUReadiness(admissionId: string | number | undefine
     queryKey: inpatientQueryKeys.admissionICUReadiness(admissionId!),
     enabled: admissionId !== undefined,
     queryFn: () => inpatientApi.getAdmissionICUReadiness(admissionId!),
+  });
+}
+
+export function useCriticalCareWorkflowHealth(days = 30) {
+  return useQuery<CriticalCareWorkflowHealth>({
+    queryKey: inpatientQueryKeys.criticalCareWorkflowHealth(days),
+    queryFn: () => inpatientApi.getCriticalCareWorkflowHealth(days),
   });
 }
 

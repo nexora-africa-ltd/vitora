@@ -19,6 +19,9 @@ import {
   UserCheck,
   ArrowRightLeft,
   CalendarClock,
+  ArrowUpRight,
+  ArrowDownRight,
+  AlertTriangle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -30,6 +33,7 @@ import { StatsCard } from '@/components/dashboard/stats-card';
 import { LineChart, BarChart, DonutChart } from '@/components/charts';
 import { ChartEmptyState } from '@/components/charts';
 import { useFacilitySummary, useDepartmentPerformance, useDiagnosisTrends, useDemographics } from '@/lib/hooks/use-analytics';
+import { useCriticalCareWorkflowHealth } from '@/lib/hooks/use-inpatient';
 import type { ChartConfig } from '@/components/ui/chart';
 import type { FacilityDailySummary } from '@/lib/types/analytics';
 
@@ -136,6 +140,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
   const [dxChartView, setDxChartView] = useState<'bar' | 'pie'>('bar');
   const [revenueChartView, setRevenueChartView] = useState<'bar' | 'pie'>('bar');
   const dateRange = useMemo(() => getDateRange(period), [period]);
+  const periodDays = period === '7d' ? 7 : period === '30d' ? 30 : 90;
 
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -154,6 +159,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
     top_n: 10,
   });
   const { data: demoData, isLoading: demoLoading } = useDemographics();
+  const { data: criticalCareData, isLoading: criticalCareLoading } = useCriticalCareWorkflowHealth(periodDays);
 
   // Derived metrics
   const summaries = useMemo(() => summaryData?.results ?? [], [summaryData]);
@@ -324,7 +330,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
     return data;
   }, [volumeChartData]);
 
-  const periodLabel = period === '7d' ? '7' : period === '30d' ? '30' : '90';
+  const periodLabel = String(periodDays);
 
   // Department → drill-down route mapping
   const deptRouteMap: Record<string, string> = {
@@ -419,6 +425,61 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
           href="/patients"
         />
       </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-base">Critical Care</CardTitle>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/inpatient/critical-care">Open Dashboard</Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <StatsCard
+              title="Critical Census"
+              value={criticalCareLoading ? '—' : (criticalCareData?.totals.critical_admissions ?? 0)}
+              icon={BedDouble}
+              variant="info"
+              loading={criticalCareLoading}
+              description="ICU/HDU/NBU active admissions"
+              showTrendIndicator={false}
+              href="/inpatient/critical-care"
+            />
+            <StatsCard
+              title="Step-Up Transfers"
+              value={criticalCareLoading ? '—' : (criticalCareData?.totals.step_up_transfers ?? 0)}
+              icon={ArrowUpRight}
+              variant="warning"
+              loading={criticalCareLoading}
+              description={`Last ${periodLabel} days`}
+              showTrendIndicator={false}
+              href="/inpatient/critical-care"
+            />
+            <StatsCard
+              title="Step-Down Transfers"
+              value={criticalCareLoading ? '—' : (criticalCareData?.totals.step_down_transfers ?? 0)}
+              icon={ArrowDownRight}
+              variant="success"
+              loading={criticalCareLoading}
+              description={`Last ${periodLabel} days`}
+              showTrendIndicator={false}
+              href="/inpatient/critical-care"
+            />
+            <StatsCard
+              title="Overdue Reviews"
+              value={criticalCareLoading ? '—' : (criticalCareData?.totals.review_requests_overdue ?? 0)}
+              icon={AlertTriangle}
+              variant={(criticalCareData?.totals.review_requests_overdue ?? 0) > 0 ? 'destructive' : 'default'}
+              loading={criticalCareLoading}
+              description="Pending past SLA"
+              showTrendIndicator={false}
+              href="/inpatient/reviews"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <RoomUtilizationPanel date={dateRange.date_to} />
 

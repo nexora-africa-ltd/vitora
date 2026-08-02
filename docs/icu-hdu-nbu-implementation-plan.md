@@ -1,7 +1,7 @@
 # ICU/HDU/NBU Implementation Plan
 
 > Owner: Product + Clinical Engineering
-> Status: Proposed
+> Status: Phase 3 implemented (E2E toggle coverage finalization pending)
 > Scope: Extend existing inpatient architecture (no new standalone app)
 
 ---
@@ -139,11 +139,26 @@ Implement ICU, HDU, and NBU clinical workflows as first-class capabilities insid
 - Timeline/event coverage.
 - Billing integration completion.
 
+### Phase 2 Done (Changelog)
+
+- Added transfer hardening for `STEP_UP`/`STEP_DOWN` pathways, required `reason_details`, same-ward prevention, and NBU age guardrails.
+- Expanded inpatient clinical timeline coverage to include ward transfers plus review-request lifecycle milestones (requested, acknowledged, completed).
+- Completed critical-care billing linkage updates for ICU/HDU/NBU in attachment/document mapping and mixed-stay handling paths.
+- Added escalation/de-escalation audit events for care-level transfer transitions.
+- Added/updated backend and API tests covering transfer validation, timeline composition, and mixed-stay billing timeline behavior.
+
 ## Phase 3 - Hardening (0.5-1 sprint)
 
 - End-to-end test expansion.
 - Documentation and analytics dashboards.
 - Production rollout + monitoring.
+
+### Phase 3 Done (Changelog)
+
+- Added critical-care workflow health API metrics endpoint: `GET /api/inpatient/admissions/critical-care-workflow-health/`.
+- Added critical-care monitoring dashboard UI: `/inpatient/critical-care` with transfer matrix, review backlog, and ICU/HDU/NBU load cards.
+- Added API/client coverage for critical-care workflow health endpoint in web tests.
+- Added rollout/operations runbook for ICU/HDU/NBU deployment and monitoring.
 
 ---
 
@@ -172,38 +187,38 @@ Implement ICU, HDU, and NBU clinical workflows as first-class capabilities insid
 - [ ] Add facility flags `has_hdu`, `has_nbu`.
 - [ ] Add module-to-feature mapping for `hdu`, `nbu`.
 - [ ] Add migration scripts and backfill safeguards.
-- [ ] Update serializers and validation logic.
+- [x] Update serializers and validation logic.
 - [ ] Update API filters and response capability maps.
-- [ ] Implement/extend transfer validation rules.
-- [ ] Extend critical-care timeline event capture.
+- [x] Implement/extend transfer validation rules.
+- [x] Extend critical-care timeline event capture.
 
 ## Frontend
 
 - [ ] Add HDU/NBU toggles in facility settings.
 - [ ] Update facility detail/edit pages with new capabilities.
 - [ ] Add ICU/HDU/NBU labels and filters in admissions/wards UI.
-- [ ] Add transfer UI support for new pathways.
+- [x] Add transfer UI support for new pathways.
 - [ ] Add capability-based visibility for critical-care controls.
 
 ## Billing + Claims
 
-- [ ] Map ICU/HDU/NBU care levels to billing interventions.
-- [ ] Validate intervention switch logic for level transitions.
-- [ ] Update attachment generation for critical-care cases.
+- [x] Map ICU/HDU/NBU care levels to billing interventions.
+- [x] Validate intervention switch logic for level transitions.
+- [x] Update attachment generation for critical-care cases.
 
 ## Testing
 
-- [ ] Unit tests for model/serializer changes.
-- [ ] Integration tests for admission/transfer/discharge pathways.
+- [x] Unit tests for model/serializer changes.
+- [x] Integration tests for admission/transfer/discharge pathways.
 - [ ] E2E tests for toggle-to-workflow behavior.
-- [ ] Regression tests for existing ICU and inpatient flows.
+- [x] Regression tests for existing ICU and inpatient flows.
 
 ## Operations
 
-- [ ] Feature flag rollout plan per environment.
-- [ ] Migration runbook and rollback plan.
-- [ ] Monitoring dashboard for transfer and critical-care workflow health.
-- [ ] Release notes and user training notes.
+- [x] Feature flag rollout plan per environment.
+- [x] Migration runbook and rollback plan.
+- [x] Monitoring dashboard for transfer and critical-care workflow health.
+- [x] Release notes and user training notes.
 
 ---
 

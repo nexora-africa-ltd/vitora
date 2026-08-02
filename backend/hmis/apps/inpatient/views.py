@@ -6,7 +6,7 @@ Views for the inpatient app.
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
@@ -75,6 +75,7 @@ from .serializers import (
     BPMonitoringReadingCreateSerializer,
     BPMonitoringReadingSerializer,
     ConstraintOverrideMetricsSerializer,
+    CriticalCareWorkflowHealthSerializer,
     DischargeDraftSerializer,
     DischargeSerializer,
     DischargeTemplateCreateSerializer,
@@ -1458,6 +1459,16 @@ class AdmissionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mode
     search_fields = ["admission_number", "patient__first_name", "patient__last_name"]
     ordering_fields = ["admission_date", "created_at", "admission_number"]
     ordering = ["-admission_date"]
+    _CARE_LEVEL_SCORE = {
+        "MEDICAL": 1,
+        "SURGICAL": 1,
+        "PEDIATRIC": 1,
+        "MATERNITY": 1,
+        "ISOLATION": 1,
+        "HDU": 2,
+        "NBU": 2,
+        "ICU": 3,
+    }
 
     def perform_create(self, serializer):
         """Create admission, enforce ward compatibility override rules, and log action.
@@ -1643,6 +1654,149 @@ class AdmissionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mode
         except (TypeError, ValueError):
             return None, None
 
+    @classmethod
+    def _transfer_direction(cls, source_ward_type: str, destination_ward_type: str) -> str:
+        source_score = cls._CARE_LEVEL_SCORE.get(str(source_ward_type), 1)
+        destination_score = cls._CARE_LEVEL_SCORE.get(str(destination_ward_type), 1)
+        if destination_score > source_score:
+            return "STEP_UP"
+        if destination_score < source_score:
+            return "STEP_DOWN"
+        return "LATERAL"
+
+    @extend_schema(
+        tags=["Inpatient - Admissions"],
+        summary="Get critical-care workflow health",
+        description=(
+            "Returns ICU/HDU/NBU workflow health metrics for admissions, transfers, "
+            "pending review requests, transfer transition matrix, and current critical-care ward load."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="days",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                description="Number of days to include for transfer/review trend metrics (default: 30)",
+                required=False,
+            ),
+        ],
+        responses={200: CriticalCareWorkflowHealthSerializer},
+    )
+    @action(detail=False, methods=["get"], url_path="critical-care-workflow-health")
+    def critical_care_workflow_health(self, request):
+        """Aggregate Phase 3 critical-care workflow metrics for dashboards/monitoring."""
+        from datetime import timedelta
+
+        self._resolve_tenant_context()
+        now = timezone.now()
+        raw_days = request.query_params.get("days", 30)
+        try:
+            days = max(1, min(int(raw_days), 365))
+        except (TypeError, ValueError):
+            days = 30
+        since = now - timedelta(days=days)
+
+        admissions_qs = self.get_queryset()
+        active_admissions_qs = admissions_qs.filter(admission_status="ACTIVE").select_related(
+            "ward"
+        )
+        critical_types = ["ICU", "HDU", "NBU"]
+
+        transfers_qs = Transfer.objects.filter(
+            admission_id__in=admissions_qs.values("id"),
+            transfer_date__gte=since,
+        ).select_related("source_ward", "destination_ward")
+
+        step_up_count = 0
+        step_down_count = 0
+        lateral_count = 0
+        for transfer in transfers_qs:
+            direction = self._transfer_direction(
+                str(getattr(transfer.source_ward, "ward_type", "") or ""),
+                str(getattr(transfer.destination_ward, "ward_type", "") or ""),
+            )
+            if direction == "STEP_UP":
+                step_up_count += 1
+            elif direction == "STEP_DOWN":
+                step_down_count += 1
+            else:
+                lateral_count += 1
+
+        transfer_matrix_qs = (
+            transfers_qs.values("source_ward__ward_type", "destination_ward__ward_type")
+            .annotate(count=Count("id"))
+            .order_by("-count", "source_ward__ward_type", "destination_ward__ward_type")
+        )
+        transfer_matrix = [
+            {
+                "from_ward_type": row["source_ward__ward_type"] or "UNKNOWN",
+                "to_ward_type": row["destination_ward__ward_type"] or "UNKNOWN",
+                "count": row["count"],
+            }
+            for row in transfer_matrix_qs
+        ]
+
+        review_pending_qs = ReviewRequest.objects.filter(
+            admission_id__in=admissions_qs.values("id"),
+            requested_at__gte=since,
+            status="PENDING",
+        ).select_related("admission")
+        overdue_review_count = sum(
+            1 for request_item in review_pending_qs if request_item.is_overdue
+        )
+
+        tenant_facility = getattr(request, "facility", None)
+        if tenant_facility is not None:
+            critical_wards = Ward.objects.filter(
+                facility=tenant_facility,
+                is_active=True,
+                ward_type__in=critical_types,
+            )
+        else:
+            critical_wards = Ward.objects.none()
+
+        active_by_ward = {
+            row["ward"]: row["count"]
+            for row in active_admissions_qs.values("ward").annotate(count=Count("id"))
+        }
+        ward_load = [
+            {
+                "ward_id": ward.id,
+                "ward_name": ward.name,
+                "ward_type": ward.ward_type,
+                "active_admissions": int(active_by_ward.get(ward.id, 0)),
+                "occupancy_rate": float(getattr(ward, "occupancy_rate", 0.0) or 0.0),
+            }
+            for ward in critical_wards
+        ]
+        ward_load.sort(key=lambda item: item["ward_type"])
+
+        totals = {
+            "active_admissions": active_admissions_qs.count(),
+            "critical_admissions": active_admissions_qs.filter(
+                ward__ward_type__in=critical_types
+            ).count(),
+            "current_icu": active_admissions_qs.filter(ward__ward_type="ICU").count(),
+            "current_hdu": active_admissions_qs.filter(ward__ward_type="HDU").count(),
+            "current_nbu": active_admissions_qs.filter(ward__ward_type="NBU").count(),
+            "transfers_total": transfers_qs.count(),
+            "step_up_transfers": step_up_count,
+            "step_down_transfers": step_down_count,
+            "lateral_transfers": lateral_count,
+            "review_requests_pending": review_pending_qs.count(),
+            "review_requests_overdue": overdue_review_count,
+        }
+
+        return Response(
+            {
+                "period_days": days,
+                "generated_at": now,
+                "totals": totals,
+                "transfer_matrix": transfer_matrix,
+                "ward_load": ward_load,
+            }
+        )
+
     @extend_schema(
         tags=["Inpatient - Admissions"],
         summary="Get lab orders for admission",
@@ -1758,7 +1912,8 @@ class AdmissionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mode
         summary="Get chronological clinical summary",
         description=(
             "Build a read-only, chronological timeline from ward rounds, kardex shift notes, "
-            "and kardex handover notes for preview before claim submission."
+            "kardex handover notes, ward transfers, and review-request milestones for "
+            "preview before claim submission."
         ),
         responses={
             200: inline_serializer(
@@ -3441,10 +3596,35 @@ class TransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     ]
     ordering_fields = ["transfer_date", "created_at"]
     ordering = ["-transfer_date"]
+    _CARE_LEVEL_SCORE = {
+        "MEDICAL": 1,
+        "SURGICAL": 1,
+        "PEDIATRIC": 1,
+        "MATERNITY": 1,
+        "ISOLATION": 1,
+        "HDU": 2,
+        "NBU": 2,
+        "ICU": 3,
+    }
+
+    @classmethod
+    def _transition_direction(cls, source_ward, destination_ward) -> str:
+        source_score = cls._CARE_LEVEL_SCORE.get(str(getattr(source_ward, "ward_type", "")), 1)
+        destination_score = cls._CARE_LEVEL_SCORE.get(
+            str(getattr(destination_ward, "ward_type", "")), 1
+        )
+        if destination_score > source_score:
+            return "STEP_UP"
+        if destination_score < source_score:
+            return "STEP_DOWN"
+        return "LATERAL"
 
     def perform_create(self, serializer):
         """Create transfer and log action."""
         instance = serializer.save()
+        transition_direction = self._transition_direction(
+            instance.source_ward, instance.destination_ward
+        )
 
         # Log transfer creation
         AuditLog.log(
@@ -3456,11 +3636,59 @@ class TransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 "admission_number": instance.admission.admission_number,
                 "patient": instance.admission.patient.id,
                 "source_ward": instance.source_ward.name,
+                "source_ward_type": instance.source_ward.ward_type,
                 "destination_ward": instance.destination_ward.name,
+                "destination_ward_type": instance.destination_ward.ward_type,
                 "reason": instance.reason,
+                "reason_details": instance.reason_details,
+                "care_transition": transition_direction,
             },
             ip_address=get_client_ip(self.request),
         )
+
+        if transition_direction in {"STEP_UP", "STEP_DOWN"}:
+            AuditLog.log(
+                action=(
+                    "transfer_care_level_escalation"
+                    if transition_direction == "STEP_UP"
+                    else "transfer_care_level_deescalation"
+                ),
+                user=self.request.user,
+                resource_type="Transfer",
+                resource_id=instance.id,
+                details={
+                    "admission_number": instance.admission.admission_number,
+                    "source_ward": instance.source_ward.name,
+                    "source_ward_type": instance.source_ward.ward_type,
+                    "destination_ward": instance.destination_ward.name,
+                    "destination_ward_type": instance.destination_ward.ward_type,
+                    "reason": instance.reason,
+                    "reason_details": instance.reason_details,
+                },
+                ip_address=get_client_ip(self.request),
+            )
+
+    def get_queryset(self):
+        queryset = (
+            super()
+            .get_queryset()
+            .select_related(
+                "source_ward",
+                "destination_ward",
+                "source_bed",
+                "destination_bed",
+                "transferred_by",
+            )
+        )
+        source_ward_type = str(self.request.query_params.get("source_ward_type", "") or "").strip()
+        destination_ward_type = str(
+            self.request.query_params.get("destination_ward_type", "") or ""
+        ).strip()
+        if source_ward_type:
+            queryset = queryset.filter(source_ward__ward_type=source_ward_type)
+        if destination_ward_type:
+            queryset = queryset.filter(destination_ward__ward_type=destination_ward_type)
+        return queryset
 
 
 class WardRoundViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):

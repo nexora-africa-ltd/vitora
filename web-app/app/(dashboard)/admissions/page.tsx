@@ -95,6 +95,13 @@ export default function AdmissionsPage() {
                   <span className="sm:hidden">Bulk</span>
                 </Link>
               </Button>
+              <Button variant="outline" asChild>
+                <Link href="/inpatient/critical-care">
+                  <Activity className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Critical Care Dashboard</span>
+                  <span className="sm:hidden">Critical Care</span>
+                </Link>
+              </Button>
               <PermissionGate action="inpatient.accept_interfacility_transfer">
                 <Button variant="outline" asChild>
                   <Link href="/admissions/inter-facility-transfers/destination-queue">

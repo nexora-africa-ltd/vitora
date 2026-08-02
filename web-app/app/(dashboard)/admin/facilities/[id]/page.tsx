@@ -44,6 +44,8 @@ const moduleLabels: Record<string, string> = {
   has_theatre: 'Theatre',
   has_dialysis: 'Dialysis',
   has_icu: 'ICU',
+  has_hdu: 'HDU',
+  has_nbu: 'NBU',
   has_maternity: 'Maternity',
   has_mortuary: 'Mortuary',
   has_blood_bank: 'Blood Bank',

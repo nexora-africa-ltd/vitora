@@ -25,6 +25,7 @@ from django.utils import timezone
 from hmis.apps.core.models import County, SubCounty
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.inpatient.models import Admission, Bed, Transfer, Ward
+from hmis.apps.inpatient.serializers import TransferSerializer
 from hmis.apps.patients.models import Patient
 
 User = get_user_model()
@@ -467,3 +468,144 @@ class TestTransferQueries:
 
         transfers = Transfer.objects.filter(admission=active_admission)
         assert transfers.count() == 2
+
+
+@pytest.mark.django_db
+class TestTransferSerializerValidation:
+    """Serializer-level guardrails for critical-care transfer pathways."""
+
+    def test_step_up_requires_higher_acuity_destination(
+        self,
+        active_admission,
+        source_ward,
+        source_bed,
+        destination_bed,
+        test_user,
+    ):
+        serializer = TransferSerializer(
+            data={
+                "admission": active_admission.id,
+                "source_ward": source_ward.id,
+                "source_bed": source_bed.id,
+                "destination_ward": source_ward.id,
+                "destination_bed": destination_bed.id,
+                "reason": "STEP_UP",
+                "reason_details": "Escalating care.",
+                "transferred_by": test_user.id,
+                "transfer_date": timezone.now(),
+                "clinical_handover_notes": "Needs closer monitoring.",
+            }
+        )
+        assert serializer.is_valid() is False
+        assert "destination_ward" in serializer.errors
+
+    def test_step_down_requires_lower_acuity_destination(
+        self,
+        active_admission,
+        source_bed,
+        destination_ward,
+        destination_bed,
+        test_user,
+        sample_facility,
+        sample_organization,
+    ):
+        hdu_ward = Ward.objects.create(
+            name="HDU Test Ward",
+            code="HDU-T1",
+            ward_type="HDU",
+            capacity=6,
+            daily_rate=Decimal("1200.00"),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        hdu_bed = Bed.objects.create(
+            ward=hdu_ward,
+            bed_number="HDU-01",
+            status="OCCUPIED",
+        )
+        active_admission.ward = hdu_ward
+        active_admission.bed = hdu_bed
+        active_admission.save(update_fields=["ward", "bed", "updated_at"])
+
+        serializer = TransferSerializer(
+            data={
+                "admission": active_admission.id,
+                "source_ward": hdu_ward.id,
+                "source_bed": hdu_bed.id,
+                "destination_ward": destination_ward.id,
+                "destination_bed": destination_bed.id,
+                "reason": "STEP_DOWN",
+                "reason_details": "De-escalating to ward care.",
+                "transferred_by": test_user.id,
+                "transfer_date": timezone.now(),
+                "clinical_handover_notes": "Improved, ready for lower acuity.",
+            }
+        )
+        assert serializer.is_valid() is False
+        assert "destination_ward" in serializer.errors
+
+    def test_step_transfer_requires_reason_details(
+        self,
+        active_admission,
+        source_ward,
+        source_bed,
+        destination_ward,
+        destination_bed,
+        test_user,
+    ):
+        serializer = TransferSerializer(
+            data={
+                "admission": active_admission.id,
+                "source_ward": source_ward.id,
+                "source_bed": source_bed.id,
+                "destination_ward": destination_ward.id,
+                "destination_bed": destination_bed.id,
+                "reason": "STEP_UP",
+                "transferred_by": test_user.id,
+                "transfer_date": timezone.now(),
+                "clinical_handover_notes": "Escalation transfer.",
+            }
+        )
+        assert serializer.is_valid() is False
+        assert "reason_details" in serializer.errors
+
+    def test_nbu_destination_blocks_non_infant_patients(
+        self,
+        active_admission,
+        source_ward,
+        source_bed,
+        test_user,
+        sample_facility,
+        sample_organization,
+    ):
+        nbu_ward = Ward.objects.create(
+            name="NBU Test Ward",
+            code="NBU-T1",
+            ward_type="NBU",
+            capacity=10,
+            daily_rate=Decimal("900.00"),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        nbu_bed = Bed.objects.create(
+            ward=nbu_ward,
+            bed_number="NBU-01",
+            status="AVAILABLE",
+        )
+
+        serializer = TransferSerializer(
+            data={
+                "admission": active_admission.id,
+                "source_ward": source_ward.id,
+                "source_bed": source_bed.id,
+                "destination_ward": nbu_ward.id,
+                "destination_bed": nbu_bed.id,
+                "reason": "SPECIALTY",
+                "reason_details": "Neonatal observation request.",
+                "transferred_by": test_user.id,
+                "transfer_date": timezone.now(),
+                "clinical_handover_notes": "Evaluate for newborn pathway.",
+            }
+        )
+        assert serializer.is_valid() is False
+        assert "destination_ward" in serializer.errors

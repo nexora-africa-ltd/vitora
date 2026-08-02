@@ -13,6 +13,49 @@ export const TEST_USER = {
 // API endpoints
 export const API_BASE = 'http://127.0.0.1:9088';
 
+const TEST_FACILITY_MODULES = {
+  outpatient: true,
+  inpatient: true,
+  emergency: true,
+  pharmacy: true,
+  laboratory: true,
+  imaging: true,
+  theatre: true,
+  dialysis: false,
+  icu: true,
+  hdu: true,
+  nbu: true,
+  maternity: true,
+  mortuary: false,
+  blood_bank: false,
+  inventory: true,
+  lis_standalone: false,
+  pharmacy_standalone: false,
+  imaging_standalone: false,
+  triage: true,
+  scheduling: true,
+  surveillance: false,
+  immunizations: true,
+  allied_health: false,
+  quality: true,
+  billing: true,
+  private_insurance: true,
+  moh_reporting: true,
+  ai_assistant: true,
+  cds: true,
+  procedures: true,
+  analytics: true,
+};
+
+const TEST_FACILITY = {
+  id: 1,
+  mfl_code: '12345',
+  name: 'Test County Hospital',
+  level: '4',
+  modules: TEST_FACILITY_MODULES,
+  sha_contracted: true,
+};
+
 /**
  * Login helper function
  */
@@ -85,6 +128,7 @@ export const test = base.extend<{ authenticatedPage: Page }>({
             is_staff: true,
             is_superuser: true,
             role: 'ADMIN',
+            facility: TEST_FACILITY,
             permissions: [
               'patients.view_patient',
               'patients.add_patient',
@@ -95,6 +139,27 @@ export const test = base.extend<{ authenticatedPage: Page }>({
               'encounters.add_encounter',
               'encounters.change_encounter',
             ],
+          },
+        }),
+      });
+    });
+
+    await page.route(`${API_BASE}/api/staff/me/`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          user_info: {
+            id: 1,
+            username: TEST_USER.username,
+            email: 'test@vitora.health',
+            first_name: 'Test',
+            last_name: 'User',
+            is_staff: true,
+            is_superuser: true,
+            role: 'ADMIN',
+            permissions: ['patients.view_patient'],
+            facility: TEST_FACILITY,
           },
         }),
       });

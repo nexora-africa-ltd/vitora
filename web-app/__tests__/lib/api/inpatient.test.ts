@@ -32,6 +32,7 @@ describe('inpatientApi', () => {
       { fn: () => inpatientApi.listAdmissions({ patient: 1 } as never), method: 'get', args: ['/api/inpatient/admissions/', { params: { patient: 1 } }] },
       { fn: () => inpatientApi.getAdmission(1), method: 'get', args: ['/api/inpatient/admissions/1/'] },
       { fn: () => inpatientApi.getAdmissionICUReadiness(1), method: 'get', args: ['/api/inpatient/admissions/1/icu-readiness/'] },
+      { fn: () => inpatientApi.getCriticalCareWorkflowHealth(14), method: 'get', args: ['/api/inpatient/admissions/critical-care-workflow-health/', { params: { days: 14 } }] },
       { fn: () => inpatientApi.listDischarges({ admission: 1 } as never), method: 'get', args: ['/api/inpatient/discharges/', { params: { admission: 1 } }] },
       { fn: () => inpatientApi.getDischarge(1), method: 'get', args: ['/api/inpatient/discharges/1/'] },
       { fn: () => inpatientApi.listTransfers({ admission: 1 } as never), method: 'get', args: ['/api/inpatient/transfers/', { params: { admission: 1 } }] },

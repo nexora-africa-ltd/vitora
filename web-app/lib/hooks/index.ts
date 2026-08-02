@@ -66,6 +66,7 @@ export {
   useAdmissions,
   useAdmission,
   useAdmissionICUReadiness,
+  useCriticalCareWorkflowHealth,
   useCreateAdmissionRecommendation,
   useAcceptAdmissionRecommendation,
   useDeclineAdmissionRecommendation,

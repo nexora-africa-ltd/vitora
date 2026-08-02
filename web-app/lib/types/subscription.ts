@@ -15,6 +15,8 @@ export const FEATURE_LABELS: Record<string, string> = {
   theatre: 'Surgical Theatre',
   dialysis: 'Renal Dialysis',
   icu: 'ICU',
+  hdu: 'HDU',
+  nbu: 'NBU',
   maternity: 'Maternity / Obstetrics',
   mortuary: 'Mortuary',
   blood_bank: 'Blood Bank',
