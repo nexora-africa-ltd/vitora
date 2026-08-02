@@ -271,6 +271,8 @@ Set these in **Vercel → Project Settings → Environment Variables**:
 |----------|-------|-------|
 | \`NEXT_PUBLIC_API_URL\` | \`https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io\` | Backend API base URL |
 | \`NEXT_PUBLIC_APP_NAME\` | \`Vitora HMIS\` | App display name |
+| \`NEXT_PUBLIC_SHA_PROVIDER_PORTAL_URL\` | \`https://qa-mis.apeiro-digital.com\` (staging) / \`https://mis.apeiro-digital.com\` (prod) | External link for SHA Provider Portal in Settings |
+| \`NEXT_PUBLIC_SHA_CLAIMS_GUIDELINES_URL\` | \`https://hie-docs.dha.go.ke/docs/userJourney\` | External link for Claims Guidelines in Settings |
 
 ### Custom Domain (staging.vitora.digital)
 1. Add \`staging.vitora.digital\` in **Vercel → Project Settings → Domains**

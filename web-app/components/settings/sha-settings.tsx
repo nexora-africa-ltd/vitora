@@ -53,6 +53,13 @@ export function SHASettingsTab() {
   const [healthLoading, setHealthLoading] = useState(true);
   const [healthError, setHealthError] = useState<string | null>(null);
 
+  const SHA_PROVIDER_PORTAL_URL =
+    process.env.NEXT_PUBLIC_SHA_PROVIDER_PORTAL_URL?.trim() || 'https://mis.apeiro-digital.com';
+  const SHA_CLAIMS_GUIDELINES_URL =
+    process.env.NEXT_PUBLIC_SHA_CLAIMS_GUIDELINES_URL?.trim()
+    || 'https://hie-docs.dha.go.ke/docs/userJourney';
+  const TERMINOLOGY_BROWSER_URL = '/admin/interoperability';
+
   const fetchHealth = useCallback(async () => {
     setHealthLoading(true);
     setHealthError(null);
@@ -393,17 +400,23 @@ export function SHASettingsTab() {
                 View SHA Claims
               </a>
             </Button>
-            <Button variant="outline" className="justify-start gap-2" disabled>
-              <ExternalLink className="h-4 w-4" />
-              SHA Provider Portal
+            <Button variant="outline" className="justify-start" asChild>
+              <a href={SHA_PROVIDER_PORTAL_URL} className="gap-2" target="_blank" rel="noreferrer">
+                <ExternalLink className="h-4 w-4" />
+                SHA Provider Portal
+              </a>
             </Button>
-            <Button variant="outline" className="justify-start gap-2" disabled>
-              <ExternalLink className="h-4 w-4" />
-              Claims Guidelines
+            <Button variant="outline" className="justify-start" asChild>
+              <a href={SHA_CLAIMS_GUIDELINES_URL} className="gap-2" target="_blank" rel="noreferrer">
+                <ExternalLink className="h-4 w-4" />
+                Claims Guidelines
+              </a>
             </Button>
-            <Button variant="outline" className="justify-start gap-2" disabled>
-              <ExternalLink className="h-4 w-4" />
-              Terminology Browser
+            <Button variant="outline" className="justify-start" asChild>
+              <a href={TERMINOLOGY_BROWSER_URL} className="gap-2">
+                <ExternalLink className="h-4 w-4" />
+                Terminology Browser
+              </a>
             </Button>
           </div>
         </CardContent>
