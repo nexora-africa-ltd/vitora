@@ -124,6 +124,16 @@ export default function AnalyzersPage() {
     onError: () => toast.error('Connection test failed'),
   });
 
+  const seedTemplates = useMutation({
+    mutationFn: () => laboratoryApi.seedDriverTemplates(),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['analyzer-templates'] });
+      toast.success(`Templates seeded: ${data.created} created, ${data.skipped} already present`);
+      setTab('templates');
+    },
+    onError: () => toast.error('Failed to seed default templates'),
+  });
+
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
       <div className="space-y-4 sm:space-y-6">
@@ -357,56 +367,68 @@ export default function AnalyzersPage() {
                   <h3 className="text-lg font-semibold mb-2">No driver templates available</h3>
                   <p className="text-sm text-muted-foreground max-w-md">
                     Driver templates provide pre-configured protocol settings for common laboratory analyzers
-                    (Sysmex, Roche, Abbott, etc.). Contact your system administrator to load templates.
+                    (Sysmex, Roche, Abbott, etc.). Seed default templates to start managing them in this tab.
                   </p>
+                  <Button className="mt-6" onClick={() => seedTemplates.mutate()} disabled={seedTemplates.isPending}>
+                    {seedTemplates.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+                    Seed Default Templates
+                  </Button>
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {templates.map((tpl) => (
-                  <Card key={tpl.id} className="relative overflow-hidden">
-                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
-                    <CardContent className="relative p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <p className="font-medium text-sm">{tpl.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {tpl.manufacturer} • {tpl.category}
-                          </p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-end">
+                  <Button variant="outline" size="sm" onClick={() => setTab('templates')}>
+                    <Settings2 className="h-4 w-4 mr-1.5" />
+                    Manage Templates
+                  </Button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {templates.map((tpl) => (
+                    <Card key={tpl.id} className="relative overflow-hidden">
+                      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+                      <CardContent className="relative p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <p className="font-medium text-sm">{tpl.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {tpl.manufacturer} • {tpl.category}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="text-xs shrink-0">
+                            {tpl.protocol}
+                          </Badge>
                         </div>
-                        <Badge variant="outline" className="text-xs shrink-0">
-                          {tpl.protocol}
-                        </Badge>
-                      </div>
-                      {tpl.description && (
-                        <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-                          {tpl.description}
-                        </p>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full"
-                        disabled={channels.length === 0}
-                        onClick={() => {
-                          if (channels.length === 1 && channels[0]) {
-                            applyTemplate.mutate({
-                              channelId: channels[0].id,
-                              templateId: tpl.id,
-                            });
-                          } else {
-                            setSelectedChannel(null);
-                            setShowTemplateDialog(true);
-                          }
-                        }}
-                        title={channels.length === 0 ? 'Create a channel first' : undefined}
-                      >
-                        <Zap className="h-3 w-3 mr-1.5" />
-                        Apply to Channel
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
+                        {tpl.description && (
+                          <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                            {tpl.description}
+                          </p>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                          disabled={channels.length === 0}
+                          onClick={() => {
+                            if (channels.length === 1 && channels[0]) {
+                              applyTemplate.mutate({
+                                channelId: channels[0].id,
+                                templateId: tpl.id,
+                              });
+                            } else {
+                              setSelectedChannel(null);
+                              setShowTemplateDialog(true);
+                            }
+                          }}
+                          title={channels.length === 0 ? 'Create a channel first' : undefined}
+                        >
+                          <Zap className="h-3 w-3 mr-1.5" />
+                          Apply to Channel
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
             )}
           </TabsContent>

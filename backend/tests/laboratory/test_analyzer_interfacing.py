@@ -36,6 +36,7 @@ from hmis.apps.laboratory.analyzers.services import (
     resolve_lab_order_item,
     resolve_specimen_from_sample_id,
 )
+from hmis.apps.laboratory.management.commands.seed_analyzer_templates import TEMPLATES
 from hmis.apps.laboratory.models import (
     Instrument,
     LabOrder,
@@ -952,6 +953,45 @@ class TestDriverTemplateAPI:
         assert response.status_code == status.HTTP_200_OK
         assert "default_config" in response.data
         assert "default_field_mapping" in response.data
+
+    def test_seed_defaults_creates_missing_templates(self, authenticated_client):
+        """Should seed built-in templates and return counts."""
+        AnalyzerDriverTemplate.objects.all().delete()
+
+        response = authenticated_client.post("/api/lab/analyzers/templates/seed_defaults/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["created"] == len(TEMPLATES)
+        assert response.data["skipped"] == 0
+        assert response.data["total"] == len(TEMPLATES)
+        assert AnalyzerDriverTemplate.objects.count() == len(TEMPLATES)
+
+    def test_seed_defaults_is_idempotent(self, authenticated_client):
+        """Should skip all templates when seeded twice."""
+        AnalyzerDriverTemplate.objects.all().delete()
+        authenticated_client.post("/api/lab/analyzers/templates/seed_defaults/")
+
+        response = authenticated_client.post("/api/lab/analyzers/templates/seed_defaults/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["created"] == 0
+        assert response.data["skipped"] == len(TEMPLATES)
+        assert response.data["total"] == len(TEMPLATES)
+
+    def test_seed_defaults_requires_config_role(self, authenticated_client, test_staff_profile):
+        """Should deny seed action for non-config roles."""
+        from hmis.apps.core.models import Role
+
+        doctor_role, _ = Role.objects.get_or_create(
+            code="DOCTOR",
+            defaults={"name": "Doctor", "hierarchy_level": 4, "is_active": True},
+        )
+        test_staff_profile.primary_role = doctor_role
+        test_staff_profile.save(update_fields=["primary_role"])
+
+        response = authenticated_client.post("/api/lab/analyzers/templates/seed_defaults/")
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 @pytest.mark.django_db

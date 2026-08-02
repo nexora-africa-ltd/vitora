@@ -17,6 +17,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
+from hmis.apps.laboratory.management.commands.seed_analyzer_templates import TEMPLATES
 from hmis.apps.laboratory.permissions import (
     LaboratoryModuleRequired,
     LISConfigPermission,
@@ -292,6 +293,30 @@ class AnalyzerDriverTemplateViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AnalyzerDriverTemplateSerializer
     permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
     filterset_class = AnalyzerDriverTemplateFilter
+
+    @action(detail=False, methods=["post"])
+    def seed_defaults(self, request):
+        """Seed built-in analyzer driver templates (idempotent)."""
+        created_count = 0
+        skipped_count = 0
+
+        for template_data in TEMPLATES:
+            name = template_data["name"]
+            if AnalyzerDriverTemplate.objects.filter(name=name).exists():
+                skipped_count += 1
+                continue
+
+            AnalyzerDriverTemplate.objects.create(**template_data)
+            created_count += 1
+
+        return Response(
+            {
+                "created": created_count,
+                "skipped": skipped_count,
+                "total": len(TEMPLATES),
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 # =============================================================================

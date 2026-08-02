@@ -96,6 +96,7 @@ describe('laboratoryApi', () => {
       { fn: () => laboratoryApi.createResultValidation(1, { validation_type: 'TECHNICAL' } as never), method: 'post', args: ['/api/lab/results/1/validate/', { validation_type: 'TECHNICAL' }] },
       { fn: () => laboratoryApi.createInstrument({ name: 'Analyzer' } as never), method: 'post', args: ['/api/lab/instruments/', { name: 'Analyzer' }] },
       { fn: () => laboratoryApi.updateInstrument(1, { name: 'Updated' } as never), method: 'patch', args: ['/api/lab/instruments/1/', { name: 'Updated' }] },
+      { fn: () => laboratoryApi.seedDriverTemplates(), method: 'post', args: ['/api/lab/analyzers/templates/seed_defaults/'] },
       { fn: () => laboratoryApi.markAnalyzerRunError(1, 'Oops'), method: 'post', args: ['/api/lab/analyzer-runs/1/mark_error/', { error_message: 'Oops' }] },
       { fn: () => laboratoryApi.createDiagnosticReport({ lab_order: 1 } as never), method: 'post', args: ['/api/lab/diagnostic-reports/', { lab_order: 1 }] },
       { fn: () => laboratoryApi.updateDiagnosticReport(1, { conclusion: 'Fine' } as never), method: 'patch', args: ['/api/lab/diagnostic-reports/1/', { conclusion: 'Fine' }] },

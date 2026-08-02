@@ -1220,6 +1220,13 @@ export const laboratoryApi = {
     });
   },
 
+  async seedDriverTemplates(): Promise<{ created: number; skipped: number; total: number }> {
+    const response = await apiClient.post<{ created: number; skipped: number; total: number }>(
+      '/api/lab/analyzers/templates/seed_defaults/',
+    );
+    return response.data;
+  },
+
   // ============ Analyzer Dashboard (L3) ============
 
   async getAnalyzerDashboard(): Promise<AnalyzerDashboard> {
