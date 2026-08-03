@@ -80,14 +80,33 @@ export function DispenseDialog({
     queryFn: () => inventoryApi.listStoreLocations({ page_size: 200, is_active: true }),
   });
 
+  const { data: wardStockData } = useQuery({
+    queryKey: ['inventory-ward-stock-for-drug', prescriptionItem.drug],
+    queryFn: () => inventoryApi.listWardStock({ drug: prescriptionItem.drug, page_size: 500 }),
+    enabled: Boolean(prescriptionItem.drug),
+  });
+
   const stores = useMemo(() => storesData?.results || [], [storesData]);
+  const storesWithDrugStock = useMemo(() => {
+    const wardStocks = wardStockData?.results ?? [];
+    const availableStoreIds = new Set(
+      wardStocks.filter((row) => row.quantity_available > 0).map((row) => row.store_location)
+    );
+    return stores.filter((store) => availableStoreIds.has(store.id));
+  }, [stores, wardStockData?.results]);
 
   // Auto-select store if only one exists
   useEffect(() => {
-    if (stores.length === 1 && !selectedStore) {
-      setSelectedStore(String(stores[0]!.id));
+    if (storesWithDrugStock.length === 1 && !selectedStore) {
+      setSelectedStore(String(storesWithDrugStock[0]!.id));
     }
-  }, [stores, selectedStore]);
+  }, [storesWithDrugStock, selectedStore]);
+
+  useEffect(() => {
+    if (selectedStore && !storesWithDrugStock.some((store) => String(store.id) === selectedStore)) {
+      setSelectedStore('');
+    }
+  }, [storesWithDrugStock, selectedStore]);
 
   // Dispensing mutation
   const dispense = useDispenseFromPrescription();
@@ -118,12 +137,15 @@ export function DispenseDialog({
         setSelectedBatch(fefoBatch);
         setValue('batch_id', fefoBatch.id.toString());
         // Auto-select the batch's store
-        if (fefoBatch.store_location) {
+        if (
+          fefoBatch.store_location &&
+          storesWithDrugStock.some((store) => store.id === fefoBatch.store_location)
+        ) {
           setSelectedStore(String(fefoBatch.store_location));
         }
       }
     }
-  }, [batches, selectedBatch, setValue]);
+  }, [batches, selectedBatch, setValue, storesWithDrugStock]);
 
   // Handle batch selection change
   const handleBatchChange = (batchId: string) => {
@@ -131,7 +153,7 @@ export function DispenseDialog({
     if (batch) {
       setSelectedBatch(batch);
       // Auto-set store from the batch
-      if (batch.store_location) {
+      if (batch.store_location && storesWithDrugStock.some((store) => store.id === batch.store_location)) {
         setSelectedStore(String(batch.store_location));
       }
     }
@@ -150,6 +172,15 @@ export function DispenseDialog({
       toast({
         title: 'Insufficient Stock',
         description: `Only ${selectedBatch?.quantity_available} units available in selected batch.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!selectedStore) {
+      toast({
+        title: 'Store Required',
+        description: 'Select a store location that has this drug in stock.',
         variant: 'destructive',
       });
       return;
@@ -295,7 +326,7 @@ export function DispenseDialog({
           </div>
 
           {/* Store Location */}
-          {stores.length > 0 && (
+          {storesWithDrugStock.length > 0 ? (
             <div className="space-y-1.5">
               <Label htmlFor="store_location" className="text-xs">
                 Dispensing From <span className="text-destructive">*</span>
@@ -305,13 +336,17 @@ export function DispenseDialog({
                   <SelectValue placeholder="Select store" />
                 </SelectTrigger>
                 <SelectContent>
-                  {stores.map((store) => (
+                  {storesWithDrugStock.map((store) => (
                     <SelectItem key={store.id} value={String(store.id)}>
                       {store.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          ) : (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+              No store location currently has this drug in ward stock.
             </div>
           )}
 
@@ -377,7 +412,7 @@ export function DispenseDialog({
                 quantity <= 0 ||
                 exceedsStock ||
                 batchesLoading ||
-                (stores.length > 0 && !selectedStore)
+                (storesWithDrugStock.length > 0 && !selectedStore)
               }
             >
               {dispense.isPending ? (

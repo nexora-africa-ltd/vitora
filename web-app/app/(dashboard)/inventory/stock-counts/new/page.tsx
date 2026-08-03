@@ -19,6 +19,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { inventoryApi } from '@/lib/api/inventory';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { useToast } from '@/lib/hooks/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { StockCountType } from '@/lib/types/inventory';
 
 const typeLabels: Record<StockCountType, string> = {
@@ -39,10 +40,23 @@ export default function NewStockCountPage() {
     queryKey: ['inventory-store-locations-all'],
     queryFn: () => inventoryApi.listStoreLocations({ page_size: 200, is_active: true }),
   });
+  const { data: capabilities } = useQuery({
+    queryKey: ['inventory-stock-count-capabilities'],
+    queryFn: () => inventoryApi.getStockCountCapabilities(),
+  });
+  const canInitiate = capabilities?.can_initiate ?? false;
   const stores = storesData?.results || [];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!canInitiate) {
+      toast({
+        variant: 'destructive',
+        title: 'Permission denied',
+        description: 'You do not have permission to initiate stock counts.',
+      });
+      return;
+    }
     if (!countType) {
       toast({ variant: 'destructive', title: 'Select a count type' });
       return;
@@ -73,6 +87,14 @@ export default function NewStockCountPage() {
         title="New Stock Count"
         helpContent="Create a new physical stock count. After creation, generate items from current batches, then start the count to begin recording quantities."
       />
+
+      {!canInitiate && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            You do not have permission to initiate stock counts.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <form onSubmit={handleSubmit}>
         <Card>
@@ -137,7 +159,7 @@ export default function NewStockCountPage() {
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={submitting || !countType}>
+          <Button type="submit" disabled={submitting || !countType || !canInitiate}>
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create Count
           </Button>

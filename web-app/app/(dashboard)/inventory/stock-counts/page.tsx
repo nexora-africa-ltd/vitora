@@ -52,6 +52,11 @@ const typeColors: Record<StockCountType, string> = {
 export default function StockCountsPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+
+  const { data: capabilities } = useQuery({
+    queryKey: ['inventory-stock-count-capabilities'],
+    queryFn: () => inventoryApi.getStockCountCapabilities(),
+  });
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -81,10 +86,12 @@ export default function StockCountsPage() {
           title="Stock Counts"
           helpContent="Physical stock verification sessions. Create a count, generate items from current batches, record physical quantities, then approve to auto-create adjustments for variances."
           actions={
-            <Button onClick={() => router.push('/inventory/stock-counts/new')}>
-              <ClipboardList className="mr-2 h-4 w-4" />
-              New Count
-            </Button>
+            capabilities?.can_initiate ? (
+              <Button onClick={() => router.push('/inventory/stock-counts/new')}>
+                <ClipboardList className="mr-2 h-4 w-4" />
+                New Count
+              </Button>
+            ) : undefined
           }
         />
 

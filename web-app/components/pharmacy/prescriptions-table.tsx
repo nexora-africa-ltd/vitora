@@ -158,6 +158,7 @@ export function PrescriptionsTable({
     const displayStatus = rx.effective_status ?? rx.status;
     const StatusIcon = STATUS_ICONS[displayStatus];
     const canDispense = ['PENDING', 'PARTIAL'].includes(displayStatus);
+    const canExpand = (rx.items?.length ?? 0) > 0;
     const isExpanded = expandedRows.has(rx.id);
 
     return (
@@ -165,8 +166,8 @@ export function PrescriptionsTable({
         <CardContent className="p-0">
           {/* Main content */}
           <div
-            className={`p-4 ${canDispense ? 'cursor-pointer active:bg-muted/50' : ''}`}
-            onClick={canDispense ? () => toggleExpanded(rx.id) : undefined}
+            className={`p-4 ${canExpand ? 'cursor-pointer active:bg-muted/50' : ''}`}
+            onClick={canExpand ? () => toggleExpanded(rx.id) : undefined}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0 space-y-1">
@@ -209,7 +210,7 @@ export function PrescriptionsTable({
                 <Eye className="h-4 w-4 mr-1.5" />
                 View
               </Button>
-              {canDispense && (
+              {canExpand && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -301,10 +302,9 @@ export function PrescriptionsTable({
       key: 'expand',
       header: '',
       cell: (rx: Prescription) => {
-        const displayStatus = rx.effective_status ?? rx.status;
-        const canDispense = ['PENDING', 'PARTIAL'].includes(displayStatus);
+        const canExpand = (rx.items?.length ?? 0) > 0;
         const isExpanded = expandedRows.has(rx.id);
-        return canDispense ? (
+        return canExpand ? (
           <Button
             variant="ghost"
             size="sm"
@@ -504,25 +504,24 @@ export function PrescriptionsTable({
         mobileCard={(rx) => renderMobileCard(rx)}
         emptyMessage="No prescriptions found"
         onRowClick={(rx) => {
-          const displayStatus = rx.effective_status ?? rx.status;
-          const canDispense = ['PENDING', 'PARTIAL'].includes(displayStatus);
-          if (canDispense) {
+          const canExpand = (rx.items?.length ?? 0) > 0;
+          if (canExpand) {
             toggleExpanded(rx.id);
           }
         }}
         renderExpandedRow={(rx) => {
           if (!expandedRows.has(rx.id)) return null;
           return (
-            <div className="bg-muted/30 p-4 space-y-3">
+            <div className="bg-muted/30 p-4 space-y-3 w-full">
               <h4 className="font-semibold text-sm flex items-center gap-2">
                 <Package className="h-4 w-4" />
                 Prescription Items - {rx.prescription_number}
               </h4>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-2">
                 {(rx.items ?? []).map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-3 border rounded-md bg-background"
+                    className="flex items-center justify-between p-3 border rounded-md bg-background w-full"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm">{item.drug_name}</p>

@@ -21,7 +21,7 @@ from decimal import Decimal
 from django.apps import apps
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
@@ -970,49 +970,124 @@ class Dispensing(FacilityScopedModel):
                 f"Only {self.batch.quantity_available} available in batch."
             )
 
+        # Validate store-level stock when dispensing from a ward/satellite store.
+        if self.store_location_id:
+            if not self.facility_id:
+                raise ValidationError(
+                    {
+                        "store_location": (
+                            "Facility context is required when dispensing from a store location."
+                        )
+                    }
+                )
+
+            if self.store_location.facility_id != self.facility_id:
+                raise ValidationError(
+                    {
+                        "store_location": (
+                            "Selected store location does not belong to the dispensing facility."
+                        )
+                    }
+                )
+
+            from hmis.apps.inventory.models import WardStock
+
+            ward_stock = WardStock.objects.filter(
+                drug=self.drug,
+                store_location_id=self.store_location_id,
+                facility_id=self.facility_id,
+            ).first()
+
+            if not ward_stock:
+                raise ValidationError(
+                    {
+                        "store_location": (
+                            "No ward stock exists for this drug at the selected store location."
+                        )
+                    }
+                )
+
+            if self.quantity_dispensed > ward_stock.quantity_available:
+                raise ValidationError(
+                    {
+                        "quantity_dispensed": (
+                            f"Insufficient store stock at {self.store_location.name}. "
+                            f"Requested {self.quantity_dispensed}, "
+                            f"available {ward_stock.quantity_available}."
+                        )
+                    }
+                )
+
     def save(self, *args, **kwargs):
         """Override save to update batch stock and ward stock."""
         is_new = self.pk is None
 
         if is_new:
-            # Full clean validation
-            self.full_clean()
+            with transaction.atomic():
+                # Full clean validation
+                self.full_clean()
 
-            # Reduce batch stock
-            self.batch.dispense(self.quantity_dispensed)
+                # Reduce batch stock
+                self.batch.dispense(self.quantity_dispensed)
 
-            # Update prescription item if linked
-            if self.prescription_item:
-                self.prescription_item.quantity_dispensed += self.quantity_dispensed
-                self.prescription_item.save()
+                # Update prescription item if linked
+                if self.prescription_item:
+                    self.prescription_item.quantity_dispensed += self.quantity_dispensed
+                    self.prescription_item.save()
 
-                # Update prescription status
-                self.prescription_item.prescription.update_status()
+                    # Update prescription status
+                    self.prescription_item.prescription.update_status()
+
+                super().save(*args, **kwargs)
+
+                # Auto-deduct from ward stock if store_location is set
+                if self.store_location_id:
+                    self._deduct_ward_stock()
+            return
 
         super().save(*args, **kwargs)
-
-        # Auto-deduct from ward stock if store_location is set
-        if is_new and self.store_location_id:
-            self._deduct_ward_stock()
 
     def _deduct_ward_stock(self):
         """Create a CONSUME transaction on the matching WardStock record."""
         from hmis.apps.inventory.models import WardStock, WardStockTransaction, WardTransactionType
 
-        ward_stock = WardStock.objects.filter(
-            drug=self.drug,
-            store_location=self.store_location,
-            facility=self.facility,
-        ).first()
-        if ward_stock:
-            WardStockTransaction.objects.create(
-                ward_stock=ward_stock,
-                transaction_type=WardTransactionType.CONSUME,
-                quantity=-self.quantity_dispensed,
-                patient=self.patient,
-                performed_by=self.dispensed_by,
-                notes=f"Auto-consumed via dispensing #{self.pk}",
+        ward_stock = (
+            WardStock.objects.select_for_update()
+            .filter(
+                drug=self.drug,
+                store_location=self.store_location,
+                facility=self.facility,
             )
+            .first()
+        )
+        if not ward_stock:
+            raise ValidationError(
+                {
+                    "store_location": (
+                        "No ward stock exists for this drug at the selected store location."
+                    )
+                }
+            )
+
+        if self.quantity_dispensed > ward_stock.quantity_available:
+            raise ValidationError(
+                {
+                    "quantity_dispensed": (
+                        f"Insufficient store stock at {self.store_location.name}. "
+                        f"Requested {self.quantity_dispensed}, "
+                        f"available {ward_stock.quantity_available}."
+                    )
+                }
+            )
+
+        WardStockTransaction.objects.create(
+            ward_stock=ward_stock,
+            transaction_type=WardTransactionType.CONSUME,
+            quantity=-self.quantity_dispensed,
+            patient=self.patient,
+            performed_by=self.dispensed_by,
+            notes=f"Auto-consumed via dispensing #{self.pk}",
+        )
 
     def process_return(self, quantity: int, reason: str) -> None:
         """

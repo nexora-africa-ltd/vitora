@@ -6,6 +6,7 @@ Views for Pharmacy app API endpoints.
 import logging
 from datetime import date, timedelta
 
+from django.core.exceptions import ValidationError
 from django.db.models import Sum
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
@@ -425,8 +426,11 @@ class DispensingViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mod
     ordering = ["-dispensed_at"]
 
     def perform_create(self, serializer):
-        """Set dispensed_by to current user when creating dispensing."""
-        serializer.save(dispensed_by=self.request.user)
+        """Set dispensed_by and tenant FKs when creating dispensing."""
+        serializer.save(
+            dispensed_by=self.request.user,
+            **self.get_tenant_save_kwargs(),
+        )
 
     @action(detail=False, methods=["post"])
     def dispense(self, request):
@@ -485,12 +489,34 @@ class DispensingViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mod
                 )
 
         try:
+            tenant_kwargs = self.get_tenant_save_kwargs()
+            inferred_facility_id = tenant_kwargs.get("facility")
+
+            if not inferred_facility_id and prescription_item_id:
+                inferred_facility_id = rx_item.prescription.facility_id
+                if inferred_facility_id:
+                    tenant_kwargs["facility"] = inferred_facility_id
+                    if rx_item.prescription.organization_id and "organization" not in tenant_kwargs:
+                        tenant_kwargs["organization"] = rx_item.prescription.organization_id
+
+            if not tenant_kwargs.get("facility"):
+                return Response(
+                    {
+                        "error": (
+                            "Unable to resolve dispensing facility context. "
+                            "Assign a primary facility or dispense from a facility-linked prescription."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             # Use FEFO service to dispense
             kwargs = {"patient_id": patient_id}
             if prescription_item_id:
                 kwargs["prescription_item_id"] = prescription_item_id
             if store_location_id:
                 kwargs["store_location_id"] = int(store_location_id)
+            kwargs.update(tenant_kwargs)
 
             dispensings = FEFODispenser.dispense(
                 drug=drug,
@@ -504,6 +530,10 @@ class DispensingViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mod
 
         except InsufficientStockError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as e:
+            if hasattr(e, "message_dict"):
+                return Response(e.message_dict, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": e.messages}, status=status.HTTP_400_BAD_REQUEST)
         except Exception:
             logger.exception("Dispensing failed")
             return Response(

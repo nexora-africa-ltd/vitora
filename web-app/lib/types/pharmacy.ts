@@ -459,6 +459,9 @@ export interface DrugCreateData {
   is_controlled?: boolean;
   is_narcotic?: boolean;
   keml_code?: string;
+  hpt_code?: string;
+  hpt_product_id?: number;
+  ppb_code?: string;
   is_essential?: boolean;
   nhif_code?: string;
   default_reorder_level?: number;

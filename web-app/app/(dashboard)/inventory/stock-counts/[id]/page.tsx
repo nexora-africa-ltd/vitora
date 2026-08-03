@@ -43,7 +43,6 @@ import { PageHeader } from '@/components/shared/page-header';
 import { inventoryApi } from '@/lib/api/inventory';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { useToast } from '@/lib/hooks/use-toast';
-import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { StockCountStatus, StockCountDetail, StockCountItem } from '@/lib/types/inventory';
 
 const statusLabels: Record<StockCountStatus, string> = {
@@ -132,7 +131,6 @@ export default function StockCountDetailPage({
     Record<number, { counted_quantity: string; variance_reason: string }>
   >({});
   const [savingItemId, setSavingItemId] = useState<number | null>(null);
-  const { canPerformAction } = usePermissions();
 
   const {
     data: count,
@@ -208,6 +206,14 @@ export default function StockCountDetailPage({
   });
 
   async function saveItem(item: StockCountItem) {
+    if (!count?.capabilities?.can_record) {
+      toast({
+        variant: 'destructive',
+        title: 'Permission denied',
+        description: 'You do not have permission to record stock counts.',
+      });
+      return;
+    }
     const edit = editedItems[item.id];
     if (!edit) return;
     const qty = parseInt(edit.counted_quantity, 10);
@@ -279,10 +285,13 @@ export default function StockCountDetailPage({
 
   const isDraft = count.status === 'DRAFT';
   const isInProgress = count.status === 'IN_PROGRESS';
-  const isEditable = isDraft || isInProgress;
+  const canInitiateCount = count.capabilities?.can_initiate ?? false;
+  const canRecordCount = count.capabilities?.can_record ?? false;
+  const canCancelCount = count.capabilities?.can_cancel ?? false;
+  const isEditable = (isDraft || isInProgress) && canRecordCount;
   const isCompleted = count.status === 'COMPLETED';
-  const canApproveCount = isCompleted && canPerformAction('inventory.approve_stock_count' as never);
-  const canCancel = !['APPROVED', 'CANCELLED'].includes(count.status);
+  const canApproveCount = isCompleted && (count.capabilities?.can_approve ?? false);
+  const canCancel = canCancelCount && !['APPROVED', 'CANCELLED'].includes(count.status);
   const hasItems = count.item_count > 0;
   const anyPending =
     generateMutation.isPending ||
@@ -299,7 +308,7 @@ export default function StockCountDetailPage({
         helpContent="View count details, record physical quantities, and advance through the workflow. Approving a completed count auto-creates stock adjustments for any variances."
         actions={
           <div className="flex flex-wrap gap-2">
-            {isDraft && (
+            {isDraft && canInitiateCount && (
               <>
                 <Button
                   size="sm"
@@ -338,7 +347,7 @@ export default function StockCountDetailPage({
                 </AlertDialog>
               </>
             )}
-            {isInProgress && (
+            {isInProgress && canRecordCount && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button size="sm" disabled={anyPending}>
@@ -582,8 +591,8 @@ export default function StockCountDetailPage({
                             );
                           })()}
                         </TableCell>
-                        {isEditable && (
-                          <TableCell>
+                          {isEditable && (
+                            <TableCell>
                             <Input
                               className="w-32 h-8 text-sm"
                               placeholder="Reason"
@@ -594,14 +603,14 @@ export default function StockCountDetailPage({
                             />
                           </TableCell>
                         )}
-                        {isEditable && (
-                          <TableCell>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0"
-                              onClick={() => saveItem(item)}
-                              disabled={isSaving || !hasEdit}
+                          {isEditable && (
+                            <TableCell>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={() => saveItem(item)}
+                                disabled={isSaving || !hasEdit}
                             >
                               {isSaving ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />

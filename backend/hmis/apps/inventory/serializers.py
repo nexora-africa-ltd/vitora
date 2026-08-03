@@ -985,6 +985,7 @@ class StockCountDetailSerializer(serializers.ModelSerializer):
     item_count = serializers.SerializerMethodField()
     started_by_name = serializers.SerializerMethodField()
     approved_by_name = serializers.SerializerMethodField()
+    capabilities = serializers.SerializerMethodField()
     store_location_name = serializers.CharField(
         source="store_location.name", read_only=True, allow_null=True
     )
@@ -1007,6 +1008,7 @@ class StockCountDetailSerializer(serializers.ModelSerializer):
             "approved_by",
             "approved_by_name",
             "approved_at",
+            "capabilities",
             "total_items_counted",
             "total_discrepancies",
             "created_at",
@@ -1022,6 +1024,25 @@ class StockCountDetailSerializer(serializers.ModelSerializer):
 
     def get_approved_by_name(self, obj):
         return _user_display_name(obj.approved_by)
+
+    def get_capabilities(self, _obj):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user:
+            return {
+                "can_initiate": False,
+                "can_record": False,
+                "can_approve": False,
+                "can_cancel": False,
+            }
+
+        is_superuser = bool(getattr(user, "is_superuser", False))
+        return {
+            "can_initiate": is_superuser or user.has_perm("inventory.add_stockcount"),
+            "can_record": is_superuser or user.has_perm("inventory.change_stockcountitem"),
+            "can_approve": is_superuser or user.has_perm("inventory.approve_stock_count"),
+            "can_cancel": is_superuser or user.has_perm("inventory.delete_stockcount"),
+        }
 
 
 class StockCountCreateSerializer(serializers.ModelSerializer):

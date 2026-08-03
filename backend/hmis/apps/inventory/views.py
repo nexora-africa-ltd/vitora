@@ -587,15 +587,64 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
             return StockCountListSerializer
         return StockCountDetailSerializer
 
+    @action(detail=False, methods=["get"], url_path="capabilities")
+    def capabilities(self, request):
+        """Return effective stock-count workflow permissions for current user."""
+        user = request.user
+        is_superuser = bool(getattr(user, "is_superuser", False))
+        can_initiate = is_superuser or user.has_perm("inventory.add_stockcount")
+        can_record = is_superuser or user.has_perm("inventory.change_stockcountitem")
+        can_approve = is_superuser or user.has_perm("inventory.approve_stock_count")
+        can_cancel = is_superuser or user.has_perm("inventory.delete_stockcount")
+        return Response(
+            {
+                "can_initiate": can_initiate,
+                "can_record": can_record,
+                "can_approve": can_approve,
+                "can_cancel": can_cancel,
+            }
+        )
+
+    def _require_perm(self, request, perm: str, message: str):
+        if request.user.is_superuser or request.user.has_perm(perm):
+            return None
+        return Response({"detail": message}, status=status.HTTP_403_FORBIDDEN)
+
     def perform_create(self, serializer):
+        denied = self._require_perm(
+            self.request,
+            "inventory.add_stockcount",
+            "You do not have permission to initiate stock counts.",
+        )
+        if denied is not None:
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("You do not have permission to initiate stock counts.")
         serializer.save(
             started_by=self.request.user,
             **self.get_tenant_save_kwargs(),
         )
 
+    def destroy(self, request, *args, **kwargs):
+        denied = self._require_perm(
+            request,
+            "inventory.delete_stockcount",
+            "You do not have permission to cancel stock counts.",
+        )
+        if denied is not None:
+            return denied
+        return super().destroy(request, *args, **kwargs)
+
     @action(detail=True, methods=["post"])
     def generate_items(self, request, pk=None):
         """Auto-populate count items from current stock batches."""
+        denied = self._require_perm(
+            request,
+            "inventory.add_stockcount",
+            "You do not have permission to initiate stock counts.",
+        )
+        if denied is not None:
+            return denied
         count = self.get_object()
         try:
             created = count.generate_items()
@@ -609,6 +658,13 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
     @action(detail=True, methods=["post"])
     def start(self, request, pk=None):
         """DRAFT → IN_PROGRESS."""
+        denied = self._require_perm(
+            request,
+            "inventory.add_stockcount",
+            "You do not have permission to initiate stock counts.",
+        )
+        if denied is not None:
+            return denied
         count = self.get_object()
         try:
             count.start()
@@ -619,6 +675,13 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
     @action(detail=True, methods=["post"])
     def complete(self, request, pk=None):
         """IN_PROGRESS → COMPLETED."""
+        denied = self._require_perm(
+            request,
+            "inventory.change_stockcountitem",
+            "You do not have permission to record stock counts.",
+        )
+        if denied is not None:
+            return denied
         count = self.get_object()
         try:
             count.complete()
@@ -650,6 +713,13 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
         """Any non-terminal → CANCELLED."""
+        denied = self._require_perm(
+            request,
+            "inventory.delete_stockcount",
+            "You do not have permission to cancel stock counts.",
+        )
+        if denied is not None:
+            return denied
         count = self.get_object()
         try:
             count.cancel()
@@ -675,6 +745,13 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
     @item_detail.mapping.patch
     def item_update(self, request, pk=None, item_pk=None):
         """Update a specific count item (record physical count)."""
+        denied = self._require_perm(
+            request,
+            "inventory.change_stockcountitem",
+            "You do not have permission to record stock counts.",
+        )
+        if denied is not None:
+            return denied
         count = self.get_object()
         try:
             item = count.items.select_related("drug", "batch").get(pk=item_pk)

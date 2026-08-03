@@ -35,7 +35,7 @@ class Command(BaseCommand):
             "--months",
             type=int,
             default=1,
-            help="Number of past months to aggregate (default: 1).",
+            help="Number of months to aggregate, including the current month (default: 1).",
         )
         parser.add_argument(
             "--dry-run",
@@ -53,8 +53,7 @@ class Command(BaseCommand):
 
         for fid in facility_ids:
             for m in range(months):
-                period_end = today.replace(day=1) - timedelta(days=1 + 30 * m)
-                period_start = period_end.replace(day=1)
+                period_start, period_end = self._get_month_window(anchor=today, months_back=m)
 
                 if dry_run:
                     self.stdout.write(
@@ -85,3 +84,19 @@ class Command(BaseCommand):
                 raise CommandError(f"Facility {options['facility_id']} does not exist.")
             return [options["facility_id"]]
         raise CommandError("Specify --facility-id or --all-facilities.")
+
+    def _get_month_window(self, *, anchor: date, months_back: int) -> tuple[date, date]:
+        """Return month start/end for ``months_back`` relative to ``anchor`` date."""
+        month_index = (anchor.year * 12 + anchor.month - 1) - months_back
+        year = month_index // 12
+        month = month_index % 12 + 1
+
+        period_start = date(year, month, 1)
+        if months_back == 0:
+            return period_start, anchor
+
+        next_month_index = month_index + 1
+        next_year = next_month_index // 12
+        next_month = next_month_index % 12 + 1
+        period_end = date(next_year, next_month, 1) - timedelta(days=1)
+        return period_start, period_end

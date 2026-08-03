@@ -398,7 +398,15 @@ export interface StockCountDetail extends StockCount {
   approved_by: number | null;
   approved_by_name: string;
   approved_at: string | null;
+  capabilities: StockCountCapabilities;
   updated_at: string;
+}
+
+export interface StockCountCapabilities {
+  can_initiate: boolean;
+  can_record: boolean;
+  can_approve: boolean;
+  can_cancel: boolean;
 }
 
 /**

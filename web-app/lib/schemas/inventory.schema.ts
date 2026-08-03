@@ -400,12 +400,20 @@ export const StockCountListSchema = z.object({
   created_at: z.string(),
 });
 
+export const StockCountCapabilitiesSchema = z.object({
+  can_initiate: z.boolean(),
+  can_record: z.boolean(),
+  can_approve: z.boolean(),
+  can_cancel: z.boolean(),
+});
+
 export const StockCountDetailSchema = StockCountListSchema.extend({
   notes: z.string(),
   item_count: z.number(),
   approved_by: z.number().nullable(),
   approved_by_name: z.string(),
   approved_at: z.string().nullable(),
+  capabilities: StockCountCapabilitiesSchema,
   updated_at: z.string(),
 });
 

@@ -45,6 +45,9 @@ interface FormularyInfoPopoverProps {
   drugName: string;
   /** Optional facility level (1-5) for KEML comparison */
   facilityLevel?: number;
+  /** Optional handler to copy PPB registration code into local drug metadata */
+  onApplyPpbCode?: (ppbCode: string) => void;
+  isApplyingPpbCode?: boolean;
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -180,7 +183,12 @@ function SmpcDetailModal({
 // Main Component
 // ──────────────────────────────────────────────────────────────────────
 
-export function FormularyInfoPopover({ drugName, facilityLevel }: FormularyInfoPopoverProps) {
+export function FormularyInfoPopover({
+  drugName,
+  facilityLevel,
+  onApplyPpbCode,
+  isApplyingPpbCode = false,
+}: FormularyInfoPopoverProps) {
   const [expanded, setExpanded] = useState(false);
   const [smpcModalId, setSmpcModalId] = useState<string | null>(null);
   const { data, isLoading } = useFormularySearch(drugName);
@@ -288,6 +296,25 @@ export function FormularyInfoPopover({ drugName, facilityLevel }: FormularyInfoP
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Reg: {firstPpb.registration_no} • Expires: {firstPpb.date_expiry} • {firstPpb.category}
                 </p>
+                {onApplyPpbCode && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    disabled={isApplyingPpbCode}
+                    onClick={() => onApplyPpbCode(firstPpb.registration_no)}
+                  >
+                    {isApplyingPpbCode ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Applying...
+                      </>
+                    ) : (
+                      'Apply PPB code to drug'
+                    )}
+                  </Button>
+                )}
                 {ppbExpired && (
                   <p className="text-xs text-red-700 dark:text-red-400 font-medium">
                     ⚠ PPB registration has expired. Verify product availability.

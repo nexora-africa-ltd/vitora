@@ -26,6 +26,42 @@ from .models import Dispensing, Prescription, PrescriptionItem, StockAlert, Stoc
 logger = logging.getLogger(__name__)
 
 
+def _ensure_invoice_tenant(invoice: Invoice, *, facility_id=None, organization_id=None) -> None:
+    """Fill missing invoice tenant fields when a dispensing provides clear context."""
+    update_fields = []
+
+    if facility_id and not invoice.facility_id:
+        invoice.facility_id = facility_id
+        update_fields.append("facility")
+
+    if organization_id and not invoice.organization_id:
+        invoice.organization_id = organization_id
+        update_fields.append("organization")
+
+    if update_fields:
+        update_fields.append("updated_at")
+        invoice.save(update_fields=update_fields)
+
+
+def _create_dispensing_invoice_item(
+    *, invoice: Invoice, dispensing: Dispensing, drug
+) -> InvoiceItem:
+    """Create a pharmacy invoice item linked to a dispensing record."""
+    quantity = Decimal(str(dispensing.quantity_dispensed))
+    line_total = (dispensing.unit_price * quantity).quantize(Decimal("0.01"))
+
+    return InvoiceItem.objects.create(
+        invoice=invoice,
+        item_type=InvoiceItem.ItemType.PHARMACY,
+        drug=drug,
+        dispensing=dispensing,
+        description=f"{drug.generic_name} {drug.strength} ({drug.get_form_display()})",
+        quantity=dispensing.quantity_dispensed,
+        unit_price=dispensing.unit_price,
+        line_total=line_total,
+    )
+
+
 def _sync_stock_alert_records(batch: StockBatch) -> None:
     """Keep LOW_STOCK / OUT_OF_STOCK alerts in sync with current batch quantity."""
     if not batch.facility_id:
@@ -144,7 +180,10 @@ def create_invoice_item_for_prescription(sender, instance, created, **kwargs):
 
     if not unit_price:
         # Try to get price from available batch
-        batch = drug.batches.filter(status="AVAILABLE", quantity_available__gt=0).first()
+        batch_qs = drug.batches.filter(status="AVAILABLE", quantity_available__gt=0)
+        if prescription.facility_id:
+            batch_qs = batch_qs.filter(facility_id=prescription.facility_id)
+        batch = batch_qs.order_by("expiry_date", "received_date").first()
         if batch:
             unit_price = batch.selling_price
         else:
@@ -253,16 +292,38 @@ def handle_dispensing_billing(sender, instance, created, **kwargs):
     if is_sync_materialization_active():
         return
 
+    # Idempotency: if already linked, do nothing.
+    if InvoiceItem.objects.filter(dispensing=instance).exists():
+        return
+
     drug = instance.drug
 
     # Case 1: Dispensing from prescription - link to existing invoice item
     if instance.prescription_item:
         prescription = instance.prescription_item.prescription
 
-        # Find the invoice item created by PrescriptionItem signal
+        # Find the invoice item created by PrescriptionItem signal.
+        # If unavailable, create a dispensing-linked line item instead.
         if prescription.encounter:
-            invoice = Invoice.objects.filter(encounter=prescription.encounter).first()
+            invoice = Invoice.objects.filter(
+                encounter=prescription.encounter,
+                status=Invoice.Status.DRAFT,
+            ).first()
+            if not invoice:
+                from hmis.apps.billing.agent import BillingAgentService
+
+                invoice = BillingAgentService.get_or_create_draft_invoice(
+                    patient=instance.patient,
+                    encounter=prescription.encounter,
+                )
+
             if invoice:
+                _ensure_invoice_tenant(
+                    invoice,
+                    facility_id=instance.facility_id or prescription.facility_id,
+                    organization_id=instance.organization_id or prescription.organization_id,
+                )
+
                 # Find the invoice item for this drug (created by prescription signal)
                 invoice_item = invoice.items.filter(
                     drug=drug,
@@ -278,21 +339,29 @@ def handle_dispensing_billing(sender, instance, created, **kwargs):
                         f"{invoice_item.id} for {drug.generic_name}"
                     )
                 else:
-                    logger.debug(
-                        f"No unlinked invoice item found for drug {drug.generic_name} - "
-                        "prescription may not have created one"
+                    created_item = _create_dispensing_invoice_item(
+                        invoice=invoice,
+                        dispensing=instance,
+                        drug=drug,
                     )
-        return
+                    logger.info(
+                        "Created fallback invoice item %s for dispensing %s (%s) on encounter invoice",
+                        created_item.id,
+                        instance.id,
+                        drug.generic_name,
+                    )
+            return
 
-    # Case 2: Direct dispensing (OTC) - create new invoice item
-    # Find patient's draft invoice from today
-    from datetime import date
+    # Case 2: Direct dispensing or standalone prescription dispensing.
+    from hmis.apps.billing.agent import BillingAgentService
 
-    invoice = Invoice.objects.filter(
-        patient=instance.patient,
-        invoice_date=date.today(),
-        status=Invoice.Status.DRAFT,
-    ).first()
+    invoice = BillingAgentService.get_or_create_draft_invoice(patient=instance.patient)
+
+    _ensure_invoice_tenant(
+        invoice,
+        facility_id=instance.facility_id,
+        organization_id=instance.organization_id,
+    )
 
     if not invoice:
         logger.warning(
@@ -301,38 +370,19 @@ def handle_dispensing_billing(sender, instance, created, **kwargs):
         )
         return
 
-    # Create invoice item for direct dispensing
+    # Create invoice item for direct/standalone dispensing
     try:
-        quantity = Decimal(str(instance.quantity_dispensed))
-        line_total = (instance.unit_price * quantity).quantize(Decimal("0.01"))
-
-        InvoiceItem.objects.create(
+        item = _create_dispensing_invoice_item(
             invoice=invoice,
-            item_type=InvoiceItem.ItemType.PHARMACY,
-            drug=drug,
             dispensing=instance,
-            description=f"{drug.generic_name} {drug.strength} ({drug.get_form_display()})",
-            quantity=instance.quantity_dispensed,
-            unit_price=instance.unit_price,
-            line_total=line_total,
+            drug=drug,
         )
-
-        # Recalculate invoice totals
-        invoice.calculate_totals()
-        invoice.save(
-            update_fields=[
-                "subtotal",
-                "tax_amount",
-                "discount_amount",
-                "total_amount",
-                "balance_due",
-                "updated_at",
-            ]
-        )
-
         logger.info(
-            f"Created invoice item for direct dispensing {instance.id} - "
-            f"{drug.generic_name} x{instance.quantity_dispensed}"
+            "Created invoice item %s for dispensing %s - %s x%s",
+            item.id,
+            instance.id,
+            drug.generic_name,
+            instance.quantity_dispensed,
         )
     except Exception as e:
         logger.error(f"Failed to create invoice item for dispensing {instance.id}: {e}")

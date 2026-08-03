@@ -33,6 +33,7 @@ import {
   StockCountItemSchema,
   PaginatedStockCountSchema,
   PaginatedStockCountItemSchema,
+  StockCountCapabilitiesSchema,
   ETIMSConfigSchema,
   ETIMSDailyReportSchema,
   ETIMSInvoiceSchema,
@@ -82,6 +83,7 @@ import type {
   StockCountCreateData,
   StockCountListParams,
   StockCountItemUpdateData,
+  StockCountCapabilities,
   ETIMSConfig,
   ETIMSConfigCreateData,
   ETIMSCreditNoteData,
@@ -509,6 +511,13 @@ export const inventoryApi = {
     const response = await apiClient.get(`${BASE}/stock-counts/${id}/`);
     return parseResponse(StockCountDetailSchema, response.data, {
       context: 'inventoryApi.getStockCount',
+    });
+  },
+
+  async getStockCountCapabilities(): Promise<StockCountCapabilities> {
+    const response = await apiClient.get(`${BASE}/stock-counts/capabilities/`);
+    return parseResponse(StockCountCapabilitiesSchema, response.data, {
+      context: 'inventoryApi.getStockCountCapabilities',
     });
   },
 

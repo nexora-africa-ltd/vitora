@@ -92,6 +92,7 @@ import { ShiftGate } from '@/components/shared/shift-gate';
 import { PatientSelector } from '@/components/encounters/patient-selector';
 import { FormularyInfoPopover } from '@/components/pharmacy/formulary-info-popover';
 import type { Drug, PrescriptionItemCreateData } from '@/lib/types/pharmacy';
+import { pharmacyApi } from '@/lib/api/pharmacy';
 
 // SHA Drug type for selected drug
 interface SHADrugSelection {
@@ -228,6 +229,7 @@ export default function NewPrescriptionPage() {
 
   // Whether user has manually overridden the auto-calculated quantity
   const [quantityManualOverride, setQuantityManualOverride] = useState(false);
+  const [isApplyingPpbCode, setIsApplyingPpbCode] = useState(false);
 
   // Copy to clipboard state
   const [copied, setCopied] = useState(false);
@@ -565,6 +567,33 @@ Prescribed by: ${prescriberName}
     setShowDrugSearch(false);
   }, []);
 
+  const handleApplyPpbCode = useCallback(
+    async (ppbCode: string) => {
+      if (!selectedDrug) return;
+      try {
+        setIsApplyingPpbCode(true);
+        const updated = await pharmacyApi.updateDrug(selectedDrug.id, { ppb_code: ppbCode });
+        setSelectedDrug(updated);
+        toast({
+          title: 'PPB code applied',
+          description: `${updated.generic_name} updated with PPB code ${ppbCode}.`,
+        });
+      } catch (error: any) {
+        toast({
+          title: 'Failed to apply PPB code',
+          description:
+            error?.response?.data?.error ||
+            error?.message ||
+            'Could not update local drug metadata.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsApplyingPpbCode(false);
+      }
+    },
+    [selectedDrug, toast]
+  );
+
   // Actually submit the prescription (after allergy check)
   const submitPrescription = useCallback(async (allergyOverride?: boolean) => {
     if (!patientId) return;
@@ -820,6 +849,8 @@ Prescribed by: ${prescriberName}
                   <div className="mt-3 border-t pt-3">
                     <FormularyInfoPopover
                       drugName={selectedDrug?.generic_name || selectedSHADrug?.name || ''}
+                      onApplyPpbCode={selectedDrug ? handleApplyPpbCode : undefined}
+                      isApplyingPpbCode={isApplyingPpbCode}
                     />
                   </div>
                 </div>
