@@ -422,16 +422,11 @@ class SHAClaimSerializer(serializers.ModelSerializer):
             if valid:
                 return True
 
-        # Fallback: check sha_member + today (OTP-flow consents, or claims without encounter)
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        # Fallback: check sha_member for any valid consent token.
         return (
             ConsentToken.objects.filter(
                 sha_member_id=obj.sha_member_id,
-                created_at__gte=today_start,
-                status__in=[
-                    ConsentToken.ConsentStatus.PENDING,
-                    ConsentToken.ConsentStatus.VALIDATED,
-                ],
+                status=ConsentToken.ConsentStatus.VALIDATED,
             )
             .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
             .exists()

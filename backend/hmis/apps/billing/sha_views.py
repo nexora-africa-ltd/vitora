@@ -13,6 +13,7 @@ from collections.abc import Mapping
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
+from typing import cast
 
 from django.core.files.base import ContentFile
 from django.db import models
@@ -1615,6 +1616,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             ConsentTokenExpiredError,
             ConsentTokenNotFoundError,
         )
+        from hmis.apps.billing.services.ilm_claim_service import VisitAlreadyOpenedError
 
         if isinstance(exc, ConsentTokenNotFoundError):
             return Response(
@@ -1632,6 +1634,14 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                     "code": "consent_token_expired",
                 },
                 status=status.HTTP_401_UNAUTHORIZED,
+            )
+        if isinstance(exc, VisitAlreadyOpenedError):
+            return Response(
+                {
+                    "error": str(exc),
+                    "code": "visit_already_opened",
+                },
+                status=status.HTTP_409_CONFLICT,
             )
         if isinstance(exc, ValueError):
             return Response(
@@ -1708,17 +1718,32 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         except Exception:
             return normalized
 
-    def _resolve_claim_intervention_code(self, claim: SHAClaim) -> str:
-        """Return an intervention code most likely to exist in the DHA visit.
+    def _resolve_claim_intervention_codes(self, claim: SHAClaim) -> list[str]:
+        """Return ordered candidate intervention codes for claim-linked DHA calls.
 
         Priority:
-        1. Most recent non-cancelled preauth on the claim.
-        2. Intervention codes stored on the active consent token.
-        3. First active claim intervention.
+        1. Most recent non-cancelled preauth intervention code.
+        2. Active claim intervention codes.
+        3. Intervention codes stored on the active consent token.
         """
+        ordered_codes: list[str] = []
+
+        def _append_code(value: str) -> None:
+            code = str(value or "").strip().upper()
+            if code and code not in ordered_codes:
+                ordered_codes.append(code)
+
         latest_preauth = claim.preauths.exclude(status="cancelled").order_by("-created_at").first()
         if latest_preauth and latest_preauth.intervention_code:
-            return str(latest_preauth.intervention_code).strip()
+            _append_code(latest_preauth.intervention_code)
+
+        active_codes = (
+            claim.claim_interventions.filter(status="active")
+            .order_by("-updated_at", "-created_at", "id")
+            .values_list("intervention_code", flat=True)
+        )
+        for code in active_codes:
+            _append_code(code)
 
         from hmis.apps.billing.services.consent_token_resolver import resolve_for_claim
 
@@ -1729,8 +1754,8 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 .order_by("-validated_at")
                 .first()
             )
-            if consent_obj and consent_obj.intervention_codes:
-                return str(consent_obj.intervention_codes[0]).strip()
+            for code in consent_obj.intervention_codes if consent_obj else []:
+                _append_code(code)
         except Exception as exc:  # noqa: S110 - best-effort fallback
             logger.debug(
                 "Consent-token intervention fallback failed for claim %s: %s",
@@ -1738,15 +1763,12 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 exc,
             )
 
-        intervention_code = (
-            claim.claim_interventions.filter(status="active")
-            .values_list("intervention_code", flat=True)
-            .first()
-        )
-        if intervention_code:
-            return str(intervention_code).strip()
+        return ordered_codes
 
-        return ""
+    def _resolve_claim_intervention_code(self, claim: SHAClaim) -> str:
+        """Return best intervention code candidate for claim-linked DHA calls."""
+        codes = self._resolve_claim_intervention_codes(claim)
+        return codes[0] if codes else ""
 
     def _resolve_diagnosis_intervention_code(self, claim: SHAClaim) -> str:
         code = self._resolve_claim_intervention_code(claim)
@@ -1758,6 +1780,120 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if claim.claim_type == SHAClaim.ClaimType.INPATIENT:
             return "SHA-07-001"
         return "SHA-01-001"
+
+    @staticmethod
+    def _extract_preview_intervention_codes(payload: object) -> set[str]:
+        """Return normalized intervention codes present in a DHA preview payload."""
+        preview_payload = payload if isinstance(payload, Mapping) else {}
+        if isinstance(preview_payload.get("payload"), Mapping):
+            preview_payload = preview_payload.get("payload")
+        elif isinstance(preview_payload.get("data"), Mapping):
+            preview_payload = preview_payload.get("data")
+
+        interventions = (
+            preview_payload.get("interventions") if isinstance(preview_payload, Mapping) else []
+        )
+        if not isinstance(interventions, list):
+            return set()
+
+        codes: set[str] = set()
+        for item in interventions:
+            if not isinstance(item, Mapping):
+                continue
+            code = str(
+                item.get("intervention_code")
+                or item.get("interventionCode")
+                or item.get("code")
+                or ""
+            ).strip()
+            if code:
+                codes.add(code.upper())
+        return codes
+
+    def _sync_missing_interventions_to_dha(
+        self,
+        claim: SHAClaim,
+        *,
+        user,
+        strict_preview: bool,
+    ) -> dict[str, object]:
+        """Ensure active local claim interventions are present on DHA for the current visit."""
+        ilm_service = self._ilm_service(facility=claim.facility)
+
+        local_codes: list[str] = []
+        for code in (
+            claim.claim_interventions.filter(status="active")
+            .order_by("-updated_at", "-created_at", "id")
+            .values_list("intervention_code", flat=True)
+        ):
+            normalized = str(code or "").strip().upper()
+            if normalized and normalized not in local_codes:
+                local_codes.append(normalized)
+
+        summary: dict[str, object] = {
+            "ok": True,
+            "local_active_codes": local_codes,
+            "remote_codes": [],
+            "missing_before_sync": [],
+            "added": [],
+            "already_present": [],
+            "failed": [],
+            "preview_status_code": None,
+        }
+
+        if not local_codes:
+            return summary
+
+        preview_result = ilm_service.preview(claim, user=user)
+        summary["preview_status_code"] = preview_result.status_code
+        if preview_result.status_code >= 400:
+            payload = preview_result.payload if isinstance(preview_result.payload, Mapping) else {}
+            message = str(
+                payload.get("error")
+                or payload.get("message")
+                or payload.get("detail")
+                or "DHA preview failed"
+            )
+            summary["ok"] = False
+            summary["error"] = message
+            if strict_preview:
+                raise ValueError(message)
+            return summary
+
+        remote_codes = self._extract_preview_intervention_codes(preview_result.payload)
+        summary["remote_codes"] = sorted(remote_codes)
+        missing_codes = [code for code in local_codes if code not in remote_codes]
+        summary["missing_before_sync"] = missing_codes
+
+        for code in missing_codes:
+            try:
+                result = ilm_service.add_intervention(claim, code, user=user)
+                if result.status_code < 400:
+                    cast(list[str], summary["added"]).append(code)
+                    continue
+
+                payload = result.payload if isinstance(result.payload, Mapping) else {}
+                message = str(
+                    payload.get("error")
+                    or payload.get("message")
+                    or payload.get("detail")
+                    or "Failed to add intervention"
+                )
+                lowered = message.lower()
+                if "already" in lowered or "exists" in lowered or "duplicate" in lowered:
+                    cast(list[str], summary["already_present"]).append(code)
+                    continue
+                cast(list[dict[str, str]], summary["failed"]).append(
+                    {"code": code, "error": message}
+                )
+            except Exception as exc:  # noqa: BLE001 - continue syncing other interventions
+                cast(list[dict[str, str]], summary["failed"]).append(
+                    {"code": code, "error": _stringify_error(exc)}
+                )
+
+        if cast(list[dict[str, str]], summary["failed"]):
+            summary["ok"] = False
+        return summary
 
     def _lookup_icd11_display(self, code: str) -> str:
         normalized = str(code or "").strip().upper()
@@ -2020,6 +2156,20 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         except Exception as exc:
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
+
+    @action(detail=True, methods=["post"], url_path="ilm/interventions/sync")
+    def ilm_sync_interventions(self, request, pk=None):
+        """Ensure active local interventions exist on DHA for the current consent token."""
+        claim = self.get_object()
+        try:
+            summary = self._sync_missing_interventions_to_dha(
+                claim,
+                user=request.user,
+                strict_preview=True,
+            )
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return Response(summary, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], url_path="ilm/interventions/switch")
     def ilm_switch_intervention(self, request, pk=None):
@@ -2436,8 +2586,28 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         service = self._ilm_service(facility=claim.facility)
 
-        intervention_code = self._resolve_claim_intervention_code(claim)
-        if not intervention_code:
+        sync_summary = None
+        try:
+            sync_summary = self._sync_missing_interventions_to_dha(
+                claim,
+                user=request.user,
+                strict_preview=False,
+            )
+            if sync_summary and not bool(sync_summary.get("ok", True)):
+                logger.warning(
+                    "Intervention sync before push-local attachments not fully successful for claim %s: %s",
+                    claim.id,
+                    sync_summary,
+                )
+        except Exception as exc:  # noqa: BLE001 - fail open for attachment push
+            logger.warning(
+                "Intervention sync before push-local attachments failed for claim %s: %s",
+                claim.id,
+                _stringify_error(exc),
+            )
+
+        intervention_codes = self._resolve_claim_intervention_codes(claim)
+        if not intervention_codes:
             return Response(
                 {
                     "error": "No active intervention found for this claim; cannot determine attachment intervention code.",
@@ -2487,20 +2657,24 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 )
                 if document_type == "INVOICE" and claim.claim_type == SHAClaim.ClaimType.INPATIENT:
                     document_type = "FINAL_BILL"
-                extra_fields: dict[str, str] = {
-                    "document_type": document_type,
-                    "document_title": attachment.name,
-                    "document_description": attachment.description or "",
-                }
-                if intervention_code:
-                    extra_fields["intervention_code"] = intervention_code
-                result = service.add_attachment(
-                    claim,
-                    [multipart_file],
-                    extra_fields=extra_fields,
-                    user=request.user,
-                )
-                if int(getattr(result, "status_code", 500) or 500) >= 400:
+                last_error = ""
+                for intervention_code in intervention_codes:
+                    extra_fields: dict[str, str] = {
+                        "document_type": document_type,
+                        "document_title": attachment.name,
+                        "document_description": attachment.description or "",
+                        "intervention_code": intervention_code,
+                    }
+                    result = service.add_attachment(
+                        claim,
+                        [multipart_file],
+                        extra_fields=extra_fields,
+                        user=request.user,
+                    )
+                    if int(getattr(result, "status_code", 500) or 500) < 400:
+                        last_error = ""
+                        break
+
                     payload = result.payload if isinstance(result.payload, Mapping) else {}
                     message = str(
                         payload.get("error")
@@ -2508,7 +2682,10 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                         or payload.get("detail")
                         or "DHA rejected attachment upload"
                     )
-                    raise ValueError(message)
+                    last_error = f"intervention_code={intervention_code}: {message}"
+
+                if last_error:
+                    raise ValueError(last_error)
                 uploaded += 1
             except Exception as exc:  # noqa: BLE001 - collect and continue
                 failed += 1
@@ -2528,6 +2705,7 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "uploaded": uploaded,
                 "failed": failed,
                 "errors": errors,
+                "intervention_sync": sync_summary,
                 "sync_status": sync_status,
             }
         )
@@ -3101,6 +3279,27 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             return Response(
                 response_data,
                 status=400,
+            )
+
+        # Best-effort sync of active local interventions into the DHA visit before submit.
+        # Do not block submission here; missing interventions still surface via DHA response.
+        try:
+            sync_summary = self._sync_missing_interventions_to_dha(
+                claim,
+                user=request.user,
+                strict_preview=False,
+            )
+            if sync_summary and not bool(sync_summary.get("ok", True)):
+                logger.warning(
+                    "Intervention sync before submit not fully successful for claim %s: %s",
+                    claim.id,
+                    sync_summary,
+                )
+        except Exception as exc:  # noqa: BLE001 - fail open before submit
+            logger.warning(
+                "Intervention sync before submit failed for claim %s: %s",
+                claim.id,
+                _stringify_error(exc),
             )
 
         try:
@@ -5303,6 +5502,14 @@ class ConsentSendOTPView(APIView):
 
     # Fallback intervention code when none selected by user
     DEFAULT_INTERVENTION = "SHA-01-001"
+    INPATIENT_CODE_PREFIXES = (
+        "SHA-01-",
+        "SHA-03-",
+        "SHA-07-",
+        "SHA-13-",
+        "SHA-19-",
+        "SHA-20-",
+    )
 
     def _get_facility(self, request):
         """Resolve and return the request facility, or raise 403."""
@@ -5325,6 +5532,13 @@ class ConsentSendOTPView(APIView):
         if sha_number.startswith("CR"):
             return sha_number
         return sha_number
+
+    @classmethod
+    def _derive_access_point(cls, intervention_codes: list[str]) -> str:
+        normalized_codes = [str(code or "").strip().upper() for code in intervention_codes]
+        if any(code.startswith(cls.INPATIENT_CODE_PREFIXES) for code in normalized_codes):
+            return "IP"
+        return "OP"
 
     @extend_schema(
         request=inline_serializer(
@@ -5369,9 +5583,10 @@ class ConsentSendOTPView(APIView):
         serializer.is_valid(raise_exception=True)
 
         sha_member_id = serializer.validated_data["sha_member_id"]
-        intervention_codes = serializer.validated_data.get("intervention_codes") or [
-            self.DEFAULT_INTERVENTION
-        ]
+        raw_codes = serializer.validated_data.get("intervention_codes") or []
+        intervention_codes = [str(code).strip().upper() for code in raw_codes if str(code).strip()]
+        if not intervention_codes:
+            intervention_codes = [self.DEFAULT_INTERVENTION]
 
         try:
             sha_member = SHAMember.objects.select_related("patient").get(
@@ -5408,13 +5623,7 @@ class ConsentSendOTPView(APIView):
         from hmis.apps.billing.models import ConsentToken as CT
 
         # Derive access_point from intervention codes for per-access-point dedup
-        INPATIENT_PREFIXES = ("SHA-07", "SHA-19", "SHA-03", "SHA-13", "SHA-20")
-        derived_access_point = "OP"
-        for code in intervention_codes:
-            prefix = "-".join(code.split("-")[:2])
-            if prefix in INPATIENT_PREFIXES:
-                derived_access_point = "IP"
-                break
+        derived_access_point = self._derive_access_point(intervention_codes)
 
         now = timezone.now()
         existing_active = (
@@ -5703,17 +5912,20 @@ class ConsentDetailView(APIView):
 
 class ConsentLatestView(APIView):
     """
-    Get the latest consent token for an SHA member from today.
+    Get the latest consent token for an SHA member.
 
     GET /api/sha/consent/latest/?sha_member_id=123
     GET /api/sha/consent/latest/?sha_member_id=123&claim_pk=456
 
-    Returns the most recent PENDING or VALIDATED consent token created today.
+    Returns the most recent VALIDATED non-expired consent token.
+    If none exists, returns the latest PENDING token (if any) so OTP workflows
+    can resume without resending.
     When `claim_pk` is provided, resolves the active consent token for the
     claim's encounter regardless of creation date, allowing non-elective
     claim-linked preauths to reuse the consent token captured at check-in.
 
-    Returns 200 with token data if found, or 404 if no token exists today.
+    Returns 200 with token data if found, or 404 with an explicit code when
+    missing or expired.
     """
 
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
@@ -5796,7 +6008,11 @@ class ConsentLatestView(APIView):
                 )
             except ConsentTokenNotFoundError:
                 return Response(
-                    {"exists": False, "message": "No validated consent token for this claim"},
+                    {
+                        "exists": False,
+                        "code": "consent_token_not_found",
+                        "message": "No validated consent token for this claim",
+                    },
                     status=status.HTTP_404_NOT_FOUND,
                 )
             consent = ConsentToken.objects.get(pk=resolved.consent_id)
@@ -5807,38 +6023,51 @@ class ConsentLatestView(APIView):
         from django.utils import timezone
 
         now = timezone.now()
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-        base_qs = (
-            ConsentToken.objects.filter(
-                sha_member_id=sha_member_id,
-                facility=facility,
-                created_at__gte=today_start,
-            )
-            .filter(
-                Q(status=ConsentToken.ConsentStatus.PENDING)
-                | (
-                    Q(status=ConsentToken.ConsentStatus.VALIDATED)
-                    & (Q(expires_at__isnull=True) | Q(expires_at__gt=now))
-                )
-            )
-            .order_by("-created_at")
+        scope_qs = ConsentToken.objects.filter(
+            sha_member_id=sha_member_id,
+            facility=facility,
         )
 
-        if intervention_code:
-            base_qs = base_qs.filter(intervention_codes__contains=[intervention_code])
-
-        consent = None
         if encounter_pk is not None:
-            consent = base_qs.filter(encounter_id=encounter_pk).first()
+            scope_qs = scope_qs.filter(encounter_id=encounter_pk)
 
-        # When encounter scope is provided, never fall back to another encounter.
-        if encounter_pk is None and not consent:
-            consent = base_qs.first()
+        if intervention_code:
+            scope_qs = scope_qs.filter(intervention_codes__contains=[intervention_code])
+
+        valid_qs = (
+            scope_qs.filter(status=ConsentToken.ConsentStatus.VALIDATED)
+            .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+            .order_by("-validated_at", "-created_at")
+        )
+        pending_qs = scope_qs.filter(status=ConsentToken.ConsentStatus.PENDING).order_by(
+            "-created_at"
+        )
+
+        consent = valid_qs.first() or pending_qs.first()
 
         if not consent:
+            expired = (
+                scope_qs.filter(status=ConsentToken.ConsentStatus.VALIDATED)
+                .filter(expires_at__isnull=False, expires_at__lte=now)
+                .order_by("-expires_at", "-validated_at", "-created_at")
+                .first()
+            )
+            if expired:
+                return Response(
+                    {
+                        "exists": False,
+                        "code": "consent_token_expired",
+                        "message": "Latest validated consent token has expired",
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             return Response(
-                {"exists": False, "message": "No consent token from today"},
+                {
+                    "exists": False,
+                    "code": "consent_token_not_found",
+                    "message": "No validated consent token found",
+                },
                 status=status.HTTP_404_NOT_FOUND,
             )
 

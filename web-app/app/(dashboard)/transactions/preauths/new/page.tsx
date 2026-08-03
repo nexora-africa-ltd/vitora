@@ -685,8 +685,25 @@ export default function NewPreauthPage() {
           interventionCode: selectedType === 'elective' ? (interventionCode || undefined) : undefined,
         });
       } catch (error) {
-        const statusCode = (error as { response?: { status?: number } })?.response?.status;
-        if (statusCode === 404) return null;
+        const response = (error as { response?: { status?: number; data?: Record<string, unknown> } })
+          ?.response;
+        const statusCode = response?.status;
+        const code = typeof response?.data?.code === 'string' ? response.data.code : '';
+
+        if (statusCode === 404 && code === 'consent_token_not_found') {
+          return null;
+        }
+
+        if (
+          statusCode === 404
+          && (code === 'consent_token_expired' || code === 'claim_consent_expired')
+        ) {
+          throw error;
+        }
+
+        if (statusCode === 404) {
+          return null;
+        }
         throw error;
       }
     },
@@ -734,12 +751,18 @@ export default function NewPreauthPage() {
       latestClaimConsentError as { response?: { data?: Record<string, unknown> } } | null
     )?.response?.data;
     const code = typeof responseData?.code === 'string' ? responseData.code : '';
-    const message = typeof responseData?.message === 'string' ? responseData.message : '';
 
-    if (code === 'claim_consent_expired' || message.toLowerCase().includes('expired')) {
+    if (code === 'claim_consent_expired' || code === 'consent_token_expired') {
       return {
         text: 'Expired',
         helper: 'Claim-derived token expired; collect fresh consent.',
+      };
+    }
+
+    if (code === 'consent_token_not_found') {
+      return {
+        text: 'Not available',
+        helper: 'No validated consent token found for this context.',
       };
     }
 

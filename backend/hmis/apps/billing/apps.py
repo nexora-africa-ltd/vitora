@@ -13,12 +13,12 @@ class BillingConfig(AppConfig):
         """Import signals and connect cross-app billing signals."""
         from django.db.models.signals import post_save
 
-        import hmis.apps.billing.metrics  # noqa: F401
-        import hmis.apps.billing.signals  # noqa: F401
+        from hmis.apps.billing import metrics  # noqa: F401
         from hmis.apps.billing.signals import (
             handle_admission_billing,
             handle_discharge_billing,
             handle_immunization_billing,
+            handle_inpatient_consumable_usage_billing,
         )
 
         # Connect billing signals to inpatient models using lazy references.
@@ -38,4 +38,9 @@ class BillingConfig(AppConfig):
             handle_immunization_billing,
             sender="immunizations.ImmunizationRecord",
             dispatch_uid="billing_handle_immunization",
+        )
+        post_save.connect(
+            handle_inpatient_consumable_usage_billing,
+            sender="inpatient.InpatientConsumableUsage",
+            dispatch_uid="billing_handle_inpatient_consumable_usage",
         )

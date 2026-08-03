@@ -300,6 +300,27 @@ def handle_admission_billing(sender, instance, created, **kwargs):
         logger.exception("Billing agent: admission billing failed for admission %s", instance.id)
 
 
+def handle_inpatient_consumable_usage_billing(sender, instance, created, **kwargs):
+    """Auto-bill inpatient consumable usage and reverse billing on usage reversal."""
+    if is_sync_materialization_active():
+        return
+
+    try:
+        from hmis.apps.billing.agent import BillingAgentService
+
+        if created:
+            BillingAgentService.handle_inpatient_consumable_usage_created(instance)
+            return
+
+        if instance.is_reversed:
+            BillingAgentService.handle_inpatient_consumable_usage_reversed(instance)
+    except Exception:
+        logger.exception(
+            "Billing agent: inpatient consumable usage billing failed for usage %s",
+            instance.id,
+        )
+
+
 def handle_immunization_billing(sender, instance, created, **kwargs):
     """Auto-bill vaccine administration when ImmunizationRecord.status is ADMINISTERED."""
     # Trigger on both create (direct ADMINISTERED) and update (SCHEDULED → ADMINISTERED)

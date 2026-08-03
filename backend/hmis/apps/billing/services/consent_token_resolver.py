@@ -12,6 +12,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+from django.db.models import Q
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -82,14 +83,21 @@ def resolve_for_claim(claim: Any) -> ResolvedConsent:
     if encounter is None:
         raise ConsentTokenNotFoundError(f"Claim {getattr(claim, 'pk', '?')} has no encounter")
 
-    consent = (
-        ConsentToken.objects.filter(
-            encounter=encounter,
-            status=ConsentToken.ConsentStatus.VALIDATED,
+    now = timezone.now()
+    valid_qs = ConsentToken.objects.filter(
+        encounter=encounter,
+        status=ConsentToken.ConsentStatus.VALIDATED,
+    ).filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+    consent = valid_qs.order_by("-validated_at", "-created_at").first()
+    if consent is None:
+        consent = (
+            ConsentToken.objects.filter(
+                encounter=encounter,
+                status=ConsentToken.ConsentStatus.VALIDATED,
+            )
+            .order_by("-validated_at", "-created_at")
+            .first()
         )
-        .order_by("-validated_at")
-        .first()
-    )
     return _validate_or_raise(consent)
 
 

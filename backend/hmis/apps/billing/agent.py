@@ -112,6 +112,8 @@ class BillingAgentService:
         item_type: str = InvoiceItem.ItemType.SERVICE,
         lab_order=None,
         immunization_record=None,
+        drug=None,
+        inpatient_consumable_usage=None,
     ) -> InvoiceItem:
         """Add a billable line item to an invoice.
 
@@ -124,6 +126,8 @@ class BillingAgentService:
             item_type: InvoiceItem.ItemType value.
             lab_order: Optional LabOrder FK for lab items.
             immunization_record: Optional ImmunizationRecord FK for vaccination items.
+            drug: Optional Drug FK for consumable/pharmacy lines.
+            inpatient_consumable_usage: Optional InpatientConsumableUsage FK.
 
         Returns:
             Created InvoiceItem.
@@ -139,6 +143,8 @@ class BillingAgentService:
             unit_price=resolved_price,
             lab_order=lab_order,
             immunization_record=immunization_record,
+            drug=drug,
+            inpatient_consumable_usage=inpatient_consumable_usage,
         )
 
     @staticmethod
@@ -386,6 +392,69 @@ class BillingAgentService:
 
         # Auto-create SHA claim at admission time (updated later at discharge)
         cls._maybe_create_sha_claim(invoice, encounter, admission=admission)
+
+    @classmethod
+    @transaction.atomic
+    def handle_inpatient_consumable_usage_created(cls, usage) -> None:
+        """Create an idempotent invoice line for inpatient consumable usage."""
+        admission = usage.admission
+        encounter = getattr(admission, "ipd_encounter", None)
+        if encounter is None:
+            logger.warning(
+                "Billing agent: skipping inpatient consumable usage %s (missing IPD encounter)",
+                usage.id,
+            )
+            return
+
+        invoice = cls.get_or_create_draft_invoice(admission.patient, encounter)
+
+        if InvoiceItem.objects.filter(inpatient_consumable_usage=usage).exists():
+            return
+
+        unit_price = getattr(usage.batch, "selling_price", None) or getattr(
+            usage.drug, "reference_price", None
+        )
+        if not unit_price or Decimal(str(unit_price)) <= 0:
+            logger.warning(
+                "Billing agent: skipping inpatient consumable usage %s (invalid unit price)",
+                usage.id,
+            )
+            return
+
+        cls.add_line_item(
+            invoice,
+            service=None,
+            quantity=Decimal(str(usage.quantity_used)),
+            unit_price=unit_price,
+            description=(
+                f"Inpatient consumable: {usage.drug.get_display_name()} "
+                f"(Admission {admission.admission_number})"
+            ),
+            item_type=InvoiceItem.ItemType.CONSUMABLE,
+            drug=usage.drug,
+            inpatient_consumable_usage=usage,
+        )
+
+    @classmethod
+    @transaction.atomic
+    def handle_inpatient_consumable_usage_reversed(cls, usage) -> None:
+        """Remove or reverse previously billed inpatient consumable lines."""
+        linked_items = InvoiceItem.objects.filter(inpatient_consumable_usage=usage).select_related(
+            "invoice"
+        )
+
+        for item in linked_items:
+            if item.invoice.status == Invoice.Status.DRAFT:
+                item.delete()
+                continue
+
+            reversal_discount = (item.quantity * item.unit_price).quantize(Decimal("0.01"))
+            item.discount_amount = reversal_discount
+            item.discount_reason = (
+                f"Reversed inpatient consumable usage #{usage.pk}: "
+                f"{(usage.reverse_reason or '').strip() or 'No reason provided'}"
+            )
+            item.save()
 
     @classmethod
     @transaction.atomic

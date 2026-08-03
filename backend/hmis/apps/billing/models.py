@@ -677,6 +677,7 @@ class Invoice(FacilityScopedModel):
                 lab_order=item.lab_order,
                 surgery_case=item.surgery_case,
                 theatre_consumable=item.theatre_consumable,
+                inpatient_consumable_usage=item.inpatient_consumable_usage,
                 description=item.description,
                 quantity=item.quantity,
                 unit_price=item.unit_price,
@@ -745,6 +746,7 @@ class Invoice(FacilityScopedModel):
                 drug=item.drug,
                 surgery_case=item.surgery_case,
                 theatre_consumable=item.theatre_consumable,
+                inpatient_consumable_usage=item.inpatient_consumable_usage,
                 description=item.description,
                 quantity=item.quantity,
                 unit_price=item.unit_price,
@@ -844,6 +846,13 @@ class InvoiceItem(models.Model):
     )
     theatre_consumable = models.ForeignKey(
         "theatre.TheatreConsumable",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="invoice_items",
+    )
+    inpatient_consumable_usage = models.ForeignKey(
+        "inpatient.InpatientConsumableUsage",
         on_delete=models.PROTECT,
         null=True,
         blank=True,
@@ -2967,7 +2976,9 @@ class SHAClaim(FacilityScopedModel):
             normalize_local_attachment_type(value)
             for value in self.attachments.values_list("attachment_type", flat=True)
         }
-        for intervention in self.claim_interventions.all():
+        for intervention in self.claim_interventions.filter(
+            status=SHAClaimIntervention.InterventionStatus.ACTIVE
+        ):
             required = intervention.required_document_types
             if not required:
                 continue

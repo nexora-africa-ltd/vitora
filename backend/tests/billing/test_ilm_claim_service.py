@@ -37,6 +37,7 @@ from hmis.apps.billing.services.ilm_claim_service import (
     CloseClaimParams,
     IlmClaimService,
     StartVisitParams,
+    VisitAlreadyOpenedError,
 )
 from hmis.apps.billing.services.ilm_client import IlmResponse
 from hmis.apps.billing.services.multipart_builder import MultipartFile
@@ -215,6 +216,53 @@ class TestStartVisit:
         body = mock_client.post.call_args.kwargs["json_body"]
         assert body["admission_date"] == "2026-04-29"
         assert body["estimated_days_of_admission"] == 3
+
+    def test_blocks_duplicate_open_visit_when_remote_session_active(
+        self, service, mock_client, claim, consent, test_user
+    ):
+        claim.dha_visit_started_at = timezone.now()
+        claim.save(update_fields=["dha_visit_started_at", "updated_at"])
+        mock_client.post.return_value = _make_response(200, {"interventions": []})
+
+        with pytest.raises(VisitAlreadyOpenedError, match="already active"):
+            service.start_visit(
+                claim,
+                StartVisitParams(
+                    otp="123456",
+                    patient_id="CR-001",
+                    intervention_codes=["SHA-06-001"],
+                    service_type="OUTPATIENT",
+                ),
+                user=test_user,
+            )
+
+        assert mock_client.post.call_count == 1
+        assert mock_client.post.call_args[0][0] == PREVIEW_PATH
+
+    def test_allows_start_visit_when_local_marker_stale(
+        self, service, mock_client, claim, consent, test_user
+    ):
+        claim.dha_visit_started_at = timezone.now()
+        claim.save(update_fields=["dha_visit_started_at", "updated_at"])
+
+        with patch.object(service, "_has_active_remote_visit", return_value=False):
+            mock_client.post.return_value = _make_response(
+                201,
+                {"authorization_code": "AUTH-NEW", "claim_id": "DHA-1001"},
+            )
+            result = service.start_visit(
+                claim,
+                StartVisitParams(
+                    otp="123456",
+                    patient_id="CR-001",
+                    intervention_codes=["SHA-06-001"],
+                    service_type="OUTPATIENT",
+                ),
+                user=test_user,
+            )
+
+        assert result.status_code == 201
+        assert mock_client.post.call_args[0][0] == VISIT_PATH
 
 
 # ---------------------------------------------------------------------------

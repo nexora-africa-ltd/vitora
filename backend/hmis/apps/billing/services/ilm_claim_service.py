@@ -167,6 +167,10 @@ class IlmClaimResult:
             return self.payload.get("authorization_code") or self.payload.get("consent_token")
         return None
 
+
+class VisitAlreadyOpenedError(ValueError):
+    """Claim visit is already active on DHA and should not be reopened."""
+
     @property
     def claim_line_id(self) -> str | None:
         if isinstance(self.payload, dict):
@@ -198,6 +202,16 @@ class IlmClaimService:
         *,
         user: Any = None,
     ) -> IlmClaimResult:
+        if (
+            getattr(claim, "dha_visit_started_at", None) is not None
+            and not params.reuse_existing_consent
+        ):
+            if self._has_active_remote_visit(claim, user=user):
+                raise VisitAlreadyOpenedError(
+                    "DHA visit is already active for this claim. "
+                    "Reuse the existing session or restart the visit if needed."
+                )
+
         # DHA accepts either otp (OTP consent) or auth_guid (biometric consent).
         # If neither is provided but the claim already has a valid encounter-
         # linked consent token, allow a local visit reactivation path.
@@ -378,6 +392,21 @@ class IlmClaimService:
             ),
         )
         return result
+
+    def _has_active_remote_visit(self, claim: Any, *, user: Any = None) -> bool:
+        """Probe DHA preview to confirm whether the current visit is still active."""
+        try:
+            result = self._post_with_consent(claim, PREVIEW_PATH, {}, user=user)
+        except (ConsentTokenNotFoundError, ConsentTokenExpiredError):
+            return False
+        except Exception as exc:  # noqa: BLE001 - fail open to avoid blocking valid retries
+            logger.warning(
+                "Unable to probe DHA visit activity for claim %s: %s",
+                getattr(claim, "pk", None),
+                exc,
+            )
+            return False
+        return result.status_code < 400
 
     # -----------------------------------------------------------------
     # Interventions

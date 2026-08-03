@@ -516,6 +516,7 @@ export function ClaimILMPanel({
     useState<IlmMaterializePreviewInvoiceResponse | null>(null);
   const [replacePreviewLines, setReplacePreviewLines] = useState(true);
   const [restartSessionBusy, setRestartSessionBusy] = useState(false);
+  const [visitAlreadyActiveNotice, setVisitAlreadyActiveNotice] = useState(false);
 
   const { data: latestConsentToken } = useQuery({
     queryKey: ['sha-latest-consent-for-workflow', claim.sha_member, claim.encounter, claim.updated_at],
@@ -525,6 +526,7 @@ export function ClaimILMPanel({
         if (typeof claim.sha_member !== 'number') return null;
         return await shaApi.getLatestConsent(claim.sha_member, {
           encounterId: typeof claim.encounter === 'number' ? claim.encounter : undefined,
+          claimPk: claimId,
         });
       } catch (e: unknown) {
         const statusCode = (e as { response?: { status?: number } })?.response?.status;
@@ -646,6 +648,12 @@ export function ClaimILMPanel({
     consentToken,
     requiresConsent,
   ]);
+
+  useEffect(() => {
+    if (visitStarted) {
+      setVisitAlreadyActiveNotice(false);
+    }
+  }, [visitStarted]);
 
   // Clear stale consent-expired inline error once a fresh valid token is available.
   useEffect(() => {
@@ -957,7 +965,12 @@ export function ClaimILMPanel({
         setError(msg);
       }
       const code = (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
-      if (code === 'consent_token_expired') {
+      if (code === 'visit_already_opened') {
+        setVisitAlreadyActiveNotice(true);
+        setError('Visit already active on DHA. Use the existing session or restart it only if needed.');
+        toast.info('Visit already active on DHA. Continuing with existing session.');
+        onChange?.();
+      } else if (code === 'consent_token_expired') {
         toast.error('Consent token has expired. Please re-consent the patient.');
         onConsentExpired?.();
         // Re-fetch claim data so dha_visit_started_at (which the backend cleared)
@@ -1019,6 +1032,10 @@ export function ClaimILMPanel({
         codes = [consentInterventionCode];
       } else if (interventionCodes.length > 0) {
         codes = interventionCodes;
+      }
+      if (codes.length === 0) {
+        setError('Select an intervention before sending OTP.');
+        return;
       }
       const result = await shaApi.sendConsentOTP({
         sha_member_id: memberId,
@@ -1145,8 +1162,13 @@ export function ClaimILMPanel({
     const latestTokenExpired =
       latestConsentToken?.status === 'EXPIRED' || latestConsentToken?.is_valid === false;
     const hasAnyConsentToken = Boolean(latestConsentToken?.consent_token || consentToken);
-    if (requiresConsent && (latestTokenExpired || !hasAnyConsentToken)) {
+    if (requiresConsent && latestTokenExpired) {
       setError('Consent token has expired. Please re-consent the patient.');
+      onConsentExpired?.();
+      return;
+    }
+    if (requiresConsent && !hasAnyConsentToken) {
+      setError('No validated consent token found for this claim. Please complete consent first.');
       onConsentExpired?.();
       return;
     }
@@ -1433,6 +1455,7 @@ export function ClaimILMPanel({
     },
   ];
   const canOpenVisit = prereqs.every((p) => p.ok);
+  const openVisitBlockedByActiveNotice = visitAlreadyActiveNotice && !visitStarted;
   // Minimal requirements to attempt start_visit (DHA needs OTP + patient_id + intervention)
   const canAttemptVisit =
     !!patientCrId &&
@@ -1531,6 +1554,16 @@ export function ClaimILMPanel({
           <Alert variant="destructive">
             <AlertTitle className="text-sm">Action failed</AlertTitle>
             <AlertDescription className="text-xs">{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {openVisitBlockedByActiveNotice && (
+          <Alert>
+            <AlertTitle className="text-sm">Visit already active</AlertTitle>
+            <AlertDescription className="text-xs">
+              DHA already has an active visit for this claim. Continue with interventions, preview, and submit.
+              Restart the DHA session only if you need to force a fresh consent cycle.
+            </AlertDescription>
           </Alert>
         )}
 
@@ -1666,7 +1699,7 @@ export function ClaimILMPanel({
                     ) : (
                       <Button
                         onClick={openVisit}
-                        disabled={!canOpenVisit || busy !== null}
+                        disabled={!canOpenVisit || openVisitBlockedByActiveNotice || busy !== null}
                       >
                         <Play className="mr-2 h-3 w-3" />
                         Open visit (biometric)
@@ -1692,7 +1725,7 @@ export function ClaimILMPanel({
                     ) : (
                       <Button
                         onClick={openVisit}
-                        disabled={!canOpenVisit || busy !== null}
+                        disabled={!canOpenVisit || openVisitBlockedByActiveNotice || busy !== null}
                       >
                         <Play className="mr-2 h-3 w-3" />
                         Open Visit
@@ -1731,7 +1764,7 @@ export function ClaimILMPanel({
                       {startOtp || tokenIsCurrentlyUsable ? (
                         <Button
                           onClick={openVisit}
-                          disabled={!canAttemptVisit || busy !== null}
+                          disabled={!canAttemptVisit || openVisitBlockedByActiveNotice || busy !== null}
                           className="w-full sm:w-auto"
                         >
                           {isStartingVisit ? (
@@ -1796,7 +1829,7 @@ export function ClaimILMPanel({
 
             {/* Emergency (ECCIF) — no consent required */}
             {!requiresConsent && (
-              <Button onClick={openVisit} disabled={!canOpenVisit || busy !== null}>
+              <Button onClick={openVisit} disabled={!canOpenVisit || openVisitBlockedByActiveNotice || busy !== null}>
                 {isStartingVisit ? (
                   <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                 ) : (

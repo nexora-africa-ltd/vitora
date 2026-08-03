@@ -22,6 +22,8 @@ import pytest  # type: ignore
 from django.utils import timezone
 from rest_framework import status
 
+from hmis.apps.billing.services.ilm_claim_service import VisitAlreadyOpenedError
+
 # Reuse the rich fixture set defined in test_sha_api.py (sample_sha_claim,
 # api_client, sha_client, ...).
 from tests.billing.test_api.test_sha_api import (  # noqa: F401
@@ -82,6 +84,27 @@ class TestStartVisitEndpoint:
                 format="json",
             )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_start_visit_returns_conflict_when_visit_already_opened(
+        self, sha_client, sample_sha_claim
+    ):
+        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+            instance = svc.return_value
+            instance.start_visit.side_effect = VisitAlreadyOpenedError(
+                "DHA visit is already active for this claim."
+            )
+            response = sha_client.post(
+                _claim_url(sample_sha_claim, "start-visit"),
+                {
+                    "otp": "123456",
+                    "patient_id": "PAT-1",
+                    "intervention_codes": ["INT-001"],
+                    "service_type": "OUTPATIENT",
+                },
+                format="json",
+            )
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert response.data["code"] == "visit_already_opened"
 
 
 @pytest.mark.django_db

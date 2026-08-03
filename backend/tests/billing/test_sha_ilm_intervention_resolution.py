@@ -239,7 +239,7 @@ class TestResolveClaimInterventionCode:
         code = self._viewset()._resolve_claim_intervention_code(claim)
         assert code == "SHA-19-277"
 
-    def test_falls_back_to_consent_token_interventions(
+    def test_uses_active_claim_intervention_before_consent_token_interventions(
         self, sample_patient, sample_facility, sample_encounter, sample_organization
     ):
         from hmis.apps.billing.models import ConsentToken, SHAClaimIntervention
@@ -279,6 +279,34 @@ class TestResolveClaimInterventionCode:
         )
         assert consent_obj is not None
         assert consent_obj.intervention_codes == ["SHA-19-277"]
+
+        code = self._viewset()._resolve_claim_intervention_code(claim)
+        assert code == "SHA-01-001"
+
+    def test_falls_back_to_consent_token_interventions_when_no_active_claim_intervention(
+        self, sample_patient, sample_facility, sample_encounter, sample_organization
+    ):
+        from hmis.apps.billing.models import ConsentToken
+
+        claim = self._make_claim(
+            sample_patient, sample_facility, sample_encounter, sample_organization
+        )
+        ConsentToken.objects.create(
+            patient=sample_patient,
+            sha_member=claim.sha_member,
+            facility=sample_facility,
+            organization=sample_organization,
+            identification_number="12345678",
+            encounter=sample_encounter,
+            consent_method=ConsentToken.ConsentMethod.OTP,
+            consent_token="token-2b",
+            auth_guid="auth-2b",
+            intervention_codes=["SHA-19-277"],
+            status=ConsentToken.ConsentStatus.VALIDATED,
+            validated_at=timezone.now(),
+            expires_at=timezone.now() + timezone.timedelta(hours=1),
+            created_by=claim.created_by,
+        )
 
         code = self._viewset()._resolve_claim_intervention_code(claim)
         assert code == "SHA-19-277"
@@ -591,6 +619,12 @@ class TestPushLocalAttachments:
         )
 
         mock_service = MagicMock()
+        preview_response = MagicMock()
+        preview_response.status_code = 200
+        preview_response.payload = {
+            "interventions": [{"intervention_code": "SHA-19-277"}],
+        }
+        mock_service.preview.return_value = preview_response
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.payload = {}
@@ -608,3 +642,152 @@ class TestPushLocalAttachments:
         mock_service.add_attachment.assert_called_once()
         _, call_kwargs = mock_service.add_attachment.call_args
         assert call_kwargs["extra_fields"].get("intervention_code") == "SHA-19-277"
+
+    def test_push_local_retries_with_next_candidate_intervention_code(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_facility,
+        sample_encounter,
+        sample_organization,
+    ):
+        from hmis.apps.billing.models import SHAClaimAttachment, SHAClaimIntervention, SHAPreauth
+
+        claim, user = self._make_claim_with_user(
+            sample_patient, sample_facility, sample_encounter, sample_organization
+        )
+        authenticated_client.force_authenticate(user=user)
+
+        SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-19-197",
+            status="active",
+        )
+        SHAPreauth.objects.create(
+            claim=claim,
+            facility=claim.facility,
+            organization=claim.organization,
+            patient=claim.patient,
+            sha_member=claim.sha_member,
+            consent_token="token-5",
+            intervention_code="SHA-01-001",
+            status="pending",
+            requested_by=user,
+        )
+        SHAClaimAttachment.objects.create(
+            claim=claim,
+            attachment_type="clinical_notes",
+            name="retry-test.pdf",
+            description="retry attachment",
+            file=ContentFile(b"retry content", name="retry-test.pdf"),
+            uploaded_by=user,
+        )
+
+        first = MagicMock()
+        first.status_code = 400
+        first.payload = {
+            "error": (
+                "failed to add claim attachment: The virtual claim attachment you are adding, "
+                "there is no valid active intervention with code SHA-01-001"
+            )
+        }
+        second = MagicMock()
+        second.status_code = 200
+        second.payload = {}
+
+        mock_service = MagicMock()
+        preview_response = MagicMock()
+        preview_response.status_code = 200
+        preview_response.payload = {
+            "interventions": [],
+        }
+        mock_service.preview.return_value = preview_response
+        add_intervention_response = MagicMock()
+        add_intervention_response.status_code = 200
+        add_intervention_response.payload = {}
+        mock_service.add_intervention.return_value = add_intervention_response
+        mock_service.add_attachment.side_effect = [first, second]
+
+        with patch(
+            "hmis.apps.billing.sha_views.SHAClaimViewSet._ilm_service",
+            return_value=mock_service,
+        ):
+            response = authenticated_client.post(
+                f"/api/billing/claims/{claim.id}/ilm/attachments/push-local/"
+            )
+
+        assert response.status_code == 200
+        assert response.data["uploaded"] == 1
+        assert response.data["failed"] == 0
+        assert mock_service.add_attachment.call_count == 2
+        first_call_kwargs = mock_service.add_attachment.call_args_list[0].kwargs
+        second_call_kwargs = mock_service.add_attachment.call_args_list[1].kwargs
+        assert first_call_kwargs["extra_fields"]["intervention_code"] == "SHA-01-001"
+        assert second_call_kwargs["extra_fields"]["intervention_code"] == "SHA-19-197"
+
+
+class TestSyncInterventionsEndpoint:
+    """Tests for explicit intervention sync endpoint."""
+
+    def _make_claim_with_user(
+        self, sample_patient, sample_facility, sample_encounter, sample_organization
+    ):
+        claim = _make_sha_claim(
+            sample_patient, sample_facility, sample_encounter, sample_organization
+        )
+        user = claim.created_by
+        user.is_superuser = True
+        user.save(update_fields=["is_superuser"])
+        return claim, user
+
+    def test_sync_interventions_adds_missing_codes(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_facility,
+        sample_encounter,
+        sample_organization,
+    ):
+        from hmis.apps.billing.models import SHAClaimIntervention
+
+        claim, user = self._make_claim_with_user(
+            sample_patient, sample_facility, sample_encounter, sample_organization
+        )
+        authenticated_client.force_authenticate(user=user)
+
+        SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-19-196",
+            status="active",
+        )
+        SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-19-197",
+            status="active",
+        )
+
+        mock_service = MagicMock()
+        preview_response = MagicMock()
+        preview_response.status_code = 200
+        preview_response.payload = {
+            "interventions": [{"intervention_code": "SHA-19-196"}],
+        }
+        mock_service.preview.return_value = preview_response
+
+        add_response = MagicMock()
+        add_response.status_code = 200
+        add_response.payload = {}
+        mock_service.add_intervention.return_value = add_response
+
+        with patch(
+            "hmis.apps.billing.sha_views.SHAClaimViewSet._ilm_service",
+            return_value=mock_service,
+        ):
+            response = authenticated_client.post(
+                f"/api/billing/claims/{claim.id}/ilm/interventions/sync/"
+            )
+
+        assert response.status_code == 200
+        assert response.data["missing_before_sync"] == ["SHA-19-197"]
+        assert response.data["added"] == ["SHA-19-197"]
+        mock_service.add_intervention.assert_called_once_with(claim, "SHA-19-197", user=user)

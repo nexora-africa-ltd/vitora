@@ -105,6 +105,7 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
 
     shaApi.getLatestConsent(memberId, {
       encounterId: typeof claim.encounter === 'number' ? claim.encounter : undefined,
+      claimPk: claim.id,
     }).then((data) => {
       if (data?.consent_token) {
         setConsentTokenStr(data.consent_token);
@@ -117,8 +118,7 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
   }, [claim.sha_member, claim.encounter, consentTokenStr, visitStarted, flow.requiresConsent]);
 
   // Hide consent panel if a valid (non-expired) token exists.
-  // The backend's consent_obtained already checks expiry — if it returns false
-  // the token has expired and we must re-obtain consent, even if dha_visit_started_at is set.
+  // consent_obtained is derived from live token state; false means missing or expired.
   const consentObtained = !!consentTokenStr || !!claim.consent_obtained;
   const needsConsentRefresh = forceConsentRefresh || !consentObtained;
 
@@ -243,6 +243,7 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
           shaMemberId={claim.sha_member!}
           patientCrId={patientCrId || undefined}
           encounterId={typeof claim.encounter === 'number' ? claim.encounter : undefined}
+          claimPk={claim.id}
           flow={flow.flow}
           interventionCodes={consentInterventionCode ? [consentInterventionCode] : undefined}
           onConsentObtained={(_id, token, credential, interventionCode) => {

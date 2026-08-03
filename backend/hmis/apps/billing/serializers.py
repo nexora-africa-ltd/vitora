@@ -121,6 +121,7 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
             "surgery_case",
             "surgery_case_number",
             "theatre_consumable",
+            "inpatient_consumable_usage",
             "description",
             "quantity",
             "unit_price",

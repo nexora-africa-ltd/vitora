@@ -53,6 +53,32 @@ class TestInpatientConsumableUsageModel:
         assert usage.reversed_by == test_user
         assert usage.reverse_reason == "Recorded against wrong patient"
 
+    def test_usage_billing_is_idempotent_on_update(
+        self, sample_admission, sample_stock_batch, test_user
+    ):
+        """Updating a usage row should not create duplicate invoice lines."""
+        from hmis.apps.billing.models import InvoiceItem
+        from hmis.apps.inpatient.models import InpatientConsumableUsage
+
+        usage = InpatientConsumableUsage.objects.create(
+            admission=sample_admission,
+            batch=sample_stock_batch,
+            quantity_used=2,
+            used_by=test_user,
+            notes="Initial entry",
+        )
+
+        usage.notes = "Updated notes"
+        usage.save()
+
+        assert (
+            InvoiceItem.objects.filter(
+                inpatient_consumable_usage=usage,
+                item_type=InvoiceItem.ItemType.CONSUMABLE,
+            ).count()
+            == 1
+        )
+
 
 @pytest.mark.django_db
 class TestInpatientConsumableUsageAPI:
@@ -83,6 +109,70 @@ class TestInpatientConsumableUsageAPI:
 
         sample_stock_batch.refresh_from_db()
         assert sample_stock_batch.quantity_available == 996
+
+        from hmis.apps.billing.models import InvoiceItem
+
+        billed_line = InvoiceItem.objects.filter(
+            inpatient_consumable_usage_id=response.data["id"],
+            item_type=InvoiceItem.ItemType.CONSUMABLE,
+        ).first()
+        assert billed_line is not None
+        assert billed_line.invoice.encounter_id == sample_admission.ipd_encounter_id
+        assert billed_line.drug_id == sample_stock_batch.drug_id
+        assert billed_line.quantity == Decimal("4")
+
+    def test_record_consumable_usage_updates_encounter_invoice_totals(
+        self, authenticated_client, sample_admission, sample_stock_batch, test_user
+    ):
+        """Regression: recording admission consumable usage must update invoice totals."""
+        from hmis.apps.billing.models import Invoice, InvoiceItem
+
+        admission = sample_admission
+        encounter = admission.ipd_encounter
+
+        invoice = Invoice.objects.filter(
+            patient=admission.patient,
+            encounter=encounter,
+            status=Invoice.Status.DRAFT,
+        ).first()
+        if invoice is None:
+            invoice = Invoice.objects.create(
+                patient=admission.patient,
+                encounter=encounter,
+                status=Invoice.Status.DRAFT,
+                invoice_date=encounter.encounter_date,
+                due_date=encounter.encounter_date,
+                payment_type=Invoice.PaymentType.CASH,
+                payer_type=Invoice.PayerType.CASH,
+                created_by=test_user,
+                facility=admission.facility,
+                organization=admission.organization,
+            )
+
+        before_total = invoice.total_amount
+        before_count = invoice.items.count()
+
+        response = authenticated_client.post(
+            reverse("inpatient:admission-record-consumable-usage", kwargs={"pk": admission.id}),
+            {
+                "batch": sample_stock_batch.id,
+                "quantity_used": 3,
+                "notes": "Consumable regression billing test",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        invoice.refresh_from_db()
+        expected_line_total = Decimal("3") * sample_stock_batch.selling_price
+        assert invoice.total_amount == before_total + expected_line_total
+        assert invoice.items.count() == before_count + 1
+        assert InvoiceItem.objects.filter(
+            invoice=invoice,
+            inpatient_consumable_usage_id=response.data["id"],
+            item_type=InvoiceItem.ItemType.CONSUMABLE,
+        ).exists()
 
     def test_stock_movement_report_includes_inpatient_consumable_usage(
         self, authenticated_client, sample_admission, sample_stock_batch, test_user
@@ -140,3 +230,13 @@ class TestInpatientConsumableUsageAPI:
         sample_stock_batch.refresh_from_db()
         assert sample_stock_batch.quantity_available == 1000
         assert sample_stock_batch.quantity_dispensed == 0
+
+        from hmis.apps.billing.models import InvoiceItem
+
+        assert (
+            InvoiceItem.objects.filter(
+                inpatient_consumable_usage=usage,
+                item_type=InvoiceItem.ItemType.CONSUMABLE,
+            ).count()
+            == 0
+        )

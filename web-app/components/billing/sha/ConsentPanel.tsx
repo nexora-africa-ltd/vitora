@@ -73,6 +73,8 @@ interface ConsentPanelProps {
   consentId?: number;
   /** Optional encounter context to prefer encounter-linked consent tokens. */
   encounterId?: number;
+  /** Optional claim context to resolve claim-linked consent across days. */
+  claimPk?: number;
   /** Intervention codes to include with the OTP request (determines DHA benefit package) */
   interventionCodes?: string[];
   /** Optional set of interventions to constrain selection (e.g., selected claim interventions). */
@@ -150,6 +152,7 @@ export function ConsentPanel({
   shaMemberId,
   patientCrId,
   encounterId,
+  claimPk,
   consentId: initialConsentId,
   interventionCodes,
   allowedInterventions,
@@ -261,6 +264,7 @@ export function ConsentPanel({
 
     shaApi.getLatestConsent(shaMemberId, {
       encounterId,
+      claimPk,
       interventionCode: selectedInterventionCode || undefined,
     }).then((data) => {
       if (data?.exists && data?.id) {
@@ -281,6 +285,7 @@ export function ConsentPanel({
   }, [
     shaMemberId,
     encounterId,
+    claimPk,
     initialConsentId,
     step,
     onConsentObtained,
@@ -300,6 +305,10 @@ export function ConsentPanel({
     const codes = interventionCodes?.length
       ? interventionCodes
       : selectedInterventionCode ? [selectedInterventionCode] : [];
+    if (codes.length === 0) {
+      setError('Select an intervention before sending OTP.');
+      return;
+    }
     sendOTP.mutate(
       {
         sha_member_id: shaMemberId,

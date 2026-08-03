@@ -525,6 +525,32 @@ class TestConsentSendOTPAPI:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
+    @patch("hmis.apps.billing.services.ilm_lifecycle_service.IlmLifecycleService.send_visit_otp")
+    def test_send_otp_api_persists_multiple_intervention_codes(
+        self, mock_send_otp, authenticated_client, sha_member
+    ):
+        """Should persist all intervention codes supplied in the OTP request."""
+        from hmis.apps.billing.models import ConsentToken
+
+        mock_result = Mock()
+        mock_result.payload = {
+            "otp_reference": "api-otp-ref-multi",
+        }
+        mock_send_otp.return_value = mock_result
+
+        response = authenticated_client.post(
+            "/api/sha/consent/send-otp/",
+            {
+                "sha_member_id": sha_member.id,
+                "intervention_codes": ["SHA-19-196", "sha-19-197"],
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        consent = ConsentToken.objects.get(id=response.data["consent_id"])
+        assert consent.intervention_codes == ["SHA-19-196", "SHA-19-197"]
+
 
 class TestConsentValidateOTPAPI:
     """Tests for POST /api/sha/consent/validate-otp/."""
@@ -977,12 +1003,16 @@ class TestConsentLatestView:
         assert response.data.get("code") == "claim_consent_expired"
         assert "expired" in str(response.data.get("message", "")).lower()
 
-    def test_latest_without_claim_pk_still_requires_today(self, authenticated_client, old_claim):
+    def test_latest_without_claim_pk_returns_latest_valid_token(
+        self, authenticated_client, old_claim
+    ):
         response = authenticated_client.get(
             "/api/sha/consent/latest/",
             {"sha_member_id": old_claim.sha_member_id},
         )
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["exists"] is True
+        assert response.data["consent_token"] == "old-claim-token"
 
 
 class TestConsentAdmissionConflictView:
