@@ -864,6 +864,12 @@ ILM_BACKOFF_SECONDS = float(os.getenv("ILM_BACKOFF_SECONDS", "0.5"))
 # UAT: https://qa-mis.apeiro-digital.com
 # Production: https://mis.apeiro-digital.com or https://fhir.sha.go.ke
 SHA_FHIR_BASE_URL = os.getenv("SHA_FHIR_BASE_URL", "https://qa-mis.apeiro-digital.com")
+SHA_CONSENT_LOCAL_EXPIRY_DEFAULT_ENABLED = os.getenv(
+    "SHA_CONSENT_LOCAL_EXPIRY_DEFAULT_ENABLED", "false"
+).lower() in ("1", "true", "yes", "on")
+SHA_CONSENT_LOCAL_EXPIRY_DEFAULT_SECONDS = int(
+    os.getenv("SHA_CONSENT_LOCAL_EXPIRY_DEFAULT_SECONDS", "3600")
+)
 
 # SHA API Endpoints for Shared Health Record (SHR) Integration
 # Reference: docs/sha-guides/shr-integration.md

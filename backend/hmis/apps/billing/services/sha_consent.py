@@ -36,10 +36,28 @@ class SHAConsentError(Exception):
     """Raised when SHA consent operations fail."""
 
     def __init__(self, message: str, code: str = "consent_error", details: dict | None = None):
+        super().__init__(message)
         self.message = message
         self.code = code
         self.details = details or {}
-        super().__init__(message)
+
+
+def _expires_in_from_response(response_data: dict[str, Any]) -> int | None:
+    """Return DHA expires_in seconds when provided and parseable."""
+    raw_value = response_data.get("expires_in")
+    if raw_value not in (None, ""):
+        try:
+            parsed = int(raw_value)
+        except (TypeError, ValueError):
+            parsed = None
+        else:
+            if parsed >= 0:
+                return parsed
+
+    if getattr(settings, "SHA_CONSENT_LOCAL_EXPIRY_DEFAULT_ENABLED", False):
+        default_seconds = int(getattr(settings, "SHA_CONSENT_LOCAL_EXPIRY_DEFAULT_SECONDS", 3600))
+        return default_seconds if default_seconds >= 0 else 0
+    return None
 
 
 def _user_facing_dha_message(exc: DHAError) -> str:
@@ -393,8 +411,7 @@ class SHAConsentService:
             or response_data.get("action", "")
         )
 
-        # Default expiry: 1 hour (DHA standard)
-        expires_in = int(response_data.get("expires_in", 3600))
+        expires_in = _expires_in_from_response(response_data)
         consent.mark_validated(token=token, expires_in_seconds=expires_in)
 
         logger.info(
@@ -530,7 +547,6 @@ class SHAConsentService:
             elif consent.status == ConsentToken.ConsentStatus.PENDING:
                 consent.mark_validated(
                     token=consent.consent_token or auth_guid or "capitated-visit",
-                    expires_in_seconds=3600,
                 )
             return {
                 "status": "validated",
@@ -696,13 +712,10 @@ class SHAConsentService:
             or response_data.get("token", "")
         )
         if returned_token:
-            expires_in = int(response_data.get("expires_in", 3600))
+            expires_in = _expires_in_from_response(response_data)
             consent.mark_validated(token=returned_token, expires_in_seconds=expires_in)
         elif consent.status == ConsentToken.ConsentStatus.PENDING:
-            consent.mark_validated(
-                token=consent.consent_token or "visit-started",
-                expires_in_seconds=3600,
-            )
+            consent.mark_validated(token=consent.consent_token or "visit-started")
 
     def authorize_biometric(
         self,
@@ -877,7 +890,7 @@ class SHAConsentService:
                 ).first()
                 if consent and consent.status == ConsentToken.ConsentStatus.PENDING:
                     token = str(uuid.uuid4())
-                    consent.mark_validated(token=token, expires_in_seconds=3600)
+                    consent.mark_validated(token=token)
                     logger.info(
                         "Sandbox biometric consent %s auto-authorized (auth_guid: %s)",
                         consent.id,
@@ -915,7 +928,8 @@ class SHAConsentService:
             ).first()
             if consent and consent.status == ConsentToken.ConsentStatus.PENDING:
                 token = response_data.get("consent_token") or auth_guid
-                consent.mark_validated(token=token, expires_in_seconds=3600)
+                expires_in = _expires_in_from_response(response_data)
+                consent.mark_validated(token=token, expires_in_seconds=expires_in)
                 logger.info(
                     "Biometric consent %s authorized (auth_guid: %s)", consent.id, auth_guid
                 )

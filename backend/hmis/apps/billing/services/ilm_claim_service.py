@@ -224,13 +224,16 @@ class IlmClaimService:
             except (ConsentTokenNotFoundError, ConsentTokenExpiredError) as exc:
                 raise ValueError("Either otp or auth_guid must be provided") from exc
 
+            if consent.expires_at is None and not self._has_active_remote_visit(claim, user=user):
+                raise ValueError(
+                    "Existing consent token has no local expiry and DHA visit is not active. "
+                    "Provide otp or auth_guid to open a fresh visit."
+                )
+
             update_fields: list[str] = []
             if hasattr(claim, "dha_visit_started_at"):
                 claim.dha_visit_started_at = timezone.now()
                 update_fields.append("dha_visit_started_at")
-            if not getattr(claim, "consent_obtained", False):
-                claim.consent_obtained = True
-                update_fields.append("consent_obtained")
             if update_fields:
                 claim.save(update_fields=update_fields)
 

@@ -1032,6 +1032,8 @@ export function ClaimILMPanel({
         codes = [consentInterventionCode];
       } else if (interventionCodes.length > 0) {
         codes = interventionCodes;
+      } else if (manualInterventionCode) {
+        codes = [manualInterventionCode];
       }
       if (codes.length === 0) {
         setError('Select an intervention before sending OTP.');
@@ -1068,7 +1070,7 @@ export function ClaimILMPanel({
     } finally {
       setBusy(null);
     }
-  }, [claim.sha_member, interventionCodes, consentInterventionCode, onChange]);
+  }, [claim.sha_member, interventionCodes, consentInterventionCode, manualInterventionCode, onChange]);
 
   const handleStartBiometric = useCallback(async () => {
     setBiometricBusy(true);

@@ -4421,12 +4421,16 @@ class ConsentToken(FacilityScopedModel):
     # State transition methods
     # ------------------------------------------------------------------
 
-    def mark_validated(self, token: str, expires_in_seconds: int = 3600) -> None:
+    def mark_validated(self, token: str, expires_in_seconds: int | None = None) -> None:
         """Mark consent as validated with the token from DHA."""
         self.status = self.ConsentStatus.VALIDATED
         self.consent_token = token
         self.validated_at = timezone.now()
-        self.expires_at = timezone.now() + timedelta(seconds=expires_in_seconds)
+        self.expires_at = (
+            timezone.now() + timedelta(seconds=expires_in_seconds)
+            if expires_in_seconds is not None
+            else None
+        )
         self.save(update_fields=["status", "consent_token", "validated_at", "expires_at"])
 
     def mark_failed(self) -> None:

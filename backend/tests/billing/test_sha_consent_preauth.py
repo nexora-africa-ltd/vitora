@@ -15,6 +15,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest  # type: ignore
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
 
@@ -338,6 +339,51 @@ class TestSHAConsentServiceValidateOTP:
         with pytest.raises(SHAConsentError) as exc_info:
             service.validate_otp(consent=validated_consent, otp_code="12345")
         assert exc_info.value.code == "invalid_status"
+
+    @override_settings(SHA_CONSENT_LOCAL_EXPIRY_DEFAULT_ENABLED=False)
+    @patch("hmis.apps.billing.services.sha_consent.SHAConsentService._make_request")
+    @patch("hmis.apps.billing.services.sha_consent.SHAAuthService")
+    def test_validate_otp_without_expires_in_keeps_expiry_null_when_default_disabled(
+        self, mock_auth_cls, mock_request, consent_token
+    ):
+        mock_request.return_value = {
+            "status": "success",
+            "message": "OTP validated successfully",
+            "consent_token": "dha-consent-token-no-expiry",
+        }
+
+        from hmis.apps.billing.services.sha_consent import SHAConsentService
+
+        result = SHAConsentService().validate_otp(consent=consent_token, otp_code="12345")
+
+        result.refresh_from_db()
+        assert result.status == ConsentToken.ConsentStatus.VALIDATED
+        assert result.expires_at is None
+
+    @override_settings(
+        SHA_CONSENT_LOCAL_EXPIRY_DEFAULT_ENABLED=True,
+        SHA_CONSENT_LOCAL_EXPIRY_DEFAULT_SECONDS=1800,
+    )
+    @patch("hmis.apps.billing.services.sha_consent.SHAConsentService._make_request")
+    @patch("hmis.apps.billing.services.sha_consent.SHAAuthService")
+    def test_validate_otp_without_expires_in_uses_local_default_when_enabled(
+        self, mock_auth_cls, mock_request, consent_token
+    ):
+        mock_request.return_value = {
+            "status": "success",
+            "message": "OTP validated successfully",
+            "consent_token": "dha-consent-token-default-expiry",
+        }
+
+        from hmis.apps.billing.services.sha_consent import SHAConsentService
+
+        result = SHAConsentService().validate_otp(consent=consent_token, otp_code="12345")
+
+        result.refresh_from_db()
+        assert result.status == ConsentToken.ConsentStatus.VALIDATED
+        assert result.expires_at is not None
+        ttl_seconds = int((result.expires_at - result.validated_at).total_seconds())
+        assert 1795 <= ttl_seconds <= 1805
 
 
 # ---------------------------------------------------------------------------
