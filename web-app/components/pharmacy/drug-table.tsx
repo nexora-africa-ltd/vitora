@@ -54,6 +54,7 @@ interface DrugTableProps {
     item_type?: ItemType;
     is_essential?: boolean;
     is_active?: boolean;
+    in_stock?: boolean;
   }) => void;
 }
 
@@ -134,6 +135,7 @@ export function DrugTable({
   const [itemTypeFilter, setItemTypeFilter] = useState<ItemType | ''>('');
   const [essentialOnly, setEssentialOnly] = useState(false);
   const [activeOnly, setActiveOnly] = useState(false);
+  const [inStockOnly, setInStockOnly] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [drugToDelete, setDrugToDelete] = useState<Drug | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -156,6 +158,7 @@ export function DrugTable({
           item_type: itemTypeFilter || undefined,
           is_essential: essentialOnly || undefined,
           is_active: activeOnly || undefined,
+          in_stock: inStockOnly || undefined,
         });
       }
     }, 0);
@@ -172,6 +175,7 @@ export function DrugTable({
           item_type: itemTypeFilter || undefined,
           is_essential: essentialOnly || undefined,
           is_active: activeOnly || undefined,
+          in_stock: inStockOnly || undefined,
         });
       }
     }, 0);
@@ -188,6 +192,7 @@ export function DrugTable({
           item_type: itemTypeFilter || undefined,
           is_essential: essentialOnly || undefined,
           is_active: activeOnly || undefined,
+          in_stock: inStockOnly || undefined,
         });
       }
     }, 0);
@@ -204,6 +209,7 @@ export function DrugTable({
           item_type: (value as ItemType) || undefined,
           is_essential: essentialOnly || undefined,
           is_active: activeOnly || undefined,
+          in_stock: inStockOnly || undefined,
         });
       }
     }, 0);
@@ -221,6 +227,7 @@ export function DrugTable({
           item_type: itemTypeFilter || undefined,
           is_essential: isChecked || undefined,
           is_active: activeOnly || undefined,
+          in_stock: inStockOnly || undefined,
         });
       }
     }, 0);
@@ -238,6 +245,25 @@ export function DrugTable({
           item_type: itemTypeFilter || undefined,
           is_essential: essentialOnly || undefined,
           is_active: isChecked || undefined,
+          in_stock: inStockOnly || undefined,
+        });
+      }
+    }, 0);
+  };
+
+  const handleInStockChange = (checked: boolean | 'indeterminate') => {
+    const isChecked = checked === true;
+    setInStockOnly(isChecked);
+    setTimeout(() => {
+      if (onFiltersChange) {
+        onFiltersChange({
+          category: categoryFilter || undefined,
+          form: formFilter || undefined,
+          schedule: scheduleFilter || undefined,
+          item_type: itemTypeFilter || undefined,
+          is_essential: essentialOnly || undefined,
+          is_active: activeOnly || undefined,
+          in_stock: isChecked || undefined,
         });
       }
     }, 0);
@@ -386,10 +412,12 @@ export function DrugTable({
       header: 'Code',
       cell: (drug: Drug) => <span className="font-mono text-sm">{drug.code}</span>,
       hideOnMobile: true,
+      sortable: true,
     },
     {
       key: 'generic_name',
       header: 'Item Name',
+      sortable: true,
       cell: (drug: Drug) => {
         return (
           <div className="flex flex-col gap-1">
@@ -439,15 +467,29 @@ export function DrugTable({
       header: 'Form',
       cell: (drug: Drug) => FORM_LABELS[drug.form],
       hideOnMobile: true,
+      sortable: true,
     },
     {
       key: 'strength',
       header: 'Strength',
       hideOnMobile: true,
+      sortable: true,
     },
     {
       key: 'category',
       header: 'Category',
+      sortable: true,
+      sortFn: (a: Drug, b: Drug) => {
+        const aCategories = (a.categories && a.categories.length > 0)
+          ? a.categories
+          : (a.category ? [a.category] : []);
+        const bCategories = (b.categories && b.categories.length > 0)
+          ? b.categories
+          : (b.category ? [b.category] : []);
+        const aLabel = aCategories.map((cat) => CATEGORY_LABELS[cat] ?? cat).join(', ');
+        const bLabel = bCategories.map((cat) => CATEGORY_LABELS[cat] ?? cat).join(', ');
+        return aLabel.localeCompare(bLabel);
+      },
       cell: (drug: Drug) => {
         const categories = (drug.categories && Array.isArray(drug.categories) && drug.categories.length > 0)
           ? drug.categories
@@ -474,6 +516,8 @@ export function DrugTable({
     {
       key: 'current_stock',
       header: 'Stock',
+      sortable: true,
+      sortFn: (a: Drug, b: Drug) => a.current_stock - b.current_stock,
       cell: (drug: Drug) => {
         const isLowStock = drug.current_stock > 0 && drug.current_stock < drug.default_reorder_level;
         const isOutOfStock = drug.current_stock === 0;
@@ -496,6 +540,7 @@ export function DrugTable({
       header: 'Schedule',
       cell: (drug: Drug) => <Badge className={SCHEDULE_COLORS[drug.schedule]}>{drug.schedule}</Badge>,
       hideOnMobile: true,
+      sortable: true,
     },
     {
       key: 'actions',
@@ -650,6 +695,18 @@ export function DrugTable({
                 Active Only
               </Label>
             </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="in-stock-filter"
+                data-testid="in-stock-filter"
+                checked={inStockOnly}
+                onCheckedChange={handleInStockChange}
+              />
+              <Label htmlFor="in-stock-filter" className="text-sm cursor-pointer">
+                In Stock Only
+              </Label>
+            </div>
           </div>
         )}
       </div>
@@ -663,6 +720,8 @@ export function DrugTable({
           onRowClick={(drug) => router.push(`/pharmacy/drugs/${drug.id}`)}
           mobileCard={renderMobileCard}
           emptyMessage="No items found"
+          defaultSortColumn="generic_name"
+          defaultSortDirection="asc"
         />
       </div>
 

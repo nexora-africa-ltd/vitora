@@ -32,6 +32,7 @@ export default function DrugCatalogPage() {
     item_type?: ItemType;
     is_essential?: boolean;
     is_active?: boolean;
+    in_stock?: boolean;
   }>({});
   const pageSize = 20;
 

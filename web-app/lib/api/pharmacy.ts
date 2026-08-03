@@ -192,10 +192,33 @@ export const pharmacyApi = {
    * Get paginated list of stock alerts.
    */
   async listAlerts(params?: StockAlertListParams): Promise<PaginatedResponse<StockAlert>> {
+    const queryParams = params
+      ? {
+          ...params,
+          ...(params.resolved !== undefined
+            ? { is_resolved: params.resolved }
+            : {}),
+          ...(params.acknowledged !== undefined
+            ? { is_acknowledged: params.acknowledged }
+            : {}),
+        }
+      : undefined;
+
     const response = await apiClient.get<PaginatedResponse<StockAlert>>('/api/pharmacy/alerts/', {
-      params,
+      params: queryParams,
     });
-    return parseResponse(PaginatedStockAlertSchema, response.data, { context: 'pharmacyApi.listAlerts' });
+
+    // Backward compatibility: some backend builds do not emit `updated_at`
+    // on stock alerts. Normalize to `created_at` before schema validation.
+    const normalizedData = {
+      ...response.data,
+      results: (response.data.results || []).map((alert) => ({
+        ...alert,
+        updated_at: (alert as unknown as { updated_at?: string }).updated_at ?? alert.created_at,
+      })),
+    };
+
+    return parseResponse(PaginatedStockAlertSchema, normalizedData, { context: 'pharmacyApi.listAlerts' });
   },
 
   /**

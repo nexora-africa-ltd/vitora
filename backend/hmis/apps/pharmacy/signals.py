@@ -15,14 +15,77 @@ from decimal import Decimal
 from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 
 from hmis.apps.billing.models import Invoice, InvoiceItem
 from hmis.apps.core.events import PharmacyEvents, publish_event
 from hmis.apps.core.sync_context import is_sync_materialization_active
 
-from .models import Dispensing, Prescription, PrescriptionItem, StockBatch
+from .models import Dispensing, Prescription, PrescriptionItem, StockAlert, StockBatch
 
 logger = logging.getLogger(__name__)
+
+
+def _sync_stock_alert_records(batch: StockBatch) -> None:
+    """Keep LOW_STOCK / OUT_OF_STOCK alerts in sync with current batch quantity."""
+    if not batch.facility_id:
+        return
+
+    base_filters = {
+        "drug": batch.drug,
+        "batch": batch,
+        "facility_id": batch.facility_id,
+    }
+
+    out_of_stock_qs = StockAlert.objects.filter(
+        **base_filters,
+        alert_type="OUT_OF_STOCK",
+        is_resolved=False,
+    )
+    low_stock_qs = StockAlert.objects.filter(
+        **base_filters,
+        alert_type="LOW_STOCK",
+        is_resolved=False,
+    )
+
+    if batch.status == "EXPIRED":
+        out_of_stock_qs.update(is_resolved=True, resolved_at=timezone.now())
+        low_stock_qs.update(is_resolved=True, resolved_at=timezone.now())
+        return
+
+    if batch.quantity_available == 0:
+        low_stock_qs.update(is_resolved=True, resolved_at=timezone.now())
+        StockAlert.objects.get_or_create(
+            **base_filters,
+            alert_type="OUT_OF_STOCK",
+            is_resolved=False,
+            defaults={
+                "organization_id": batch.organization_id,
+                "severity": "CRITICAL",
+                "message": f"{batch.drug.generic_name} is out of stock (batch {batch.batch_number})",
+            },
+        )
+        return
+
+    if batch.quantity_available < batch.drug.default_reorder_level:
+        out_of_stock_qs.update(is_resolved=True, resolved_at=timezone.now())
+        StockAlert.objects.get_or_create(
+            **base_filters,
+            alert_type="LOW_STOCK",
+            is_resolved=False,
+            defaults={
+                "organization_id": batch.organization_id,
+                "severity": "MEDIUM",
+                "message": (
+                    f"{batch.drug.generic_name} is below reorder level "
+                    f"({batch.quantity_available} remaining in batch {batch.batch_number})"
+                ),
+            },
+        )
+        return
+
+    out_of_stock_qs.update(is_resolved=True, resolved_at=timezone.now())
+    low_stock_qs.update(is_resolved=True, resolved_at=timezone.now())
 
 
 @receiver(post_save, sender=PrescriptionItem)
@@ -318,6 +381,8 @@ def broadcast_stock_level_change(sender, instance, **kwargs):
         return
 
     try:
+        _sync_stock_alert_records(instance)
+
         from hmis.apps.pharmacy.websockets import (
             broadcast_stock_critical,
             broadcast_stock_low_warning,

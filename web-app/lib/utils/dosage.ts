@@ -16,6 +16,7 @@ export interface ParsedStrength {
   unit: string;
   perVolume?: number; // For liquid formulations like "50mg/5ml"
   volumeUnit?: string;
+  components?: Array<{ value: number; unit: string }>;
   raw: string;
 }
 
@@ -65,15 +66,42 @@ export function parseStrength(strength: string): ParsedStrength | null {
     };
   }
 
-  // Pattern 2: Combination drug "250/125mg" - take first value
-  const comboPattern = /^(\d+(?:\.\d+)?)\s*\/\s*\d+(?:\.\d+)?\s*(mg|mcg|g|iu|units?)/i;
-  const comboMatch = raw.match(comboPattern);
-  if (comboMatch && comboMatch[1] && comboMatch[2]) {
-    return {
-      value: parseFloat(comboMatch[1]),
-      unit: comboMatch[2].toLowerCase(),
-      raw,
-    };
+  // Pattern 2: Combination drug (supports A/B, A/B/C, mixed units)
+  // Examples:
+  // - "250/125mg"
+  // - "100/500mg"
+  // - "100/100/500"
+  // - "5mg/325mg"
+  const compact = raw.replace(/\s+/g, '').toLowerCase();
+  if (compact.includes('/')) {
+    const tokens = compact.split('/');
+    if (tokens.length >= 2) {
+      const parsedTokens = tokens.map((token) => {
+        const m = token.match(/^(\d+(?:\.\d+)?)(mg|mcg|g|iu|units?|ml|%)?$/i);
+        if (!m || !m[1]) return null;
+        return {
+          value: parseFloat(m[1]),
+          unit: (m[2] || '').toLowerCase(),
+        };
+      });
+
+      if (parsedTokens.every((t) => t !== null)) {
+        const concrete = parsedTokens as Array<{ value: number; unit: string }>;
+        const fallbackUnit = concrete.find((c) => !!c.unit)?.unit || '';
+        const components = concrete.map((c) => ({
+          value: c.value,
+          unit: c.unit || fallbackUnit,
+        }));
+        const first = components[0]!;
+
+        return {
+          value: first.value,
+          unit: first.unit,
+          components,
+          raw,
+        };
+      }
+    }
   }
 
   // Pattern 3: Simple strength "500mg", "0.5mg", "1g"
@@ -179,6 +207,32 @@ export function generateDosageSuggestions(drug: Drug): DosageSuggestion[] {
   // For solid dosage forms (tablets, capsules)
   if (parsed && ['TABLET', 'CAPSULE'].includes(drug.form)) {
     const multipliers = [0.5, 1, 2, 3];
+
+    if (parsed.components && parsed.components.length > 1) {
+      for (const mult of multipliers) {
+        const quantityLabel = mult === 0.5 ? '1/2' : mult.toString();
+        const unit = mult === 1 ? unitName : unitNamePlural;
+
+        if (mult === 0.5 && parsed.components.some((c) => c.value < 10)) continue;
+
+        const comboDose = parsed.components
+          .map((component) => {
+            const dose = component.value * mult;
+            const doseStr = Number.isInteger(dose) ? dose.toString() : dose.toFixed(1);
+            return `${doseStr}${component.unit}`;
+          })
+          .join('/');
+
+        suggestions.push({
+          value: comboDose,
+          label: `${comboDose} (${quantityLabel} ${unit})`,
+          quantity: mult,
+          isDefault: mult === 1,
+        });
+      }
+
+      return suggestions;
+    }
 
     for (const mult of multipliers) {
       const dose = parsed.value * mult;

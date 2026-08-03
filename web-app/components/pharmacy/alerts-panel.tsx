@@ -22,6 +22,8 @@ import {
   ShoppingCart,
   Eye,
   Download,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,6 +56,10 @@ interface AlertsPanelProps {
   alerts: StockAlert[];
   isLoading: boolean;
   error: Error | null;
+  page: number;
+  totalPages: number;
+  totalCount: number;
+  onPageChange: (page: number) => void;
   onRefresh?: () => void;
   autoRefreshInterval?: number; // in seconds, 0 to disable
 }
@@ -71,10 +77,31 @@ const ALERT_TYPE_ICONS: Record<AlertType, typeof AlertTriangle> = {
 
 // Severity badge colors
 const SEVERITY_COLORS: Record<AlertSeverity, string> = {
-  LOW: 'bg-blue-100 text-blue-800',
-  MEDIUM: 'bg-yellow-100 text-yellow-800',
-  HIGH: 'bg-orange-100 text-orange-800',
-  CRITICAL: 'bg-red-100 text-red-800',
+  LOW: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
+  MEDIUM: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
+  HIGH: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200',
+  CRITICAL: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
+};
+
+const SEVERITY_PANEL_COLORS: Record<AlertSeverity, string> = {
+  LOW: 'border-blue-400/60 bg-blue-50/60 dark:border-blue-700 dark:bg-blue-950/20',
+  MEDIUM: 'border-yellow-400/60 bg-yellow-50/60 dark:border-yellow-700 dark:bg-yellow-950/20',
+  HIGH: 'border-orange-400/60 bg-orange-50/60 dark:border-orange-700 dark:bg-orange-950/20',
+  CRITICAL: 'border-red-400/60 bg-red-50/60 dark:border-red-700 dark:bg-red-950/20',
+};
+
+const SEVERITY_ICON_BG: Record<AlertSeverity, string> = {
+  LOW: 'bg-blue-100 dark:bg-blue-900/40',
+  MEDIUM: 'bg-yellow-100 dark:bg-yellow-900/40',
+  HIGH: 'bg-orange-100 dark:bg-orange-900/40',
+  CRITICAL: 'bg-red-100 dark:bg-red-900/40',
+};
+
+const SEVERITY_ICON_FG: Record<AlertSeverity, string> = {
+  LOW: 'text-blue-600 dark:text-blue-300',
+  MEDIUM: 'text-yellow-600 dark:text-yellow-300',
+  HIGH: 'text-orange-600 dark:text-orange-300',
+  CRITICAL: 'text-red-600 dark:text-red-300',
 };
 
 // Alert type test id
@@ -92,6 +119,10 @@ export function AlertsPanel({
   alerts,
   isLoading,
   error,
+  page,
+  totalPages,
+  totalCount,
+  onPageChange,
   onRefresh,
   autoRefreshInterval = 0, // Default: no auto-refresh
 }: AlertsPanelProps) {
@@ -431,39 +462,16 @@ export function AlertsPanel({
                 <Card
                   key={alert.id}
                   data-testid="alert-item"
-                  className={`${
-                    alert.severity === 'CRITICAL' ? 'border-red-500 bg-red-50/50' :
-                    alert.severity === 'HIGH' ? 'border-orange-500 bg-orange-50/50' :
-                    alert.severity === 'MEDIUM' ? 'border-yellow-500 bg-yellow-50/50' :
-                    'border-blue-500 bg-blue-50/50'
-                  }`}
+                  className={SEVERITY_PANEL_COLORS[alert.severity]}
                 >
                   <CardContent className="pt-4">
                     <div className="flex items-start gap-4">
                       {/* Icon */}
                       <div
                         data-testid={testId}
-                        className={`p-2 rounded-full ${
-                          alert.severity === 'CRITICAL'
-                            ? 'bg-red-100'
-                            : alert.severity === 'HIGH'
-                            ? 'bg-orange-100'
-                            : alert.severity === 'MEDIUM'
-                            ? 'bg-yellow-100'
-                            : 'bg-blue-100'
-                        }`}
+                        className={`p-2 rounded-full ${SEVERITY_ICON_BG[alert.severity]}`}
                       >
-                        <Icon
-                          className={`h-5 w-5 ${
-                            alert.severity === 'CRITICAL'
-                              ? 'text-red-600'
-                              : alert.severity === 'HIGH'
-                              ? 'text-orange-600'
-                              : alert.severity === 'MEDIUM'
-                              ? 'text-yellow-600'
-                              : 'text-blue-600'
-                          }`}
-                        />
+                        <Icon className={`h-5 w-5 ${SEVERITY_ICON_FG[alert.severity]}`} />
                       </div>
 
                       {/* Content */}
@@ -519,8 +527,8 @@ export function AlertsPanel({
                             </Badge>
                           )}
                           {alert.resolved && (
-                            <Badge variant="outline" className="text-xs bg-green-50">
-                              <CheckCircle className="h-3 w-3 mr-1 text-green-600" />
+                            <Badge variant="outline" className="text-xs bg-green-50 dark:bg-green-950/30">
+                              <CheckCircle className="h-3 w-3 mr-1 text-green-600 dark:text-green-300" />
                               Resolved
                             </Badge>
                           )}
@@ -602,6 +610,34 @@ export function AlertsPanel({
           </div>
         </TabsContent>
       </Tabs>
+
+      {totalPages > 1 && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-2">
+          <p className="text-sm text-muted-foreground text-center sm:text-left">
+            Showing {alerts.length} of {totalCount} alerts (Page {page} of {totalPages})
+          </p>
+          <div className="flex items-center justify-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(page - 1)}
+              disabled={page <= 1}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(page + 1)}
+              disabled={page >= totalPages}
+            >
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Resolve Dialog */}
       <Dialog open={resolveDialogOpen} onOpenChange={setResolveDialogOpen}>

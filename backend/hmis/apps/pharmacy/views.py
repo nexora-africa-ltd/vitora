@@ -88,6 +88,26 @@ class DrugViewSet(viewsets.ModelViewSet):
             # For SQLite compatibility, check if category appears in JSON string
             # This works because JSONField stores as text in SQLite
             queryset = queryset.filter(Q(categories__icontains=f'"{category}"'))
+
+        request = self.request
+        facility_id = None
+        if request and hasattr(request.user, "staff_profile"):
+            profile = getattr(request.user, "staff_profile", None)
+            if profile and profile.primary_facility_id:
+                facility_id = profile.primary_facility_id
+
+        in_stock = self.request.query_params.get("in_stock")
+        if in_stock is not None:
+            normalized = in_stock.strip().lower()
+            stock_q = Q(batches__status="AVAILABLE", batches__quantity_available__gt=0)
+            if facility_id:
+                stock_q &= Q(batches__facility_id=facility_id)
+            if normalized in {"true", "1", "yes", "on"}:
+                queryset = queryset.filter(stock_q)
+            elif normalized in {"false", "0", "no", "off"}:
+                queryset = queryset.exclude(stock_q)
+
+        queryset = queryset.distinct()
         return queryset
 
     @action(detail=False, methods=["get"], url_path="hpt-search")
@@ -196,7 +216,7 @@ class StockBatchViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["drug", "status", "drug__item_type", "store_location"]
-    search_fields = ["batch_number", "drug__generic_name", "drug__brand_name", "supplier__name"]
+    search_fields = ["batch_number", "drug__generic_name", "drug__brand_names", "supplier__name"]
     ordering_fields = ["expiry_date", "received_date", "created_at"]
     ordering = ["expiry_date"]
 
@@ -237,6 +257,21 @@ class StockAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     filterset_fields = ["alert_type", "severity", "is_acknowledged", "is_resolved"]
     ordering_fields = ["created_at", "severity"]
     ordering = ["-created_at"]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Keep low/out-of-stock alerts up to date for the current facility.
+        # This ensures alert cards reflect actual stock state even if background
+        # jobs haven't run yet.
+        facility_id = None
+        profile = getattr(self.request.user, "staff_profile", None)
+        if profile and profile.primary_facility_id:
+            facility_id = profile.primary_facility_id
+
+        if facility_id is not None:
+            StockAlert.generate_low_stock_alerts(facility_id=facility_id)
+        return queryset
 
     @action(detail=True, methods=["post"])
     def acknowledge(self, request, pk=None):

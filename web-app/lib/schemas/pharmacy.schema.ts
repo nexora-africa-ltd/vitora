@@ -241,7 +241,7 @@ export const StockAlertSchema = z.object({
   resolved_at: z.string().optional().nullable(),
   resolution_notes: z.string().optional().nullable(),
   created_at: z.string(),
-  updated_at: z.string(),
+  updated_at: z.string().optional().nullable(),
 });
 
 export type StockAlertSchemaType = z.infer<typeof StockAlertSchema>;

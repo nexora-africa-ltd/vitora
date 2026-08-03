@@ -70,7 +70,7 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { usePatient } from '@/lib/hooks/use-patients';
 import type { Patient } from '@/lib/types/patient';
 import { useEncounter } from '@/lib/hooks/use-encounters';
-import { useDrugs, useCreatePrescription } from '@/lib/hooks/use-pharmacy';
+import { useDrugs, useStockBatches, useCreatePrescription } from '@/lib/hooks/use-pharmacy';
 import { useCheckDrugInteractions } from '@/lib/hooks/use-allergies';
 import { PrescriptionAllergyWarning } from '@/components/pharmacy/prescription-allergy-warning';
 import type { DrugInteractionCheck } from '@/lib/types/allergy';
@@ -177,9 +177,30 @@ export default function NewPrescriptionPage() {
   const [showDrugSearch, setShowDrugSearch] = useState(false);
   const { data: drugsData, isLoading: drugsLoading } = useDrugs({
     search: drugSearch || undefined,
-    page_size: 10,
+    page_size: 25,
     is_active: true,
+    item_type: 'MEDICATION',
   });
+  const { data: stockedBatchesData, isLoading: stockedBatchesLoading } = useStockBatches({
+    search: drugSearch || undefined,
+    status: 'AVAILABLE',
+    drug__item_type: 'MEDICATION',
+    page_size: 100,
+  });
+  const stockedDrugIds = useMemo(() => {
+    const ids = new Set<number>();
+    (stockedBatchesData?.results ?? []).forEach((batch) => {
+      if (batch.quantity_available > 0) {
+        ids.add(batch.drug);
+      }
+    });
+    return ids;
+  }, [stockedBatchesData?.results]);
+  const stockedDrugs = useMemo(() => {
+    const allDrugs = drugsData?.results ?? [];
+    return allDrugs.filter((drug) => stockedDrugIds.has(drug.id));
+  }, [drugsData?.results, stockedDrugIds]);
+  const localSearchLoading = drugsLoading || stockedBatchesLoading;
 
   // Selected drug for smart dosage
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
@@ -796,9 +817,11 @@ Prescribed by: ${prescriberName}
                   </div>
 
                   {/* Formulary enrichment — KEML level, PPB status, SmPC quick view */}
-                  <FormularyInfoPopover
-                    drugName={selectedDrug?.generic_name || selectedSHADrug?.name || ''}
-                  />
+                  <div className="mt-3 border-t pt-3">
+                    <FormularyInfoPopover
+                      drugName={selectedDrug?.generic_name || selectedSHADrug?.name || ''}
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -812,12 +835,12 @@ Prescribed by: ${prescriberName}
                             onCheckedChange={setUseSHADrug}
                           />
                           <span className="text-sm font-medium">
-                            {useSHADrug ? 'DHIS2 Formulary' : 'Local Inventory'}
+                            {useSHADrug ? 'Using DHIS2 Formulary' : 'Using Local Inventory'}
                           </span>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Switch to {useSHADrug ? 'Local Inventory' : 'DHIS2 Formulary'}</p>
+                        <p>Switch to {useSHADrug ? 'Using Local Inventory' : 'Using DHIS2 Formulary'}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -839,12 +862,12 @@ Prescribed by: ${prescriberName}
                       />
                       {showDrugSearch && drugSearch && (
                         <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
-                          {drugsLoading ? (
+                          {localSearchLoading ? (
                             <div className="p-4 text-center text-muted-foreground">
                               <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                             </div>
-                          ) : drugsData?.results && drugsData.results.length > 0 ? (
-                            drugsData.results.map((drug) => (
+                          ) : stockedDrugs.length > 0 ? (
+                            stockedDrugs.map((drug) => (
                               <button
                                 key={drug.id}
                                 type="button"
@@ -868,7 +891,7 @@ Prescribed by: ${prescriberName}
                             ))
                           ) : (
                             <div className="p-4 text-center text-muted-foreground">
-                              No drugs found
+                              No in-stock drugs found
                             </div>
                           )}
                         </div>
@@ -889,8 +912,8 @@ Prescribed by: ${prescriberName}
               {errors.drug && <p className="text-sm text-destructive">{errors.drug}</p>}
             </div>
 
-            {/* Dosage and Quantity - Smart dosage based on selected drug */}
-            <div className="grid gap-4 sm:grid-cols-2">
+            {/* Dosage - Smart dosage based on selected drug */}
+            <div className="space-y-2">
               <div className="space-y-2">
                 <div className="flex items-center justify-between h-5">
                   <Label htmlFor="dosage">
@@ -963,53 +986,6 @@ Prescribed by: ${prescriberName}
                 )}
                 {errors.dosage && <p className="text-sm text-destructive">{errors.dosage}</p>}
               </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between h-5">
-                  <Label htmlFor="quantity">
-                    Quantity to Dispense <span className="text-destructive">*</span>
-                  </Label>
-                  {autoQuantity !== null && !quantityManualOverride && (
-                    <button
-                      type="button"
-                      className="flex items-center gap-1 text-xs text-primary hover:text-foreground"
-                      onClick={() => setQuantityManualOverride(true)}
-                    >
-                      <PenLine className="h-3 w-3" />
-                      Override
-                    </button>
-                  )}
-                  {autoQuantity !== null && quantityManualOverride && (
-                    <button
-                      type="button"
-                      className="flex items-center gap-1 text-xs text-primary hover:text-foreground"
-                      onClick={() => {
-                        setQuantityManualOverride(false);
-                        setCurrentItem((prev) => ({ ...prev, quantity_prescribed: autoQuantity }));
-                      }}
-                    >
-                      <RefreshCcw className="h-3 w-3" />
-                      Reset to {autoQuantity}
-                    </button>
-                  )}
-                </div>
-                <Input
-                  id="quantity"
-                  type="number"
-                  min={1}
-                  readOnly={!quantityManualOverride}
-                  value={currentItem.quantity_prescribed || ''}
-                  onChange={(e) => {
-                    setQuantityManualOverride(true);
-                    setCurrentItem((prev) => ({
-                      ...prev,
-                      quantity_prescribed: parseInt(e.target.value) || 0,
-                    }));
-                  }}
-                  className={`${errors.quantity ? 'border-destructive' : ''} ${!quantityManualOverride ? 'bg-muted/50' : ''}`}
-                />
-                {errors.quantity && <p className="text-sm text-destructive">{errors.quantity}</p>}
-              </div>
             </div>
 
             {/* Frequency and Duration */}
@@ -1063,6 +1039,54 @@ Prescribed by: ${prescriberName}
                 </Select>
                 {errors.duration && <p className="text-sm text-destructive">{errors.duration}</p>}
               </div>
+            </div>
+
+            {/* Quantity */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between h-5">
+                <Label htmlFor="quantity">
+                  Quantity to Dispense <span className="text-destructive">*</span>
+                </Label>
+                {autoQuantity !== null && !quantityManualOverride && (
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-xs text-primary hover:text-foreground"
+                    onClick={() => setQuantityManualOverride(true)}
+                  >
+                    <PenLine className="h-3 w-3" />
+                    Override
+                  </button>
+                )}
+                {autoQuantity !== null && quantityManualOverride && (
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-xs text-primary hover:text-foreground"
+                    onClick={() => {
+                      setQuantityManualOverride(false);
+                      setCurrentItem((prev) => ({ ...prev, quantity_prescribed: autoQuantity }));
+                    }}
+                  >
+                    <RefreshCcw className="h-3 w-3" />
+                    Reset to {autoQuantity}
+                  </button>
+                )}
+              </div>
+              <Input
+                id="quantity"
+                type="number"
+                min={1}
+                readOnly={!quantityManualOverride}
+                value={currentItem.quantity_prescribed || ''}
+                onChange={(e) => {
+                  setQuantityManualOverride(true);
+                  setCurrentItem((prev) => ({
+                    ...prev,
+                    quantity_prescribed: parseInt(e.target.value) || 0,
+                  }));
+                }}
+                className={`${errors.quantity ? 'border-destructive' : ''} ${!quantityManualOverride ? 'bg-muted/50' : ''}`}
+              />
+              {errors.quantity && <p className="text-sm text-destructive">{errors.quantity}</p>}
             </div>
 
             {/* Route and Instructions */}

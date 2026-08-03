@@ -232,7 +232,7 @@ export interface StockAlert {
   resolved_at?: string | null;
   resolution_notes?: string | null;
   created_at: string;
-  updated_at: string;
+  updated_at?: string | null;
 }
 
 /**
@@ -365,6 +365,7 @@ export interface DrugListParams {
   item_type?: ItemType;
   is_essential?: boolean;
   is_active?: boolean;
+  in_stock?: boolean;
   ordering?: string;
 }
 

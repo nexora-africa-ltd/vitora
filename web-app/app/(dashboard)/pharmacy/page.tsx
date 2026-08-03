@@ -12,8 +12,8 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Pill, Package, FileText, AlertTriangle, Loader2, History, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -45,8 +45,31 @@ import { usePharmacySocket } from '@/lib/hooks/use-websocket';
 
 export default function PharmacyPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { facility } = useFacility();
   usePharmacySocket(facility?.id ?? null);
+
+  const requestedTab = searchParams.get('tab');
+  const initialTab =
+    requestedTab === 'inventory' ||
+    requestedTab === 'prescriptions' ||
+    requestedTab === 'dispensing' ||
+    requestedTab === 'alerts'
+      ? requestedTab
+      : 'drugs';
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    if (
+      requestedTab === 'drugs' ||
+      requestedTab === 'inventory' ||
+      requestedTab === 'prescriptions' ||
+      requestedTab === 'dispensing' ||
+      requestedTab === 'alerts'
+    ) {
+      setActiveTab(requestedTab);
+    }
+  }, [requestedTab]);
 
   // Direct dispense dialog state
   const [showDirectDispenseDialog, setShowDirectDispenseDialog] = useState(false);
@@ -89,7 +112,9 @@ export default function PharmacyPage() {
   const dispensingPageSize = 20;
 
   // Alerts state
-  const [alertsResolved, setAlertsResolved] = useState(false);
+  const alertsResolved = false;
+  const [alertsPage, setAlertsPage] = useState(1);
+  const alertsPageSize = 20;
 
   // Data fetching
   const {
@@ -120,6 +145,8 @@ export default function PharmacyPage() {
     error: alertsError,
     refetch: refetchAlerts,
   } = useStockAlerts({
+    page: alertsPage,
+    page_size: alertsPageSize,
     resolved: alertsResolved,
   });
 
@@ -157,6 +184,7 @@ export default function PharmacyPage() {
   const stockTotalPages = Math.ceil((stockData?.count ?? 0) / stockPageSize);
   const rxTotalPages = Math.ceil((rxData?.count ?? 0) / rxPageSize);
   const dispensingTotalPages = Math.ceil((dispensingData?.count ?? 0) / dispensingPageSize);
+  const alertsTotalPages = Math.ceil((alertsData?.count ?? 0) / alertsPageSize);
 
   // Show loading state when initial data is loading
   const isInitialLoading = drugsLoading && !drugsData;
@@ -238,7 +266,7 @@ export default function PharmacyPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="drugs" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="w-full flex flex-wrap h-auto gap-1 p-1 sm:grid sm:grid-cols-5">
           <TabsTrigger value="drugs" className="flex-1 gap-1.5 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
             <Pill className="h-4 w-4" />
@@ -392,6 +420,10 @@ export default function PharmacyPage() {
             alerts={alertsData?.results ?? []}
             isLoading={alertsLoading}
             error={alertsError as Error | null}
+            page={alertsPage}
+            totalPages={alertsTotalPages}
+            totalCount={alertsData?.count ?? 0}
+            onPageChange={setAlertsPage}
             onRefresh={() => refetchAlerts()}
             autoRefreshInterval={300} // Auto-refresh every 5 minutes (300 seconds)
           />

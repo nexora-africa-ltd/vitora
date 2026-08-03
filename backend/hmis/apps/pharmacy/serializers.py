@@ -252,6 +252,12 @@ class StockAlertSerializer(serializers.ModelSerializer):
     # Aliases for frontend compatibility
     acknowledged = serializers.BooleanField(source="is_acknowledged", read_only=True)
     resolved = serializers.BooleanField(source="is_resolved", read_only=True)
+    # Backward compatibility: some clients expect updated_at on alert resources.
+    # StockAlert currently tracks created_at only, so mirror created_at.
+    updated_at = serializers.SerializerMethodField()
+
+    def get_updated_at(self, obj):
+        return obj.created_at
 
     class Meta:
         model = StockAlert
@@ -273,10 +279,12 @@ class StockAlertSerializer(serializers.ModelSerializer):
             "resolved_at",
             "resolution_notes",
             "created_at",
+            "updated_at",
         ]
         read_only_fields = [
             "id",
             "created_at",
+            "updated_at",
             "drug_name",
             "batch_number",
             "acknowledged",

@@ -1,17 +1,10 @@
 'use client';
 
-import { AlertTriangle, Package, Clock, Activity, XCircle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Badge } from '@/components/ui/badge';
 import { useStockAlerts } from '@/lib/hooks/use-pharmacy';
 import { DashboardEmptyState, DashboardFooterLink, DashboardListSkeleton } from './widget-primitives';
-
-const alertIcons = {
-  low_stock: Package,
-  expiring: Clock,
-  critical_vital: Activity,
-  out_of_stock: XCircle,
-};
 
 const severitySummaryStyles = {
   LOW: 'border-primary/20 bg-primary/5 text-primary',
@@ -20,43 +13,26 @@ const severitySummaryStyles = {
   CRITICAL: 'border-destructive/20 bg-destructive/5 text-destructive',
 };
 
-const severityItemStyles = {
-  LOW: 'border-primary/20 bg-primary/5',
-  MEDIUM: 'border-info/20 bg-info/5',
-  HIGH: 'border-warning/20 bg-warning/5',
-  CRITICAL: 'border-destructive/20 bg-destructive/5',
-};
 
-const severityOrder = {
-  CRITICAL: 0,
-  HIGH: 1,
-  MEDIUM: 2,
-  LOW: 3,
-};
-
-function getAlertIconKey(alertType: string): keyof typeof alertIcons {
-  if (alertType.includes('OUT_OF_STOCK')) {
-    return 'out_of_stock';
-  }
-
-  if (alertType.includes('LOW_STOCK')) {
-    return 'low_stock';
-  }
-
-  if (alertType.includes('EXPIR')) {
-    return 'expiring';
-  }
-
-  return 'critical_vital';
+interface AlertsWidgetProps {
+  className?: string;
 }
 
-export function AlertsWidget() {
-  const { data: alertsData, isLoading } = useStockAlerts({ resolved: false });
+export function AlertsWidget({ className }: AlertsWidgetProps = {}) {
+  const { data: alertsData, isLoading, error } = useStockAlerts({ resolved: false });
+
+  if (error) {
+    return (
+      <DashboardEmptyState
+        icon={AlertTriangle}
+        title="Unable to load alerts"
+        description="We could not load stock alerts right now. Please refresh and try again."
+        className={cn('h-full', className)}
+      />
+    );
+  }
 
   const unresolvedAlerts = alertsData?.results?.filter((a) => !a.resolved) || [];
-  const highlightedAlerts = [...unresolvedAlerts]
-    .sort((left, right) => severityOrder[left.severity] - severityOrder[right.severity])
-    .slice(0, 4);
 
   const criticalCount = unresolvedAlerts.filter((a) => a.severity === 'CRITICAL').length;
   const highCount = unresolvedAlerts.filter((a) => a.severity === 'HIGH').length;
@@ -70,7 +46,7 @@ export function AlertsWidget() {
   ].filter((item) => item.value > 0);
 
   if (isLoading) {
-    return <DashboardListSkeleton rows={3} showMeta={false} className="min-h-[280px]" />;
+    return <DashboardListSkeleton rows={2} showMeta={false} className={cn('h-full', className)} />;
   }
 
   if (unresolvedAlerts.length === 0) {
@@ -79,13 +55,13 @@ export function AlertsWidget() {
         icon={AlertTriangle}
         title="No active stock alerts"
         description="Reorder thresholds, expiries, and stock-outs will appear here when action is needed."
-        className="min-h-[280px]"
+        className={cn('h-full', className)}
       />
     );
   }
 
   return (
-    <div data-testid="alerts-widget" className="space-y-4 min-h-[280px]">
+    <div data-testid="alerts-widget" className={cn('space-y-3 h-full', className)}>
       <div className="flex items-start justify-between gap-3 rounded-xl border border-border/60 bg-muted/20 p-3">
         <div className="min-w-0">
           <p className="text-sm font-medium text-foreground">{unresolvedAlerts.length} unresolved alerts</p>
@@ -115,55 +91,6 @@ export function AlertsWidget() {
           </div>
         ))}
       </div>
-
-      <ul className="space-y-2" aria-label="Highlighted stock alerts">
-        {highlightedAlerts.map((alert) => {
-          const Icon = alertIcons[getAlertIconKey(alert.alert_type)] ?? AlertTriangle;
-
-          return (
-            <li key={alert.id}>
-              <div
-                className={cn(
-                  'rounded-xl border p-3',
-                  severityItemStyles[alert.severity]
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="rounded-lg bg-background/80 p-2 shadow-sm ring-1 ring-border/50">
-                    <Icon className="h-4 w-4" aria-hidden="true" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-foreground">
-                          {alert.drug_name || 'Unassigned medication'}
-                        </p>
-                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                          {alert.message}
-                        </p>
-                      </div>
-                      <Badge
-                        variant={
-                          alert.severity === 'CRITICAL'
-                            ? 'destructive'
-                            : alert.severity === 'HIGH'
-                              ? 'warning'
-                              : alert.severity === 'MEDIUM'
-                                ? 'info'
-                                : 'secondary'
-                        }
-                        className="shrink-0 w-fit self-start"
-                      >
-                        {alert.severity}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
 
       <DashboardFooterLink href="/pharmacy?tab=alerts" label="View All Alerts" />
     </div>
