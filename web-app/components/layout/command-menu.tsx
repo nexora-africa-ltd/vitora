@@ -4,26 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Users,
   Search,
-  LayoutDashboard,
-  Settings,
-  UserPlus2,
-  Stethoscope,
-  Pill,
-  Microscope,
-  BedDouble,
-  CreditCard,
-  CalendarDays,
-  Syringe,
-  Baby,
-  FileText,
-  BarChart3,
-  Thermometer,
-  Siren,
-  Activity,
-  Scissors,
-  Flag,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,6 +20,8 @@ import {
 } from '@/components/ui/command';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { patientsApi } from '@/lib/api/patients';
+import { hasChildren } from '@/lib/config/navigation';
+import { useNavigationItems } from '@/lib/hooks/use-navigation-items';
 
 /**
  * Global command menu (⌘K / Ctrl+K).
@@ -51,6 +35,7 @@ export function CommandMenu() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
+  const { items: navItems, utilityItems } = useNavigationItems();
 
   // Toggle with ⌘K / Ctrl+K
   useEffect(() => {
@@ -85,6 +70,46 @@ export function CommandMenu() {
   );
 
   const patients = patientResults?.results ?? [];
+
+  const navigationLinks = useMemo(() => {
+    return navItems.flatMap((item) => {
+      if (hasChildren(item)) {
+        return item.children.map((child) => ({
+          label: `${item.label} / ${child.label}`,
+          href: child.href,
+          icon: child.icon,
+        }));
+      }
+
+      return [
+        {
+          label: item.label,
+          href: item.href,
+          icon: item.icon,
+        },
+      ];
+    });
+  }, [navItems]);
+
+  const utilityLinks = useMemo(() => {
+    return utilityItems.flatMap((item) => {
+      if (hasChildren(item)) {
+        return item.children.map((child) => ({
+          label: `${item.label} / ${child.label}`,
+          href: child.href,
+          icon: child.icon,
+        }));
+      }
+
+      return [
+        {
+          label: item.label,
+          href: item.href,
+          icon: item.icon,
+        },
+      ];
+    });
+  }, [utilityItems]);
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
@@ -137,131 +162,49 @@ export function CommandMenu() {
           </CommandGroup>
         )}
 
-        <CommandSeparator />
+        {navigationLinks.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Navigation">
+              {navigationLinks.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <CommandItem
+                    key={`nav-${item.href}`}
+                    value={`${item.label} ${item.href}`}
+                    onSelect={() => runCommand(() => router.push(item.href))}
+                  >
+                    <Icon className="mr-2 h-4 w-4" />
+                    {item.label}
+                    <CommandShortcut>{item.href}</CommandShortcut>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </>
+        )}
 
-        {/* Quick navigation */}
-        <CommandGroup heading="Navigation">
-          <CommandItem
-            onSelect={() => runCommand(() => router.push('/'))}
-          >
-            <LayoutDashboard className="mr-2 h-4 w-4" />
-            Dashboard
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push('/patients'))}
-          >
-            <Users className="mr-2 h-4 w-4" />
-            All Patients
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push('/patients/new'))}
-          >
-            <UserPlus2 className="mr-2 h-4 w-4" />
-            New Patient
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push('/encounters'))}
-          >
-            <Stethoscope className="mr-2 h-4 w-4" />
-            Encounters
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push('/encounters/new'))}
-          >
-            <FileText className="mr-2 h-4 w-4" />
-            New Encounter
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push('/triage'))}
-          >
-            <Thermometer className="mr-2 h-4 w-4" />
-            Triage Queue
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push('/emergency'))}
-          >
-            <Siren className="mr-2 h-4 w-4" />
-            Emergency
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push('/scheduling'))}
-          >
-            <CalendarDays className="mr-2 h-4 w-4" />
-            Scheduling
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push('/clinics'))}
-          >
-            <Activity className="mr-2 h-4 w-4" />
-            Clinics
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push('/pharmacy'))}
-          >
-            <Pill className="mr-2 h-4 w-4" />
-            Pharmacy
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push('/laboratory'))}
-          >
-            <Microscope className="mr-2 h-4 w-4" />
-            Laboratory
-          </CommandItem>
-          <CommandItem
-            onSelect={() =>
-              runCommand(() => router.push('/inpatient/bed-board'))
-            }
-          >
-            <BedDouble className="mr-2 h-4 w-4" />
-            Inpatient Bed Board
-          </CommandItem>
-          <CommandItem
-            onSelect={() =>
-              runCommand(() => router.push('/transactions/invoices'))
-            }
-          >
-            <CreditCard className="mr-2 h-4 w-4" />
-            Invoices
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push('/surveillance'))}
-          >
-            <Flag className="mr-2 h-4 w-4" />
-            Surveillance
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push('/immunizations'))}
-          >
-            <Syringe className="mr-2 h-4 w-4" />
-            Immunizations
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push('/mch'))}
-          >
-            <Baby className="mr-2 h-4 w-4" />
-            MCH
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push('/theatre/schedule'))}
-          >
-            <Scissors className="mr-2 h-4 w-4" />
-            Theatre
-          </CommandItem>
-          <CommandItem
-            onSelect={() =>
-              runCommand(() => router.push('/reports'))
-            }
-          >
-            <BarChart3 className="mr-2 h-4 w-4" />
-            Reports
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push('/settings'))}
-          >
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
-          </CommandItem>
-        </CommandGroup>
+        {utilityLinks.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Utility">
+              {utilityLinks.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <CommandItem
+                    key={`utility-${item.href}`}
+                    value={`${item.label} ${item.href}`}
+                    onSelect={() => runCommand(() => router.push(item.href))}
+                  >
+                    <Icon className="mr-2 h-4 w-4" />
+                    {item.label}
+                    <CommandShortcut>{item.href}</CommandShortcut>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </>
+        )}
       </CommandList>
     </CommandDialog>
   );
