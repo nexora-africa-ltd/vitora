@@ -44,6 +44,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useToast } from '@/lib/hooks/use-toast';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { dhis2Api } from '@/lib/api/dhis2';
 import type {
   DHIS2ConfigListItem,
@@ -60,6 +61,7 @@ const ENVIRONMENT_LABELS: Record<DHIS2Environment, string> = {
 
 export function DHIS2SettingsTab() {
   const { toast } = useToast();
+  const { isSuperuser } = usePermissions();
   const [configs, setConfigs] = useState<DHIS2ConfigListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -345,24 +347,33 @@ export function DHIS2SettingsTab() {
                 />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="dhis2-env">Environment</Label>
-              <Select
-                value={form.environment}
-                onValueChange={(v) =>
-                  setForm({ ...form, environment: v as DHIS2Environment })
-                }
-              >
-                <SelectTrigger id="dhis2-env">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="production">Production (KHIS)</SelectItem>
-                  <SelectItem value="staging">Staging</SelectItem>
-                  <SelectItem value="local">Local (dev/test)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {isSuperuser ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="dhis2-env">Environment</Label>
+                <Select
+                  value={form.environment}
+                  onValueChange={(v) =>
+                    setForm({ ...form, environment: v as DHIS2Environment })
+                  }
+                >
+                  <SelectTrigger id="dhis2-env">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="production">Production (KHIS)</SelectItem>
+                    <SelectItem value="staging">Staging</SelectItem>
+                    <SelectItem value="local">Local (dev/test)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label>Environment</Label>
+                <div className="h-10 rounded-md border px-3 flex items-center text-sm text-muted-foreground">
+                  {ENVIRONMENT_LABELS[form.environment]}
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <Switch
                 checked={form.is_active}

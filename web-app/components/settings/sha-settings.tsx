@@ -203,8 +203,8 @@ export function SHASettingsTab() {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Not Configured</AlertTitle>
               <AlertDescription>
-                DHA HIE credentials are not configured. Contact your system administrator to set up
-                SHA_CLIENT_ID, SHA_CLIENT_SECRET, and SHA_AUTH_BASE_URL.
+                DHA HIE ILM integration is not configured. Contact your system administrator to
+                complete ILM setup for this facility.
               </AlertDescription>
             </Alert>
           )}

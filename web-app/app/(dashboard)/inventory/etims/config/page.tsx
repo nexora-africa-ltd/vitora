@@ -29,10 +29,12 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { inventoryApi } from '@/lib/api/inventory';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { useToast } from '@/lib/hooks/use-toast';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { ETIMSConfig, ETIMSEnvironment } from '@/lib/types/inventory';
 
 export default function ETIMSConfigPage() {
   const { toast } = useToast();
+  const { isSuperuser } = usePermissions();
   const queryClient = useQueryClient();
 
   const {
@@ -54,7 +56,7 @@ export default function ETIMSConfigPage() {
   const [bhfId, setBhfId] = useState('');
   const [apiBaseUrl, setApiBaseUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
-  const [environment, setEnvironment] = useState<ETIMSEnvironment>('SANDBOX');
+  const [environment, setEnvironment] = useState<ETIMSEnvironment>('PRODUCTION');
   const [isActive, setIsActive] = useState(true);
 
   useEffect(() => {
@@ -301,24 +303,30 @@ export default function ETIMSConfigPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="environment">Environment *</Label>
-                <Select
-                  value={environment}
-                  onValueChange={(v) => setEnvironment(v as ETIMSEnvironment)}
-                >
-                  <SelectTrigger id="environment">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="SANDBOX">
-                      <span className="flex items-center gap-1">Sandbox (Testing)</span>
-                    </SelectItem>
-                    <SelectItem value="PRODUCTION">
-                      <span className="flex items-center gap-1">
-                        <ShieldCheck className="h-3 w-3" /> Production
-                      </span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                {isSuperuser ? (
+                  <Select
+                    value={environment}
+                    onValueChange={(v) => setEnvironment(v as ETIMSEnvironment)}
+                  >
+                    <SelectTrigger id="environment">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SANDBOX">
+                        <span className="flex items-center gap-1">Sandbox (Testing)</span>
+                      </SelectItem>
+                      <SelectItem value="PRODUCTION">
+                        <span className="flex items-center gap-1">
+                          <ShieldCheck className="h-3 w-3" /> Production
+                        </span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div id="environment" className="h-10 rounded-md border px-3 flex items-center text-sm text-muted-foreground">
+                    {environment === 'PRODUCTION' ? 'Production' : 'Sandbox'}
+                  </div>
+                )}
               </div>
               <div className="flex items-end pb-1">
                 <TooltipProvider delayDuration={300}>
