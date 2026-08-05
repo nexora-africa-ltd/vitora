@@ -26,6 +26,7 @@ from hmis.apps.insurance.models import (
     InsuranceProviderConfig,
     InsuranceRemittance,
     InsuranceRemittanceLine,
+    InsuranceVisitAuthorization,
     PatientInsurance,
 )
 from hmis.apps.insurance.services.adapters import (
@@ -35,6 +36,7 @@ from hmis.apps.insurance.services.adapters import (
     GenericSmartClaimsAdapter,
     JubileeAdapter,
     ManualAdapter,
+    Slade360Adapter,
     get_adapter,
 )
 from hmis.apps.insurance.services.client import (
@@ -65,6 +67,7 @@ from hmis.apps.insurance.services.results import (
     RemittanceResult,
     TariffEntry,
 )
+from hmis.apps.insurance.services.slade_auth import SladeAuthService
 
 # ===================================================================
 # Error hierarchy
@@ -297,6 +300,66 @@ class TestAdapterRegistry:
         adapter = get_adapter(config)
         assert isinstance(adapter, GenericSmartClaimsAdapter)
 
+    def test_get_adapter_slade360_when_healthcloud_enabled(
+        self,
+        sample_facility,
+        sample_organization,
+    ):
+        from hmis.apps.insurance.models import InsuranceProvider
+
+        provider = InsuranceProvider.objects.create(
+            organization=sample_organization,
+            name="APA Insurance Company",
+            code="APA",
+            provider_type=InsuranceProvider.ProviderType.PRIVATE,
+            status=InsuranceProvider.Status.ACTIVE,
+        )
+        config = InsuranceProviderConfig.objects.create(
+            facility=sample_facility,
+            organization=sample_organization,
+            provider=provider,
+            api_enabled=True,
+            healthcloud_enabled=True,
+            api_base_url="https://provider-edi-api.multitenant.slade360.co.ke/v1",
+            auth_base_url="https://accounts.multitenant.slade360.co.ke",
+            provider_edi_base_url="https://provider-edi-api.multitenant.slade360.co.ke/v1",
+            provider_is_base_url="https://is-api.multitenant.slade360.co.ke/v1",
+            payer_slade_code=2001,
+        )
+
+        adapter = get_adapter(config)
+        assert isinstance(adapter, Slade360Adapter)
+
+    def test_get_adapter_prefers_slade360_over_provider_stub_when_healthcloud_enabled(
+        self,
+        sample_facility,
+        sample_organization,
+    ):
+        from hmis.apps.insurance.models import InsuranceProvider
+
+        provider = InsuranceProvider.objects.create(
+            organization=sample_organization,
+            name="Jubilee Health Insurance Limited",
+            code="JUBILEE",
+            provider_type=InsuranceProvider.ProviderType.PRIVATE,
+            status=InsuranceProvider.Status.ACTIVE,
+        )
+        config = InsuranceProviderConfig.objects.create(
+            facility=sample_facility,
+            organization=sample_organization,
+            provider=provider,
+            api_enabled=True,
+            healthcloud_enabled=True,
+            api_base_url="https://provider-edi-api.multitenant.slade360.co.ke/v1",
+            auth_base_url="https://accounts.multitenant.slade360.co.ke",
+            provider_edi_base_url="https://provider-edi-api.multitenant.slade360.co.ke/v1",
+            provider_is_base_url="https://is-api.multitenant.slade360.co.ke/v1",
+            payer_slade_code=457,
+        )
+
+        adapter = get_adapter(config)
+        assert isinstance(adapter, Slade360Adapter)
+
     def test_stub_adapters_are_manual(self):
         assert issubclass(JubileeAdapter, ManualAdapter)
         assert issubclass(AARAdapter, ManualAdapter)
@@ -315,6 +378,183 @@ class TestAdapterRegistry:
         )
         with pytest.raises(InsuranceNotConfiguredError):
             GenericSmartClaimsAdapter(config)
+
+
+class TestSlade360Adapter:
+    @pytest.mark.django_db
+    def test_slade_auth_uses_env_fallback_credentials(self, provider_config, monkeypatch):
+        provider_config.api_key = ""
+        provider_config.api_secret = ""
+        provider_config.save(
+            update_fields=["api_key_encrypted", "api_secret_encrypted", "updated_at"]
+        )
+
+        monkeypatch.setenv("SLADE_CLIENT_ID", "env-client-id")
+        monkeypatch.setenv("SLADE_SECRET_KEY", "env-secret")
+
+        service = SladeAuthService(provider_config)
+        captured: dict = {}
+
+        def _mock_post(path, *, data=None, headers=None, host=None, **kwargs):
+            captured["path"] = path
+            captured["data"] = data
+            captured["headers"] = headers or {}
+            captured["host"] = host
+            return InsuranceResponse(
+                status_code=200,
+                headers={},
+                json={"access_token": "tok", "token_type": "Bearer", "expires_in": 3600},
+            )
+
+        service.client.post = _mock_post
+
+        token = service.get_access_token(force_refresh=True)
+
+        assert token.token == "tok"
+        assert captured["path"] == "/oauth2/token/"
+        assert captured["host"] == "auth"
+        assert captured["data"]["client_id"] == "env-client-id"
+        assert captured["data"]["client_secret"] == "env-secret"
+        assert str(captured.get("headers", {}).get("Authorization", "")).startswith("Basic ")
+
+    @pytest.mark.django_db
+    def test_slade_auth_prefers_env_over_provider_credentials(self, provider_config, monkeypatch):
+        provider_config.api_key = "config-client-id"
+        provider_config.api_secret = "config-secret"
+        provider_config.save(
+            update_fields=["api_key_encrypted", "api_secret_encrypted", "updated_at"]
+        )
+
+        monkeypatch.setenv("SLADE_CLIENT_ID", "env-client-id")
+        monkeypatch.setenv("SLADE_CLIENT_SECRET", "env-client-secret")
+
+        service = SladeAuthService(provider_config)
+        captured: dict = {}
+
+        def _mock_post(path, *, data=None, headers=None, host=None, **kwargs):
+            captured["data"] = data
+            return InsuranceResponse(
+                status_code=200,
+                headers={},
+                json={"access_token": "tok", "token_type": "Bearer", "expires_in": 3600},
+            )
+
+        service.client.post = _mock_post
+        service.get_access_token(force_refresh=True)
+
+        assert captured["data"]["client_id"] == "env-client-id"
+        assert captured["data"]["client_secret"] == "env-client-secret"
+
+    @pytest.mark.django_db
+    def test_slade_auth_retries_with_password_grant_on_unauthorized_client(
+        self,
+        provider_config,
+        monkeypatch,
+    ):
+        monkeypatch.setenv("SLADE_CLIENT_ID", "env-client-id")
+        monkeypatch.setenv("SLADE_CLIENT_SECRET", "env-client-secret")
+        monkeypatch.setenv("SLADE_USERNAME", "env-user")
+        monkeypatch.setenv("SLADE_PASSWORD", "env-pass")
+
+        service = SladeAuthService(provider_config)
+        calls: list[dict] = []
+
+        def _mock_post(path, *, data=None, headers=None, host=None, **kwargs):
+            calls.append({"path": path, "data": data, "headers": headers, "host": host})
+            if len(calls) == 1:
+                raise InsuranceValidationError(
+                    '{"error":"unauthorized_client"}',
+                    status_code=400,
+                    method="POST",
+                    path=path,
+                    response_body={"error": "unauthorized_client"},
+                    provider_code="APA",
+                )
+            return InsuranceResponse(
+                status_code=200,
+                headers={},
+                json={"access_token": "tok", "token_type": "Bearer", "expires_in": 3600},
+            )
+
+        service.client.post = _mock_post
+
+        token = service.get_access_token(force_refresh=True)
+
+        assert token.token == "tok"
+        assert len(calls) == 2
+        assert calls[0]["data"]["grant_type"] == "client_credentials"
+        assert calls[1]["data"]["grant_type"] == "password"
+
+    @pytest.mark.django_db
+    def test_submit_claim_uses_latest_authorization_token_as_member_number(
+        self,
+        provider_config,
+        insurance_claim,
+    ):
+        provider_config.payer_slade_code = 457
+        provider_config.save(update_fields=["payer_slade_code", "updated_at"])
+
+        InsuranceVisitAuthorization.objects.create(
+            facility=provider_config.facility,
+            organization=provider_config.organization,
+            enrollment=insurance_claim.patient_insurance,
+            provider_config=provider_config,
+            patient=insurance_claim.patient,
+            member_number=insurance_claim.patient_insurance.member_number,
+            status=InsuranceVisitAuthorization.Status.VALIDATED,
+            auth_token="AUTH-TOKEN-123",
+        )
+
+        adapter = Slade360Adapter(provider_config)
+        adapter.auth_service.get_auth_headers = MagicMock(
+            return_value={"Authorization": "Bearer token"}
+        )
+
+        captured: dict = {}
+
+        def _mock_post(path, *, json_body=None, headers=None, host=None, **kwargs):
+            captured["path"] = path
+            captured["json_body"] = json_body
+            captured["host"] = host
+            return InsuranceResponse(status_code=200, headers={}, json={"id": "claim-guid-1"})
+
+        adapter.client.post = _mock_post
+
+        result = adapter.submit_claim(insurance_claim)
+
+        assert result.success is True
+        assert captured["path"] == "/claims/"
+        assert captured["host"] == "provider_is"
+        assert captured["json_body"]["member_number"] == "AUTH-TOKEN-123"
+
+    @pytest.mark.django_db
+    def test_submit_claim_uses_iso8601_timestamps_for_visit_window(
+        self,
+        provider_config,
+        insurance_claim,
+    ):
+        provider_config.payer_slade_code = 457
+        provider_config.save(update_fields=["payer_slade_code", "updated_at"])
+
+        adapter = Slade360Adapter(provider_config)
+        adapter.auth_service.get_auth_headers = MagicMock(
+            return_value={"Authorization": "Bearer token"}
+        )
+
+        captured: dict = {}
+
+        def _mock_post(path, *, json_body=None, headers=None, host=None, **kwargs):
+            captured["json_body"] = json_body
+            return InsuranceResponse(status_code=200, headers={}, json={"id": "claim-guid-2"})
+
+        adapter.client.post = _mock_post
+
+        adapter.submit_claim(insurance_claim)
+
+        assert "T" in captured["json_body"]["visit_start"]
+        assert captured["json_body"]["visit_start"].endswith("Z")
+        assert "T" in captured["json_body"]["visit_end"]
+        assert captured["json_body"]["visit_end"].endswith("Z")
 
 
 # ===================================================================

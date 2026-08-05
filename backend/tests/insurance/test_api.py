@@ -70,6 +70,16 @@ class TestInsuranceProviderAPI:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
+    def test_seed_slade_defaults_admin_only(self, authenticated_client):
+        response = authenticated_client.post("/api/insurance/providers/seed-slade-defaults/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_seed_slade_defaults_admin(self, admin_client):
+        response = admin_client.post("/api/insurance/providers/seed-slade-defaults/")
+        assert response.status_code == status.HTTP_200_OK
+        assert "created_providers" in response.data
+        assert "created_configs" in response.data
+
 
 # ===================================================================
 # InsurancePlan API

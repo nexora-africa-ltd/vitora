@@ -10,12 +10,16 @@ from __future__ import annotations
 
 import contextlib
 import csv
+import hashlib
 import io
+import json
 import logging
+import time
 from datetime import date
 from typing import TYPE_CHECKING, Any
 
 from django.utils import timezone
+from prometheus_client import Counter, Histogram
 
 if TYPE_CHECKING:
     from hmis.apps.insurance.models import (
@@ -31,6 +35,17 @@ from .errors import InsuranceNotConfiguredError
 from .results import ClaimResult, EligibilityResult, PreauthResult
 
 logger = logging.getLogger(__name__)
+
+HEALTHCLOUD_WORKFLOW_TOTAL = Counter(
+    "vitora_insurance_healthcloud_workflow_total",
+    "Total HealthCloud workflow operations by result",
+    ["operation", "result"],
+)
+HEALTHCLOUD_WORKFLOW_LATENCY_SECONDS = Histogram(
+    "vitora_insurance_healthcloud_workflow_latency_seconds",
+    "Latency of HealthCloud workflow operations",
+    ["operation"],
+)
 
 
 def _publish_safe(event_type: str, payload: dict[str, Any]) -> None:
@@ -362,6 +377,375 @@ class InsuranceRemittanceService:
             )
 
         return created
+
+
+class HealthCloudWorkflowService:
+    """Orchestrates HealthCloud-specific visit and billing workflow operations."""
+
+    @staticmethod
+    def _payload_hash(payload: dict[str, Any]) -> str:
+        raw = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
+        return hashlib.sha256(raw).hexdigest()
+
+    def _run_idempotent(
+        self,
+        *,
+        operation: str,
+        facility: Any,
+        organization: Any,
+        payload: dict[str, Any],
+        runner: Any,
+        claim: Any = None,
+        preauth: Any = None,
+        authorization: Any = None,
+    ) -> dict[str, Any]:
+        from hmis.apps.insurance.models import InsuranceExternalSync
+
+        request_hash = self._payload_hash(payload)
+        existing = (
+            InsuranceExternalSync.objects.filter(
+                facility=facility,
+                operation=operation,
+                request_hash=request_hash,
+                status=InsuranceExternalSync.Status.SUCCESS,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if existing:
+            return existing.response_payload or {}
+
+        sync = InsuranceExternalSync.objects.create(
+            facility=facility,
+            organization=organization,
+            operation=operation,
+            request_hash=request_hash,
+            claim=claim,
+            preauth=preauth,
+            authorization=authorization,
+            request_payload=payload,
+        )
+
+        started = time.monotonic()
+        try:
+            response = runner(payload)
+            external_id = str(response.get("id") or response.get("guid") or "")
+            sync.mark_success(external_id=external_id, response_payload=response)
+            HEALTHCLOUD_WORKFLOW_TOTAL.labels(operation=operation, result="success").inc()
+            HEALTHCLOUD_WORKFLOW_LATENCY_SECONDS.labels(operation=operation).observe(
+                time.monotonic() - started
+            )
+            return response
+        except Exception as exc:
+            sync.mark_failure(error=str(exc))
+            HEALTHCLOUD_WORKFLOW_TOTAL.labels(operation=operation, result="failed").inc()
+            HEALTHCLOUD_WORKFLOW_LATENCY_SECONDS.labels(operation=operation).observe(
+                time.monotonic() - started
+            )
+            raise
+
+    @staticmethod
+    def _require_operation(adapter: Any, operation: str) -> None:
+        if not hasattr(adapter, operation):
+            raise InsuranceNotConfiguredError(
+                f"Adapter '{adapter.__class__.__name__}' does not support '{operation}'",
+            )
+
+    def request_otp(
+        self,
+        *,
+        enrollment: Any,
+        facility: Any,
+        organization: Any,
+        contact_id: int,
+    ) -> Any:
+        from hmis.apps.insurance.models import InsuranceVisitAuthorization
+
+        config = _get_config(enrollment.provider, facility)
+        adapter = get_adapter(config)
+        self._require_operation(adapter, "request_otp")
+        payload = {
+            "contact_id": contact_id,
+            "member_number": enrollment.member_number,
+            "payer_slade_code": config.payer_slade_code,
+        }
+        response = self._run_idempotent(
+            operation="healthcloud.request_otp",
+            facility=facility,
+            organization=organization,
+            payload=payload,
+            runner=lambda _payload: adapter.request_otp(contact_id),
+        )
+        auth = InsuranceVisitAuthorization.objects.create(
+            facility=facility,
+            organization=organization,
+            enrollment=enrollment,
+            provider_config=config,
+            patient=enrollment.patient,
+            member_number=enrollment.member_number,
+            payer_slade_code=config.payer_slade_code,
+            beneficiary_contact_id=contact_id,
+            status=InsuranceVisitAuthorization.Status.OTP_REQUESTED,
+            raw_payload=response,
+        )
+        return auth
+
+    def start_visit(
+        self,
+        *,
+        enrollment: Any,
+        facility: Any,
+        organization: Any,
+        payload: dict[str, Any],
+        encounter: Any = None,
+    ) -> Any:
+        from hmis.apps.insurance.models import InsuranceVisitAuthorization
+
+        config = _get_config(enrollment.provider, facility)
+        adapter = get_adapter(config)
+        self._require_operation(adapter, "start_visit")
+        request_payload = dict(payload)
+        request_payload.setdefault("beneficiary_id", payload.get("beneficiary_id"))
+
+        response = self._run_idempotent(
+            operation="healthcloud.start_visit",
+            facility=facility,
+            organization=organization,
+            payload=request_payload,
+            runner=adapter.start_visit,
+        )
+
+        return InsuranceVisitAuthorization.objects.create(
+            facility=facility,
+            organization=organization,
+            enrollment=enrollment,
+            provider_config=config,
+            patient=enrollment.patient,
+            encounter=encounter,
+            member_number=enrollment.member_number,
+            payer_slade_code=config.payer_slade_code,
+            benefit_type=str(payload.get("benefit_type") or ""),
+            benefit_code=str(payload.get("benefit_code") or ""),
+            policy_number=str(payload.get("policy_number") or ""),
+            beneficiary_id=payload.get("beneficiary_id"),
+            beneficiary_contact_id=payload.get("beneficiary_contact"),
+            factors=payload.get("factors") or ["OTP"],
+            status=InsuranceVisitAuthorization.Status.AUTHORIZED,
+            auth_token=str(response.get("auth_token") or ""),
+            authorization_guid=str(response.get("edi_auth_guid") or ""),
+            auth_status="AUTHORIZED",
+            raw_payload=response,
+        )
+
+    def validate_authorization(
+        self,
+        *,
+        authorization: Any,
+        facility: Any,
+        organization: Any,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        config = authorization.provider_config
+        adapter = get_adapter(config)
+        self._require_operation(adapter, "validate_authorization")
+        response = self._run_idempotent(
+            operation="healthcloud.validate_authorization",
+            facility=facility,
+            organization=organization,
+            payload=payload,
+            runner=adapter.validate_authorization,
+            authorization=authorization,
+        )
+        authorization.status = authorization.Status.VALIDATED
+        authorization.authorization_guid = str(
+            response.get("authorization_guid") or authorization.authorization_guid
+        )
+        authorization.auth_status = str(response.get("auth_status") or authorization.auth_status)
+        authorization.raw_payload = response
+        authorization.save(
+            update_fields=[
+                "status",
+                "authorization_guid",
+                "auth_status",
+                "raw_payload",
+                "updated_at",
+            ]
+        )
+        return response
+
+    def reserve_balance(
+        self,
+        *,
+        claim: Any,
+        authorization: Any,
+        facility: Any,
+        organization: Any,
+        amount: Any,
+        invoice_number: str,
+    ) -> Any:
+        from hmis.apps.insurance.models import InsuranceBalanceReservation
+
+        adapter = get_adapter(authorization.provider_config)
+        self._require_operation(adapter, "reserve_balance")
+        payload = {
+            "authorization": authorization.authorization_guid,
+            "invoice_number": invoice_number,
+            "amount": str(amount),
+        }
+        response = self._run_idempotent(
+            operation="healthcloud.reserve_balance",
+            facility=facility,
+            organization=organization,
+            payload=payload,
+            runner=adapter.reserve_balance,
+            claim=claim,
+            authorization=authorization,
+        )
+        return InsuranceBalanceReservation.objects.create(
+            facility=facility,
+            organization=organization,
+            authorization=authorization,
+            claim=claim,
+            reservation_guid=str(response.get("guid") or ""),
+            invoice_number=str(response.get("invoiceNumber") or invoice_number),
+            amount=amount,
+            amount_released=response.get("amountReleased") or 0,
+            payer_invoice_reference=str(response.get("payerInvoiceReference") or ""),
+            status=InsuranceBalanceReservation.Status.RESERVED,
+            raw_payload=response,
+        )
+
+    def submit_claim(self, *, claim: Any, facility: Any, organization: Any) -> dict[str, Any]:
+        config = _get_config(claim.provider, facility)
+        adapter = get_adapter(config)
+        self._require_operation(adapter, "submit_claim")
+        payload = {
+            "claim_id": claim.pk,
+            "claim_number": claim.claim_number,
+            "member_number": claim.patient_insurance.member_number
+            if claim.patient_insurance
+            else "",
+            "payer_slade_code": config.payer_slade_code,
+        }
+        response = self._run_idempotent(
+            operation="healthcloud.submit_claim",
+            facility=facility,
+            organization=organization,
+            payload=payload,
+            runner=lambda _payload: adapter.submit_claim(claim).raw_response,
+            claim=claim,
+        )
+        claim.external_claim_id = str(response.get("id") or response.get("claim_id") or "")
+        claim.status = claim.Status.SUBMITTED
+        claim.submission_date = timezone.now()
+        claim.save(update_fields=["external_claim_id", "status", "submission_date", "updated_at"])
+        return response
+
+    def submit_invoice(
+        self,
+        *,
+        claim: Any,
+        facility: Any,
+        organization: Any,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        config = _get_config(claim.provider, facility)
+        adapter = get_adapter(config)
+        self._require_operation(adapter, "submit_invoice")
+        response = self._run_idempotent(
+            operation="healthcloud.submit_invoice",
+            facility=facility,
+            organization=organization,
+            payload=payload,
+            runner=adapter.submit_invoice,
+            claim=claim,
+        )
+        return response
+
+    def submit_credit_note(
+        self,
+        *,
+        claim: Any,
+        facility: Any,
+        organization: Any,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        config = _get_config(claim.provider, facility)
+        adapter = get_adapter(config)
+        self._require_operation(adapter, "submit_credit_note")
+        response = self._run_idempotent(
+            operation="healthcloud.submit_credit_note",
+            facility=facility,
+            organization=organization,
+            payload=payload,
+            runner=adapter.submit_credit_note,
+            claim=claim,
+        )
+        return response
+
+    def upload_claim_attachment(
+        self,
+        *,
+        claim: Any,
+        facility: Any,
+        organization: Any,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        config = _get_config(claim.provider, facility)
+        adapter = get_adapter(config)
+        self._require_operation(adapter, "upload_claim_attachment")
+        response = self._run_idempotent(
+            operation="healthcloud.upload_claim_attachment",
+            facility=facility,
+            organization=organization,
+            payload=payload,
+            runner=adapter.upload_claim_attachment,
+            claim=claim,
+        )
+        return response
+
+    def get_claim_remittance(
+        self,
+        *,
+        claim: Any,
+        facility: Any,
+        organization: Any,
+    ) -> dict[str, Any]:
+        config = _get_config(claim.provider, facility)
+        adapter = get_adapter(config)
+        self._require_operation(adapter, "get_claim_remittance")
+        claim_ref = claim.external_claim_id or claim.pk
+        payload = {
+            "claim_id": claim_ref,
+            "claim_number": claim.claim_number,
+        }
+        response = self._run_idempotent(
+            operation="healthcloud.get_claim_remittance",
+            facility=facility,
+            organization=organization,
+            payload=payload,
+            runner=lambda _payload: adapter.get_claim_remittance(claim_ref),
+            claim=claim,
+        )
+
+        approved = response.get("approved_amount")
+        balanced_paid = response.get("balanced_paid_amount")
+        if approved is not None:
+            claim.approved_amount = approved
+        if balanced_paid is not None:
+            claim.paid_amount = balanced_paid
+
+        if balanced_paid is not None and approved is not None:
+            try:
+                if float(balanced_paid) >= float(approved):
+                    claim.status = claim.Status.PAID
+                elif float(balanced_paid) > 0:
+                    claim.status = claim.Status.PARTIALLY_PAID
+            except (ValueError, TypeError):
+                pass
+
+        claim.save(update_fields=["approved_amount", "paid_amount", "status", "updated_at"])
+        return response
 
 
 # ---------------------------------------------------------------------------

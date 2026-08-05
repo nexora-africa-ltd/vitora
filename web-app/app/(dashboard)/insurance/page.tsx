@@ -18,10 +18,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SHAVerificationModal } from '@/components/billing/sha';
 import { SHAClaimsPanel } from '@/components/insurance/SHAClaimsPanel';
+import { useFacility } from '@/lib/context/facility-context';
 import {
   useInsuranceProviders,
   useInsuranceClaims,
   useInsurancePreauths,
+  useHealthcloudSyncStatus,
 } from '@/lib/hooks/use-insurance';
 
 function StatCard({
@@ -68,10 +70,14 @@ function StatCard({
 
 export default function InsurancePage() {
   const router = useRouter();
+  const { facility } = useFacility();
 
   const { data: providersData, isLoading: providersLoading } = useInsuranceProviders({ page: 1 });
   const { data: claimsData, isLoading: claimsLoading } = useInsuranceClaims({ page: 1 });
   const { data: preauthsData, isLoading: preauthsLoading } = useInsurancePreauths({ page: 1 });
+  const { data: syncStatus, isLoading: syncLoading } = useHealthcloudSyncStatus({
+    enabled: !!facility?.id,
+  });
 
   const totalProviders = providersData?.count ?? 0;
   const totalClaims = claimsData?.count ?? 0;
@@ -135,8 +141,37 @@ export default function InsurancePage() {
         </TabsList>
 
         <TabsContent value="private" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">HealthCloud Sync Health</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {syncLoading ? (
+                <Skeleton className="h-16 w-full" />
+              ) : syncStatus ? (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary">Sync Total: {syncStatus.sync.total}</Badge>
+                    <Badge variant="outline">Success: {syncStatus.sync.success}</Badge>
+                    <Badge className="bg-yellow-100 text-yellow-800">Pending: {syncStatus.sync.pending}</Badge>
+                    <Badge className="bg-red-100 text-red-800">Failed: {syncStatus.sync.failed}</Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary">Remittances: {syncStatus.remittances.total}</Badge>
+                    <Badge className="bg-blue-100 text-blue-800">Received: {syncStatus.remittances.received}</Badge>
+                    <Badge className="bg-amber-100 text-amber-800">Partial: {syncStatus.remittances.partial}</Badge>
+                    <Badge className="bg-green-100 text-green-800">Reconciled: {syncStatus.remittances.reconciled}</Badge>
+                    <Badge className="bg-red-100 text-red-800">Disputed: {syncStatus.remittances.disputed}</Badge>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">No sync metrics available yet.</p>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push('/insurance/providers')}>
               <CardContent className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -168,6 +203,66 @@ export default function InsurancePage() {
                   <div>
                     <p className="font-medium text-sm">Pre-authorizations</p>
                     <p className="text-xs text-muted-foreground">Request & approve</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </CardContent>
+            </Card>
+            <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push('/insurance/enrollments')}>
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-sm">Enrollments</p>
+                    <p className="text-xs text-muted-foreground">Create & verify membership</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </CardContent>
+            </Card>
+            <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push('/insurance/provider-configs')}>
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Building2 className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-sm">Provider Configs</p>
+                    <p className="text-xs text-muted-foreground">Facility API setup</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </CardContent>
+            </Card>
+            <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push('/insurance/authorizations')}>
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-sm">Authorizations</p>
+                    <p className="text-xs text-muted-foreground">Validate visit tokens</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </CardContent>
+            </Card>
+            <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push('/insurance/remittances')}>
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-sm">Remittances</p>
+                    <p className="text-xs text-muted-foreground">Create & reconcile batches</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </CardContent>
+            </Card>
+            <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push('/insurance/tariffs')}>
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-sm">Tariffs</p>
+                    <p className="text-xs text-muted-foreground">Payer code mapping</p>
                   </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />

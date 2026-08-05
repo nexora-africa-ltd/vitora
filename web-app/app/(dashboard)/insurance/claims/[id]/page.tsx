@@ -6,10 +6,13 @@ import {
   AlertCircle,
   Calendar,
   Check,
+  ClipboardCheck,
   CreditCard,
   DollarSign,
   FileText,
+  Lock,
   MessageSquare,
+  Shield,
   RotateCcw,
   Send,
   Trash2,
@@ -41,11 +44,20 @@ import {
   useRespondToQuery,
   useMarkClaimPaid,
   useAppealClaim,
+  useRequestEnrollmentOtp,
+  useStartEnrollmentVisit,
+  useValidateVisitAuthorization,
+  useReserveClaimBalance,
+  useSubmitClaimToHealthcloud,
+  useCheckClaimRemittance,
+  useSubmitClaimInvoice,
+  useSubmitClaimCreditNote,
+  useUploadClaimAttachment,
 } from '@/lib/hooks/use-insurance';
 import { useToast } from '@/lib/hooks/use-toast';
 import usePermissions from '@/lib/hooks/use-permissions';
 import { CLAIM_STATUS_LABELS } from '@/lib/types/insurance';
-import type { InsuranceClaimItem } from '@/lib/types/insurance';
+import type { InsuranceClaimItem, InsuranceVisitAuthorization } from '@/lib/types/insurance';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
@@ -88,6 +100,15 @@ export default function InsuranceClaimDetailPage() {
   const respondToQuery = useRespondToQuery();
   const markPaid = useMarkClaimPaid();
   const appealClaim = useAppealClaim();
+  const requestOtp = useRequestEnrollmentOtp();
+  const startVisit = useStartEnrollmentVisit();
+  const validateVisit = useValidateVisitAuthorization();
+  const reserveBalance = useReserveClaimBalance();
+  const submitToHealthcloud = useSubmitClaimToHealthcloud();
+  const checkRemittance = useCheckClaimRemittance();
+  const submitInvoice = useSubmitClaimInvoice();
+  const submitCreditNote = useSubmitClaimCreditNote();
+  const uploadAttachment = useUploadClaimAttachment();
 
   // Action dialog state
   const [approveOpen, setApproveOpen] = useState(false);
@@ -100,6 +121,21 @@ export default function InsuranceClaimDetailPage() {
   const [paidAmount, setPaidAmount] = useState('');
   const [appealOpen, setAppealOpen] = useState(false);
   const [appealNotes, setAppealNotes] = useState('');
+
+  // HealthCloud workflow state
+  const [contactId, setContactId] = useState('');
+  const [otp, setOtp] = useState('');
+  const [beneficiaryId, setBeneficiaryId] = useState('');
+  const [benefitType, setBenefitType] = useState('OUTPATIENT');
+  const [benefitCode, setBenefitCode] = useState('');
+  const [policyNumber, setPolicyNumber] = useState('');
+  const [policyEffectiveDate, setPolicyEffectiveDate] = useState(new Date().toISOString());
+  const [authorizationId, setAuthorizationId] = useState<number | null>(null);
+  const [authorizationToken, setAuthorizationToken] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [reservationAmount, setReservationAmount] = useState('');
+  const [attachmentRef, setAttachmentRef] = useState('');
+  const [workflowEvents, setWorkflowEvents] = useState<string[]>([]);
 
   const handleSubmit = async () => {
     try {
@@ -173,6 +209,202 @@ export default function InsuranceClaimDetailPage() {
       refetch();
     } catch {
       toast({ title: 'Error', description: 'Failed to submit appeal.', variant: 'destructive' });
+    }
+  };
+
+  const pushWorkflowEvent = (event: string) => {
+    setWorkflowEvents((prev) => [event, ...prev].slice(0, 8));
+  };
+
+  const handleRequestOtp = async () => {
+    if (!claim) return;
+    if (!claim.patient_insurance || !contactId) return;
+    try {
+      const authorization = await requestOtp.mutateAsync({
+        id: claim.patient_insurance,
+        data: { contact_id: Number(contactId) },
+      });
+      setAuthorizationId(authorization.id);
+      pushWorkflowEvent(`OTP requested for contact ${contactId}`);
+      toast({ title: 'OTP requested', description: 'Check sandbox response or member phone.' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to request OTP.', variant: 'destructive' });
+    }
+  };
+
+  const handleStartVisit = async () => {
+    if (!claim) return;
+    if (!claim.patient_insurance || !contactId || !otp || !beneficiaryId || !benefitCode || !policyNumber) {
+      toast({ title: 'Missing fields', description: 'Fill OTP/start visit fields first.', variant: 'destructive' });
+      return;
+    }
+    try {
+      const authorization: InsuranceVisitAuthorization = await startVisit.mutateAsync({
+        id: claim.patient_insurance,
+        data: {
+          beneficiary_id: Number(beneficiaryId),
+          benefit_type: benefitType,
+          benefit_code: benefitCode,
+          policy_number: policyNumber,
+          policy_effective_date: policyEffectiveDate,
+          otp,
+          beneficiary_contact: Number(contactId),
+          encounter: claim.encounter ?? undefined,
+        },
+      });
+      setAuthorizationId(authorization.id);
+      setAuthorizationToken(authorization.auth_token || '');
+      pushWorkflowEvent(`Visit started: ${authorization.authorization_guid || 'N/A'}`);
+      toast({ title: 'Visit started', description: 'Authorization token created.' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to start visit.', variant: 'destructive' });
+    }
+  };
+
+  const handleValidateAuthorization = async () => {
+    if (!claim) return;
+    if (!authorizationId) {
+      toast({ title: 'Missing authorization', description: 'Start visit first.', variant: 'destructive' });
+      return;
+    }
+    try {
+      await validateVisit.mutateAsync({
+        id: authorizationId,
+        data: {
+          first_name: claim.patient_name.split(' ')[0] || claim.patient_name,
+          last_name: claim.patient_name.split(' ').slice(1).join(' ') || claim.patient_name,
+          member_number: claim.member_number,
+          auth_token: authorizationToken,
+          visit_type: claim.claim_type === 'inpatient' ? 'INPATIENT' : 'OUTPATIENT',
+          scheme_name: claim.plan_name,
+        },
+      });
+      pushWorkflowEvent('Authorization token validated');
+      toast({ title: 'Authorization validated' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to validate authorization.', variant: 'destructive' });
+    }
+  };
+
+  const handleReserveBalance = async () => {
+    if (!authorizationId || !invoiceNumber || !reservationAmount) {
+      toast({ title: 'Missing fields', description: 'Authorization, invoice number, and amount are required.', variant: 'destructive' });
+      return;
+    }
+    try {
+      const result = await reserveBalance.mutateAsync({
+        id: claimId,
+        data: {
+          authorization_id: authorizationId,
+          invoice_number: invoiceNumber,
+          amount: reservationAmount,
+        },
+      });
+      pushWorkflowEvent(`Balance reserved: ${result.reservation_guid || result.id}`);
+      toast({ title: 'Balance reserved' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to reserve balance.', variant: 'destructive' });
+    }
+  };
+
+  const handleSubmitHealthcloudClaim = async () => {
+    try {
+      await submitToHealthcloud.mutateAsync(claimId);
+      pushWorkflowEvent('Claim submitted to HealthCloud');
+      toast({ title: 'Claim sent to HealthCloud' });
+      refetch();
+    } catch {
+      toast({ title: 'Error', description: 'Failed to submit claim to HealthCloud.', variant: 'destructive' });
+    }
+  };
+
+  const handleSubmitInvoice = async () => {
+    if (!claim) return;
+    if (!invoiceNumber) {
+      toast({ title: 'Invoice number required', variant: 'destructive' });
+      return;
+    }
+    try {
+      await submitInvoice.mutateAsync({
+        id: claimId,
+        data: {
+          invoice_number: invoiceNumber,
+          invoice_date: new Date().toISOString(),
+          lines: claim.items.map((item, idx) => ({
+            item_code: item.service_code || `SVC-${idx + 1}`,
+            item_name: item.service_description,
+            charge_date: new Date().toISOString(),
+            unit_price: Number(item.unit_price),
+            quantity: item.quantity,
+            line_number: idx + 1,
+          })),
+        },
+      });
+      pushWorkflowEvent('Invoice submitted to HealthCloud');
+      toast({ title: 'Invoice submitted' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to submit invoice.', variant: 'destructive' });
+    }
+  };
+
+  const handleUploadAttachment = async () => {
+    if (!attachmentRef) {
+      toast({ title: 'Attachment reference required', variant: 'destructive' });
+      return;
+    }
+    try {
+      await uploadAttachment.mutateAsync({
+        id: claimId,
+        data: {
+          attachment: attachmentRef,
+          attachment_type: 'CLAIM_FORM',
+          description: 'Uploaded from claim workflow page',
+        },
+      });
+      pushWorkflowEvent('Claim attachment uploaded');
+      toast({ title: 'Attachment uploaded' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to upload attachment.', variant: 'destructive' });
+    }
+  };
+
+  const handleSubmitCreditNote = async () => {
+    if (!claim) return;
+    if (!invoiceNumber) {
+      toast({ title: 'Invoice number required', variant: 'destructive' });
+      return;
+    }
+    try {
+      await submitCreditNote.mutateAsync({
+        id: claimId,
+        data: {
+          invoice_number: `${invoiceNumber}-CRN`,
+          invoice_date: new Date().toISOString(),
+          lines: claim.items.slice(0, 1).map((item, idx) => ({
+            item_code: item.service_code || `SVC-${idx + 1}`,
+            item_name: item.service_description,
+            charge_date: new Date().toISOString(),
+            unit_price: Number(item.unit_price),
+            quantity: 1,
+            line_number: idx + 1,
+          })),
+        },
+      });
+      pushWorkflowEvent('Credit note submitted');
+      toast({ title: 'Credit note submitted' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to submit credit note.', variant: 'destructive' });
+    }
+  };
+
+  const handleCheckRemittance = async () => {
+    try {
+      await checkRemittance.mutateAsync(claimId);
+      pushWorkflowEvent('Claim remittance status refreshed');
+      toast({ title: 'Remittance checked' });
+      refetch();
+    } catch {
+      toast({ title: 'Error', description: 'Failed to check remittance.', variant: 'destructive' });
     }
   };
 
@@ -410,6 +642,109 @@ export default function InsuranceClaimDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Shield className="h-4 w-4" /> HealthCloud Workflow
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <Label>Contact ID (OTP)</Label>
+              <Input value={contactId} onChange={(e) => setContactId(e.target.value)} placeholder="e.g. 5531" />
+            </div>
+            <div>
+              <Label>Beneficiary ID</Label>
+              <Input value={beneficiaryId} onChange={(e) => setBeneficiaryId(e.target.value)} placeholder="Eligibility member.id" />
+            </div>
+            <div>
+              <Label>OTP</Label>
+              <Input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="One-time PIN" />
+            </div>
+            <div>
+              <Label>Benefit Type</Label>
+              <Input value={benefitType} onChange={(e) => setBenefitType(e.target.value)} placeholder="OUTPATIENT" />
+            </div>
+            <div>
+              <Label>Benefit Code</Label>
+              <Input value={benefitCode} onChange={(e) => setBenefitCode(e.target.value)} placeholder="340" />
+            </div>
+            <div>
+              <Label>Policy Number</Label>
+              <Input value={policyNumber} onChange={(e) => setPolicyNumber(e.target.value)} placeholder="POL/001" />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Policy Effective Date (ISO)</Label>
+              <Input value={policyEffectiveDate} onChange={(e) => setPolicyEffectiveDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>Auth Record ID</Label>
+              <Input value={authorizationId ?? ''} onChange={(e) => setAuthorizationId(Number(e.target.value) || null)} placeholder="Internal authorization ID" />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Authorization Token</Label>
+              <Input value={authorizationToken} onChange={(e) => setAuthorizationToken(e.target.value)} placeholder="Token from start visit" />
+            </div>
+            <div>
+              <Label>Invoice Number</Label>
+              <Input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="INV-001" />
+            </div>
+            <div>
+              <Label>Reserve Amount</Label>
+              <Input value={reservationAmount} onChange={(e) => setReservationAmount(e.target.value)} placeholder={claim.total_amount} />
+            </div>
+            <div>
+              <Label>Attachment Ref</Label>
+              <Input value={attachmentRef} onChange={(e) => setAttachmentRef(e.target.value)} placeholder="/path/to/file.pdf;type=application/pdf" />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" className="gap-1" onClick={handleRequestOtp} disabled={requestOtp.isPending}>
+              <Lock className="h-3 w-3" /> Request OTP
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1" onClick={handleStartVisit} disabled={startVisit.isPending}>
+              <Shield className="h-3 w-3" /> Start Visit
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1" onClick={handleValidateAuthorization} disabled={validateVisit.isPending}>
+              <ClipboardCheck className="h-3 w-3" /> Validate Token
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleReserveBalance} disabled={reserveBalance.isPending}>
+              Reserve Balance
+            </Button>
+            <Button size="sm" onClick={handleSubmitHealthcloudClaim} disabled={submitToHealthcloud.isPending}>
+              Submit Claim
+            </Button>
+            <Button size="sm" variant="secondary" onClick={handleSubmitInvoice} disabled={submitInvoice.isPending}>
+              Submit Invoice
+            </Button>
+            <Button size="sm" variant="secondary" onClick={handleUploadAttachment} disabled={uploadAttachment.isPending}>
+              Upload Attachment
+            </Button>
+            <Button size="sm" variant="ghost" onClick={handleSubmitCreditNote} disabled={submitCreditNote.isPending}>
+              Submit Credit Note
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleCheckRemittance} disabled={checkRemittance.isPending}>
+              Check Remittance
+            </Button>
+          </div>
+
+          <div className="rounded-md border p-3">
+            <p className="text-xs text-muted-foreground mb-2">Workflow timeline</p>
+            {workflowEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No workflow events yet.</p>
+            ) : (
+              <div className="space-y-1">
+                {workflowEvents.map((event, idx) => (
+                  <p key={`${event}-${idx}`} className="text-sm">{event}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Dates & Details */}
       <Card>

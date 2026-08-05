@@ -38,6 +38,25 @@ FEATURE_FLAGS = [
         ),
         "default_enabled": False,
     },
+    {
+        "name": "insurance_healthcloud_enabled",
+        "description": (
+            "Enable HealthCloud by Slade360 private-insurance workflow endpoints and UI integrations."
+        ),
+        "default_enabled": True,
+    },
+    {
+        "name": "insurance_healthcloud_visit_auth_required",
+        "description": (
+            "Require validated HealthCloud visit authorization before claim submission."
+        ),
+        "default_enabled": True,
+    },
+    {
+        "name": "insurance_healthcloud_credit_note_enabled",
+        "description": ("Enable HealthCloud credit-note submission actions in claims workflow."),
+        "default_enabled": True,
+    },
 ]
 
 

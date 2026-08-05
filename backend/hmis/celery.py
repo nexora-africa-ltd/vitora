@@ -211,6 +211,31 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.billing.tasks.poll_ilm_preauth_statuses",
         "schedule": crontab(minute="*/5"),
     },
+    # Insurance: Poll private-insurance claim statuses every 30 minutes
+    "insurance-poll-claim-statuses": {
+        "task": "hmis.apps.insurance.tasks.check_pending_claims_status",
+        "schedule": crontab(minute="*/30"),
+    },
+    # Insurance: Fetch insurer remittances daily at 6:30 AM
+    "insurance-fetch-remittances": {
+        "task": "hmis.apps.insurance.tasks.fetch_remittances",
+        "schedule": crontab(minute=30, hour=6),
+    },
+    # Insurance: Poll claim-level remittance statuses every 2 hours
+    "insurance-poll-claim-remittances": {
+        "task": "hmis.apps.insurance.tasks.poll_claim_remittance_statuses",
+        "schedule": crontab(minute=0, hour="*/2"),
+    },
+    # Insurance: Sweep expired authorizations/reservations hourly
+    "insurance-sweep-healthcloud-expiry": {
+        "task": "hmis.apps.insurance.tasks.sweep_healthcloud_authorizations_and_reservations",
+        "schedule": crontab(minute=15, hour="*/1"),
+    },
+    # Insurance: Alert on enrollment expiry daily at 7 AM
+    "insurance-check-expiring-enrollments": {
+        "task": "hmis.apps.insurance.tasks.check_expiring_enrollments",
+        "schedule": crontab(minute=0, hour=7),
+    },
     # Pharmacy: Expire overdue prescriptions daily at 1 AM
     "pharmacy-expire-prescriptions": {
         "task": "hmis.apps.pharmacy.tasks.expire_prescriptions",

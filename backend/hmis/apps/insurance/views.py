@@ -4,14 +4,17 @@
 import logging
 
 from django.core.exceptions import ValidationError
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
 from hmis.apps.core.permissions import RequiresActiveShiftPermission
+from hmis.apps.encounters.models import Encounter
+from hmis.apps.insurance.bootstrap import seed_slade_defaults
 from hmis.apps.insurance.filters import (
     InsuranceClaimFilter,
     InsurancePlanFilter,
@@ -21,14 +24,17 @@ from hmis.apps.insurance.filters import (
     PayerTariffFilter,
 )
 from hmis.apps.insurance.models import (
+    InsuranceBalanceReservation,
     InsuranceClaim,
     InsuranceClaimItem,
+    InsuranceExternalSync,
     InsurancePlan,
     InsurancePreauth,
     InsuranceProvider,
     InsuranceProviderConfig,
     InsuranceRemittance,
     InsuranceRemittanceLine,
+    InsuranceVisitAuthorization,
     PatientInsurance,
     PayerTariff,
 )
@@ -57,10 +63,24 @@ from hmis.apps.insurance.serializers import (
     InsuranceRemittanceCreateSerializer,
     InsuranceRemittanceLineSerializer,
     InsuranceRemittanceSerializer,
+    InsuranceVisitAuthorizationSerializer,
     PatientInsuranceCreateSerializer,
     PatientInsuranceSerializer,
     PayerTariffCreateSerializer,
     PayerTariffSerializer,
+    RequestOTPSerializer,
+    ReserveBalanceSerializer,
+    StartVisitSerializer,
+    SubmitCreditNoteSerializer,
+    SubmitInvoiceSerializer,
+    UploadClaimAttachmentSerializer,
+    ValidateAuthorizationSerializer,
+    VerifyEnrollmentPreviewSerializer,
+)
+from hmis.apps.insurance.services.adapters import get_adapter
+from hmis.apps.insurance.services.insurance_services import (
+    HealthCloudWorkflowService,
+    InsuranceEligibilityService,
 )
 
 logger = logging.getLogger(__name__)
@@ -75,7 +95,7 @@ class InsuranceProviderViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewset
     queryset = InsuranceProvider.objects.all()
 
     def get_permissions(self):
-        if self.action in ["create", "update", "partial_update", "destroy"]:
+        if self.action in ["create", "update", "partial_update", "destroy", "seed_slade_defaults"]:
             return [IsAdminUser()]
         return [IsAuthenticated()]
 
@@ -102,6 +122,23 @@ class InsuranceProviderViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewset
                 filter=Q(patient_enrollments__status="active"),
             ),
         )
+
+    @action(detail=False, methods=["post"], url_path="seed-slade-defaults")
+    def seed_slade_defaults(self, request):
+        resolve_request_tenant(request)
+        organization = getattr(request, "organization", None)
+        facility = getattr(request, "facility", None)
+        if not organization:
+            return Response(
+                {"error": "No organization context."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        result = seed_slade_defaults(
+            organization=organization,
+            facilities=[facility] if facility else None,
+            create_provider_configs=True,
+        )
+        return Response(result)
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +196,17 @@ class PatientInsuranceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
             return PatientInsuranceCreateSerializer
         return PatientInsuranceSerializer
 
+    def _ensure_healthcloud_enabled(self, enrollment: PatientInsurance):
+        cfg = InsuranceProviderConfig.objects.filter(
+            provider=enrollment.provider,
+            facility=getattr(self.request, "facility", None),
+        ).first()
+        if not cfg or not cfg.api_enabled or not cfg.healthcloud_enabled:
+            raise ValidationError(
+                "HealthCloud is not enabled for this provider/facility configuration."
+            )
+        return cfg
+
     @action(detail=True, methods=["post"])
     def verify(self, request, pk=None):
         """Mark enrollment as verified."""
@@ -168,6 +216,162 @@ class PatientInsuranceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
         enrollment.verified_by = request.user
         enrollment.save(update_fields=["status", "verified_at", "verified_by", "updated_at"])
         return Response(PatientInsuranceSerializer(enrollment).data)
+
+    @action(detail=True, methods=["post"], url_path="verify-via-healthcloud")
+    def verify_via_healthcloud(self, request, pk=None):
+        enrollment = self.get_object()
+        try:
+            self._ensure_healthcloud_enabled(enrollment)
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        service = InsuranceEligibilityService()
+        try:
+            result = service.verify(enrollment, facility=getattr(request, "facility", None))
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                "eligible": result.eligible,
+                "status": result.status,
+                "plan_name": result.plan_name,
+                "member_number": result.member_number,
+                "annual_balance": str(result.annual_balance)
+                if result.annual_balance is not None
+                else None,
+                "copay_percent": str(result.copay_percent)
+                if result.copay_percent is not None
+                else None,
+                "message": result.message,
+                "raw_response": result.raw_response,
+            }
+        )
+
+    @action(detail=False, methods=["post"], url_path="verify-via-healthcloud-preview")
+    def verify_via_healthcloud_preview(self, request):
+        resolve_request_tenant(request)
+        serializer = VerifyEnrollmentPreviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        organization = getattr(request, "organization", None)
+        plan_id = serializer.validated_data.get("plan")
+        provider_id = serializer.validated_data.get("provider")
+
+        plan = None
+        if plan_id is not None:
+            plan_qs = InsurancePlan.objects.filter(pk=plan_id)
+            if organization is not None:
+                plan_qs = plan_qs.filter(organization=organization)
+            plan = get_object_or_404(plan_qs)
+
+        provider = None
+        if provider_id is not None:
+            provider_qs = InsuranceProvider.objects.filter(pk=provider_id)
+            if organization is not None:
+                provider_qs = provider_qs.filter(organization=organization)
+            provider = get_object_or_404(provider_qs)
+        elif plan is not None:
+            provider = plan.provider
+
+        if provider is None:
+            return Response(
+                {"error": "Unable to resolve provider from request."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        facility = getattr(request, "facility", None)
+        config = InsuranceProviderConfig.objects.filter(
+            provider=provider,
+            facility=facility,
+        ).first()
+        if not config or not config.api_enabled or not config.healthcloud_enabled:
+            return Response(
+                {"error": "HealthCloud is not enabled for this provider/facility configuration."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        adapter = get_adapter(config)
+        preview_enrollment = type(
+            "PreviewEnrollment",
+            (),
+            {
+                "member_number": serializer.validated_data["member_number"],
+                "status": "pending_verification",
+                "is_valid": False,
+            },
+        )()
+        try:
+            result = adapter.verify_eligibility(preview_enrollment)
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {
+                "eligible": result.eligible,
+                "status": result.status,
+                "plan_name": result.plan_name,
+                "member_number": result.member_number,
+                "annual_balance": str(result.annual_balance)
+                if result.annual_balance is not None
+                else None,
+                "copay_percent": str(result.copay_percent)
+                if result.copay_percent is not None
+                else None,
+                "message": result.message,
+                "raw_response": result.raw_response,
+            }
+        )
+
+    @action(detail=True, methods=["post"], url_path="request-otp")
+    def request_otp(self, request, pk=None):
+        enrollment = self.get_object()
+        try:
+            self._ensure_healthcloud_enabled(enrollment)
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = RequestOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        service = HealthCloudWorkflowService()
+        try:
+            auth = service.request_otp(
+                enrollment=enrollment,
+                facility=getattr(request, "facility", None),
+                organization=getattr(request, "organization", None),
+                contact_id=serializer.validated_data["contact_id"],
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(InsuranceVisitAuthorizationSerializer(auth).data)
+
+    @action(detail=True, methods=["post"], url_path="start-visit")
+    def start_visit(self, request, pk=None):
+        enrollment = self.get_object()
+        try:
+            self._ensure_healthcloud_enabled(enrollment)
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = StartVisitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = dict(serializer.validated_data)
+        encounter_id = data.pop("encounter", None)
+        encounter = None
+        if encounter_id:
+            encounter = get_object_or_404(
+                Encounter,
+                pk=encounter_id,
+                facility=getattr(request, "facility", None),
+            )
+        service = HealthCloudWorkflowService()
+        try:
+            auth = service.start_visit(
+                enrollment=enrollment,
+                facility=getattr(request, "facility", None),
+                organization=getattr(request, "organization", None),
+                payload=data,
+                encounter=encounter,
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(InsuranceVisitAuthorizationSerializer(auth).data)
 
 
 # ---------------------------------------------------------------------------
@@ -189,6 +393,56 @@ class InsuranceProviderConfigViewSet(
     tenant_scope = "facility"
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["provider", "accreditation_status", "api_enabled"]
+
+
+class InsuranceVisitAuthorizationViewSet(
+    ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet
+):
+    """Read and validate HealthCloud visit authorizations (facility-scoped)."""
+
+    queryset = InsuranceVisitAuthorization.objects.select_related(
+        "enrollment",
+        "provider_config",
+        "patient",
+        "encounter",
+    ).all()
+    serializer_class = InsuranceVisitAuthorizationSerializer
+    tenant_scope = "facility"
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["status", "enrollment", "patient", "provider_config"]
+    ordering = ["-created_at"]
+    ordering_fields = ["created_at", "updated_at"]
+
+    def get_permissions(self):
+        return [IsAuthenticated()]
+
+    def _ensure_healthcloud_enabled(self, authorization: InsuranceVisitAuthorization):
+        cfg = authorization.provider_config
+        if not cfg.api_enabled or not cfg.healthcloud_enabled:
+            raise ValidationError(
+                "HealthCloud is not enabled for this provider/facility configuration."
+            )
+
+    @action(detail=True, methods=["post"], url_path="validate-token")
+    def validate_token(self, request, pk=None):
+        authorization = self.get_object()
+        try:
+            self._ensure_healthcloud_enabled(authorization)
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = ValidateAuthorizationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        service = HealthCloudWorkflowService()
+        try:
+            response = service.validate_authorization(
+                authorization=authorization,
+                facility=getattr(request, "facility", None),
+                organization=getattr(request, "organization", None),
+                payload=serializer.validated_data,
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(response)
 
 
 # ---------------------------------------------------------------------------
@@ -257,6 +511,17 @@ class InsuranceClaimViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
         if self.action == "cancel":
             return InsuranceClaimCancelSerializer
         return InsuranceClaimSerializer
+
+    def _ensure_healthcloud_enabled(self, claim: InsuranceClaim) -> InsuranceProviderConfig:
+        cfg = InsuranceProviderConfig.objects.filter(
+            provider=claim.provider,
+            facility=getattr(self.request, "facility", None),
+        ).first()
+        if not cfg or not cfg.api_enabled or not cfg.healthcloud_enabled:
+            raise ValidationError(
+                "HealthCloud is not enabled for this provider/facility configuration."
+            )
+        return cfg
 
     # -- Lifecycle actions --
 
@@ -381,6 +646,168 @@ class InsuranceClaimViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
         except ValidationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(InsuranceClaimSerializer(claim).data)
+
+    @action(detail=True, methods=["post"], url_path="reserve-balance")
+    def reserve_balance(self, request, pk=None):
+        claim = self.get_object()
+        try:
+            self._ensure_healthcloud_enabled(claim)
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = ReserveBalanceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        authorization = get_object_or_404(
+            InsuranceVisitAuthorization,
+            pk=serializer.validated_data["authorization_id"],
+            facility=getattr(request, "facility", None),
+        )
+        service = HealthCloudWorkflowService()
+        try:
+            reservation = service.reserve_balance(
+                claim=claim,
+                authorization=authorization,
+                facility=getattr(request, "facility", None),
+                organization=getattr(request, "organization", None),
+                amount=serializer.validated_data["amount"],
+                invoice_number=serializer.validated_data["invoice_number"],
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                "id": reservation.pk,
+                "reservation_guid": reservation.reservation_guid,
+                "status": reservation.status,
+                "invoice_number": reservation.invoice_number,
+                "amount": str(reservation.amount),
+            }
+        )
+
+    @action(detail=True, methods=["post"], url_path="submit-to-healthcloud")
+    def submit_to_healthcloud(self, request, pk=None):
+        claim = self.get_object()
+        try:
+            cfg = self._ensure_healthcloud_enabled(claim)
+            if cfg.require_visit_authorization:
+                has_authorization = InsuranceVisitAuthorization.objects.filter(
+                    facility=getattr(request, "facility", None),
+                    patient=claim.patient,
+                    status__in=[
+                        InsuranceVisitAuthorization.Status.AUTHORIZED,
+                        InsuranceVisitAuthorization.Status.VALIDATED,
+                    ],
+                ).exists()
+                if not has_authorization:
+                    raise ValidationError(
+                        "Visit authorization is required before submitting this claim."
+                    )
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        service = HealthCloudWorkflowService()
+        try:
+            response = service.submit_claim(
+                claim=claim,
+                facility=getattr(request, "facility", None),
+                organization=getattr(request, "organization", None),
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"claim": InsuranceClaimSerializer(claim).data, "external": response})
+
+    @action(detail=True, methods=["post"], url_path="submit-invoice")
+    def submit_invoice(self, request, pk=None):
+        claim = self.get_object()
+        try:
+            cfg = self._ensure_healthcloud_enabled(claim)
+            if cfg.require_balance_reservation:
+                has_reservation = claim.balance_reservations.filter(
+                    status=InsuranceBalanceReservation.Status.RESERVED
+                ).exists()
+                if not has_reservation:
+                    raise ValidationError(
+                        "Active balance reservation is required before invoice submission."
+                    )
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = SubmitInvoiceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payload = dict(serializer.validated_data)
+        payload["claim"] = payload.get("claim") or claim.external_claim_id
+        service = HealthCloudWorkflowService()
+        try:
+            response = service.submit_invoice(
+                claim=claim,
+                facility=getattr(request, "facility", None),
+                organization=getattr(request, "organization", None),
+                payload=payload,
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(response)
+
+    @action(detail=True, methods=["post"], url_path="submit-credit-note")
+    def submit_credit_note(self, request, pk=None):
+        claim = self.get_object()
+        try:
+            self._ensure_healthcloud_enabled(claim)
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = SubmitCreditNoteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payload = dict(serializer.validated_data)
+        payload["claim"] = payload.get("claim") or claim.external_claim_id
+        service = HealthCloudWorkflowService()
+        try:
+            response = service.submit_credit_note(
+                claim=claim,
+                facility=getattr(request, "facility", None),
+                organization=getattr(request, "organization", None),
+                payload=payload,
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(response)
+
+    @action(detail=True, methods=["post"], url_path="upload-attachment")
+    def upload_attachment(self, request, pk=None):
+        claim = self.get_object()
+        try:
+            self._ensure_healthcloud_enabled(claim)
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = UploadClaimAttachmentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payload = dict(serializer.validated_data)
+        payload["claim"] = payload.get("claim") or claim.external_claim_id
+        service = HealthCloudWorkflowService()
+        try:
+            response = service.upload_claim_attachment(
+                claim=claim,
+                facility=getattr(request, "facility", None),
+                organization=getattr(request, "organization", None),
+                payload=payload,
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(response)
+
+    @action(detail=True, methods=["post"], url_path="check-remittance")
+    def check_remittance(self, request, pk=None):
+        claim = self.get_object()
+        try:
+            self._ensure_healthcloud_enabled(claim)
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        service = HealthCloudWorkflowService()
+        try:
+            response = service.get_claim_remittance(
+                claim=claim,
+                facility=getattr(request, "facility", None),
+                organization=getattr(request, "organization", None),
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"claim": InsuranceClaimSerializer(claim).data, "remittance": response})
 
 
 # ---------------------------------------------------------------------------
@@ -527,6 +954,46 @@ class InsuranceRemittanceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, views
         except ValidationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(InsuranceRemittanceSerializer(remittance).data)
+
+    @action(detail=False, methods=["get"], url_path="healthcloud-sync-status")
+    def healthcloud_sync_status(self, request):
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response({"error": "No facility context"}, status=status.HTTP_400_BAD_REQUEST)
+
+        sync_qs = InsuranceExternalSync.objects.filter(facility=facility)
+        remittances_qs = self.get_queryset()
+        pending_sync = sync_qs.filter(status=InsuranceExternalSync.Status.PENDING).count()
+        failed_sync = sync_qs.filter(status=InsuranceExternalSync.Status.FAILED).count()
+        success_sync = sync_qs.filter(status=InsuranceExternalSync.Status.SUCCESS).count()
+
+        return Response(
+            {
+                "facility_id": facility.pk,
+                "sync": {
+                    "pending": pending_sync,
+                    "failed": failed_sync,
+                    "success": success_sync,
+                    "total": sync_qs.count(),
+                },
+                "remittances": {
+                    "total": remittances_qs.count(),
+                    "received": remittances_qs.filter(
+                        status=InsuranceRemittance.Status.RECEIVED
+                    ).count(),
+                    "partial": remittances_qs.filter(
+                        status=InsuranceRemittance.Status.PARTIAL
+                    ).count(),
+                    "reconciled": remittances_qs.filter(
+                        status=InsuranceRemittance.Status.RECONCILED
+                    ).count(),
+                    "disputed": remittances_qs.filter(
+                        status=InsuranceRemittance.Status.DISPUTED
+                    ).count(),
+                },
+            }
+        )
 
 
 # ---------------------------------------------------------------------------

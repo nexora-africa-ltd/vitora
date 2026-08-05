@@ -13,6 +13,7 @@ from hmis.apps.insurance.views import (
     InsuranceProviderViewSet,
     InsuranceRemittanceLineViewSet,
     InsuranceRemittanceViewSet,
+    InsuranceVisitAuthorizationViewSet,
     PatientInsuranceViewSet,
     PayerTariffViewSet,
 )
@@ -28,12 +29,22 @@ router.register(
 )
 router.register(r"claims", InsuranceClaimViewSet, basename="insurance-claim")
 router.register(r"preauths", InsurancePreauthViewSet, basename="insurance-preauth")
+router.register(
+    r"authorizations",
+    InsuranceVisitAuthorizationViewSet,
+    basename="insurance-visit-authorization",
+)
 router.register(r"remittances", InsuranceRemittanceViewSet, basename="insurance-remittance")
 router.register(r"tariffs", PayerTariffViewSet, basename="payer-tariff")
 
 app_name = "insurance"
 
 urlpatterns = [
+    path(
+        "enrollments/verify-via-healthcloud-preview/",
+        PatientInsuranceViewSet.as_view({"post": "verify_via_healthcloud_preview"}),
+        name="patient-insurance-verify-via-healthcloud-preview",
+    ),
     path("", include(router.urls)),
     # Nested: claim items
     path(

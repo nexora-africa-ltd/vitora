@@ -17,10 +17,17 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import requests
+from prometheus_client import Counter
 
 from .errors import InsuranceTimeoutError, InsuranceTransportError, from_status
 
 logger = logging.getLogger(__name__)
+
+INSURANCE_UPSTREAM_RESPONSES_TOTAL = Counter(
+    "vitora_insurance_upstream_responses_total",
+    "Total upstream responses from insurer integrations",
+    ["status_family", "host", "method"],
+)
 
 # PII fields stripped from payloads before audit persistence (Kenya DPA 2019).
 _PII_FIELDS = frozenset(
@@ -40,6 +47,12 @@ _PII_FIELDS = frozenset(
         "Authorization",
         "authorization",
         "api_key",
+        "beneficiaryCode",
+        "beneficiary_contact",
+        "beneficiary_contact_id",
+        "contactValue",
+        "auth_token",
+        "authorization_guid",
     }
 )
 
@@ -113,6 +126,7 @@ class InsuranceHttpClient:
         max_retries: int = 2,
         backoff_seconds: float = 0.5,
         session: requests.Session | None = None,
+        hosts: dict[str, str] | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.auth_type = auth_type
@@ -123,6 +137,7 @@ class InsuranceHttpClient:
         self.max_retries = max_retries
         self.backoff_seconds = backoff_seconds
         self._session = session or requests.Session()
+        self.hosts = {k: v.rstrip("/") for k, v in (hosts or {}).items() if v}
 
     @classmethod
     def from_config(cls, config: Any) -> InsuranceHttpClient:
@@ -133,6 +148,7 @@ class InsuranceHttpClient:
             auth_credentials=config.get_credentials_dict(),
             provider=config.provider,
             facility=config.facility,
+            hosts=config.get_host_config() if hasattr(config, "get_host_config") else None,
         )
 
     # -------- public verbs ------------------------------------------------
@@ -165,9 +181,15 @@ class InsuranceHttpClient:
         headers: Mapping[str, str] | None = None,
         user: Any = None,
         retry_statuses: frozenset[int] | None = None,
+        host: str | None = None,
+        base_url_override: str | None = None,
     ) -> InsuranceResponse:
         method = method.upper()
-        url = f"{self.base_url}/{path.lstrip('/')}" if self.base_url else path
+        resolved_base_url = self._resolve_base_url(
+            host=host,
+            base_url_override=base_url_override,
+        )
+        url = f"{resolved_base_url}/{path.lstrip('/')}" if resolved_base_url else path
         retry_statuses = retry_statuses or self.DEFAULT_RETRY_STATUSES
         correlation_id = _REQUEST_ID.get() or uuid.uuid4().hex
 
@@ -201,6 +223,7 @@ class InsuranceHttpClient:
                     self._record_audit(
                         method=method,
                         path=path,
+                        base_url=resolved_base_url,
                         status="TIMEOUT",
                         status_code=None,
                         duration_ms=duration_ms,
@@ -226,6 +249,7 @@ class InsuranceHttpClient:
                     self._record_audit(
                         method=method,
                         path=path,
+                        base_url=resolved_base_url,
                         status="TRANSPORT",
                         status_code=None,
                         duration_ms=duration_ms,
@@ -248,6 +272,12 @@ class InsuranceHttpClient:
 
             duration_ms = int((time.monotonic() - started) * 1000)
             status_code = response.status_code
+            status_family = f"{status_code // 100}xx"
+            INSURANCE_UPSTREAM_RESPONSES_TOTAL.labels(
+                status_family=status_family,
+                host=host or "default",
+                method=method,
+            ).inc()
 
             # Parse response body
             try:
@@ -265,6 +295,7 @@ class InsuranceHttpClient:
             audit_id = self._record_audit(
                 method=method,
                 path=path,
+                base_url=resolved_base_url,
                 status=_audit_status_for_code(status_code),
                 status_code=status_code,
                 duration_ms=duration_ms,
@@ -329,6 +360,13 @@ class InsuranceHttpClient:
                 headers[header_name] = key
         # NONE and CUSTOM: no automatic headers
 
+    def _resolve_base_url(self, *, host: str | None, base_url_override: str | None) -> str:
+        if base_url_override:
+            return base_url_override.rstrip("/")
+        if host:
+            return self.hosts.get(host, "") or self.base_url
+        return self.base_url
+
     # -------- audit --------------------------------------------------------
 
     def _record_audit(
@@ -336,6 +374,7 @@ class InsuranceHttpClient:
         *,
         method: str,
         path: str,
+        base_url: str,
         status: str,
         status_code: int | None,
         duration_ms: int,
@@ -358,7 +397,7 @@ class InsuranceHttpClient:
                 user=user if hasattr(user, "pk") else None,
                 method=method,
                 path=path,
-                base_url=self.base_url,
+                base_url=base_url,
                 auth_mode=self.auth_type,
                 status=status,
                 status_code=status_code,

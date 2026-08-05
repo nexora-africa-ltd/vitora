@@ -394,6 +394,18 @@ class InsuranceProviderConfig(FacilityScopedModel):
     )
     accreditation_number = models.CharField(max_length=50, blank=True)
     api_base_url = models.URLField(blank=True)
+    auth_base_url = models.URLField(
+        blank=True,
+        help_text="OAuth2 authorization host (e.g. accounts.multitenant.slade360.co.ke)",
+    )
+    provider_edi_base_url = models.URLField(
+        blank=True,
+        help_text="Provider EDI host for eligibility/reservations/remittance APIs",
+    )
+    provider_is_base_url = models.URLField(
+        blank=True,
+        help_text="Provider IS host for claim/invoice/visit APIs",
+    )
     api_auth_type = models.CharField(
         max_length=20,
         choices=ApiAuthType.choices,
@@ -419,6 +431,24 @@ class InsuranceProviderConfig(FacilityScopedModel):
         blank=True, default="", help_text="KMS-encrypted bearer token"
     )
     api_enabled = models.BooleanField(default=False)
+    healthcloud_enabled = models.BooleanField(
+        default=False,
+        help_text="Enable HealthCloud by Slade360 workflow for this facility/provider config",
+    )
+    payer_slade_code = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Payer identifier on HealthCloud (e.g. 457 for Jubilee in sandbox docs)",
+    )
+    require_visit_authorization = models.BooleanField(
+        default=True,
+        help_text="Require start-visit authorization before claim submission",
+    )
+    require_balance_reservation = models.BooleanField(
+        default=True,
+        help_text="Require balance reservation before invoice submission",
+    )
     max_claim_amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -477,6 +507,19 @@ class InsuranceProviderConfig(FacilityScopedModel):
         if not creds and self.api_credentials:
             return self.api_credentials
         return creds
+
+    def get_host_config(self) -> dict[str, str]:
+        """Return named base URLs used by HealthCloud integrations."""
+        hosts: dict[str, str] = {}
+        if self.auth_base_url:
+            hosts["auth"] = self.auth_base_url
+        if self.provider_edi_base_url:
+            hosts["provider_edi"] = self.provider_edi_base_url
+        if self.provider_is_base_url:
+            hosts["provider_is"] = self.provider_is_base_url
+        if self.api_base_url:
+            hosts["default"] = self.api_base_url
+        return hosts
 
     @property
     def is_contract_active(self) -> bool:
@@ -1234,3 +1277,229 @@ class InsuranceOutboundCall(FacilityScopedModel):
     def __str__(self) -> str:  # pragma: no cover - cosmetic
         ts = self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else "?"
         return f"[{ts}] {self.method} {self.path} -> {self.status_code}"
+
+
+# ---------------------------------------------------------------------------
+# InsuranceVisitAuthorization
+# ---------------------------------------------------------------------------
+
+
+class InsuranceVisitAuthorization(FacilityScopedModel):
+    """Tracks HealthCloud visit authorizations linked to a member and encounter."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        OTP_REQUESTED = "otp_requested", "OTP Requested"
+        AUTHORIZED = "authorized", "Authorized"
+        VALIDATED = "validated", "Validated"
+        FAILED = "failed", "Failed"
+        EXPIRED = "expired", "Expired"
+
+    enrollment = models.ForeignKey(
+        PatientInsurance,
+        on_delete=models.PROTECT,
+        related_name="visit_authorizations",
+    )
+    provider_config = models.ForeignKey(
+        InsuranceProviderConfig,
+        on_delete=models.PROTECT,
+        related_name="visit_authorizations",
+    )
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="insurance_visit_authorizations",
+    )
+    encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="insurance_visit_authorizations",
+    )
+    member_number = models.CharField(max_length=50)
+    payer_slade_code = models.PositiveIntegerField(null=True, blank=True)
+    benefit_type = models.CharField(max_length=40, blank=True)
+    benefit_code = models.CharField(max_length=60, blank=True)
+    policy_number = models.CharField(max_length=80, blank=True)
+    policy_effective_date = models.DateTimeField(null=True, blank=True)
+    beneficiary_id = models.BigIntegerField(null=True, blank=True)
+    beneficiary_contact_id = models.BigIntegerField(null=True, blank=True)
+    beneficiary_contact_value = models.CharField(max_length=30, blank=True)
+    factors = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    auth_token = models.CharField(max_length=100, blank=True)
+    authorization_guid = models.CharField(max_length=100, blank=True)
+    authorization_date = models.DateTimeField(null=True, blank=True)
+    auth_expiry = models.DateTimeField(null=True, blank=True)
+    auth_status = models.CharField(max_length=50, blank=True)
+    last_error = models.TextField(blank=True)
+    raw_payload = models.JSONField(default=dict, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["facility", "status"]),
+            models.Index(fields=["authorization_guid"]),
+            models.Index(fields=["member_number", "payer_slade_code"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.member_number} ({self.status})"
+
+
+# ---------------------------------------------------------------------------
+# InsuranceBalanceReservation
+# ---------------------------------------------------------------------------
+
+
+class InsuranceBalanceReservation(FacilityScopedModel):
+    """Tracks HealthCloud benefit balance reservations per authorization."""
+
+    class Status(models.TextChoices):
+        RESERVED = "reserved", "Reserved"
+        PARTIALLY_RELEASED = "partially_released", "Partially Released"
+        RELEASED = "released", "Released"
+        EXPIRED = "expired", "Expired"
+        FAILED = "failed", "Failed"
+
+    authorization = models.ForeignKey(
+        InsuranceVisitAuthorization,
+        on_delete=models.PROTECT,
+        related_name="reservations",
+    )
+    claim = models.ForeignKey(
+        InsuranceClaim,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="balance_reservations",
+    )
+    reservation_guid = models.CharField(max_length=100, blank=True, db_index=True)
+    invoice_number = models.CharField(max_length=80, blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    amount_released = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    expiry_date = models.DateTimeField(null=True, blank=True)
+    release_notes = models.TextField(blank=True)
+    payer_invoice_reference = models.CharField(max_length=100, blank=True)
+    status = models.CharField(max_length=30, choices=Status.choices, default=Status.RESERVED)
+    last_error = models.TextField(blank=True)
+    raw_payload = models.JSONField(default=dict, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["facility", "status"]),
+            models.Index(fields=["invoice_number"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.invoice_number or 'N/A'} ({self.amount})"
+
+
+# ---------------------------------------------------------------------------
+# InsuranceExternalSync
+# ---------------------------------------------------------------------------
+
+
+class InsuranceExternalSync(FacilityScopedModel):
+    """Idempotent sync tracker for external HealthCloud operations."""
+
+    class Direction(models.TextChoices):
+        OUTBOUND = "outbound", "Outbound"
+        INBOUND = "inbound", "Inbound"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SUCCESS = "success", "Success"
+        FAILED = "failed", "Failed"
+        RETRY = "retry", "Retry"
+
+    operation = models.CharField(max_length=60)
+    direction = models.CharField(
+        max_length=10, choices=Direction.choices, default=Direction.OUTBOUND
+    )
+    request_hash = models.CharField(max_length=128, blank=True, db_index=True)
+    external_id = models.CharField(max_length=120, blank=True, db_index=True)
+    external_ref = models.CharField(max_length=120, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    attempt_count = models.PositiveSmallIntegerField(default=0)
+    correlation_id = models.CharField(max_length=64, blank=True, db_index=True)
+    claim = models.ForeignKey(
+        InsuranceClaim,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="external_sync_logs",
+    )
+    preauth = models.ForeignKey(
+        InsurancePreauth,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="external_sync_logs",
+    )
+    authorization = models.ForeignKey(
+        InsuranceVisitAuthorization,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="external_sync_logs",
+    )
+    request_payload = models.JSONField(default=dict, blank=True)
+    response_payload = models.JSONField(default=dict, blank=True)
+    last_error = models.TextField(blank=True)
+    synced_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["facility", "operation", "status"]),
+            models.Index(fields=["request_hash", "operation"]),
+        ]
+
+    def mark_success(self, *, external_id: str = "", response_payload: dict | None = None) -> None:
+        self.status = self.Status.SUCCESS
+        if external_id:
+            self.external_id = external_id
+        if response_payload is not None:
+            self.response_payload = response_payload
+        self.synced_at = timezone.now()
+        self.attempt_count = self.attempt_count + 1
+        self.last_error = ""
+        self.save(
+            update_fields=[
+                "status",
+                "external_id",
+                "response_payload",
+                "synced_at",
+                "attempt_count",
+                "last_error",
+                "updated_at",
+            ]
+        )
+
+    def mark_failure(self, *, error: str, response_payload: dict | None = None) -> None:
+        self.status = self.Status.FAILED
+        self.last_error = error
+        if response_payload is not None:
+            self.response_payload = response_payload
+        self.attempt_count = self.attempt_count + 1
+        self.save(
+            update_fields=[
+                "status",
+                "last_error",
+                "response_payload",
+                "attempt_count",
+                "updated_at",
+            ]
+        )

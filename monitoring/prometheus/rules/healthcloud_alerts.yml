@@ -1,0 +1,58 @@
+# =============================================================================
+# HealthCloud Insurance Alert Rules
+# =============================================================================
+
+groups:
+  - name: insurance_healthcloud
+    interval: 30s
+    rules:
+      - alert: HealthCloudTokenAcquisitionFailures
+        expr: increase(vitora_insurance_healthcloud_token_requests_total{result="failed"}[10m]) >= 3
+        for: 5m
+        labels:
+          severity: warning
+          team: revenue-cycle
+          service: insurance
+        annotations:
+          summary: "HealthCloud token acquisition is repeatedly failing"
+          description: |
+            HealthCloud OAuth token requests failed at least 3 times in the last 10 minutes.
+            Check provider credentials and auth host reachability.
+          runbook: "docs/healthcloud-operations-runbook.md"
+
+      - alert: HealthCloudUpstream5xxSpike
+        expr: |
+          (
+            sum(increase(vitora_insurance_upstream_responses_total{status_family="5xx"}[10m])) /
+            clamp_min(sum(increase(vitora_insurance_upstream_responses_total[10m])), 1)
+          ) > 0.20
+          and
+          sum(increase(vitora_insurance_upstream_responses_total{status_family="5xx"}[10m])) >= 5
+        for: 10m
+        labels:
+          severity: critical
+          team: revenue-cycle
+          service: insurance
+        annotations:
+          summary: "HealthCloud upstream 5xx error rate spike"
+          description: |
+            5xx responses exceed 20% of all upstream insurer responses over 10 minutes
+            with at least 5 absolute 5xx events.
+          runbook: "docs/healthcloud-operations-runbook.md"
+
+      - alert: HealthCloudRemittanceLag
+        expr: |
+          sum(increase(vitora_insurance_healthcloud_workflow_total{operation="healthcloud.get_claim_remittance",result="success"}[6h])) == 0
+          and
+          sum(increase(vitora_insurance_healthcloud_workflow_total{operation=~"healthcloud.submit_claim|healthcloud.submit_invoice",result="success"}[6h])) > 0
+        for: 30m
+        labels:
+          severity: warning
+          team: revenue-cycle
+          service: insurance
+        annotations:
+          summary: "HealthCloud remittance polling lag detected"
+          description: |
+            Claims/invoices were submitted in the last 6 hours but no successful remittance checks were recorded.
+            Validate Celery beat health and poll/remittance workers.
+          runbook: "docs/healthcloud-operations-runbook.md"

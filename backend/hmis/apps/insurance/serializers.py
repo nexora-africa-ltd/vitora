@@ -12,9 +12,11 @@ from hmis.apps.insurance.models import (
     InsuranceProviderConfig,
     InsuranceRemittance,
     InsuranceRemittanceLine,
+    InsuranceVisitAuthorization,
     PatientInsurance,
     PayerTariff,
 )
+from hmis.apps.insurance.payer_mappings import infer_healthcloud_payer_slade_code
 
 
 # ---------------------------------------------------------------------------
@@ -205,6 +207,21 @@ class PatientInsuranceCreateSerializer(serializers.ModelSerializer):
         ]
 
 
+class VerifyEnrollmentPreviewSerializer(serializers.Serializer):
+    plan = serializers.IntegerField(min_value=1, required=False)
+    provider = serializers.IntegerField(min_value=1, required=False)
+    member_number = serializers.CharField()
+    policy_number = serializers.CharField(required=False, allow_blank=True, default="")
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if not attrs.get("plan") and not attrs.get("provider"):
+            raise serializers.ValidationError(
+                {"non_field_errors": ["Either plan or provider is required."]}
+            )
+        return attrs
+
+
 # ---------------------------------------------------------------------------
 # InsuranceProviderConfig
 # ---------------------------------------------------------------------------
@@ -212,6 +229,11 @@ class InsuranceProviderConfigSerializer(serializers.ModelSerializer):
     provider_name = serializers.CharField(source="provider.name", read_only=True)
     facility_name = serializers.CharField(source="facility.name", read_only=True)
     is_contract_active = serializers.BooleanField(read_only=True)
+    api_key = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    api_secret = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    api_username = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    api_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    api_token = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = InsuranceProviderConfig
@@ -226,6 +248,9 @@ class InsuranceProviderConfigSerializer(serializers.ModelSerializer):
             "accreditation_status",
             "accreditation_number",
             "api_base_url",
+            "auth_base_url",
+            "provider_edi_base_url",
+            "provider_is_base_url",
             "api_auth_type",
             "api_credentials",
             "api_key",
@@ -234,6 +259,10 @@ class InsuranceProviderConfigSerializer(serializers.ModelSerializer):
             "api_password",
             "api_token",
             "api_enabled",
+            "healthcloud_enabled",
+            "payer_slade_code",
+            "require_visit_authorization",
+            "require_balance_reservation",
             "max_claim_amount",
             "submission_format",
             "is_contract_active",
@@ -244,12 +273,86 @@ class InsuranceProviderConfigSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "is_contract_active", "created_at", "updated_at"]
         extra_kwargs = {
             "api_credentials": {"write_only": True},
-            "api_key": {"write_only": True, "required": False},
-            "api_secret": {"write_only": True, "required": False},
-            "api_username": {"write_only": True, "required": False},
-            "api_password": {"write_only": True, "required": False},
-            "api_token": {"write_only": True, "required": False},
         }
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        provider = attrs.get("provider") or getattr(self.instance, "provider", None)
+        payer_code = attrs.get("payer_slade_code")
+        if provider and payer_code is None:
+            inferred = infer_healthcloud_payer_slade_code(provider)
+            if inferred is not None:
+                attrs["payer_slade_code"] = inferred
+
+        api_enabled = attrs.get("api_enabled")
+        if api_enabled is None and self.instance is not None:
+            api_enabled = self.instance.api_enabled
+        healthcloud_enabled = attrs.get("healthcloud_enabled")
+        if healthcloud_enabled is None and self.instance is not None:
+            healthcloud_enabled = self.instance.healthcloud_enabled
+
+        if api_enabled and healthcloud_enabled:
+            required_hosts = ("auth_base_url", "provider_edi_base_url", "provider_is_base_url")
+            missing = []
+            for field in required_hosts:
+                value = attrs.get(field)
+                if value is None and self.instance is not None:
+                    value = getattr(self.instance, field, "")
+                if not value:
+                    missing.append(field)
+
+            if missing:
+                raise serializers.ValidationError(
+                    dict.fromkeys(
+                        missing, "This field is required when API and HealthCloud are enabled."
+                    )
+                )
+
+            final_payer_code = attrs.get("payer_slade_code")
+            if final_payer_code is None and self.instance is not None:
+                final_payer_code = self.instance.payer_slade_code
+            if final_payer_code is None:
+                raise serializers.ValidationError(
+                    {
+                        "payer_slade_code": (
+                            "This field is required when API and HealthCloud are enabled. "
+                            "Use a known mapped provider or set the payer code explicitly."
+                        )
+                    }
+                )
+        return attrs
+
+    def create(self, validated_data):
+        secret_fields = {
+            "api_key": validated_data.pop("api_key", ""),
+            "api_secret": validated_data.pop("api_secret", ""),
+            "api_username": validated_data.pop("api_username", ""),
+            "api_password": validated_data.pop("api_password", ""),
+            "api_token": validated_data.pop("api_token", ""),
+        }
+        instance = super().create(validated_data)
+        for field, value in secret_fields.items():
+            if value:
+                setattr(instance, field, value)
+        if any(secret_fields.values()):
+            instance.save(update_fields=[*(k for k, v in secret_fields.items() if v), "updated_at"])
+        return instance
+
+    def update(self, instance, validated_data):
+        secret_fields = {
+            "api_key": validated_data.pop("api_key", ""),
+            "api_secret": validated_data.pop("api_secret", ""),
+            "api_username": validated_data.pop("api_username", ""),
+            "api_password": validated_data.pop("api_password", ""),
+            "api_token": validated_data.pop("api_token", ""),
+        }
+        instance = super().update(instance, validated_data)
+        for field, value in secret_fields.items():
+            if value:
+                setattr(instance, field, value)
+        if any(secret_fields.values()):
+            instance.save(update_fields=[*(k for k, v in secret_fields.items() if v), "updated_at"])
+        return instance
 
 
 # ---------------------------------------------------------------------------
@@ -371,6 +474,17 @@ class InsuranceClaimCreateSerializer(serializers.ModelSerializer):
         for item_data in items_data:
             InsuranceClaimItem.objects.create(claim=claim, **item_data)
         return claim
+
+    def validate(self, attrs):
+        enrollment = attrs.get("patient_insurance")
+        patient = attrs.get("patient")
+        if enrollment and patient and enrollment.patient_id != patient.id:
+            raise serializers.ValidationError(
+                {
+                    "patient": "Selected patient must match the selected patient insurance enrollment."
+                }
+            )
+        return attrs
 
 
 # Action serializers
@@ -615,3 +729,114 @@ class PayerTariffCreateSerializer(serializers.ModelSerializer):
             "effective_to",
             "notes",
         ]
+
+
+class RequestOTPSerializer(serializers.Serializer):
+    contact_id = serializers.IntegerField(min_value=1)
+
+
+class StartVisitSerializer(serializers.Serializer):
+    beneficiary_id = serializers.IntegerField()
+    benefit_type = serializers.CharField()
+    benefit_code = serializers.CharField()
+    policy_number = serializers.CharField()
+    policy_effective_date = serializers.CharField()
+    otp = serializers.CharField()
+    beneficiary_contact = serializers.IntegerField()
+    factors = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        default=["OTP"],
+    )
+    scheme_name = serializers.CharField(required=False, allow_blank=True, default="")
+    scheme_code = serializers.CharField(required=False, allow_blank=True, default="")
+    encounter = serializers.IntegerField(required=False)
+
+
+class InsuranceVisitAuthorizationSerializer(serializers.ModelSerializer):
+    patient_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InsuranceVisitAuthorization
+        fields = [
+            "id",
+            "enrollment",
+            "provider_config",
+            "patient",
+            "patient_name",
+            "encounter",
+            "member_number",
+            "payer_slade_code",
+            "benefit_type",
+            "benefit_code",
+            "policy_number",
+            "beneficiary_id",
+            "beneficiary_contact_id",
+            "beneficiary_contact_value",
+            "factors",
+            "status",
+            "auth_token",
+            "authorization_guid",
+            "authorization_date",
+            "auth_expiry",
+            "auth_status",
+            "last_error",
+            "raw_payload",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "auth_token",
+            "authorization_guid",
+            "authorization_date",
+            "auth_expiry",
+            "auth_status",
+            "last_error",
+            "raw_payload",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_patient_name(self, obj) -> str:
+        return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+
+class ValidateAuthorizationSerializer(serializers.Serializer):
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    other_names = serializers.CharField(required=False, allow_blank=True, default="")
+    member_number = serializers.CharField()
+    auth_token = serializers.CharField()
+    visit_type = serializers.ChoiceField(choices=["OUTPATIENT", "INPATIENT"], required=False)
+    scheme_code = serializers.CharField(required=False, allow_blank=True, default="")
+    scheme_name = serializers.CharField(required=False, allow_blank=True, default="")
+    payer_code = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class ReserveBalanceSerializer(serializers.Serializer):
+    authorization_id = serializers.IntegerField(min_value=1)
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    invoice_number = serializers.CharField()
+
+
+class SubmitInvoiceSerializer(serializers.Serializer):
+    claim = serializers.CharField(required=False)
+    invoice_number = serializers.CharField()
+    invoice_date = serializers.CharField()
+    copays = serializers.ListField(required=False, default=list)
+    lines = serializers.ListField()
+
+
+class SubmitCreditNoteSerializer(serializers.Serializer):
+    claim = serializers.CharField(required=False)
+    invoice_number = serializers.CharField()
+    invoice_date = serializers.CharField()
+    lines = serializers.ListField()
+
+
+class UploadClaimAttachmentSerializer(serializers.Serializer):
+    claim = serializers.CharField(required=False)
+    attachment = serializers.CharField()
+    attachment_type = serializers.CharField()
+    description = serializers.CharField(required=False, allow_blank=True, default="")

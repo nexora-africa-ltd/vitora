@@ -11,10 +11,18 @@ import type {
   InsurancePreauthCreateInput,
   InsurancePreauthFilters,
   InsuranceProviderConfigCreateInput,
+  RequestOTPInput,
+  ReserveBalanceInput,
+  StartVisitInput,
+  SubmitCreditNoteInput,
+  SubmitInvoiceInput,
+  UploadClaimAttachmentInput,
+  ValidateAuthorizationInput,
   InsuranceProviderCreateInput,
   InsuranceRemittanceCreateInput,
   PatientInsuranceCreateInput,
   PayerTariffCreateInput,
+  VerifyEnrollmentPreviewInput,
 } from '@/lib/types/insurance';
 
 // ---------------------------------------------------------------------------
@@ -43,6 +51,11 @@ export const insuranceQueryKeys = {
     [...insuranceQueryKeys.configs(), 'list', params] as const,
   configDetail: (id: number) => [...insuranceQueryKeys.configs(), id] as const,
 
+  authorizations: () => [...insuranceQueryKeys.all, 'authorizations'] as const,
+  authorizationList: (params?: Record<string, unknown>) =>
+    [...insuranceQueryKeys.authorizations(), 'list', params] as const,
+  authorizationDetail: (id: number) => [...insuranceQueryKeys.authorizations(), id] as const,
+
   claims: () => [...insuranceQueryKeys.all, 'claims'] as const,
   claimList: (filters?: InsuranceClaimFilters) =>
     [...insuranceQueryKeys.claims(), 'list', filters] as const,
@@ -57,6 +70,7 @@ export const insuranceQueryKeys = {
   remittanceList: (params?: Record<string, unknown>) =>
     [...insuranceQueryKeys.remittances(), 'list', params] as const,
   remittanceDetail: (id: number) => [...insuranceQueryKeys.remittances(), id] as const,
+  healthcloudSyncStatus: () => [...insuranceQueryKeys.remittances(), 'healthcloud-sync-status'] as const,
 
   tariffs: () => [...insuranceQueryKeys.all, 'tariffs'] as const,
   tariffList: (params?: Record<string, unknown>) =>
@@ -68,10 +82,14 @@ export const insuranceQueryKeys = {
 // Provider Hooks
 // ---------------------------------------------------------------------------
 
-export function useInsuranceProviders(params?: Record<string, string | number | undefined>) {
+export function useInsuranceProviders(
+  params?: Record<string, string | number | undefined>,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: insuranceQueryKeys.providerList(params),
     queryFn: () => insuranceApi.listProviders(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -121,10 +139,14 @@ export function useDeleteProvider() {
 // Plan Hooks
 // ---------------------------------------------------------------------------
 
-export function useInsurancePlans(params?: Record<string, string | number | undefined>) {
+export function useInsurancePlans(
+  params?: Record<string, string | number | undefined>,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: insuranceQueryKeys.planList(params),
     queryFn: () => insuranceApi.listPlans(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -201,14 +223,70 @@ export function useUpdateEnrollment() {
   });
 }
 
+export function useVerifyEnrollmentViaHealthcloud() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => insuranceApi.verifyEnrollmentViaHealthcloud(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.enrollments() });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.enrollmentDetail(id) });
+    },
+  });
+}
+
+export function useVerifyEnrollmentViaHealthcloudPreview() {
+  return useMutation({
+    mutationFn: (data: VerifyEnrollmentPreviewInput) =>
+      insuranceApi.verifyEnrollmentViaHealthcloudPreview(data),
+  });
+}
+
+export function useSeedSladeDefaults() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => insuranceApi.seedSladeDefaults(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.providers() });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.plans() });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.configs() });
+    },
+  });
+}
+
+export function useRequestEnrollmentOtp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: RequestOTPInput }) =>
+      insuranceApi.requestEnrollmentOtp(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.authorizations() });
+    },
+  });
+}
+
+export function useStartEnrollmentVisit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: StartVisitInput }) =>
+      insuranceApi.startEnrollmentVisit(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.authorizations() });
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Provider Config Hooks
 // ---------------------------------------------------------------------------
 
-export function useProviderConfigs(params?: Record<string, string | number | undefined>) {
+export function useProviderConfigs(
+  params?: Record<string, string | number | undefined>,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: insuranceQueryKeys.configList(params),
     queryFn: () => insuranceApi.listProviderConfigs(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -240,6 +318,35 @@ export function useUpdateProviderConfig() {
       queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.configs() });
       queryClient.invalidateQueries({
         queryKey: insuranceQueryKeys.configDetail(variables.id),
+      });
+    },
+  });
+}
+
+export function useVisitAuthorizations(params?: Record<string, string | number | undefined>) {
+  return useQuery({
+    queryKey: insuranceQueryKeys.authorizationList(params),
+    queryFn: () => insuranceApi.listVisitAuthorizations(params),
+  });
+}
+
+export function useVisitAuthorization(id: number | undefined) {
+  return useQuery({
+    queryKey: insuranceQueryKeys.authorizationDetail(id!),
+    queryFn: () => insuranceApi.getVisitAuthorization(id!),
+    enabled: !!id,
+  });
+}
+
+export function useValidateVisitAuthorization() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: ValidateAuthorizationInput }) =>
+      insuranceApi.validateVisitAuthorization(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.authorizations() });
+      queryClient.invalidateQueries({
+        queryKey: insuranceQueryKeys.authorizationDetail(variables.id),
       });
     },
   });
@@ -357,6 +464,62 @@ export function useCancelClaim() {
   });
 }
 
+export function useReserveClaimBalance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: ReserveBalanceInput }) =>
+      insuranceApi.reserveClaimBalance(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.claimDetail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.authorizations() });
+    },
+  });
+}
+
+export function useSubmitClaimToHealthcloud() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => insuranceApi.submitClaimToHealthcloud(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.claims() });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.claimDetail(id) });
+    },
+  });
+}
+
+export function useCheckClaimRemittance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => insuranceApi.checkClaimRemittance(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.claimDetail(id) });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.remittances() });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.healthcloudSyncStatus() });
+    },
+  });
+}
+
+export function useSubmitClaimInvoice() {
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: SubmitInvoiceInput }) =>
+      insuranceApi.submitClaimInvoice(id, data),
+  });
+}
+
+export function useSubmitClaimCreditNote() {
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: SubmitCreditNoteInput }) =>
+      insuranceApi.submitClaimCreditNote(id, data),
+  });
+}
+
+export function useUploadClaimAttachment() {
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UploadClaimAttachmentInput }) =>
+      insuranceApi.uploadClaimAttachment(id, data),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Preauth Hooks
 // ---------------------------------------------------------------------------
@@ -462,6 +625,14 @@ export function useInsuranceRemittance(id: number | undefined) {
     queryKey: insuranceQueryKeys.remittanceDetail(id!),
     queryFn: () => insuranceApi.getRemittance(id!),
     enabled: !!id,
+  });
+}
+
+export function useHealthcloudSyncStatus(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: insuranceQueryKeys.healthcloudSyncStatus(),
+    queryFn: () => insuranceApi.getHealthcloudSyncStatus(),
+    enabled: options?.enabled ?? true,
   });
 }
 

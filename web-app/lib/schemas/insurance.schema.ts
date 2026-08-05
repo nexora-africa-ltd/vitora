@@ -231,14 +231,101 @@ export const InsuranceProviderConfigSchema = z.object({
   accreditation_status: AccreditationStatusSchema,
   accreditation_number: z.string(),
   api_base_url: z.string(),
+  auth_base_url: z.string(),
+  provider_edi_base_url: z.string(),
+  provider_is_base_url: z.string(),
   api_auth_type: ApiAuthTypeSchema,
   api_enabled: z.boolean(),
+  healthcloud_enabled: z.boolean(),
+  payer_slade_code: z.number().nullable(),
+  require_visit_authorization: z.boolean(),
+  require_balance_reservation: z.boolean(),
   max_claim_amount: z.string().nullable(),
   submission_format: SubmissionFormatSchema,
   is_contract_active: z.boolean(),
   notes: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
+});
+
+export const InsuranceVisitAuthorizationStatusSchema = z.enum([
+  'pending',
+  'otp_requested',
+  'authorized',
+  'validated',
+  'failed',
+  'expired',
+]);
+
+export const InsuranceVisitAuthorizationSchema = z.object({
+  id: z.number(),
+  enrollment: z.number(),
+  provider_config: z.number(),
+  patient: z.number(),
+  patient_name: z.string(),
+  encounter: z.number().nullable(),
+  member_number: z.string(),
+  payer_slade_code: z.number().nullable(),
+  benefit_type: z.string(),
+  benefit_code: z.string(),
+  policy_number: z.string(),
+  beneficiary_id: z.number().nullable(),
+  beneficiary_contact_id: z.number().nullable(),
+  beneficiary_contact_value: z.string(),
+  factors: z.array(z.string()),
+  status: InsuranceVisitAuthorizationStatusSchema,
+  auth_token: z.string(),
+  authorization_guid: z.string(),
+  authorization_date: z.string().nullable(),
+  auth_expiry: z.string().nullable(),
+  auth_status: z.string(),
+  last_error: z.string(),
+  raw_payload: z.record(z.string(), z.unknown()),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const VerifyViaHealthcloudResultSchema = z.object({
+  eligible: z.boolean(),
+  status: z.string(),
+  plan_name: z.string(),
+  member_number: z.string(),
+  annual_balance: z.string().nullable(),
+  copay_percent: z.string().nullable(),
+  message: z.string(),
+  raw_response: z.record(z.string(), z.unknown()),
+});
+
+export const SladeDefaultsSeedResultSchema = z.object({
+  created_providers: z.number(),
+  updated_providers: z.number(),
+  created_configs: z.number(),
+  updated_configs: z.number(),
+});
+
+export const HealthcloudReserveBalanceResultSchema = z.object({
+  id: z.number(),
+  reservation_guid: z.string(),
+  status: z.string(),
+  invoice_number: z.string(),
+  amount: z.string(),
+});
+
+export const HealthcloudSyncStatusSchema = z.object({
+  facility_id: z.number(),
+  sync: z.object({
+    pending: z.number(),
+    failed: z.number(),
+    success: z.number(),
+    total: z.number(),
+  }),
+  remittances: z.object({
+    total: z.number(),
+    received: z.number(),
+    partial: z.number(),
+    reconciled: z.number(),
+    disputed: z.number(),
+  }),
 });
 
 export const InsuranceClaimItemSchema = z.object({
@@ -417,3 +504,4 @@ export const PaginatedInsurancePreauthsSchema = paginated(InsurancePreauthSchema
 export const PaginatedInsuranceRemittancesSchema = paginated(InsuranceRemittanceSchema);
 export const PaginatedPayerTariffsSchema = paginated(PayerTariffSchema);
 export const PaginatedProviderConfigsSchema = paginated(InsuranceProviderConfigSchema);
+export const PaginatedInsuranceVisitAuthorizationsSchema = paginated(InsuranceVisitAuthorizationSchema);

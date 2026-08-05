@@ -11,10 +11,11 @@ import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Card, CardContent } from '@/components/ui/card';
-import { useInsuranceProviders } from '@/lib/hooks/use-insurance';
+import { useInsuranceProviders, useSeedSladeDefaults } from '@/lib/hooks/use-insurance';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import type { InsuranceProvider, InsuranceProviderStatus } from '@/lib/types/insurance';
 import { PROVIDER_TYPE_LABELS } from '@/lib/types/insurance';
+import { useToast } from '@/lib/hooks/use-toast';
 
 const STATUS_COLORS: Record<InsuranceProviderStatus, string> = {
   active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
@@ -24,9 +25,11 @@ const STATUS_COLORS: Record<InsuranceProviderStatus, string> = {
 
 export default function InsuranceProvidersPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 300);
+  const seedSladeDefaults = useSeedSladeDefaults();
 
   const { data, isLoading, isFetching, refetch } = useInsuranceProviders({
     search: debouncedSearch || undefined,
@@ -36,6 +39,20 @@ export default function InsuranceProvidersPage() {
   const providers = data?.results ?? [];
   const totalCount = data?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / 20));
+  const showSeedDefaults = !isLoading && providers.length === 0 && !debouncedSearch;
+
+  const handleSeedDefaults = async () => {
+    try {
+      const result = await seedSladeDefaults.mutateAsync();
+      toast({
+        title: 'Slade defaults seeded',
+        description: `Providers +${result.created_providers}, configs +${result.created_configs}`,
+      });
+      await refetch();
+    } catch {
+      toast({ title: 'Error', description: 'Failed to seed Slade defaults.', variant: 'destructive' });
+    }
+  };
 
   const handleRowClick = (provider: InsuranceProvider) => {
     router.push(`/insurance/providers/${provider.id}`);
@@ -65,6 +82,16 @@ export default function InsuranceProvidersPage() {
               className="pl-9"
             />
           </div>
+          {showSeedDefaults && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void handleSeedDefaults()}
+              disabled={seedSladeDefaults.isPending}
+            >
+              {seedSladeDefaults.isPending ? 'Seeding...' : 'Seed Slade Defaults'}
+            </Button>
+          )}
         </div>
 
         <ResponsiveTable<InsuranceProvider>

@@ -204,3 +204,83 @@ def check_expiring_enrollments() -> str:
     result = f"Alerted {alerted} expiring enrollment(s)"
     logger.info(result)
     return result
+
+
+@shared_task(name="hmis.apps.insurance.tasks.poll_claim_remittance_statuses")
+def poll_claim_remittance_statuses() -> str:
+    """Poll claim-level remittance statuses from HealthCloud and update claims."""
+    from hmis.apps.insurance.models import InsuranceClaim, InsuranceProviderConfig
+    from hmis.apps.insurance.services.insurance_services import HealthCloudWorkflowService
+
+    claims = InsuranceClaim.objects.filter(
+        external_claim_id__gt="",
+        provider__api_integration_enabled=True,
+        status__in=[
+            InsuranceClaim.Status.SUBMITTED,
+            InsuranceClaim.Status.ACKNOWLEDGED,
+            InsuranceClaim.Status.APPROVED,
+            InsuranceClaim.Status.PARTIALLY_APPROVED,
+        ],
+    ).select_related("provider", "facility")
+
+    service = HealthCloudWorkflowService()
+    polled = 0
+    updated = 0
+    errors = 0
+
+    for claim in claims:
+        try:
+            if not InsuranceProviderConfig.objects.filter(
+                provider=claim.provider,
+                facility=claim.facility,
+                api_enabled=True,
+                healthcloud_enabled=True,
+            ).exists():
+                continue
+
+            old_paid = claim.paid_amount
+            old_status = claim.status
+            service.get_claim_remittance(
+                claim=claim,
+                facility=claim.facility,
+                organization=claim.organization,
+            )
+            polled += 1
+            if claim.paid_amount != old_paid or claim.status != old_status:
+                updated += 1
+        except Exception:
+            errors += 1
+            logger.exception("Failed remittance poll for claim %s", claim.claim_number)
+
+    result = f"Polled {polled} remittance(s), {updated} updated, {errors} error(s)"
+    logger.info(result)
+    return result
+
+
+@shared_task(name="hmis.apps.insurance.tasks.sweep_healthcloud_authorizations_and_reservations")
+def sweep_healthcloud_authorizations_and_reservations() -> str:
+    """Mark expired HealthCloud authorizations and reservations."""
+    from django.utils import timezone
+
+    from hmis.apps.insurance.models import InsuranceBalanceReservation, InsuranceVisitAuthorization
+
+    now = timezone.now()
+
+    auth_qs = InsuranceVisitAuthorization.objects.filter(
+        status__in=[
+            InsuranceVisitAuthorization.Status.AUTHORIZED,
+            InsuranceVisitAuthorization.Status.VALIDATED,
+        ],
+        auth_expiry__lt=now,
+    )
+    res_qs = InsuranceBalanceReservation.objects.filter(
+        status=InsuranceBalanceReservation.Status.RESERVED,
+        expiry_date__lt=now,
+    )
+
+    auth_updated = auth_qs.update(status=InsuranceVisitAuthorization.Status.EXPIRED, updated_at=now)
+    res_updated = res_qs.update(status=InsuranceBalanceReservation.Status.EXPIRED, updated_at=now)
+
+    result = f"Expired {auth_updated} authorization(s) and {res_updated} reservation(s)"
+    logger.info(result)
+    return result

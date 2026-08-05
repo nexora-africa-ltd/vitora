@@ -11,10 +11,14 @@ import {
   InsurancePreauthSchema,
   InsuranceProviderConfigSchema,
   InsuranceProviderSchema,
+  InsuranceVisitAuthorizationSchema,
   InsuranceRemittanceSchema,
+  HealthcloudReserveBalanceResultSchema,
+  HealthcloudSyncStatusSchema,
   PaginatedInsuranceClaimsSchema,
   PaginatedInsurancePlansSchema,
   PaginatedInsurancePreauthsSchema,
+  PaginatedInsuranceVisitAuthorizationsSchema,
   PaginatedInsuranceRemittancesSchema,
   PaginatedPatientInsurancesSchema,
   PaginatedPayerTariffsSchema,
@@ -22,8 +26,12 @@ import {
   PaginatedInsuranceProvidersSchema,
   PatientInsuranceSchema,
   PayerTariffSchema,
+  VerifyViaHealthcloudResultSchema,
+  SladeDefaultsSeedResultSchema,
 } from '@/lib/schemas/insurance.schema';
 import type {
+  HealthcloudReserveBalanceResult,
+  HealthcloudSyncStatus,
   InsuranceClaim,
   InsuranceClaimCreateInput,
   InsuranceClaimFilters,
@@ -35,6 +43,7 @@ import type {
   InsuranceProvider,
   InsuranceProviderConfig,
   InsuranceProviderCreateInput,
+  InsuranceVisitAuthorization,
   InsuranceRemittance,
   InsuranceRemittanceCreateInput,
   PaginatedInsuranceResponse,
@@ -42,6 +51,16 @@ import type {
   PatientInsuranceCreateInput,
   PayerTariff,
   PayerTariffCreateInput,
+  RequestOTPInput,
+  ReserveBalanceInput,
+  StartVisitInput,
+  SubmitCreditNoteInput,
+  SubmitInvoiceInput,
+  UploadClaimAttachmentInput,
+  ValidateAuthorizationInput,
+  VerifyEnrollmentPreviewInput,
+  VerifyViaHealthcloudResult,
+  SladeDefaultsSeedResult,
 } from '@/lib/types/insurance';
 
 const BASE = '/api/insurance';
@@ -169,6 +188,49 @@ async function deleteEnrollment(id: number): Promise<void> {
   await apiClient.delete(`${BASE}/enrollments/${id}/`);
 }
 
+async function verifyEnrollmentViaHealthcloud(id: number): Promise<VerifyViaHealthcloudResult> {
+  const response = await apiClient.post(`${BASE}/enrollments/${id}/verify-via-healthcloud/`);
+  return parseResponse(VerifyViaHealthcloudResultSchema, response.data, {
+    context: 'insuranceApi.verifyEnrollmentViaHealthcloud',
+  });
+}
+
+async function verifyEnrollmentViaHealthcloudPreview(
+  data: VerifyEnrollmentPreviewInput
+): Promise<VerifyViaHealthcloudResult> {
+  const response = await apiClient.post(`${BASE}/enrollments/verify-via-healthcloud-preview/`, data);
+  return parseResponse(VerifyViaHealthcloudResultSchema, response.data, {
+    context: 'insuranceApi.verifyEnrollmentViaHealthcloudPreview',
+  });
+}
+
+async function seedSladeDefaults(): Promise<SladeDefaultsSeedResult> {
+  const response = await apiClient.post(`${BASE}/providers/seed-slade-defaults/`);
+  return parseResponse(SladeDefaultsSeedResultSchema, response.data, {
+    context: 'insuranceApi.seedSladeDefaults',
+  });
+}
+
+async function requestEnrollmentOtp(
+  id: number,
+  data: RequestOTPInput
+): Promise<InsuranceVisitAuthorization> {
+  const response = await apiClient.post(`${BASE}/enrollments/${id}/request-otp/`, data);
+  return parseResponse(InsuranceVisitAuthorizationSchema, response.data, {
+    context: 'insuranceApi.requestEnrollmentOtp',
+  });
+}
+
+async function startEnrollmentVisit(
+  id: number,
+  data: StartVisitInput
+): Promise<InsuranceVisitAuthorization> {
+  const response = await apiClient.post(`${BASE}/enrollments/${id}/start-visit/`, data);
+  return parseResponse(InsuranceVisitAuthorizationSchema, response.data, {
+    context: 'insuranceApi.startEnrollmentVisit',
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Provider Configs (per-facility)
 // ---------------------------------------------------------------------------
@@ -206,6 +268,34 @@ async function updateProviderConfig(
   return parseResponse(InsuranceProviderConfigSchema, response.data, {
     context: 'insuranceApi.updateProviderConfig',
   });
+}
+
+// ---------------------------------------------------------------------------
+// HealthCloud Visit Authorizations
+// ---------------------------------------------------------------------------
+
+async function listVisitAuthorizations(
+  params?: Record<string, string | number | undefined>
+): Promise<PaginatedInsuranceResponse<InsuranceVisitAuthorization>> {
+  const response = await apiClient.get(`${BASE}/authorizations/`, { params });
+  return parseResponse(PaginatedInsuranceVisitAuthorizationsSchema, response.data, {
+    context: 'insuranceApi.listVisitAuthorizations',
+  });
+}
+
+async function getVisitAuthorization(id: number): Promise<InsuranceVisitAuthorization> {
+  const response = await apiClient.get(`${BASE}/authorizations/${id}/`);
+  return parseResponse(InsuranceVisitAuthorizationSchema, response.data, {
+    context: 'insuranceApi.getVisitAuthorization',
+  });
+}
+
+async function validateVisitAuthorization(
+  id: number,
+  data: ValidateAuthorizationInput
+): Promise<Record<string, unknown>> {
+  const response = await apiClient.post(`${BASE}/authorizations/${id}/validate-token/`, data);
+  return response.data as Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -293,6 +383,50 @@ async function cancelClaim(id: number, reason?: string): Promise<InsuranceClaim>
   return parseResponse(InsuranceClaimSchema, response.data, {
     context: 'insuranceApi.cancelClaim',
   });
+}
+
+async function reserveClaimBalance(
+  id: number,
+  data: ReserveBalanceInput
+): Promise<HealthcloudReserveBalanceResult> {
+  const response = await apiClient.post(`${BASE}/claims/${id}/reserve-balance/`, data);
+  return parseResponse(HealthcloudReserveBalanceResultSchema, response.data, {
+    context: 'insuranceApi.reserveClaimBalance',
+  });
+}
+
+async function submitClaimToHealthcloud(id: number): Promise<Record<string, unknown>> {
+  const response = await apiClient.post(`${BASE}/claims/${id}/submit-to-healthcloud/`);
+  return response.data as Record<string, unknown>;
+}
+
+async function submitClaimInvoice(
+  id: number,
+  data: SubmitInvoiceInput
+): Promise<Record<string, unknown>> {
+  const response = await apiClient.post(`${BASE}/claims/${id}/submit-invoice/`, data);
+  return response.data as Record<string, unknown>;
+}
+
+async function submitClaimCreditNote(
+  id: number,
+  data: SubmitCreditNoteInput
+): Promise<Record<string, unknown>> {
+  const response = await apiClient.post(`${BASE}/claims/${id}/submit-credit-note/`, data);
+  return response.data as Record<string, unknown>;
+}
+
+async function uploadClaimAttachment(
+  id: number,
+  data: UploadClaimAttachmentInput
+): Promise<Record<string, unknown>> {
+  const response = await apiClient.post(`${BASE}/claims/${id}/upload-attachment/`, data);
+  return response.data as Record<string, unknown>;
+}
+
+async function checkClaimRemittance(id: number): Promise<Record<string, unknown>> {
+  const response = await apiClient.post(`${BASE}/claims/${id}/check-remittance/`);
+  return response.data as Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -395,6 +529,13 @@ async function reconcileRemittance(id: number): Promise<InsuranceRemittance> {
   });
 }
 
+async function getHealthcloudSyncStatus(): Promise<HealthcloudSyncStatus> {
+  const response = await apiClient.get(`${BASE}/remittances/healthcloud-sync-status/`);
+  return parseResponse(HealthcloudSyncStatusSchema, response.data, {
+    context: 'insuranceApi.getHealthcloudSyncStatus',
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Tariffs
 // ---------------------------------------------------------------------------
@@ -461,12 +602,22 @@ export const insuranceApi = {
   createEnrollment,
   updateEnrollment,
   deleteEnrollment,
+  verifyEnrollmentViaHealthcloud,
+  verifyEnrollmentViaHealthcloudPreview,
+  seedSladeDefaults,
+  requestEnrollmentOtp,
+  startEnrollmentVisit,
 
   // Provider configs
   listProviderConfigs,
   getProviderConfig,
   createProviderConfig,
   updateProviderConfig,
+
+  // HealthCloud authorizations
+  listVisitAuthorizations,
+  getVisitAuthorization,
+  validateVisitAuthorization,
 
   // Claims
   listClaims,
@@ -480,6 +631,12 @@ export const insuranceApi = {
   markClaimPaid,
   appealClaim,
   cancelClaim,
+  reserveClaimBalance,
+  submitClaimToHealthcloud,
+  submitClaimInvoice,
+  submitClaimCreditNote,
+  uploadClaimAttachment,
+  checkClaimRemittance,
 
   // Preauths
   listPreauths,
@@ -495,6 +652,7 @@ export const insuranceApi = {
   getRemittance,
   createRemittance,
   reconcileRemittance,
+  getHealthcloudSyncStatus,
 
   // Tariffs
   listTariffs,

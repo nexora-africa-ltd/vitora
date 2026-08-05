@@ -17,7 +17,7 @@ subclasses and are overridden as API specs become available.
 from __future__ import annotations
 
 import logging
-from datetime import date
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
@@ -33,6 +33,7 @@ from .base_adapter import InsuranceApiAdapter
 from .client import InsuranceHttpClient
 from .errors import InsuranceNotConfiguredError
 from .results import ClaimResult, EligibilityResult, PreauthResult, RemittanceResult, TariffEntry
+from .slade_auth import SladeAuthService
 
 logger = logging.getLogger(__name__)
 
@@ -311,6 +312,267 @@ class BritamAdapter(ManualAdapter):
     """Britam Insurance — stub, overrides pending API spec."""
 
 
+class Slade360Adapter(InsuranceApiAdapter):
+    """HealthCloud by Slade360 adapter.
+
+    Implements core operations required for private-insurance execution:
+    eligibility, claim submit, remittance fetch, plus HealthCloud-specific
+    helpers for OTP, visit authorization, reservations, invoice and credit notes.
+    """
+
+    def __init__(self, config: InsuranceProviderConfig) -> None:
+        super().__init__(config)
+        self.client = InsuranceHttpClient.from_config(config)
+        self.auth_service = SladeAuthService(config)
+        self.payer_slade_code = config.payer_slade_code
+
+    def verify_eligibility(self, enrollment: PatientInsurance) -> EligibilityResult:
+        if not self.payer_slade_code:
+            raise InsuranceNotConfiguredError(
+                "payer_slade_code is required for HealthCloud eligibility calls",
+                provider_code=getattr(self.config.provider, "code", None),
+            )
+
+        response = self.client.get(
+            "/beneficiaries/member_eligibility/",
+            params={
+                "member_number": enrollment.member_number,
+                "payer_slade_code": self.payer_slade_code,
+            },
+            headers=self.auth_service.get_auth_headers(),
+            host="provider_edi",
+        )
+        data: dict[str, Any] = response.json or {}
+        member = data.get("member", {}) if isinstance(data.get("member"), dict) else {}
+        cover = data.get("cover", {}) if isinstance(data.get("cover"), dict) else {}
+        benefits = data.get("benefits", []) if isinstance(data.get("benefits"), list) else []
+
+        eligible = bool(member.get("isActive", False)) and bool(member.get("isEnrolled", False))
+        status = str(cover.get("status") or "")
+        plan_name = str(cover.get("schemeName") or "")
+
+        balance = None
+        copay = None
+        if benefits:
+            first = benefits[0] if isinstance(benefits[0], dict) else {}
+            if first.get("availableBalance") is not None:
+                balance = Decimal(str(first.get("availableBalance")))
+            if first.get("copayType") == "PERCENTAGE" and first.get("copayValue") is not None:
+                copay = Decimal(str(first.get("copayValue")))
+
+        return EligibilityResult(
+            eligible=eligible,
+            member_number=str(member.get("beneficiaryCode") or enrollment.member_number),
+            member_name=str(member.get("names") or ""),
+            plan_name=plan_name,
+            status=status,
+            copay_percent=copay,
+            annual_balance=balance,
+            valid_from=_parse_date(cover.get("validFrom")),
+            valid_to=_parse_date(cover.get("validTo")),
+            message="Eligibility retrieved from HealthCloud",
+            raw_response=data,
+        )
+
+    def submit_preauth(self, preauth: InsurancePreauth) -> PreauthResult:  # noqa: ARG002
+        return PreauthResult(
+            success=False,
+            message="HealthCloud preauthorization endpoint is not available in current public API set.",
+        )
+
+    def check_preauth_status(self, preauth: InsurancePreauth) -> PreauthResult:
+        return PreauthResult(
+            success=True,
+            external_preauth_id=preauth.external_preauth_id or "",
+            status=preauth.status,
+            message="No HealthCloud preauth status endpoint configured.",
+        )
+
+    def submit_claim(self, claim: InsuranceClaim) -> ClaimResult:
+        member_number = ""
+        if claim.patient_insurance:
+            member_number = claim.patient_insurance.member_number
+
+        # HealthCloud spec: for Slade-authorized visits, use auth_token as member_number.
+        try:
+            from hmis.apps.insurance.models import InsuranceVisitAuthorization
+
+            authorization = (
+                InsuranceVisitAuthorization.objects.filter(
+                    facility=self.config.facility,
+                    patient=claim.patient,
+                    status__in=[
+                        InsuranceVisitAuthorization.Status.AUTHORIZED,
+                        InsuranceVisitAuthorization.Status.VALIDATED,
+                    ],
+                )
+                .exclude(auth_token="")
+                .order_by("-updated_at", "-created_at")
+                .first()
+            )
+            if authorization and authorization.auth_token:
+                member_number = authorization.auth_token
+        except Exception:  # pragma: no cover - best effort fallback
+            logger.exception("Failed resolving HealthCloud auth token for claim payload")
+
+        visit_start_dt = datetime.combine(claim.service_date, time.min, tzinfo=UTC)
+        visit_end_source = claim.discharge_date or claim.service_date
+        visit_end_dt = datetime.combine(visit_end_source, time.max, tzinfo=UTC)
+        payload = {
+            "payer_code": self.payer_slade_code,
+            "payer_name": claim.provider.name if claim.provider else "",
+            "patient_name": f"{claim.patient.first_name} {claim.patient.last_name}"
+            if claim.patient
+            else "",
+            "member_number": member_number,
+            "scheme_name": claim.patient_insurance.plan.name
+            if claim.patient_insurance and claim.patient_insurance.plan
+            else "",
+            "visit_number": claim.encounter.id if claim.encounter_id else claim.claim_number,
+            "visit_start": visit_start_dt.isoformat().replace("+00:00", "Z"),
+            "visit_end": visit_end_dt.isoformat().replace("+00:00", "Z"),
+            "icd10_codes": [
+                {"code": code, "name": code} for code in (claim.diagnosis_codes or []) if code
+            ],
+        }
+        response = self.client.post(
+            "/claims/",
+            json_body=payload,
+            headers=self.auth_service.get_auth_headers(),
+            host="provider_is",
+        )
+        data: dict[str, Any] = response.json or {}
+        return ClaimResult(
+            success=True,
+            external_claim_id=str(data.get("id") or data.get("claim_id") or ""),
+            status=str(data.get("workflow_state") or data.get("status") or "SUBMITTED"),
+            message="Claim submitted to HealthCloud",
+            raw_response=data,
+        )
+
+    def check_claim_status(self, claim: InsuranceClaim) -> ClaimResult:
+        return ClaimResult(
+            success=True,
+            external_claim_id=claim.external_claim_id or "",
+            status=claim.status,
+            message="HealthCloud claim status polling is not yet wired.",
+        )
+
+    def fetch_remittances(self, date_from: date, date_to: date) -> list[RemittanceResult]:
+        response = self.client.get(
+            "/remittances/",
+            params={"date_from": date_from.isoformat(), "date_to": date_to.isoformat()},
+            headers=self.auth_service.get_auth_headers(),
+            host="provider_edi",
+        )
+        body = response.json or []
+        out: list[RemittanceResult] = []
+        if not isinstance(body, list):
+            return out
+        for row in body:
+            if not isinstance(row, dict):
+                continue
+            out.append(
+                RemittanceResult(
+                    success=True,
+                    remittance_number=str(row.get("id") or row.get("provider") or ""),
+                    remittance_date=date_to,
+                    total_amount=Decimal(str(row.get("claims_amount") or 0)),
+                    payment_reference=str(row.get("payer") or ""),
+                    entries=[],
+                    raw_response=row,
+                )
+            )
+        return out
+
+    def get_tariff_schedule(self) -> list[TariffEntry]:
+        return []
+
+    # ----- HealthCloud-specific workflow helpers (Sprint 1 plumbing) -----
+
+    def request_otp(self, contact_id: int) -> dict[str, Any]:
+        response = self.client.post(
+            f"/beneficiaries/beneficiary_contacts/{contact_id}/send_otp/",
+            headers=self.auth_service.get_auth_headers(),
+            host="provider_edi",
+        )
+        return response.json or {}
+
+    def start_visit(self, payload: dict[str, Any]) -> dict[str, Any]:
+        response = self.client.post(
+            "/authorizations/start_visit/",
+            json_body=payload,
+            headers=self.auth_service.get_auth_headers(),
+            host="provider_is",
+        )
+        return response.json or {}
+
+    def validate_authorization(self, payload: dict[str, Any]) -> dict[str, Any]:
+        response = self.client.post(
+            "/authorizations/validate_authorization_token/",
+            json_body=payload,
+            headers=self.auth_service.get_auth_headers(),
+            host="provider_is",
+        )
+        return response.json or {}
+
+    def reserve_balance(self, payload: dict[str, Any]) -> dict[str, Any]:
+        response = self.client.post(
+            "/balances/reservations/reserve_from_authorization/",
+            json_body=payload,
+            headers=self.auth_service.get_auth_headers(),
+            host="provider_edi",
+        )
+        return response.json or {}
+
+    def submit_invoice(self, payload: dict[str, Any]) -> dict[str, Any]:
+        response = self.client.post(
+            "/invoices/",
+            json_body=payload,
+            headers=self.auth_service.get_auth_headers(),
+            host="provider_is",
+        )
+        return response.json or {}
+
+    def submit_credit_note(self, payload: dict[str, Any]) -> dict[str, Any]:
+        payload = dict(payload)
+        payload.setdefault("invoice_type", "CREDIT_NOTE")
+        response = self.client.post(
+            "/invoices",
+            json_body=payload,
+            headers=self.auth_service.get_auth_headers(),
+            host="provider_is",
+        )
+        return response.json or {}
+
+    def upload_claim_attachment(self, payload: dict[str, Any]) -> dict[str, Any]:
+        response = self.client.post(
+            "/claim_attachments/upload_attachment/",
+            json_body=payload,
+            headers=self.auth_service.get_auth_headers(),
+            host="provider_is",
+        )
+        return response.json or {}
+
+    def upload_invoice_attachment(self, payload: dict[str, Any]) -> dict[str, Any]:
+        response = self.client.post(
+            "/invoice_attachments/upload_attachment/",
+            json_body=payload,
+            headers=self.auth_service.get_auth_headers(),
+            host="provider_is",
+        )
+        return response.json or {}
+
+    def get_claim_remittance(self, claim_id: int | str) -> dict[str, Any]:
+        response = self.client.get(
+            "/remittances/claim_remittance/",
+            params={"claim_id": claim_id},
+            headers=self.auth_service.get_auth_headers(),
+            host="provider_edi",
+        )
+        return response.json or {}
+
+
 # ---------------------------------------------------------------------------
 # Adapter registry
 # ---------------------------------------------------------------------------
@@ -318,6 +580,7 @@ class BritamAdapter(ManualAdapter):
 INSURANCE_ADAPTERS: dict[str, type[InsuranceApiAdapter]] = {
     "manual": ManualAdapter,
     "smart_claims": GenericSmartClaimsAdapter,
+    "slade360": Slade360Adapter,
     "jubilee": JubileeAdapter,
     "aar": AARAdapter,
     "cic": CICAdapter,
@@ -329,10 +592,14 @@ def get_adapter(config: InsuranceProviderConfig) -> InsuranceApiAdapter:
     """Resolve the correct adapter for a provider config.
 
     Lookup priority:
-    1. Provider code in registry → named adapter
-    2. API enabled → GenericSmartClaimsAdapter
-    3. Fallback → ManualAdapter
+    1. HealthCloud enabled → Slade360Adapter
+    2. Provider code in registry → named adapter
+    3. API enabled → GenericSmartClaimsAdapter
+    4. Fallback → ManualAdapter
     """
+    if getattr(config, "healthcloud_enabled", False):
+        return Slade360Adapter(config)
+
     provider_code = config.provider.code.lower() if config.provider and config.provider.code else ""
     if provider_code in INSURANCE_ADAPTERS:
         return INSURANCE_ADAPTERS[provider_code](config)

@@ -295,8 +295,15 @@ export interface InsuranceProviderConfig {
   accreditation_status: AccreditationStatus;
   accreditation_number: string;
   api_base_url: string;
+  auth_base_url: string;
+  provider_edi_base_url: string;
+  provider_is_base_url: string;
   api_auth_type: ApiAuthType;
   api_enabled: boolean;
+  healthcloud_enabled: boolean;
+  payer_slade_code: number | null;
+  require_visit_authorization: boolean;
+  require_balance_reservation: boolean;
   max_claim_amount: string | null;
   submission_format: SubmissionFormat;
   is_contract_active: boolean;
@@ -320,9 +327,160 @@ export interface InsuranceProviderConfigCreateInput {
   api_password?: string;
   api_token?: string;
   api_enabled?: boolean;
+  auth_base_url?: string;
+  provider_edi_base_url?: string;
+  provider_is_base_url?: string;
+  healthcloud_enabled?: boolean;
+  payer_slade_code?: number | null;
+  require_visit_authorization?: boolean;
+  require_balance_reservation?: boolean;
   max_claim_amount?: string | null;
   submission_format?: SubmissionFormat;
   notes?: string;
+}
+
+export type InsuranceVisitAuthorizationStatus =
+  | 'pending'
+  | 'otp_requested'
+  | 'authorized'
+  | 'validated'
+  | 'failed'
+  | 'expired';
+
+export interface InsuranceVisitAuthorization {
+  id: number;
+  enrollment: number;
+  provider_config: number;
+  patient: number;
+  patient_name: string;
+  encounter: number | null;
+  member_number: string;
+  payer_slade_code: number | null;
+  benefit_type: string;
+  benefit_code: string;
+  policy_number: string;
+  beneficiary_id: number | null;
+  beneficiary_contact_id: number | null;
+  beneficiary_contact_value: string;
+  factors: string[];
+  status: InsuranceVisitAuthorizationStatus;
+  auth_token: string;
+  authorization_guid: string;
+  authorization_date: string | null;
+  auth_expiry: string | null;
+  auth_status: string;
+  last_error: string;
+  raw_payload: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RequestOTPInput {
+  contact_id: number;
+}
+
+export interface StartVisitInput {
+  beneficiary_id: number;
+  benefit_type: string;
+  benefit_code: string;
+  policy_number: string;
+  policy_effective_date: string;
+  otp: string;
+  beneficiary_contact: number;
+  factors?: string[];
+  scheme_name?: string;
+  scheme_code?: string;
+  encounter?: number;
+}
+
+export interface ValidateAuthorizationInput {
+  first_name: string;
+  last_name: string;
+  other_names?: string;
+  member_number: string;
+  auth_token: string;
+  visit_type?: 'OUTPATIENT' | 'INPATIENT';
+  scheme_code?: string;
+  scheme_name?: string;
+  payer_code?: string;
+}
+
+export interface ReserveBalanceInput {
+  authorization_id: number;
+  amount: string;
+  invoice_number: string;
+}
+
+export interface SubmitInvoiceInput {
+  claim?: string;
+  invoice_number: string;
+  invoice_date: string;
+  copays?: Array<Record<string, unknown>>;
+  lines: Array<Record<string, unknown>>;
+}
+
+export interface SubmitCreditNoteInput {
+  claim?: string;
+  invoice_number: string;
+  invoice_date: string;
+  lines: Array<Record<string, unknown>>;
+}
+
+export interface UploadClaimAttachmentInput {
+  claim?: string;
+  attachment: string;
+  attachment_type: string;
+  description?: string;
+}
+
+export interface VerifyViaHealthcloudResult {
+  eligible: boolean;
+  status: string;
+  plan_name: string;
+  member_number: string;
+  annual_balance: string | null;
+  copay_percent: string | null;
+  message: string;
+  raw_response: Record<string, unknown>;
+}
+
+export interface VerifyEnrollmentPreviewInput {
+  plan?: number;
+  provider?: number;
+  member_number: string;
+  policy_number?: string;
+}
+
+export interface SladeDefaultsSeedResult {
+  created_providers: number;
+  updated_providers: number;
+  created_configs: number;
+  updated_configs: number;
+}
+
+export interface HealthcloudReserveBalanceResult {
+  id: number;
+  reservation_guid: string;
+  status: string;
+  invoice_number: string;
+  amount: string;
+}
+
+export interface HealthcloudSyncStatus {
+  facility_id: number;
+  sync: {
+    pending: number;
+    failed: number;
+    success: number;
+    total: number;
+  };
+  remittances: {
+    total: number;
+    received: number;
+    partial: number;
+    reconciled: number;
+    disputed: number;
+  };
 }
 
 export interface InsuranceClaimItem {
