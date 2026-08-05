@@ -1,14 +1,15 @@
 {
-	"folders": [
-		{
-			"path": "."
-		},
-		{
-			"name": "vitora-marketing",
-			"path": "vitora-marketing"
-		}
-	],
-	"settings": {
-		"sarif-viewer.connectToGithubCodeScanning": "off"
-	}
+  "folders": [
+    {
+      "path": ".",
+    },
+    {
+      "name": "vitora-marketing",
+      "path": "vitora-marketing",
+    },
+  ],
+  "settings": {
+    "sarif-viewer.connectToGithubCodeScanning": "off",
+    "postman.settings.dotenv-detection-notification-visibility": false,
+  },
 }

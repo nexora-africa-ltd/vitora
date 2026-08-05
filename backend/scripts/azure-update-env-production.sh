@@ -58,6 +58,7 @@ declare -A SECRETS=(
   ["sha-username"]="${SHA_USERNAME:-}"
   ["sha-password"]="${SHA_PASSWORD:-}"
   ["sha-consumer-key"]="${SHA_CONSUMER_KEY:-}"
+  ["sha-client-id"]="${SHA_CLIENT_ID:-}"
   ["sha-client-secret"]="${SHA_CLIENT_SECRET:-}"
   ["sha-encrypted-pin"]="${SHA_ENCRYPTED_PIN:-}"
   ["mpesa-consumer-key"]="${MPESA_CONSUMER_KEY:-}"
@@ -140,7 +141,7 @@ az containerapp update \
     "SHA_AUTH_BASE_URL=${SHA_AUTH_BASE_URL:-}" \
     "SHA_AUTH_TOKEN_ENDPOINT=${SHA_AUTH_TOKEN_ENDPOINT:-}" \
     "SHA_CONSUMER_KEY=secretref:sha-consumer-key" \
-    "SHA_CLIENT_ID=${SHA_CLIENT_ID:-}" \
+    "SHA_CLIENT_ID=secretref:sha-client-id" \
     "SHA_CLIENT_SECRET=secretref:sha-client-secret" \
     "SHA_ENCRYPTED_PIN=secretref:sha-encrypted-pin" \
     "SHA_USERNAME=secretref:sha-username" \

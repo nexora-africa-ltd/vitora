@@ -101,7 +101,7 @@ jobs:
             SHA_USERNAME=secretref:sha-username
             SHA_PASSWORD=secretref:sha-password
             SHA_CONSUMER_KEY=secretref:sha-consumer-key
-            SHA_CLIENT_ID=${{ vars.SHA_CLIENT_ID || 'vitora' }}
+            SHA_CLIENT_ID=secretref:sha-client-id
             SHA_CLIENT_SECRET=secretref:sha-client-secret
             SHA_ENCRYPTED_PIN=secretref:sha-encrypted-pin
             SHA_AGENT=DHABP05113

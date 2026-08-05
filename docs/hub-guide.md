@@ -3,7 +3,7 @@
 > **Current Version**: hub-v0.6.34
 > **Platforms**: Linux (Debian/Ubuntu, Raspberry Pi), Windows 10/11+
 > **Delivery Modes**: Native (systemd/NSSM service), Container (Docker Compose)
-> **Last Updated**: June 2026
+> **Last Updated**: August 2026
 
 ---
 
@@ -419,6 +419,13 @@ Restart-Service VitoraHub
 
 # Or via NSSM (more control):
 C:\VitoraHub\nssm\nssm.exe restart VitoraHub
+```
+
+If `Start-Service VitoraHub` fails immediately, verify the startup type is not `Disabled` before deeper troubleshooting:
+
+```powershell
+Get-Service VitoraHub
+sc.exe qc VitoraHub
 ```
 
 **Docker:**
@@ -870,10 +877,29 @@ cat /var/log/vitora/hub-error.log
 Get-Content C:\VitoraHub\logs\hub-stderr.log -Tail 50
 ```
 
+**Windows: service is disabled (`START_TYPE : 4`)**
+
+If PowerShell shows a generic error like `CouldNotStartService` and the service stays `Stopped`, check whether the service is disabled:
+
+```powershell
+Get-Service VitoraHub
+sc.exe qc VitoraHub
+sc.exe queryex VitoraHub
+```
+
+If `sc.exe qc` shows `START_TYPE : 4   DISABLED`, re-enable it (run as Administrator) and start again:
+
+```powershell
+Set-Service -Name VitoraHub -StartupType Automatic
+Start-Service -Name VitoraHub
+Get-Service -Name VitoraHub
+```
+
 **Common causes:**
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
+| `Start-Service` returns `CouldNotStartService` and `sc.exe qc` shows `START_TYPE : 4 DISABLED` | Service startup type is disabled | `Set-Service -Name VitoraHub -StartupType Automatic` then `Start-Service VitoraHub` |
 | `ModuleNotFoundError` | Venv corrupted or deps not installed | Re-run `pip install -r requirements-hub.txt` |
 | `OperationalError: database is locked` | Another process has the DB open | Kill stale processes: `fuser hub.sqlite3` |
 | `Address already in use` | Port 9088 occupied | `lsof -i :9088` then kill or change port |
