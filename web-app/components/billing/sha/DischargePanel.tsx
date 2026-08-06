@@ -770,6 +770,10 @@ export function DischargePanel({
   const dhaAttachmentMatched = attachmentSyncStatus?.matched ?? 0;
   const dhaAttachmentTotal = attachmentSyncStatus?.total ?? localAttachments.length;
   const dhaAttachmentsSynced = attachmentSyncStatus?.all_matched ?? localAttachments.length === 0;
+  const pendingDhaUploadAttachmentIds = useMemo(
+    () => new Set((attachmentSyncStatus?.missing ?? []).map((item) => item.attachment_id)),
+    [attachmentSyncStatus?.missing],
+  );
 
   function focusMissingDocInput(inputId: string | null) {
     if (!inputId || typeof document === 'undefined') return;
@@ -1440,6 +1444,23 @@ export function DischargePanel({
     await refetchSubmitValidation();
   }
 
+  async function deleteLocalAttachment(attachment: LocalClaimAttachment) {
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm(`Delete attachment "${attachment.name}"? This cannot be undone.`);
+      if (!confirmed) return;
+    }
+
+    setError(null);
+    try {
+      await removeAttachmentOnDhaIfMapped(attachment);
+      await shaApi.deleteClaimAttachment(claimId, attachment.id);
+      await refreshDischargePanelData();
+      onChange?.();
+    } catch (e: any) {
+      setError(e?.response?.data?.error ?? e?.message ?? 'Failed to delete attachment');
+    }
+  }
+
   const activeAttachmentUrl = toAttachmentUrl(activeAttachment?.file);
   const activeAttachmentIsImage = String(activeAttachment?.mime_type || '').startsWith('image/');
   const activeAttachmentIsPdf = String(activeAttachment?.mime_type || '').includes('pdf');
@@ -1716,18 +1737,47 @@ export function DischargePanel({
           ) : (
             <div className="space-y-2">
               {localAttachments.map((attachment) => (
-                <button
+                <div
                   key={attachment.id}
-                  type="button"
-                  className="w-full rounded border bg-background p-2 text-left hover:bg-muted/30"
-                  onClick={() => openEditAttachmentDialog(attachment)}
+                  className="rounded border bg-background p-2"
                 >
-                  <p className="text-sm font-medium">{attachment.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {attachment.attachment_type.replace(/_/g, ' ')}
-                    {attachment.original_filename ? ` • ${attachment.original_filename}` : ''}
-                  </p>
-                </button>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{attachment.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {attachment.attachment_type.replace(/_/g, ' ')}
+                        {attachment.original_filename ? ` • ${attachment.original_filename}` : ''}
+                      </p>
+                      {pendingDhaUploadAttachmentIds.has(attachment.id) ? (
+                        <p className="text-[11px] text-amber-700 dark:text-amber-300">Pending DHA upload</p>
+                      ) : null}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-[11px]"
+                        onClick={() => openEditAttachmentDialog(attachment)}
+                        disabled={attachmentCrudBusy}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        className="h-7 px-2 text-[11px]"
+                        onClick={() => {
+                          void deleteLocalAttachment(attachment);
+                        }}
+                        disabled={attachmentCrudBusy}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           )}
