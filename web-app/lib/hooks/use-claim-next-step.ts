@@ -8,6 +8,10 @@
 import { useMemo } from 'react';
 import type { Claim } from '@/lib/types/sha';
 import type { ClaimFlowInfo } from './use-claim-flow';
+import {
+  filterClaimMissingDocumentTypesByActiveInterventions,
+  toActiveInterventionCodeSet,
+} from '@/lib/sha/missing-docs';
 
 export type NextStepAction =
   | 'resubmit'
@@ -109,7 +113,13 @@ export function useClaimNextStep(
     }
 
     // 5. Missing documents → upload
-    const missing = claim.missing_document_types ?? [];
+    const activeInterventionCodes = toActiveInterventionCodeSet(
+      claim.claim_interventions?.filter((i) => i.status === 'active') ?? [],
+    );
+    const missing = filterClaimMissingDocumentTypesByActiveInterventions(
+      claim.missing_document_types ?? [],
+      { activeInterventionCodes },
+    );
     if (missing.length > 0) {
       const count = missing.reduce((sum, entry) => sum + entry.missing.length, 0);
       return {

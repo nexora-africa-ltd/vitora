@@ -21,6 +21,13 @@ import { PreVisitChecksPanel } from './PreVisitChecksPanel';
 import { InterventionSuggestionsPanel } from './InterventionSuggestionsPanel';
 import { AutoAttachDocumentsButton } from './AutoAttachDocumentsButton';
 import { shaApi } from '@/lib/api/sha';
+import {
+  filterValidationErrorsByActiveInterventions,
+  filterClaimMissingDocumentTypesByActiveInterventions,
+  parseMissingCoreAttachmentErrors,
+  parseMissingInterventionDocumentErrors,
+  toActiveInterventionCodeSet,
+} from '@/lib/sha/missing-docs';
 import { toCrId } from '@/lib/sha/ilm-parsers';
 import type { Claim } from '@/lib/types/sha';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
@@ -178,7 +185,16 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
     !claim.discharge_date &&
     !isTerminal;
 
-  const missing = claim.missing_document_types ?? [];
+  const activeInterventionCodeSet = useMemo(
+    () => toActiveInterventionCodeSet(activeInterventions),
+    [activeInterventions],
+  );
+  const missingFromClaim = useMemo(
+    () => filterClaimMissingDocumentTypesByActiveInterventions(claim.missing_document_types ?? [], {
+      activeInterventionCodes: activeInterventionCodeSet,
+    }),
+    [activeInterventionCodeSet, claim.missing_document_types],
+  );
 
   const { data: submitValidation } = useQuery({
     queryKey: ['sha-claim-validate-summary', claim.id, claim.updated_at],
@@ -189,10 +205,52 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
     refetchIntervalInBackground: false,
   });
 
-  const coreAttachmentErrors =
-    submitValidation?.errors?.filter((error) => /Missing required attachment:/i.test(error)) ?? [];
+  const filteredValidationErrors = useMemo(
+    () => filterValidationErrorsByActiveInterventions(submitValidation?.errors ?? [], {
+      activeInterventionCodes: activeInterventionCodeSet,
+    }),
+    [activeInterventionCodeSet, submitValidation?.errors],
+  );
+  const coreAttachmentErrors = useMemo(
+    () => parseMissingCoreAttachmentErrors(filteredValidationErrors).map((entry) => entry.rawError),
+    [filteredValidationErrors],
+  );
   const tariffMappingErrors =
-    submitValidation?.errors?.filter((error) => /missing SHA tariff code/i.test(error)) ?? [];
+    filteredValidationErrors.filter((error) => /missing SHA tariff code/i.test(error));
+  const missing = useMemo(() => {
+    const merged = new Map<string, { intervention_code: string; intervention_name: string; missing: string[] }>();
+
+    for (const entry of missingFromClaim) {
+      const interventionCode = entry.intervention_code?.trim().toUpperCase();
+      if (!interventionCode) continue;
+      const key = interventionCode;
+      const docs = new Set(entry.missing ?? []);
+      merged.set(key, {
+        intervention_code: interventionCode,
+        intervention_name: entry.intervention_name || interventionCode,
+        missing: Array.from(docs),
+      });
+    }
+
+    for (const parsed of parseMissingInterventionDocumentErrors(filteredValidationErrors)) {
+      const interventionCode = parsed.interventionCode;
+      const docType = parsed.documentCode;
+      const existing = merged.get(interventionCode);
+      if (!existing) {
+        merged.set(interventionCode, {
+          intervention_code: interventionCode,
+          intervention_name: interventionCode,
+          missing: [docType],
+        });
+        continue;
+      }
+      if (!existing.missing.includes(docType)) {
+        existing.missing.push(docType);
+      }
+    }
+
+    return Array.from(merged.values());
+  }, [filteredValidationErrors, missingFromClaim]);
   const showRequiredDocumentsCard = missing.length > 0 || coreAttachmentErrors.length > 0;
   const attachmentsReady = !showRequiredDocumentsCard && tariffMappingErrors.length === 0;
   const consentReady = !showConsent;

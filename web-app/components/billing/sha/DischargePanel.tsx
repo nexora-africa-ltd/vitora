@@ -52,6 +52,14 @@ import { apiClient, getApiBaseUrl } from '@/lib/api/client';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
 import { useShareDocument } from '@/lib/hooks/use-document-hub';
 import { useToast } from '@/lib/hooks';
+import {
+  PREVIEW_INACTIVE_INTERVENTION_STATUSES,
+  filterValidationErrorsByActiveInterventions,
+  getPreviewActiveInterventionCodeSet,
+  parseMissingCoreAttachmentErrors,
+  parseMissingInterventionDocumentErrors,
+  toActiveInterventionCodeSet,
+} from '@/lib/sha/missing-docs';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useFacility } from '@/lib/context/facility-context';
 
@@ -152,47 +160,37 @@ function toDocLabel(validationDocCode: string): string {
 function extractMissingValidationDocs(errors: string[]): MissingValidationDoc[] {
   const byDocType = new Map<string, MissingValidationDoc>();
 
-  for (const error of errors) {
-    const coreMatch = error.match(/Missing required attachment:\s*([^\s].*)$/i);
-    if (coreMatch?.[1]) {
-      const rawCode = coreMatch[1].trim();
-      const uploadDocType = toUploadDocumentType(rawCode);
-      if (!byDocType.has(uploadDocType)) {
-        const docHelp = DOC_HELP_BY_CODE[uploadDocType];
-        byDocType.set(uploadDocType, {
-          key: uploadDocType,
-          code: normalizeValidationDocCode(rawCode),
-          uploadDocType,
-          label: docHelp?.label || toDocLabel(rawCode),
-          what: docHelp?.what || `Required document type: ${rawCode}`,
-          sourceHint: docHelp?.sourceHint || 'Upload a clear PDF/image document for this required type.',
-          origin: 'core_attachment',
-          rawError: error,
-        });
-      }
-      continue;
-    }
+  for (const { rawError, attachmentCode } of parseMissingCoreAttachmentErrors(errors)) {
+    const uploadDocType = toUploadDocumentType(attachmentCode);
+    if (byDocType.has(uploadDocType)) continue;
+    const docHelp = DOC_HELP_BY_CODE[uploadDocType];
+    byDocType.set(uploadDocType, {
+      key: uploadDocType,
+      code: normalizeValidationDocCode(attachmentCode),
+      uploadDocType,
+      label: docHelp?.label || toDocLabel(attachmentCode),
+      what: docHelp?.what || `Required document type: ${attachmentCode}`,
+      sourceHint: docHelp?.sourceHint || 'Upload a clear PDF/image document for this required type.',
+      origin: 'core_attachment',
+      rawError,
+    });
+  }
 
-    const interventionMatch = error.match(/Missing required document\s+'([^']+)'\s+for intervention\s+(.+)$/i);
-    if (interventionMatch?.[1]) {
-      const rawCode = interventionMatch[1].trim();
-      const interventionCode = interventionMatch[2]?.trim();
-      const uploadDocType = toUploadDocumentType(rawCode);
-      if (!byDocType.has(uploadDocType)) {
-        const docHelp = DOC_HELP_BY_CODE[uploadDocType];
-        byDocType.set(uploadDocType, {
-          key: uploadDocType,
-          code: normalizeValidationDocCode(rawCode),
-          uploadDocType,
-          label: docHelp?.label || toDocLabel(rawCode),
-          what: docHelp?.what || `Intervention-required document type: ${rawCode}`,
-          sourceHint: docHelp?.sourceHint || 'Upload a clear PDF/image document for this required type.',
-          origin: 'intervention_document',
-          interventionCode: interventionCode || undefined,
-          rawError: error,
-        });
-      }
-    }
+  for (const { rawError, documentCode, interventionCode } of parseMissingInterventionDocumentErrors(errors)) {
+    const uploadDocType = toUploadDocumentType(documentCode);
+    if (byDocType.has(uploadDocType)) continue;
+    const docHelp = DOC_HELP_BY_CODE[uploadDocType];
+    byDocType.set(uploadDocType, {
+      key: uploadDocType,
+      code: normalizeValidationDocCode(documentCode),
+      uploadDocType,
+      label: docHelp?.label || toDocLabel(documentCode),
+      what: docHelp?.what || `Intervention-required document type: ${documentCode}`,
+      sourceHint: docHelp?.sourceHint || 'Upload a clear PDF/image document for this required type.',
+      origin: 'intervention_document',
+      interventionCode,
+      rawError,
+    });
   }
 
   return Array.from(byDocType.values());
@@ -228,7 +226,7 @@ function collectRequiredDocumentTypesFromPreview(payload: Record<string, unknown
     if (rawStatus && PREVIEW_INACTIVE_INTERVENTION_STATUSES.has(rawStatus)) {
       continue;
     }
-    const interventionCode = String(row.intervention_code || '').trim() || undefined;
+    const interventionCode = String(row.intervention_code || '').trim().toUpperCase() || undefined;
     const requiredDocTypes = Array.isArray(row.applicable_document_types)
       ? row.applicable_document_types
       : [];
@@ -252,14 +250,6 @@ const LOCAL_ATTACHMENT_TYPES: Array<{ value: string; label: string }> = [
 ];
 
 const AUTO_GENERATABLE_MISSING_DOC_TYPES = new Set(['MEDICAL_REPORT', 'CASE_NOTE', 'FINAL_BILL']);
-const PREVIEW_INACTIVE_INTERVENTION_STATUSES = new Set([
-  'retired',
-  'inactive',
-  'cancelled',
-  'deleted',
-  'void',
-  'removed',
-]);
 const PANEL_REFRESH_INTERVAL_MS = 60_000;
 const PREVIEW_REFRESH_INTERVAL_MS = 180_000;
 
@@ -483,13 +473,18 @@ function mergeMissingDocs(...groups: MissingValidationDoc[][]): MissingValidatio
   const byKey = new Map<string, MissingValidationDoc>();
   for (const group of groups) {
     for (const doc of group) {
-      if (!byKey.has(doc.key)) {
-        byKey.set(doc.key, doc);
+      const interventionCode = doc.interventionCode ? doc.interventionCode.toUpperCase() : '';
+      const mergeKey = interventionCode ? `${doc.key}::${interventionCode}` : doc.key;
+      if (!byKey.has(mergeKey)) {
+        byKey.set(mergeKey, {
+          ...doc,
+          interventionCode: interventionCode || undefined,
+        });
         continue;
       }
-      const existing = byKey.get(doc.key)!;
+      const existing = byKey.get(mergeKey)!;
       if (!existing.interventionCode && doc.interventionCode) {
-        existing.interventionCode = doc.interventionCode;
+        existing.interventionCode = doc.interventionCode.toUpperCase();
       }
     }
   }
@@ -521,6 +516,11 @@ interface DischargePanelProps {
 
 type Step = 'details' | 'otp_sent' | 'complete';
 type LocalClaimAttachment = Awaited<ReturnType<typeof shaApi.getClaimAttachments>>[number];
+
+function missingDocInputKey(doc: MissingValidationDoc): string {
+  const interventionCode = doc.interventionCode ? doc.interventionCode.toUpperCase() : 'GLOBAL';
+  return `${doc.key}::${interventionCode}`;
+}
 
 function extractOtpFromMessage(message: string): string {
   const match = message.match(/\b(\d{4,8})\b/);
@@ -762,41 +762,24 @@ export function DischargePanel({
     [submitValidation?.errors],
   );
   const activeInterventionCodeSet = useMemo(
-    () => new Set(activeInterventions.map((entry) => entry.intervention_code)),
+    () => toActiveInterventionCodeSet(activeInterventions),
     [activeInterventions],
   );
-  const previewInterventionCodeSet = useMemo(() => {
-    const payload = asRecord(ilmPreviewResult?.payload);
-    const interventions = Array.isArray(payload.interventions) ? payload.interventions : [];
-    return new Set(
-      interventions
-        .filter((entry) => {
-          const row = asRecord(entry);
-          const rawStatus = String(row.status || row.intervention_status || '').trim().toLowerCase();
-          return !rawStatus || !PREVIEW_INACTIVE_INTERVENTION_STATUSES.has(rawStatus);
-        })
-        .map((entry) => String(asRecord(entry).intervention_code || '').trim())
-        .filter(Boolean),
-    );
-  }, [ilmPreviewResult?.payload]);
+  const previewInterventionCodeSet = useMemo(
+    () => getPreviewActiveInterventionCodeSet(ilmPreviewResult?.payload),
+    [ilmPreviewResult?.payload],
+  );
   const actionableValidationErrors = useMemo(
-    () => validationErrors.filter((error) => {
-      if (/Inpatient claim requires discharge completion before submission/i.test(error)) {
-        return false;
-      }
-
-      const interventionDocMatch = error.match(/Missing required document\s+'[^']+'\s+for intervention\s+([A-Z0-9-]+)/i);
-      if (!interventionDocMatch?.[1]) {
-        return true;
-      }
-
-      const interventionCode = interventionDocMatch[1].trim();
-      if (previewInterventionCodeSet.size > 0) {
-        return previewInterventionCodeSet.has(interventionCode);
-      }
-      return activeInterventionCodeSet.has(interventionCode);
-    }),
-    [activeInterventionCodeSet, previewInterventionCodeSet, validationErrors],
+    () => filterValidationErrorsByActiveInterventions(
+      validationErrors.filter(
+        (error) => !/Inpatient claim requires discharge completion before submission/i.test(error),
+      ),
+      {
+        activeInterventionCodes: activeInterventionCodeSet,
+        previewPayload: ilmPreviewResult?.payload,
+      },
+    ),
+    [activeInterventionCodeSet, ilmPreviewResult?.payload, validationErrors],
   );
   const generalValidationErrors = useMemo(
     () => actionableValidationErrors.filter(
@@ -846,10 +829,23 @@ export function DischargePanel({
       const merged = mergeMissingDocs(validationMissing, previewMissing);
       return merged.filter((doc) => {
         if (!doc.interventionCode) return true;
-        return activeInterventionCodeSet.has(doc.interventionCode);
+        const code = doc.interventionCode.toUpperCase();
+        if (previewInterventionCodeSet.size > 0 && activeInterventionCodeSet.size > 0) {
+          return previewInterventionCodeSet.has(code) && activeInterventionCodeSet.has(code);
+        }
+        if (previewInterventionCodeSet.size > 0) {
+          return previewInterventionCodeSet.has(code);
+        }
+        return activeInterventionCodeSet.has(code);
       });
     },
-    [actionableValidationErrors, activeInterventionCodeSet, ilmPreviewResult?.payload, localAttachments],
+    [
+      actionableValidationErrors,
+      activeInterventionCodeSet,
+      ilmPreviewResult?.payload,
+      localAttachments,
+      previewInterventionCodeSet,
+    ],
   );
   const hasMissingRequiredDischargeDocs = missingRequiredDischargeDocs.length > 0;
   const autoGeneratableMissingDocs = useMemo(
@@ -876,7 +872,7 @@ export function DischargePanel({
 
       return {
         rawDoc,
-        inputId: matchedRequirement ? `doc-${matchedRequirement.key}` : null,
+        inputId: matchedRequirement ? `doc-${missingDocInputKey(matchedRequirement)}` : null,
       };
     }),
     [lastDhaRequiredDocs, missingRequiredDischargeDocs],
@@ -970,9 +966,11 @@ export function DischargePanel({
         document_type: requirement.uploadDocType,
         document_title: file.name,
         document_description: `${requirement.label} uploaded from discharge panel`,
-        ...(fallbackInterventionCode ? { intervention_code: fallbackInterventionCode } : {}),
+        ...((requirement.interventionCode || fallbackInterventionCode)
+          ? { intervention_code: (requirement.interventionCode || fallbackInterventionCode)! }
+          : {}),
       });
-      return { requirementKey: requirement.key, fileName: file.name };
+      return { requirementKey: missingDocInputKey(requirement), fileName: file.name };
     },
     onSuccess: async (result) => {
       setError(null);
@@ -1839,11 +1837,13 @@ export function DischargePanel({
         {hasMissingRequiredDischargeDocs && (
           <div className="rounded-md border p-3 space-y-3">
             <p className="text-sm font-medium">Upload missing documents now</p>
-            {missingRequiredDischargeDocs.map((doc) => (
-              <div key={doc.key} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 items-end">
+            {missingRequiredDischargeDocs.map((doc) => {
+              const docInputKey = missingDocInputKey(doc);
+              return (
+              <div key={docInputKey} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 items-end">
                 <div>
                   <div className="flex items-center gap-2">
-                    <Label htmlFor={`doc-${doc.key}`}>{doc.label}</Label>
+                    <Label htmlFor={`doc-${docInputKey}`}>{doc.label}</Label>
                     <HelpPopover
                       content={`What this is: ${doc.what}\n\nRecommended source: ${doc.sourceHint}`}
                     />
@@ -1854,22 +1854,22 @@ export function DischargePanel({
                     </p>
                   ) : null}
                   <Input
-                    key={`doc-input-${doc.key}-${docFileInputNonce[doc.key] ?? 0}`}
-                    id={`doc-${doc.key}`}
+                    key={`doc-input-${docInputKey}-${docFileInputNonce[docInputKey] ?? 0}`}
+                    id={`doc-${docInputKey}`}
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
                     onChange={(e) => {
                       const file = e.target.files?.[0] || null;
-                      setDocFiles((prev) => ({ ...prev, [doc.key]: file }));
+                      setDocFiles((prev) => ({ ...prev, [docInputKey]: file }));
                     }}
                   />
                 </div>
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={!docFiles[doc.key] || uploadDocMutation.isPending || fetchingLocalAttachments}
+                  disabled={!docFiles[docInputKey] || uploadDocMutation.isPending || fetchingLocalAttachments}
                   onClick={() => {
-                    const selected = docFiles[doc.key];
+                    const selected = docFiles[docInputKey];
                     if (!selected) return;
                     uploadDocMutation.mutate({ requirement: doc, file: selected });
                   }}
@@ -1882,14 +1882,15 @@ export function DischargePanel({
                 <Button
                   type="button"
                   variant="ghost"
-                  disabled={!docFiles[doc.key] || uploadDocMutation.isPending}
-                  onClick={() => clearSelectedDocFile(doc.key)}
+                  disabled={!docFiles[docInputKey] || uploadDocMutation.isPending}
+                  onClick={() => clearSelectedDocFile(docInputKey)}
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Remove
                 </Button>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
 

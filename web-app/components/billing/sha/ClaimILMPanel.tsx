@@ -88,6 +88,10 @@ import {
   useBenefitInterventions,
   type InterventionOption,
 } from '@/lib/hooks/use-benefit-interventions';
+import {
+  filterValidationErrorsByActiveInterventions,
+  toActiveInterventionCodeSet,
+} from '@/lib/sha/missing-docs';
 import { format, parseISO } from 'date-fns';
 import { ClaimPreviewPanel } from './ClaimPreviewPanel';
 
@@ -834,7 +838,10 @@ export function ClaimILMPanel({
   const dhaAttachmentsSynced = attachmentSyncStatus?.all_matched ?? false;
 
   const preSubmitChecklist = useMemo<PreSubmitChecklistItem[]>(() => {
-    const preSubmitErrors = preSubmitValidation?.errors ?? [];
+    const preSubmitErrors = filterValidationErrorsByActiveInterventions(preSubmitValidation?.errors ?? [], {
+      activeInterventionCodes: toActiveInterventionCodeSet(activeInterventions),
+      previewPayload: previewResult?.payload,
+    });
     const hasError = (matcher: (error: string) => boolean) => preSubmitErrors.some(matcher);
 
     return [
@@ -893,6 +900,8 @@ export function ClaimILMPanel({
     dhaAttachmentsSynced,
     attachmentSyncMatched,
     attachmentSyncTotal,
+    activeInterventions,
+    previewResult?.payload,
   ]);
 
   const [autoFixedChecklistIds, setAutoFixedChecklistIds] = useState<string[]>([]);
