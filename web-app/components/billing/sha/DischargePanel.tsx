@@ -12,7 +12,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ExternalLink, Fingerprint, Loader2, LogOut, Plus, Trash2, UploadCloud } from 'lucide-react';
+import { ExternalLink, Eye, Fingerprint, Loader2, LogOut, Plus, Share2, Trash2, UploadCloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
   DiagnosisCodeInput,
   emptyDiagnosisCodeValue,
   type DiagnosisCodeValue,
@@ -35,7 +40,7 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { shaApi } from '@/lib/api/sha';
 import { billingApi } from '@/lib/api/billing';
 import { inpatientApi } from '@/lib/api/inpatient';
-import { getApiBaseUrl } from '@/lib/api/client';
+import { apiClient, getApiBaseUrl } from '@/lib/api/client';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useFacility } from '@/lib/context/facility-context';
@@ -209,6 +214,10 @@ function collectRequiredDocumentTypesFromPreview(payload: Record<string, unknown
   const interventions = Array.isArray(payload.interventions) ? payload.interventions : [];
   for (const intervention of interventions) {
     const row = asRecord(intervention);
+    const rawStatus = String(row.status || row.intervention_status || '').trim().toLowerCase();
+    if (rawStatus && PREVIEW_INACTIVE_INTERVENTION_STATUSES.has(rawStatus)) {
+      continue;
+    }
     const interventionCode = String(row.intervention_code || '').trim() || undefined;
     const requiredDocTypes = Array.isArray(row.applicable_document_types)
       ? row.applicable_document_types
@@ -233,6 +242,14 @@ const LOCAL_ATTACHMENT_TYPES: Array<{ value: string; label: string }> = [
 ];
 
 const AUTO_GENERATABLE_MISSING_DOC_TYPES = new Set(['MEDICAL_REPORT', 'CASE_NOTE', 'FINAL_BILL']);
+const PREVIEW_INACTIVE_INTERVENTION_STATUSES = new Set([
+  'retired',
+  'inactive',
+  'cancelled',
+  'deleted',
+  'void',
+  'removed',
+]);
 const PANEL_REFRESH_INTERVAL_MS = 60_000;
 const PREVIEW_REFRESH_INTERVAL_MS = 180_000;
 
@@ -276,10 +293,39 @@ function idTypeNeedsRegulator(idType: string): boolean {
 function toAttachmentUrl(filePath?: string | null): string {
   if (!filePath) return '';
   if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+    try {
+      const target = new URL(filePath);
+      const apiBase = new URL(getApiBaseUrl());
+      const isLocalHost = target.hostname === 'localhost' || target.hostname === '127.0.0.1';
+      const apiHostDiffers = target.hostname !== apiBase.hostname || target.port !== apiBase.port;
+      if (isLocalHost && apiHostDiffers) {
+        const apiBaseIsLocal = apiBase.hostname === 'localhost' || apiBase.hostname === '127.0.0.1';
+        if (apiBaseIsLocal && typeof window !== 'undefined') {
+          const uiHostIsLocal =
+            window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+          if (!uiHostIsLocal) {
+            return new URL(`${target.pathname}${target.search}${target.hash}`, window.location.origin).toString();
+          }
+        }
+        return new URL(`${target.pathname}${target.search}${target.hash}`, apiBase).toString();
+      }
+    } catch {
+      // Fall through and return original URL
+    }
     return filePath;
   }
   const normalizedPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
   return new URL(normalizedPath, getApiBaseUrl()).toString();
+}
+
+function toAttachmentFetchPath(fileUrl?: string): string {
+  if (!fileUrl) return '';
+  try {
+    const parsed = new URL(fileUrl);
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return fileUrl;
+  }
 }
 
 function parseDateTime(value: unknown): Date | null {
@@ -505,8 +551,10 @@ export function DischargePanel({
   const [biometricInfo, setBiometricInfo] = useState('');
   const [biometricStatus, setBiometricStatus] = useState<'idle' | 'pending' | 'authorized' | 'failed' | 'expired'>('idle');
   const [docFiles, setDocFiles] = useState<Record<string, File | null>>({});
+  const [docFileInputNonce, setDocFileInputNonce] = useState<Record<string, number>>({});
   const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false);
   const [attachmentDialogMode, setAttachmentDialogMode] = useState<'create' | 'edit'>('edit');
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [activeAttachmentId, setActiveAttachmentId] = useState<number | null>(null);
   const [attachmentTypeInput, setAttachmentTypeInput] = useState('other');
   const [attachmentNameInput, setAttachmentNameInput] = useState('');
@@ -523,6 +571,10 @@ export function DischargePanel({
   const [doctorRegulationBodyInput, setDoctorRegulationBodyInput] = useState('');
   const [attachmentSyncMessage, setAttachmentSyncMessage] = useState('');
   const [lastDhaRequiredDocs, setLastDhaRequiredDocs] = useState<string[]>([]);
+  const [advancedClinicalOpen, setAdvancedClinicalOpen] = useState(false);
+  const [inlinePreviewUrl, setInlinePreviewUrl] = useState('');
+  const [inlinePreviewLoading, setInlinePreviewLoading] = useState(false);
+  const [inlinePreviewError, setInlinePreviewError] = useState<string | null>(null);
   const biometricPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { facilityDetail } = useFacility();
@@ -689,10 +741,52 @@ export function DischargePanel({
   );
   const doctorNeedsRegulator = idTypeNeedsRegulator(doctorIdTypeInput);
 
-  const validationErrors = submitValidation?.errors || [];
+  const validationErrors = useMemo(
+    () => submitValidation?.errors ?? [],
+    [submitValidation?.errors],
+  );
+  const activeInterventionCodeSet = useMemo(
+    () => new Set(activeInterventions.map((entry) => entry.intervention_code)),
+    [activeInterventions],
+  );
+  const previewInterventionCodeSet = useMemo(() => {
+    const payload = asRecord(ilmPreviewResult?.payload);
+    const interventions = Array.isArray(payload.interventions) ? payload.interventions : [];
+    return new Set(
+      interventions
+        .filter((entry) => {
+          const row = asRecord(entry);
+          const rawStatus = String(row.status || row.intervention_status || '').trim().toLowerCase();
+          return !rawStatus || !PREVIEW_INACTIVE_INTERVENTION_STATUSES.has(rawStatus);
+        })
+        .map((entry) => String(asRecord(entry).intervention_code || '').trim())
+        .filter(Boolean),
+    );
+  }, [ilmPreviewResult?.payload]);
   const actionableValidationErrors = useMemo(
-    () => validationErrors.filter((error) => !/Inpatient claim requires discharge completion before submission/i.test(error)),
-    [validationErrors],
+    () => validationErrors.filter((error) => {
+      if (/Inpatient claim requires discharge completion before submission/i.test(error)) {
+        return false;
+      }
+
+      const interventionDocMatch = error.match(/Missing required document\s+'[^']+'\s+for intervention\s+([A-Z0-9-]+)/i);
+      if (!interventionDocMatch?.[1]) {
+        return true;
+      }
+
+      const interventionCode = interventionDocMatch[1].trim();
+      if (previewInterventionCodeSet.size > 0) {
+        return previewInterventionCodeSet.has(interventionCode);
+      }
+      return activeInterventionCodeSet.has(interventionCode);
+    }),
+    [activeInterventionCodeSet, previewInterventionCodeSet, validationErrors],
+  );
+  const generalValidationErrors = useMemo(
+    () => actionableValidationErrors.filter(
+      (error) => !/Missing required attachment:|Missing required document\s+'/i.test(error),
+    ),
+    [actionableValidationErrors],
   );
   const missingRequiredDischargeDocs = useMemo(
     () => {
@@ -733,9 +827,13 @@ export function DischargePanel({
         });
       }
 
-      return mergeMissingDocs(validationMissing, previewMissing);
+      const merged = mergeMissingDocs(validationMissing, previewMissing);
+      return merged.filter((doc) => {
+        if (!doc.interventionCode) return true;
+        return activeInterventionCodeSet.has(doc.interventionCode);
+      });
     },
-    [actionableValidationErrors, ilmPreviewResult?.payload, localAttachments],
+    [actionableValidationErrors, activeInterventionCodeSet, ilmPreviewResult?.payload, localAttachments],
   );
   const hasMissingRequiredDischargeDocs = missingRequiredDischargeDocs.length > 0;
   const autoGeneratableMissingDocs = useMemo(
@@ -838,6 +936,11 @@ export function DischargePanel({
     ]);
   }
 
+  function clearSelectedDocFile(docKey: string) {
+    setDocFiles((prev) => ({ ...prev, [docKey]: null }));
+    setDocFileInputNonce((prev) => ({ ...prev, [docKey]: (prev[docKey] ?? 0) + 1 }));
+  }
+
   const uploadDocMutation = useMutation({
     mutationFn: async ({
       requirement,
@@ -858,7 +961,7 @@ export function DischargePanel({
     onSuccess: async (result) => {
       setError(null);
       setLastDhaRequiredDocs([]);
-      setDocFiles((prev) => ({ ...prev, [result.requirementKey]: null }));
+      clearSelectedDocFile(result.requirementKey);
       await runPostAttachmentAutomation({ pushLocalUpload: false });
       onChange?.();
     },
@@ -897,6 +1000,16 @@ export function DischargePanel({
     setAttachmentDescriptionInput(attachment.description || '');
     setAttachmentReplacementFile(null);
     setAttachmentDialogOpen(true);
+  }
+
+  function openAttachmentPreviewDialog(attachment: LocalClaimAttachment) {
+    setActiveAttachmentId(attachment.id);
+    setPreviewDialogOpen(true);
+  }
+
+  function shareAttachmentToDocumentHub(attachment: LocalClaimAttachment) {
+    if (typeof window === 'undefined') return;
+    window.open(`/document-hub/sha-attachments/${attachment.id}`, '_blank', 'noopener,noreferrer');
   }
 
   const createAttachmentMutation = useMutation({
@@ -1272,9 +1385,6 @@ export function DischargePanel({
     queryFn: () => inpatientApi.getAdmissionClinicalSummary(admissionIdForPreview!),
   });
 
-  // Don't render if flow doesn't support inpatient discharge
-  if (!flow.supportsInpatientDischarge) return null;
-
   async function sendDischargeOtp() {
     if (hasMissingRequiredDischargeDocs) {
       setError(
@@ -1462,17 +1572,49 @@ export function DischargePanel({
   }
 
   const activeAttachmentUrl = toAttachmentUrl(activeAttachment?.file);
+  const activeAttachmentFetchPath = toAttachmentFetchPath(activeAttachmentUrl);
   const activeAttachmentIsImage = String(activeAttachment?.mime_type || '').startsWith('image/');
   const activeAttachmentIsPdf = String(activeAttachment?.mime_type || '').includes('pdf');
-  const activeAttachmentIsCrossOrigin = (() => {
-    if (!activeAttachmentUrl || typeof window === 'undefined') return false;
-    try {
-      const target = new URL(activeAttachmentUrl);
-      return target.origin !== window.location.origin;
-    } catch {
-      return false;
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl = '';
+
+    setInlinePreviewUrl('');
+    setInlinePreviewError(null);
+
+    if (!activeAttachmentFetchPath || (!activeAttachmentIsImage && !activeAttachmentIsPdf)) {
+      return;
     }
-  })();
+
+    setInlinePreviewLoading(true);
+
+    void apiClient
+      .get<Blob>(activeAttachmentFetchPath, { responseType: 'blob' })
+      .then((response) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(response.data);
+        setInlinePreviewUrl(objectUrl);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setInlinePreviewError('Unable to load inline preview. Use Open original.');
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setInlinePreviewLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [activeAttachmentFetchPath, activeAttachmentIsImage, activeAttachmentIsPdf]);
+
+  // Don't render if flow doesn't support inpatient discharge
+  if (!flow.supportsInpatientDischarge) return null;
   const attachmentCrudBusy =
     createAttachmentMutation.isPending
     || updateAttachmentMutation.isPending
@@ -1591,26 +1733,27 @@ export function DischargePanel({
           </Alert>
         )}
 
-        <Alert variant={actionableValidationErrors.length > 0 ? 'destructive' : 'default'}>
-          <AlertTitle>Claim validation status</AlertTitle>
-          <AlertDescription>
-            {actionableValidationErrors.length === 0 ? (
-              'No submission validation blockers currently reported for this claim.'
-            ) : (
-              <ul className="list-disc pl-5 space-y-1">
-                {actionableValidationErrors.map((validationError, index) => (
-                  <li key={`${validationError}-${index}`}>{validationError}</li>
-                ))}
-              </ul>
-            )}
-          </AlertDescription>
-        </Alert>
-
-        <Alert variant={hasMissingRequiredDischargeDocs ? 'destructive' : 'default'}>
-          <AlertTitle>Missing required documents</AlertTitle>
-          <AlertDescription>
+        <Card className={generalValidationErrors.length > 0 || hasMissingRequiredDischargeDocs ? 'border-destructive/50' : ''}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Claim readiness</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
             <div className="space-y-2">
-              <p>
+              <p className="text-sm font-medium">General blockers</p>
+              {generalValidationErrors.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No non-document validation blockers currently reported.</p>
+              ) : (
+                <ul className="list-disc pl-5 space-y-1 text-xs">
+                  {generalValidationErrors.map((validationError, index) => (
+                    <li key={`${validationError}-${index}`}>{validationError}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="space-y-2 border-t pt-3">
+              <p className="text-sm font-medium">Missing required documents</p>
+              <p className="text-xs text-muted-foreground">
                 {hasMissingRequiredDischargeDocs
                   ? `Missing: ${missingRequiredDischargeDocs.map((d) => d.label).join(', ')}`
                   : 'No required document blockers reported by claim validation or DHA preview applicable_document_types.'}
@@ -1637,50 +1780,20 @@ export function DischargePanel({
                     Can auto-generate: {autoGeneratableMissingDocs.map((doc) => doc.label).join(', ')}
                   </span>
                 </div>
+              ) : hasMissingRequiredDischargeDocs ? (
+                <p className="text-xs text-muted-foreground">
+                  Auto-generate is unavailable for the current missing types. Supported auto-generated docs are Medical report, Clinical notes (Case note), and Final bill.
+                </p>
               ) : null}
             </div>
-          </AlertDescription>
-        </Alert>
-
-        <Alert variant={dhaAttachmentsSynced ? 'default' : 'destructive'}>
-          <AlertTitle>DHA attachment sync status</AlertTitle>
-          <AlertDescription>
-            <div className="space-y-2">
-              <p>
-                {dhaAttachmentsSynced
-                  ? `Synced to DHA: ${dhaAttachmentMatched}/${dhaAttachmentTotal} matched.`
-                  : `Not fully synced to DHA yet: ${dhaAttachmentMatched}/${dhaAttachmentTotal} matched. Run manual sync before OTP/discharge.`}
-              </p>
-              {!dhaAttachmentsSynced ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => syncAttachmentsMutation.mutate()}
-                    disabled={syncAttachmentsMutation.isPending || fetchingAttachmentSyncStatus}
-                  >
-                    {syncAttachmentsMutation.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <UploadCloud className="mr-2 h-4 w-4" />
-                    )}
-                    Sync attachments to DHA now
-                  </Button>
-                </div>
-              ) : null}
-              {attachmentSyncMessage ? (
-                <p className="text-xs text-muted-foreground">{attachmentSyncMessage}</p>
-              ) : null}
-            </div>
-          </AlertDescription>
-        </Alert>
+          </CardContent>
+        </Card>
 
         {hasMissingRequiredDischargeDocs && (
           <div className="rounded-md border p-3 space-y-3">
             <p className="text-sm font-medium">Upload missing documents now</p>
             {missingRequiredDischargeDocs.map((doc) => (
-              <div key={doc.key} className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+              <div key={doc.key} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 items-end">
                 <div>
                   <div className="flex items-center gap-2">
                     <Label htmlFor={`doc-${doc.key}`}>{doc.label}</Label>
@@ -1694,6 +1807,7 @@ export function DischargePanel({
                     </p>
                   ) : null}
                   <Input
+                    key={`doc-input-${doc.key}-${docFileInputNonce[doc.key] ?? 0}`}
                     id={`doc-${doc.key}`}
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
@@ -1717,6 +1831,15 @@ export function DischargePanel({
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : null}
                   Upload
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={!docFiles[doc.key] || uploadDocMutation.isPending}
+                  onClick={() => clearSelectedDocFile(doc.key)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Remove
                 </Button>
               </div>
             ))}
@@ -1756,6 +1879,30 @@ export function DischargePanel({
                       <Button
                         type="button"
                         size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0"
+                        onClick={() => openAttachmentPreviewDialog(attachment)}
+                        disabled={attachmentCrudBusy}
+                        title="Preview attachment"
+                        aria-label="Preview attachment"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0"
+                        onClick={() => shareAttachmentToDocumentHub(attachment)}
+                        disabled={attachmentCrudBusy}
+                        title="Open in Document Hub"
+                        aria-label="Open in Document Hub"
+                      >
+                        <Share2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
                         variant="outline"
                         className="h-7 px-2 text-[11px]"
                         onClick={() => openEditAttachmentDialog(attachment)}
@@ -1783,232 +1930,383 @@ export function DischargePanel({
           )}
         </div>
 
-        <div className="rounded-md border p-3 space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-medium">Claim diagnoses (DHA)</p>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => void runFreshPreview()}
-              disabled={loadingIlmPreview || fetchingIlmPreview || diagnosisBusy}
-            >
-              {fetchingIlmPreview ? 'Refreshing…' : 'Refresh'}
-            </Button>
-          </div>
+        <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>{activeAttachment?.name || 'Attachment preview'}</DialogTitle>
+              <DialogDescription>
+                Read-only preview. Use the share action to open this file in Document Hub.
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_220px_auto] sm:items-end">
-            <div>
-              <DiagnosisCodeInput
-                label="Diagnosis code"
-                value={diagnosisCodeInput}
-                onChange={setDiagnosisCodeInput}
-                showSNOMED={false}
-                defaultToICD11={false}
-                disabled={diagnosisBusy}
-              />
-              {diagnosisUsesIcd10Fallback ? (
-                <p className="text-xs text-destructive mt-1">
-                  DHA diagnosis submission expects ICD-11. Pick an ICD-11 diagnosis before adding.
-                </p>
+            {activeAttachment && activeAttachmentUrl ? (
+              <div className="space-y-2 rounded border bg-muted/20 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-muted-foreground">Attachment preview</p>
+                  <a
+                    href={activeAttachmentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center text-xs text-primary hover:underline"
+                  >
+                    <ExternalLink className="mr-1 h-3 w-3" />
+                    Open original
+                  </a>
+                </div>
+                {activeAttachmentIsImage && inlinePreviewUrl ? (
+                  <img
+                    src={inlinePreviewUrl}
+                    alt={activeAttachment.name}
+                    className="max-h-72 w-full rounded border object-contain bg-background"
+                  />
+                ) : activeAttachmentIsPdf && inlinePreviewUrl ? (
+                  <iframe
+                    title={activeAttachment.name}
+                    src={inlinePreviewUrl}
+                    className="h-72 w-full rounded border bg-background"
+                  />
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Inline preview is not available for this file type.
+                  </p>
+                )}
+                {inlinePreviewLoading ? (
+                  <p className="text-xs text-muted-foreground">Loading preview...</p>
+                ) : null}
+                {inlinePreviewError ? (
+                  <p className="text-xs text-muted-foreground">{inlinePreviewError}</p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No preview available for this attachment.</p>
+            )}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setPreviewDialogOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Alert variant={dhaAttachmentsSynced ? 'default' : 'destructive'}>
+          <AlertTitle>DHA attachment sync status</AlertTitle>
+          <AlertDescription>
+            <div className="space-y-2">
+              <p>
+                {dhaAttachmentsSynced
+                  ? `Synced to DHA: ${dhaAttachmentMatched}/${dhaAttachmentTotal} matched.`
+                  : `Not fully synced to DHA yet: ${dhaAttachmentMatched}/${dhaAttachmentTotal} matched. Run manual sync before OTP/discharge.`}
+              </p>
+              {!dhaAttachmentsSynced ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => syncAttachmentsMutation.mutate()}
+                    disabled={syncAttachmentsMutation.isPending || fetchingAttachmentSyncStatus}
+                  >
+                    {syncAttachmentsMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <UploadCloud className="mr-2 h-4 w-4" />
+                    )}
+                    Sync attachments to DHA now
+                  </Button>
+                </div>
+              ) : null}
+              {attachmentSyncMessage ? (
+                <p className="text-xs text-muted-foreground">{attachmentSyncMessage}</p>
               ) : null}
             </div>
-            <div>
-              <Label htmlFor="discharge-diagnosis-intervention">Intervention</Label>
-              <select
-                id="discharge-diagnosis-intervention"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={diagnosisInterventionInput}
-                onChange={(e) => setDiagnosisInterventionInput(e.target.value)}
-              >
-                <option value="">Select intervention</option>
-                {activeInterventions.map((intervention) => (
-                  <option key={intervention.intervention_code} value={intervention.intervention_code}>
-                    {intervention.intervention_code}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => addDiagnosisMutation.mutate()}
-              disabled={!selectedDiagnosisCode || !diagnosisInterventionInput.trim() || diagnosisUsesIcd10Fallback || diagnosisBusy}
-            >
-              {addDiagnosisMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Add
-            </Button>
-          </div>
+          </AlertDescription>
+        </Alert>
 
-          {claimDiagnoses.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No diagnoses found in DHA preview yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {claimDiagnoses.map((diagnosis) => (
-                <div
-                  key={diagnosis.key}
-                  className="flex flex-col gap-2 rounded border bg-background p-2 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <p className="text-sm font-medium">
-                      {diagnosis.icdCode}
-                      {diagnosis.name ? ` - ${diagnosis.name}` : ''}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Intervention: {diagnosis.interventionCode || '-'}
-                      {diagnosis.recordedAt ? ` • Recorded: ${diagnosis.recordedAt}` : ''}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    disabled={diagnosisBusy}
-                    onClick={() => {
-                      removeDiagnosisMutation.mutate({
-                        icdCode: diagnosis.icdCode,
-                        interventionCode: diagnosis.interventionCode,
-                      });
-                    }}
-                  >
-                    {removeDiagnosisMutation.isPending ? (
-                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                    ) : (
-                      <Trash2 className="mr-2 h-3 w-3" />
-                    )}
-                    Remove
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-md border p-3 space-y-3">
+        <Collapsible open={advancedClinicalOpen} onOpenChange={setAdvancedClinicalOpen} className="rounded-md border p-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-medium">Claim doctors (DHA)</p>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => void runFreshPreview()}
-              disabled={loadingIlmPreview || fetchingIlmPreview || doctorBusy}
-            >
-              {fetchingIlmPreview ? 'Refreshing…' : 'Refresh'}
-            </Button>
+            <p className="text-sm font-medium">Advanced clinical details</p>
+            <CollapsibleTrigger asChild>
+              <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs">
+                {advancedClinicalOpen ? 'Hide details' : 'Show details'}
+              </Button>
+            </CollapsibleTrigger>
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Optional tools for diagnosis and doctor reconciliation are kept here
+          </p>
 
-          <div
-            className={`grid grid-cols-1 gap-3 ${doctorNeedsRegulator
-              ? 'sm:grid-cols-[1fr_180px_140px_auto]'
-              : 'sm:grid-cols-[1fr_180px_auto]'} sm:items-end`}
-          >
-            <div>
-              <Label htmlFor="discharge-doctor-id">Doctor identification number</Label>
-              <Input
-                id="discharge-doctor-id"
-                value={doctorIdNumberInput}
-                onChange={(e) => setDoctorIdNumberInput(e.target.value)}
-                placeholder="e.g. National ID or SLADE"
-              />
-            </div>
-            <div>
-              <Label htmlFor="discharge-doctor-id-type">ID type</Label>
-              <select
-                id="discharge-doctor-id-type"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={doctorIdTypeInput}
-                onChange={(e) => setDoctorIdTypeInput(e.target.value)}
-              >
-                {DOCTOR_ID_TYPES.map((entry) => (
-                  <option key={entry.value} value={entry.value}>
-                    {entry.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {doctorNeedsRegulator ? (
-              <div>
-                <Label htmlFor="discharge-doctor-regulator">Licensing body</Label>
-                <select
-                  id="discharge-doctor-regulator"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={doctorRegulationBodyInput}
-                  onChange={(e) => setDoctorRegulationBodyInput(e.target.value)}
+          <CollapsibleContent className="space-y-3 mt-3">
+            <div className="rounded-md border p-3 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">Claim diagnoses (DHA)</p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => void runFreshPreview()}
+                  disabled={loadingIlmPreview || fetchingIlmPreview || diagnosisBusy}
                 >
-                  <option value="">Select body</option>
-                  {DOCTOR_REGULATORS.map((regulator) => (
-                    <option key={regulator} value={regulator}>
-                      {regulator}
-                    </option>
-                  ))}
-                </select>
+                  {fetchingIlmPreview ? 'Refreshing…' : 'Refresh'}
+                </Button>
               </div>
-            ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => addDoctorMutation.mutate()}
-              disabled={
-                !token.trim()
-                || !doctorIdNumberInput.trim()
-                || (doctorNeedsRegulator && !doctorRegulationBodyInput.trim())
-                || doctorBusy
-              }
-            >
-              {addDoctorMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Add
-            </Button>
-          </div>
 
-          {!token.trim() ? (
-            <p className="text-xs text-muted-foreground">
-              Enter consent token above to add or remove claim doctor details.
-            </p>
-          ) : null}
-
-          {claimDoctors.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No doctors found in DHA preview yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {claimDoctors.map((doctor) => (
-                <div
-                  key={doctor.key}
-                  className="flex flex-col gap-2 rounded border bg-background p-2 sm:flex-row sm:items-center sm:justify-between"
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_220px_auto] sm:items-end">
+                <div>
+                  <DiagnosisCodeInput
+                    label="Diagnosis code"
+                    value={diagnosisCodeInput}
+                    onChange={setDiagnosisCodeInput}
+                    showSNOMED={false}
+                    defaultToICD11={false}
+                    disabled={diagnosisBusy}
+                  />
+                  {diagnosisUsesIcd10Fallback ? (
+                    <p className="text-xs text-destructive mt-1">
+                      DHA diagnosis submission expects ICD-11. Pick an ICD-11 diagnosis before adding.
+                    </p>
+                  ) : null}
+                </div>
+                <div>
+                  <Label htmlFor="discharge-diagnosis-intervention">Intervention</Label>
+                  <select
+                    id="discharge-diagnosis-intervention"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={diagnosisInterventionInput}
+                    onChange={(e) => setDiagnosisInterventionInput(e.target.value)}
+                  >
+                    <option value="">Select intervention</option>
+                    {activeInterventions.map((intervention) => (
+                      <option key={intervention.intervention_code} value={intervention.intervention_code}>
+                        {intervention.intervention_code}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => addDiagnosisMutation.mutate()}
+                  disabled={!selectedDiagnosisCode || !diagnosisInterventionInput.trim() || diagnosisUsesIcd10Fallback || diagnosisBusy}
                 >
+                  {addDiagnosisMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Add
+                </Button>
+              </div>
+
+              {claimDiagnoses.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No diagnoses found in DHA preview yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {claimDiagnoses.map((diagnosis) => (
+                    <div
+                      key={diagnosis.key}
+                      className="flex flex-col gap-2 rounded border bg-background p-2 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">
+                          {diagnosis.icdCode}
+                          {diagnosis.name ? ` - ${diagnosis.name}` : ''}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Intervention: {diagnosis.interventionCode || '-'}
+                          {diagnosis.recordedAt ? ` • Recorded: ${diagnosis.recordedAt}` : ''}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        disabled={diagnosisBusy}
+                        onClick={() => {
+                          removeDiagnosisMutation.mutate({
+                            icdCode: diagnosis.icdCode,
+                            interventionCode: diagnosis.interventionCode,
+                          });
+                        }}
+                      >
+                        {removeDiagnosisMutation.isPending ? (
+                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="mr-2 h-3 w-3" />
+                        )}
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-md border p-3 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">Claim doctors (DHA)</p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => void runFreshPreview()}
+                  disabled={loadingIlmPreview || fetchingIlmPreview || doctorBusy}
+                >
+                  {fetchingIlmPreview ? 'Refreshing…' : 'Refresh'}
+                </Button>
+              </div>
+
+              <div
+                className={`grid grid-cols-1 gap-3 ${doctorNeedsRegulator
+                  ? 'sm:grid-cols-[1fr_180px_140px_auto]'
+                  : 'sm:grid-cols-[1fr_180px_auto]'} sm:items-end`}
+              >
+                <div>
+                  <Label htmlFor="discharge-doctor-id">Doctor identification number</Label>
+                  <Input
+                    id="discharge-doctor-id"
+                    value={doctorIdNumberInput}
+                    onChange={(e) => setDoctorIdNumberInput(e.target.value)}
+                    placeholder="e.g. National ID or SLADE"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="discharge-doctor-id-type">ID type</Label>
+                  <select
+                    id="discharge-doctor-id-type"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={doctorIdTypeInput}
+                    onChange={(e) => setDoctorIdTypeInput(e.target.value)}
+                  >
+                    {DOCTOR_ID_TYPES.map((entry) => (
+                      <option key={entry.value} value={entry.value}>
+                        {entry.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {doctorNeedsRegulator ? (
                   <div>
-                    <p className="text-sm font-medium">
-                      {doctor.doctorName || 'Doctor'}
-                      {doctor.sladeCode ? ` - ${doctor.sladeCode}` : ''}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Status: {doctor.requestStatus || '-'}
-                      {doctor.recordedAt ? ` • Recorded: ${doctor.recordedAt}` : ''}
-                    </p>
+                    <Label htmlFor="discharge-doctor-regulator">Licensing body</Label>
+                    <select
+                      id="discharge-doctor-regulator"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={doctorRegulationBodyInput}
+                      onChange={(e) => setDoctorRegulationBodyInput(e.target.value)}
+                    >
+                      <option value="">Select body</option>
+                      {DOCTOR_REGULATORS.map((regulator) => (
+                        <option key={regulator} value={regulator}>
+                          {regulator}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => addDoctorMutation.mutate()}
+                  disabled={
+                    !token.trim()
+                    || !doctorIdNumberInput.trim()
+                    || (doctorNeedsRegulator && !doctorRegulationBodyInput.trim())
+                    || doctorBusy
+                  }
+                >
+                  {addDoctorMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Add
+                </Button>
+              </div>
+
+              {!token.trim() ? (
+                <p className="text-xs text-muted-foreground">
+                  Enter consent token above to add or remove claim doctor details.
+                </p>
+              ) : null}
+
+              {claimDoctors.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No doctors found in DHA preview yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {claimDoctors.map((doctor) => (
+                    <div
+                      key={doctor.key}
+                      className="flex flex-col gap-2 rounded border bg-background p-2 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">
+                          {doctor.doctorName || 'Doctor'}
+                          {doctor.sladeCode ? ` - ${doctor.sladeCode}` : ''}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Status: {doctor.requestStatus || '-'}
+                          {doctor.recordedAt ? ` • Recorded: ${doctor.recordedAt}` : ''}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        disabled={!token.trim() || doctorBusy}
+                        onClick={() => {
+                          removeDoctorMutation.mutate();
+                        }}
+                      >
+                        {removeDoctorMutation.isPending ? (
+                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="mr-2 h-3 w-3" />
+                        )}
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-md border bg-muted/20 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">Clinical timeline preview</p>
+                {typeof admissionIdForPreview === 'number' ? (
                   <Button
                     type="button"
-                    variant="destructive"
+                    variant="ghost"
                     size="sm"
-                    disabled={!token.trim() || doctorBusy}
-                    onClick={() => {
-                      removeDoctorMutation.mutate();
-                    }}
+                    className="h-7 px-2 text-xs"
+                    onClick={() => void refetchClinicalSummary()}
+                    disabled={loadingClinicalSummary || fetchingClinicalSummary}
                   >
-                    {removeDoctorMutation.isPending ? (
-                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                    ) : (
-                      <Trash2 className="mr-2 h-3 w-3" />
-                    )}
-                    Remove
+                    {fetchingClinicalSummary ? 'Refreshing…' : 'Refresh'}
                   </Button>
-                </div>
-              ))}
+                ) : null}
+              </div>
+
+              {typeof admissionIdForPreview !== 'number' ? (
+                <p className="text-xs text-muted-foreground">
+                  Clinical timeline will appear once the active admission is resolved from this claim.
+                </p>
+              ) : loadingClinicalSummary ? (
+                <p className="text-xs text-muted-foreground">Loading clinical timeline…</p>
+              ) : clinicalSummaryError ? (
+                <p className="text-xs text-destructive">
+                  Failed to load clinical timeline preview. You can still continue discharge.
+                </p>
+              ) : clinicalSummary ? (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    {clinicalSummary.entries.length} timeline entr{clinicalSummary.entries.length === 1 ? 'y' : 'ies'} from ward rounds, kardex shift notes, and handover notes.
+                  </p>
+                  <details className="rounded border bg-background p-2 text-xs">
+                    <summary className="cursor-pointer text-muted-foreground">Preview rendered narrative</summary>
+                    <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded bg-muted p-2 font-mono text-[11px]">
+                      {clinicalSummary.rendered_text || 'No timeline notes available.'}
+                    </pre>
+                  </details>
+                </>
+              ) : null}
             </div>
-          )}
-        </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         <Dialog
           open={attachmentDialogOpen}
@@ -2045,28 +2343,29 @@ export function DischargePanel({
                     Open original
                   </a>
                 </div>
-                {activeAttachmentIsImage ? (
+                {activeAttachmentIsImage && inlinePreviewUrl ? (
                   <img
-                    src={activeAttachmentUrl}
+                    src={inlinePreviewUrl}
                     alt={activeAttachment.name}
                     className="max-h-72 w-full rounded border object-contain bg-background"
                   />
-                ) : activeAttachmentIsPdf && !activeAttachmentIsCrossOrigin ? (
+                ) : activeAttachmentIsPdf && inlinePreviewUrl ? (
                   <iframe
                     title={activeAttachment.name}
-                    src={activeAttachmentUrl}
+                    src={inlinePreviewUrl}
                     className="h-72 w-full rounded border bg-background"
                   />
-                ) : activeAttachmentIsPdf ? (
-                  <p className="text-xs text-muted-foreground">
-                    PDF inline preview is blocked by browser/frame security for cross-origin media.
-                    Use <span className="font-medium">Open original</span>.
-                  </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
                     Inline preview is not available for this file type.
                   </p>
                 )}
+                {inlinePreviewLoading ? (
+                  <p className="text-xs text-muted-foreground">Loading preview...</p>
+                ) : null}
+                {inlinePreviewError ? (
+                  <p className="text-xs text-muted-foreground">{inlinePreviewError}</p>
+                ) : null}
               </div>
             ) : null}
 
@@ -2169,48 +2468,6 @@ export function DischargePanel({
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        <div className="rounded-md border bg-muted/20 p-3 space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-medium">Clinical timeline preview</p>
-            {typeof admissionIdForPreview === 'number' ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => void refetchClinicalSummary()}
-                disabled={loadingClinicalSummary || fetchingClinicalSummary}
-              >
-                {fetchingClinicalSummary ? 'Refreshing…' : 'Refresh'}
-              </Button>
-            ) : null}
-          </div>
-
-          {typeof admissionIdForPreview !== 'number' ? (
-            <p className="text-xs text-muted-foreground">
-              Clinical timeline will appear once the active admission is resolved from this claim.
-            </p>
-          ) : loadingClinicalSummary ? (
-            <p className="text-xs text-muted-foreground">Loading clinical timeline…</p>
-          ) : clinicalSummaryError ? (
-            <p className="text-xs text-destructive">
-              Failed to load clinical timeline preview. You can still continue discharge.
-            </p>
-          ) : clinicalSummary ? (
-            <>
-              <p className="text-xs text-muted-foreground">
-                {clinicalSummary.entries.length} timeline entr{clinicalSummary.entries.length === 1 ? 'y' : 'ies'} from ward rounds, kardex shift notes, and handover notes.
-              </p>
-              <details className="rounded border bg-background p-2 text-xs">
-                <summary className="cursor-pointer text-muted-foreground">Preview rendered narrative</summary>
-                <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded bg-muted p-2 font-mono text-[11px]">
-                  {clinicalSummary.rendered_text || 'No timeline notes available.'}
-                </pre>
-              </details>
-            </>
-          ) : null}
-        </div>
 
         {/* Step 1: Discharge details + send OTP */}
         {step === 'details' && (

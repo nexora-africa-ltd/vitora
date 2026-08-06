@@ -518,7 +518,7 @@ export function ClaimILMPanel({
   const [restartSessionBusy, setRestartSessionBusy] = useState(false);
   const [visitAlreadyActiveNotice, setVisitAlreadyActiveNotice] = useState(false);
 
-  const { data: latestConsentToken } = useQuery({
+  const { data: latestConsentToken, isLoading: latestConsentLoading, isFetching: latestConsentFetching } = useQuery({
     queryKey: ['sha-latest-consent-for-workflow', claim.sha_member, claim.encounter, claim.updated_at],
     enabled: typeof claim.sha_member === 'number' && !!flow?.requiresConsent,
     queryFn: async () => {
@@ -539,6 +539,12 @@ export function ClaimILMPanel({
     refetchIntervalInBackground: false,
   });
 
+  const validatedConsentToken = useMemo(
+    () => String(latestConsentToken?.consent_token || '').trim(),
+    [latestConsentToken?.consent_token],
+  );
+  const tokenLookupInFlight = requiresConsent && (latestConsentLoading || latestConsentFetching);
+
   const tokenStatus = useMemo(() => {
     if (!requiresConsent) {
       return {
@@ -548,9 +554,17 @@ export function ClaimILMPanel({
       };
     }
 
-    const tokenValue = latestConsentToken?.consent_token || consentToken || '';
+    const tokenValue = validatedConsentToken;
     const expiresAt = latestConsentToken?.expires_at || null;
     const now = Date.now();
+
+    if (tokenLookupInFlight && !tokenValue) {
+      return {
+        label: 'Checking token',
+        detail: 'Verifying claim-linked consent token',
+        badgeClass: 'border-amber-300 text-amber-700',
+      };
+    }
 
     if (visitStarted && tokenValue) {
       const suffix = expiresAt ? ` · expires ${format(parseISO(expiresAt), 'dd MMM HH:mm')}` : '';
@@ -569,10 +583,18 @@ export function ClaimILMPanel({
       };
     }
 
+    if (!tokenValue && consentToken) {
+      return {
+        label: 'Unverified token',
+        detail: 'Local token is present but not validated for this claim',
+        badgeClass: 'border-amber-300 text-amber-700',
+      };
+    }
+
     if (!tokenValue) {
       return {
-        label: 'No token',
-        detail: 'Run consent to generate one',
+        label: 'No validated token',
+        detail: 'Run consent to generate and validate one',
         badgeClass: 'border-amber-300 text-amber-700',
       };
     }
@@ -615,18 +637,17 @@ export function ClaimILMPanel({
       badgeClass: 'border-emerald-300 text-emerald-700',
     };
   }, [
-    latestConsentToken?.consent_token,
-    latestConsentToken?.expires_at,
     consentToken,
+    latestConsentToken?.expires_at,
     requiresConsent,
+    tokenLookupInFlight,
+    validatedConsentToken,
     visitStarted,
   ]);
 
   const tokenIsCurrentlyUsable = useMemo(() => {
     if (!requiresConsent) return true;
-
-    const tokenValue = latestConsentToken?.consent_token || consentToken || '';
-    if (!tokenValue) return false;
+    if (!validatedConsentToken) return false;
 
     if (latestConsentToken?.status === 'EXPIRED' || latestConsentToken?.is_valid === false) {
       return false;
@@ -641,12 +662,11 @@ export function ClaimILMPanel({
       return true;
     }
   }, [
-    latestConsentToken?.consent_token,
     latestConsentToken?.expires_at,
     latestConsentToken?.is_valid,
     latestConsentToken?.status,
-    consentToken,
     requiresConsent,
+    validatedConsentToken,
   ]);
 
   useEffect(() => {
@@ -663,7 +683,11 @@ export function ClaimILMPanel({
       lower.includes('consent token has expired') ||
       lower.includes('consent_token_expired') ||
       lower.includes('token expired');
-    if (!isConsentExpiredError) return;
+    const isConsentNotFoundError =
+      lower.includes('no validated consent token') ||
+      lower.includes('consent token not found') ||
+      lower.includes('consent_token_not_found');
+    if (!isConsentExpiredError && !isConsentNotFoundError) return;
     if (tokenIsCurrentlyUsable) {
       setError(null);
     }
@@ -1163,7 +1187,7 @@ export function ClaimILMPanel({
   async function preview() {
     const latestTokenExpired =
       latestConsentToken?.status === 'EXPIRED' || latestConsentToken?.is_valid === false;
-    const hasAnyConsentToken = Boolean(latestConsentToken?.consent_token || consentToken);
+    const hasAnyConsentToken = tokenIsCurrentlyUsable;
     if (requiresConsent && latestTokenExpired) {
       setError('Consent token has expired. Please re-consent the patient.');
       onConsentExpired?.();
@@ -1268,12 +1292,12 @@ export function ClaimILMPanel({
   }
 
   async function requestFreshDischargeOtp() {
-    if (!consentToken || !patientCrId) return;
+    if (!validatedConsentToken || !patientCrId) return;
     setBusy('sendDischargeOtp');
     setError(null);
     try {
       await shaApi.ilmSendDischargeOtp({
-        consent_token: consentToken,
+        consent_token: validatedConsentToken,
         patient_id: patientCrId,
       });
       setDischargeOtp('');
@@ -1412,14 +1436,14 @@ export function ClaimILMPanel({
   // (no pre-validated consent token needed). The consent token is only required
   // for post-visit operations (add interventions, submit).
   // Practitioner licence is recommended but NOT mandatory for visit start.
-  const hasConsentOrOtp = !!consentToken || !!startOtp || !!startAuthGuid;
+  const hasConsentOrOtp = !!validatedConsentToken || !!startOtp || !!startAuthGuid;
   const prereqs: Array<{ label: string; ok: boolean; hint?: string }> = [
     {
       label: 'Patient consent',
       ok: requiresConsent ? hasConsentOrOtp : true,
-      hint: requiresConsent
-        ? hasConsentOrOtp
-          ? consentToken ? 'Token validated' : 'OTP entered — will validate on visit start'
+        hint: requiresConsent
+          ? hasConsentOrOtp
+          ? validatedConsentToken ? 'Token validated' : 'OTP entered — will validate on visit start'
           : undefined
         : 'Not required for emergency flow',
     },
@@ -1446,12 +1470,12 @@ export function ClaimILMPanel({
     },
     {
       label: 'OTP / biometric',
-      ok: !!(startOtp || startAuthGuid || consentToken),
+      ok: !!(startOtp || startAuthGuid || validatedConsentToken),
       hint: startAuthGuid
         ? 'Biometric authorised'
         : startOtp
           ? 'OTP ready'
-          : consentToken
+          : validatedConsentToken
             ? 'Consent validated'
             : 'Enter OTP from patient below',
     },
@@ -1461,7 +1485,7 @@ export function ClaimILMPanel({
   // Minimal requirements to attempt start_visit (DHA needs OTP + patient_id + intervention)
   const canAttemptVisit =
     !!patientCrId &&
-    !!(startOtp || startAuthGuid || consentToken || reuseExistingConsentStart || tokenIsCurrentlyUsable) &&
+    !!(startOtp || startAuthGuid || reuseExistingConsentStart || tokenIsCurrentlyUsable) &&
     !!effectiveInterventionCode;
 
   const panelTitle = flow
@@ -1475,6 +1499,13 @@ export function ClaimILMPanel({
   const previewDone = !!previewResult?.payload;
   const applyPreviewDone = !!applyPreviewResult?.success;
   const materializePreviewDone = !!materializePreviewResult?.success;
+  const lifecycleReadyToSubmit = previewDone && applyPreviewDone && materializePreviewDone;
+  const showLifecycleAdvanced = previewDone || applyPreviewDone || materializePreviewDone;
+  const lifecycleProgress = [
+    { key: 'preview', label: 'Preview ran', done: previewDone },
+    { key: 'apply', label: 'Preview lines applied', done: applyPreviewDone },
+    { key: 'materialize', label: 'Invoice materialized', done: materializePreviewDone },
+  ];
 
   function workflowButtonClass(loading: boolean, done: boolean): string {
     if (loading) {
@@ -1485,6 +1516,42 @@ export function ClaimILMPanel({
     }
     return '';
   }
+
+  async function runPrimaryLifecycleAction() {
+    if (!previewDone) {
+      await preview();
+      return;
+    }
+    if (!applyPreviewDone) {
+      await applyPreviewLines();
+      return;
+    }
+    if (!materializePreviewDone) {
+      await materializePreviewInvoice();
+      return;
+    }
+    if (!isInpatientFlow) {
+      await submitOutpatient();
+    }
+  }
+
+  const primaryLifecycleLabel = !previewDone
+    ? '1. Preview claim'
+    : !applyPreviewDone
+      ? '2. Apply preview lines locally'
+      : !materializePreviewDone
+        ? '3. Materialize preview invoice'
+        : isInpatientFlow
+          ? 'Ready for discharge submission'
+          : 'Submit outpatient claim';
+
+  const primaryLifecycleDisabled =
+    busy !== null
+    || (previewDone && !applyPreviewDone && !previewResult?.payload)
+    || (previewDone && applyPreviewDone && !materializePreviewDone && (!previewResult?.payload && !applyPreviewResult?.success))
+    || (lifecycleReadyToSubmit && isInpatientFlow)
+    || (lifecycleReadyToSubmit && !isInpatientFlow && preSubmitChecklistBlocking)
+    || (lifecycleReadyToSubmit && !isInpatientFlow && (!dhaInvoiceNumber || (!dischargeOtp && !startAuthGuid)));
 
   // =============================================================================
   // Render
@@ -1865,35 +1932,44 @@ export function ClaimILMPanel({
         ==================================================================== */}
         {visitStarted && (
           <section className="space-y-3">
-            <StepHeader index={2} title="Interventions & diagnoses" />
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
+            <StepHeader index={2} title="Claim edits (optional)" />
+            <div className="rounded-md border bg-muted/20 px-3 py-2">
               <p className="text-xs text-muted-foreground">
                 {activeInterventions.length} active intervention
-                {activeInterventions.length === 1 ? '' : 's'}. Manage existing ones on the
-                Interventions tab.
+                {activeInterventions.length === 1 ? '' : 's'}. Continue directly to lifecycle actions unless you need to adjust claim details.
               </p>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setAddInterventionOpen(true)}
-                  disabled={busy !== null || aloneClaim}
-                >
-                  Add intervention
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setDiagnosisAnchorCode(interventionCodes[0] ?? '');
-                    setAddDiagnosisOpen(true);
-                  }}
-                  disabled={busy !== null || activeInterventions.length === 0}
-                >
-                  Add diagnosis
-                </Button>
-              </div>
             </div>
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" size="sm" className="text-xs">
+                  <ChevronRight className="mr-1 h-3 w-3 transition-transform data-[state=open]:rotate-90" />
+                  Edit interventions / diagnoses
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2">
+                <div className="flex flex-wrap gap-2 rounded-md border bg-muted/30 px-3 py-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setAddInterventionOpen(true)}
+                    disabled={busy !== null || aloneClaim}
+                  >
+                    Add intervention
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setDiagnosisAnchorCode(interventionCodes[0] ?? '');
+                      setAddDiagnosisOpen(true);
+                    }}
+                    disabled={busy !== null || activeInterventions.length === 0}
+                  >
+                    Add diagnosis
+                  </Button>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </section>
         )}
 
@@ -1913,67 +1989,129 @@ export function ClaimILMPanel({
         onRefresh={refreshPreSubmitChecklist}
       />
 
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className={workflowButtonClass(previewLoading, previewDone)}
-                onClick={preview}
-                disabled={busy !== null}
-              >
-                {previewLoading ? (
-                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                ) : previewDone ? (
-                  <CheckCircle2 className="mr-2 h-3 w-3" />
-                ) : (
-                  <RefreshCw className="mr-2 h-3 w-3" />
-                )}
-                1. Preview claim
-              </Button>
-              <div className="flex items-center gap-2 rounded-md border px-2 py-1">
-                <Label htmlFor="replace-preview-lines" className="text-xs text-muted-foreground">
-                  Replace existing items
-                </Label>
-                <Switch
-                  id="replace-preview-lines"
-                  checked={replacePreviewLines}
-                  onCheckedChange={setReplacePreviewLines}
-                  disabled={busy !== null}
-                />
+            <div className="rounded-md border p-3 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">Primary next action</p>
+                <Badge variant="outline" className={lifecycleReadyToSubmit ? 'border-emerald-400 text-emerald-700' : ''}>
+                  {lifecycleReadyToSubmit ? 'Ready to submit' : 'In progress'}
+                </Badge>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className={workflowButtonClass(applyPreviewLoading, applyPreviewDone)}
-                onClick={applyPreviewLines}
-                disabled={busy !== null || !previewResult?.payload}
-              >
-                {applyPreviewLoading ? (
-                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                ) : applyPreviewDone ? (
-                  <CheckCircle2 className="mr-2 h-3 w-3" />
-                ) : (
-                  <CircleDashed className="mr-2 h-3 w-3" />
-                )}
-                2. Apply preview lines locally
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className={workflowButtonClass(materializePreviewLoading, materializePreviewDone)}
-                onClick={materializePreviewInvoice}
-                disabled={busy !== null || (!previewResult?.payload && !applyPreviewResult?.success)}
-              >
-                {materializePreviewLoading ? (
-                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                ) : materializePreviewDone ? (
-                  <CheckCircle2 className="mr-2 h-3 w-3" />
-                ) : (
-                  <CircleDashed className="mr-2 h-3 w-3" />
-                )}
-                3. Materialize preview invoice
-              </Button>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Button
+                  size="sm"
+                  onClick={runPrimaryLifecycleAction}
+                  disabled={primaryLifecycleDisabled}
+                >
+                  {busy !== null ? (
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                  ) : lifecycleReadyToSubmit ? (
+                    <CheckCircle2 className="mr-2 h-3 w-3" />
+                  ) : (
+                    <Play className="mr-2 h-3 w-3" />
+                  )}
+                  {primaryLifecycleLabel}
+                </Button>
+                <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                  {lifecycleProgress.map((step) => (
+                    <span
+                      key={step.key}
+                      className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 ${
+                        step.done
+                          ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                          : 'border-muted-foreground/30 text-muted-foreground'
+                      }`}
+                    >
+                      {step.done ? (
+                        <CheckCircle2 className="h-3 w-3" />
+                      ) : (
+                        <CircleDashed className="h-3 w-3" />
+                      )}
+                      {step.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              {!lifecycleReadyToSubmit && (
+                <p className="text-[11px] text-muted-foreground">
+                  Run lifecycle actions in order: Preview -&gt; Apply preview lines -&gt; Materialize preview invoice.
+                </p>
+              )}
             </div>
+
+            <div className="flex items-center gap-2 rounded-md border px-2 py-1">
+              <Label htmlFor="replace-preview-lines" className="text-xs text-muted-foreground">
+                Replace existing items
+              </Label>
+              <Switch
+                id="replace-preview-lines"
+                checked={replacePreviewLines}
+                onCheckedChange={setReplacePreviewLines}
+                disabled={busy !== null}
+              />
+            </div>
+
+            {showLifecycleAdvanced && (
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-xs">
+                    <ChevronRight className="mr-1 h-3 w-3 transition-transform data-[state=open]:rotate-90" />
+                    Lifecycle advanced actions
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={workflowButtonClass(previewLoading, previewDone)}
+                      onClick={preview}
+                      disabled={busy !== null}
+                    >
+                      {previewLoading ? (
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      ) : previewDone ? (
+                        <CheckCircle2 className="mr-2 h-3 w-3" />
+                      ) : (
+                        <RefreshCw className="mr-2 h-3 w-3" />
+                      )}
+                      1. Preview claim
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={workflowButtonClass(applyPreviewLoading, applyPreviewDone)}
+                      onClick={applyPreviewLines}
+                      disabled={busy !== null || !previewResult?.payload}
+                    >
+                      {applyPreviewLoading ? (
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      ) : applyPreviewDone ? (
+                        <CheckCircle2 className="mr-2 h-3 w-3" />
+                      ) : (
+                        <CircleDashed className="mr-2 h-3 w-3" />
+                      )}
+                      2. Apply preview lines locally
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={workflowButtonClass(materializePreviewLoading, materializePreviewDone)}
+                      onClick={materializePreviewInvoice}
+                      disabled={busy !== null || (!previewResult?.payload && !applyPreviewResult?.success)}
+                    >
+                      {materializePreviewLoading ? (
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      ) : materializePreviewDone ? (
+                        <CheckCircle2 className="mr-2 h-3 w-3" />
+                      ) : (
+                        <CircleDashed className="mr-2 h-3 w-3" />
+                      )}
+                      3. Materialize preview invoice
+                    </Button>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
 
             <div className="grid gap-2 text-xs sm:grid-cols-2">
               <div className="rounded border p-2">
@@ -2101,7 +2239,7 @@ export function ClaimILMPanel({
               <OutpatientSubmitBlock
                 dhaInvoiceNumber={dhaInvoiceNumber}
                 localInvoiceNumber={localInvoiceNumber}
-                consentToken={consentToken}
+                consentToken={validatedConsentToken}
                 patientCrId={patientCrId}
                 hasBiometric={!!startAuthGuid}
                 dischargeOtp={dischargeOtp}
@@ -2510,10 +2648,16 @@ function PreSubmitChecklistBox({
 }) {
   if (items.length === 0) return null;
 
+  const documentItemIds = new Set(['attachments', 'dha-attachments', 'docs-by-intervention']);
+  const generalItems = items.filter((item) => !documentItemIds.has(item.id));
+  const documentItems = items.filter((item) => documentItemIds.has(item.id));
+  const generalBlockers = generalItems.filter((item) => !item.complete);
+  const documentBlockers = documentItems.filter((item) => !item.complete);
+
   return (
-    <div className="rounded-md border bg-muted/20 p-3 space-y-2">
+    <div className="rounded-md border bg-muted/20 p-3 space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium">Pre-submit checklist</p>
+        <p className="text-xs font-medium">Claim readiness</p>
         <div className="inline-flex items-center gap-2">
           {loading ? (
             <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -2534,8 +2678,76 @@ function PreSubmitChecklistBox({
           </Button>
         </div>
       </div>
-      <div className="space-y-1.5">
-        {items.map((item) => {
+
+      <div className="space-y-2">
+        <p className="text-xs font-medium">General blockers</p>
+        {generalBlockers.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground">No non-document blockers.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {generalBlockers.map((item) => {
+              return (
+                <div key={item.id} className="flex items-start justify-between gap-2 text-xs">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <div>
+                      <p>{item.label}</p>
+                      {item.detail ? (
+                        <p className="text-[11px] text-muted-foreground">{item.detail}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                  {item.mode === 'auto' ? (
+                    <Badge variant="outline" className="h-5 text-[10px]">Auto-fix ready</Badge>
+                  ) : (
+                    <Badge variant="outline" className="h-5 text-[10px]">Manual action</Badge>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2 border-t pt-3">
+        <p className="text-xs font-medium">Missing required documents</p>
+        {documentBlockers.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground">No document blockers.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {documentBlockers.map((item) => {
+              return (
+                <div key={item.id} className="flex items-start justify-between gap-2 text-xs">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <div>
+                      <p>{item.label}</p>
+                      {item.detail ? (
+                        <p className="text-[11px] text-muted-foreground">{item.detail}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                  {item.mode === 'auto' ? (
+                    <Badge variant="outline" className="h-5 text-[10px]">Auto-fix ready</Badge>
+                  ) : (
+                    <Badge variant="outline" className="h-5 text-[10px]">Manual action</Badge>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <Collapsible>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-muted-foreground">
+            <ChevronRight className="mr-1 h-3 w-3 transition-transform data-[state=open]:rotate-90" />
+            View full checklist
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-1.5 pt-1">
+          {items.map((item) => {
           const autoFixed = autoFixedIds.includes(item.id);
           return (
             <div key={item.id} className="flex items-start justify-between gap-2 text-xs">
@@ -2565,8 +2777,9 @@ function PreSubmitChecklistBox({
               )}
             </div>
           );
-        })}
-      </div>
+          })}
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

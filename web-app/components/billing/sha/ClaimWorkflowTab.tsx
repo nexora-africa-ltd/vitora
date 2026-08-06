@@ -9,7 +9,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Info } from 'lucide-react';
+import { CheckCircle2, CircleDashed, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,12 +36,54 @@ interface ClaimWorkflowTabProps {
 const TERMINAL_STATUSES = new Set(['paid', 'partial', 'cancelled', 'written_off']);
 const INPATIENT_PREFIXES = ['SHA-01', 'SHA-03', 'SHA-07', 'SHA-13', 'SHA-19', 'SHA-20'];
 
+interface WorkflowStepCardProps {
+  step: number;
+  title: string;
+  description: string;
+  complete?: boolean;
+  children: React.ReactNode;
+}
+
+function WorkflowStepCard({
+  step,
+  title,
+  description,
+  complete = false,
+  children,
+}: WorkflowStepCardProps) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-base">{step}. {title}</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">{description}</p>
+          </div>
+          <Badge variant="outline" className={complete ? 'border-emerald-300 text-emerald-700' : ''}>
+            {complete ? (
+              <>
+                <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                Ready
+              </>
+            ) : (
+              <>
+                <CircleDashed className="mr-1 h-3.5 w-3.5" />
+                Pending
+              </>
+            )}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
+}
+
 export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: ClaimWorkflowTabProps) {
   const [consentTokenStr, setConsentTokenStr] = useState('');
   const [consentCredential, setConsentCredential] = useState<ConsentCredential>({});
   // Intervention code selected during consent — reused by ClaimILMPanel for start_visit
   const [consentInterventionCode, setConsentInterventionCode] = useState<string>('');
-  const [previewAuthorizationCode, setPreviewAuthorizationCode] = useState('');
   const [previewMemberNumber, setPreviewMemberNumber] = useState('');
   const [previewDhaInvoiceNumber, setPreviewDhaInvoiceNumber] = useState('');
   const [forceConsentRefresh, setForceConsentRefresh] = useState(false);
@@ -115,11 +157,11 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
     }).finally(() => {
       setConsentLookupChecked(true);
     });
-  }, [claim.sha_member, claim.encounter, consentTokenStr, visitStarted, flow.requiresConsent]);
+  }, [claim.id, claim.sha_member, claim.encounter, consentTokenStr, visitStarted, flow.requiresConsent]);
 
   // Hide consent panel if a valid (non-expired) token exists.
   // consent_obtained is derived from live token state; false means missing or expired.
-  const consentObtained = !!consentTokenStr || !!claim.consent_obtained;
+  const consentObtained = !!consentTokenStr;
   const needsConsentRefresh = forceConsentRefresh || !consentObtained;
 
   const showConsent =
@@ -152,6 +194,28 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
   const tariffMappingErrors =
     submitValidation?.errors?.filter((error) => /missing SHA tariff code/i.test(error)) ?? [];
   const showRequiredDocumentsCard = missing.length > 0 || coreAttachmentErrors.length > 0;
+  const attachmentsReady = !showRequiredDocumentsCard && tariffMappingErrors.length === 0;
+  const consentReady = !showConsent;
+  const hasInterventions = activeInterventions.length > 0;
+  const prepareReady = !isDraft || hasInterventions;
+
+  const readinessBlockers = useMemo(() => {
+    const blockers: string[] = [];
+    if (!prepareReady) blockers.push('Add at least one intervention to continue');
+    if (coreAttachmentErrors.length > 0) blockers.push('Core attachments are still missing');
+    if (missing.length > 0) blockers.push('Intervention-specific required documents are missing');
+    if (tariffMappingErrors.length > 0) blockers.push('Some claim items are missing SHA tariff mapping');
+    if (showConsent) blockers.push('Consent/authorization is required before submission');
+    if (!showIlm) blockers.push('Claim is no longer in an editable workflow state');
+    return blockers;
+  }, [
+    prepareReady,
+    coreAttachmentErrors.length,
+    missing.length,
+    tariffMappingErrors.length,
+    showConsent,
+    showIlm,
+  ]);
 
   if (isTerminal) {
     return (
@@ -167,163 +231,203 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
 
   return (
     <div id="claim-workflow-section" className="space-y-3 sm:space-y-4 md:space-y-6">
-      {/* Step 0 — Pre-visit checks (already proactive) */}
-      <PreVisitChecksPanel
-        patientPk={typeof claim.patient === 'number' ? claim.patient : undefined}
-        shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
-        shaMemberNumber={claim.sha_member_number ?? undefined}
-        defaultDhaPatientId={claim.dha_external_id ?? undefined}
-        encounterClinician={claim.encounter_clinician}
-      />
+      <Card className={readinessBlockers.length > 0 ? 'border-amber-200 dark:border-amber-800/60' : ''}>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Workflow path</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p className="text-muted-foreground">
+            Follow this path in order: Prepare, Attachments, Consent/Authorization, then Submit.
+          </p>
+          {readinessBlockers.length === 0 ? (
+            <Alert>
+              <CheckCircle2 className="h-4 w-4" />
+              <AlertDescription>Claim is ready for the final submission actions.</AlertDescription>
+            </Alert>
+          ) : (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <ul className="list-disc pl-5 space-y-1">
+                  {readinessBlockers.map((blocker) => (
+                    <li key={blocker}>{blocker}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Missing documents (advisory) */}
-      {showRequiredDocumentsCard && (
-        <Card className="border-amber-200 dark:border-amber-800/60">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base text-amber-800 dark:text-amber-300">
-                Required documents
-              </CardTitle>
-              <AutoAttachDocumentsButton claimId={claim.id} onAttached={onChange} />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {coreAttachmentErrors.length > 0 && (
-              <div className="rounded border border-amber-300 bg-amber-50/70 p-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
-                <p className="font-medium">Core attachments still missing</p>
-                <p className="text-amber-800/90 dark:text-amber-300/90">
-                  {coreAttachmentErrors.join(' · ').replaceAll('Missing required attachment: ', '')}
-                </p>
-              </div>
-            )}
-
-            {missing.length > 0 ? (
-              <>
-                <p className="text-muted-foreground">
-                  SHA requires the following intervention-specific documents before submission.
-                </p>
-                {missing.map((entry, i) => (
-                  <div key={i} className="flex flex-col gap-1">
-                    <span className="font-medium">
-                      {entry.intervention_name || entry.intervention_code}
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      {entry.missing.map((docType, j) => (
-                        <Badge
-                          key={j}
-                          variant="outline"
-                          className="bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-800"
-                        >
-                          {docType.replace(/_/g, ' ')}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </>
-            ) : (
-              <p className="text-muted-foreground">
-                Use auto-attach to generate local core attachments (clinical notes, medical report, and invoice) for submit readiness.
-              </p>
-            )}
-
-            {tariffMappingErrors.length > 0 && (
-              <div className="rounded border border-amber-300 bg-amber-50/70 p-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
-                <p className="font-medium">Tariff mapping required</p>
-                <p className="text-amber-800/90 dark:text-amber-300/90">{tariffMappingErrors.join(' · ')}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Consent */}
-      {showConsent && (
-        <ConsentPanel
-          shaMemberId={claim.sha_member!}
-          patientCrId={patientCrId || undefined}
-          encounterId={typeof claim.encounter === 'number' ? claim.encounter : undefined}
-          claimPk={claim.id}
-          flow={flow.flow}
-          interventionCodes={consentInterventionCode ? [consentInterventionCode] : undefined}
-          onConsentObtained={(_id, token, credential, interventionCode) => {
-            setConsentTokenStr(token);
-            setConsentCredential(credential);
-            setForceConsentRefresh(false);
-            if (interventionCode) setConsentInterventionCode(interventionCode);
-            onChange();
-          }}
-        />
-      )}
-
-      {/* Auto-suggested interventions from clinical data */}
-      {isDraft && (
-        <InterventionSuggestionsPanel
-          claimId={claim.id}
-          dhaPatientId={claim.dha_external_id ?? undefined}
-          shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
-          onAttached={onChange}
-        />
-      )}
-
-      {/* Proactive ILM workflow (non-terminal states) */}
-      {showIlm && (
-        <ClaimILMPanel
-          claim={claim}
-          flow={flow}
-          isActive={isActive}
-          consentToken={consentTokenStr}
-          consentCredential={consentCredential}
-          consentInterventionCode={consentInterventionCode}
-          onPreviewContext={(ctx) => {
-            if (ctx.authorizationCode) setPreviewAuthorizationCode(ctx.authorizationCode);
-            if (ctx.memberNumber) setPreviewMemberNumber(ctx.memberNumber);
-            if (ctx.dhaInvoiceNumber) setPreviewDhaInvoiceNumber(ctx.dhaInvoiceNumber);
-          }}
-          onConsentExpired={() => {
-            setConsentTokenStr('');
-            setConsentCredential({});
-            setForceConsentRefresh(true);
-          }}
-          onChange={onChange}
-        />
-      )}
-
-      {/* Discharge (inpatient flows only) */}
-      {showDischarge && (
-        <>
-          <DhaAttachmentSyncPanel
-            claimId={claim.id}
-            claimUpdatedAt={claim.updated_at}
-            onSynced={onChange}
-          />
-          <DischargePanel
-            claimId={claim.id}
-            flow={flow}
-            claimPatientId={typeof claim.patient === 'number' ? claim.patient : undefined}
-            claimEncounterId={typeof claim.encounter === 'number' ? claim.encounter : undefined}
+      <WorkflowStepCard
+        step={1}
+        title="Prepare"
+        description="Run pre-visit checks and ensure claim interventions are in place."
+        complete={prepareReady}
+      >
+        <div className="space-y-4">
+          <PreVisitChecksPanel
+            patientPk={typeof claim.patient === 'number' ? claim.patient : undefined}
             shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
-            consentToken={consentTokenStr || previewAuthorizationCode}
-            patientExternalId={previewMemberNumber || claim.dha_external_id || ''}
-            invoiceNumber={claim.dha_invoice_number || previewDhaInvoiceNumber || claim.invoice_number || ''}
-            invoiceId={typeof claim.invoice === 'number' ? claim.invoice : null}
-            facilityLevel={facilityLevel}
-            activeInterventions={activeInterventions}
-            onChange={onChange}
+            shaMemberNumber={claim.sha_member_number ?? undefined}
+            defaultDhaPatientId={claim.dha_external_id ?? undefined}
+            encounterClinician={claim.encounter_clinician}
           />
-        </>
-      )}
+          {isDraft && (
+            <InterventionSuggestionsPanel
+              claimId={claim.id}
+              dhaPatientId={claim.dha_external_id ?? undefined}
+              shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
+              onAttached={onChange}
+            />
+          )}
+        </div>
+      </WorkflowStepCard>
 
-      {/* Quiet state — nothing to do */}
-      {!showConsent && !showDischarge && !isDraft && (
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertDescription>
-            Awaiting insurer response. Use the actions above to amend interventions or
-            re-submit if needed.
-          </AlertDescription>
-        </Alert>
-      )}
+      <WorkflowStepCard
+        step={2}
+        title="Attachments"
+        description="Resolve required documents and sync claim files before submission."
+        complete={attachmentsReady}
+      >
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              Auto-attach can generate core documents (clinical notes, medical report, invoice).
+            </p>
+            <AutoAttachDocumentsButton claimId={claim.id} onAttached={onChange} />
+          </div>
+
+          {coreAttachmentErrors.length > 0 && (
+            <Alert>
+              <AlertDescription>
+                <span className="font-medium">Core attachments missing:</span>{' '}
+                {coreAttachmentErrors.join(' · ').replaceAll('Missing required attachment: ', '')}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {missing.length > 0 && (
+            <div className="space-y-2 rounded border p-3">
+              <p className="text-sm font-medium">Intervention-specific required documents</p>
+              {missing.map((entry, i) => (
+                <div key={i} className="flex flex-col gap-1">
+                  <span className="text-sm font-medium">{entry.intervention_name || entry.intervention_code}</span>
+                  <div className="flex flex-wrap gap-1">
+                    {entry.missing.map((docType, j) => (
+                      <Badge key={j} variant="outline">{docType.replace(/_/g, ' ')}</Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {tariffMappingErrors.length > 0 && (
+            <Alert>
+              <AlertDescription>
+                <span className="font-medium">Tariff mapping required:</span> {tariffMappingErrors.join(' · ')}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {showDischarge && (
+            <DhaAttachmentSyncPanel
+              claimId={claim.id}
+              claimUpdatedAt={claim.updated_at}
+              onSynced={onChange}
+            />
+          )}
+        </div>
+      </WorkflowStepCard>
+
+      <WorkflowStepCard
+        step={3}
+        title="Consent / Authorization"
+        description="Capture or confirm active consent before visit-level submission actions."
+        complete={consentReady}
+      >
+        {showConsent ? (
+          <ConsentPanel
+            shaMemberId={claim.sha_member!}
+            patientCrId={patientCrId || undefined}
+            encounterId={typeof claim.encounter === 'number' ? claim.encounter : undefined}
+            claimPk={claim.id}
+            flow={flow.flow}
+            interventionCodes={consentInterventionCode ? [consentInterventionCode] : undefined}
+            onConsentObtained={(_id, token, credential, interventionCode) => {
+              setConsentTokenStr(token);
+              setConsentCredential(credential);
+              setForceConsentRefresh(false);
+              if (interventionCode) setConsentInterventionCode(interventionCode);
+              onChange();
+            }}
+          />
+        ) : (
+          <Alert>
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>
+              {flow.requiresConsent
+                ? 'Consent is available for this claim. Continue to submission.'
+                : 'This flow does not require consent. Continue to submission.'}
+            </AlertDescription>
+          </Alert>
+        )}
+      </WorkflowStepCard>
+
+      <WorkflowStepCard
+        step={4}
+        title="Submit"
+        description="Execute ILM visit/preview/submit actions. For inpatient claims, complete discharge submission here."
+        complete={attachmentsReady && consentReady}
+      >
+        <div className="space-y-4">
+          {showIlm ? (
+            <ClaimILMPanel
+              claim={claim}
+              flow={flow}
+              isActive={isActive}
+              consentToken={consentTokenStr}
+              consentCredential={consentCredential}
+              consentInterventionCode={consentInterventionCode}
+              onPreviewContext={(ctx) => {
+                if (ctx.memberNumber) setPreviewMemberNumber(ctx.memberNumber);
+                if (ctx.dhaInvoiceNumber) setPreviewDhaInvoiceNumber(ctx.dhaInvoiceNumber);
+              }}
+              onConsentExpired={() => {
+                setConsentTokenStr('');
+                setConsentCredential({});
+                setForceConsentRefresh(true);
+              }}
+              onChange={onChange}
+            />
+          ) : (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                Workflow actions are not available for this claim state.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {showDischarge && (
+            <DischargePanel
+              claimId={claim.id}
+              flow={flow}
+              claimPatientId={typeof claim.patient === 'number' ? claim.patient : undefined}
+              claimEncounterId={typeof claim.encounter === 'number' ? claim.encounter : undefined}
+              shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
+              consentToken={consentTokenStr}
+              patientExternalId={previewMemberNumber || claim.dha_external_id || ''}
+              invoiceNumber={claim.dha_invoice_number || previewDhaInvoiceNumber || claim.invoice_number || ''}
+              invoiceId={typeof claim.invoice === 'number' ? claim.invoice : null}
+              facilityLevel={facilityLevel}
+              activeInterventions={activeInterventions}
+              onChange={onChange}
+            />
+          )}
+        </div>
+      </WorkflowStepCard>
     </div>
   );
 }
