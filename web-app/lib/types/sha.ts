@@ -816,6 +816,9 @@ export interface Claim {
     intervention_name: string;
     benefit_code: string;
     status: 'active' | 'retired';
+    preview_missing_streak?: number;
+    last_seen_in_preview_at?: string | null;
+    auto_retired_by_omission?: boolean;
     required_document_types: string[];
     dha_intervention_id?: string;
     tariff_amount?: string | null;

@@ -3089,6 +3089,19 @@ class SHAClaimIntervention(models.Model):
         choices=InterventionStatus.choices,
         default=InterventionStatus.ACTIVE,
     )
+    preview_missing_streak = models.PositiveSmallIntegerField(
+        default=0,
+        help_text="Consecutive preview reconciliations where this intervention code was absent",
+    )
+    last_seen_in_preview_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Last time this intervention code appeared in DHA preview payload",
+    )
+    auto_retired_by_omission = models.BooleanField(
+        default=False,
+        help_text="True when intervention was soft-retired after repeated omission from preview",
+    )
 
     # Document types required by SHA for this intervention
     # Populated from the HIE response's `document_types` field
@@ -3243,12 +3256,22 @@ class SHAClaimIntervention(models.Model):
     def retire(self) -> None:
         """Mark intervention as retired."""
         self.status = self.InterventionStatus.RETIRED
-        self.save(update_fields=["status", "updated_at"])
+        self.auto_retired_by_omission = False
+        self.save(update_fields=["status", "auto_retired_by_omission", "updated_at"])
 
     def restore(self) -> None:
         """Restore a retired intervention."""
         self.status = self.InterventionStatus.ACTIVE
-        self.save(update_fields=["status", "updated_at"])
+        self.preview_missing_streak = 0
+        self.auto_retired_by_omission = False
+        self.save(
+            update_fields=[
+                "status",
+                "preview_missing_streak",
+                "auto_retired_by_omission",
+                "updated_at",
+            ]
+        )
 
 
 class SHAClaimItem(models.Model):

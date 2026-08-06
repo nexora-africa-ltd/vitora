@@ -2221,6 +2221,48 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
 
+    @action(detail=True, methods=["post"], url_path="ilm/interventions/purge")
+    def ilm_purge_intervention(self, request, pk=None):
+        """Hard-delete a retired intervention row after admin confirmation.
+
+        This is intentionally local-only and restricted to admin users.
+        """
+        if not (
+            getattr(request.user, "is_staff", False) or getattr(request.user, "is_superuser", False)
+        ):
+            return Response(
+                {"error": "Admin privileges required to purge interventions."}, status=403
+            )
+
+        claim = self.get_object()
+        code = request.data.get("intervention_code")
+        if not code:
+            return Response({"error": "intervention_code required"}, status=400)
+
+        from hmis.apps.billing.models import SHAClaimIntervention
+
+        intervention = SHAClaimIntervention.objects.filter(
+            claim=claim, intervention_code=str(code).strip()
+        ).first()
+        if intervention is None:
+            return Response({"error": "Intervention not found on this claim."}, status=404)
+        if intervention.status != SHAClaimIntervention.InterventionStatus.RETIRED:
+            return Response(
+                {"error": "Only retired interventions can be purged."},
+                status=400,
+            )
+
+        intervention_code = intervention.intervention_code
+        intervention.delete()
+        return Response(
+            {
+                "success": True,
+                "message": f"Intervention {intervention_code} purged from local claim rows.",
+                "intervention_code": intervention_code,
+            },
+            status=status.HTTP_200_OK,
+        )
+
     @action(detail=True, methods=["post"], url_path="ilm/restart-visit-session")
     def ilm_restart_visit_session(self, request, pk=None):
         """Reset local DHA visit session markers so staff can re-consent/restart.

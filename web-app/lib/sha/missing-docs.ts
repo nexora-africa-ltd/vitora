@@ -9,6 +9,23 @@ export const PREVIEW_INACTIVE_INTERVENTION_STATUSES = new Set([
   'removed',
 ]);
 
+const PREVIEW_INACTIVE_STATUS_TOKENS = [
+  'retir',
+  'inactiv',
+  'cancel',
+  'delet',
+  'void',
+  'remov',
+  'close',
+  'closed',
+  'end',
+  'ended',
+  'stop',
+  'stopped',
+  'suspend',
+  'terminate',
+];
+
 const CORE_ATTACHMENT_ERROR_REGEX = /Missing required attachment:\s*([^\s].*)$/i;
 const INTERVENTION_DOCUMENT_ERROR_REGEX = /Missing required document\s+'([^']+)'\s+for intervention\s+([A-Z0-9-]+)/i;
 
@@ -18,6 +35,15 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function normalizeInterventionCode(value: unknown): string {
   return String(value || '').trim().toUpperCase();
+}
+
+export function isPreviewInterventionInactiveStatus(value: unknown): boolean {
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw) return false;
+  if (PREVIEW_INACTIVE_INTERVENTION_STATUSES.has(raw)) return true;
+  const normalized = raw.replace(/[^a-z0-9]+/g, ' ').trim();
+  if (!normalized) return false;
+  return PREVIEW_INACTIVE_STATUS_TOKENS.some((token) => normalized.includes(token));
 }
 
 export function parseInterventionCodeFromMissingDocError(error: string): string {
@@ -70,8 +96,8 @@ export function getPreviewActiveInterventionCodeSet(previewPayload: unknown): Se
     interventions
       .filter((entry) => {
         const row = asRecord(entry);
-        const rawStatus = String(row.status || row.intervention_status || '').trim().toLowerCase();
-        return !rawStatus || !PREVIEW_INACTIVE_INTERVENTION_STATUSES.has(rawStatus);
+        const rawStatus = row.status || row.intervention_status;
+        return !isPreviewInterventionInactiveStatus(rawStatus);
       })
       .map((entry) => normalizeInterventionCode(asRecord(entry).intervention_code))
       .filter(Boolean),

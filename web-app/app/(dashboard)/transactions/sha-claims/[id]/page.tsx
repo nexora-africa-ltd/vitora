@@ -38,6 +38,120 @@ import {
 
 type TabId = 'overview' | 'workflow' | 'interventions' | 'adjudication';
 
+interface ClaimInterventionRow {
+  id: number;
+  intervention_code: string;
+  intervention_name: string;
+  benefit_code: string;
+  status: 'active' | 'retired';
+  preview_missing_streak?: number;
+  last_seen_in_preview_at?: string | null;
+  auto_retired_by_omission?: boolean;
+  required_document_types: string[];
+  dha_intervention_id?: string;
+  tariff_amount?: string | null;
+  payment_mechanism?: string;
+  access_point?: 'IP' | 'OP' | 'BOTH' | string;
+  needs_preauth?: boolean;
+  fund?: string;
+  intervention_fund?: string;
+  supported_scheme?: string;
+  schemes?: string[];
+  is_per_diem?: boolean;
+  preauth_exists?: boolean;
+  preauth_status?: string;
+  preauth_approved?: boolean;
+  level2_tariff?: string | null;
+  level3_tariff?: string | null;
+  level4_tariff?: string | null;
+  level5_tariff?: string | null;
+  level6_tariff?: string | null;
+}
+
+function toInterventionStatus(value: unknown): 'active' | 'retired' {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) return 'active';
+  if (normalized === 'active') return 'active';
+  if (
+    normalized.includes('retir')
+    || normalized.includes('inactiv')
+    || normalized.includes('cancel')
+    || normalized.includes('delet')
+    || normalized.includes('void')
+    || normalized.includes('remov')
+    || normalized.includes('close')
+    || normalized.includes('suspend')
+    || normalized.includes('terminate')
+  ) {
+    return 'retired';
+  }
+  return 'active';
+}
+
+function mapPreviewInterventions(
+  payload: unknown,
+  fallbackRows: ClaimInterventionRow[],
+): ClaimInterventionRow[] | null {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  const interventions = (payload as { interventions?: unknown }).interventions;
+  if (!Array.isArray(interventions)) return null;
+
+  const byCode = new Map(
+    fallbackRows.map((row) => [String(row.intervention_code || '').trim().toUpperCase(), row]),
+  );
+
+  const mapped = interventions
+    .map((entry, index) => {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+      const row = entry as Record<string, unknown>;
+      const interventionCode = String(row.intervention_code || '').trim();
+      if (!interventionCode) return null;
+      const key = interventionCode.toUpperCase();
+      const existing = byCode.get(key);
+      const status = toInterventionStatus(row.status || row.intervention_status);
+      const rawAccessPoint = String(row.access_point || row.intervention_access_point || '')
+        .trim()
+        .toUpperCase();
+      const accessPoint =
+        rawAccessPoint === 'IP' || rawAccessPoint === 'OP' || rawAccessPoint === 'BOTH'
+          ? rawAccessPoint
+          : existing?.access_point;
+
+      return {
+        ...(existing || {
+          id: -(index + 1),
+          intervention_code: interventionCode,
+          intervention_name: interventionCode,
+          benefit_code: interventionCode.split('-').slice(0, 2).join('-') || 'UNKNOWN',
+          required_document_types: [],
+        }),
+        intervention_code: interventionCode,
+        intervention_name: String(
+          row.intervention_name || row.name || row.intervention_description || existing?.intervention_name || interventionCode,
+        ).trim(),
+        status,
+        dha_intervention_id: String(row.intervention_id || row.dha_intervention_id || existing?.dha_intervention_id || '').trim() || undefined,
+        payment_mechanism: String(
+          row.intervention_payment_mechanism || row.payment_mechanism || existing?.payment_mechanism || '',
+        ).trim() || undefined,
+        access_point: accessPoint,
+        is_per_diem:
+          row.is_per_diem === true
+          || row.is_per_diem === 'true'
+          || String(row.intervention_payment_mechanism || row.payment_mechanism || '').toUpperCase().includes('PER DIEM')
+          || existing?.is_per_diem,
+      };
+    })
+    .filter((row): row is ClaimInterventionRow => !!row);
+
+  const mappedCodes = new Set(mapped.map((row) => row.intervention_code.toUpperCase()));
+  const omittedLocalRows = fallbackRows.filter(
+    (row) => !mappedCodes.has(String(row.intervention_code || '').trim().toUpperCase()),
+  );
+
+  return [...mapped, ...omittedLocalRows];
+}
+
 function extractShaInlineError(error: unknown): string {
   const baseMessage = getApiErrorMessage(error);
   const start = baseMessage.indexOf('{');
@@ -90,6 +204,8 @@ export default function ClaimDetailPage() {
   const [payerNeedsAttention, setPayerNeedsAttention] = React.useState(false);
   const [syncingFromDha, setSyncingFromDha] = React.useState(false);
   const [interventionSyncSummary, setInterventionSyncSummary] = React.useState<string>('');
+  const [previewInterventions, setPreviewInterventions] = React.useState<ClaimInterventionRow[] | null>(null);
+  const [previewInterventionsSyncedAt, setPreviewInterventionsSyncedAt] = React.useState<Date | null>(null);
 
   const effectiveStatus = claim ? getEffectiveClaimStatus(claim) : null;
   const adjudicationNeedsAttention =
@@ -98,6 +214,11 @@ export default function ClaimDetailPage() {
 
   useEffect(() => {
     setPayerNeedsAttention(false);
+  }, [claim?.id]);
+
+  useEffect(() => {
+    setPreviewInterventions(null);
+    setPreviewInterventionsSyncedAt(null);
   }, [claim?.id]);
 
   const handleCopyActionError = useCallback(async () => {
@@ -171,6 +292,11 @@ export default function ClaimDetailPage() {
     setSyncingFromDha(true);
     try {
       const result = await shaApi.ilmPreview(claimId);
+      const mapped = mapPreviewInterventions(result.payload, (claim?.claim_interventions ?? []) as ClaimInterventionRow[]);
+      if (mapped) {
+        setPreviewInterventions(mapped);
+        setPreviewInterventionsSyncedAt(new Date());
+      }
       const summary = result.reconciliation_summary;
       if (summary?.reconciled) {
         const created = summary.created ?? 0;
@@ -199,7 +325,7 @@ export default function ClaimDetailPage() {
     } finally {
       setSyncingFromDha(false);
     }
-  }, [claimId, refetch, toast]);
+  }, [claim?.claim_interventions, claimId, refetch, toast]);
 
   const isMutating = resubmitMutation.isPending;
 
@@ -235,6 +361,8 @@ export default function ClaimDetailPage() {
   }
 
   const canResubmit = claim.status === 'rejected' || claim.status === 'pending_submission';
+  const interventionsForTab = (previewInterventions ?? claim.claim_interventions ?? []) as ClaimInterventionRow[];
+  const activeInterventionCount = interventionsForTab.filter((i) => i.status === 'active').length;
 
   // ---- Render ----
   return (
@@ -308,9 +436,9 @@ export default function ClaimDetailPage() {
             <TabsTrigger value="workflow" className="w-full">Workflow</TabsTrigger>
             <TabsTrigger value="interventions" className="w-full">
               Interventions
-              {claim.claim_interventions?.length ? (
+              {interventionsForTab.length ? (
                 <span className="ml-1 text-xs text-muted-foreground">
-                  ({claim.claim_interventions.filter((i) => i.status === 'active').length})
+                  ({activeInterventionCount})
                 </span>
               ) : null}
             </TabsTrigger>
@@ -355,22 +483,28 @@ export default function ClaimDetailPage() {
                   Fetch from DHA
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Source: {previewInterventions ? 'DHA preview' : 'local fallback'} • Last synced from DHA:{' '}
+                {previewInterventionsSyncedAt ? previewInterventionsSyncedAt.toLocaleTimeString() : 'Not yet synced'}
+              </p>
               {interventionSyncSummary ? (
                 <Alert>
                   <AlertTitle>Intervention reconciliation</AlertTitle>
                   <AlertDescription>{interventionSyncSummary}</AlertDescription>
                 </Alert>
               ) : null}
-              {claim.claim_interventions && claim.claim_interventions.length > 0 ? (
+              {interventionsForTab.length > 0 ? (
                 <InterventionsList
                   claimId={claim.id}
-                  interventions={claim.claim_interventions}
+                  interventions={interventionsForTab}
                   facilityLevel={
                     claim.facility_level
                       ? parseInt(claim.facility_level.replace('L', ''), 10)
                       : undefined
                   }
-                  onChange={() => refetch()}
+                  onChange={() => {
+                    void handleFetchInterventionsFromDha();
+                  }}
                 />
               ) : (
                 <Alert>

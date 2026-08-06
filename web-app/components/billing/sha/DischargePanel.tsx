@@ -53,9 +53,9 @@ import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
 import { useShareDocument } from '@/lib/hooks/use-document-hub';
 import { useToast } from '@/lib/hooks';
 import {
-  PREVIEW_INACTIVE_INTERVENTION_STATUSES,
   filterValidationErrorsByActiveInterventions,
   getPreviewActiveInterventionCodeSet,
+  isPreviewInterventionInactiveStatus,
   parseMissingCoreAttachmentErrors,
   parseMissingInterventionDocumentErrors,
   toActiveInterventionCodeSet,
@@ -222,8 +222,8 @@ function collectRequiredDocumentTypesFromPreview(payload: Record<string, unknown
   const interventions = Array.isArray(payload.interventions) ? payload.interventions : [];
   for (const intervention of interventions) {
     const row = asRecord(intervention);
-    const rawStatus = String(row.status || row.intervention_status || '').trim().toLowerCase();
-    if (rawStatus && PREVIEW_INACTIVE_INTERVENTION_STATUSES.has(rawStatus)) {
+    const rawStatus = row.status || row.intervention_status;
+    if (isPreviewInterventionInactiveStatus(rawStatus)) {
       continue;
     }
     const interventionCode = String(row.intervention_code || '').trim().toUpperCase() || undefined;

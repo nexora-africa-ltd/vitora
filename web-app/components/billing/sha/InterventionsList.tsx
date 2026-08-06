@@ -8,7 +8,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Archive, ArrowRightLeft, Loader2, RotateCcw } from 'lucide-react';
+import { Archive, ArrowRightLeft, Loader2, RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { shaApi } from '@/lib/api/sha';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useAuth } from '@/lib/auth/context';
 
 interface Intervention {
   id: number;
@@ -31,6 +32,9 @@ interface Intervention {
   intervention_name: string;
   benefit_code: string;
   status: 'active' | 'retired';
+  preview_missing_streak?: number;
+  last_seen_in_preview_at?: string | null;
+  auto_retired_by_omission?: boolean;
   required_document_types: string[];
   dha_intervention_id?: string;
   tariff_amount?: string | null;
@@ -63,10 +67,13 @@ interface InterventionsListProps {
 
 export function InterventionsList({ claimId, interventions, facilityLevel, onChange }: InterventionsListProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [busyCode, setBusyCode] = useState<string | null>(null);
+  const [purgeBusyCode, setPurgeBusyCode] = useState<string | null>(null);
   const [transferFrom, setTransferFrom] = useState<string | null>(null);
   const [transferTo, setTransferTo] = useState('');
   const [transferBusy, setTransferBusy] = useState(false);
+  const canPurge = !!(user?.is_staff || user?.is_superuser);
 
   if (!interventions || interventions.length === 0) {
     return null;
@@ -189,6 +196,34 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
       });
     } finally {
       setTransferBusy(false);
+    }
+  }
+
+  async function handlePurge(code: string) {
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm(
+        `Permanently purge retired intervention ${code} from local claim rows? This cannot be undone.`,
+      );
+      if (!confirmed) return;
+    }
+
+    setPurgeBusyCode(code);
+    try {
+      await shaApi.ilmPurgeIntervention(claimId, { intervention_code: code });
+      await syncInterventionsFromDhaPreview();
+      toast({
+        title: 'Intervention purged',
+        description: `${code} was permanently removed from local claim rows.`,
+      });
+      onChange?.();
+    } catch (e: any) {
+      toast({
+        title: 'Purge failed',
+        description: e?.response?.data?.error ?? e?.message ?? 'Could not purge intervention.',
+        variant: 'destructive',
+      });
+    } finally {
+      setPurgeBusyCode(null);
     }
   }
 
@@ -357,21 +392,48 @@ export function InterventionsList({ claimId, interventions, facilityLevel, onCha
                       ILM ID: {intervention.dha_intervention_id}
                     </p>
                   ) : null}
+                  {intervention.auto_retired_by_omission ? (
+                    <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300">
+                      Auto-retired after {intervention.preview_missing_streak ?? 0} consecutive DHA preview misses.
+                    </p>
+                  ) : null}
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Last seen in DHA preview:{' '}
+                    {intervention.last_seen_in_preview_at
+                      ? new Date(intervention.last_seen_in_preview_at).toLocaleString()
+                      : 'Not recorded'}
+                  </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 ml-2"
-                  disabled={busyCode !== null}
-                  onClick={() => handleRestore(intervention.intervention_code)}
-                >
-                  {busyCode === intervention.intervention_code ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-                  )}
-                  Restore
-                </Button>
+                <div className="ml-2 flex shrink-0 gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={busyCode !== null || purgeBusyCode !== null}
+                    onClick={() => handleRestore(intervention.intervention_code)}
+                  >
+                    {busyCode === intervention.intervention_code ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                    )}
+                    Restore
+                  </Button>
+                  {canPurge ? (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={busyCode !== null || purgeBusyCode !== null}
+                      onClick={() => handlePurge(intervention.intervention_code)}
+                    >
+                      {purgeBusyCode === intervention.intervention_code ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                      )}
+                      Purge
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             ))}
           </>

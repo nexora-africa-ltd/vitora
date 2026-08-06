@@ -407,7 +407,7 @@ class TestInterventions:
         assert intervention.required_document_types == ["MEDICAL_REPORT", "LAB_REPORT"]
         assert intervention.tariff_amount == Decimal("777.00")
 
-    def test_reconcile_from_preview_upserts_without_retiring_absent_codes(self, service, claim):
+    def test_reconcile_from_preview_upserts_and_tracks_omission_streak(self, service, claim):
         SHAClaimIntervention.objects.create(
             claim=claim,
             intervention_code="SHA-07-001",
@@ -460,6 +460,8 @@ class TestInterventions:
 
         preserved = SHAClaimIntervention.objects.get(claim=claim, intervention_code="SHA-07-001")
         assert preserved.status == SHAClaimIntervention.InterventionStatus.ACTIVE
+        assert preserved.preview_missing_streak == 1
+        assert preserved.auto_retired_by_omission is False
 
         existing = SHAClaimIntervention.objects.get(claim=claim, intervention_code="SHA-19-197")
         assert existing.status == SHAClaimIntervention.InterventionStatus.ACTIVE
@@ -473,6 +475,68 @@ class TestInterventions:
         assert created.status == SHAClaimIntervention.InterventionStatus.ACTIVE
         assert created.payment_mechanism == SHAClaimIntervention.PaymentMechanism.FEE_FOR_SERVICE
         assert created.tariff_amount == Decimal("268800")
+
+    def test_reconcile_soft_retires_after_second_consecutive_omission(self, service, claim):
+        intervention = SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-07-001",
+            intervention_name="Legacy local intervention",
+            status=SHAClaimIntervention.InterventionStatus.ACTIVE,
+        )
+
+        summary_first = service.reconcile_interventions_from_preview(
+            claim,
+            {"payload": {"interventions": []}},
+        )
+        intervention.refresh_from_db()
+        assert summary_first["retired"] == 0
+        assert intervention.status == SHAClaimIntervention.InterventionStatus.ACTIVE
+        assert intervention.preview_missing_streak == 1
+        assert intervention.auto_retired_by_omission is False
+
+        summary_second = service.reconcile_interventions_from_preview(
+            claim,
+            {"payload": {"interventions": []}},
+        )
+        intervention.refresh_from_db()
+        assert summary_second["retired"] == 1
+        assert summary_second["soft_retired_by_omission"] == 1
+        assert "SHA-07-001" in summary_second["soft_retired_by_omission_codes"]
+        assert intervention.status == SHAClaimIntervention.InterventionStatus.RETIRED
+        assert intervention.preview_missing_streak == 2
+        assert intervention.auto_retired_by_omission is True
+
+    def test_reconcile_resets_omission_streak_when_code_reappears(self, service, claim):
+        intervention = SHAClaimIntervention.objects.create(
+            claim=claim,
+            intervention_code="SHA-07-001",
+            intervention_name="Legacy local intervention",
+            status=SHAClaimIntervention.InterventionStatus.RETIRED,
+            preview_missing_streak=3,
+            auto_retired_by_omission=True,
+        )
+
+        summary = service.reconcile_interventions_from_preview(
+            claim,
+            {
+                "payload": {
+                    "interventions": [
+                        {
+                            "intervention_code": "SHA-07-001",
+                            "intervention_name": "Returned intervention",
+                            "workflow_state": "ACTIVE",
+                        }
+                    ]
+                }
+            },
+        )
+
+        intervention.refresh_from_db()
+        assert summary["restored"] == 1
+        assert intervention.status == SHAClaimIntervention.InterventionStatus.ACTIVE
+        assert intervention.preview_missing_streak == 0
+        assert intervention.auto_retired_by_omission is False
+        assert intervention.last_seen_in_preview_at is not None
 
     def test_reconcile_from_preview_skips_when_interventions_missing(self, service, claim):
         SHAClaimIntervention.objects.create(

@@ -28,6 +28,7 @@ import {
   parseMissingInterventionDocumentErrors,
   toActiveInterventionCodeSet,
 } from '@/lib/sha/missing-docs';
+import { extractPreviewActiveInterventions } from '@/lib/sha/preview-interventions';
 import { toCrId } from '@/lib/sha/ilm-parsers';
 import type { Claim } from '@/lib/types/sha';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
@@ -98,11 +99,54 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
 
   // Derive patient CR ID for DHA API calls (intervention lookup, etc.)
   const patientCrId = claim.dha_external_id || toCrId(claim.sha_member_number ?? '') || '';
+  const isTerminal = TERMINAL_STATUSES.has(claim.status);
+  const isDraft = claim.status === 'draft';
+  const visitStarted = !!claim.dha_visit_started_at;
 
-  const activeInterventions = useMemo(
+  const localActiveInterventions = useMemo(
     () => (claim.claim_interventions ?? []).filter((i) => i.status === 'active'),
     [claim.claim_interventions],
   );
+
+  const {
+    data: workflowPreviewResult,
+    isFetching: workflowPreviewFetching,
+    dataUpdatedAt: workflowPreviewUpdatedAt,
+  } = useQuery({
+    queryKey: ['sha-claim-workflow-preview-interventions', claim.id, claim.updated_at],
+    queryFn: () => shaApi.ilmPreview(claim.id),
+    enabled: !isTerminal && !!claim.dha_visit_started_at,
+    staleTime: 0,
+    refetchInterval: !isTerminal && !!claim.dha_visit_started_at ? 60_000 : false,
+    refetchIntervalInBackground: false,
+    retry: false,
+  });
+
+  const previewInterventionsState = useMemo(
+    () => extractPreviewActiveInterventions(workflowPreviewResult?.payload),
+    [workflowPreviewResult?.payload],
+  );
+
+  const activeInterventions = useMemo(
+    () => (
+      previewInterventionsState.available
+        ? previewInterventionsState.interventions
+        : visitStarted && workflowPreviewFetching
+          ? []
+        : localActiveInterventions
+    ),
+    [localActiveInterventions, previewInterventionsState, visitStarted, workflowPreviewFetching],
+  );
+  const interventionSourceLabel =
+    previewInterventionsState.available
+      ? 'DHA preview'
+      : visitStarted && workflowPreviewFetching
+        ? 'Syncing DHA preview...'
+        : 'Local fallback';
+  const workflowLastSyncText =
+    previewInterventionsState.available && workflowPreviewUpdatedAt > 0
+      ? new Date(workflowPreviewUpdatedAt).toLocaleTimeString()
+      : 'Not yet synced';
 
   const hasPerDiemInpatientIntervention = useMemo(
     () => activeInterventions.some((i) => {
@@ -120,10 +164,6 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
     const parsed = parseInt(String(raw).replace(/[^0-9]/g, ''), 10);
     return Number.isFinite(parsed) ? parsed : undefined;
   }, [claim.facility_level]);
-
-  const isTerminal = TERMINAL_STATUSES.has(claim.status);
-  const isDraft = claim.status === 'draft';
-  const visitStarted = !!claim.dha_visit_started_at;
 
   // Auto-fetch consent token if consent was obtained (at check-in / earlier)
   // but the local state doesn't have the token string yet
@@ -294,9 +334,18 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
           <CardTitle className="text-base">Workflow path</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <p className="text-muted-foreground">
-            Follow this path in order: Prepare, Attachments, Consent/Authorization, then Submit.
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-muted-foreground">
+              Follow this path in order: Prepare, Attachments, Consent/Authorization, then Submit.
+            </p>
+            <Badge
+              variant="outline"
+              className={previewInterventionsState.available ? 'border-emerald-300 text-emerald-700' : ''}
+            >
+              Interventions: {interventionSourceLabel}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">Last synced from DHA: {workflowLastSyncText}</p>
           {readinessBlockers.length === 0 ? (
             <Alert>
               <CheckCircle2 className="h-4 w-4" />

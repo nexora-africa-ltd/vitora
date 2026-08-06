@@ -828,9 +828,14 @@ class IlmClaimService:
         updated_codes: list[str] = []
         restored_codes: list[str] = []
         retired_codes: list[str] = []
+        soft_retired_by_omission_codes: list[str] = []
+        preview_seen_at = timezone.now()
 
         with transaction.atomic():
-            list(SHAClaimIntervention.objects.select_for_update().filter(claim=claim))
+            local_interventions = list(
+                SHAClaimIntervention.objects.select_for_update().filter(claim=claim)
+            )
+            local_by_code = {row.intervention_code: row for row in local_interventions}
 
             for code, remote_item in remote_by_code.items():
                 remote_state = (
@@ -891,12 +896,17 @@ class IlmClaimService:
                     if getattr(intervention, level_field, None) in (None, ""):
                         updates[level_field] = keph_tariff
 
+                updates["preview_missing_streak"] = 0
+                updates["last_seen_in_preview_at"] = preview_seen_at
+                updates["auto_retired_by_omission"] = False
+
                 if remote_is_active:
                     if intervention.status != SHAClaimIntervention.InterventionStatus.ACTIVE:
                         updates["status"] = SHAClaimIntervention.InterventionStatus.ACTIVE
                         restored_codes.append(code)
                 elif intervention.status != SHAClaimIntervention.InterventionStatus.RETIRED:
                     updates["status"] = SHAClaimIntervention.InterventionStatus.RETIRED
+                    updates["auto_retired_by_omission"] = False
                     retired_codes.append(code)
 
                 if updates:
@@ -906,11 +916,27 @@ class IlmClaimService:
                     if not created:
                         updated_codes.append(code)
 
-            # Do not retire by omission alone.
-            # DHA preview can return a partial/shape-shifted interventions list for
-            # certain flows, and dropping local rows on absence causes intervention
-            # flip-flop (added -> disappears after preview). We only retire when DHA
-            # explicitly reports inactive/retired workflow state for that code.
+                local_by_code[code] = intervention
+
+            for code, intervention in local_by_code.items():
+                if code in remote_by_code:
+                    continue
+
+                updates: dict[str, Any] = {
+                    "preview_missing_streak": (intervention.preview_missing_streak or 0) + 1,
+                }
+                if (
+                    updates["preview_missing_streak"] >= 2
+                    and intervention.status == SHAClaimIntervention.InterventionStatus.ACTIVE
+                ):
+                    updates["status"] = SHAClaimIntervention.InterventionStatus.RETIRED
+                    updates["auto_retired_by_omission"] = True
+                    retired_codes.append(code)
+                    soft_retired_by_omission_codes.append(code)
+
+                for field, value in updates.items():
+                    setattr(intervention, field, value)
+                intervention.save(update_fields=list(updates.keys()) + ["updated_at"])
 
         summary = {
             "reconciled": True,
@@ -919,10 +945,12 @@ class IlmClaimService:
             "updated": len([code for code in updated_codes if code not in retired_codes]),
             "restored": len(restored_codes),
             "retired": len(retired_codes),
+            "soft_retired_by_omission": len(soft_retired_by_omission_codes),
             "created_codes": created_codes,
             "updated_codes": [code for code in updated_codes if code not in retired_codes],
             "restored_codes": restored_codes,
             "retired_codes": retired_codes,
+            "soft_retired_by_omission_codes": soft_retired_by_omission_codes,
         }
 
         if created_codes or updated_codes or restored_codes or retired_codes:
@@ -1545,7 +1573,12 @@ class IlmClaimService:
             SHAClaimIntervention.objects.filter(
                 claim=claim,
                 intervention_code=intervention_code,
-            ).update(status=new_status)
+            ).update(
+                status=new_status,
+                preview_missing_streak=0,
+                auto_retired_by_omission=False,
+                last_seen_in_preview_at=timezone.now(),
+            )
         except Exception:
             logger.exception(
                 "Failed to update intervention status %s → %s for claim %s",

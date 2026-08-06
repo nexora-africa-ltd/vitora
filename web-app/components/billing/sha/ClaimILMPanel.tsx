@@ -92,6 +92,9 @@ import {
   filterValidationErrorsByActiveInterventions,
   toActiveInterventionCodeSet,
 } from '@/lib/sha/missing-docs';
+import {
+  extractPreviewActiveInterventions,
+} from '@/lib/sha/preview-interventions';
 import { format, parseISO } from 'date-fns';
 import { ClaimPreviewPanel } from './ClaimPreviewPanel';
 
@@ -159,6 +162,7 @@ interface PreSubmitChecklistItem {
 
 type InterventionLike = {
   intervention_code: string;
+  intervention_name?: string;
   access_point?: 'IP' | 'OP' | 'BOTH';
 };
 
@@ -464,9 +468,51 @@ export function ClaimILMPanel({
   const [previewDhaInvoiceNumber, setPreviewDhaInvoiceNumber] = useState('');
   const localInvoiceNumber = (claim.invoice_number || '').trim();
   const dhaInvoiceNumber = (claim.dha_invoice_number || previewDhaInvoiceNumber || '').trim();
-  const activeInterventions = useMemo(
+  const localActiveInterventions = useMemo(
     () => (claim.claim_interventions ?? []).filter((i) => i.status === 'active'),
     [claim.claim_interventions],
+  );
+
+  const practitionerFields = useMemo(
+    () => derivePractitionerFields(claim.encounter_clinician, user),
+    [claim.encounter_clinician, user],
+  );
+  const hasPractitioner = !!practitionerFields.practitioner_identification_number;
+
+  const useVirtualLine = flow?.addLineEndpoint === 'add_virtual_claim_line';
+  const requiresConsent = flow ? flow.requiresConsent : true;
+  const isInpatientFlow = !!flow?.supportsInpatientDischarge;
+  const facilityAgentNationalId = facilityDetail?.biometrics_agent_national_id || '';
+  const [biometricBusy, setBiometricBusy] = useState(false);
+
+  // ---- Local UI state ----
+  const [busy, setBusy] = useState<ActionKey | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [lastResult, setLastResult] = useState<IlmCallResult | null>(null);
+  const [previewResult, setPreviewResult] = useState<IlmCallResult | null>(null);
+  const [applyPreviewResult, setApplyPreviewResult] = useState<IlmApplyPreviewLinesResponse | null>(null);
+  const [materializePreviewResult, setMaterializePreviewResult] =
+    useState<IlmMaterializePreviewInvoiceResponse | null>(null);
+  const [replacePreviewLines, setReplacePreviewLines] = useState(true);
+  const [restartSessionBusy, setRestartSessionBusy] = useState(false);
+  const [visitAlreadyActiveNotice, setVisitAlreadyActiveNotice] = useState(false);
+  const [interventionSyncing, setInterventionSyncing] = useState(false);
+  const [blockLocalInterventionFallback, setBlockLocalInterventionFallback] = useState(false);
+  const [lastInterventionSyncAt, setLastInterventionSyncAt] = useState<Date | null>(null);
+
+  const previewInterventionsState = useMemo(
+    () => extractPreviewActiveInterventions(previewResult?.payload),
+    [previewResult?.payload],
+  );
+  const activeInterventions = useMemo(
+    () => (
+      previewInterventionsState.available
+        ? previewInterventionsState.interventions
+        : blockLocalInterventionFallback
+          ? []
+        : localActiveInterventions
+    ),
+    [blockLocalInterventionFallback, localActiveInterventions, previewInterventionsState],
   );
   const interventionCodes = useMemo(
     () => activeInterventions.map((i) => i.intervention_code),
@@ -497,30 +543,6 @@ export function ClaimILMPanel({
   }, [benefitPackageOptions, primaryBenefitCode, combinableBenefitCodes]);
   const effectiveBenefitPackageOptions =
     allowedBenefitPackageOptions ?? benefitPackageOptions;
-
-  const practitionerFields = useMemo(
-    () => derivePractitionerFields(claim.encounter_clinician, user),
-    [claim.encounter_clinician, user],
-  );
-  const hasPractitioner = !!practitionerFields.practitioner_identification_number;
-
-  const useVirtualLine = flow?.addLineEndpoint === 'add_virtual_claim_line';
-  const requiresConsent = flow ? flow.requiresConsent : true;
-  const isInpatientFlow = !!flow?.supportsInpatientDischarge;
-  const facilityAgentNationalId = facilityDetail?.biometrics_agent_national_id || '';
-  const [biometricBusy, setBiometricBusy] = useState(false);
-
-  // ---- Local UI state ----
-  const [busy, setBusy] = useState<ActionKey | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [lastResult, setLastResult] = useState<IlmCallResult | null>(null);
-  const [previewResult, setPreviewResult] = useState<IlmCallResult | null>(null);
-  const [applyPreviewResult, setApplyPreviewResult] = useState<IlmApplyPreviewLinesResponse | null>(null);
-  const [materializePreviewResult, setMaterializePreviewResult] =
-    useState<IlmMaterializePreviewInvoiceResponse | null>(null);
-  const [replacePreviewLines, setReplacePreviewLines] = useState(true);
-  const [restartSessionBusy, setRestartSessionBusy] = useState(false);
-  const [visitAlreadyActiveNotice, setVisitAlreadyActiveNotice] = useState(false);
 
   const { data: latestConsentToken, isLoading: latestConsentLoading, isFetching: latestConsentFetching } = useQuery({
     queryKey: ['sha-latest-consent-for-workflow', claim.sha_member, claim.encounter, claim.updated_at],
@@ -1210,6 +1232,10 @@ export function ClaimILMPanel({
 
     const result = await run('preview', () => shaApi.ilmPreview(claimId));
     if (result) {
+      const previewState = extractPreviewActiveInterventions(result.payload);
+      if (previewState.available) {
+        setLastInterventionSyncAt(new Date());
+      }
       setPreviewResult(result);
       setPreviewDhaInvoiceNumber(extractPreviewInvoiceNumber(result.payload));
       if (result.payload && typeof result.payload === 'object' && !Array.isArray(result.payload)) {
@@ -1337,6 +1363,10 @@ export function ClaimILMPanel({
       return;
     }
     setAddInterventionInlineError(null);
+    if (visitStarted) {
+      setInterventionSyncing(true);
+      setBlockLocalInterventionFallback(true);
+    }
     try {
       if (interventionCodes.includes(newInterventionCode)) {
         throw new Error(`Intervention ${newInterventionCode} is already on the claim.`);
@@ -1353,6 +1383,9 @@ export function ClaimILMPanel({
             })
         : () => shaApi.ilmAddIntervention(claimId, { intervention_code: newInterventionCode });
       await run(useVirtualLine ? 'addVirtualClaimLine' : 'addIntervention', fn);
+      if (visitStarted) {
+        await refreshPreviewSilently();
+      }
     } catch (e: unknown) {
       const inlineMessage = extractInterventionCombinationError(e);
       if (inlineMessage) {
@@ -1361,6 +1394,10 @@ export function ClaimILMPanel({
         setError(formatErr(e));
       }
     } finally {
+      if (visitStarted) {
+        setInterventionSyncing(false);
+        setBlockLocalInterventionFallback(false);
+      }
       setAddInterventionOpen(false);
       setNewInterventionCode('');
       setAddInterventionInlineError(null);
@@ -1386,10 +1423,14 @@ export function ClaimILMPanel({
   }
 
   const refreshPreviewSilently = useCallback(async () => {
-    if (!visitStarted || busy !== null || !previewResult?.payload) return;
+    if (!visitStarted || busy !== null) return;
     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
     try {
       const result = await shaApi.ilmPreview(claimId);
+      const previewState = extractPreviewActiveInterventions(result.payload);
+      if (previewState.available) {
+        setLastInterventionSyncAt(new Date());
+      }
       setPreviewResult(result);
       setPreviewDhaInvoiceNumber(extractPreviewInvoiceNumber(result.payload));
       if (result.payload && typeof result.payload === 'object' && !Array.isArray(result.payload)) {
@@ -1416,7 +1457,6 @@ export function ClaimILMPanel({
     claimId,
     onConsentExpired,
     onPreviewContext,
-    previewResult?.payload,
     refetchPreSubmitValidation,
     visitStarted,
   ]);
@@ -1946,6 +1986,16 @@ export function ClaimILMPanel({
               <p className="text-xs text-muted-foreground">
                 {activeInterventions.length} active intervention
                 {activeInterventions.length === 1 ? '' : 's'}. Continue directly to lifecycle actions unless you need to adjust claim details.
+              </p>
+              <p className="text-[11px] text-muted-foreground/80">
+                Source: {interventionSyncing
+                  ? 'Syncing DHA preview...'
+                  : previewInterventionsState.available
+                    ? 'DHA preview'
+                    : 'local claim fallback'}
+              </p>
+              <p className="text-[11px] text-muted-foreground/80">
+                Last synced from DHA: {lastInterventionSyncAt ? format(lastInterventionSyncAt, 'dd MMM HH:mm:ss') : 'Not yet synced'}
               </p>
             </div>
             <Collapsible>

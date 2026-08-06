@@ -1360,6 +1360,10 @@ async function ilmRetireIntervention(claimId: number, body: IlmInterventionReque
   return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmRetireIntervention' });
 }
 
+async function ilmPurgeIntervention(claimId: number, body: IlmInterventionRequest): Promise<void> {
+  await apiClient.post(`${ilmBase(claimId)}/interventions/purge/`, body);
+}
+
 /**
  * Add a PHC virtual claim line — DHA HIE user-journey Scenario C.
  * Used by Level 2/3 facilities for capitation / basic FFS interventions
@@ -2194,6 +2198,7 @@ export const shaApi = {
   ilmSwitchIntervention,
   ilmRestoreIntervention,
   ilmRetireIntervention,
+  ilmPurgeIntervention,
   ilmAddDiagnosis,
   ilmRemoveDiagnosis,
   ilmAddLine,
