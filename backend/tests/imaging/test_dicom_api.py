@@ -336,6 +336,7 @@ class TestDICOMUploadEndpoint:
         data = response.data
         assert "study_instance_uid" in data
         assert data["instances_created"] >= 1
+        assert data["duplicates_skipped"] == 0
 
     def test_upload_requires_authentication(self, api_client, dicom_upload_file):
         """Should reject unauthenticated uploads."""
@@ -383,6 +384,211 @@ class TestDICOMUploadEndpoint:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["instances_created"] == 3
+        assert response.data["duplicates_skipped"] == 0
+
+    def test_upload_multiple_studies_reports_all_uids_and_counts(
+        self, authenticated_client, sample_imaging_order, temp_media_dir
+    ):
+        """Should return all affected study UIDs with per-study created instance counts."""
+        study_uid_a = str(generate_uid())
+        study_uid_b = str(generate_uid())
+
+        def _as_upload(path: str, name: str) -> SimpleUploadedFile:
+            with open(path, "rb") as f:
+                content = f.read()
+            os.unlink(path)
+            return SimpleUploadedFile(name=name, content=content, content_type="application/dicom")
+
+        file_a1 = _as_upload(
+            create_test_dicom_file(
+                study_instance_uid=study_uid_a, series_instance_uid=str(generate_uid())
+            ),
+            "study_a_1.dcm",
+        )
+        file_a2 = _as_upload(
+            create_test_dicom_file(
+                study_instance_uid=study_uid_a, series_instance_uid=str(generate_uid())
+            ),
+            "study_a_2.dcm",
+        )
+        file_b1 = _as_upload(
+            create_test_dicom_file(
+                study_instance_uid=study_uid_b, series_instance_uid=str(generate_uid())
+            ),
+            "study_b_1.dcm",
+        )
+
+        response = authenticated_client.post(
+            "/api/imaging/studies/upload/",
+            {
+                "files": [file_a1, file_a2, file_b1],
+                "imaging_order": sample_imaging_order.id,
+            },
+            format="multipart",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["study_instance_uid"] == study_uid_a
+        assert response.data["study_instance_uids"] == [study_uid_a, study_uid_b]
+        assert response.data["instances_created_by_study"] == {
+            study_uid_a: 2,
+            study_uid_b: 1,
+        }
+
+    def test_upload_single_study_includes_multi_study_response_fields(
+        self, authenticated_client, sample_imaging_order, dicom_upload_files, temp_media_dir
+    ):
+        """Should keep backward compatibility while always returning the new fields."""
+        response = authenticated_client.post(
+            "/api/imaging/studies/upload/",
+            {
+                "files": dicom_upload_files,
+                "imaging_order": sample_imaging_order.id,
+            },
+            format="multipart",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        study_uid = response.data["study_instance_uid"]
+        assert response.data["study_instance_uids"] == [study_uid]
+        assert response.data["duplicates_skipped"] == 0
+        assert response.data["instances_created_by_study"] == {study_uid: 3}
+
+    def test_upload_duplicate_sop_reports_duplicates_skipped(
+        self, authenticated_client, sample_imaging_order, temp_media_dir
+    ):
+        """Should report duplicate SOP instances skipped in a mixed-success upload."""
+        shared_sop_uid = str(generate_uid())
+        dcm_path = create_test_dicom_file(sop_instance_uid=shared_sop_uid)
+        with open(dcm_path, "rb") as f:
+            content = f.read()
+        os.unlink(dcm_path)
+
+        file1 = SimpleUploadedFile(
+            name="dup_1.dcm",
+            content=content,
+            content_type="application/dicom",
+        )
+        file2 = SimpleUploadedFile(
+            name="dup_2.dcm",
+            content=content,
+            content_type="application/dicom",
+        )
+
+        response = authenticated_client.post(
+            "/api/imaging/studies/upload/",
+            {
+                "files": [file1, file2],
+                "imaging_order": sample_imaging_order.id,
+            },
+            format="multipart",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["instances_created"] == 1
+        assert response.data["duplicates_skipped"] == 1
+
+    def test_upload_all_duplicates_returns_conflict_with_duplicate_count(
+        self, authenticated_client, sample_imaging_order, temp_media_dir
+    ):
+        """Should include duplicates_skipped when all submitted files are duplicates."""
+        shared_sop_uid = str(generate_uid())
+        dcm_path = create_test_dicom_file(sop_instance_uid=shared_sop_uid)
+        with open(dcm_path, "rb") as f:
+            content = f.read()
+        os.unlink(dcm_path)
+
+        first = authenticated_client.post(
+            "/api/imaging/studies/upload/",
+            {
+                "files": [
+                    SimpleUploadedFile(
+                        name="first.dcm",
+                        content=content,
+                        content_type="application/dicom",
+                    )
+                ],
+                "imaging_order": sample_imaging_order.id,
+            },
+            format="multipart",
+        )
+        assert first.status_code == status.HTTP_201_CREATED
+
+        second = authenticated_client.post(
+            "/api/imaging/studies/upload/",
+            {
+                "files": [
+                    SimpleUploadedFile(
+                        name="second.dcm",
+                        content=content,
+                        content_type="application/dicom",
+                    )
+                ],
+                "imaging_order": sample_imaging_order.id,
+            },
+            format="multipart",
+        )
+        assert second.status_code == status.HTTP_409_CONFLICT
+        assert second.data["duplicates_skipped"] == 1
+
+    def test_upload_multiple_studies_updates_statistics_for_each_study(
+        self, authenticated_client, sample_imaging_order, temp_media_dir
+    ):
+        """Should refresh number_of_instances for all studies touched in one upload."""
+        from hmis.apps.imaging.models import DICOMStudy
+
+        study_uid_a = str(generate_uid())
+        study_uid_b = str(generate_uid())
+
+        def _as_upload(path: str, name: str) -> SimpleUploadedFile:
+            with open(path, "rb") as f:
+                content = f.read()
+            os.unlink(path)
+            return SimpleUploadedFile(name=name, content=content, content_type="application/dicom")
+
+        files = [
+            _as_upload(
+                create_test_dicom_file(
+                    study_instance_uid=study_uid_a,
+                    series_instance_uid=str(generate_uid()),
+                    sop_instance_uid=str(generate_uid()),
+                ),
+                "a_1.dcm",
+            ),
+            _as_upload(
+                create_test_dicom_file(
+                    study_instance_uid=study_uid_a,
+                    series_instance_uid=str(generate_uid()),
+                    sop_instance_uid=str(generate_uid()),
+                ),
+                "a_2.dcm",
+            ),
+            _as_upload(
+                create_test_dicom_file(
+                    study_instance_uid=study_uid_b,
+                    series_instance_uid=str(generate_uid()),
+                    sop_instance_uid=str(generate_uid()),
+                ),
+                "b_1.dcm",
+            ),
+        ]
+
+        response = authenticated_client.post(
+            "/api/imaging/studies/upload/",
+            {
+                "files": files,
+                "imaging_order": sample_imaging_order.id,
+            },
+            format="multipart",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["instances_created_by_study"] == {study_uid_a: 2, study_uid_b: 1}
+
+        study_a = DICOMStudy.objects.get(study_instance_uid=study_uid_a)
+        study_b = DICOMStudy.objects.get(study_instance_uid=study_uid_b)
+        assert study_a.number_of_instances == 2
+        assert study_b.number_of_instances == 1
 
     def test_upload_creates_database_records(
         self, authenticated_client, sample_imaging_order, dicom_upload_file, temp_media_dir

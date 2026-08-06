@@ -97,6 +97,14 @@ export default function DICOMStudiesPage() {
   const hasNext = !!studiesData?.next;
   const hasPrev = page > 1;
 
+  const formatCount = (value: number | null | undefined): string => {
+    return typeof value === 'number' ? String(value) : '-';
+  };
+
+  const formatStudySize = (value: number | null | undefined): string => {
+    return typeof value === 'number' ? formatBytes(value) : '-';
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
@@ -215,7 +223,10 @@ export default function DICOMStudiesPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="max-w-[200px] truncate">
+                          <div
+                            className="max-w-[200px] truncate"
+                            title={study.study_description || 'No description'}
+                          >
                             {study.study_description || '-'}
                           </div>
                         </TableCell>
@@ -223,10 +234,14 @@ export default function DICOMStudiesPage() {
                           <ModalityBadge modality={study.modality as ImagingModality} />
                         </TableCell>
                         <TableCell>{formatDate(study.study_date)}</TableCell>
-                        <TableCell className="text-center">{study.number_of_series}</TableCell>
-                        <TableCell className="text-center">{study.number_of_instances}</TableCell>
+                        <TableCell className="text-center">
+                          {formatCount(study.number_of_series)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {formatCount(study.number_of_instances)}
+                        </TableCell>
                         <TableCell className="text-right">
-                          {study.total_file_size ? formatBytes(study.total_file_size) : '-'}
+                          {formatStudySize(study.total_file_size)}
                         </TableCell>
                         <TableCell>
                           <Button variant="ghost" size="icon">
@@ -269,7 +284,10 @@ export default function DICOMStudiesPage() {
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <p className="font-medium truncate">{study.patient_name}</p>
-                              <p className="text-xs text-muted-foreground truncate">
+                              <p
+                                className="text-xs text-muted-foreground truncate"
+                                title={study.study_description || 'No description'}
+                              >
                                 {study.study_description || 'No description'}
                               </p>
                             </div>
@@ -280,8 +298,8 @@ export default function DICOMStudiesPage() {
                               <Calendar className="h-3 w-3" />
                               {formatDate(study.study_date)}
                             </span>
-                            <span>{study.number_of_series} series</span>
-                            <span>{study.number_of_instances} img</span>
+                            <span>{formatCount(study.number_of_series)} series</span>
+                            <span>{formatCount(study.number_of_instances)} img</span>
                           </div>
                         </div>
                       </div>

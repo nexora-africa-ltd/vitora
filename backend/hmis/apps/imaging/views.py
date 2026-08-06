@@ -6,6 +6,7 @@ Views for imaging API endpoints.
 import logging
 import os
 import tempfile
+from collections import defaultdict
 from datetime import datetime
 
 from django.conf import settings
@@ -69,6 +70,7 @@ from .services import (
     DICOMParsingService,
     ImagingSchedulingService,
     PACSStorageService,
+    recompute_study_statistics,
     resolve_equipment_from_metadata,
 )
 
@@ -1326,6 +1328,11 @@ class DICOMUploadView(APIView):
 
         # Parse and store each file
         instances_created = 0
+        duplicates_skipped = 0
+        instances_created_by_study: dict[str, int] = defaultdict(int)
+        affected_study_uids: list[str] = []
+        affected_studies_by_uid: dict[str, DICOMStudy] = {}
+        seen_study_uids: set[str] = set()
         study_uid = None
         first_study = None
         errors = []
@@ -1358,6 +1365,10 @@ class DICOMUploadView(APIView):
                 m_series_uid = metadata["series_instance_uid"]
                 m_sop_uid = metadata["sop_instance_uid"]
 
+                if m_study_uid not in seen_study_uids:
+                    seen_study_uids.add(m_study_uid)
+                    affected_study_uids.append(m_study_uid)
+
                 stored_path = pacs.store_file(
                     tmp_path,
                     m_study_uid,
@@ -1387,6 +1398,7 @@ class DICOMUploadView(APIView):
                         "uploaded_by": request.user,
                     },
                 )
+                affected_studies_by_uid[m_study_uid] = dicom_study
 
                 # Resolve equipment from DICOM tags (auto-registers on first contact)
                 if _created and dicom_study.equipment_id is None:
@@ -1443,6 +1455,7 @@ class DICOMUploadView(APIView):
 
                 if created:
                     instances_created += 1
+                    instances_created_by_study[m_study_uid] += 1
 
                     # Generate thumbnail for the first instance
                     if instances_created == 1:
@@ -1454,6 +1467,8 @@ class DICOMUploadView(APIView):
                         if thumb_path:
                             dicom_study.thumbnail_path = thumb_path
                             dicom_study.save(update_fields=["thumbnail_path"])
+                else:
+                    duplicates_skipped += 1
 
             except Exception as exc:
                 logger.exception("Error processing DICOM file %s", uploaded_file.name)
@@ -1470,6 +1485,7 @@ class DICOMUploadView(APIView):
                 return Response(
                     {
                         "error": "All files already exist in PACS (duplicate SOP Instance UIDs). No new instances were created.",
+                        "duplicates_skipped": duplicates_skipped,
                         "details": [],
                     },
                     status=status.HTTP_409_CONFLICT,
@@ -1482,13 +1498,15 @@ class DICOMUploadView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Update study statistics
-        if first_study:
-            _update_study_statistics(first_study)
+        # Update study statistics for every affected study in the batch.
+        for uid in affected_study_uids:
+            study = affected_studies_by_uid.get(uid)
+            if study:
+                _update_study_statistics(study)
 
-            # Update imaging order with study metadata
-            if imaging_order:
-                _link_study_to_order(imaging_order, first_study)
+        # Update imaging order with first study metadata (legacy behavior).
+        if first_study and imaging_order:
+            _link_study_to_order(imaging_order, first_study)
 
         # Audit log
         AuditLog.log(
@@ -1499,7 +1517,10 @@ class DICOMUploadView(APIView):
             ip_address=get_client_ip(request),
             details={
                 "study_instance_uid": study_uid,
+                "study_instance_uids": affected_study_uids,
                 "instances_created": instances_created,
+                "duplicates_skipped": duplicates_skipped,
+                "instances_created_by_study": dict(instances_created_by_study),
                 "files_submitted": len(files),
                 "errors": errors,
             },
@@ -1507,7 +1528,10 @@ class DICOMUploadView(APIView):
 
         response_data = {
             "study_instance_uid": study_uid,
+            "study_instance_uids": affected_study_uids,
             "instances_created": instances_created,
+            "duplicates_skipped": duplicates_skipped,
+            "instances_created_by_study": dict(instances_created_by_study),
             "files_submitted": len(files),
         }
         if errors:
@@ -1816,32 +1840,7 @@ class DICOMFrameRenderView(APIView):
 
 def _update_study_statistics(study: DICOMStudy) -> None:
     """Recalculate series/instance counts and total file size for a study."""
-    series_qs = study.series_set.all()
-
-    study.number_of_series = series_qs.count()
-
-    total_instances = 0
-    total_size = 0
-
-    for series in series_qs:
-        inst_count = series.instances.count()
-        inst_size = series.instances.aggregate(total=models.Sum("file_size"))["total"] or 0
-        series.number_of_instances = inst_count
-        series.total_file_size = inst_size
-        series.save(update_fields=["number_of_instances", "total_file_size"])
-
-        total_instances += inst_count
-        total_size += inst_size
-
-    study.number_of_instances = total_instances
-    study.total_file_size = total_size
-    study.save(
-        update_fields=[
-            "number_of_series",
-            "number_of_instances",
-            "total_file_size",
-        ]
-    )
+    recompute_study_statistics(study)
 
 
 def _link_study_to_order(order: ImagingOrder, study: DICOMStudy) -> None:

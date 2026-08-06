@@ -517,7 +517,10 @@ export type PaginatedDICOMStudySchemaType = z.infer<typeof PaginatedDICOMStudySc
  */
 export const DICOMUploadResponseSchema = z.object({
   study_instance_uid: z.string().nullable(),
+  study_instance_uids: z.array(z.string()).optional(),
   instances_created: z.number(),
+  duplicates_skipped: z.number(),
+  instances_created_by_study: z.record(z.string(), z.number()).optional(),
   files_submitted: z.number(),
   errors: z.array(z.object({
     file: z.string(),

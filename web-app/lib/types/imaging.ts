@@ -599,7 +599,10 @@ export interface DICOMStudyDetail extends DICOMStudy {
  */
 export interface DICOMUploadResponse {
   study_instance_uid: string | null;
+  study_instance_uids?: string[];
   instances_created: number;
+  duplicates_skipped: number;
+  instances_created_by_study?: Record<string, number>;
   files_submitted: number;
   errors?: Array<{
     file: string;

@@ -25,6 +25,31 @@ let cornerstoneInitialized = false;
 // Tool names (will be populated after init)
 let TOOL_NAMES: Record<string, string> = {};
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resetViewportSafely(viewport: any): void {
+  viewport.resetCamera?.();
+
+  // Avoid resetProperties() because some StackViewport states throw inside
+  // Cornerstone internals when VOI LUT metadata is incomplete.
+  try {
+    viewport.setProperties?.({ invert: false });
+  } catch (error) {
+    console.warn('[useCornerstone] setProperties failed during reset', error);
+  }
+
+  try {
+    viewport.setViewPresentation?.({
+      rotation: 0,
+      flipHorizontal: false,
+      flipVertical: false,
+    });
+  } catch (error) {
+    console.warn('[useCornerstone] setViewPresentation failed during reset', error);
+  }
+
+  viewport.render?.();
+}
+
 // =============================================================================
 // INITIALIZATION
 // =============================================================================
@@ -413,19 +438,27 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
     goToImage(currentIndex - 1);
   }, [currentIndex, goToImage]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const withViewport = useCallback((handler: (viewport: any) => void) => {
+    const viewport = renderingEngineRef.current?.getViewport(viewportId);
+    if (!viewport) return;
+
+    try {
+      handler(viewport);
+    } catch (error) {
+      console.error('[useCornerstone] Viewport action failed:', error);
+    }
+  }, []);
+
   // Tool management
   const setActiveTool = useCallback((tool: DICOMViewerTool) => {
     const toolGroup = toolGroupRef.current;
     if (!toolGroup || !cornerstoneTools) return;
 
     if (tool === 'reset') {
-      // Reset viewport
-      const viewport = renderingEngineRef.current?.getViewport(viewportId);
-      if (viewport) {
-        viewport.resetCamera();
-        viewport.resetProperties();
-        viewport.render();
-      }
+      withViewport((viewport) => {
+        resetViewportSafely(viewport);
+      });
       return;
     }
 
@@ -466,49 +499,56 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
         bindings: [{ mouseButton: MouseBindings.Secondary }],
       });
     }
-  }, []);
+  }, [withViewport]);
 
   // Viewport manipulation
   const resetViewport = useCallback(() => {
-    const viewport = renderingEngineRef.current?.getViewport(viewportId);
-    if (viewport) {
-      viewport.resetCamera();
-      viewport.resetProperties();
-      viewport.render();
-    }
-  }, []);
+    withViewport((viewport) => {
+      resetViewportSafely(viewport);
+    });
+  }, [withViewport]);
 
   const invertImage = useCallback(() => {
-    const viewport = renderingEngineRef.current?.getViewport(viewportId);
-    if (viewport) {
+    withViewport((viewport) => {
       const { invert } = viewport.getProperties();
       viewport.setProperties({ invert: !invert });
       viewport.render();
-    }
-  }, []);
+    });
+  }, [withViewport]);
 
   const flipHorizontal = useCallback(() => {
-    const viewport = renderingEngineRef.current?.getViewport(viewportId);
-    if (viewport) {
+    withViewport((viewport) => {
+      const current = viewport.getViewPresentation?.() ?? {};
+      viewport.setViewPresentation?.({
+        ...current,
+        flipHorizontal: !Boolean(current.flipHorizontal),
+      });
       viewport.render();
-    }
-  }, []);
+    });
+  }, [withViewport]);
 
   const flipVertical = useCallback(() => {
-    const viewport = renderingEngineRef.current?.getViewport(viewportId);
-    if (viewport) {
+    withViewport((viewport) => {
+      const current = viewport.getViewPresentation?.() ?? {};
+      viewport.setViewPresentation?.({
+        ...current,
+        flipVertical: !Boolean(current.flipVertical),
+      });
       viewport.render();
-    }
-  }, []);
+    });
+  }, [withViewport]);
 
   const rotate90 = useCallback(() => {
-    const viewport = renderingEngineRef.current?.getViewport(viewportId);
-    if (viewport) {
-      const { rotation = 0 } = viewport.getProperties();
-      viewport.setProperties({ rotation: (rotation + 90) % 360 });
+    withViewport((viewport) => {
+      const current = viewport.getViewPresentation?.() ?? {};
+      const rotation = Number(current.rotation ?? 0);
+      viewport.setViewPresentation?.({
+        ...current,
+        rotation: (rotation + 90) % 360,
+      });
       viewport.render();
-    }
-  }, []);
+    });
+  }, [withViewport]);
 
   return {
     containerRef: containerRef as React.RefObject<HTMLDivElement>,
