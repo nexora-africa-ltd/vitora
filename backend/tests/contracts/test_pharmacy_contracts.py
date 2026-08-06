@@ -269,6 +269,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "resolved_at",
                 "resolved_by",
                 "severity",
+                "updated_at",
             }
         ),
     ),

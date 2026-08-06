@@ -499,17 +499,6 @@ class DispensingViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mod
                     if rx_item.prescription.organization_id and "organization" not in tenant_kwargs:
                         tenant_kwargs["organization"] = rx_item.prescription.organization_id
 
-            if not tenant_kwargs.get("facility"):
-                return Response(
-                    {
-                        "error": (
-                            "Unable to resolve dispensing facility context. "
-                            "Assign a primary facility or dispense from a facility-linked prescription."
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
             # Use FEFO service to dispense
             kwargs = {"patient_id": patient_id}
             if prescription_item_id:

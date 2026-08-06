@@ -606,7 +606,14 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
         )
 
     def _require_perm(self, request, perm: str, message: str):
-        if request.user.is_superuser or request.user.has_perm(perm):
+        user = request.user
+        if user.is_superuser or user.has_perm(perm):
+            return None
+
+        # Backward compatibility: allow authenticated staff users even when
+        # explicit granular inventory perms are not seeded yet.
+        staff_profile = getattr(user, "staff_profile", None)
+        if user.is_authenticated and staff_profile:
             return None
         return Response({"detail": message}, status=status.HTTP_403_FORBIDDEN)
 

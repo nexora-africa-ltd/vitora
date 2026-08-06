@@ -522,8 +522,7 @@ class StockAlert(FacilityScopedModel):
                             "message": f"{drug.generic_name} is completely out of stock",
                         },
                     )
-                    if created:
-                        alerts.append(alert)
+                    alerts.append(alert)
                 elif total_stock < drug.default_reorder_level:
                     alert, created = cls.objects.get_or_create(
                         drug=drug,
@@ -535,8 +534,7 @@ class StockAlert(FacilityScopedModel):
                             "message": f"{drug.generic_name} is below reorder level ({total_stock} remaining)",
                         },
                     )
-                    if created:
-                        alerts.append(alert)
+                    alerts.append(alert)
 
         return alerts
 

@@ -2976,9 +2976,7 @@ class SHAClaim(FacilityScopedModel):
             normalize_local_attachment_type(value)
             for value in self.attachments.values_list("attachment_type", flat=True)
         }
-        for intervention in self.claim_interventions.filter(
-            status=SHAClaimIntervention.InterventionStatus.ACTIVE
-        ):
+        for intervention in self.claim_interventions.all():
             required = intervention.required_document_types
             if not required:
                 continue

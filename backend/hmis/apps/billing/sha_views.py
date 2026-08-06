@@ -5545,7 +5545,6 @@ class ConsentSendOTPView(APIView):
     # Fallback intervention code when none selected by user
     DEFAULT_INTERVENTION = "SHA-01-001"
     INPATIENT_CODE_PREFIXES = (
-        "SHA-01-",
         "SHA-03-",
         "SHA-07-",
         "SHA-13-",

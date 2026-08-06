@@ -198,7 +198,7 @@ def broadcast_stock_low_warning(stock_batch, facility_id: int) -> None:
             "drug_name": stock_batch.drug.generic_name if stock_batch.drug else "",
             "batch_number": stock_batch.batch_number,
             "remaining_quantity": stock_batch.quantity_available,
-            "reorder_level": stock_batch.drug.reorder_level if stock_batch.drug else 0,
+            "reorder_level": stock_batch.drug.default_reorder_level if stock_batch.drug else 0,
             "facility_id": facility_id,
         },
     )

@@ -85,8 +85,8 @@ class SladeAuthService:
     def _request_new_token(self) -> SladeAccessToken:
         client_id = os.getenv("SLADE_CLIENT_ID", "") or self.creds.get("api_key", "")
         client_secret = (
-            os.getenv("SLADE_CLIENT_SECRET", "")
-            or os.getenv("SLADE_SECRET_KEY", "")
+            os.getenv("SLADE_SECRET_KEY", "")
+            or os.getenv("SLADE_CLIENT_SECRET", "")
             or self.creds.get("api_secret", "")
         )
         username = (

@@ -353,14 +353,13 @@ def handle_dispensing_billing(sender, instance, created, **kwargs):
             return
 
     # Case 2: Direct dispensing or standalone prescription dispensing.
-    from hmis.apps.billing.agent import BillingAgentService
-
-    invoice = BillingAgentService.get_or_create_draft_invoice(patient=instance.patient)
-
-    _ensure_invoice_tenant(
-        invoice,
-        facility_id=instance.facility_id,
-        organization_id=instance.organization_id,
+    invoice = (
+        Invoice.objects.filter(
+            patient=instance.patient,
+            status=Invoice.Status.DRAFT,
+        )
+        .order_by("-created_at")
+        .first()
     )
 
     if not invoice:
@@ -369,6 +368,12 @@ def handle_dispensing_billing(sender, instance, created, **kwargs):
             f"direct dispensing {instance.id} will not be billed automatically"
         )
         return
+
+    _ensure_invoice_tenant(
+        invoice,
+        facility_id=instance.facility_id,
+        organization_id=instance.organization_id,
+    )
 
     # Create invoice item for direct/standalone dispensing
     try:
@@ -432,7 +437,14 @@ def broadcast_stock_level_change(sender, instance, **kwargs):
 
     try:
         _sync_stock_alert_records(instance)
+    except Exception as e:
+        logger.warning(
+            "Failed to sync stock alerts for batch %s: %s",
+            getattr(instance, "id", None),
+            e,
+        )
 
+    try:
         from hmis.apps.pharmacy.websockets import (
             broadcast_stock_critical,
             broadcast_stock_low_warning,

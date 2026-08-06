@@ -52,7 +52,11 @@ class FEFODispenser:
 
         if facility is not None:
             facility_id = getattr(facility, "pk", facility)
-            available_batches = available_batches.filter(facility_id=facility_id)
+            facility_scoped_batches = available_batches.filter(facility_id=facility_id)
+            # Backward compatibility: older stock records may be missing facility.
+            # Fall back to unscoped batches when no facility-scoped stock exists.
+            if facility_scoped_batches.exists():
+                available_batches = facility_scoped_batches
 
         result = []
         remaining = quantity
