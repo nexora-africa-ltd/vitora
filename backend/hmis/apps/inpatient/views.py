@@ -2505,9 +2505,13 @@ class AdmissionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mode
             "first_pending_id": first_rx_id,
         }
 
-        # ----- Laboratory: all lab orders completed or cancelled -----
+        # ----- Laboratory: all IN_HOUSE lab orders completed or cancelled -----
+        # EXTERNAL lab referrals are processed outside the facility and should
+        # not block inpatient discharge clearance.
         pending_labs = (
-            LabOrder.objects.filter(q).exclude(status__in=["COMPLETED", "CANCELLED"]).distinct()
+            LabOrder.objects.filter(q, order_type="IN_HOUSE")
+            .exclude(status__in=["COMPLETED", "CANCELLED"])
+            .distinct()
         )
         pending_test_names = list(
             pending_labs.values_list("items__test__name", flat=True).distinct()[:10]

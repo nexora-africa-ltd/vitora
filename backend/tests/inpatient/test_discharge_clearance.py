@@ -363,6 +363,36 @@ class TestClearanceStatusEndpoint:
         assert response.data["laboratory"]["pending_count"] == 1
         assert response.data["all_cleared"] is False
 
+    def test_external_pending_lab_order_does_not_block_clearance(
+        self,
+        clearance_client,
+        clearance_admission,
+        discharge_user,
+        sample_facility,
+        sample_organization,
+    ):
+        """EXTERNAL lab referrals should not block discharge clearance."""
+        from hmis.apps.laboratory.models import LabOrder
+
+        LabOrder.objects.create(
+            patient=clearance_admission.patient,
+            encounter=clearance_admission.ipd_encounter,
+            admission=clearance_admission,
+            ordered_by=discharge_user,
+            order_type="EXTERNAL",
+            external_lab="Lancet Labs",
+            status="ORDERED",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        url = f"/api/inpatient/admissions/{clearance_admission.id}/clearance-status/"
+        response = clearance_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["laboratory"]["cleared"] is True
+        assert response.data["laboratory"]["pending_count"] == 0
+
     def test_lab_cleared_when_all_completed(
         self,
         clearance_client,
@@ -681,6 +711,46 @@ class TestDischargeAutomatedClearance:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "lab_results_acknowledged" in response.data
+
+    def test_external_pending_lab_order_does_not_block_discharge(
+        self,
+        clearance_client,
+        clearance_admission,
+        discharge_user,
+        sample_facility,
+        sample_organization,
+    ):
+        """Normal discharge should proceed when only EXTERNAL lab orders are pending."""
+        from hmis.apps.laboratory.models import LabOrder
+
+        LabOrder.objects.create(
+            patient=clearance_admission.patient,
+            encounter=clearance_admission.ipd_encounter,
+            admission=clearance_admission,
+            ordered_by=discharge_user,
+            order_type="EXTERNAL",
+            external_lab="Lancet Labs",
+            status="ORDERED",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = clearance_client.post(
+            "/api/inpatient/discharges/",
+            {
+                "admission": clearance_admission.id,
+                "discharge_type": "NORMAL",
+                "discharge_date": timezone.now().isoformat(),
+                "discharged_by": discharge_user.id,
+                "admission_diagnosis": "J18.9",
+                "final_diagnosis": "J18.9",
+                "final_diagnosis_text": "Pneumonia resolved",
+                "treatment_summary": "IV antibiotics completed",
+                "patient_instructions": "Rest at home",
+            },
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
 
     def test_normal_discharge_succeeds_when_all_clear(
         self, clearance_client, clearance_admission, discharge_user

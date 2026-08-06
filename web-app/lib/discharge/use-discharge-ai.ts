@@ -12,10 +12,11 @@ import {
   parseAdvisories,
   createSectionId,
   fuzzyTitleMatch,
-  extractFollowUpDate,
   parseMedicationLines,
   mergeEncounterClinicalText,
 } from './utils';
+
+const AI_EXEMPT_TEMPLATE_KEYS = new Set(['follow_up', 'follow_up_plan']);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -118,18 +119,13 @@ interface UseDischargeAIParams {
   templateSections?: DischargeTemplateSectionConfig[];
   // Current form state (read-only, for conditional logic)
   followUpInstructions: string;
-  followUpDate: string;
-  patientInstructions: string;
   // Setters
   setSections: React.Dispatch<React.SetStateAction<DischargeSummarySection[]>>;
   setEditingSectionId: React.Dispatch<React.SetStateAction<string | null>>;
   setGeneratingSectionId: React.Dispatch<React.SetStateAction<string | null>>;
   setSuggestedMeds: React.Dispatch<React.SetStateAction<SuggestedMedication[]>>;
   setGeneratingMeds: React.Dispatch<React.SetStateAction<boolean>>;
-  setGeneratingFollowUp: React.Dispatch<React.SetStateAction<boolean>>;
   setGeneratingPatientInstructions: React.Dispatch<React.SetStateAction<boolean>>;
-  setFollowUpInstructions: React.Dispatch<React.SetStateAction<string>>;
-  setFollowUpDate: React.Dispatch<React.SetStateAction<string>>;
   setPatientInstructions: React.Dispatch<React.SetStateAction<string>>;
   setInstructionsGenerated: React.Dispatch<React.SetStateAction<boolean>>;
   sections: DischargeSummarySection[];
@@ -155,17 +151,12 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     templateLayout,
     templateSections,
     followUpInstructions,
-    followUpDate,
-    patientInstructions,
     setSections,
     setEditingSectionId,
     setGeneratingSectionId,
     setSuggestedMeds,
     setGeneratingMeds,
-    setGeneratingFollowUp,
     setGeneratingPatientInstructions,
-    setFollowUpInstructions,
-    setFollowUpDate,
     setPatientInstructions,
     setInstructionsGenerated,
     sections,
@@ -425,7 +416,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       );
       // Re-add routed sections that TibaBot should still produce content for
       const routedSections = templateSections.filter(
-        (s: any) => s.enabled && ROUTED_SECTION_IDS.has(s.key)
+        (s: any) => s.enabled && ROUTED_SECTION_IDS.has(s.key) && !AI_EXEMPT_TEMPLATE_KEYS.has(s.key)
       );
       fields.template_sections = [...aiSections, ...routedSections];
     }
@@ -612,46 +603,6 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       }
     };
 
-    const generateFollowUpTask = async (): Promise<TaskResult> => {
-      try {
-        const result = await clinicalDocument.mutateAsync({
-          document_type: 'discharge_summary',
-          patient_context: ctx.docPatientCtx,
-          admission_context: ctx.admissionCtx,
-          encounter_context: ctx.encounterCtx,
-          output_format: 'structured',
-          generation_mode: generationMode,
-          ...templateFields(),
-          additional_instructions: [
-            'Generate ONLY the Follow-up Plan section. Include specific follow-up appointments, timeline, warning signs to watch for, and when to return to hospital.',
-            'Be specific with timing (e.g., "Return in 2 weeks" or "Follow-up on 2026-04-06").',
-          ].join(' '),
-        });
-
-        let content = '';
-        if (result.sections?.length) {
-          const match = result.sections.find((s: any) => /follow.?up|plan/i.test(s.title)) || result.sections[0];
-          if (match) content = parseAdvisories(match.content).cleanContent;
-        } else if (result.full_text) {
-          content = parseAdvisories(result.full_text).cleanContent;
-        }
-
-        if (content) {
-          if (!followUpInstructions) {
-            const firstLine = content.split('\n').find((l) => l.trim());
-            if (firstLine) setFollowUpInstructions(firstLine.replace(/^[-*\d.]+\s*/, '').replace(/\*\*/g, '').trim());
-          }
-          if (!followUpDate) {
-            const extractedDate = extractFollowUpDate(content);
-            if (extractedDate) setFollowUpDate(extractedDate);
-          }
-        }
-        return { ok: true, label: 'Follow-up' };
-      } catch {
-        return { ok: false, label: 'Follow-up' };
-      }
-    };
-
     // Simple concurrency-limited task runner (cap = 2 in-flight calls).
     // Kept low so dev SQLite (single writer) doesn't hit "database is locked".
     const runWithLimit = async <T,>(tasks: Array<() => Promise<T>>, limit: number): Promise<T[]> => {
@@ -675,7 +626,6 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       ...narrativeSections.map((s) => () => generateNarrativeTask(s)),
       () => generateMedsTask(),
       () => generateInstructionsTask(),
-      () => generateFollowUpTask(),
     ];
 
     if (allTasks.length === 0) {
@@ -713,13 +663,9 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     templateFields,
     toast,
     generationMode,
-    followUpInstructions,
-    followUpDate,
     setSections,
     setEditingSectionId,
     setSuggestedMeds,
-    setFollowUpInstructions,
-    setFollowUpDate,
     setPatientInstructions,
     setInstructionsGenerated,
   ]);
@@ -802,61 +748,6 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       setGeneratingSectionId(null);
     }
   }, [admission, sections, buildAIContext, clinicalDocument, templateFields, toast, generationMode, setSections, setGeneratingSectionId]);
-
-  // Generate follow-up instructions
-  const handleGenerateFollowUp = useCallback(async () => {
-    const ctx = buildAIContext();
-    if (!ctx || !admission) return;
-    setGeneratingFollowUp(true);
-    try {
-      const diagnosis = ctx.admissionCtx.primary_diagnosis || 'unspecified';
-      const los = ctx.admissionCtx.length_of_stay_days ?? 0;
-      const ward = ctx.admissionCtx.ward || '';
-      const dischargeTypeStr = ctx.admissionCtx.discharge_type || 'NORMAL';
-
-      const query = [
-        `Generate a brief follow-up plan for a patient being discharged after ${los} days for ${diagnosis}.`,
-        ward ? `Ward: ${ward}.` : '',
-        dischargeTypeStr !== 'NORMAL' ? `Discharge type: ${dischargeTypeStr}.` : '',
-        'Include: specific follow-up appointment timing, what to monitor at home, and warning signs that require immediate return.',
-        'Be specific with timing (e.g., "Return in 2 weeks" or "Review in 7 days").',
-        'Keep it concise — 2-4 actionable sentences. Do NOT include disease pathophysiology or textbook explanations.',
-      ].filter(Boolean).join(' ');
-
-      const result = await clinicalAssist.mutateAsync({
-        query,
-        patient_context: {
-          patient_age: ctx.docPatientCtx.patient_age,
-          patient_sex: ctx.docPatientCtx.patient_sex,
-          allergies: ctx.docPatientCtx.allergies,
-          comorbidities: ctx.docPatientCtx.comorbidities,
-          current_medications: ctx.docPatientCtx.current_medications,
-        },
-        verbosity: 'concise',
-      });
-
-      const content = result.response?.trim();
-      if (content && content.length > 10) {
-        // Strip markdown headers if any
-        const cleaned = content
-          .split('\n')
-          .filter((l) => !l.trim().startsWith('#'))
-          .join('\n')
-          .trim();
-        const firstLine = cleaned.split('\n').find((l) => l.trim());
-        if (firstLine) setFollowUpInstructions(firstLine.replace(/^[-*\d.]+\s*/, '').replace(/\*\*/g, '').trim());
-        const extractedDate = extractFollowUpDate(cleaned);
-        if (extractedDate && !followUpDate) setFollowUpDate(extractedDate);
-        toast({ title: 'Follow-up Generated', description: 'Follow-up instructions generated. Review and adjust as needed.' });
-      } else {
-        toast({ title: 'No Content', description: 'TibaBot returned no follow-up instructions.', variant: 'destructive' });
-      }
-    } catch {
-      toast({ title: 'Generation Failed', description: 'Could not generate follow-up instructions.', variant: 'destructive' });
-    } finally {
-      setGeneratingFollowUp(false);
-    }
-  }, [admission, buildAIContext, clinicalAssist, toast, followUpDate, setGeneratingFollowUp, setFollowUpInstructions, setFollowUpDate]);
 
   // Generate patient instructions
   const handleGeneratePatientInstructions = useCallback(async () => {
@@ -995,7 +886,6 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     clinicalDocument,
     handleGenerateAll,
     handleGenerateSection,
-    handleGenerateFollowUp,
     handleGeneratePatientInstructions,
     handleGenerateMedSuggestions,
   };

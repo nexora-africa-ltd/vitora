@@ -303,10 +303,10 @@ export default function ClaimDetailPage() {
 
         {/* Tabbed workspace */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="w-full justify-start overflow-x-auto">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="workflow">Workflow</TabsTrigger>
-            <TabsTrigger value="interventions">
+          <TabsList className="grid h-auto w-full grid-cols-4">
+            <TabsTrigger value="overview" className="w-full">Overview</TabsTrigger>
+            <TabsTrigger value="workflow" className="w-full">Workflow</TabsTrigger>
+            <TabsTrigger value="interventions" className="w-full">
               Interventions
               {claim.claim_interventions?.length ? (
                 <span className="ml-1 text-xs text-muted-foreground">
@@ -314,7 +314,7 @@ export default function ClaimDetailPage() {
                 </span>
               ) : null}
             </TabsTrigger>
-            <TabsTrigger value="adjudication">
+            <TabsTrigger value="adjudication" className="w-full">
               Adjudication
               {adjudicationNeedsAttention ? (
                 <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-amber-500" aria-label="Adjudication needs attention" />

@@ -27,10 +27,18 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { StaffSearchCombobox } from '@/components/clinics/staff-search-combobox';
 import {
   DiagnosisCodeInput,
   emptyDiagnosisCodeValue,
@@ -42,6 +50,8 @@ import { billingApi } from '@/lib/api/billing';
 import { inpatientApi } from '@/lib/api/inpatient';
 import { apiClient, getApiBaseUrl } from '@/lib/api/client';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
+import { useShareDocument } from '@/lib/hooks/use-document-hub';
+import { useToast } from '@/lib/hooks';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useFacility } from '@/lib/context/facility-context';
 
@@ -555,7 +565,11 @@ export function DischargePanel({
   const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false);
   const [attachmentDialogMode, setAttachmentDialogMode] = useState<'create' | 'edit'>('edit');
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [activeAttachmentId, setActiveAttachmentId] = useState<number | null>(null);
+  const [shareTargetAttachment, setShareTargetAttachment] = useState<LocalClaimAttachment | null>(null);
+  const [shareRecipientId, setShareRecipientId] = useState<number | undefined>(undefined);
+  const [sharePermission, setSharePermission] = useState<'VIEW' | 'SIGN'>('VIEW');
   const [attachmentTypeInput, setAttachmentTypeInput] = useState('other');
   const [attachmentNameInput, setAttachmentNameInput] = useState('');
   const [attachmentDescriptionInput, setAttachmentDescriptionInput] = useState('');
@@ -577,7 +591,9 @@ export function DischargePanel({
   const [inlinePreviewError, setInlinePreviewError] = useState<string | null>(null);
   const biometricPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const { toast } = useToast();
   const { facilityDetail } = useFacility();
+  const shareDocumentMutation = useShareDocument();
 
   const hasInvoiceNumber = invoiceNumber.trim().length > 0;
 
@@ -1007,9 +1023,40 @@ export function DischargePanel({
     setPreviewDialogOpen(true);
   }
 
-  function shareAttachmentToDocumentHub(attachment: LocalClaimAttachment) {
-    if (typeof window === 'undefined') return;
-    window.open(`/document-hub/sha-attachments/${attachment.id}`, '_blank', 'noopener,noreferrer');
+  function openAttachmentShareDialog(attachment: LocalClaimAttachment) {
+    setShareTargetAttachment(attachment);
+    setShareDialogOpen(true);
+  }
+
+  function resetAttachmentShareDialog() {
+    setShareDialogOpen(false);
+    setShareTargetAttachment(null);
+    setShareRecipientId(undefined);
+    setSharePermission('VIEW');
+  }
+
+  async function shareAttachmentToDocumentHub() {
+    if (!shareTargetAttachment || !shareRecipientId) {
+      toast({ title: 'Select a recipient staff member', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      await shareDocumentMutation.mutateAsync({
+        document_type: 'SHAClaimAttachment',
+        document_id: shareTargetAttachment.id,
+        shared_with: shareRecipientId,
+        permission: sharePermission,
+      });
+      toast({ title: 'Attachment shared' });
+      resetAttachmentShareDialog();
+    } catch (e: any) {
+      toast({
+        title: 'Failed to share attachment',
+        description: e?.response?.data?.error ?? e?.message ?? 'An error occurred',
+        variant: 'destructive',
+      });
+    }
   }
 
   const createAttachmentMutation = useMutation({
@@ -1893,10 +1940,10 @@ export function DischargePanel({
                         size="sm"
                         variant="ghost"
                         className="h-7 w-7 p-0"
-                        onClick={() => shareAttachmentToDocumentHub(attachment)}
-                        disabled={attachmentCrudBusy}
-                        title="Open in Document Hub"
-                        aria-label="Open in Document Hub"
+                        onClick={() => openAttachmentShareDialog(attachment)}
+                        disabled={attachmentCrudBusy || shareDocumentMutation.isPending}
+                        title="Share in Document Hub"
+                        aria-label="Share in Document Hub"
                       >
                         <Share2 className="h-3.5 w-3.5" />
                       </Button>
@@ -1929,6 +1976,57 @@ export function DischargePanel({
             </div>
           )}
         </div>
+
+        <Dialog
+          open={shareDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              resetAttachmentShareDialog();
+              return;
+            }
+            setShareDialogOpen(true);
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Share Attachment</DialogTitle>
+              <DialogDescription>
+                Share {shareTargetAttachment?.name || 'this attachment'} with another staff member.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div>
+                <label className="text-sm font-medium">Recipient staff member</label>
+                <StaffSearchCombobox
+                  value={shareRecipientId}
+                  onSelect={(userId) => setShareRecipientId(userId)}
+                  placeholder="Select staff member to share with..."
+                  searchPlaceholder="Search by name, email, or employee ID..."
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Permission</label>
+                <Select value={sharePermission} onValueChange={(value) => setSharePermission(value as 'VIEW' | 'SIGN')}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="VIEW">VIEW</SelectItem>
+                    <SelectItem value="SIGN">SIGN (includes VIEW)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={resetAttachmentShareDialog}>
+                Cancel
+              </Button>
+              <Button onClick={() => { void shareAttachmentToDocumentHub(); }} disabled={shareDocumentMutation.isPending}>
+                {shareDocumentMutation.isPending ? 'Sharing...' : 'Share'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
           <DialogContent className="max-w-3xl">

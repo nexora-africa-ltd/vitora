@@ -321,7 +321,6 @@ export default function DischargePage() {
   // AI medication suggestions and follow-up generation
   const [suggestedMeds, setSuggestedMeds] = useState<{ drug_name: string; dosage: string; frequency: string; duration: string }[]>([]);
   const [generatingMeds, setGeneratingMeds] = useState(false);
-  const [generatingFollowUp, setGeneratingFollowUp] = useState(false);
   const [generatingPatientInstructions, setGeneratingPatientInstructions] = useState(false);
 
   // ---- Draft auto-save / restore ----
@@ -1111,7 +1110,6 @@ export default function DischargePage() {
     clinicalDocument,
     handleGenerateAll,
     handleGenerateSection,
-    handleGenerateFollowUp,
     handleGeneratePatientInstructions,
     handleGenerateMedSuggestions,
   } = useDischargeAI({
@@ -1133,17 +1131,12 @@ export default function DischargePage() {
     templateLayout: defaultTemplate?.layout,
     templateSections: defaultTemplate?.sections,
     followUpInstructions,
-    followUpDate,
-    patientInstructions,
     setSections,
     setEditingSectionId,
     setGeneratingSectionId,
     setSuggestedMeds,
     setGeneratingMeds,
-    setGeneratingFollowUp,
     setGeneratingPatientInstructions,
-    setFollowUpInstructions,
-    setFollowUpDate,
     setPatientInstructions,
     setInstructionsGenerated,
     sections,
@@ -2217,23 +2210,6 @@ export default function DischargePage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="follow-up-instructions">Follow-up Instructions</Label>
-                {isAIEnabled && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleGenerateFollowUp}
-                    disabled={generatingFollowUp || clinicalDocument.isPending}
-                    className="gap-1.5 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400 h-auto py-0.5"
-                  >
-                    {generatingFollowUp ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <BrainCircuit className="h-3.5 w-3.5" />
-                    )}
-                    <span className="hidden sm:inline">Generate</span>
-                  </Button>
-                )}
               </div>
               <Input
                 id="follow-up-instructions"

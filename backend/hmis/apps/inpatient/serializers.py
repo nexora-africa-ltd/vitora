@@ -697,9 +697,11 @@ class DischargeSerializer(serializers.ModelSerializer):
                     f"Cannot discharge: {pending_rx.count()} internal prescription(s) not yet dispensed"
                 )
 
-            # Lab: all lab orders completed or cancelled
+            # Lab: all IN_HOUSE lab orders completed or cancelled
+            # EXTERNAL referrals do not block discharge.
             pending_labs = LabOrder.objects.filter(
                 admission=admission,
+                order_type="IN_HOUSE",
             ).exclude(status__in=["COMPLETED", "CANCELLED"])
             lab_cleared = not pending_labs.exists()
             if not lab_cleared:

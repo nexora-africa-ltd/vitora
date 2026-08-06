@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -42,6 +42,16 @@ function formatBytes(bytes: number | null): string {
   return `${size.toFixed(size >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
+function toPreviewFetchPath(fileUrl?: string | null): string {
+  if (!fileUrl) return '';
+  try {
+    const parsed = new URL(fileUrl);
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return fileUrl;
+  }
+}
+
 export default function ShaAttachmentPreviewPage() {
   const params = useParams();
   const attachmentId = Number(params.id);
@@ -63,6 +73,46 @@ export default function ShaAttachmentPreviewPage() {
     if (mime.startsWith('image/')) return 'image';
     return 'other';
   }, [data?.mime_type]);
+
+  const [inlinePreviewUrl, setInlinePreviewUrl] = useState('');
+  const [inlinePreviewLoading, setInlinePreviewLoading] = useState(false);
+  const [inlinePreviewError, setInlinePreviewError] = useState<string | null>(null);
+  const previewFetchPath = useMemo(() => toPreviewFetchPath(data?.file_url), [data?.file_url]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl = '';
+
+    setInlinePreviewUrl('');
+    setInlinePreviewError(null);
+
+    if (!data?.file_url || (fileKind !== 'pdf' && fileKind !== 'image')) {
+      return;
+    }
+
+    setInlinePreviewLoading(true);
+    void apiClient.get<Blob>(previewFetchPath, { responseType: 'blob' })
+      .then((response) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(response.data);
+        setInlinePreviewUrl(objectUrl);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setInlinePreviewError('Inline preview could not be loaded. Use Open Source File.');
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setInlinePreviewLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [data?.file_url, fileKind, previewFetchPath]);
 
   if (isLoading) {
     return <div className="py-6 text-sm text-muted-foreground">Loading attachment preview...</div>;
@@ -124,10 +174,14 @@ export default function ShaAttachmentPreviewPage() {
       {data.file_url ? (
         <Card>
           <CardContent className="pt-4">
-            {fileKind === 'image' || fileKind === 'pdf' ? (
+            {inlinePreviewLoading ? (
+              <div className="text-sm text-muted-foreground">Loading preview...</div>
+            ) : inlinePreviewError ? (
+              <div className="text-sm text-muted-foreground">{inlinePreviewError}</div>
+            ) : (fileKind === 'image' || fileKind === 'pdf') && inlinePreviewUrl ? (
               <iframe
                 title={`SHA attachment ${data.id}`}
-                src={data.file_url}
+                src={inlinePreviewUrl}
                 className="w-full h-[65vh] rounded-md border"
               />
             ) : (
