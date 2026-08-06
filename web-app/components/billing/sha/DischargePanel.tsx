@@ -789,6 +789,10 @@ export function DischargePanel({
   );
   const missingRequiredDischargeDocs = useMemo(
     () => {
+      if (activeInterventionCodeSet.size === 0 && previewInterventionCodeSet.size === 0) {
+        return [];
+      }
+
       const payload = asRecord(ilmPreviewResult?.payload);
       const existingDhaDocCodes = new Set<string>();
       for (const attachment of localAttachments) {
@@ -848,6 +852,10 @@ export function DischargePanel({
     ],
   );
   const hasMissingRequiredDischargeDocs = missingRequiredDischargeDocs.length > 0;
+  const missingRequiredDischargeDocLabels = useMemo(
+    () => Array.from(new Set(missingRequiredDischargeDocs.map((doc) => doc.label))),
+    [missingRequiredDischargeDocs],
+  );
   const autoGeneratableMissingDocs = useMemo(
     () => missingRequiredDischargeDocs.filter((doc) => AUTO_GENERATABLE_MISSING_DOC_TYPES.has(doc.uploadDocType)),
     [missingRequiredDischargeDocs],
@@ -1433,7 +1441,7 @@ export function DischargePanel({
   async function sendDischargeOtp() {
     if (hasMissingRequiredDischargeDocs) {
       setError(
-        `Upload required DHA discharge documents first: ${missingRequiredDischargeDocs.map((d) => d.label).join(', ')}.`,
+        `Upload required DHA discharge documents first: ${missingRequiredDischargeDocLabels.join(', ')}.`,
       );
       return;
     }
@@ -1485,7 +1493,7 @@ export function DischargePanel({
   async function startBiometricVerification() {
     if (hasMissingRequiredDischargeDocs) {
       setError(
-        `Upload required DHA discharge documents first: ${missingRequiredDischargeDocs.map((d) => d.label).join(', ')}.`,
+        `Upload required DHA discharge documents first: ${missingRequiredDischargeDocLabels.join(', ')}.`,
       );
       return;
     }
@@ -1539,7 +1547,7 @@ export function DischargePanel({
   async function submitDischarge() {
     if (hasMissingRequiredDischargeDocs) {
       setError(
-        `Cannot submit discharge: missing DHA documents: ${missingRequiredDischargeDocs.map((d) => d.label).join(', ')}.`,
+        `Cannot submit discharge: missing DHA documents: ${missingRequiredDischargeDocLabels.join(', ')}.`,
       );
       return;
     }
@@ -1800,7 +1808,7 @@ export function DischargePanel({
               <p className="text-sm font-medium">Missing required documents</p>
               <p className="text-xs text-muted-foreground">
                 {hasMissingRequiredDischargeDocs
-                  ? `Missing: ${missingRequiredDischargeDocs.map((d) => d.label).join(', ')}`
+                  ? `Missing: ${missingRequiredDischargeDocLabels.join(', ')}`
                   : 'No required document blockers reported by claim validation or DHA preview applicable_document_types.'}
               </p>
               {hasMissingRequiredDischargeDocs && hasAutoGeneratableMissingDocs ? (

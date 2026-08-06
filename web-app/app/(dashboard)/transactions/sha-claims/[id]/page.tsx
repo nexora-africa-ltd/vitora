@@ -69,7 +69,21 @@ interface ClaimInterventionRow {
 }
 
 function toInterventionStatus(value: unknown): 'active' | 'retired' {
-  const normalized = String(value || '').trim().toLowerCase();
+  let normalized = '';
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const row = value as Record<string, unknown>;
+    normalized = String(
+      row.workflow_state
+      || row.workflowState
+      || row.status
+      || row.intervention_status
+      || '',
+    )
+      .trim()
+      .toLowerCase();
+  } else {
+    normalized = String(value || '').trim().toLowerCase();
+  }
   if (!normalized) return 'active';
   if (normalized === 'active') return 'active';
   if (
@@ -108,7 +122,7 @@ function mapPreviewInterventions(
       if (!interventionCode) return null;
       const key = interventionCode.toUpperCase();
       const existing = byCode.get(key);
-      const status = toInterventionStatus(row.status || row.intervention_status);
+      const status = toInterventionStatus(row);
       const rawAccessPoint = String(row.access_point || row.intervention_access_point || '')
         .trim()
         .toUpperCase();

@@ -26,8 +26,7 @@ export function extractPreviewActiveInterventions(payload: unknown): {
       const interventionCode = String(row.intervention_code || '').trim();
       if (!interventionCode) return null;
 
-      const rawStatus = row.status || row.intervention_status;
-      if (isPreviewInterventionInactiveStatus(rawStatus)) {
+      if (isPreviewInterventionInactiveStatus(row)) {
         return null;
       }
 

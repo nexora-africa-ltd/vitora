@@ -37,8 +37,24 @@ function normalizeInterventionCode(value: unknown): string {
   return String(value || '').trim().toUpperCase();
 }
 
+function readPreviewInterventionLifecycleRaw(value: unknown): string {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const row = value as Record<string, unknown>;
+    return String(
+      row.workflow_state
+      || row.workflowState
+      || row.status
+      || row.intervention_status
+      || '',
+    )
+      .trim()
+      .toLowerCase();
+  }
+  return String(value || '').trim().toLowerCase();
+}
+
 export function isPreviewInterventionInactiveStatus(value: unknown): boolean {
-  const raw = String(value || '').trim().toLowerCase();
+  const raw = readPreviewInterventionLifecycleRaw(value);
   if (!raw) return false;
   if (PREVIEW_INACTIVE_INTERVENTION_STATUSES.has(raw)) return true;
   const normalized = raw.replace(/[^a-z0-9]+/g, ' ').trim();
@@ -96,8 +112,7 @@ export function getPreviewActiveInterventionCodeSet(previewPayload: unknown): Se
     interventions
       .filter((entry) => {
         const row = asRecord(entry);
-        const rawStatus = row.status || row.intervention_status;
-        return !isPreviewInterventionInactiveStatus(rawStatus);
+        return !isPreviewInterventionInactiveStatus(row);
       })
       .map((entry) => normalizeInterventionCode(asRecord(entry).intervention_code))
       .filter(Boolean),
