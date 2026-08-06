@@ -15,6 +15,7 @@ from django.utils import timezone
 from rest_framework import status
 
 from hmis.apps.imaging.models import ImagingOrder, ImagingOrderItem, ImagingProcedure
+from tests.conftest import ensure_staff_profile
 
 # ============================================================================
 # Imaging Procedure (Catalog) API Tests (20 tests)
@@ -265,6 +266,63 @@ class TestImagingOrderAPI:
         today = timezone.now().date().isoformat()
         response = authenticated_client.get(f"/api/imaging/orders/?date_from={today}")
         assert response.status_code == status.HTTP_200_OK
+
+    def test_walkin_order_visible_in_same_facility_worklist_scope(
+        self, authenticated_client, test_user
+    ):
+        """Walk-in orders should be visible to users in the same facility scope."""
+        order = ImagingOrder.objects.create(
+            ordered_by=test_user,
+            clinical_indication="Walk-in order",
+            is_walkin=True,
+            walkin_patient_name="Walk In",
+            status="ORDERED",
+        )
+
+        response = authenticated_client.get("/api/imaging/orders/?status=ORDERED")
+        assert response.status_code == status.HTTP_200_OK
+        order_numbers = {row["order_number"] for row in response.data["results"]}
+        assert order.order_number in order_numbers
+
+    def test_walkin_order_hidden_for_other_facility_scope(
+        self,
+        authenticated_client,
+        another_user,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        """Walk-in orders should not leak across facilities."""
+        from hmis.apps.core.models import Facility
+
+        foreign_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Foreign Facility",
+            mfl_code="F-IMG-0001",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        ensure_staff_profile(
+            another_user,
+            sample_organization,
+            foreign_facility,
+            employee_id="FOREIGN-IMAGING",
+        )
+
+        hidden_order = ImagingOrder.objects.create(
+            ordered_by=another_user,
+            clinical_indication="Foreign walk-in order",
+            is_walkin=True,
+            walkin_patient_name="Foreign Walk In",
+            status="ORDERED",
+        )
+
+        response = authenticated_client.get("/api/imaging/orders/?status=ORDERED")
+        assert response.status_code == status.HTTP_200_OK
+        order_numbers = {row["order_number"] for row in response.data["results"]}
+        assert hidden_order.order_number not in order_numbers
 
     # --- Create Order Tests ---
 

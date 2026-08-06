@@ -50,6 +50,8 @@ interface ImagingOrderTableProps {
   isLoading: boolean;
   error: Error | null;
   page: number;
+  totalCount: number;
+  pageSize: number;
   totalPages: number;
   onPageChange: (page: number) => void;
   onStatusFilter?: (status: ImagingOrderStatus | '') => void;
@@ -62,6 +64,8 @@ export function ImagingOrderTable({
   isLoading,
   error,
   page,
+  totalCount,
+  pageSize,
   totalPages,
   onPageChange,
   onStatusFilter,
@@ -70,6 +74,8 @@ export function ImagingOrderTable({
 }: ImagingOrderTableProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const startRow = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endRow = Math.min(page * pageSize, totalCount);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -254,7 +260,7 @@ export function ImagingOrderTable({
       {totalPages > 1 && (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
-            Page {page} of {totalPages}
+            Showing {startRow}-{endRow} of {totalCount} orders (page {page} of {totalPages})
           </p>
           <div className="flex items-center justify-center gap-2">
             <Button

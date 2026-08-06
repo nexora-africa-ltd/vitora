@@ -18,6 +18,7 @@ import { ImagingOrderStatus, ImagingPriority } from '@/lib/types/imaging';
 export default function ImagingOrdersPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+  const pageSize = 20;
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<ImagingOrderStatus | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<ImagingPriority | ''>('');
@@ -26,14 +27,15 @@ export default function ImagingOrdersPage() {
 
   const { data, isLoading, error } = useImagingOrders({
     page,
-    page_size: 20,
+    page_size: pageSize,
     status: statusFilter || undefined,
     priority: priorityFilter || undefined,
     search: debouncedSearch || undefined,
   });
 
   const orders = data?.results || [];
-  const totalPages = Math.ceil((data?.count || 0) / 20);
+  const totalCount = data?.count || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
@@ -54,6 +56,8 @@ export default function ImagingOrdersPage() {
           isLoading={isLoading}
           error={error as Error | null}
           page={page}
+          totalCount={totalCount}
+          pageSize={pageSize}
           totalPages={totalPages}
           onPageChange={setPage}
           onStatusFilter={(s) => { setStatusFilter(s); setPage(1); }}

@@ -539,7 +539,38 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         return ImagingOrderSerializer
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        resolve_request_tenant(self.request)
+        queryset = ImagingOrder.objects.all().select_related("patient", "encounter", "ordered_by")
+
+        user = self.request.user
+        if not user.is_superuser:
+            facility = getattr(self.request, "facility", None)
+            org = getattr(self.request, "organization", None)
+
+            if facility:
+                queryset = queryset.filter(
+                    models.Q(encounter__facility=facility)
+                    | models.Q(admission__facility=facility)
+                    | models.Q(patient__registered_at_facility=facility)
+                    | models.Q(appointment__resource__facility=facility)
+                    | models.Q(
+                        is_walkin=True,
+                        ordered_by__staff_profile__primary_facility=facility,
+                    )
+                )
+            elif org:
+                queryset = queryset.filter(
+                    models.Q(encounter__facility__organization=org)
+                    | models.Q(admission__facility__organization=org)
+                    | models.Q(patient__organization=org)
+                    | models.Q(appointment__resource__facility__organization=org)
+                    | models.Q(
+                        is_walkin=True,
+                        ordered_by__staff_profile__organization=org,
+                    )
+                )
+            else:
+                return queryset.none()
 
         # Filter by date range
         date_from = self.request.query_params.get("date_from", None)
@@ -549,7 +580,7 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         if date_to:
             queryset = queryset.filter(ordered_at__date__lte=date_to)
 
-        return queryset
+        return queryset.distinct()
 
     def create(self, request, *args, **kwargs):
         """Create a new imaging order."""
