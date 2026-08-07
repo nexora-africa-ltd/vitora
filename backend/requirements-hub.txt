@@ -47,7 +47,7 @@ fhir-core==1.1.5
 fhir-resources==8.2.0
 frozenlist==1.8.0
 gunicorn==23.0.0
-h2==4.3.0
+h2==4.4.1
 hl7apy==1.3.5
 hpack==4.1.0
 http-ece==1.2.1
