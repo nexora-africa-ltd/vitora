@@ -30,9 +30,20 @@ export function useNavigationItems(): NavigationResult {
   const { hasModule, facilityDetail } = useFacility();
   const { navigationMode, isClinicalNavigationEligible } = useNavigationMode();
   const { hasFeature } = useSubscription();
-  const { data: clinicsData } = useClinics({ page_size: 200, status: 'ACTIVE' });
   const { isSustainedOffline } = useNetworkStatus();
   const interfacilityTransfersEnabled = useInterfacilityTransfersEnabled();
+  const shouldFetchClinicTypes =
+    canAccessModule('clinics') &&
+    hasModule('outpatient') &&
+    !isSustainedOffline &&
+    (navigationMode === 'clinical' || isClinicalNavigationEligible);
+  const { data: clinicsData } = useClinics(
+    { page_size: 200, status: 'ACTIVE' },
+    {
+      enabled: shouldFetchClinicTypes,
+      staleTime: 10 * 60 * 1000,
+    }
+  );
 
   // Derive the set of active clinic types from fetched clinics
   const activeClinicTypes = useMemo(() => {

@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -34,13 +35,10 @@ import {
   BadgeCheck,
 } from 'lucide-react';
 import { StatsCard } from '@/components/dashboard/stats-card';
-import { RecentPatients } from '@/components/dashboard/recent-patients';
-import { AlertsWidget } from '@/components/dashboard/alerts-widget';
-import { MyClaimedEncountersWidget } from '@/components/dashboard/my-claimed-widget';
 import { useDashboardStats, formatCurrency, formatNumber } from '@/lib/hooks/use-dashboard-stats';
 import { useMyStaffProfile, useLicenseSummary } from '@/lib/hooks/use-rbac';
 import { useTriageWaitTimeStats } from '@/lib/hooks/use-triage';
-import { useEmergencySocket, useDashboardSocket } from '@/lib/hooks/use-websocket';
+import { useDashboardSocket } from '@/lib/hooks/use-websocket';
 import { useIsSupervisor, useUser } from '@/lib/auth';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
@@ -52,6 +50,27 @@ const OnDutyWidget = dynamic(
   () => import('@/components/dashboard/on-duty-widget').then((mod) => mod.OnDutyWidget),
   {
     loading: () => <WidgetTableSkeleton rows={4} />,
+  }
+);
+
+const MyClaimedEncountersWidget = dynamic(
+  () => import('@/components/dashboard/my-claimed-widget').then((mod) => mod.MyClaimedEncountersWidget),
+  {
+    loading: () => <WidgetTableSkeleton rows={4} />,
+  }
+);
+
+const RecentPatients = dynamic(
+  () => import('@/components/dashboard/recent-patients').then((mod) => mod.RecentPatients),
+  {
+    loading: () => <WidgetTableSkeleton rows={4} />,
+  }
+);
+
+const AlertsWidget = dynamic(
+  () => import('@/components/dashboard/alerts-widget').then((mod) => mod.AlertsWidget),
+  {
+    loading: () => <WidgetTableSkeleton rows={3} />,
   }
 );
 
@@ -157,9 +176,8 @@ function formatRoleLabel(role?: string) {
 export default function DashboardPage() {
   const { data: stats, isLoading, isError } = useDashboardStats();
   const { data: triageStats, isLoading: isTriageLoading } = useTriageWaitTimeStats({ dateRange: 'today' });
-  const { connectionState, reconnectAttempts, lastUpdate } = useEmergencySocket();
   const { facility, hasModule } = useFacility();
-  useDashboardSocket(facility?.id ?? null);
+  const { connectionState, reconnectAttempts } = useDashboardSocket(facility?.id ?? null);
   const isSupervisor = useIsSupervisor();
   const user = useUser();
   const { canAccessModule, canPerformAction } = usePermissions();
@@ -183,6 +201,14 @@ export default function DashboardPage() {
   const { data: staffProfile } = useMyStaffProfile();
   const { data: licenseSummary } = useLicenseSummary();
   const { refresh, isRefreshing } = usePageRefresh();
+  const [showDeferredWidgets, setShowDeferredWidgets] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setShowDeferredWidgets(true);
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // Triage queue metrics
   const triageQueueCount = triageStats?.current_queue?.count ?? stats?.triage.waiting ?? 0;
@@ -435,7 +461,6 @@ export default function DashboardPage() {
               <WebSocketStatus
                 connectionState={connectionState}
                 reconnectAttempts={reconnectAttempts}
-                lastUpdate={lastUpdate}
                 showLabel
                 size="sm"
                 className="rounded-md bg-background px-3 py-2"
@@ -571,7 +596,7 @@ export default function DashboardPage() {
                   </Button>
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
-                  <MyClaimedEncountersWidget />
+                  {showDeferredWidgets ? <MyClaimedEncountersWidget /> : <WidgetTableSkeleton rows={4} />}
                 </CardContent>
               </Card>
             )}
@@ -596,7 +621,11 @@ export default function DashboardPage() {
                   </Button>
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
-                  <AllClaimedEncountersWidget enabled={isSupervisor} />
+                  {showDeferredWidgets ? (
+                    <AllClaimedEncountersWidget enabled={isSupervisor} />
+                  ) : (
+                    <WidgetTableSkeleton rows={4} />
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -620,7 +649,7 @@ export default function DashboardPage() {
                   </Button>
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
-                  <RecentPatients />
+                  {showDeferredWidgets ? <RecentPatients /> : <WidgetTableSkeleton rows={4} />}
                 </CardContent>
               </Card>
             )}
@@ -640,7 +669,11 @@ export default function DashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
-                  <OnDutyWidget enabled={canManageSchedules} />
+                  {showDeferredWidgets ? (
+                    <OnDutyWidget enabled={canManageSchedules} />
+                  ) : (
+                    <WidgetTableSkeleton rows={4} />
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -656,12 +689,14 @@ export default function DashboardPage() {
                   <HelpPopover content="Critical items and escalation work requiring attention." />
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
-                  <AlertsWidget />
+                  {showDeferredWidgets ? <AlertsWidget /> : <WidgetTableSkeleton rows={3} />}
                 </CardContent>
               </Card>
             )}
 
-            {canViewSurveillance && <IDSRDashboardWidget />}
+            {canViewSurveillance && (
+              showDeferredWidgets ? <IDSRDashboardWidget /> : <StandaloneWidgetSkeleton title="IDSR Surveillance" description="Loading surveillance summary…" />
+            )}
 
             {canViewAdmin && (
               <Card className="overflow-hidden">
@@ -676,7 +711,7 @@ export default function DashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <ActivityFeedWidget enabled={canViewAdmin} />
+                  {showDeferredWidgets ? <ActivityFeedWidget enabled={canViewAdmin} /> : <WidgetTableSkeleton rows={4} />}
                 </CardContent>
               </Card>
             )}

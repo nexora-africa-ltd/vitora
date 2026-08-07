@@ -37,6 +37,11 @@ import type {
   EnrollmentSmsTriggerResponse,
 } from '@/lib/types/clinic';
 
+interface UseClinicsOptions {
+  enabled?: boolean;
+  staleTime?: number;
+}
+
 // =============================================================================
 // QUERY KEYS
 // =============================================================================
@@ -84,10 +89,12 @@ export const clinicKeys = {
 /**
  * Fetch list of clinics
  */
-export function useClinics(params?: ClinicListParams) {
+export function useClinics(params?: ClinicListParams, options?: UseClinicsOptions) {
   return useQuery({
     queryKey: clinicKeys.list(params),
     queryFn: () => clinicsApi.list(params),
+    enabled: options?.enabled ?? true,
+    staleTime: options?.staleTime,
   });
 }
 
