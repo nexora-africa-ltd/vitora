@@ -19,8 +19,8 @@ export function extractPreviewActiveInterventions(payload: unknown): {
     return { available: false, interventions: [] };
   }
 
-  const interventions = interventionsRaw
-    .map((entry) => {
+  const interventions: PreviewActiveIntervention[] = interventionsRaw
+    .map<PreviewActiveIntervention | null>((entry) => {
       if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
       const row = entry as Record<string, unknown>;
       const interventionCode = String(row.intervention_code || '').trim();
@@ -60,7 +60,7 @@ export function extractPreviewActiveInterventions(payload: unknown): {
           || paymentMechanism.includes('PER DIEM'),
       };
     })
-    .filter((row): row is PreviewActiveIntervention => !!row);
+    .filter((row): row is PreviewActiveIntervention => row !== null);
 
   return { available: true, interventions };
 }

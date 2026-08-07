@@ -114,8 +114,8 @@ function mapPreviewInterventions(
     fallbackRows.map((row) => [String(row.intervention_code || '').trim().toUpperCase(), row]),
   );
 
-  const mapped = interventions
-    .map((entry, index) => {
+  const mapped: ClaimInterventionRow[] = interventions
+    .map<ClaimInterventionRow | null>((entry, index) => {
       if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
       const row = entry as Record<string, unknown>;
       const interventionCode = String(row.intervention_code || '').trim();
@@ -156,7 +156,7 @@ function mapPreviewInterventions(
           || existing?.is_per_diem,
       };
     })
-    .filter((row): row is ClaimInterventionRow => !!row);
+    .filter((row): row is ClaimInterventionRow => row !== null);
 
   const mappedCodes = new Set(mapped.map((row) => row.intervention_code.toUpperCase()));
   const omittedLocalRows = fallbackRows.filter(

@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3009",
-    "dev:staging": "cp .env.staging .env.local && next dev -p 3009",
+    "dev:staging": "npm run clean && cp .env.staging .env.local && next dev -p 3009",
     "build": "next build",
-    "build:staging": "cp .env.staging .env.local && next build",
+    "build:staging": "npm run clean && cp .env.staging .env.local && next build",
     "start": "next start",
     "start:staging": "NODE_ENV=production NEXT_PUBLIC_ENV=staging next start",
     "lint": "eslint .",
@@ -36,12 +36,14 @@
     "bdd:e2e:smoke": "npx bddgen && playwright test --config playwright-bdd.config.ts --grep @smoke",
     "bdd:integration": "jest --config jest-cucumber.config.js",
     "bdd:integration:watch": "jest --config jest-cucumber.config.js --watch",
-    "quality": "npm run lint && npm run type-check && npm run format:check"
+    "quality": "npm run lint && npm run type-check && npm run format:check",
+    "clean": "rm -rf .next"
   },
   "dependencies": {
-    "@cornerstonejs/core": "^4.16.1",
-    "@cornerstonejs/dicom-image-loader": "^4.16.1",
-    "@cornerstonejs/tools": "^4.16.1",
+    "@cornerstonejs/core": "5.6.14",
+    "@cornerstonejs/dicom-image-loader": "5.6.14",
+    "@cornerstonejs/metadata": "5.6.14",
+    "@cornerstonejs/tools": "5.6.14",
     "@hookform/resolvers": "^3.3.4",
     "@journeyapps/wa-sqlite": "^1.0.0",
     "@json2csv/plainjs": "^7.0.6",

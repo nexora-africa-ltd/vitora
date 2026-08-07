@@ -71,7 +71,9 @@ export default function ImagingPage() {
   });
 
   const orders = data?.results || [];
-  const totalPages = Math.ceil((data?.count || 0) / 20);
+  const totalCount = data?.count || 0;
+  const pageSize = 20;
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
     <div className="space-y-6">
@@ -123,6 +125,8 @@ export default function ImagingPage() {
             isLoading={isLoading}
             error={error as Error | null}
             page={page}
+            totalCount={totalCount}
+            pageSize={pageSize}
             totalPages={totalPages}
             onPageChange={setPage}
             onStatusFilter={setStatusFilter}
