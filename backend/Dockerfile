@@ -42,8 +42,8 @@ COPY . .
 # Collect static files at build time
 RUN python manage.py collectstatic --noinput 2>/dev/null || true
 
-# Make startup script executable
-RUN chmod +x scripts/aca-start.sh
+# Make runtime/deploy scripts executable
+RUN chmod +x scripts/aca-start.sh scripts/aca-postdeploy.sh
 
 # Switch to non-root user
 RUN chown -R app:app /app

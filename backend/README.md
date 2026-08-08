@@ -472,7 +472,23 @@ The backend is deployed to **Azure Container Apps (ACA)** with a Neon PostgreSQL
 1. Push to \`main\` triggers \`.github/workflows/deploy-backend.yml\`
 2. Docker image is built and pushed to Azure Container Registry
 3. ACA deploys the new image with all env vars (secrets stored as ACA secrets)
-4. \`entrypoint.sh\` runs migrations then starts Daphne (ASGI)
+4. Container startup runs Daphne only; post-deploy maintenance runs separately
+
+### Post-Deploy Maintenance (runbook)
+Heavy startup tasks are moved out of startup into a deploy/runbook script.
+
+Run manually when needed:
+\`\`\`bash
+bash scripts/aca-run-postdeploy.sh vitora-api vitora-rg
+bash scripts/aca-run-postdeploy.sh vitora-api-prod vitora-rg
+\`\`\`
+
+This executes \`scripts/aca-postdeploy.sh\` inside the app container, which runs:
+- \`python manage.py migrate --noinput\`
+- \`python manage.py sync_role_permissions\`
+- \`python manage.py backfill_death_records --apply\`
+- \`python manage.py create_missing_lab_queues\`
+- \`python manage.py check_pii_integrity --model Facility\`
 
 ### ACA Secrets (sensitive values)
 These are stored as ACA secrets and referenced via \`secretref:\`:

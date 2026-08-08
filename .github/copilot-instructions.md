@@ -2,6 +2,13 @@
 
 > **Purpose**: This document provides comprehensive onboarding context for AI agents working on the Vitora HMIS codebase. Read this ENTIRELY before making any changes.
 
+## Agent Authoring Rule
+
+- Every newly created file must begin with a concise header docstring/comment block that states:
+  - what the file is for,
+  - how to run or use it,
+  - and supported args/inputs (CLI args and/or environment variables) when applicable.
+
 ---
 
 ## 🏥 Project Overview
