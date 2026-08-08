@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import base64
 import os
 import threading
 import time
@@ -43,8 +42,8 @@ class SladeAccessToken:
 class SladeAuthService:
     """Obtains and caches HealthCloud OAuth access tokens.
 
-    Uses client credentials grant by default, with optional password grant fallback
-    if username/password are supplied in provider credentials.
+    HealthCloud by Slade360 token issuance requires OAuth password grant fields:
+    grant_type, client_id, client_secret, username, and password.
     """
 
     CACHE_TTL_SECONDS = 3500
@@ -101,54 +100,37 @@ class SladeAuthService:
         )
 
         payload: dict[str, Any] = {
-            "grant_type": "client_credentials",
+            "grant_type": "password",
             "client_id": client_id,
             "client_secret": client_secret,
+            "username": username,
+            "password": password,
         }
 
-        if not payload["client_id"] or not payload["client_secret"]:
+        if not all(
+            [
+                payload["client_id"],
+                payload["client_secret"],
+                payload["username"],
+                payload["password"],
+            ]
+        ):
             HEALTHCLOUD_TOKEN_REQUESTS_TOTAL.labels(result="failed").inc()
             raise InsuranceUnauthorizedError(
-                "Missing HealthCloud client credentials",
+                "Missing HealthCloud OAuth credentials",
                 provider_code=getattr(self.config.provider, "code", None),
             )
 
         try:
-            basic = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode("ascii")
             response = self.client.post(
                 "/oauth2/token/",
                 data=payload,
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Authorization": f"Basic {basic}",
-                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
                 host="auth",
             )
-        except InsuranceValidationError as exc:
-            error_code = ""
-            if isinstance(exc.response_body, dict):
-                error_code = str(exc.response_body.get("error") or "")
-            if (
-                payload.get("grant_type") == "client_credentials"
-                and error_code == "unauthorized_client"
-                and username
-                and password
-            ):
-                response = self.client.post(
-                    "/oauth2/token/",
-                    data={
-                        "grant_type": "password",
-                        "client_id": client_id,
-                        "client_secret": client_secret,
-                        "username": username,
-                        "password": password,
-                    },
-                    headers={"Content-Type": "application/x-www-form-urlencoded"},
-                    host="auth",
-                )
-            else:
-                HEALTHCLOUD_TOKEN_REQUESTS_TOTAL.labels(result="failed").inc()
-                raise
+        except InsuranceValidationError:
+            HEALTHCLOUD_TOKEN_REQUESTS_TOTAL.labels(result="failed").inc()
+            raise
         except Exception:
             HEALTHCLOUD_TOKEN_REQUESTS_TOTAL.labels(result="failed").inc()
             raise

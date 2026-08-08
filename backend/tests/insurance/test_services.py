@@ -391,6 +391,8 @@ class TestSlade360Adapter:
 
         monkeypatch.setenv("SLADE_CLIENT_ID", "env-client-id")
         monkeypatch.setenv("SLADE_SECRET_KEY", "env-secret")
+        monkeypatch.setenv("SLADE_USERNAME", "env-user")
+        monkeypatch.setenv("SLADE_PASSWORD", "env-pass")
 
         service = SladeAuthService(provider_config)
         captured: dict = {}
@@ -413,20 +415,32 @@ class TestSlade360Adapter:
         assert token.token == "tok"
         assert captured["path"] == "/oauth2/token/"
         assert captured["host"] == "auth"
+        assert captured["data"]["grant_type"] == "password"
         assert captured["data"]["client_id"] == "env-client-id"
         assert captured["data"]["client_secret"] == "env-secret"
-        assert str(captured.get("headers", {}).get("Authorization", "")).startswith("Basic ")
+        assert captured["data"]["username"] == "env-user"
+        assert captured["data"]["password"] == "env-pass"
 
     @pytest.mark.django_db
     def test_slade_auth_prefers_env_over_provider_credentials(self, provider_config, monkeypatch):
         provider_config.api_key = "config-client-id"
         provider_config.api_secret = "config-secret"
+        provider_config.api_username = "config-user"
+        provider_config.api_password = "config-pass"
         provider_config.save(
-            update_fields=["api_key_encrypted", "api_secret_encrypted", "updated_at"]
+            update_fields=[
+                "api_key_encrypted",
+                "api_secret_encrypted",
+                "api_username_encrypted",
+                "api_password_encrypted",
+                "updated_at",
+            ]
         )
 
         monkeypatch.setenv("SLADE_CLIENT_ID", "env-client-id")
         monkeypatch.setenv("SLADE_CLIENT_SECRET", "env-client-secret")
+        monkeypatch.setenv("SLADE_USERNAME", "env-user")
+        monkeypatch.setenv("SLADE_PASSWORD", "env-pass")
 
         service = SladeAuthService(provider_config)
         captured: dict = {}
@@ -442,11 +456,14 @@ class TestSlade360Adapter:
         service.client.post = _mock_post
         service.get_access_token(force_refresh=True)
 
+        assert captured["data"]["grant_type"] == "password"
         assert captured["data"]["client_id"] == "env-client-id"
         assert captured["data"]["client_secret"] == "env-client-secret"
+        assert captured["data"]["username"] == "env-user"
+        assert captured["data"]["password"] == "env-pass"
 
     @pytest.mark.django_db
-    def test_slade_auth_retries_with_password_grant_on_unauthorized_client(
+    def test_slade_auth_uses_password_grant_payload(
         self,
         provider_config,
         monkeypatch,
@@ -457,19 +474,13 @@ class TestSlade360Adapter:
         monkeypatch.setenv("SLADE_PASSWORD", "env-pass")
 
         service = SladeAuthService(provider_config)
-        calls: list[dict] = []
+        captured: dict = {}
 
         def _mock_post(path, *, data=None, headers=None, host=None, **kwargs):
-            calls.append({"path": path, "data": data, "headers": headers, "host": host})
-            if len(calls) == 1:
-                raise InsuranceValidationError(
-                    '{"error":"unauthorized_client"}',
-                    status_code=400,
-                    method="POST",
-                    path=path,
-                    response_body={"error": "unauthorized_client"},
-                    provider_code="APA",
-                )
+            captured["path"] = path
+            captured["data"] = data
+            captured["headers"] = headers or {}
+            captured["host"] = host
             return InsuranceResponse(
                 status_code=200,
                 headers={},
@@ -481,9 +492,14 @@ class TestSlade360Adapter:
         token = service.get_access_token(force_refresh=True)
 
         assert token.token == "tok"
-        assert len(calls) == 2
-        assert calls[0]["data"]["grant_type"] == "client_credentials"
-        assert calls[1]["data"]["grant_type"] == "password"
+        assert captured["path"] == "/oauth2/token/"
+        assert captured["host"] == "auth"
+        assert captured["data"]["grant_type"] == "password"
+        assert captured["data"]["client_id"] == "env-client-id"
+        assert captured["data"]["client_secret"] == "env-client-secret"
+        assert captured["data"]["username"] == "env-user"
+        assert captured["data"]["password"] == "env-pass"
+        assert captured["headers"] == {"Content-Type": "application/x-www-form-urlencoded"}
 
     @pytest.mark.django_db
     def test_submit_claim_uses_latest_authorization_token_as_member_number(

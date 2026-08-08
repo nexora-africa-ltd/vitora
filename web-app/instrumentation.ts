@@ -1,5 +1,3 @@
-import * as Sentry from "@sentry/nextjs";
-
 export async function register() {
   // Desktop app: initialize local SQLite database and sync services
   // Guard with NEXT_RUNTIME to prevent Edge bundler from tracing Node.js-only imports
@@ -46,4 +44,13 @@ export async function register() {
   }
 }
 
-export const onRequestError = Sentry.captureRequestError;
+export async function onRequestError(...args: unknown[]) {
+  try {
+    const sentry = await import("@sentry/nextjs");
+    return (sentry.captureRequestError as (...innerArgs: unknown[]) => unknown)(...args);
+  } catch (e) {
+    if (process.env.NODE_ENV !== "development") {
+      console.error("Failed to capture request error:", e);
+    }
+  }
+}

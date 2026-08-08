@@ -65,15 +65,19 @@ const nextConfig = {
           },
         ],
       },
-      {
-        source: '/_next/static/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
+      ...(process.env.NODE_ENV === 'production'
+        ? [
+            {
+              source: '/_next/static/:path*',
+              headers: [
+                {
+                  key: 'Cache-Control',
+                  value: 'public, max-age=31536000, immutable',
+                },
+              ],
+            },
+          ]
+        : []),
       {
         // All other HTML pages should revalidate + enable cross-origin
         // isolation for PowerSync (wa-sqlite SharedArrayBuffer).
@@ -306,7 +310,7 @@ const nextConfig = {
     resolveAlias: {
       // Provide empty module stubs for Node.js built-ins
       fs: './empty-module.js',
-      path: './empty-module.js',
+      path: './path-shim.js',
       crypto: './empty-module.js',
     },
   },
