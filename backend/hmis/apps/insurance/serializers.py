@@ -163,6 +163,10 @@ class PatientInsuranceSerializer(serializers.ModelSerializer):
             "days_until_expiry",
             "verified_at",
             "verified_by",
+            "last_eligibility_checked_at",
+            "last_eligibility_eligible",
+            "last_eligibility_status",
+            "last_eligibility_payload",
             "notes",
             "card_image_front",
             "card_image_back",
@@ -177,6 +181,10 @@ class PatientInsuranceSerializer(serializers.ModelSerializer):
             "days_until_expiry",
             "verified_at",
             "verified_by",
+            "last_eligibility_checked_at",
+            "last_eligibility_eligible",
+            "last_eligibility_status",
+            "last_eligibility_payload",
             "created_at",
             "updated_at",
         ]
@@ -735,6 +743,11 @@ class RequestOTPSerializer(serializers.Serializer):
     contact_id = serializers.IntegerField(min_value=1)
 
 
+class HealthCloudSessionRequestOTPSerializer(serializers.Serializer):
+    session_id = serializers.IntegerField(min_value=1)
+    contact_id = serializers.IntegerField(min_value=1)
+
+
 class StartVisitSerializer(serializers.Serializer):
     beneficiary_id = serializers.IntegerField()
     benefit_type = serializers.CharField()
@@ -751,6 +764,10 @@ class StartVisitSerializer(serializers.Serializer):
     scheme_name = serializers.CharField(required=False, allow_blank=True, default="")
     scheme_code = serializers.CharField(required=False, allow_blank=True, default="")
     encounter = serializers.IntegerField(required=False)
+
+
+class HealthCloudSessionStartVisitSerializer(StartVisitSerializer):
+    session_id = serializers.IntegerField(min_value=1)
 
 
 class InsuranceVisitAuthorizationSerializer(serializers.ModelSerializer):
@@ -773,7 +790,13 @@ class InsuranceVisitAuthorizationSerializer(serializers.ModelSerializer):
             "beneficiary_id",
             "beneficiary_contact_id",
             "beneficiary_contact_value",
+            "selected_beneficiary_contact_id",
+            "selected_beneficiary_contact_value",
+            "selected_benefit_type",
+            "selected_benefit_code",
             "factors",
+            "eligibility_payload",
+            "workflow_step",
             "status",
             "auth_token",
             "authorization_guid",
@@ -793,6 +816,12 @@ class InsuranceVisitAuthorizationSerializer(serializers.ModelSerializer):
             "auth_expiry",
             "auth_status",
             "last_error",
+            "selected_beneficiary_contact_id",
+            "selected_beneficiary_contact_value",
+            "selected_benefit_type",
+            "selected_benefit_code",
+            "eligibility_payload",
+            "workflow_step",
             "raw_payload",
             "created_at",
             "updated_at",

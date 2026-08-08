@@ -20,13 +20,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/shared/page-header';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { BenefitsPanel } from '@/components/billing/sha';
+import { HealthcloudEligibilityCards } from '@/components/insurance/healthcloud-eligibility-cards';
 import { usePatients } from '@/lib/hooks/use-patients';
 import { useFetchFromCR } from '@/lib/hooks/use-sha';
+import {
+  useCreateEnrollment,
+  usePatientInsurances,
+  useInsurancePlans,
+  useProviderConfigs,
+  useStartHealthcloudSession,
+  useVerifyEnrollmentViaHealthcloudPreview,
+} from '@/lib/hooks/use-insurance';
+import { useToast } from '@/lib/hooks/use-toast';
 import { shaApi, type CapitationValidationResult } from '@/lib/api/sha';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import type { Patient } from '@/lib/types/patient';
@@ -36,6 +47,7 @@ import type {
   CRDependantPerson,
   SHAPayloadPerson,
 } from '@/lib/types/sha';
+import type { VerifyViaHealthcloudResult } from '@/lib/types/insurance';
 
 const ILM_LOOKUP_ID_OPTIONS = [
   { value: 'national_id', label: 'National ID' },
@@ -51,6 +63,7 @@ type IlmLookupIdType = (typeof ILM_LOOKUP_ID_OPTIONS)[number]['value'];
 
 export default function PatientLookupPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [lookupIdType, setLookupIdType] = useState<IlmLookupIdType | ''>('');
   const debouncedQuery = useDebounce(searchQuery, 300);
@@ -88,6 +101,13 @@ export default function PatientLookupPage() {
   const crMutation = useFetchFromCR();
   const [eligibility, setEligibility] = useState<DirectEligibilityCheckResponse | null>(null);
   const [eligibilityLoading, setEligibilityLoading] = useState(false);
+  const [healthcloudProviderId, setHealthcloudProviderId] = useState('');
+  const [healthcloudMemberNumber, setHealthcloudMemberNumber] = useState('');
+  const [healthcloudEligibility, setHealthcloudEligibility] = useState<VerifyViaHealthcloudResult | null>(null);
+  const healthcloudPreview = useVerifyEnrollmentViaHealthcloudPreview();
+  const { data: providerConfigsData } = useProviderConfigs({ page: 1, page_size: 200 });
+  const { data: plansData } = useInsurancePlans({ page: 1, page_size: 500 });
+  const createEnrollment = useCreateEnrollment();
 
   const patients = data?.results ?? [];
   const totalCount = data?.count ?? 0;
@@ -126,6 +146,146 @@ export default function PatientLookupPage() {
 
   const crResult = crMutation.data;
   const crClient = crResult?.found ? crResult.client : null;
+  const matchedLocalPatient = crClient
+    ? patients.find(
+        (patient) =>
+          (Boolean(crClient.national_id) && patient.national_id === crClient.national_id) ||
+          (Boolean(crClient.client_number) && patient.cr_number === crClient.client_number)
+      )
+    : undefined;
+  const healthcloudProviderOptions = (providerConfigsData?.results ?? []).filter(
+    (cfg) => cfg.healthcloud_enabled && cfg.api_enabled
+  );
+  const selectedHealthcloudProvider = healthcloudProviderOptions.find(
+    (cfg) => String(cfg.provider) === healthcloudProviderId
+  );
+
+  const handleHealthcloudLookup = async () => {
+    if (!healthcloudProviderId || !healthcloudMemberNumber.trim()) return;
+    try {
+      const result = await healthcloudPreview.mutateAsync({
+        provider: Number(healthcloudProviderId),
+        member_number: healthcloudMemberNumber.trim(),
+      });
+      setHealthcloudEligibility(result);
+      toast({
+        title: result.eligible ? 'HealthCloud eligible' : 'HealthCloud not eligible',
+        description: result.message,
+        variant: result.eligible ? 'default' : 'destructive',
+      });
+    } catch {
+      setHealthcloudEligibility(null);
+      toast({
+        title: 'HealthCloud lookup failed',
+        description: 'Could not fetch eligibility for that provider/member number.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const splitNames = (fullName: string) => {
+    const parts = fullName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return { first: '', middle: '', last: '' };
+    if (parts.length === 1) return { first: parts[0] || '', middle: '', last: '' };
+    if (parts.length === 2) return { first: parts[0] || '', middle: '', last: parts[1] || '' };
+    return {
+      first: parts[0] || '',
+      middle: parts.slice(1, -1).join(' '),
+      last: parts[parts.length - 1] || '',
+    };
+  };
+
+  const handleRegisterFromHealthcloud = () => {
+    if (!healthcloudEligibility || !selectedHealthcloudProvider) return;
+    const raw = healthcloudEligibility.raw_response as Record<string, unknown>;
+    const member = raw.member && typeof raw.member === 'object'
+      ? (raw.member as Record<string, unknown>)
+      : {};
+    const cover = raw.cover && typeof raw.cover === 'object'
+      ? (raw.cover as Record<string, unknown>)
+      : {};
+
+    const names = splitNames(String(member.names || ''));
+    const prefill = {
+      source: 'healthcloud_lookup',
+      provider_id: selectedHealthcloudProvider.provider,
+      provider_name: selectedHealthcloudProvider.provider_name,
+      member_number: healthcloudMemberNumber.trim(),
+      policy_number: String(cover.policyNumber || ''),
+      eligible: healthcloudEligibility.eligible,
+      plan_name: healthcloudEligibility.plan_name,
+      eligibility_status: healthcloudEligibility.status,
+      annual_balance: healthcloudEligibility.annual_balance,
+      valid_to: String(cover.validTo || ''),
+      first_name: names.first,
+      middle_name: names.middle,
+      last_name: names.last,
+      gender: String(member.gender || ''),
+      date_of_birth: String(member.dateOfBirth || ''),
+      beneficiary_country: String(member.beneficiaryCountry || ''),
+      payment_mode: 'insurance_private',
+      insurance_provider: selectedHealthcloudProvider.provider_name,
+      insurance_member_number: healthcloudMemberNumber.trim(),
+    };
+
+    sessionStorage.setItem('healthcloud_prepopulate', JSON.stringify(prefill));
+    router.push('/patients/new?from_healthcloud=1');
+  };
+
+  const handleCreateEnrollmentDraft = async () => {
+    if (!healthcloudEligibility || !selectedHealthcloudProvider || !matchedLocalPatient) {
+      toast({
+        title: 'Cannot create enrollment',
+        description: 'Need a local patient match, provider, and HealthCloud eligibility result.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const plans = (plansData?.results ?? []).filter(
+      (plan) => plan.provider === selectedHealthcloudProvider.provider
+    );
+    const plan = plans[0];
+    if (!plan) {
+      toast({
+        title: 'No insurance plan found',
+        description: 'No plan was returned for this provider. Refresh plan data and retry.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const raw = healthcloudEligibility.raw_response as Record<string, unknown>;
+    const cover = raw.cover && typeof raw.cover === 'object'
+      ? (raw.cover as Record<string, unknown>)
+      : {};
+    const validToRaw = String(cover.validTo || '');
+    const validTo = validToRaw ? validToRaw.slice(0, 10) : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().slice(0, 10);
+
+    try {
+      await createEnrollment.mutateAsync({
+        patient: matchedLocalPatient.id,
+        plan: plan.id,
+        member_number: healthcloudMemberNumber.trim(),
+        policy_number: String(cover.policyNumber || ''),
+        status: healthcloudEligibility.eligible ? 'active' : 'pending_verification',
+        annual_balance: healthcloudEligibility.annual_balance ?? undefined,
+        valid_from: new Date().toISOString().slice(0, 10),
+        valid_to: validTo,
+      });
+
+      toast({
+        title: 'Enrollment draft created',
+        description: `${matchedLocalPatient.first_name} ${matchedLocalPatient.last_name} linked to ${selectedHealthcloudProvider.provider_name}.`,
+      });
+    } catch {
+      toast({
+        title: 'Enrollment creation failed',
+        description: 'Could not create enrollment draft. It may already exist.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -210,6 +370,96 @@ export default function PatientLookupPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            <p className="text-sm font-medium">HealthCloud Eligibility (Member Number)</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-[220px_1fr_auto] gap-2">
+            <Select value={healthcloudProviderId || undefined} onValueChange={setHealthcloudProviderId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select provider" />
+              </SelectTrigger>
+              <SelectContent>
+                {healthcloudProviderOptions.map((cfg) => (
+                  <SelectItem key={`${cfg.id}-${cfg.provider}`} value={String(cfg.provider)}>
+                    {cfg.provider_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              value={healthcloudMemberNumber}
+              onChange={(e) => setHealthcloudMemberNumber(e.target.value)}
+              placeholder="Enter member number (e.g. JUB/001, Case Sensitive)"
+            />
+            <Button
+              variant="outline"
+              onClick={() => void handleHealthcloudLookup()}
+              disabled={
+                !healthcloudProviderId ||
+                !healthcloudMemberNumber.trim() ||
+                healthcloudPreview.isPending
+              }
+            >
+              {healthcloudPreview.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Checking...
+                </>
+              ) : (
+                'Check HealthCloud'
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            HealthCloud eligibility uses provider + member number only.
+          </p>
+          {healthcloudEligibility && (
+            <div className="space-y-3">
+              <HealthcloudEligibilityCards eligibility={healthcloudEligibility} />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="default"
+                  onClick={handleRegisterFromHealthcloud}
+                  disabled={!selectedHealthcloudProvider}
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Register New Patient
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => void handleCreateEnrollmentDraft()}
+                  disabled={!matchedLocalPatient || createEnrollment.isPending || !selectedHealthcloudProvider}
+                >
+                  {createEnrollment.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating Enrollment...
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="h-4 w-4 mr-2" />
+                      Create Enrollment for Matched Local Patient
+                    </>
+                  )}
+                </Button>
+              </div>
+              {matchedLocalPatient ? (
+                <p className="text-xs text-muted-foreground">
+                  Matched local patient: {matchedLocalPatient.first_name} {matchedLocalPatient.last_name} ({matchedLocalPatient.mrn}).
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  No local patient match from the current CR result. Use "Register New Patient" to prefill a new record.
+                </p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Error States */}
       {isError && (
         <Alert variant="destructive">
@@ -240,6 +490,7 @@ export default function PatientLookupPage() {
             client={crClient}
             eligibility={eligibility}
             eligibilityLoading={eligibilityLoading}
+            matchedLocalPatient={matchedLocalPatient}
           />
         </div>
       )}
@@ -247,7 +498,7 @@ export default function PatientLookupPage() {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Shield className="h-4 w-4 text-primary" />
-            <p className="text-sm font-medium">SHA Eligibility Result</p>
+            <p className="text-sm font-medium">Coverage Result</p>
           </div>
           <EligibilityOnlyCard
             eligibility={eligibility}
@@ -396,57 +647,77 @@ function EligibilityOnlyCard({
   return (
     <Card className="border-primary/30 overflow-hidden">
       <CardContent className="py-4 bg-primary/5 space-y-3">
-        {eligibilityLoading && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Checking SHA eligibility...
-          </div>
-        )}
+        <Tabs defaultValue="sha" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="sha" className="gap-2">
+              <Shield className="h-3.5 w-3.5" /> SHA
+            </TabsTrigger>
+            <TabsTrigger value="healthcloud" className="gap-2">
+              <ShieldCheck className="h-3.5 w-3.5" /> HealthCloud
+            </TabsTrigger>
+          </TabsList>
 
-        {eligibility && (
-          <>
-            <div className="flex items-center gap-2 flex-wrap">
-              {eligibility.is_eligible ? (
-                <Badge variant="default" className="gap-1.5 bg-green-600 hover:bg-green-600 text-white">
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  Eligible
-                </Badge>
-              ) : (
-                <Badge variant="destructive" className="gap-1.5">
-                  <ShieldX className="h-3.5 w-3.5" />
-                  Not Eligible
-                </Badge>
-              )}
-              {eligibility.sha_number && (
-                <Badge variant="outline" size="sm" className="font-mono text-[10px]">
-                  SHA: {eligibility.sha_number}
-                </Badge>
-              )}
-              {eligibility.member_cr_number && (
-                <Badge variant="outline" size="sm" className="font-mono text-[10px]">
-                  CR: {eligibility.member_cr_number}
-                </Badge>
-              )}
-            </div>
-
-            {(eligibility.full_name || eligibility.gender || eligibility.date_of_birth || eligibility.age != null) && (
-              <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2 gap-y-1">
-                {eligibility.full_name && <span className="font-medium text-foreground">{eligibility.full_name}</span>}
-                {eligibility.gender && <span>{eligibility.gender === 'M' ? 'Male' : eligibility.gender === 'F' ? 'Female' : eligibility.gender}</span>}
-                {eligibility.date_of_birth && <span>DOB: {eligibility.date_of_birth}</span>}
-                {eligibility.age != null && <span>{eligibility.age}y</span>}
+          <TabsContent value="sha" className="mt-3 space-y-3">
+            {eligibilityLoading && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Checking SHA eligibility...
               </div>
             )}
 
-            {eligibility.reason && (
-              <p className="text-xs text-muted-foreground">{eligibility.reason}</p>
-            )}
-          </>
-        )}
+            {eligibility && (
+              <>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {eligibility.is_eligible ? (
+                    <Badge variant="default" className="gap-1.5 bg-green-600 hover:bg-green-600 text-white">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      Eligible
+                    </Badge>
+                  ) : (
+                    <Badge variant="destructive" className="gap-1.5">
+                      <ShieldX className="h-3.5 w-3.5" />
+                      Not Eligible
+                    </Badge>
+                  )}
+                  {eligibility.sha_number && (
+                    <Badge variant="outline" size="sm" className="font-mono text-[10px]">
+                      SHA: {eligibility.sha_number}
+                    </Badge>
+                  )}
+                  {eligibility.member_cr_number && (
+                    <Badge variant="outline" size="sm" className="font-mono text-[10px]">
+                      CR: {eligibility.member_cr_number}
+                    </Badge>
+                  )}
+                </div>
 
-        {eligibility?.is_eligible && eligibility.sha_number && (
-          <BenefitsPanel crNumber={eligibility.sha_number} />
-        )}
+                {(eligibility.full_name || eligibility.gender || eligibility.date_of_birth || eligibility.age != null) && (
+                  <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2 gap-y-1">
+                    {eligibility.full_name && <span className="font-medium text-foreground">{eligibility.full_name}</span>}
+                    {eligibility.gender && <span>{eligibility.gender === 'M' ? 'Male' : eligibility.gender === 'F' ? 'Female' : eligibility.gender}</span>}
+                    {eligibility.date_of_birth && <span>DOB: {eligibility.date_of_birth}</span>}
+                    {eligibility.age != null && <span>{eligibility.age}y</span>}
+                  </div>
+                )}
+
+                {eligibility.reason && (
+                  <p className="text-xs text-muted-foreground">{eligibility.reason}</p>
+                )}
+              </>
+            )}
+
+            {eligibility?.is_eligible && eligibility.sha_number && (
+              <BenefitsPanel crNumber={eligibility.sha_number} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="healthcloud" className="mt-3">
+            <p className="text-xs text-muted-foreground">
+              HealthCloud session requires a successful CR match linked to a local patient enrollment.
+              Run CR/SHA lookup and open the HealthCloud tab in the full CR result card.
+            </p>
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
@@ -480,10 +751,12 @@ function CRResultCard({
   client,
   eligibility,
   eligibilityLoading,
+  matchedLocalPatient,
 }: {
   client: ClientRegistryClient;
   eligibility: DirectEligibilityCheckResponse | null;
   eligibilityLoading: boolean;
+  matchedLocalPatient?: Patient;
 }) {
   const router = useRouter();
   const [showDependants, setShowDependants] = useState(false);
@@ -491,6 +764,24 @@ function CRResultCard({
   const [capitationWarning, setCapitationWarning] = useState<CapitationValidationResult | null>(null);
   const [benefitsEmpty, setBenefitsEmpty] = useState(false);
   const [benefitsChecked, setBenefitsChecked] = useState(false);
+  const [privateEligibility, setPrivateEligibility] = useState<VerifyViaHealthcloudResult | null>(null);
+  const startHealthcloudSession = useStartHealthcloudSession();
+  const { data: enrollmentData, isLoading: enrollmentLoading } = usePatientInsurances(
+    matchedLocalPatient?.id
+      ? { patient: matchedLocalPatient.id, page: 1, page_size: 20 }
+      : undefined,
+    { enabled: !!matchedLocalPatient?.id }
+  );
+  const enrollments = enrollmentData?.results ?? [];
+
+  const handleStartInsuranceSession = async (enrollmentId: number) => {
+    try {
+      const result = await startHealthcloudSession.mutateAsync(enrollmentId);
+      setPrivateEligibility(result.eligibility);
+    } catch {
+      setPrivateEligibility(null);
+    }
+  };
 
   // Validate capitation provider match when eligibility data arrives
   useEffect(() => {
@@ -670,20 +961,30 @@ function CRResultCard({
         </CardContent>
       )}
 
-      {/* SHA Eligibility */}
       <CardContent className="py-3 border-t">
-        <div className="flex items-center gap-2 mb-2">
-          <Shield className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">SHA Eligibility</span>
-        </div>
-        {eligibilityLoading && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Checking SHA coverage...
-          </div>
-        )}
-        {eligibility && (
-          <div className="space-y-2">
+        <Tabs defaultValue="sha" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="sha" className="gap-2">
+              <Shield className="h-3.5 w-3.5" /> SHA
+            </TabsTrigger>
+            <TabsTrigger value="healthcloud" className="gap-2">
+              <ShieldCheck className="h-3.5 w-3.5" /> HealthCloud
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="sha" className="mt-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">SHA Eligibility</span>
+            </div>
+            {eligibilityLoading && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Checking SHA coverage...
+              </div>
+            )}
+            {eligibility && (
+              <div className="space-y-2">
             {/* Status badge row */}
             <div className="flex items-center gap-2 flex-wrap">
               {eligibility.is_eligible ? (
@@ -846,11 +1147,71 @@ function CRResultCard({
                 </div>
               </div>
             )}
-          </div>
-        )}
-        {!eligibility && !eligibilityLoading && (
-          <p className="text-xs text-muted-foreground">No eligibility data available.</p>
-        )}
+              </div>
+            )}
+            {!eligibility && !eligibilityLoading && (
+              <p className="text-xs text-muted-foreground">No eligibility data available.</p>
+            )}
+          </TabsContent>
+
+          <TabsContent value="healthcloud" className="mt-3 space-y-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Private Insurance (HealthCloud)</span>
+            </div>
+
+            {!matchedLocalPatient ? (
+              <p className="text-xs text-muted-foreground">
+                Register this CR client locally to run private-insurance eligibility and start a HealthCloud session.
+              </p>
+            ) : enrollmentLoading ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Loading insurance enrollments...
+              </div>
+            ) : enrollments.length === 0 ? (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  No private insurance enrollment found for this patient.
+                </p>
+                <Button size="sm" variant="outline" onClick={() => router.push('/insurance/enrollments/new')}>
+                  Create Enrollment
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {enrollments.map((enrollment) => (
+                  <div key={enrollment.id} className="rounded border p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {enrollment.provider_name} - {enrollment.plan_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          Member: {enrollment.member_number}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => void handleStartInsuranceSession(enrollment.id)}
+                        disabled={startHealthcloudSession.isPending}
+                      >
+                        Start Session
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {privateEligibility && (
+              <HealthcloudEligibilityCards
+                eligibility={privateEligibility}
+                patientName={`${client.first_name} ${client.last_name}`}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
       </CardContent>
 
       {/* Eligible to be treated at this facility — benefits available */}

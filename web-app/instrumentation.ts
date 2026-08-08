@@ -53,4 +53,5 @@ export async function onRequestError(...args: unknown[]) {
       console.error("Failed to capture request error:", e);
     }
   }
+  return undefined;
 }

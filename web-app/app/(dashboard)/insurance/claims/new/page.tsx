@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -20,17 +20,20 @@ import { useToast } from '@/lib/hooks/use-toast';
 
 export default function NewInsuranceClaimPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   const createClaim = useCreateClaim();
+  const enrollmentFromQuery = searchParams.get('enrollment') || '';
+  const authorizationFromQuery = searchParams.get('authorization') || '';
   const { data: enrollmentsData, isLoading: enrollmentsLoading } = usePatientInsurances({
-    status: 'active',
     page: 1,
+    page_size: 200,
   });
 
   const enrollments = enrollmentsData?.results ?? [];
 
-  const [patientInsuranceId, setPatientInsuranceId] = useState<string>('');
+  const [patientInsuranceId, setPatientInsuranceId] = useState<string>(enrollmentFromQuery);
   const [claimType, setClaimType] = useState<'outpatient' | 'inpatient'>('outpatient');
   const [serviceDate, setServiceDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [totalAmount, setTotalAmount] = useState<string>('');
@@ -88,6 +91,11 @@ export default function NewInsuranceClaimPage() {
           <CardTitle className="text-base">Claim Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {authorizationFromQuery && (
+            <p className="text-xs text-muted-foreground">
+              Opened from authorization session #{authorizationFromQuery}. Complete claim details below.
+            </p>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Patient Insurance</Label>

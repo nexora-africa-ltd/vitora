@@ -116,6 +116,194 @@ def test_validate_token_contract_success(
 
 
 @pytest.mark.django_db
+def test_healthcloud_session_start_contract_success(
+    admin_client,
+    monkeypatch,
+    patient_insurance,
+    provider_config,
+    sample_facility,
+    sample_organization,
+):
+    _enable_provider_config(provider_config)
+
+    def _mock_verify(self, enrollment, *, facility=None):
+        assert enrollment.pk == patient_insurance.pk
+        assert facility == sample_facility
+        return EligibilityResult(
+            eligible=True,
+            status="LIVE",
+            member_number=patient_insurance.member_number,
+            plan_name="Muungano",
+            annual_balance=1000,
+            message="Eligibility retrieved from HealthCloud",
+            raw_response={"member": {"id": 636561}},
+        )
+
+    session = InsuranceVisitAuthorization.objects.create(
+        facility=sample_facility,
+        organization=sample_organization,
+        enrollment=patient_insurance,
+        provider_config=provider_config,
+        patient=patient_insurance.patient,
+        member_number=patient_insurance.member_number,
+        status=InsuranceVisitAuthorization.Status.PENDING,
+        workflow_step="eligibility_verified",
+    )
+
+    def _mock_start_session(
+        self,
+        *,
+        enrollment,
+        facility,
+        organization,
+        eligibility_result,
+    ):
+        assert enrollment.pk == patient_insurance.pk
+        assert facility == sample_facility
+        assert organization == sample_organization
+        assert eligibility_result.eligible is True
+        return session
+
+    monkeypatch.setattr(
+        "hmis.apps.insurance.services.insurance_services.InsuranceEligibilityService.verify",
+        _mock_verify,
+    )
+    monkeypatch.setattr(
+        "hmis.apps.insurance.services.insurance_services.HealthCloudWorkflowService.start_session",
+        _mock_start_session,
+    )
+
+    url = f"/api/insurance/enrollments/{patient_insurance.pk}/healthcloud-session/start/"
+    response = admin_client.post(url, {}, format="json")
+
+    assert response.status_code == 200
+    assert response.data["session"]["id"] == session.pk
+    assert response.data["eligibility"]["eligible"] is True
+    assert response.data["eligibility"]["member_number"] == patient_insurance.member_number
+
+
+@pytest.mark.django_db
+def test_healthcloud_session_request_otp_contract_success(
+    admin_client,
+    monkeypatch,
+    patient_insurance,
+    provider_config,
+    sample_facility,
+    sample_organization,
+):
+    _enable_provider_config(provider_config)
+    session = InsuranceVisitAuthorization.objects.create(
+        facility=sample_facility,
+        organization=sample_organization,
+        enrollment=patient_insurance,
+        provider_config=provider_config,
+        patient=patient_insurance.patient,
+        member_number=patient_insurance.member_number,
+        status=InsuranceVisitAuthorization.Status.PENDING,
+        workflow_step="eligibility_verified",
+    )
+
+    def _mock_request_for_session(self, *, authorization, facility, organization, contact_id):
+        assert authorization.pk == session.pk
+        assert facility == sample_facility
+        assert organization == sample_organization
+        assert contact_id == 5531
+        authorization.status = InsuranceVisitAuthorization.Status.OTP_REQUESTED
+        authorization.workflow_step = "otp_requested"
+        authorization.selected_beneficiary_contact_id = 5531
+        authorization.save(
+            update_fields=[
+                "status",
+                "workflow_step",
+                "selected_beneficiary_contact_id",
+                "updated_at",
+            ]
+        )
+        return authorization
+
+    monkeypatch.setattr(
+        "hmis.apps.insurance.services.insurance_services.HealthCloudWorkflowService.request_otp_for_session",
+        _mock_request_for_session,
+    )
+
+    url = f"/api/insurance/enrollments/{patient_insurance.pk}/healthcloud-session/request-otp/"
+    response = admin_client.post(url, {"session_id": session.pk, "contact_id": 5531}, format="json")
+
+    assert response.status_code == 200
+    assert response.data["id"] == session.pk
+    assert response.data["status"] == "otp_requested"
+    assert response.data["selected_beneficiary_contact_id"] == 5531
+
+
+@pytest.mark.django_db
+def test_healthcloud_session_start_visit_contract_success(
+    admin_client,
+    monkeypatch,
+    patient_insurance,
+    provider_config,
+    sample_facility,
+    sample_organization,
+):
+    _enable_provider_config(provider_config)
+    session = InsuranceVisitAuthorization.objects.create(
+        facility=sample_facility,
+        organization=sample_organization,
+        enrollment=patient_insurance,
+        provider_config=provider_config,
+        patient=patient_insurance.patient,
+        member_number=patient_insurance.member_number,
+        status=InsuranceVisitAuthorization.Status.OTP_REQUESTED,
+        workflow_step="otp_requested",
+    )
+
+    def _mock_start_visit_for_session(
+        self,
+        *,
+        authorization,
+        facility,
+        organization,
+        payload,
+        encounter=None,
+    ):
+        assert authorization.pk == session.pk
+        assert facility == sample_facility
+        assert organization == sample_organization
+        assert payload["benefit_code"] == "BEN/001"
+        assert encounter is None
+        authorization.status = InsuranceVisitAuthorization.Status.AUTHORIZED
+        authorization.workflow_step = "visit_authorized"
+        authorization.auth_token = "AUTH-123"
+        authorization.save(update_fields=["status", "workflow_step", "auth_token", "updated_at"])
+        return authorization
+
+    monkeypatch.setattr(
+        "hmis.apps.insurance.services.insurance_services.HealthCloudWorkflowService.start_visit_for_session",
+        _mock_start_visit_for_session,
+    )
+
+    url = f"/api/insurance/enrollments/{patient_insurance.pk}/healthcloud-session/start-visit/"
+    response = admin_client.post(
+        url,
+        {
+            "session_id": session.pk,
+            "beneficiary_id": 636561,
+            "benefit_type": "OUTPATIENT",
+            "benefit_code": "BEN/001",
+            "policy_number": "POL/001",
+            "policy_effective_date": "2026-08-08T00:00:00Z",
+            "otp": "123456",
+            "beneficiary_contact": 5531,
+        },
+        format="json",
+    )
+
+    assert response.status_code == 200
+    assert response.data["id"] == session.pk
+    assert response.data["status"] == "authorized"
+    assert response.data["auth_token"] == "AUTH-123"
+
+
+@pytest.mark.django_db
 def test_submit_to_healthcloud_requires_visit_auth_when_provider_requires_it(
     admin_client,
     insurance_claim,

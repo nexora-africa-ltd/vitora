@@ -26,6 +26,7 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { patientsApi } from '@/lib/api/patients';
 import { useCreatePatient } from '@/lib/hooks/use-patients';
 import { useRegisterInCR } from '@/lib/hooks/use-sha';
+import { useCreateEnrollment, useInsurancePlans } from '@/lib/hooks/use-insurance';
 import { useToast } from '@/lib/hooks/use-toast';
 import { getOrCreateIdempotencyKey, clearIdempotencyKey } from '@/lib/utils/idempotency';
 import { getApiErrorMessage } from '@/lib/api/client';
@@ -33,6 +34,28 @@ import type { PatientCreateData, Patient } from '@/lib/types/patient';
 import type { ClientRegistryClient, DirectEligibilityCheckResponse, SHAPayloadPerson } from '@/lib/types/sha';
 
 const IDEMPOTENCY_FORM_ID = 'patient-registration';
+
+type HealthcloudDefaults = {
+  first_name?: string;
+  middle_name?: string;
+  last_name?: string;
+  gender?: 'M' | 'F' | 'O';
+  date_of_birth?: Date;
+  payment_mode?: PatientCreateData['payment_mode'];
+  insurance_provider?: string;
+  insurance_member_number?: string;
+};
+
+type HealthcloudEnrollmentContext = {
+  provider_id: number;
+  provider_name: string;
+  member_number: string;
+  policy_number?: string;
+  eligible?: boolean;
+  plan_name?: string;
+  annual_balance?: string | null;
+  valid_to?: string;
+};
 
 function isDuplicateRegistrationError(error: unknown): boolean {
   const message = getApiErrorMessage(error).toLowerCase();
@@ -62,6 +85,8 @@ export default function NewPatientPage() {
   const router = useRouter();
   const { toast } = useToast();
   const createPatient = useCreatePatient();
+  const createEnrollment = useCreateEnrollment();
+  const { data: plansData } = useInsurancePlans({ page: 1, page_size: 500 });
   const registerInCR = useRegisterInCR();
   const [registeredPatient, setRegisteredPatient] = useState<Patient | null>(null);
   const [crClient, setCrClient] = useState<ClientRegistryClient | null>(null);
@@ -71,13 +96,79 @@ export default function NewPatientPage() {
   // pushed into the patient form.
   const [pendingIneligiblePerson, setPendingIneligiblePerson] =
     useState<SHAPayloadPerson | null>(null);
+  const [healthcloudDefaults, setHealthcloudDefaults] = useState<HealthcloudDefaults | undefined>(undefined);
+  const [healthcloudEnrollmentContext, setHealthcloudEnrollmentContext] =
+    useState<HealthcloudEnrollmentContext | null>(null);
 
   // Generate idempotency key for form submission (Sprint 1.7)
   const idempotencyKey = useMemo(() => getOrCreateIdempotencyKey(IDEMPOTENCY_FORM_ID), []);
 
   // Pre-populate from CR data passed via Patient Lookup page
   useEffect(() => {
+    const normalizeGender = (value?: string): 'M' | 'F' | 'O' | undefined => {
+      const v = (value || '').trim().toLowerCase();
+      if (!v) return undefined;
+      if (v === 'm' || v === 'male') return 'M';
+      if (v === 'f' || v === 'female') return 'F';
+      if (v === 'o' || v === 'other') return 'O';
+      return undefined;
+    };
+
     try {
+      const storedHealthcloud = sessionStorage.getItem('healthcloud_prepopulate');
+      if (storedHealthcloud) {
+        sessionStorage.removeItem('healthcloud_prepopulate');
+        const data = JSON.parse(storedHealthcloud) as {
+          provider_id?: number;
+          provider_name?: string;
+          member_number?: string;
+          policy_number?: string;
+          eligible?: boolean;
+          plan_name?: string;
+          annual_balance?: string | null;
+          valid_to?: string;
+          first_name?: string;
+          middle_name?: string;
+          last_name?: string;
+          gender?: string;
+          date_of_birth?: string;
+          payment_mode?: PatientCreateData['payment_mode'];
+          insurance_provider?: string;
+          insurance_member_number?: string;
+        };
+        setCrClient(null);
+        setSelectedShaPerson(null);
+        const dateString = (data.date_of_birth || '').slice(0, 10);
+        const parsedDate = dateString ? new Date(`${dateString}T00:00:00`) : undefined;
+        setHealthcloudDefaults({
+          first_name: data.first_name || '',
+          middle_name: data.middle_name || '',
+          last_name: data.last_name || '',
+          gender: normalizeGender(data.gender),
+          date_of_birth: parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate : undefined,
+          payment_mode: data.payment_mode || 'insurance_private',
+          insurance_provider: data.insurance_provider || '',
+          insurance_member_number: data.insurance_member_number || '',
+        });
+        if (data.provider_id && data.member_number) {
+          setHealthcloudEnrollmentContext({
+            provider_id: Number(data.provider_id),
+            provider_name: data.provider_name || '',
+            member_number: data.member_number,
+            policy_number: data.policy_number || '',
+            eligible: data.eligible,
+            plan_name: data.plan_name || '',
+            annual_balance: data.annual_balance ?? null,
+            valid_to: (data.valid_to || '').slice(0, 10),
+          });
+        }
+        toast({
+          title: 'HealthCloud record loaded',
+          description: 'New patient form pre-populated from HealthCloud eligibility data.',
+        });
+        return;
+      }
+
       const storedShaPerson = sessionStorage.getItem('sha_person_prepopulate');
       if (storedShaPerson) {
         sessionStorage.removeItem('sha_person_prepopulate');
@@ -86,6 +177,8 @@ export default function NewPatientPage() {
         const person = JSON.parse(storedShaPerson) as SHAPayloadPerson;
         setCrClient(null);
         setSelectedShaPerson(person);
+        setHealthcloudDefaults(undefined);
+        setHealthcloudEnrollmentContext(null);
         toast({
           title: 'Dependant Record Loaded',
           description: `Pre-populated from ${[person.first_name, person.last_name].filter(Boolean).join(' ') || 'selected dependant'}.`,
@@ -98,6 +191,8 @@ export default function NewPatientPage() {
         sessionStorage.removeItem('cr_prepopulate');
         const client = JSON.parse(stored) as ClientRegistryClient;
         setCrClient(client);
+        setHealthcloudDefaults(undefined);
+        setHealthcloudEnrollmentContext(null);
         toast({
           title: 'Client Registry Record Loaded',
           description: `Pre-populated from ${client.first_name} ${client.last_name} (${client.client_number})`,
@@ -161,6 +256,25 @@ export default function NewPatientPage() {
   }, []);
 
   const handleSubmit = async (data: PatientCreateData) => {
+    const resolveHealthcloudPlanId = () => {
+      if (!healthcloudEnrollmentContext) return null;
+      const providerPlans = (plansData?.results ?? []).filter(
+        (plan) => plan.provider === healthcloudEnrollmentContext.provider_id
+      );
+      if (providerPlans.length === 0) return null;
+
+      const requestedName = (healthcloudEnrollmentContext.plan_name || '').trim().toLowerCase();
+      if (!requestedName) return providerPlans[0]?.id ?? null;
+
+      const exact = providerPlans.find((plan) => plan.name.trim().toLowerCase() === requestedName);
+      if (exact) return exact.id;
+
+      const fuzzy = providerPlans.find((plan) => plan.name.trim().toLowerCase().includes(requestedName));
+      if (fuzzy) return fuzzy.id;
+
+      return providerPlans[0]?.id ?? null;
+    };
+
     try {
       // Use idempotency key to prevent duplicate creation (Sprint 1.7)
       const patient = await createPatient.mutateAsync({ data, idempotencyKey });
@@ -174,6 +288,43 @@ export default function NewPatientPage() {
         title: 'Patient registered',
         description: `Successfully registered ${data.first_name} ${data.last_name} (${patient.mrn})`,
       });
+
+      if (healthcloudEnrollmentContext) {
+        const resolvedPlanId = resolveHealthcloudPlanId();
+        if (!resolvedPlanId) {
+          toast({
+            title: 'Enrollment not created',
+            description: `No plan was returned for payer ${healthcloudEnrollmentContext.provider_name || healthcloudEnrollmentContext.provider_id}.`,
+            variant: 'destructive',
+          });
+        } else {
+          const validTo = healthcloudEnrollmentContext.valid_to
+            ? healthcloudEnrollmentContext.valid_to.slice(0, 10)
+            : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().slice(0, 10);
+          try {
+            await createEnrollment.mutateAsync({
+              patient: patient.id,
+              plan: resolvedPlanId,
+              member_number: healthcloudEnrollmentContext.member_number,
+              policy_number: healthcloudEnrollmentContext.policy_number || undefined,
+              status: healthcloudEnrollmentContext.eligible ? 'active' : 'pending_verification',
+              annual_balance: healthcloudEnrollmentContext.annual_balance ?? undefined,
+              valid_from: new Date().toISOString().slice(0, 10),
+              valid_to: validTo,
+            });
+            toast({
+              title: 'Insurance enrollment created',
+              description: `Linked ${healthcloudEnrollmentContext.provider_name || 'payer'} coverage to ${patient.mrn}.`,
+            });
+          } catch {
+            toast({
+              title: 'Enrollment creation failed',
+              description: 'Patient is registered, but insurance enrollment could not be created automatically.',
+              variant: 'destructive',
+            });
+          }
+        }
+      }
 
       // If no CR record exists, register in Client Registry
       if (!crClient && !data.cr_number && data.identification_number) {
@@ -231,6 +382,8 @@ export default function NewPatientPage() {
     setCrClient(null);
     setEligibility(null);
     setSelectedShaPerson(null);
+    setHealthcloudDefaults(undefined);
+    setHealthcloudEnrollmentContext(null);
   }, []);
 
   const handleCancel = () => {
@@ -384,6 +537,7 @@ export default function NewPatientPage() {
             onSubmit={handleSubmit}
             onCancel={handleCancel}
             isLoading={createPatient.isPending}
+            defaultValues={healthcloudDefaults}
             prePopulatedClient={crClient}
             prePopulatedShaPerson={selectedShaPerson}
             prePopulatedShaEligibility={eligibility}

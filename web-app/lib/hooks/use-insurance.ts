@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { insuranceApi } from '@/lib/api/insurance';
 import type {
+  HealthcloudSessionRequestOTPInput,
+  HealthcloudSessionStartVisitInput,
   InsuranceClaimCreateInput,
   InsuranceClaimFilters,
   InsurancePlanCreateInput,
@@ -184,10 +186,14 @@ export function useUpdatePlan() {
 // Enrollment Hooks
 // ---------------------------------------------------------------------------
 
-export function usePatientInsurances(params?: Record<string, string | number | undefined>) {
+export function usePatientInsurances(
+  params?: Record<string, string | number | undefined>,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: insuranceQueryKeys.enrollmentList(params),
     queryFn: () => insuranceApi.listEnrollments(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -271,6 +277,43 @@ export function useStartEnrollmentVisit() {
       insuranceApi.startEnrollmentVisit(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.authorizations() });
+    },
+  });
+}
+
+export function useStartHealthcloudSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => insuranceApi.startHealthcloudSession(id),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.authorizations() });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.authorizationDetail(data.session.id) });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.enrollments() });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.enrollmentDetail(data.session.enrollment) });
+    },
+  });
+}
+
+export function useRequestHealthcloudSessionOtp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: HealthcloudSessionRequestOTPInput }) =>
+      insuranceApi.requestHealthcloudSessionOtp(id, data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.authorizations() });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.authorizationDetail(data.id) });
+    },
+  });
+}
+
+export function useStartHealthcloudSessionVisit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: HealthcloudSessionStartVisitInput }) =>
+      insuranceApi.startHealthcloudSessionVisit(id, data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.authorizations() });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.authorizationDetail(data.id) });
     },
   });
 }

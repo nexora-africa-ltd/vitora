@@ -28,8 +28,12 @@ import {
   PayerTariffSchema,
   VerifyViaHealthcloudResultSchema,
   SladeDefaultsSeedResultSchema,
+  HealthcloudSessionStartResultSchema,
 } from '@/lib/schemas/insurance.schema';
 import type {
+  HealthcloudSessionRequestOTPInput,
+  HealthcloudSessionStartResult,
+  HealthcloudSessionStartVisitInput,
   HealthcloudReserveBalanceResult,
   HealthcloudSyncStatus,
   InsuranceClaim,
@@ -218,6 +222,39 @@ async function requestEnrollmentOtp(
   const response = await apiClient.post(`${BASE}/enrollments/${id}/request-otp/`, data);
   return parseResponse(InsuranceVisitAuthorizationSchema, response.data, {
     context: 'insuranceApi.requestEnrollmentOtp',
+  });
+}
+
+async function startHealthcloudSession(id: number): Promise<HealthcloudSessionStartResult> {
+  const response = await apiClient.post(`${BASE}/enrollments/${id}/healthcloud-session/start/`);
+  return parseResponse(HealthcloudSessionStartResultSchema, response.data, {
+    context: 'insuranceApi.startHealthcloudSession',
+  });
+}
+
+async function requestHealthcloudSessionOtp(
+  id: number,
+  data: HealthcloudSessionRequestOTPInput
+): Promise<InsuranceVisitAuthorization> {
+  const response = await apiClient.post(
+    `${BASE}/enrollments/${id}/healthcloud-session/request-otp/`,
+    data
+  );
+  return parseResponse(InsuranceVisitAuthorizationSchema, response.data, {
+    context: 'insuranceApi.requestHealthcloudSessionOtp',
+  });
+}
+
+async function startHealthcloudSessionVisit(
+  id: number,
+  data: HealthcloudSessionStartVisitInput
+): Promise<InsuranceVisitAuthorization> {
+  const response = await apiClient.post(
+    `${BASE}/enrollments/${id}/healthcloud-session/start-visit/`,
+    data
+  );
+  return parseResponse(InsuranceVisitAuthorizationSchema, response.data, {
+    context: 'insuranceApi.startHealthcloudSessionVisit',
   });
 }
 
@@ -607,6 +644,9 @@ export const insuranceApi = {
   seedSladeDefaults,
   requestEnrollmentOtp,
   startEnrollmentVisit,
+  startHealthcloudSession,
+  requestHealthcloudSessionOtp,
+  startHealthcloudSessionVisit,
 
   // Provider configs
   listProviderConfigs,

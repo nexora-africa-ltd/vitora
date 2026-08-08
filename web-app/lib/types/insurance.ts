@@ -259,6 +259,10 @@ export interface PatientInsurance {
   days_until_expiry: number;
   verified_at: string | null;
   verified_by: number | null;
+  last_eligibility_checked_at: string | null;
+  last_eligibility_eligible: boolean | null;
+  last_eligibility_status: string;
+  last_eligibility_payload: Record<string, unknown>;
   notes: string;
   card_image_front: string | null;
   card_image_back: string | null;
@@ -362,7 +366,13 @@ export interface InsuranceVisitAuthorization {
   beneficiary_id: number | null;
   beneficiary_contact_id: number | null;
   beneficiary_contact_value: string;
+  selected_beneficiary_contact_id: number | null;
+  selected_beneficiary_contact_value: string;
+  selected_benefit_type: string;
+  selected_benefit_code: string;
   factors: string[];
+  eligibility_payload: Record<string, unknown>;
+  workflow_step: string;
   status: InsuranceVisitAuthorizationStatus;
   auth_token: string;
   authorization_guid: string;
@@ -442,6 +452,23 @@ export interface VerifyViaHealthcloudResult {
   copay_percent: string | null;
   message: string;
   raw_response: Record<string, unknown>;
+  resolved_plan_id?: number | null;
+  resolved_plan_name?: string;
+  resolved_plan_code?: string;
+}
+
+export interface HealthcloudSessionStartResult {
+  session: InsuranceVisitAuthorization;
+  eligibility: VerifyViaHealthcloudResult;
+}
+
+export interface HealthcloudSessionRequestOTPInput {
+  session_id: number;
+  contact_id: number;
+}
+
+export interface HealthcloudSessionStartVisitInput extends StartVisitInput {
+  session_id: number;
 }
 
 export interface VerifyEnrollmentPreviewInput {

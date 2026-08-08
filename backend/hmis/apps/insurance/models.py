@@ -277,6 +277,27 @@ class PatientInsurance(OrganizationScopedModel):
         blank=True,
         related_name="+",
     )
+    last_eligibility_checked_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Last HealthCloud eligibility check time",
+    )
+    last_eligibility_eligible = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Eligibility result from latest HealthCloud check",
+    )
+    last_eligibility_status = models.CharField(
+        max_length=40,
+        blank=True,
+        help_text="Eligibility cover/member status from latest HealthCloud check",
+    )
+    last_eligibility_payload = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Latest HealthCloud eligibility payload snapshot",
+    )
     notes = models.TextField(blank=True)
     card_image_front = models.ImageField(
         upload_to="insurance/cards/",
@@ -300,6 +321,8 @@ class PatientInsurance(OrganizationScopedModel):
 
     class Meta:
         ordering = ["-is_primary", "-valid_to"]
+        verbose_name = "Enrollment"
+        verbose_name_plural = "Enrollments"
         constraints = [
             models.UniqueConstraint(
                 fields=["patient", "plan", "member_number"],
@@ -1326,7 +1349,13 @@ class InsuranceVisitAuthorization(FacilityScopedModel):
     beneficiary_id = models.BigIntegerField(null=True, blank=True)
     beneficiary_contact_id = models.BigIntegerField(null=True, blank=True)
     beneficiary_contact_value = models.CharField(max_length=30, blank=True)
+    selected_beneficiary_contact_id = models.BigIntegerField(null=True, blank=True)
+    selected_beneficiary_contact_value = models.CharField(max_length=30, blank=True)
+    selected_benefit_type = models.CharField(max_length=40, blank=True)
+    selected_benefit_code = models.CharField(max_length=60, blank=True)
     factors = models.JSONField(default=list, blank=True)
+    eligibility_payload = models.JSONField(default=dict, blank=True)
+    workflow_step = models.CharField(max_length=40, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     auth_token = models.CharField(max_length=100, blank=True)
     authorization_guid = models.CharField(max_length=100, blank=True)
@@ -1341,6 +1370,8 @@ class InsuranceVisitAuthorization(FacilityScopedModel):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "HealthCloud Session"
+        verbose_name_plural = "HealthCloud Sessions"
         indexes = [
             models.Index(fields=["facility", "status"]),
             models.Index(fields=["authorization_guid"]),

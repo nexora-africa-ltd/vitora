@@ -57,6 +57,18 @@ export const PatientInsuranceStatusSchema = z.enum([
   'pending_verification',
 ]);
 
+const PatientInsuranceStatusLegacySchema = z.enum([
+  'ACTIVE',
+  'EXPIRED',
+  'SUSPENDED',
+  'CANCELLED',
+  'PENDING_VERIFICATION',
+]);
+
+export const PatientInsuranceStatusNormalizedSchema = z
+  .union([PatientInsuranceStatusSchema, PatientInsuranceStatusLegacySchema])
+  .transform((value) => value.toLowerCase() as z.infer<typeof PatientInsuranceStatusSchema>);
+
 export const InsuranceClaimStatusSchema = z.enum([
   'draft',
   'pending_preauth',
@@ -202,7 +214,7 @@ export const PatientInsuranceSchema = z.object({
   principal_member: z.number().nullable(),
   principal_name: z.string(),
   employer: z.string(),
-  status: PatientInsuranceStatusSchema,
+  status: PatientInsuranceStatusNormalizedSchema,
   valid_from: z.string(),
   valid_to: z.string(),
   copay_override: z.string().nullable(),
@@ -213,6 +225,10 @@ export const PatientInsuranceSchema = z.object({
   days_until_expiry: z.number(),
   verified_at: z.string().nullable(),
   verified_by: z.number().nullable(),
+  last_eligibility_checked_at: z.string().nullable(),
+  last_eligibility_eligible: z.boolean().nullable(),
+  last_eligibility_status: z.string(),
+  last_eligibility_payload: z.record(z.string(), z.unknown()),
   notes: z.string(),
   card_image_front: z.string().nullable(),
   card_image_back: z.string().nullable(),
@@ -272,7 +288,13 @@ export const InsuranceVisitAuthorizationSchema = z.object({
   beneficiary_id: z.number().nullable(),
   beneficiary_contact_id: z.number().nullable(),
   beneficiary_contact_value: z.string(),
+  selected_beneficiary_contact_id: z.number().nullable(),
+  selected_beneficiary_contact_value: z.string(),
+  selected_benefit_type: z.string(),
+  selected_benefit_code: z.string(),
   factors: z.array(z.string()),
+  eligibility_payload: z.record(z.string(), z.unknown()),
+  workflow_step: z.string(),
   status: InsuranceVisitAuthorizationStatusSchema,
   auth_token: z.string(),
   authorization_guid: z.string(),
@@ -294,6 +316,14 @@ export const VerifyViaHealthcloudResultSchema = z.object({
   copay_percent: z.string().nullable(),
   message: z.string(),
   raw_response: z.record(z.string(), z.unknown()),
+  resolved_plan_id: z.number().nullable().optional(),
+  resolved_plan_name: z.string().optional(),
+  resolved_plan_code: z.string().optional(),
+});
+
+export const HealthcloudSessionStartResultSchema = z.object({
+  session: InsuranceVisitAuthorizationSchema,
+  eligibility: VerifyViaHealthcloudResultSchema,
 });
 
 export const SladeDefaultsSeedResultSchema = z.object({

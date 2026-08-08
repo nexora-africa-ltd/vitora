@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     )
 
 from .adapters import get_adapter
-from .errors import InsuranceNotConfiguredError
+from .errors import InsuranceNotConfiguredError, InsuranceValidationError
 from .results import ClaimResult, EligibilityResult, PreauthResult
 
 logger = logging.getLogger(__name__)
@@ -89,15 +89,28 @@ class InsuranceEligibilityService:
         adapter = get_adapter(config)
         result = adapter.verify_eligibility(enrollment)
 
+        enrollment.last_eligibility_checked_at = timezone.now()
+        enrollment.last_eligibility_eligible = result.eligible
+        enrollment.last_eligibility_status = result.status
+        enrollment.last_eligibility_payload = result.raw_response or {}
+
+        update_fields = [
+            "last_eligibility_checked_at",
+            "last_eligibility_eligible",
+            "last_eligibility_status",
+            "last_eligibility_payload",
+            "updated_at",
+        ]
+
         # Persist verification result
         if result.eligible:
-            enrollment.verified_at = timezone.now()
+            enrollment.verified_at = enrollment.last_eligibility_checked_at
             enrollment.status = "ACTIVE"
-            update_fields = ["verified_at", "status", "updated_at"]
+            update_fields.extend(["verified_at", "status"])
             if result.annual_balance is not None:
                 enrollment.annual_balance = result.annual_balance
                 update_fields.append("annual_balance")
-            enrollment.save(update_fields=update_fields)
+        enrollment.save(update_fields=update_fields)
 
         _publish_safe(
             "insurance.enrollment.verified",
@@ -451,6 +464,220 @@ class HealthCloudWorkflowService:
                 f"Adapter '{adapter.__class__.__name__}' does not support '{operation}'",
             )
 
+    @staticmethod
+    def _extract_contact_value(eligibility_payload: Any, contact_id: int) -> str:
+        if not isinstance(eligibility_payload, dict):
+            return ""
+        member = eligibility_payload.get("member")
+        if not isinstance(member, dict):
+            return ""
+        contacts = member.get("contacts")
+        if not isinstance(contacts, list):
+            return ""
+
+        for contact in contacts:
+            if not isinstance(contact, dict):
+                continue
+            try:
+                candidate_id = int(contact.get("id") or 0)
+            except (TypeError, ValueError):
+                continue
+            if candidate_id == contact_id:
+                return str(contact.get("contactValue") or "")
+        return ""
+
+    @staticmethod
+    def _extract_policy_number(eligibility_payload: Any) -> str:
+        if not isinstance(eligibility_payload, dict):
+            return ""
+        cover = eligibility_payload.get("cover")
+        if not isinstance(cover, dict):
+            return ""
+        return str(cover.get("policyNumber") or "")
+
+    @staticmethod
+    def _ensure_eligibility_snapshot(enrollment: Any) -> dict[str, Any]:
+        payload = getattr(enrollment, "last_eligibility_payload", None)
+        if isinstance(payload, dict) and payload:
+            return payload
+        raise InsuranceValidationError(
+            "HealthCloud eligibility must be run before OTP and visit authorization.",
+            provider_code=getattr(getattr(enrollment, "provider", None), "code", None),
+        )
+
+    def start_session(
+        self,
+        *,
+        enrollment: Any,
+        facility: Any,
+        organization: Any,
+        eligibility_result: EligibilityResult,
+    ) -> Any:
+        from hmis.apps.insurance.models import InsuranceVisitAuthorization
+
+        config = _get_config(enrollment.provider, facility)
+        payload = eligibility_result.raw_response or {}
+
+        return InsuranceVisitAuthorization.objects.create(
+            facility=facility,
+            organization=organization,
+            enrollment=enrollment,
+            provider_config=config,
+            patient=enrollment.patient,
+            member_number=eligibility_result.member_number or enrollment.member_number,
+            payer_slade_code=config.payer_slade_code,
+            beneficiary_id=(payload.get("member") or {}).get("id")
+            if isinstance(payload.get("member"), dict)
+            else None,
+            policy_number=self._extract_policy_number(payload),
+            eligibility_payload=payload,
+            workflow_step="eligibility_verified",
+            status=InsuranceVisitAuthorization.Status.PENDING,
+            raw_payload=payload,
+        )
+
+    def request_otp_for_session(
+        self,
+        *,
+        authorization: Any,
+        facility: Any,
+        organization: Any,
+        contact_id: int,
+    ) -> Any:
+        config = authorization.provider_config
+        adapter = get_adapter(config)
+        self._require_operation(adapter, "request_otp")
+
+        if authorization.workflow_step not in {"eligibility_verified", "otp_requested"}:
+            raise InsuranceValidationError(
+                "Eligibility session is required before requesting OTP.",
+                provider_code=getattr(config.provider, "code", None),
+            )
+
+        eligibility_payload = authorization.eligibility_payload or {}
+        if not isinstance(eligibility_payload, dict) or not eligibility_payload:
+            eligibility_payload = self._ensure_eligibility_snapshot(authorization.enrollment)
+
+        payload = {
+            "contact_id": contact_id,
+            "member_number": authorization.member_number,
+            "payer_slade_code": authorization.payer_slade_code,
+            "session_id": authorization.pk,
+        }
+        response = self._run_idempotent(
+            operation="healthcloud.session.request_otp",
+            facility=facility,
+            organization=organization,
+            payload=payload,
+            runner=lambda _payload: adapter.request_otp(contact_id),
+            authorization=authorization,
+        )
+
+        authorization.beneficiary_contact_id = contact_id
+        authorization.selected_beneficiary_contact_id = contact_id
+        authorization.selected_beneficiary_contact_value = self._extract_contact_value(
+            eligibility_payload,
+            contact_id,
+        )
+        authorization.eligibility_payload = eligibility_payload
+        authorization.workflow_step = "otp_requested"
+        authorization.status = authorization.Status.OTP_REQUESTED
+        authorization.raw_payload = response
+        authorization.save(
+            update_fields=[
+                "beneficiary_contact_id",
+                "selected_beneficiary_contact_id",
+                "selected_beneficiary_contact_value",
+                "eligibility_payload",
+                "workflow_step",
+                "status",
+                "raw_payload",
+                "updated_at",
+            ]
+        )
+        return authorization
+
+    def start_visit_for_session(
+        self,
+        *,
+        authorization: Any,
+        facility: Any,
+        organization: Any,
+        payload: dict[str, Any],
+        encounter: Any = None,
+    ) -> Any:
+        config = authorization.provider_config
+        adapter = get_adapter(config)
+        self._require_operation(adapter, "start_visit")
+
+        if authorization.status != authorization.Status.OTP_REQUESTED:
+            raise InsuranceValidationError(
+                "OTP must be requested before starting a visit.",
+                provider_code=getattr(config.provider, "code", None),
+            )
+
+        request_payload = dict(payload)
+        request_payload.setdefault("beneficiary_id", payload.get("beneficiary_id"))
+        request_payload.setdefault("beneficiary_contact", payload.get("beneficiary_contact"))
+        request_payload["session_id"] = authorization.pk
+
+        response = self._run_idempotent(
+            operation="healthcloud.session.start_visit",
+            facility=facility,
+            organization=organization,
+            payload=request_payload,
+            runner=adapter.start_visit,
+            authorization=authorization,
+        )
+
+        authorization.encounter = encounter
+        authorization.benefit_type = str(payload.get("benefit_type") or "")
+        authorization.benefit_code = str(payload.get("benefit_code") or "")
+        authorization.policy_number = str(
+            payload.get("policy_number") or authorization.policy_number
+        )
+        authorization.beneficiary_id = payload.get("beneficiary_id")
+        authorization.beneficiary_contact_id = payload.get("beneficiary_contact")
+        authorization.selected_beneficiary_contact_id = payload.get("beneficiary_contact")
+        authorization.selected_beneficiary_contact_value = str(
+            payload.get("beneficiary_contact_value")
+            or authorization.selected_beneficiary_contact_value
+        )
+        authorization.selected_benefit_type = str(payload.get("benefit_type") or "")
+        authorization.selected_benefit_code = str(payload.get("benefit_code") or "")
+        authorization.factors = payload.get("factors") or ["OTP"]
+        authorization.workflow_step = "visit_authorized"
+        authorization.status = authorization.Status.AUTHORIZED
+        authorization.auth_token = str(response.get("auth_token") or authorization.auth_token)
+        authorization.authorization_guid = str(
+            response.get("edi_auth_guid") or response.get("authorization_guid") or ""
+        )
+        authorization.auth_status = str(response.get("auth_status") or "AUTHORIZED")
+        authorization.raw_payload = response
+        authorization.save(
+            update_fields=[
+                "encounter",
+                "benefit_type",
+                "benefit_code",
+                "policy_number",
+                "beneficiary_id",
+                "beneficiary_contact_id",
+                "selected_beneficiary_contact_id",
+                "selected_beneficiary_contact_value",
+                "selected_benefit_type",
+                "selected_benefit_code",
+                "factors",
+                "workflow_step",
+                "status",
+                "auth_token",
+                "authorization_guid",
+                "auth_status",
+                "raw_payload",
+                "updated_at",
+            ]
+        )
+        return authorization
+
     def request_otp(
         self,
         *,
@@ -462,6 +689,7 @@ class HealthCloudWorkflowService:
         from hmis.apps.insurance.models import InsuranceVisitAuthorization
 
         config = _get_config(enrollment.provider, facility)
+        self._ensure_eligibility_snapshot(enrollment)
         adapter = get_adapter(config)
         self._require_operation(adapter, "request_otp")
         payload = {
@@ -476,6 +704,9 @@ class HealthCloudWorkflowService:
             payload=payload,
             runner=lambda _payload: adapter.request_otp(contact_id),
         )
+        eligibility_payload = {}
+        if isinstance(getattr(enrollment, "last_eligibility_payload", None), dict):
+            eligibility_payload = enrollment.last_eligibility_payload
         auth = InsuranceVisitAuthorization.objects.create(
             facility=facility,
             organization=organization,
@@ -485,6 +716,13 @@ class HealthCloudWorkflowService:
             member_number=enrollment.member_number,
             payer_slade_code=config.payer_slade_code,
             beneficiary_contact_id=contact_id,
+            selected_beneficiary_contact_id=contact_id,
+            selected_beneficiary_contact_value=self._extract_contact_value(
+                eligibility_payload,
+                contact_id,
+            ),
+            eligibility_payload=eligibility_payload,
+            workflow_step="otp_requested",
             status=InsuranceVisitAuthorization.Status.OTP_REQUESTED,
             raw_payload=response,
         )
@@ -529,7 +767,13 @@ class HealthCloudWorkflowService:
             policy_number=str(payload.get("policy_number") or ""),
             beneficiary_id=payload.get("beneficiary_id"),
             beneficiary_contact_id=payload.get("beneficiary_contact"),
+            selected_beneficiary_contact_id=payload.get("beneficiary_contact"),
+            selected_beneficiary_contact_value=str(payload.get("beneficiary_contact_value") or ""),
+            selected_benefit_type=str(payload.get("benefit_type") or ""),
+            selected_benefit_code=str(payload.get("benefit_code") or ""),
             factors=payload.get("factors") or ["OTP"],
+            eligibility_payload=getattr(enrollment, "last_eligibility_payload", {}) or {},
+            workflow_step="visit_authorized",
             status=InsuranceVisitAuthorization.Status.AUTHORIZED,
             auth_token=str(response.get("auth_token") or ""),
             authorization_guid=str(response.get("edi_auth_guid") or ""),
@@ -548,6 +792,11 @@ class HealthCloudWorkflowService:
         config = authorization.provider_config
         adapter = get_adapter(config)
         self._require_operation(adapter, "validate_authorization")
+        if authorization.status != authorization.Status.AUTHORIZED:
+            raise InsuranceValidationError(
+                "Visit authorization must be started before token validation.",
+                provider_code=getattr(config.provider, "code", None),
+            )
         response = self._run_idempotent(
             operation="healthcloud.validate_authorization",
             facility=facility,
@@ -562,11 +811,13 @@ class HealthCloudWorkflowService:
         )
         authorization.auth_status = str(response.get("auth_status") or authorization.auth_status)
         authorization.raw_payload = response
+        authorization.workflow_step = "authorization_validated"
         authorization.save(
             update_fields=[
                 "status",
                 "authorization_guid",
                 "auth_status",
+                "workflow_step",
                 "raw_payload",
                 "updated_at",
             ]

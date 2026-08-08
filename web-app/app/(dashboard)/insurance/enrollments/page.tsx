@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { PageHeader } from '@/components/shared/page-header';
@@ -8,9 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
-import { usePatientInsurances, useVerifyEnrollmentViaHealthcloud } from '@/lib/hooks/use-insurance';
+import {
+  usePatientInsurances,
+  useVerifyEnrollmentViaHealthcloud,
+  useStartHealthcloudSession,
+  useVisitAuthorizations,
+} from '@/lib/hooks/use-insurance';
 import { useToast } from '@/lib/hooks/use-toast';
-import type { PatientInsurance } from '@/lib/types/insurance';
+import type { InsuranceVisitAuthorization, PatientInsurance } from '@/lib/types/insurance';
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-green-100 text-green-800',
@@ -23,9 +28,24 @@ const STATUS_COLORS: Record<string, string> = {
 export default function InsuranceEnrollmentsPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { data, isLoading, refetch } = usePatientInsurances({ page: 1 });
+  const { data, isLoading, refetch } = usePatientInsurances({
+    page: 1,
+    page_size: 100,
+    ordering: '-created_at',
+  });
+  const { data: authorizationsData } = useVisitAuthorizations({ page: 1, page_size: 500 });
   const verifyViaHealthcloud = useVerifyEnrollmentViaHealthcloud();
+  const startSession = useStartHealthcloudSession();
   const enrollments = data?.results ?? [];
+  const sessionsByEnrollment = useMemo(() => {
+    const map = new Map<number, InsuranceVisitAuthorization>();
+    (authorizationsData?.results ?? []).forEach((session) => {
+      if (!map.has(session.enrollment)) {
+        map.set(session.enrollment, session);
+      }
+    });
+    return map;
+  }, [authorizationsData?.results]);
 
   const handleVerifyViaHealthcloud = async (id: number) => {
     try {
@@ -37,6 +57,24 @@ export default function InsuranceEnrollmentsPage() {
       refetch();
     } catch {
       toast({ title: 'Error', description: 'Failed to verify via HealthCloud.', variant: 'destructive' });
+    }
+  };
+
+  const handleStartSession = async (id: number) => {
+    try {
+      const result = await startSession.mutateAsync(id);
+      toast({
+        title: 'HealthCloud session started',
+        description: `Session #${result.session.id} (${result.eligibility.eligible ? 'eligible' : 'not eligible'})`,
+      });
+      refetch();
+      router.push(`/insurance/authorizations/${result.session.id}`);
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to start HealthCloud session.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -99,9 +137,39 @@ export default function InsuranceEnrollmentsPage() {
             key: 'actions',
             header: 'Actions',
             cell: (item) => (
-              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); void handleVerifyViaHealthcloud(item.id); }}>
-                Verify via HealthCloud
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); void handleVerifyViaHealthcloud(item.id); }}>
+                  Verify
+                </Button>
+                {(() => {
+                  const existingSession = sessionsByEnrollment.get(item.id);
+                  if (existingSession) {
+                    return (
+                      <Button
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/insurance/authorizations/${existingSession.id}`);
+                        }}
+                      >
+                        View Session
+                      </Button>
+                    );
+                  }
+                  return (
+                    <Button
+                      size="sm"
+                      disabled={startSession.isPending}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleStartSession(item.id);
+                      }}
+                    >
+                      {startSession.isPending ? 'Starting...' : 'Start Session'}
+                    </Button>
+                  );
+                })()}
+              </div>
             ),
           },
         ]}
@@ -113,9 +181,26 @@ export default function InsuranceEnrollmentsPage() {
               <Badge className={STATUS_COLORS[item.status] || 'bg-gray-100 text-gray-800'}>
                 {item.status.replace('_', ' ')}
               </Badge>
-              <Button size="sm" variant="outline" onClick={() => void handleVerifyViaHealthcloud(item.id)}>
-                Verify via HealthCloud
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => void handleVerifyViaHealthcloud(item.id)}>
+                  Verify
+                </Button>
+                {(() => {
+                  const existingSession = sessionsByEnrollment.get(item.id);
+                  if (existingSession) {
+                    return (
+                      <Button size="sm" onClick={() => router.push(`/insurance/authorizations/${existingSession.id}`)}>
+                        View Session
+                      </Button>
+                    );
+                  }
+                  return (
+                    <Button size="sm" disabled={startSession.isPending} onClick={() => void handleStartSession(item.id)}>
+                      {startSession.isPending ? 'Starting...' : 'Start Session'}
+                    </Button>
+                  );
+                })()}
+              </div>
             </CardContent>
           </Card>
         )}

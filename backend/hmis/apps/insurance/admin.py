@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Admin configuration for the insurance app."""
 
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils.html import format_html
 
 from hmis.apps.core.mixins import TenantScopedAdminMixin
@@ -15,6 +15,7 @@ from hmis.apps.insurance.models import (
     InsuranceProviderConfig,
     InsuranceRemittance,
     InsuranceRemittanceLine,
+    InsuranceVisitAuthorization,
     PatientInsurance,
     PayerTariff,
 )
@@ -104,23 +105,78 @@ class InsurancePlanAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
 @admin.register(PatientInsurance)
 class PatientInsuranceAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = [
+        "id",
         "patient",
         "provider",
         "plan",
         "member_number",
         "member_type",
         "status_badge",
+        "last_eligibility_eligible",
+        "last_eligibility_checked_at",
         "valid_from",
         "valid_to",
         "is_primary",
     ]
     list_filter = ["status", "member_type", "is_primary", "provider"]
     search_fields = ["member_number", "patient__first_name", "patient__last_name"]
+    ordering = ["-created_at"]
+    date_hierarchy = "created_at"
+    list_select_related = ["patient", "provider", "plan"]
     raw_id_fields = ["patient", "plan", "provider", "principal_member", "organization"]
+    actions = ["repair_organization_from_related"]
+    readonly_fields = [
+        "last_eligibility_checked_at",
+        "last_eligibility_eligible",
+        "last_eligibility_status",
+        "last_eligibility_payload",
+        "verified_at",
+        "verified_by",
+    ]
 
     @admin.display(description="Status")
     def status_badge(self, obj):
         return colored_status(obj.status)
+
+    @admin.action(description="Repair organization from patient/provider")
+    def repair_organization_from_related(self, request, queryset):
+        fixed = 0
+        skipped_has_org = 0
+        skipped_no_org = 0
+        skipped_conflict = 0
+
+        rows = queryset.select_related("patient", "plan__provider")
+        for enrollment in rows:
+            if enrollment.organization_id is not None:
+                skipped_has_org += 1
+                continue
+
+            patient_org_id = getattr(enrollment.patient, "organization_id", None)
+            provider_org_id = getattr(enrollment.plan.provider, "organization_id", None)
+            candidates = {oid for oid in (patient_org_id, provider_org_id) if oid is not None}
+
+            if len(candidates) == 0:
+                skipped_no_org += 1
+                continue
+            if len(candidates) > 1:
+                skipped_conflict += 1
+                continue
+
+            enrollment.organization_id = next(iter(candidates))
+            enrollment.save(update_fields=["organization", "updated_at"])
+            fixed += 1
+
+        self.message_user(
+            request,
+            (
+                "Repair complete. "
+                f"Fixed: {fixed}; "
+                f"Skipped (already set): {skipped_has_org}; "
+                f"Skipped (no org source): {skipped_no_org}; "
+                f"Skipped (conflicting orgs): {skipped_conflict}."
+            ),
+            level=messages.INFO,
+        )
 
 
 @admin.register(InsuranceProviderConfig)
@@ -134,6 +190,49 @@ class InsuranceProviderConfigAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     ]
     list_filter = ["accreditation_status", "api_enabled", "submission_format"]
     raw_id_fields = ["provider", "facility", "organization"]
+
+
+@admin.register(InsuranceVisitAuthorization)
+class InsuranceVisitAuthorizationAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
+    list_display = [
+        "id",
+        "enrollment",
+        "patient",
+        "member_number",
+        "status_badge",
+        "workflow_step",
+        "authorization_guid",
+        "created_at",
+    ]
+    list_filter = ["status", "workflow_step", "provider_config"]
+    search_fields = [
+        "member_number",
+        "authorization_guid",
+        "auth_token",
+        "patient__first_name",
+        "patient__last_name",
+    ]
+    ordering = ["-created_at"]
+    date_hierarchy = "created_at"
+    list_select_related = ["enrollment", "patient", "provider_config", "encounter"]
+    raw_id_fields = [
+        "enrollment",
+        "patient",
+        "provider_config",
+        "encounter",
+        "facility",
+        "organization",
+    ]
+    readonly_fields = [
+        "eligibility_payload",
+        "raw_payload",
+        "created_at",
+        "updated_at",
+    ]
+
+    @admin.display(description="Status")
+    def status_badge(self, obj):
+        return colored_status(obj.status)
 
 
 class InsuranceClaimItemInline(admin.TabularInline):

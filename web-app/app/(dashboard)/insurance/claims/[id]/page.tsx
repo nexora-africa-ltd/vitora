@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   AlertCircle,
@@ -29,6 +29,10 @@ import { PageHeader } from '@/components/shared/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
+  buildHealthcloudEligibilityView,
+  HealthcloudEligibilityCards,
+} from '@/components/insurance/healthcloud-eligibility-cards';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -44,8 +48,9 @@ import {
   useRespondToQuery,
   useMarkClaimPaid,
   useAppealClaim,
-  useRequestEnrollmentOtp,
-  useStartEnrollmentVisit,
+  useStartHealthcloudSession,
+  useRequestHealthcloudSessionOtp,
+  useStartHealthcloudSessionVisit,
   useValidateVisitAuthorization,
   useReserveClaimBalance,
   useSubmitClaimToHealthcloud,
@@ -57,7 +62,11 @@ import {
 import { useToast } from '@/lib/hooks/use-toast';
 import usePermissions from '@/lib/hooks/use-permissions';
 import { CLAIM_STATUS_LABELS } from '@/lib/types/insurance';
-import type { InsuranceClaimItem, InsuranceVisitAuthorization } from '@/lib/types/insurance';
+import type {
+  InsuranceClaimItem,
+  InsuranceVisitAuthorization,
+  VerifyViaHealthcloudResult,
+} from '@/lib/types/insurance';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
@@ -100,8 +109,9 @@ export default function InsuranceClaimDetailPage() {
   const respondToQuery = useRespondToQuery();
   const markPaid = useMarkClaimPaid();
   const appealClaim = useAppealClaim();
-  const requestOtp = useRequestEnrollmentOtp();
-  const startVisit = useStartEnrollmentVisit();
+  const startSession = useStartHealthcloudSession();
+  const requestSessionOtp = useRequestHealthcloudSessionOtp();
+  const startSessionVisit = useStartHealthcloudSessionVisit();
   const validateVisit = useValidateVisitAuthorization();
   const reserveBalance = useReserveClaimBalance();
   const submitToHealthcloud = useSubmitClaimToHealthcloud();
@@ -123,6 +133,8 @@ export default function InsuranceClaimDetailPage() {
   const [appealNotes, setAppealNotes] = useState('');
 
   // HealthCloud workflow state
+  const [session, setSession] = useState<InsuranceVisitAuthorization | null>(null);
+  const [eligibilityResult, setEligibilityResult] = useState<VerifyViaHealthcloudResult | null>(null);
   const [contactId, setContactId] = useState('');
   const [otp, setOtp] = useState('');
   const [beneficiaryId, setBeneficiaryId] = useState('');
@@ -130,12 +142,23 @@ export default function InsuranceClaimDetailPage() {
   const [benefitCode, setBenefitCode] = useState('');
   const [policyNumber, setPolicyNumber] = useState('');
   const [policyEffectiveDate, setPolicyEffectiveDate] = useState(new Date().toISOString());
-  const [authorizationId, setAuthorizationId] = useState<number | null>(null);
   const [authorizationToken, setAuthorizationToken] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [reservationAmount, setReservationAmount] = useState('');
   const [attachmentRef, setAttachmentRef] = useState('');
   const [workflowEvents, setWorkflowEvents] = useState<string[]>([]);
+
+  const eligibilityView = useMemo(
+    () => buildHealthcloudEligibilityView(eligibilityResult),
+    [eligibilityResult]
+  );
+
+  const eligibilityContacts = eligibilityView?.contacts ?? [];
+  const eligibilityBenefits = eligibilityView?.benefits ?? [];
+
+  const canRequestOtp = Boolean(session?.id && session.workflow_step === 'eligibility_verified');
+  const canStartVisit = Boolean(session?.id && session.status === 'otp_requested');
+  const canValidateToken = Boolean(session?.id && session.status === 'authorized');
 
   const handleSubmit = async () => {
     try {
@@ -216,15 +239,60 @@ export default function InsuranceClaimDetailPage() {
     setWorkflowEvents((prev) => [event, ...prev].slice(0, 8));
   };
 
+  const handleStartSession = async () => {
+    if (!claim?.patient_insurance) {
+      toast({
+        title: 'Missing enrollment',
+        description: 'Claim must be linked to a patient insurance enrollment.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      const response = await startSession.mutateAsync(claim.patient_insurance);
+      setSession(response.session);
+      setEligibilityResult(response.eligibility);
+
+      const member = response.eligibility.raw_response?.member as Record<string, unknown> | undefined;
+      const cover = response.eligibility.raw_response?.cover as Record<string, unknown> | undefined;
+      const contacts = Array.isArray(member?.contacts)
+        ? (member?.contacts as Array<Record<string, unknown>>)
+        : [];
+      const firstContact = contacts.find((row) => Number(row.id ?? 0) > 0);
+
+      if (member?.id) setBeneficiaryId(String(member.id));
+      if (cover?.policyNumber) setPolicyNumber(String(cover.policyNumber));
+      if (firstContact?.id) setContactId(String(firstContact.id));
+
+      const benefits = Array.isArray(response.eligibility.raw_response?.benefits)
+        ? (response.eligibility.raw_response?.benefits as Array<Record<string, unknown>>)
+        : [];
+      const firstBenefit = benefits.find((row) => typeof row.benefitCode === 'string');
+      if (firstBenefit) {
+        if (typeof firstBenefit.benefitCode === 'string') setBenefitCode(firstBenefit.benefitCode);
+        if (typeof firstBenefit.benefitType === 'string') setBenefitType(firstBenefit.benefitType);
+      }
+
+      pushWorkflowEvent('Eligibility session started');
+      toast({ title: 'Eligibility loaded', description: response.eligibility.message });
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to start HealthCloud eligibility session.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleRequestOtp = async () => {
-    if (!claim) return;
+    if (!claim || !session?.id) return;
     if (!claim.patient_insurance || !contactId) return;
     try {
-      const authorization = await requestOtp.mutateAsync({
+      const authorization = await requestSessionOtp.mutateAsync({
         id: claim.patient_insurance,
-        data: { contact_id: Number(contactId) },
+        data: { session_id: session.id, contact_id: Number(contactId) },
       });
-      setAuthorizationId(authorization.id);
+      setSession(authorization);
       pushWorkflowEvent(`OTP requested for contact ${contactId}`);
       toast({ title: 'OTP requested', description: 'Check sandbox response or member phone.' });
     } catch {
@@ -234,14 +302,19 @@ export default function InsuranceClaimDetailPage() {
 
   const handleStartVisit = async () => {
     if (!claim) return;
+    if (!session?.id) {
+      toast({ title: 'Missing session', description: 'Run eligibility first.', variant: 'destructive' });
+      return;
+    }
     if (!claim.patient_insurance || !contactId || !otp || !beneficiaryId || !benefitCode || !policyNumber) {
       toast({ title: 'Missing fields', description: 'Fill OTP/start visit fields first.', variant: 'destructive' });
       return;
     }
     try {
-      const authorization: InsuranceVisitAuthorization = await startVisit.mutateAsync({
+      const authorization: InsuranceVisitAuthorization = await startSessionVisit.mutateAsync({
         id: claim.patient_insurance,
         data: {
+          session_id: session.id,
           beneficiary_id: Number(beneficiaryId),
           benefit_type: benefitType,
           benefit_code: benefitCode,
@@ -252,7 +325,7 @@ export default function InsuranceClaimDetailPage() {
           encounter: claim.encounter ?? undefined,
         },
       });
-      setAuthorizationId(authorization.id);
+      setSession(authorization);
       setAuthorizationToken(authorization.auth_token || '');
       pushWorkflowEvent(`Visit started: ${authorization.authorization_guid || 'N/A'}`);
       toast({ title: 'Visit started', description: 'Authorization token created.' });
@@ -263,13 +336,13 @@ export default function InsuranceClaimDetailPage() {
 
   const handleValidateAuthorization = async () => {
     if (!claim) return;
-    if (!authorizationId) {
+    if (!session?.id) {
       toast({ title: 'Missing authorization', description: 'Start visit first.', variant: 'destructive' });
       return;
     }
     try {
-      await validateVisit.mutateAsync({
-        id: authorizationId,
+      const response = await validateVisit.mutateAsync({
+        id: session.id,
         data: {
           first_name: claim.patient_name.split(' ')[0] || claim.patient_name,
           last_name: claim.patient_name.split(' ').slice(1).join(' ') || claim.patient_name,
@@ -279,6 +352,16 @@ export default function InsuranceClaimDetailPage() {
           scheme_name: claim.plan_name,
         },
       });
+      setSession((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          status: 'validated',
+          workflow_step: 'authorization_validated',
+          auth_status:
+            typeof response?.auth_status === 'string' ? response.auth_status : prev.auth_status,
+        };
+      });
       pushWorkflowEvent('Authorization token validated');
       toast({ title: 'Authorization validated' });
     } catch {
@@ -287,7 +370,7 @@ export default function InsuranceClaimDetailPage() {
   };
 
   const handleReserveBalance = async () => {
-    if (!authorizationId || !invoiceNumber || !reservationAmount) {
+    if (!session?.id || !invoiceNumber || !reservationAmount) {
       toast({ title: 'Missing fields', description: 'Authorization, invoice number, and amount are required.', variant: 'destructive' });
       return;
     }
@@ -295,7 +378,7 @@ export default function InsuranceClaimDetailPage() {
       const result = await reserveBalance.mutateAsync({
         id: claimId,
         data: {
-          authorization_id: authorizationId,
+          authorization_id: session.id,
           invoice_number: invoiceNumber,
           amount: reservationAmount,
         },
@@ -650,10 +733,38 @@ export default function InsuranceClaimDetailPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="rounded-md border p-3">
+            <p className="text-xs text-muted-foreground">Session</p>
+            <p className="text-sm">
+              {session
+                ? `#${session.id} • ${session.workflow_step || session.status}`
+                : 'No active HealthCloud session'}
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <Label>Contact ID (OTP)</Label>
-              <Input value={contactId} onChange={(e) => setContactId(e.target.value)} placeholder="e.g. 5531" />
+              {eligibilityContacts.length > 0 ? (
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  value={contactId}
+                  onChange={(e) => setContactId(e.target.value)}
+                >
+                  <option value="">Select contact</option>
+                  {eligibilityContacts.map((contact) => (
+                    <option key={contact.id} value={String(contact.id)}>
+                      {contact.id} - {contact.contactValue}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  value={contactId}
+                  onChange={(e) => setContactId(e.target.value)}
+                  placeholder="e.g. 5531"
+                />
+              )}
             </div>
             <div>
               <Label>Beneficiary ID</Label>
@@ -665,11 +776,46 @@ export default function InsuranceClaimDetailPage() {
             </div>
             <div>
               <Label>Benefit Type</Label>
-              <Input value={benefitType} onChange={(e) => setBenefitType(e.target.value)} placeholder="OUTPATIENT" />
+              <Input
+                value={benefitType}
+                onChange={(e) => setBenefitType(e.target.value)}
+                placeholder="OUTPATIENT"
+              />
             </div>
             <div>
               <Label>Benefit Code</Label>
-              <Input value={benefitCode} onChange={(e) => setBenefitCode(e.target.value)} placeholder="340" />
+              {eligibilityBenefits.length > 0 ? (
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  value={benefitCode}
+                  onChange={(e) => {
+                    const selectedCode = e.target.value;
+                    setBenefitCode(selectedCode);
+                    const selected = eligibilityBenefits.find(
+                      (benefit) => benefit.benefitCode === selectedCode
+                    );
+                    if (selected?.benefitType) {
+                      setBenefitType(selected.benefitType);
+                    }
+                  }}
+                >
+                  <option value="">Select benefit</option>
+                  {eligibilityBenefits.map((benefit, idx) => (
+                    <option
+                      key={`${benefit.benefitCode || 'benefit'}-${idx}`}
+                      value={benefit.benefitCode || ''}
+                    >
+                      {benefit.benefitCode || 'N/A'} - {benefit.benefitName || 'Benefit'}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  value={benefitCode}
+                  onChange={(e) => setBenefitCode(e.target.value)}
+                  placeholder="340"
+                />
+              )}
             </div>
             <div>
               <Label>Policy Number</Label>
@@ -680,8 +826,8 @@ export default function InsuranceClaimDetailPage() {
               <Input value={policyEffectiveDate} onChange={(e) => setPolicyEffectiveDate(e.target.value)} />
             </div>
             <div>
-              <Label>Auth Record ID</Label>
-              <Input value={authorizationId ?? ''} onChange={(e) => setAuthorizationId(Number(e.target.value) || null)} placeholder="Internal authorization ID" />
+              <Label>Session ID</Label>
+              <Input value={session?.id ?? ''} readOnly placeholder="Start eligibility session" />
             </div>
             <div className="md:col-span-2">
               <Label>Authorization Token</Label>
@@ -702,13 +848,34 @@ export default function InsuranceClaimDetailPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" className="gap-1" onClick={handleRequestOtp} disabled={requestOtp.isPending}>
+            <Button size="sm" className="gap-1" onClick={handleStartSession} disabled={startSession.isPending}>
+              <Shield className="h-3 w-3" /> {startSession.isPending ? 'Running...' : '1. Run Eligibility'}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1"
+              onClick={handleRequestOtp}
+              disabled={requestSessionOtp.isPending || !canRequestOtp}
+            >
               <Lock className="h-3 w-3" /> Request OTP
             </Button>
-            <Button size="sm" variant="outline" className="gap-1" onClick={handleStartVisit} disabled={startVisit.isPending}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1"
+              onClick={handleStartVisit}
+              disabled={startSessionVisit.isPending || !canStartVisit}
+            >
               <Shield className="h-3 w-3" /> Start Visit
             </Button>
-            <Button size="sm" variant="outline" className="gap-1" onClick={handleValidateAuthorization} disabled={validateVisit.isPending}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1"
+              onClick={handleValidateAuthorization}
+              disabled={validateVisit.isPending || !canValidateToken}
+            >
               <ClipboardCheck className="h-3 w-3" /> Validate Token
             </Button>
             <Button size="sm" variant="outline" onClick={handleReserveBalance} disabled={reserveBalance.isPending}>
@@ -730,6 +897,13 @@ export default function InsuranceClaimDetailPage() {
               Check Remittance
             </Button>
           </div>
+
+          {eligibilityResult && (
+            <HealthcloudEligibilityCards
+              eligibility={eligibilityResult}
+              patientName={claim.patient_name}
+            />
+          )}
 
           <div className="rounded-md border p-3">
             <p className="text-xs text-muted-foreground mb-2">Workflow timeline</p>

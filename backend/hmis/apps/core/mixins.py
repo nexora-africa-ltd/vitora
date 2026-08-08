@@ -239,6 +239,16 @@ def resolve_request_tenant(request):
         except Facility.DoesNotExist:
             pass
 
+    # Org-level fallback for users without a resolvable facility context.
+    # This enables organization-scoped endpoints (e.g. insurance enrollments,
+    # providers, plans) even when the user has no primary facility selected.
+    if (
+        not getattr(request, "organization", None)
+        and profile
+        and getattr(profile, "organization", None)
+    ):
+        request.organization = profile.organization
+
 
 # ============================================================================
 # Sync Origin Tracking (Hub ↔ Cloud deduplication)

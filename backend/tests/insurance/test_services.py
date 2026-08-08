@@ -860,12 +860,70 @@ class TestInsuranceEligibilityService:
         assert result.eligible is True
         assert "Manual" in result.message
 
+        patient_insurance.refresh_from_db()
+        assert patient_insurance.last_eligibility_checked_at is not None
+        assert patient_insurance.last_eligibility_eligible is True
+        assert patient_insurance.last_eligibility_payload == {}
+
     def test_verify_not_configured_raises(self, patient_insurance, sample_facility):
         from hmis.apps.insurance.services.insurance_services import InsuranceEligibilityService
 
         service = InsuranceEligibilityService()
         with pytest.raises(InsuranceNotConfiguredError):
             service.verify(patient_insurance, facility=sample_facility)
+
+
+class TestHealthCloudWorkflowService:
+    @pytest.mark.django_db
+    def test_request_otp_persists_selected_contact_from_eligibility_snapshot(
+        self,
+        provider_config,
+        patient_insurance,
+        sample_facility,
+        sample_organization,
+        monkeypatch,
+    ):
+        from hmis.apps.insurance.services.insurance_services import HealthCloudWorkflowService
+
+        provider_config.api_enabled = True
+        provider_config.healthcloud_enabled = True
+        provider_config.payer_slade_code = 457
+        provider_config.save(
+            update_fields=["api_enabled", "healthcloud_enabled", "payer_slade_code", "updated_at"]
+        )
+
+        patient_insurance.last_eligibility_payload = {
+            "member": {
+                "contacts": [
+                    {"id": 66103, "contactValue": "+254119***369"},
+                    {"id": 66102, "contactValue": "+254108***583"},
+                ]
+            }
+        }
+        patient_insurance.save(update_fields=["last_eligibility_payload", "updated_at"])
+
+        class _Adapter:
+            def request_otp(self, contact_id):
+                assert contact_id == 66103
+                return {"status": "OTP_SENT"}
+
+        monkeypatch.setattr(
+            "hmis.apps.insurance.services.insurance_services.get_adapter",
+            lambda cfg: _Adapter(),
+        )
+
+        service = HealthCloudWorkflowService()
+        auth = service.request_otp(
+            enrollment=patient_insurance,
+            facility=sample_facility,
+            organization=sample_organization,
+            contact_id=66103,
+        )
+
+        assert auth.selected_beneficiary_contact_id == 66103
+        assert auth.selected_beneficiary_contact_value == "+254119***369"
+        assert auth.eligibility_payload == patient_insurance.last_eligibility_payload
+        assert auth.workflow_step == "otp_requested"
 
 
 # ===================================================================

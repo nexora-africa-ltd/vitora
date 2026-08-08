@@ -2,12 +2,14 @@
 """Views for the insurance app."""
 
 import logging
+import re
 
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
@@ -39,6 +41,8 @@ from hmis.apps.insurance.models import (
     PayerTariff,
 )
 from hmis.apps.insurance.serializers import (
+    HealthCloudSessionRequestOTPSerializer,
+    HealthCloudSessionStartVisitSerializer,
     InsuranceClaimAppealSerializer,
     InsuranceClaimApproveSerializer,
     InsuranceClaimCancelSerializer,
@@ -196,6 +200,26 @@ class PatientInsuranceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
             return PatientInsuranceCreateSerializer
         return PatientInsuranceSerializer
 
+    def perform_create(self, serializer):
+        tenant_kwargs = self.get_tenant_save_kwargs()
+        if not tenant_kwargs.get("organization"):
+            patient = serializer.validated_data.get("patient")
+            plan = serializer.validated_data.get("plan")
+            organization = getattr(patient, "organization", None) or getattr(
+                getattr(plan, "provider", None), "organization", None
+            )
+            if organization is None:
+                raise DRFValidationError(
+                    {
+                        "organization": (
+                            "Unable to resolve organization for this enrollment. "
+                            "Select an active facility context and retry."
+                        )
+                    }
+                )
+            tenant_kwargs["organization"] = organization
+        serializer.save(**tenant_kwargs)
+
     def _ensure_healthcloud_enabled(self, enrollment: PatientInsurance):
         cfg = InsuranceProviderConfig.objects.filter(
             provider=enrollment.provider,
@@ -206,6 +230,69 @@ class PatientInsuranceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
                 "HealthCloud is not enabled for this provider/facility configuration."
             )
         return cfg
+
+    @staticmethod
+    def _eligibility_payload(result) -> dict:
+        return {
+            "eligible": result.eligible,
+            "status": result.status,
+            "plan_name": result.plan_name,
+            "member_number": result.member_number,
+            "annual_balance": str(result.annual_balance)
+            if result.annual_balance is not None
+            else None,
+            "copay_percent": str(result.copay_percent)
+            if result.copay_percent is not None
+            else None,
+            "message": result.message,
+            "raw_response": result.raw_response,
+        }
+
+    @staticmethod
+    def _normalize_plan_code(raw_code: str | None, fallback_name: str | None) -> str:
+        base = (raw_code or "").strip()
+        if not base:
+            base = (fallback_name or "").strip()
+        if not base:
+            return "HEALTHCLOUD_PLAN"
+
+        code = re.sub(r"[^A-Za-z0-9]+", "_", base).strip("_").upper()
+        if not code:
+            code = "HEALTHCLOUD_PLAN"
+        return code[:30]
+
+    def _ensure_plan_from_eligibility(self, provider, organization, result):
+        raw = result.raw_response if isinstance(result.raw_response, dict) else {}
+        cover = raw.get("cover") if isinstance(raw, dict) else None
+        cover_data = cover if isinstance(cover, dict) else {}
+
+        plan_name = (
+            str(cover_data.get("schemeName") or "").strip()
+            or str(result.plan_name or "").strip()
+            or f"{provider.name} HealthCloud Plan"
+        )
+        raw_code = str(cover_data.get("schemeCode") or cover_data.get("schemeID") or "").strip()
+        plan_code = self._normalize_plan_code(raw_code, plan_name)
+
+        defaults = {
+            "organization": getattr(provider, "organization", None) or organization,
+            "name": plan_name,
+            "plan_type": InsurancePlan.PlanType.INDIVIDUAL,
+            "coverage_type": InsurancePlan.CoverageType.COMPREHENSIVE,
+            "status": InsurancePlan.Status.ACTIVE,
+        }
+        plan, created = InsurancePlan.objects.get_or_create(
+            provider=provider,
+            code=plan_code,
+            defaults=defaults,
+        )
+
+        # Keep name in sync with latest eligibility payload while preserving
+        # idempotency on provider+code.
+        if not created and plan_name and plan.name != plan_name:
+            plan.name = plan_name
+            plan.save(update_fields=["name", "updated_at"])
+        return plan
 
     @action(detail=True, methods=["post"])
     def verify(self, request, pk=None):
@@ -229,22 +316,7 @@ class PatientInsuranceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
             result = service.verify(enrollment, facility=getattr(request, "facility", None))
         except Exception as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(
-            {
-                "eligible": result.eligible,
-                "status": result.status,
-                "plan_name": result.plan_name,
-                "member_number": result.member_number,
-                "annual_balance": str(result.annual_balance)
-                if result.annual_balance is not None
-                else None,
-                "copay_percent": str(result.copay_percent)
-                if result.copay_percent is not None
-                else None,
-                "message": result.message,
-                "raw_response": result.raw_response,
-            }
-        )
+        return Response(self._eligibility_payload(result))
 
     @action(detail=False, methods=["post"], url_path="verify-via-healthcloud-preview")
     def verify_via_healthcloud_preview(self, request):
@@ -304,22 +376,152 @@ class PatientInsuranceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
         except Exception as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
+        plan = self._ensure_plan_from_eligibility(provider, organization, result)
+        payload = self._eligibility_payload(result)
+        payload["resolved_plan_id"] = plan.id
+        payload["resolved_plan_name"] = plan.name
+        payload["resolved_plan_code"] = plan.code
+        return Response(payload)
+
+    @action(detail=True, methods=["post"], url_path="healthcloud-session/start")
+    def healthcloud_session_start(self, request, pk=None):
+        enrollment = self.get_object()
+        try:
+            self._ensure_healthcloud_enabled(enrollment)
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        existing_session = (
+            InsuranceVisitAuthorization.objects.filter(
+                enrollment=enrollment,
+                facility=getattr(request, "facility", None),
+            )
+            .exclude(
+                status__in=[
+                    InsuranceVisitAuthorization.Status.FAILED,
+                    InsuranceVisitAuthorization.Status.EXPIRED,
+                ]
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if existing_session:
+            eligibility_payload = existing_session.eligibility_payload
+            if not isinstance(eligibility_payload, dict):
+                eligibility_payload = {}
+            return Response(
+                {
+                    "session": InsuranceVisitAuthorizationSerializer(existing_session).data,
+                    "eligibility": {
+                        "eligible": bool(enrollment.last_eligibility_eligible)
+                        if enrollment.last_eligibility_eligible is not None
+                        else True,
+                        "status": enrollment.last_eligibility_status or existing_session.status,
+                        "plan_name": enrollment.plan.name,
+                        "member_number": existing_session.member_number or enrollment.member_number,
+                        "annual_balance": None,
+                        "copay_percent": None,
+                        "message": "Existing HealthCloud session loaded.",
+                        "raw_response": eligibility_payload,
+                    },
+                }
+            )
+
+        eligibility_service = InsuranceEligibilityService()
+        workflow_service = HealthCloudWorkflowService()
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+
+        try:
+            result = eligibility_service.verify(enrollment, facility=facility)
+            session = workflow_service.start_session(
+                enrollment=enrollment,
+                facility=facility,
+                organization=organization,
+                eligibility_result=result,
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
         return Response(
             {
-                "eligible": result.eligible,
-                "status": result.status,
-                "plan_name": result.plan_name,
-                "member_number": result.member_number,
-                "annual_balance": str(result.annual_balance)
-                if result.annual_balance is not None
-                else None,
-                "copay_percent": str(result.copay_percent)
-                if result.copay_percent is not None
-                else None,
-                "message": result.message,
-                "raw_response": result.raw_response,
+                "session": InsuranceVisitAuthorizationSerializer(session).data,
+                "eligibility": self._eligibility_payload(result),
             }
         )
+
+    @action(detail=True, methods=["post"], url_path="healthcloud-session/request-otp")
+    def healthcloud_session_request_otp(self, request, pk=None):
+        enrollment = self.get_object()
+        try:
+            self._ensure_healthcloud_enabled(enrollment)
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = HealthCloudSessionRequestOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        session_id = serializer.validated_data["session_id"]
+        authorization = get_object_or_404(
+            InsuranceVisitAuthorization,
+            pk=session_id,
+            enrollment=enrollment,
+            facility=getattr(request, "facility", None),
+        )
+
+        service = HealthCloudWorkflowService()
+        try:
+            updated = service.request_otp_for_session(
+                authorization=authorization,
+                facility=getattr(request, "facility", None),
+                organization=getattr(request, "organization", None),
+                contact_id=serializer.validated_data["contact_id"],
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(InsuranceVisitAuthorizationSerializer(updated).data)
+
+    @action(detail=True, methods=["post"], url_path="healthcloud-session/start-visit")
+    def healthcloud_session_start_visit(self, request, pk=None):
+        enrollment = self.get_object()
+        try:
+            self._ensure_healthcloud_enabled(enrollment)
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = HealthCloudSessionStartVisitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = dict(serializer.validated_data)
+        session_id = data.pop("session_id")
+        encounter_id = data.pop("encounter", None)
+        encounter = None
+        if encounter_id:
+            encounter = get_object_or_404(
+                Encounter,
+                pk=encounter_id,
+                facility=getattr(request, "facility", None),
+            )
+
+        authorization = get_object_or_404(
+            InsuranceVisitAuthorization,
+            pk=session_id,
+            enrollment=enrollment,
+            facility=getattr(request, "facility", None),
+        )
+
+        service = HealthCloudWorkflowService()
+        try:
+            updated = service.start_visit_for_session(
+                authorization=authorization,
+                facility=getattr(request, "facility", None),
+                organization=getattr(request, "organization", None),
+                payload=data,
+                encounter=encounter,
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(InsuranceVisitAuthorizationSerializer(updated).data)
 
     @action(detail=True, methods=["post"], url_path="request-otp")
     def request_otp(self, request, pk=None):

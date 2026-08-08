@@ -24,6 +24,7 @@ import {
   useInsuranceClaims,
   useInsurancePreauths,
   useHealthcloudSyncStatus,
+  useVisitAuthorizations,
 } from '@/lib/hooks/use-insurance';
 
 function StatCard({
@@ -75,6 +76,10 @@ export default function InsurancePage() {
   const { data: providersData, isLoading: providersLoading } = useInsuranceProviders({ page: 1 });
   const { data: claimsData, isLoading: claimsLoading } = useInsuranceClaims({ page: 1 });
   const { data: preauthsData, isLoading: preauthsLoading } = useInsurancePreauths({ page: 1 });
+  const { data: authorizationsData, isLoading: authorizationsLoading } = useVisitAuthorizations({
+    page: 1,
+    page_size: 200,
+  });
   const { data: syncStatus, isLoading: syncLoading } = useHealthcloudSyncStatus({
     enabled: !!facility?.id,
   });
@@ -86,6 +91,18 @@ export default function InsurancePage() {
   const pendingClaims = claimsData?.results?.filter(
     (c) => ['submitted', 'acknowledged', 'under_review', 'query'].includes(c.status)
   ).length ?? 0;
+
+  const sessions = authorizationsData?.results ?? [];
+  const sessionSteps = {
+    started: sessions.filter((session) => session.workflow_step === 'eligibility_verified').length,
+    otpRequested: sessions.filter((session) => session.workflow_step === 'otp_requested').length,
+    visitAuthorized: sessions.filter((session) => session.workflow_step === 'visit_authorized').length,
+    tokenValidated: sessions.filter((session) => session.workflow_step === 'authorization_validated').length,
+  };
+  const sessionConversion =
+    sessionSteps.started > 0
+      ? Math.round((sessionSteps.tokenValidated / sessionSteps.started) * 100)
+      : 0;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -166,6 +183,48 @@ export default function InsurancePage() {
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">No sync metrics available yet.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-base">HealthCloud Session Funnel</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => router.push('/insurance/authorizations')}>
+                Open Queue
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {authorizationsLoading ? (
+                <Skeleton className="h-16 w-full" />
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                    <div className="rounded border p-2">
+                      <p className="text-xs text-muted-foreground">1. Eligibility</p>
+                      <p className="font-semibold">{sessionSteps.started}</p>
+                    </div>
+                    <div className="rounded border p-2">
+                      <p className="text-xs text-muted-foreground">2. OTP</p>
+                      <p className="font-semibold">{sessionSteps.otpRequested}</p>
+                    </div>
+                    <div className="rounded border p-2">
+                      <p className="text-xs text-muted-foreground">3. Visit</p>
+                      <p className="font-semibold">{sessionSteps.visitAuthorized}</p>
+                    </div>
+                    <div className="rounded border p-2">
+                      <p className="text-xs text-muted-foreground">4. Validated</p>
+                      <p className="font-semibold">{sessionSteps.tokenValidated}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary">Conversion: {sessionConversion}%</Badge>
+                    <Badge variant="outline">Total Sessions: {sessions.length}</Badge>
+                    <Badge className="bg-yellow-100 text-yellow-800">
+                      Needs Action: {Math.max(sessionSteps.started + sessionSteps.otpRequested - sessionSteps.tokenValidated, 0)}
+                    </Badge>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

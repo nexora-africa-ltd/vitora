@@ -5,7 +5,8 @@ import ClaimDetailPage from '@/app/(dashboard)/insurance/claims/[id]/page';
 
 const mockPush = jest.fn();
 const mockToast = jest.fn();
-const mockRequestOtp = jest.fn();
+const mockStartSession = jest.fn();
+const mockRequestSessionOtp = jest.fn();
 
 jest.mock('next/navigation', () => ({
   useParams: () => ({ id: '1' }),
@@ -95,11 +96,103 @@ jest.mock('@/lib/hooks/use-insurance', () => {
     useRespondToQuery: () => ({ mutateAsync: jest.fn(), isPending: false }),
     useMarkClaimPaid: () => ({ mutateAsync: jest.fn(), isPending: false }),
     useAppealClaim: () => ({ mutateAsync: jest.fn(), isPending: false }),
-    useRequestEnrollmentOtp: () => ({
-      mutateAsync: mockRequestOtp.mockResolvedValue({ id: 99, auth_token: '', authorization_guid: '' }),
+    useStartHealthcloudSession: () => ({
+      mutateAsync: mockStartSession.mockResolvedValue({
+        session: {
+          id: 99,
+          enrollment: 101,
+          provider_config: 1,
+          patient: 1,
+          patient_name: 'Jane Doe',
+          encounter: null,
+          member_number: 'DEMO/001',
+          payer_slade_code: 457,
+          benefit_type: '',
+          benefit_code: '',
+          policy_number: 'POL/001',
+          beneficiary_id: 636561,
+          beneficiary_contact_id: null,
+          beneficiary_contact_value: '',
+          selected_beneficiary_contact_id: null,
+          selected_beneficiary_contact_value: '',
+          selected_benefit_type: '',
+          selected_benefit_code: '',
+          factors: [],
+          eligibility_payload: {},
+          workflow_step: 'eligibility_verified',
+          status: 'pending',
+          auth_token: '',
+          authorization_guid: '',
+          authorization_date: null,
+          auth_expiry: null,
+          auth_status: '',
+          last_error: '',
+          raw_payload: {},
+          created_at: '',
+          updated_at: '',
+        },
+        eligibility: {
+          eligible: true,
+          status: 'LIVE',
+          plan_name: 'Muungano Scheme',
+          member_number: 'DEMO/001',
+          annual_balance: '968355.0',
+          copay_percent: null,
+          message: 'Eligibility retrieved from HealthCloud',
+          raw_response: {
+            member: {
+              id: 636561,
+              names: 'Jane Doe',
+              contacts: [{ id: 5531, contactValue: '+254700***123' }],
+            },
+            cover: {
+              policyNumber: 'POL/001',
+              schemeName: 'Muungano Scheme',
+              status: 'LIVE',
+            },
+            benefits: [{ benefitCode: 'BEN/001', benefitType: 'OUTPATIENT', benefitName: 'Outpatient Shared' }],
+          },
+        },
+      }),
       isPending: false,
     }),
-    useStartEnrollmentVisit: () => ({ mutateAsync: jest.fn(), isPending: false }),
+    useRequestHealthcloudSessionOtp: () => ({
+      mutateAsync: mockRequestSessionOtp.mockResolvedValue({
+        id: 99,
+        enrollment: 101,
+        provider_config: 1,
+        patient: 1,
+        patient_name: 'Jane Doe',
+        encounter: null,
+        member_number: 'DEMO/001',
+        payer_slade_code: 457,
+        benefit_type: '',
+        benefit_code: '',
+        policy_number: 'POL/001',
+        beneficiary_id: 636561,
+        beneficiary_contact_id: 5531,
+        beneficiary_contact_value: '+254700***123',
+        selected_beneficiary_contact_id: 5531,
+        selected_beneficiary_contact_value: '+254700***123',
+        selected_benefit_type: '',
+        selected_benefit_code: '',
+        factors: [],
+        eligibility_payload: {},
+        workflow_step: 'otp_requested',
+        status: 'otp_requested',
+        auth_token: '',
+        authorization_guid: '',
+        authorization_date: null,
+        auth_expiry: null,
+        auth_status: '',
+        last_error: '',
+        raw_payload: {},
+        created_at: '',
+        updated_at: '',
+      }),
+      isPending: false,
+    }),
+    useStartHealthcloudSessionVisit: () => ({ mutateAsync: jest.fn(), isPending: false }),
     useValidateVisitAuthorization: () => ({ mutateAsync: jest.fn(), isPending: false }),
     useReserveClaimBalance: () => ({ mutateAsync: jest.fn(), isPending: false }),
     useSubmitClaimToHealthcloud: () => ({ mutateAsync: jest.fn(), isPending: false }),
@@ -128,11 +221,11 @@ describe('Claim HealthCloud Workflow UI', () => {
     const user = userEvent.setup();
     render(<ClaimDetailPage />);
 
-    await user.type(screen.getByPlaceholderText(/e\.g\. 5531/i), '5531');
+    await user.click(screen.getByRole('button', { name: /run eligibility/i }));
     await user.click(screen.getByRole('button', { name: /request otp/i }));
 
     await waitFor(() => {
-      expect(mockRequestOtp).toHaveBeenCalled();
+      expect(mockRequestSessionOtp).toHaveBeenCalled();
     });
   });
 
