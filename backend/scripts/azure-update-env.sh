@@ -22,9 +22,8 @@
 set -euo pipefail
 
 # Must match azure-setup.sh
-RG="vitora-rg"
-APP_NAME="${ACA_NAME:-vitora-api}"
-LOCATION="eastus"
+RG="${ACA_RG:-vitora-rg-sa}"
+APP_NAME="${ACA_NAME:-vitora-api-private-sa}"
 
 FQDN=$(az containerapp show \
   --name "$APP_NAME" \
@@ -127,7 +126,7 @@ az containerapp update \
     "DEMO_MODE=${DEMO_MODE:-true}" \
     "ACTIVE_SHIFT_ENFORCEMENT=${ACTIVE_SHIFT_ENFORCEMENT:-false}" \
     "ONBOARDING_ENFORCEMENT=${ONBOARDING_ENFORCEMENT:-false}" \
-    "ALLOWED_HOSTS=${FQDN},staging.vitora.digital,localhost" \
+    "ALLOWED_HOSTS=${FQDN},staging.vitora.digital,staging-api.vitora.digital,localhost" \
     "SECURE_SSL_REDIRECT=true" \
     "CORS_ALLOWED_ORIGINS=https://staging.vitora.digital,http://localhost:3009" \
     "CSRF_TRUSTED_ORIGINS=https://staging.vitora.digital" \
@@ -170,7 +169,7 @@ az containerapp update \
     "CELERY_TASK_ALWAYS_EAGER=${CELERY_TASK_ALWAYS_EAGER:-true}" \
     "ICD11_USE_LOCAL=${ICD11_USE_LOCAL:-false}" \
     "HAPI_FHIR_ENABLED=${HAPI_FHIR_ENABLED:-true}" \
-    "HAPI_FHIR_BASE_URL=${HAPI_FHIR_BASE_URL:-http://vitora-hapi-fhir.internal.agreeabledune-6cc420cc.eastus.azurecontainerapps.io/fhir}" \
+    "HAPI_FHIR_BASE_URL=${HAPI_FHIR_BASE_URL:-}" \
     "HAPI_FHIR_TIMEOUT=${HAPI_FHIR_TIMEOUT:-10}" \
     "SYNC_ENABLED=${SYNC_ENABLED:-false}" \
     "HL7_INTEGRATION_ENABLED=${HL7_INTEGRATION_ENABLED:-true}" \
@@ -178,7 +177,7 @@ az containerapp update \
     "HL7_SENDING_FACILITY=${HL7_SENDING_FACILITY:-DEMO_FACILITY}" \
     "HL7_RECEIVING_APPLICATION=${HL7_RECEIVING_APPLICATION:-LAB_LIS}" \
     "HL7_RECEIVING_FACILITY=${HL7_RECEIVING_FACILITY:-STAGING_LIS}" \
-    "MLLP_HOST=${MLLP_HOST:-vitora-hl7-mock.internal.agreeabledune-6cc420cc.eastus.azurecontainerapps.io}" \
+    "MLLP_HOST=${MLLP_HOST:-}" \
     "MLLP_PORT=${MLLP_PORT:-2575}" \
     "HL7_LIS_CODE_SYSTEM=${HL7_LIS_CODE_SYSTEM:-LIS_DEFAULT}" \
     "HIE_AUTO_CR_LOOKUP=${HIE_AUTO_CR_LOOKUP:-true}" \
@@ -221,7 +220,7 @@ az containerapp update \
     "AT_USERNAME=${AT_USERNAME:-sandbox}" \
     "WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID:-staging.vitora.digital}" \
     "WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN:-https://staging.vitora.digital}" \
-    "METABASE_SITE_URL=${METABASE_SITE_URL:-https://vitora-metabase.agreeabledune-6cc420cc.eastus.azurecontainerapps.io}" \
+    "METABASE_SITE_URL=${METABASE_SITE_URL:-}" \
     "METABASE_API_URL=${METABASE_API_URL:-http://vitora-metabase}" \
     "METABASE_EMBEDDING_SECRET=secretref:metabase-embedding-secret" \
     "METABASE_API_KEY=secretref:metabase-api-key" \

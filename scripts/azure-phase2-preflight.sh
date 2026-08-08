@@ -21,6 +21,10 @@ set -euo pipefail
 #   PROD_DB_RECORD=vitora-prod-pg3-sa
 #   SOAK_MINUTES=60
 #   REQUIRE_OLD_APPS_ZERO_TRAFFIC=true
+#   INCLUDE_TIBABOT_CHECKS=true
+#   TIBABOT_APP=tibabot-sa
+#   TIBABOT_DOMAIN=tibabot.vitora.nexora.africa
+#   REQUIRE_TIBABOT_DNS_CUTOVER=false
 
 RG_NAME="${RG_NAME:-vitora-rg-sa}"
 PRIVATE_STAGING_APP="${PRIVATE_STAGING_APP:-vitora-api-private-sa}"
@@ -37,6 +41,10 @@ PROD_DB_RECORD="${PROD_DB_RECORD:-vitora-prod-pg3-sa}"
 
 SOAK_MINUTES="${SOAK_MINUTES:-60}"
 REQUIRE_OLD_APPS_ZERO_TRAFFIC="${REQUIRE_OLD_APPS_ZERO_TRAFFIC:-true}"
+INCLUDE_TIBABOT_CHECKS="${INCLUDE_TIBABOT_CHECKS:-true}"
+TIBABOT_APP="${TIBABOT_APP:-tibabot-sa}"
+TIBABOT_DOMAIN="${TIBABOT_DOMAIN:-tibabot.vitora.nexora.africa}"
+REQUIRE_TIBABOT_DNS_CUTOVER="${REQUIRE_TIBABOT_DNS_CUTOVER:-false}"
 
 PASS_COUNT=0
 FAIL_COUNT=0
@@ -59,6 +67,14 @@ check_cmds() {
       fail "missing command: $cmd"
     fi
   done
+
+  if [[ "$INCLUDE_TIBABOT_CHECKS" == "true" && "$REQUIRE_TIBABOT_DNS_CUTOVER" == "true" ]]; then
+    if command -v dig >/dev/null 2>&1; then
+      pass "command available: dig"
+    else
+      fail "missing command: dig (required for tibabot DNS cutover check)"
+    fi
+  fi
 }
 
 check_app_health_and_soak() {
@@ -193,6 +209,58 @@ check_old_app_traffic_gate() {
   fi
 }
 
+check_tibabot() {
+  local app_name="$1"
+  local health
+  local fqdn
+  local status
+  local eastus_refs
+  local cname
+
+  if ! az containerapp show -g "$RG_NAME" -n "$app_name" -o none 2>/dev/null; then
+    fail "tibabot app missing: $app_name"
+    return
+  fi
+
+  health="$(az containerapp revision list -g "$RG_NAME" -n "$app_name" --query '[?properties.active].properties.healthState | [0]' -o tsv)"
+  if [[ "$health" == "Healthy" ]]; then
+    pass "$app_name active revision is healthy"
+  else
+    fail "$app_name active revision health is '$health'"
+  fi
+
+  fqdn="$(az containerapp show -g "$RG_NAME" -n "$app_name" --query properties.configuration.ingress.fqdn -o tsv)"
+  if [[ -z "$fqdn" ]]; then
+    fail "$app_name ingress FQDN missing"
+  else
+    status="$(curl -sS -m 60 -o /tmp/opencode/preflight-${app_name}.out -w "%{http_code}" "https://${fqdn}/" || true)"
+    if [[ "$status" =~ ^[234][0-9][0-9]$ ]]; then
+      pass "$app_name smoke curl returned HTTP ${status}"
+    else
+      fail "$app_name smoke curl returned HTTP ${status:-none}"
+    fi
+  fi
+
+  eastus_refs="$(az containerapp show -g "$RG_NAME" -n "$app_name" --query "length(properties.template.containers[0].env[?value!=null && contains(value, 'agreeabledune-6cc420cc.eastus.azurecontainerapps.io')])" -o tsv)"
+  if [[ "$eastus_refs" == "0" ]]; then
+    pass "$app_name has no East US agreeabledune env references"
+  else
+    fail "$app_name still has ${eastus_refs} East US agreeabledune env reference(s)"
+  fi
+
+  if [[ "$REQUIRE_TIBABOT_DNS_CUTOVER" == "true" ]]; then
+    cname="$(dig +short "$TIBABOT_DOMAIN" CNAME | tr -d '\n')"
+    cname="${cname%.}"
+    if [[ "$cname" == "$fqdn" ]]; then
+      pass "${TIBABOT_DOMAIN} CNAME points to ${app_name}"
+    else
+      fail "${TIBABOT_DOMAIN} CNAME points to '${cname:-none}', expected '${fqdn}'"
+    fi
+  else
+    pass "tibabot DNS cutover check skipped (REQUIRE_TIBABOT_DNS_CUTOVER=false)"
+  fi
+}
+
 echo "==> Phase 2 DB private preflight"
 echo "Resource group: $RG_NAME"
 echo "Soak requirement: ${SOAK_MINUTES} minutes"
@@ -209,6 +277,9 @@ check_private_dns_record "$STAGING_DB_RECORD"
 check_private_dns_record "$PROD_DB_RECORD"
 check_old_app_traffic_gate "$OLD_STAGING_APP"
 check_old_app_traffic_gate "$OLD_PROD_APP"
+if [[ "$INCLUDE_TIBABOT_CHECKS" == "true" ]]; then
+  check_tibabot "$TIBABOT_APP"
+fi
 
 echo ""
 echo "Checks complete: PASS=${PASS_COUNT} FAIL=${FAIL_COUNT}"

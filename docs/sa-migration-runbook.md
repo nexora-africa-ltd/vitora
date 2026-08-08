@@ -16,6 +16,8 @@ This runbook captures what was implemented in this migration session and how to 
 - `scripts/azure-provision-sa-webapps.sh`: optional SA web app provisioning path.
 - `scripts/azure-sync-api-config.py`: sync secrets/env from source to target apps.
 - `scripts/azure-phase2-private-access.sh`: end-to-end Phase 2 private-access orchestration.
+- `scripts/azure-phase2-preflight.sh`: automated go/no-go checks before DB privatization/decommission.
+- `scripts/azure-cost-control-prod.sh`: deallocate/resume/destroy helper for production cost control.
 - `backend/scripts/aca-start.sh`: lightweight startup only.
 - `backend/scripts/aca-postdeploy.sh`: post-deploy maintenance tasks.
 - `backend/scripts/aca-run-postdeploy.sh`: manual runbook helper.
@@ -67,6 +69,34 @@ LOCK_DOWN_PUBLIC=true bash scripts/azure-phase2-private-access.sh
 ### 5) Manual Post-Deploy Maintenance (if needed)
 ```bash
 bash backend/scripts/aca-run-postdeploy.sh <app-name> <resource-group>
+```
+
+### 6) Run Phase 2 Preflight Gate
+```bash
+bash scripts/azure-phase2-preflight.sh
+```
+
+Optional Tibabot DNS cutover enforcement in the same preflight:
+```bash
+REQUIRE_TIBABOT_DNS_CUTOVER=true bash scripts/azure-phase2-preflight.sh
+```
+
+### 7) Cost Control (deallocate/resume/destroy)
+Default is safe dry-run:
+```bash
+bash scripts/azure-cost-control-prod.sh
+```
+
+Examples:
+```bash
+# Deallocate SA private prod resources (execute for real)
+DRY_RUN=false MODE=deallocate PROFILE=sa-private bash scripts/azure-cost-control-prod.sh
+
+# Resume SA private prod resources
+DRY_RUN=false MODE=resume PROFILE=sa-private bash scripts/azure-cost-control-prod.sh
+
+# Destroy SA private prod resources (requires explicit confirmation)
+DRY_RUN=false MODE=destroy PROFILE=sa-private CONFIRM_DESTROY=yes bash scripts/azure-cost-control-prod.sh
 ```
 
 ## Readiness Gate Before DB Privatization

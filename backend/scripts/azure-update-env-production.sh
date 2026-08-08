@@ -16,9 +16,8 @@
 # =============================================================================
 set -euo pipefail
 
-RG="vitora-rg"
-APP_NAME="${ACA_NAME:-vitora-api-prod}"
-LOCATION="eastus"
+RG="${ACA_RG:-vitora-rg-sa}"
+APP_NAME="${ACA_NAME:-vitora-api-prod-private-sa}"
 
 FQDN=$(az containerapp show \
   --name "$APP_NAME" \
@@ -33,7 +32,7 @@ fi
 
 PROD_DOMAIN="${PROD_DOMAIN:-app.vitora.digital}"
 PROD_API_DOMAIN="api.vitora.digital"
-PROD_API_FQDN="vitora-api-prod.agreeabledune-6cc420cc.eastus.azurecontainerapps.io"
+PROD_API_FQDN="${PROD_API_FQDN:-${FQDN}}"
 PUBLIC_API_BASE_URL="${CLOUD_API_BASE_URL:-https://${PROD_API_DOMAIN}}"
 PUBLIC_API_BASE_URL="${PUBLIC_API_BASE_URL%/}"
 
@@ -178,7 +177,7 @@ az containerapp update \
     "HL7_SENDING_FACILITY=${HL7_SENDING_FACILITY:-PROD_FACILITY}" \
     "HL7_RECEIVING_APPLICATION=${HL7_RECEIVING_APPLICATION:-LAB_LIS}" \
     "HL7_RECEIVING_FACILITY=${HL7_RECEIVING_FACILITY:-PROD_LIS}" \
-    "MLLP_HOST=${MLLP_HOST:-vitora-hl7-mock.internal.agreeabledune-6cc420cc.eastus.azurecontainerapps.io}" \
+    "MLLP_HOST=${MLLP_HOST:-}" \
     "MLLP_PORT=${MLLP_PORT:-2575}" \
     "HL7_LIS_CODE_SYSTEM=${HL7_LIS_CODE_SYSTEM:-LIS_DEFAULT}" \
     "HIE_AUTO_CR_LOOKUP=${HIE_AUTO_CR_LOOKUP:-true}" \

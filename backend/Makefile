@@ -616,15 +616,25 @@ m2m:
 # Shared Azure Container Apps variables
 # ============================================================================
 
-ACA_RG       := vitora-rg
-ACR_NAME     := vitoraacr
+DEPLOY_PROFILE ?= sa-private
+ACA_RG       ?= vitora-rg-sa
+ACR_NAME     ?= vitoraacrsa
 ACR_IMAGE    := vitora-api
+
+ifeq ($(DEPLOY_PROFILE),eastus-legacy)
+ACA_RG          := vitora-rg
+ACR_NAME        := vitoraacr
+ACA_STAGING_NAME:= vitora-api
+ACA_PROD_NAME   ?= vitora-api-prod
+else
+ACA_STAGING_NAME:= vitora-api-private-sa
+ACA_PROD_NAME   ?= vitora-api-prod-private-sa
+endif
 
 # ============================================================================
 # Staging (Azure Container Apps) Commands
 # ============================================================================
 
-ACA_STAGING_NAME    := vitora-api
 ACA_STAGING_API_URL := https://staging-api.vitora.digital
 
 # Show container health, active revision, replica count, and env var count
@@ -703,7 +713,7 @@ staging-deploy:
 	az containerapp update -n $(ACA_STAGING_NAME) -g $(ACA_RG) \
 		--image $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG && \
 	echo "=== Syncing staging environment variables ===" && \
-	SENTRY_RELEASE="$$(git rev-parse HEAD)" DJANGO_SETTINGS_MODULE=hmis.settings.staging ACA_NAME=$(ACA_STAGING_NAME) bash scripts/azure-update-env.sh && \
+	SENTRY_RELEASE="$$(git rev-parse HEAD)" DJANGO_SETTINGS_MODULE=hmis.settings.staging ACA_NAME=$(ACA_STAGING_NAME) ACA_RG=$(ACA_RG) bash scripts/azure-update-env.sh && \
 	echo "✅ Deployed $$TAG to STAGING ($(ACA_STAGING_NAME)). Wait ~60s for rollout."
 
 # Post-deploy verification suite
@@ -730,7 +740,6 @@ staging-login-test:
 # Production Deployment
 # =============================================================================
 
-ACA_PROD_NAME    ?= vitora-api-prod
 ACA_PROD_API_URL  := https://api.vitora.digital
 
 prod-deploy:
@@ -747,11 +756,11 @@ prod-deploy:
 	az containerapp update -n $(ACA_PROD_NAME) -g $(ACA_RG) \
 		--image $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG && \
 	echo "=== Syncing production environment variables ===" && \
-	SENTRY_RELEASE="$$(git rev-parse HEAD)" ACA_NAME=$(ACA_PROD_NAME) bash scripts/azure-update-env-production.sh && \
+	SENTRY_RELEASE="$$(git rev-parse HEAD)" ACA_NAME=$(ACA_PROD_NAME) ACA_RG=$(ACA_RG) bash scripts/azure-update-env-production.sh && \
 	echo "✅ Deployed $$TAG to PRODUCTION ($(ACA_PROD_NAME)). Wait ~60s for rollout."
 
 prod-env:
-	ACA_NAME=$(ACA_PROD_NAME) bash scripts/azure-update-env-production.sh
+	ACA_NAME=$(ACA_PROD_NAME) ACA_RG=$(ACA_RG) bash scripts/azure-update-env-production.sh
 
 prod-logs:
 	az containerapp logs show -n $(ACA_PROD_NAME) -g $(ACA_RG) --follow
