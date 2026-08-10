@@ -251,6 +251,7 @@ export interface InvoiceListParams {
   payment_type?: 'CASH' | 'MPESA' | 'INSURANCE' | 'CORPORATE' | 'MIXED';
   payer_type?: 'CASH' | 'SHA' | 'PRIVATE_INSURANCE' | 'CORPORATE' | 'MIXED';
   patient?: number;
+  encounter?: number;
   start_date?: string;
   end_date?: string;
   ordering?: string;

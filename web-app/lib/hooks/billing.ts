@@ -154,6 +154,10 @@ export function useInvoices(params?: InvoiceListParams) {
     conditions.push('inv.patient_id = ?');
     sqlParams.push(String(params.patient));
   }
+  if (params?.encounter) {
+    conditions.push('inv.encounter_id = ?');
+    sqlParams.push(String(params.encounter));
+  }
   if (params?.start_date) {
     conditions.push('inv.invoice_date >= ?');
     sqlParams.push(params.start_date);

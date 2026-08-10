@@ -24,6 +24,28 @@ import { useToast } from '@/lib/hooks/use-toast';
 
 const normalizeToken = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
 
+const isDiagnosisCodeValueEmpty = (value: DiagnosisCodeValue) =>
+  !value.icd10Code
+  && !value.icd10Display
+  && !value.icd11Code
+  && !value.icd11Display
+  && !value.snomedCode
+  && !value.snomedDisplay;
+
+const areDiagnosisCodeListsEqual = (a: DiagnosisCodeValue[], b: DiagnosisCodeValue[]) => {
+  if (a.length !== b.length) return false;
+  return a.every((item, index) => {
+    const other = b[index];
+    if (!other) return false;
+    return item.icd10Code === other.icd10Code
+      && item.icd10Display === other.icd10Display
+      && item.icd11Code === other.icd11Code
+      && item.icd11Display === other.icd11Display
+      && item.snomedCode === other.snomedCode
+      && item.snomedDisplay === other.snomedDisplay;
+  });
+};
+
 const claimTypeMatchesCopay = (claimType: 'outpatient' | 'inpatient', appliesTo: string[]) => {
   if (appliesTo.length === 0) return true;
 
@@ -111,28 +133,33 @@ export default function NewInsuranceClaimPage() {
   );
   const encounterOptions = useMemo(() => encountersData?.results ?? [], [encountersData?.results]);
   const selectedEncounter = encounterOptions.find((encounter) => String(encounter.id) === encounterId);
+  const encounterNumericId = Number(encounterId);
+  const hasEncounterSelected = Number.isFinite(encounterNumericId) && encounterNumericId > 0;
   const { data: invoicesData, isLoading: invoicesLoading } = useInvoices(
-    selectedEnrollment?.patient
+    selectedEnrollment?.patient && hasEncounterSelected
       ? {
           patient: selectedEnrollment.patient,
+          encounter: encounterNumericId,
           page: 1,
-          page_size: 200,
+          page_size: 500,
           ordering: '-created_at',
         }
       : undefined
   );
   const encounterInvoice = useMemo(() => {
-    if (!encounterId) return null;
-    const encounterNumericId = Number(encounterId);
+    if (!hasEncounterSelected) return null;
     return (invoicesData?.results ?? []).find(
       (invoice) =>
         invoice.encounter === encounterNumericId &&
         invoice.status !== 'CANCELLED' &&
-        invoice.status !== 'PROFORMA' &&
-        invoice.status !== 'DRAFT'
+        invoice.status !== 'PROFORMA'
     ) || null;
-  }, [encounterId, invoicesData?.results]);
-  const { data: selectedEncounterDiagnoses = [] } = useEncounterDiagnoses(encounterId || 0);
+  }, [encounterNumericId, hasEncounterSelected, invoicesData?.results]);
+  const { data: selectedEncounterDiagnosesData } = useEncounterDiagnoses(encounterId || 0);
+  const selectedEncounterDiagnoses = useMemo(
+    () => selectedEncounterDiagnosesData ?? [],
+    [selectedEncounterDiagnosesData]
+  );
   const eligibilityRawPayload = useMemo(
     () => resolveEligibilityRawPayload(selectedEnrollment?.last_eligibility_payload),
     [selectedEnrollment?.last_eligibility_payload]
@@ -177,7 +204,12 @@ export default function NewInsuranceClaimPage() {
 
   useEffect(() => {
     if (!encounterId) {
-      setDiagnosisCodes([emptyDiagnosisCodeValue()]);
+      setDiagnosisCodes((prev) => {
+        if (prev.length === 1 && isDiagnosisCodeValueEmpty(prev[0]!)) {
+          return prev;
+        }
+        return [emptyDiagnosisCodeValue()];
+      });
       return;
     }
 
@@ -205,11 +237,16 @@ export default function NewInsuranceClaimPage() {
     });
 
     if (mapped.length === 0) {
-      setDiagnosisCodes([emptyDiagnosisCodeValue()]);
+      setDiagnosisCodes((prev) => {
+        if (prev.length === 1 && isDiagnosisCodeValueEmpty(prev[0]!)) {
+          return prev;
+        }
+        return [emptyDiagnosisCodeValue()];
+      });
       return;
     }
 
-    setDiagnosisCodes(mapped);
+    setDiagnosisCodes((prev) => (areDiagnosisCodeListsEqual(prev, mapped) ? prev : mapped));
   }, [encounterId, selectedEncounterDiagnoses]);
 
   useEffect(() => {
@@ -219,6 +256,12 @@ export default function NewInsuranceClaimPage() {
     }
     setTotalAmount(encounterInvoice?.total_amount || '');
   }, [encounterId, encounterInvoice?.total_amount]);
+
+  useEffect(() => {
+    if (!selectedEncounter?.encounter_date) return;
+    const encounterServiceDate = selectedEncounter.encounter_date.slice(0, 10);
+    setServiceDate((prev) => (prev === encounterServiceDate ? prev : encounterServiceDate));
+  }, [selectedEncounter?.encounter_date]);
 
   const recommendedCopay = useMemo(() => {
     if (!eligibilityView) return null;
