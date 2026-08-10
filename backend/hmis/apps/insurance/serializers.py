@@ -627,6 +627,9 @@ class InsuranceClaimSerializer(serializers.ModelSerializer):
     days_since_submission = serializers.IntegerField(read_only=True)
     is_overdue = serializers.BooleanField(read_only=True)
     is_appealable = serializers.BooleanField(read_only=True)
+    is_healthcloud_enabled = serializers.SerializerMethodField()
+    latest_balance_reservation = serializers.SerializerMethodField()
+    latest_submit_claim_external = serializers.SerializerMethodField()
 
     class Meta:
         model = InsuranceClaim
@@ -666,6 +669,9 @@ class InsuranceClaimSerializer(serializers.ModelSerializer):
             "days_since_submission",
             "is_overdue",
             "is_appealable",
+            "is_healthcloud_enabled",
+            "latest_balance_reservation",
+            "latest_submit_claim_external",
             "items",
             "created_at",
             "updated_at",
@@ -682,6 +688,40 @@ class InsuranceClaimSerializer(serializers.ModelSerializer):
 
     def get_patient_name(self, obj) -> str:
         return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+    def get_is_healthcloud_enabled(self, obj) -> bool:
+        return InsuranceProviderConfig.objects.filter(
+            provider=obj.provider,
+            facility=obj.facility,
+            api_enabled=True,
+            healthcloud_enabled=True,
+        ).exists()
+
+    def get_latest_balance_reservation(self, obj):
+        reservation = obj.balance_reservations.order_by("-created_at").first()
+        if not reservation:
+            return None
+        return {
+            "id": reservation.id,
+            "reservation_guid": reservation.reservation_guid,
+            "status": reservation.status,
+            "invoice_number": reservation.invoice_number,
+            "amount": str(reservation.amount),
+            "created_at": reservation.created_at.isoformat(),
+        }
+
+    def get_latest_submit_claim_external(self, obj):
+        sync = (
+            obj.external_sync_logs.filter(
+                operation="healthcloud.submit_claim",
+                status="success",
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if not sync:
+            return None
+        return sync.response_payload or None
 
 
 class InsuranceClaimCreateSerializer(serializers.ModelSerializer):
@@ -1167,7 +1207,7 @@ class StartVisitSerializer(serializers.Serializer):
     benefit_code = serializers.CharField()
     policy_number = serializers.CharField()
     policy_effective_date = serializers.CharField()
-    otp = serializers.CharField()
+    otp = serializers.CharField(required=False, allow_blank=True, default="")
     beneficiary_contact = serializers.IntegerField()
     factors = serializers.ListField(
         child=serializers.CharField(),
@@ -1264,10 +1304,10 @@ class ReserveBalanceSerializer(serializers.Serializer):
 
 class SubmitInvoiceSerializer(serializers.Serializer):
     claim = serializers.CharField(required=False)
-    invoice_number = serializers.CharField()
-    invoice_date = serializers.CharField()
+    invoice_number = serializers.CharField(required=False, allow_blank=True, default="")
+    invoice_date = serializers.CharField(required=False, allow_blank=True, default="")
     copays = serializers.ListField(required=False, default=list)
-    lines = serializers.ListField()
+    lines = serializers.ListField(required=False, default=list)
 
 
 class SubmitCreditNoteSerializer(serializers.Serializer):

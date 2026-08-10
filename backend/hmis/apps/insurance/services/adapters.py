@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 from .base_adapter import InsuranceApiAdapter
 from .client import InsuranceHttpClient
-from .errors import InsuranceNotConfiguredError
+from .errors import InsuranceNotConfiguredError, InsuranceValidationError
 from .results import ClaimResult, EligibilityResult, PreauthResult, RemittanceResult, TariffEntry
 from .slade_auth import SladeAuthService
 
@@ -425,6 +425,9 @@ class Slade360Adapter(InsuranceApiAdapter):
             if claim.patient
             else "",
             "member_number": member_number,
+            "service_type": "INPATIENT"
+            if str(claim.claim_type or "").lower() == "inpatient"
+            else "OUTPATIENT",
             "scheme_name": claim.patient_insurance.plan.name
             if claim.patient_insurance and claim.patient_insurance.plan
             else "",
@@ -451,11 +454,25 @@ class Slade360Adapter(InsuranceApiAdapter):
         )
 
     def check_claim_status(self, claim: InsuranceClaim) -> ClaimResult:
+        if not claim.external_claim_id:
+            raise InsuranceValidationError(
+                "Claim has no external_claim_id to refresh status from HealthCloud."
+            )
+
+        response = self.client.get(
+            f"/claims/{claim.external_claim_id}/",
+            headers=self.auth_service.get_auth_headers(),
+            host="provider_is",
+        )
+        data: dict[str, Any] = response.json or {}
         return ClaimResult(
             success=True,
-            external_claim_id=claim.external_claim_id or "",
-            status=claim.status,
-            message="HealthCloud claim status polling is not yet wired.",
+            external_claim_id=str(
+                data.get("id") or data.get("claim_id") or claim.external_claim_id
+            ),
+            status=str(data.get("workflow_state") or data.get("status") or ""),
+            message="Claim status refreshed from HealthCloud",
+            raw_response=data,
         )
 
     def fetch_remittances(self, date_from: date, date_to: date) -> list[RemittanceResult]:
@@ -546,6 +563,25 @@ class Slade360Adapter(InsuranceApiAdapter):
         return response.json or {}
 
     def upload_claim_attachment(self, payload: dict[str, Any]) -> dict[str, Any]:
+        payload = dict(payload)
+        file_obj = payload.pop("__file_obj__", None)
+        if file_obj is not None:
+            content_type = getattr(file_obj, "content_type", None) or "application/octet-stream"
+            filename = getattr(file_obj, "name", None) or "attachment.bin"
+            data = {
+                "claim": str(payload.get("claim") or ""),
+                "attachment_type": str(payload.get("attachment_type") or "CLAIM_FORM"),
+                "description": str(payload.get("description") or ""),
+            }
+            response = self.client.post(
+                "/claim_attachments/upload_attachment/",
+                data=data,
+                files={"attachment": (filename, file_obj, content_type)},
+                headers=self.auth_service.get_auth_headers(),
+                host="provider_is",
+            )
+            return response.json or {}
+
         response = self.client.post(
             "/claim_attachments/upload_attachment/",
             json_body=payload,

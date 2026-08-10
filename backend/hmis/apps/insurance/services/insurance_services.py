@@ -395,6 +395,32 @@ class InsuranceRemittanceService:
 class HealthCloudWorkflowService:
     """Orchestrates HealthCloud-specific visit and billing workflow operations."""
 
+    _HEALTHCLOUD_STATUS_MAP = {
+        "PENDING": "submitted",
+        "SUBMITTED": "submitted",
+        "RECEIVED": "acknowledged",
+        "ACKNOWLEDGED": "acknowledged",
+        "IN_REVIEW": "under_review",
+        "UNDER_REVIEW": "under_review",
+        "QUERY": "query",
+        "QUERIED": "query",
+        "APPROVED": "approved",
+        "PARTIALLY_APPROVED": "partially_approved",
+        "REJECTED": "rejected",
+        "PAID": "paid",
+        "PARTIALLY_PAID": "partially_paid",
+        "APPEALED": "appealed",
+        "CANCELLED": "cancelled",
+        "WRITTEN_OFF": "written_off",
+    }
+
+    @classmethod
+    def _map_healthcloud_status_to_claim_status(cls, status_value: str) -> str | None:
+        normalized = str(status_value or "").strip().upper().replace("-", "_").replace(" ", "_")
+        if not normalized:
+            return None
+        return cls._HEALTHCLOUD_STATUS_MAP.get(normalized)
+
     @staticmethod
     def _payload_hash(payload: dict[str, Any]) -> str:
         raw = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
@@ -887,9 +913,54 @@ class HealthCloudWorkflowService:
             claim=claim,
         )
         claim.external_claim_id = str(response.get("id") or response.get("claim_id") or "")
-        claim.status = claim.Status.SUBMITTED
+        external_status = str(response.get("workflow_state") or response.get("status") or "")
+        mapped_status = self._map_healthcloud_status_to_claim_status(external_status)
+        claim.status = mapped_status or claim.Status.SUBMITTED
         claim.submission_date = timezone.now()
         claim.save(update_fields=["external_claim_id", "status", "submission_date", "updated_at"])
+        return response
+
+    def refresh_claim_status(
+        self, *, claim: Any, facility: Any, organization: Any
+    ) -> dict[str, Any]:
+        if not getattr(claim, "external_claim_id", ""):
+            raise InsuranceValidationError("Claim has no external_claim_id. Submit claim first.")
+
+        config = _get_config(claim.provider, facility)
+        adapter = get_adapter(config)
+        self._require_operation(adapter, "check_claim_status")
+        payload = {
+            "claim_id": claim.pk,
+            "external_claim_id": claim.external_claim_id,
+            "requested_at": timezone.now().isoformat(),
+        }
+        response = self._run_idempotent(
+            operation="healthcloud.check_claim_status",
+            facility=facility,
+            organization=organization,
+            payload=payload,
+            runner=lambda _payload: adapter.check_claim_status(claim).raw_response,
+            claim=claim,
+        )
+
+        external_status = str(response.get("workflow_state") or response.get("status") or "")
+        mapped_status = self._map_healthcloud_status_to_claim_status(external_status)
+
+        update_fields = ["updated_at"]
+        if mapped_status and mapped_status != claim.status:
+            claim.status = mapped_status
+            update_fields.append("status")
+
+        if (
+            claim.status in {claim.Status.SUBMITTED, claim.Status.ACKNOWLEDGED}
+            and not claim.submission_date
+        ):
+            claim.submission_date = timezone.now()
+            update_fields.append("submission_date")
+
+        if len(update_fields) > 1:
+            claim.save(update_fields=update_fields)
+
         return response
 
     def submit_invoice(
@@ -942,9 +1013,16 @@ class HealthCloudWorkflowService:
         organization: Any,
         payload: dict[str, Any],
     ) -> dict[str, Any]:
+        if not getattr(claim, "external_claim_id", ""):
+            raise InsuranceValidationError(
+                "Submit claim to HealthCloud first to obtain external claim id before uploading attachments."
+            )
+
         config = _get_config(claim.provider, facility)
         adapter = get_adapter(config)
         self._require_operation(adapter, "upload_claim_attachment")
+        payload = dict(payload)
+        payload["claim"] = payload.get("claim") or claim.external_claim_id
         response = self._run_idempotent(
             operation="healthcloud.upload_claim_attachment",
             facility=facility,
@@ -953,7 +1031,95 @@ class HealthCloudWorkflowService:
             runner=adapter.upload_claim_attachment,
             claim=claim,
         )
+        self._record_attachment_meta(
+            claim=claim,
+            attachment_type=str(payload.get("attachment_type") or "OTHER"),
+            description=str(payload.get("description") or ""),
+            source_name=str(payload.get("attachment") or ""),
+            response=response,
+        )
         return response
+
+    def upload_claim_attachment_file(
+        self,
+        *,
+        claim: Any,
+        facility: Any,
+        _organization: Any,
+        file_obj: Any,
+        attachment_type: str,
+        description: str = "",
+    ) -> dict[str, Any]:
+        if not getattr(claim, "external_claim_id", ""):
+            raise InsuranceValidationError(
+                "Submit claim to HealthCloud first to obtain external claim id before uploading attachments."
+            )
+
+        config = _get_config(claim.provider, facility)
+        adapter = get_adapter(config)
+        self._require_operation(adapter, "upload_claim_attachment")
+
+        payload = {
+            "claim": claim.external_claim_id,
+            "attachment_type": attachment_type,
+            "description": description,
+            "__file_obj__": file_obj,
+        }
+        attachment_response = adapter.upload_claim_attachment(payload)
+
+        attachment_ref = str(
+            attachment_response.get("id")
+            or attachment_response.get("attachment_id")
+            or attachment_response.get("guid")
+            or attachment_response.get("url")
+            or ""
+        )
+
+        self._record_attachment_meta(
+            claim=claim,
+            attachment_type=attachment_type,
+            description=description,
+            source_name=str(getattr(file_obj, "name", "attachment")),
+            response=attachment_response,
+        )
+
+        return {
+            "attachment_ref": attachment_ref,
+            "attachment": attachment_response,
+        }
+
+    @staticmethod
+    def _record_attachment_meta(
+        *,
+        claim: Any,
+        attachment_type: str,
+        description: str,
+        source_name: str,
+        response: dict[str, Any],
+    ) -> None:
+        attachment_ref = str(
+            response.get("id")
+            or response.get("attachment_id")
+            or response.get("guid")
+            or response.get("url")
+            or source_name
+        )
+        if not attachment_ref:
+            return
+
+        existing = list(getattr(claim, "attachments_meta", []) or [])
+        now_iso = timezone.now().isoformat()
+        entry = {
+            "filename": source_name or f"{attachment_type.lower()}_attachment",
+            "url": attachment_ref,
+            "content_type": attachment_type,
+            "uploaded_at": now_iso,
+            "description": description,
+        }
+
+        deduped = [item for item in existing if str(item.get("url") or "") != attachment_ref]
+        claim.attachments_meta = [entry, *deduped][:100]
+        claim.save(update_fields=["attachments_meta", "updated_at"])
 
     def get_claim_remittance(
         self,

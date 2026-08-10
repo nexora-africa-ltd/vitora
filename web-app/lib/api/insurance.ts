@@ -60,6 +60,8 @@ import type {
   StartVisitInput,
   SubmitCreditNoteInput,
   SubmitInvoiceInput,
+  UploadClaimAttachmentFileInput,
+  UploadClaimAttachmentFileResult,
   UploadClaimAttachmentInput,
   ValidateAuthorizationInput,
   VerifyEnrollmentPreviewInput,
@@ -465,6 +467,11 @@ async function submitClaimToHealthcloud(id: number): Promise<Record<string, unkn
   return response.data as Record<string, unknown>;
 }
 
+async function refreshClaimExternalStatus(id: number): Promise<Record<string, unknown>> {
+  const response = await apiClient.post(`${BASE}/claims/${id}/refresh-external-status/`);
+  return response.data as Record<string, unknown>;
+}
+
 async function submitClaimInvoice(
   id: number,
   data: SubmitInvoiceInput
@@ -488,6 +495,23 @@ async function uploadClaimAttachment(
   const response = await apiClient.post(`${BASE}/claims/${id}/upload-attachment/`, data);
   return response.data as Record<string, unknown>;
 }
+
+async function uploadClaimAttachmentFile(
+  id: number,
+  file: File,
+  data: UploadClaimAttachmentFileInput = {}
+): Promise<UploadClaimAttachmentFileResult> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (data.attachment_type) formData.append('attachment_type', data.attachment_type);
+  if (data.description) formData.append('description', data.description);
+
+  const response = await apiClient.post(`${BASE}/claims/${id}/upload-attachment-file/`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data as UploadClaimAttachmentFileResult;
+}
+
 
 async function checkClaimRemittance(id: number): Promise<Record<string, unknown>> {
   const response = await apiClient.post(`${BASE}/claims/${id}/check-remittance/`);
@@ -701,9 +725,11 @@ export const insuranceApi = {
   cancelClaim,
   reserveClaimBalance,
   submitClaimToHealthcloud,
+  refreshClaimExternalStatus,
   submitClaimInvoice,
   submitClaimCreditNote,
   uploadClaimAttachment,
+  uploadClaimAttachmentFile,
   checkClaimRemittance,
 
   // Preauths

@@ -418,6 +418,18 @@ export const InsuranceClaimSchema = z.object({
   days_since_submission: z.number().nullable(),
   is_overdue: z.boolean(),
   is_appealable: z.boolean(),
+  is_healthcloud_enabled: z.boolean(),
+  latest_balance_reservation: z
+    .object({
+      id: z.number(),
+      reservation_guid: z.string(),
+      status: z.string(),
+      invoice_number: z.string(),
+      amount: z.string(),
+      created_at: z.string(),
+    })
+    .nullable(),
+  latest_submit_claim_external: z.record(z.unknown()).nullable(),
   items: z.array(InsuranceClaimItemSchema),
   created_at: z.string(),
   updated_at: z.string(),

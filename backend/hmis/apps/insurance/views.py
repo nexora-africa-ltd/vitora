@@ -3,8 +3,10 @@
 
 import logging
 import re
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -795,6 +797,152 @@ class InsuranceClaimViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
             )
         return cfg
 
+    @staticmethod
+    def _as_money(value) -> Decimal:
+        return Decimal(str(value or "0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    def _build_invoice_submission_payload(self, claim: InsuranceClaim, payload: dict) -> dict:
+        invoice = claim.invoice
+        invoice_number = str(payload.get("invoice_number") or "").strip()
+        invoice_date = str(payload.get("invoice_date") or "").strip()
+        provided_lines = payload.get("lines") if isinstance(payload.get("lines"), list) else []
+
+        if invoice is not None:
+            if not invoice_number:
+                invoice_number = str(invoice.invoice_number or "")
+            if not invoice_date:
+                invoice_date = invoice.invoice_date.isoformat() if invoice.invoice_date else ""
+
+        if not invoice_number:
+            raise ValidationError("Invoice number is required for invoice submission.")
+        if not invoice_date:
+            raise ValidationError("Invoice date is required for invoice submission.")
+
+        line_entries: list[dict] = []
+        if invoice is not None and invoice.items.exists():
+            for idx, item in enumerate(invoice.items.all(), start=1):
+                line_total = self._as_money(item.line_total)
+                discount = self._as_money(item.discount_amount)
+                item_code = ""
+                if item.service_id and getattr(item, "service", None) is not None:
+                    item_code = str(item.service.code or "")
+                if not item_code:
+                    item_code = f"ITEM-{idx}"
+
+                line_entries.append(
+                    {
+                        "item_code": item_code,
+                        "item_name": item.description,
+                        "charge_date": invoice_date,
+                        "unit_price": float(self._as_money(item.unit_price)),
+                        "quantity": float(Decimal(str(item.quantity or "0"))),
+                        "line_number": idx,
+                        "discount": float(discount),
+                        "discount_reason": str(item.discount_reason or ""),
+                        "line_total_amount": float(line_total),
+                    }
+                )
+        else:
+            for idx, provided in enumerate(provided_lines, start=1):
+                if not isinstance(provided, dict):
+                    continue
+                line_total = self._as_money(
+                    provided.get("line_total_amount") or provided.get("line_total") or 0
+                )
+                discount = self._as_money(provided.get("discount") or 0)
+                quantity = Decimal(str(provided.get("quantity") or "0"))
+                unit_price = self._as_money(provided.get("unit_price") or 0)
+                line_entries.append(
+                    {
+                        "item_code": str(provided.get("item_code") or f"ITEM-{idx}"),
+                        "item_name": str(
+                            provided.get("item_name")
+                            or provided.get("description")
+                            or f"Item {idx}"
+                        ),
+                        "charge_date": str(provided.get("charge_date") or invoice_date),
+                        "unit_price": float(unit_price),
+                        "quantity": float(quantity),
+                        "line_number": int(provided.get("line_number") or idx),
+                        "discount": float(discount),
+                        "discount_reason": str(provided.get("discount_reason") or ""),
+                        "line_total_amount": float(line_total),
+                    }
+                )
+
+        if not line_entries:
+            raise ValidationError("Invoice submission requires at least one line item.")
+
+        total_inv_amount = self._as_money(invoice.total_amount if invoice is not None else 0)
+        if total_inv_amount <= Decimal("0.00"):
+            total_inv_amount = sum(
+                (self._as_money(line.get("line_total_amount")) for line in line_entries),
+                Decimal("0.00"),
+            )
+
+        total_inv_copay = self._as_money(claim.copay_amount)
+        if total_inv_copay < Decimal("0.00"):
+            total_inv_copay = Decimal("0.00")
+        if total_inv_copay > total_inv_amount:
+            total_inv_copay = total_inv_amount
+
+        line_total_sum = sum(
+            (self._as_money(line.get("line_total_amount")) for line in line_entries),
+            Decimal("0.00"),
+        )
+        remaining_copay = total_inv_copay
+        for idx, line in enumerate(line_entries):
+            line_total = self._as_money(line.get("line_total_amount"))
+            if idx == len(line_entries) - 1:
+                line_copay = remaining_copay
+            elif line_total_sum > Decimal("0.00") and total_inv_copay > Decimal("0.00"):
+                line_copay = (total_inv_copay * line_total / line_total_sum).quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
+                line_copay = min(line_copay, remaining_copay)
+                remaining_copay -= line_copay
+            else:
+                line_copay = Decimal("0.00")
+
+            line_net = self._as_money(line_total - line_copay)
+            line["line_copay"] = float(line_copay)
+            line["line_net_amount"] = float(line_net)
+            line["patient_net_price"] = float(line_copay)
+            line["sponsor_net_price"] = float(line_net)
+
+        total_inv_net_amount = self._as_money(total_inv_amount - total_inv_copay)
+
+        computed_copays = payload.get("copays") if isinstance(payload.get("copays"), list) else []
+
+        return {
+            "claim": payload.get("claim") or claim.external_claim_id,
+            "invoice_number": invoice_number,
+            "invoice_date": invoice_date,
+            "provider_invoice_ref": invoice_number,
+            "lines": line_entries,
+            "copays": computed_copays,
+            "total_inv_amount": float(total_inv_amount),
+            "total_inv_copay": float(total_inv_copay),
+            "total_inv_net_amount": float(total_inv_net_amount),
+        }
+
+    def _ensure_invoice_split_synced(self, claim: InsuranceClaim) -> None:
+        if claim.invoice_id is None:
+            return
+        create_serializer = InsuranceClaimCreateSerializer(context=self.get_serializer_context())
+        create_serializer._sync_invoice_responsibility_split(claim)
+
+    def perform_create(self, serializer):
+        with transaction.atomic():
+            claim = serializer.save(**self.get_tenant_save_kwargs())
+            self._ensure_invoice_split_synced(claim)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self._ensure_invoice_split_synced(instance)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
     # -- Lifecycle actions --
 
     @action(detail=True, methods=["post"])
@@ -1003,8 +1151,13 @@ class InsuranceClaimViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         serializer = SubmitInvoiceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        payload = dict(serializer.validated_data)
-        payload["claim"] = payload.get("claim") or claim.external_claim_id
+        try:
+            payload = self._build_invoice_submission_payload(
+                claim,
+                dict(serializer.validated_data),
+            )
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         service = HealthCloudWorkflowService()
         try:
             response = service.submit_invoice(
@@ -1016,6 +1169,24 @@ class InsuranceClaimViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
         except Exception as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(response)
+
+    @action(detail=True, methods=["post"], url_path="refresh-external-status")
+    def refresh_external_status(self, request, pk=None):
+        claim = self.get_object()
+        try:
+            self._ensure_healthcloud_enabled(claim)
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        service = HealthCloudWorkflowService()
+        try:
+            response = service.refresh_claim_status(
+                claim=claim,
+                facility=getattr(request, "facility", None),
+                organization=getattr(request, "organization", None),
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"claim": InsuranceClaimSerializer(claim).data, "external": response})
 
     @action(detail=True, methods=["post"], url_path="submit-credit-note")
     def submit_credit_note(self, request, pk=None):
@@ -1047,17 +1218,67 @@ class InsuranceClaimViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
             self._ensure_healthcloud_enabled(claim)
         except ValidationError as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        service = HealthCloudWorkflowService()
+
+        file_obj = request.FILES.get("attachment")
+        if file_obj is not None:
+            attachment_type = str(request.data.get("attachment_type") or "CLAIM_FORM")
+            description = str(request.data.get("description") or "")
+            try:
+                response = service.upload_claim_attachment_file(
+                    claim=claim,
+                    facility=getattr(request, "facility", None),
+                    organization=getattr(request, "organization", None),
+                    file_obj=file_obj,
+                    attachment_type=attachment_type,
+                    description=description,
+                )
+            except Exception as exc:
+                return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(response)
+
         serializer = UploadClaimAttachmentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         payload = dict(serializer.validated_data)
         payload["claim"] = payload.get("claim") or claim.external_claim_id
-        service = HealthCloudWorkflowService()
         try:
             response = service.upload_claim_attachment(
                 claim=claim,
                 facility=getattr(request, "facility", None),
                 organization=getattr(request, "organization", None),
                 payload=payload,
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(response)
+
+    @action(detail=True, methods=["post"], url_path="upload-attachment-file")
+    def upload_attachment_file(self, request, pk=None):
+        claim = self.get_object()
+        try:
+            self._ensure_healthcloud_enabled(claim)
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        file_obj = request.FILES.get("file")
+        if file_obj is None:
+            return Response(
+                {"error": "file is required (multipart/form-data)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        attachment_type = str(request.data.get("attachment_type") or "CLAIM_FORM")
+        description = str(request.data.get("description") or "")
+
+        service = HealthCloudWorkflowService()
+        try:
+            response = service.upload_claim_attachment_file(
+                claim=claim,
+                facility=getattr(request, "facility", None),
+                organization=getattr(request, "organization", None),
+                file_obj=file_obj,
+                attachment_type=attachment_type,
+                description=description,
             )
         except Exception as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)

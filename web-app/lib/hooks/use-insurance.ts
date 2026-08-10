@@ -18,6 +18,7 @@ import type {
   StartVisitInput,
   SubmitCreditNoteInput,
   SubmitInvoiceInput,
+  UploadClaimAttachmentFileInput,
   UploadClaimAttachmentInput,
   ValidateAuthorizationInput,
   InsuranceProviderCreateInput,
@@ -530,6 +531,18 @@ export function useSubmitClaimToHealthcloud() {
   });
 }
 
+export function useRefreshClaimExternalStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => insuranceApi.refreshClaimExternalStatus(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.claims() });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.claimDetail(id) });
+      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.healthcloudSyncStatus() });
+    },
+  });
+}
+
 export function useCheckClaimRemittance() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -560,6 +573,20 @@ export function useUploadClaimAttachment() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: UploadClaimAttachmentInput }) =>
       insuranceApi.uploadClaimAttachment(id, data),
+  });
+}
+
+export function useUploadClaimAttachmentFile() {
+  return useMutation({
+    mutationFn: ({
+      id,
+      file,
+      data,
+    }: {
+      id: number;
+      file: File;
+      data?: UploadClaimAttachmentFileInput;
+    }) => insuranceApi.uploadClaimAttachmentFile(id, file, data),
   });
 }
 

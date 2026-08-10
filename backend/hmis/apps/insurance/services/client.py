@@ -178,6 +178,7 @@ class InsuranceHttpClient:
         params: Mapping[str, Any] | None = None,
         json_body: Any = None,
         data: Any = None,
+        files: Any = None,
         headers: Mapping[str, str] | None = None,
         user: Any = None,
         retry_statuses: frozenset[int] | None = None,
@@ -201,7 +202,12 @@ class InsuranceHttpClient:
             merged_headers.update(headers)
         merged_headers.setdefault("X-Correlation-Id", correlation_id)
 
-        audit_payload = _redact(json_body if json_body is not None else data)
+        if files is not None:
+            audit_payload = _redact(
+                {"data": data or {}, "files": list(getattr(files, "keys", lambda: [])())}
+            )
+        else:
+            audit_payload = _redact(json_body if json_body is not None else data)
 
         attempt = 0
         while attempt < self.max_retries + 1:
@@ -214,6 +220,7 @@ class InsuranceHttpClient:
                     params=params,
                     json=json_body,
                     data=data,
+                    files=files,
                     headers=merged_headers,
                     timeout=self.timeout,
                 )

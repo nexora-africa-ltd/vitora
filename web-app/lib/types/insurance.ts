@@ -401,7 +401,7 @@ export interface StartVisitInput {
   benefit_code: string;
   policy_number: string;
   policy_effective_date: string;
-  otp: string;
+  otp?: string;
   beneficiary_contact: number;
   factors?: string[];
   scheme_name?: string;
@@ -430,9 +430,9 @@ export interface ReserveBalanceInput {
 export interface SubmitInvoiceInput {
   claim?: string;
   invoice_number: string;
-  invoice_date: string;
+  invoice_date?: string;
   copays?: Array<Record<string, unknown>>;
-  lines: Array<Record<string, unknown>>;
+  lines?: Array<Record<string, unknown>>;
 }
 
 export interface SubmitCreditNoteInput {
@@ -447,6 +447,17 @@ export interface UploadClaimAttachmentInput {
   attachment: string;
   attachment_type: string;
   description?: string;
+}
+
+export interface UploadClaimAttachmentFileInput {
+  attachment_type?: string;
+  description?: string;
+}
+
+export interface UploadClaimAttachmentFileResult {
+  attachment_ref: string;
+  upload: Record<string, unknown>;
+  attachment: Record<string, unknown>;
 }
 
 export interface VerifyViaHealthcloudResult {
@@ -574,6 +585,16 @@ export interface InsuranceClaim {
   days_since_submission: number | null;
   is_overdue: boolean;
   is_appealable: boolean;
+  is_healthcloud_enabled: boolean;
+  latest_balance_reservation: {
+    id: number;
+    reservation_guid: string;
+    status: string;
+    invoice_number: string;
+    amount: string;
+    created_at: string;
+  } | null;
+  latest_submit_claim_external: Record<string, unknown> | null;
   items: InsuranceClaimItem[];
   created_at: string;
   updated_at: string;
