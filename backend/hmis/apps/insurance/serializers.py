@@ -1,8 +1,10 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Serializers for the insurance app."""
 
+from django.core.files.storage import default_storage
 from rest_framework import serializers
 
+from hmis.apps.insurance.media_security import build_card_image_url, save_encrypted_card_image
 from hmis.apps.insurance.models import (
     InsuranceClaim,
     InsuranceClaimItem,
@@ -135,6 +137,10 @@ class PatientInsuranceSerializer(serializers.ModelSerializer):
     is_valid = serializers.BooleanField(read_only=True)
     copay_percent = serializers.DecimalField(max_digits=5, decimal_places=2, read_only=True)
     days_until_expiry = serializers.IntegerField(read_only=True)
+    card_image_front = serializers.SerializerMethodField()
+    card_image_back = serializers.SerializerMethodField()
+    has_card_image_front = serializers.SerializerMethodField()
+    has_card_image_back = serializers.SerializerMethodField()
 
     class Meta:
         model = PatientInsurance
@@ -170,6 +176,8 @@ class PatientInsuranceSerializer(serializers.ModelSerializer):
             "notes",
             "card_image_front",
             "card_image_back",
+            "has_card_image_front",
+            "has_card_image_back",
             "created_at",
             "updated_at",
         ]
@@ -192,8 +200,42 @@ class PatientInsuranceSerializer(serializers.ModelSerializer):
     def get_patient_name(self, obj) -> str:
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
+    def _build_signed_url(self, obj, side: str) -> str | None:
+        field = obj.card_image_front if side == "front" else obj.card_image_back
+        if not field:
+            return None
+        request = self.context.get("request")
+        user = getattr(request, "user", None) if request else None
+        if not request or not user or not user.is_authenticated:
+            return None
+        return build_card_image_url(
+            request=request,
+            enrollment_id=obj.id,
+            side=side,
+            user_id=user.id,
+        )
+
+    def get_card_image_front(self, obj):
+        return self._build_signed_url(obj, "front")
+
+    def get_card_image_back(self, obj):
+        return self._build_signed_url(obj, "back")
+
+    def get_has_card_image_front(self, obj):
+        return bool(obj.card_image_front)
+
+    def get_has_card_image_back(self, obj):
+        return bool(obj.card_image_back)
+
 
 class PatientInsuranceCreateSerializer(serializers.ModelSerializer):
+    remove_card_image_front = serializers.BooleanField(
+        write_only=True, required=False, default=False
+    )
+    remove_card_image_back = serializers.BooleanField(
+        write_only=True, required=False, default=False
+    )
+
     class Meta:
         model = PatientInsurance
         fields = [
@@ -211,8 +253,129 @@ class PatientInsuranceCreateSerializer(serializers.ModelSerializer):
             "copay_override",
             "annual_balance",
             "is_primary",
+            "card_image_front",
+            "card_image_back",
+            "remove_card_image_front",
+            "remove_card_image_back",
             "notes",
         ]
+
+    _MISSING = object()
+
+    def create(self, validated_data):
+        front = validated_data.pop("card_image_front", self._MISSING)
+        back = validated_data.pop("card_image_back", self._MISSING)
+        remove_front = validated_data.pop("remove_card_image_front", False)
+        remove_back = validated_data.pop("remove_card_image_back", False)
+        instance = super().create(validated_data)
+        self._save_card_images(
+            instance,
+            front=front,
+            back=back,
+            remove_front=remove_front,
+            remove_back=remove_back,
+        )
+        return instance
+
+    def update(self, instance, validated_data):
+        previous_member_number = instance.member_number
+        previous_plan_id = instance.plan_id
+
+        front = validated_data.pop("card_image_front", self._MISSING)
+        back = validated_data.pop("card_image_back", self._MISSING)
+        remove_front = validated_data.pop("remove_card_image_front", False)
+        remove_back = validated_data.pop("remove_card_image_back", False)
+        instance = super().update(instance, validated_data)
+
+        core_identifiers_changed = (
+            instance.member_number != previous_member_number or instance.plan_id != previous_plan_id
+        )
+        if core_identifiers_changed:
+            instance.status = PatientInsurance.Status.PENDING_VERIFICATION
+            instance.last_eligibility_checked_at = None
+            instance.last_eligibility_eligible = None
+            instance.last_eligibility_status = ""
+            instance.last_eligibility_payload = {}
+            instance.save(
+                update_fields=[
+                    "status",
+                    "last_eligibility_checked_at",
+                    "last_eligibility_eligible",
+                    "last_eligibility_status",
+                    "last_eligibility_payload",
+                    "updated_at",
+                ]
+            )
+            instance.visit_authorizations.exclude(
+                status__in=[
+                    InsuranceVisitAuthorization.Status.FAILED,
+                    InsuranceVisitAuthorization.Status.EXPIRED,
+                ]
+            ).update(
+                status=InsuranceVisitAuthorization.Status.EXPIRED,
+                workflow_step="enrollment_updated",
+                last_error=(
+                    "Enrollment identifiers changed. Re-verify eligibility and restart authorization flow."
+                ),
+            )
+
+        self._save_card_images(
+            instance,
+            front=front,
+            back=back,
+            remove_front=remove_front,
+            remove_back=remove_back,
+        )
+        return instance
+
+    @staticmethod
+    def _replace_file(existing_name: str | None):
+        if existing_name and default_storage.exists(existing_name):
+            default_storage.delete(existing_name)
+
+    def _save_card_images(
+        self,
+        instance,
+        *,
+        front=_MISSING,
+        back=_MISSING,
+        remove_front=False,
+        remove_back=False,
+    ):
+        update_fields: list[str] = []
+
+        if remove_front or front is None:
+            self._replace_file(
+                instance.card_image_front.name if instance.card_image_front else None
+            )
+            instance.card_image_front = None
+            update_fields.append("card_image_front")
+        elif front is not self._MISSING:
+            self._replace_file(
+                instance.card_image_front.name if instance.card_image_front else None
+            )
+            instance.card_image_front = save_encrypted_card_image(
+                enrollment=instance,
+                side="front",
+                uploaded_file=front,
+            )
+            update_fields.append("card_image_front")
+
+        if remove_back or back is None:
+            self._replace_file(instance.card_image_back.name if instance.card_image_back else None)
+            instance.card_image_back = None
+            update_fields.append("card_image_back")
+        elif back is not self._MISSING:
+            self._replace_file(instance.card_image_back.name if instance.card_image_back else None)
+            instance.card_image_back = save_encrypted_card_image(
+                enrollment=instance,
+                side="back",
+                uploaded_file=back,
+            )
+            update_fields.append("card_image_back")
+
+        if update_fields:
+            instance.save(update_fields=[*update_fields, "updated_at"])
 
 
 class VerifyEnrollmentPreviewSerializer(serializers.Serializer):

@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2 } from 'lucide-react';
+import Image from 'next/image';
+import { Check, CheckCircle2, ChevronsUpDown } from 'lucide-react';
 
 import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +12,17 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import {
   buildHealthcloudEligibilityView,
   HealthcloudEligibilityCards,
@@ -22,11 +34,24 @@ import {
   useProviderConfigs,
   useVerifyEnrollmentViaHealthcloudPreview,
 } from '@/lib/hooks/use-insurance';
+import { useCounties, useSubCounties } from '@/lib/hooks/use-locations';
+import { useCreatePatient } from '@/lib/hooks/use-patients';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { VerifyViaHealthcloudResult } from '@/lib/types/insurance';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { patientsApi } from '@/lib/api/patients';
-import type { Patient } from '@/lib/types/patient';
+import type { IdentificationType, Patient } from '@/lib/types/patient';
 import { useFacility } from '@/lib/context/facility-context';
+import { NATIONALITIES } from '@/lib/utils/nationalities';
+import { cn } from '@/lib/utils';
+
+const MAX_CARD_IMAGE_SIZE_MB = 5;
+const MAX_CARD_IMAGE_SIZE_BYTES = MAX_CARD_IMAGE_SIZE_MB * 1024 * 1024;
+const ALLOWED_CARD_IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
 
 type MatchConfidence = 'high' | 'medium' | 'low';
 
@@ -36,12 +61,167 @@ type SuggestedPatient = {
   confidence: MatchConfidence;
 };
 
+type InlinePatientFormData = {
+  first_name: string;
+  middle_name: string;
+  last_name: string;
+  date_of_birth: string;
+  gender: 'M' | 'F' | 'O' | '';
+  identification_type: IdentificationType;
+  identification_number: string;
+  phone_number: string;
+  citizenship: string;
+  address: string;
+  place_of_birth: string;
+  village: string;
+  county: string;
+  sub_county: string;
+  referral_source: 'self' | 'clinic' | 'other_facility';
+  referred_from_facility: string;
+  consent_choice: 'given' | 'deferred' | '';
+  payment_mode: 'cash' | 'sha' | 'insurance_private' | 'insurance_corporate';
+  insurance_provider: string;
+  insurance_member_number: string;
+  sha_number: string;
+  household_number: string;
+  principal_national_id: string;
+};
+
+const emptyInlinePatientForm: InlinePatientFormData = {
+  first_name: '',
+  middle_name: '',
+  last_name: '',
+  date_of_birth: '',
+  gender: '',
+  identification_type: 'national_id',
+  identification_number: '',
+  phone_number: '',
+  citizenship: 'Kenyan',
+  address: '',
+  place_of_birth: '',
+  village: '',
+  county: '',
+  sub_county: '',
+  referral_source: 'self',
+  referred_from_facility: '',
+  consent_choice: '',
+  payment_mode: 'insurance_private',
+  insurance_provider: '',
+  insurance_member_number: '',
+  sha_number: '',
+  household_number: '',
+  principal_national_id: '',
+};
+
+const IDENTIFICATION_TYPE_MAP: Record<string, IdentificationType> = {
+  'national id': 'national_id',
+  national_id: 'national_id',
+  nationalid: 'national_id',
+  'hie patient id': 'cr_number',
+  'cr id': 'cr_number',
+  'cr number': 'cr_number',
+  cr_number: 'cr_number',
+  'mandate number': 'mandate_number',
+  mandate_number: 'mandate_number',
+  'alien id': 'alien_id',
+  alien_id: 'alien_id',
+  'kra pin': 'kra_pin',
+  kra_pin: 'kra_pin',
+  passport: 'passport',
+  'passport number': 'passport',
+  'birth certificate': 'birth_certificate',
+  'birth certificate number': 'birth_certificate',
+  birth_certificate: 'birth_certificate',
+  'temporary id': 'temporary_id',
+  temporary_id: 'temporary_id',
+};
+
+const identificationTypeOptions: Array<{ value: IdentificationType; label: string }> = [
+  { value: 'national_id', label: 'National ID' },
+  { value: 'cr_number', label: 'CR Number' },
+  { value: 'mandate_number', label: 'Mandate Number' },
+  { value: 'alien_id', label: 'Alien ID' },
+  { value: 'kra_pin', label: 'KRA PIN' },
+  { value: 'temporary_id', label: 'Temporary ID' },
+  { value: 'passport', label: 'Passport' },
+  { value: 'birth_certificate', label: 'Birth Certificate' },
+];
+
+const normalizeIdentificationType = (value: unknown): IdentificationType | undefined => {
+  if (typeof value !== 'string') return undefined;
+  return IDENTIFICATION_TYPE_MAP[value.trim().toLowerCase()];
+};
+
+const pickFirstString = (source: Record<string, unknown>, keys: string[]): string => {
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return '';
+};
+
+const splitPersonNames = (member: Record<string, unknown>) => {
+  const explicitFirst = pickFirstString(member, ['firstName', 'first_name']);
+  const explicitMiddle = pickFirstString(member, ['middleName', 'middle_name']);
+  const explicitLast = pickFirstString(member, ['lastName', 'last_name']);
+
+  if (explicitFirst || explicitLast) {
+    return {
+      first_name: explicitFirst,
+      middle_name: explicitMiddle,
+      last_name: explicitLast,
+    };
+  }
+
+  const combinedName = pickFirstString(member, ['names', 'full_name', 'fullName', 'name']);
+  if (!combinedName) {
+    return { first_name: '', middle_name: '', last_name: '' };
+  }
+
+  const parts = combinedName.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) {
+    return { first_name: parts[0] || '', middle_name: '', last_name: '' };
+  }
+  if (parts.length === 2) {
+    return { first_name: parts[0] || '', middle_name: '', last_name: parts[1] || '' };
+  }
+
+  return {
+    first_name: parts[0] || '',
+    middle_name: parts.slice(1, -1).join(' '),
+    last_name: parts[parts.length - 1] || '',
+  };
+};
+
+const normalizeGender = (value: unknown): InlinePatientFormData['gender'] => {
+  if (typeof value !== 'string') return '';
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'm' || normalized === 'male') return 'M';
+  if (normalized === 'f' || normalized === 'female') return 'F';
+  if (normalized === 'o' || normalized === 'other') return 'O';
+  return '';
+};
+
+const normalizeIsoDate = (value: unknown): string => {
+  if (typeof value !== 'string') return '';
+  const dateText = value.trim();
+  if (!dateText) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateText)) return dateText;
+  const parsed = new Date(dateText);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toISOString().slice(0, 10);
+};
+
 export default function NewInsuranceEnrollmentPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { facility, organization } = useFacility();
   const createEnrollment = useCreateEnrollment();
+  const createPatient = useCreatePatient();
   const verifyPreview = useVerifyEnrollmentViaHealthcloudPreview();
+  const { data: counties = [] } = useCounties();
   const { data: plansData } = useInsurancePlans(
     { page: 1, page_size: 200 },
     { enabled: !!facility?.id && !!organization?.id }
@@ -66,7 +246,21 @@ export default function NewInsuranceEnrollmentPage() {
   const [policyNumber, setPolicyNumber] = useState('');
   const [validFrom, setValidFrom] = useState(new Date().toISOString().slice(0, 10));
   const [validTo, setValidTo] = useState(new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().slice(0, 10));
+  const [cardImageFront, setCardImageFront] = useState<File | null>(null);
+  const [cardImageBack, setCardImageBack] = useState<File | null>(null);
+  const [cardImageFrontPreview, setCardImageFrontPreview] = useState<string | null>(null);
+  const [cardImageBackPreview, setCardImageBackPreview] = useState<string | null>(null);
+  const [notes, setNotes] = useState('');
   const [eligibilityResult, setEligibilityResult] = useState<VerifyViaHealthcloudResult | null>(null);
+  const [isCreatePatientSheetOpen, setIsCreatePatientSheetOpen] = useState(false);
+  const [nationalityOpen, setNationalityOpen] = useState(false);
+  const [createPatientForm, setCreatePatientForm] = useState<InlinePatientFormData>(emptyInlinePatientForm);
+  const [duplicateCheckMatches, setDuplicateCheckMatches] = useState<Patient[]>([]);
+  const [duplicateCheckArmed, setDuplicateCheckArmed] = useState(false);
+
+  const { data: subCounties = [] } = useSubCounties(
+    createPatientForm.county ? Number(createPatientForm.county) : undefined
+  );
 
   const filteredPlans = (plansData?.results ?? []).filter((p) =>
     providerId ? p.provider === Number(providerId) : true
@@ -109,6 +303,9 @@ export default function NewInsuranceEnrollmentPage() {
     return Array.from(map.values());
   };
 
+  const uniqueSearchPatients = pickUniquePatients(searchPatients);
+  const hasPatientMatches = suggestedPatients.length > 0 || uniqueSearchPatients.length > 0;
+
   const scoreToConfidence = (score: number): MatchConfidence => {
     if (score >= 80) return 'high';
     if (score >= 45) return 'medium';
@@ -125,12 +322,72 @@ export default function NewInsuranceEnrollmentPage() {
   if (!patientId) missingRequirements.push('select a matched patient');
   if (!effectivePlanId) missingRequirements.push('resolve plan from eligibility');
 
+  const handleCardImageChange = (side: 'front' | 'back', file: File | null) => {
+    if (!file) {
+      if (side === 'front') {
+        setCardImageFront(null);
+      } else {
+        setCardImageBack(null);
+      }
+      return;
+    }
+
+    if (!ALLOWED_CARD_IMAGE_TYPES.has(file.type)) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Use JPG, PNG, or WEBP card images only.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (file.size > MAX_CARD_IMAGE_SIZE_BYTES) {
+      toast({
+        title: 'File too large',
+        description: `Card image must be ${MAX_CARD_IMAGE_SIZE_MB} MB or smaller.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (side === 'front') {
+      setCardImageFront(file);
+      return;
+    }
+    setCardImageBack(file);
+  };
+
+  const setInlinePatientForm = (updater: (prev: InlinePatientFormData) => InlinePatientFormData) => {
+    setCreatePatientForm((prev) => updater(prev));
+    setDuplicateCheckMatches([]);
+    setDuplicateCheckArmed(false);
+  };
+
   useEffect(() => {
     if (!eligibilityResult || planId) return;
     if (derivedResolvedPlan) {
       setPlanId(String(derivedResolvedPlan.id));
     }
   }, [derivedResolvedPlan, eligibilityResult, planId]);
+
+  useEffect(() => {
+    if (!cardImageFront) {
+      setCardImageFrontPreview(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(cardImageFront);
+    setCardImageFrontPreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [cardImageFront]);
+
+  useEffect(() => {
+    if (!cardImageBack) {
+      setCardImageBackPreview(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(cardImageBack);
+    setCardImageBackPreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [cardImageBack]);
 
   const scorePatientCandidate = (
     patient: Patient,
@@ -160,6 +417,228 @@ export default function NewInsuranceEnrollmentPage() {
     }
 
     return score;
+  };
+
+  const getInlinePatientDefaults = (result: VerifyViaHealthcloudResult | null): InlinePatientFormData => {
+    const view = buildHealthcloudEligibilityView(result);
+    const member = view?.member ?? {};
+    const nameParts = splitPersonNames(member);
+    const mappedIdentificationType = normalizeIdentificationType(
+      member.identification_type || member.identificationType || member.idType || member.id_type
+    );
+    const countyName = pickFirstString(member, ['countyName', 'county_name', 'county']);
+    const subCountyName = pickFirstString(member, ['subCountyName', 'sub_county_name', 'subCounty', 'sub_county']);
+    const matchedCounty = counties.find((county) => normalize(county.name) === normalize(countyName));
+    const matchedSubCounty = matchedCounty
+      ? subCounties.find((subCounty) => normalize(subCounty.name) === normalize(subCountyName))
+      : undefined;
+
+    return {
+      first_name: nameParts.first_name,
+      middle_name: nameParts.middle_name,
+      last_name: nameParts.last_name,
+      date_of_birth: normalizeIsoDate(member.dateOfBirth || member.date_of_birth),
+      gender: normalizeGender(member.gender),
+      identification_type: mappedIdentificationType || 'national_id',
+      identification_number: String(
+        member.identification_number ||
+        member.identificationNumber ||
+        member.idNumber ||
+        member.id_number ||
+        member.national_id ||
+        member.nationalId ||
+        ''
+      ).trim(),
+      phone_number: String(member.phoneNumber || member.phone_number || '').trim(),
+      citizenship: String(member.citizenship || member.nationality || 'Kenyan').trim() || 'Kenyan',
+      address: [
+        member.village_estate,
+        member.ward,
+        member.sub_county,
+        member.county,
+        member.postal_address,
+      ]
+        .filter((part) => typeof part === 'string' && part.trim())
+        .map((part) => String(part).trim())
+        .join(', '),
+      place_of_birth: String(member.placeOfBirth || member.place_of_birth || '').trim(),
+      village: String(member.village_estate || member.village || '').trim(),
+      county: matchedCounty ? String(matchedCounty.id) : '',
+      sub_county: matchedSubCounty ? String(matchedSubCounty.id) : '',
+      referral_source: 'self',
+      referred_from_facility: '',
+      consent_choice: '',
+      payment_mode: 'insurance_private',
+      insurance_provider: selectedProvider?.name || '',
+      insurance_member_number:
+        String(member.memberNumber || member.member_number || result?.member_number || '').trim(),
+      sha_number: String(member.memberNumber || member.member_number || result?.member_number || '').trim(),
+      household_number: String(member.householdNumber || member.household_number || '').trim(),
+      principal_national_id: String(
+        member.principalNationalId || member.principal_national_id || member.principalId || ''
+      ).trim(),
+    };
+  };
+
+  const openCreatePatientSheet = () => {
+    setCreatePatientForm(getInlinePatientDefaults(eligibilityResult));
+    setDuplicateCheckMatches([]);
+    setDuplicateCheckArmed(false);
+    setIsCreatePatientSheetOpen(true);
+  };
+
+  const handleInlineCreatePatient = async () => {
+    if (!createPatientForm.first_name.trim() || !createPatientForm.last_name.trim()) {
+      toast({
+        title: 'Missing fields',
+        description: 'First name and last name are required.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!createPatientForm.date_of_birth || !createPatientForm.gender) {
+      toast({
+        title: 'Missing fields',
+        description: 'Date of birth and gender are required.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!createPatientForm.county || !createPatientForm.sub_county) {
+      toast({
+        title: 'Missing fields',
+        description: 'County and sub-county are required.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!createPatientForm.consent_choice) {
+      toast({
+        title: 'Consent required',
+        description: 'Select whether consent is given now or deferred.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (
+      createPatientForm.referral_source === 'other_facility' &&
+      !createPatientForm.referred_from_facility.trim()
+    ) {
+      toast({
+        title: 'Missing field',
+        description: 'Please provide the referring facility name.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const duplicatePayload = {
+      identification_number: createPatientForm.identification_number.trim() || undefined,
+      identification_type: createPatientForm.identification_number.trim()
+        ? createPatientForm.identification_type
+        : undefined,
+      first_name: createPatientForm.first_name.trim(),
+      last_name: createPatientForm.last_name.trim(),
+      date_of_birth: createPatientForm.date_of_birth,
+      gender: createPatientForm.gender,
+    };
+
+    if (!duplicateCheckArmed) {
+      try {
+        const duplicateCheckResult = await patientsApi.checkDuplicate(duplicatePayload);
+        if (duplicateCheckResult.has_duplicate && duplicateCheckResult.matches.length > 0) {
+          const duplicateCandidates = duplicateCheckResult.matches
+            .slice(0, 5)
+            .map((match) => ({
+              id: match.id,
+              mrn: match.mrn,
+              first_name: match.full_name,
+              last_name: '',
+              date_of_birth: match.date_of_birth,
+              gender: match.gender,
+              county: Number(createPatientForm.county),
+              sub_county: Number(createPatientForm.sub_county),
+              is_sensitive: false,
+              consent_given: false,
+              referral_source: 'self',
+              registered_by: 0,
+              created_at: '',
+              updated_at: '',
+              full_name: match.full_name,
+            } as Patient));
+
+          setDuplicateCheckMatches(duplicateCandidates);
+          setDuplicateCheckArmed(true);
+          toast({
+            title: 'Possible duplicate found',
+            description: 'Review matching patients below. Click Create Anyway only if this is a different person.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      } catch (error) {
+        toast({
+          title: 'Duplicate check failed',
+          description: getApiErrorMessage(error),
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
+    try {
+      const createdPatient = await createPatient.mutateAsync({
+        data: {
+          first_name: createPatientForm.first_name.trim(),
+          middle_name: createPatientForm.middle_name.trim() || undefined,
+          last_name: createPatientForm.last_name.trim(),
+          date_of_birth: createPatientForm.date_of_birth,
+          gender: createPatientForm.gender,
+          county: Number(createPatientForm.county),
+          sub_county: Number(createPatientForm.sub_county),
+          citizenship: createPatientForm.citizenship.trim() || 'Kenyan',
+          place_of_birth: createPatientForm.place_of_birth.trim() || undefined,
+          address: createPatientForm.address.trim() || undefined,
+          village: createPatientForm.village.trim() || undefined,
+          identification_type: createPatientForm.identification_number.trim()
+            ? createPatientForm.identification_type
+            : undefined,
+          identification_number: createPatientForm.identification_number.trim() || undefined,
+          phone_number: createPatientForm.phone_number.trim() || undefined,
+          referral_source: createPatientForm.referral_source,
+          referred_from_facility: createPatientForm.referred_from_facility.trim() || undefined,
+          payment_mode: createPatientForm.payment_mode,
+          insurance_provider: createPatientForm.insurance_provider.trim() || undefined,
+          insurance_member_number: createPatientForm.insurance_member_number.trim() || undefined,
+          consent_given: createPatientForm.consent_choice === 'given',
+          consent_deferred: createPatientForm.consent_choice === 'deferred',
+          sha_number: createPatientForm.sha_number.trim() || undefined,
+          household_number: createPatientForm.household_number.trim() || undefined,
+          principal_national_id: createPatientForm.principal_national_id.trim() || undefined,
+        },
+      });
+
+      if (!createdPatient) {
+        throw new Error('Patient creation did not return a patient record.');
+      }
+
+      setPatientId(createdPatient.id);
+      setSearchPatients((prev) => pickUniquePatients([createdPatient, ...prev]));
+      setPatientSearchTerm(patientLabel(createdPatient));
+      setIsCreatePatientSheetOpen(false);
+      setDuplicateCheckArmed(false);
+      setDuplicateCheckMatches([]);
+      toast({
+        title: 'Patient created',
+        description: `${patientLabel(createdPatient)} is now selected for this enrollment.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Failed to create patient',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
+    }
   };
 
   const runPatientMatching = async (result: VerifyViaHealthcloudResult) => {
@@ -312,6 +791,9 @@ export default function NewInsuranceEnrollmentPage() {
         annual_balance: eligibilityResult?.annual_balance ?? undefined,
         valid_from: validFrom,
         valid_to: validTo,
+        card_image_front: cardImageFront || undefined,
+        card_image_back: cardImageBack || undefined,
+        notes: notes || undefined,
       });
       toast({ title: 'Enrollment created' });
       router.push('/insurance/enrollments');
@@ -432,11 +914,28 @@ export default function NewInsuranceEnrollmentPage() {
                   </Button>
                 </div>
 
+                {!patientMatchingLoading && !hasPatientMatches && (
+                  <div className="rounded-md border border-dashed p-3">
+                    <p className="text-sm">No matching local patient found yet.</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Create the patient here and continue enrollment without leaving this page.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="mt-3"
+                      onClick={openCreatePatientSheet}
+                    >
+                      Create New Patient
+                    </Button>
+                  </div>
+                )}
+
                 {!patientMatchingLoading && searchPatients.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-xs text-muted-foreground">Search results</p>
                     <div className="flex flex-wrap gap-2">
-                      {pickUniquePatients(searchPatients).map((candidate) => (
+                      {uniqueSearchPatients.map((candidate) => (
                         <Button
                           key={`search-${candidate.id}`}
                           type="button"
@@ -473,6 +972,52 @@ export default function NewInsuranceEnrollmentPage() {
               <div>
                 <Label>Valid To</Label>
                 <Input type="date" value={validTo} onChange={(e) => setValidTo(e.target.value)} />
+              </div>
+              <div>
+                <Label>Card Image Front (optional)</Label>
+                <Input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => handleCardImageChange('front', e.target.files?.[0] ?? null)}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">JPG, PNG, or WEBP up to {MAX_CARD_IMAGE_SIZE_MB} MB.</p>
+                {cardImageFrontPreview && (
+                  <Image
+                    src={cardImageFrontPreview}
+                    alt="Card front preview"
+                    width={640}
+                    height={256}
+                    unoptimized
+                    className="mt-2 h-32 w-full rounded border object-contain bg-muted"
+                  />
+                )}
+              </div>
+              <div>
+                <Label>Card Image Back (optional)</Label>
+                <Input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => handleCardImageChange('back', e.target.files?.[0] ?? null)}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">JPG, PNG, or WEBP up to {MAX_CARD_IMAGE_SIZE_MB} MB.</p>
+                {cardImageBackPreview && (
+                  <Image
+                    src={cardImageBackPreview}
+                    alt="Card back preview"
+                    width={640}
+                    height={256}
+                    unoptimized
+                    className="mt-2 h-32 w-full rounded border object-contain bg-muted"
+                  />
+                )}
+              </div>
+              <div className="md:col-span-2">
+                <Label>Notes (optional)</Label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Any enrollment notes"
+                />
               </div>
             </>
           )}
@@ -524,6 +1069,324 @@ export default function NewInsuranceEnrollmentPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Sheet open={isCreatePatientSheetOpen} onOpenChange={setIsCreatePatientSheetOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Create patient</SheetTitle>
+            <SheetDescription>
+              Add a local patient record and continue enrollment with the new patient selected.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>First Name</Label>
+                <Input
+                  value={createPatientForm.first_name}
+                  onChange={(e) => setInlinePatientForm((prev) => ({ ...prev, first_name: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Middle Name (optional)</Label>
+                <Input
+                  value={createPatientForm.middle_name}
+                  onChange={(e) => setInlinePatientForm((prev) => ({ ...prev, middle_name: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Last Name</Label>
+                <Input
+                  value={createPatientForm.last_name}
+                  onChange={(e) => setInlinePatientForm((prev) => ({ ...prev, last_name: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Date of Birth</Label>
+                <Input
+                  type="date"
+                  value={createPatientForm.date_of_birth}
+                  onChange={(e) => setInlinePatientForm((prev) => ({ ...prev, date_of_birth: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Gender</Label>
+                <Select
+                  value={createPatientForm.gender || undefined}
+                  onValueChange={(value) => setInlinePatientForm((prev) => ({ ...prev, gender: value as 'M' | 'F' | 'O' }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="M">Male</SelectItem>
+                    <SelectItem value="F">Female</SelectItem>
+                    <SelectItem value="O">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>ID Type</Label>
+                <Select
+                  value={createPatientForm.identification_type}
+                  onValueChange={(value) => setInlinePatientForm((prev) => ({ ...prev, identification_type: value as IdentificationType }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select ID type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {identificationTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>ID Number (optional)</Label>
+                <Input
+                  value={createPatientForm.identification_number}
+                  onChange={(e) => setInlinePatientForm((prev) => ({ ...prev, identification_number: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Phone Number (optional)</Label>
+                <Input
+                  value={createPatientForm.phone_number}
+                  onChange={(e) => setInlinePatientForm((prev) => ({ ...prev, phone_number: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Citizenship</Label>
+                <Popover open={nationalityOpen} onOpenChange={setNationalityOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={nationalityOpen}
+                      className={cn(
+                        'w-full justify-between',
+                        !createPatientForm.citizenship && 'text-muted-foreground'
+                      )}
+                    >
+                      {createPatientForm.citizenship || 'Select citizenship'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search citizenship..." />
+                      <CommandList>
+                        <CommandEmpty>No nationality found.</CommandEmpty>
+                        <CommandGroup className="max-h-[260px] overflow-y-auto">
+                          {NATIONALITIES.map((nationality) => (
+                            <CommandItem
+                              key={nationality}
+                              value={nationality}
+                              onSelect={() => {
+                                setInlinePatientForm((prev) => ({ ...prev, citizenship: nationality }));
+                                setNationalityOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  'mr-2 h-4 w-4',
+                                  createPatientForm.citizenship === nationality ? 'opacity-100' : 'opacity-0'
+                                )}
+                              />
+                              {nationality}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <Label>Place of Birth (optional)</Label>
+                <Input
+                  value={createPatientForm.place_of_birth}
+                  onChange={(e) => setInlinePatientForm((prev) => ({ ...prev, place_of_birth: e.target.value }))}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Label>Address (optional)</Label>
+                <Input
+                  value={createPatientForm.address}
+                  onChange={(e) => setInlinePatientForm((prev) => ({ ...prev, address: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Village / Estate (optional)</Label>
+                <Input
+                  value={createPatientForm.village}
+                  onChange={(e) => setInlinePatientForm((prev) => ({ ...prev, village: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>County</Label>
+                <Select
+                  value={createPatientForm.county || undefined}
+                  onValueChange={(value) => setInlinePatientForm((prev) => ({ ...prev, county: value, sub_county: '' }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select county" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {counties.map((county) => (
+                      <SelectItem key={county.id} value={String(county.id)}>
+                        {county.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Sub-county</Label>
+                <Select
+                  value={createPatientForm.sub_county || undefined}
+                  onValueChange={(value) => setInlinePatientForm((prev) => ({ ...prev, sub_county: value }))}
+                  disabled={!createPatientForm.county}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={createPatientForm.county ? 'Select sub-county' : 'Select county first'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subCounties.map((subCounty) => (
+                      <SelectItem key={subCounty.id} value={String(subCounty.id)}>
+                        {subCounty.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Referral Source</Label>
+                <Select
+                  value={createPatientForm.referral_source}
+                  onValueChange={(value) => setInlinePatientForm((prev) => ({ ...prev, referral_source: value as 'self' | 'clinic' | 'other_facility' }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="self">Self</SelectItem>
+                    <SelectItem value="clinic">Clinic</SelectItem>
+                    <SelectItem value="other_facility">Other Facility</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Referred From Facility {createPatientForm.referral_source === 'other_facility' ? '' : '(optional)'}</Label>
+                <Input
+                  value={createPatientForm.referred_from_facility}
+                  onChange={(e) => setInlinePatientForm((prev) => ({ ...prev, referred_from_facility: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Consent Status</Label>
+                <Select
+                  value={createPatientForm.consent_choice || undefined}
+                  onValueChange={(value) => setInlinePatientForm((prev) => ({ ...prev, consent_choice: value as 'given' | 'deferred' }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select consent status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="given">Consent Given</SelectItem>
+                    <SelectItem value="deferred">Consent Deferred</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Payment Mode</Label>
+                <Select
+                  value={createPatientForm.payment_mode}
+                  onValueChange={(value) => setInlinePatientForm((prev) => ({ ...prev, payment_mode: value as InlinePatientFormData['payment_mode'] }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="sha">SHA</SelectItem>
+                    <SelectItem value="insurance_private">Private Insurance</SelectItem>
+                    <SelectItem value="insurance_corporate">Corporate Insurance</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Insurance Provider (optional)</Label>
+                <Input
+                  value={createPatientForm.insurance_provider}
+                  onChange={(e) => setInlinePatientForm((prev) => ({ ...prev, insurance_provider: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Insurance Member Number (optional)</Label>
+                <Input
+                  value={createPatientForm.insurance_member_number}
+                  onChange={(e) => setInlinePatientForm((prev) => ({ ...prev, insurance_member_number: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>SHA Number (optional)</Label>
+                <Input
+                  value={createPatientForm.sha_number}
+                  onChange={(e) => setInlinePatientForm((prev) => ({ ...prev, sha_number: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Household Number (optional)</Label>
+                <Input
+                  value={createPatientForm.household_number}
+                  onChange={(e) => setInlinePatientForm((prev) => ({ ...prev, household_number: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Principal National ID (optional)</Label>
+                <Input
+                  value={createPatientForm.principal_national_id}
+                  onChange={(e) => setInlinePatientForm((prev) => ({ ...prev, principal_national_id: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {duplicateCheckMatches.length > 0 && (
+              <div className="rounded-md border border-yellow-300 bg-yellow-50 p-3 space-y-2">
+                <p className="text-sm font-medium text-yellow-900">Possible duplicate records found</p>
+                <div className="space-y-1">
+                  {duplicateCheckMatches.map((candidate) => (
+                    <p key={`dup-${candidate.id}`} className="text-xs text-yellow-900">
+                      {candidate.full_name || patientLabel(candidate)} ({candidate.mrn})
+                    </p>
+                  ))}
+                </div>
+                <p className="text-xs text-yellow-800">
+                  If this is truly a different person, click Create Anyway.
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setIsCreatePatientSheetOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void handleInlineCreatePatient()}
+                disabled={createPatient.isPending}
+              >
+                {createPatient.isPending ? 'Creating...' : duplicateCheckArmed ? 'Create Anyway' : 'Create Patient'}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

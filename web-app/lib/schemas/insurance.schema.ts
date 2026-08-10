@@ -232,6 +232,8 @@ export const PatientInsuranceSchema = z.object({
   notes: z.string(),
   card_image_front: z.string().nullable(),
   card_image_back: z.string().nullable(),
+  has_card_image_front: z.boolean().optional(),
+  has_card_image_back: z.boolean().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });

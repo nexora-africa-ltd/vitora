@@ -59,11 +59,19 @@ export default function InsuranceAuthorizationsPage() {
           {
             key: 'actions',
             header: 'Actions',
-            cell: (item) => (
-              <Button size="sm" variant="outline" onClick={() => void handleValidate(item)}>
-                Validate Token
-              </Button>
-            ),
+            cell: (item) => {
+              const canValidate = item.status !== 'validated' && item.workflow_step !== 'authorization_validated';
+
+              if (!canValidate) {
+                return <span className="text-xs text-muted-foreground">Already validated</span>;
+              }
+
+              return (
+                <Button size="sm" variant="outline" onClick={() => void handleValidate(item)}>
+                  Validate Token
+                </Button>
+              );
+            },
           },
         ]}
       />

@@ -171,8 +171,33 @@ async function getEnrollment(id: number): Promise<PatientInsurance> {
   });
 }
 
+function buildEnrollmentPayload(data: Partial<PatientInsuranceCreateInput>): {
+  payload: FormData | Partial<PatientInsuranceCreateInput>;
+  isMultipart: boolean;
+} {
+  const hasFile = data.card_image_front instanceof File || data.card_image_back instanceof File;
+  if (!hasFile) {
+    return { payload: data, isMultipart: false };
+  }
+
+  const formData = new FormData();
+  Object.entries(data).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    if (value instanceof File) {
+      formData.append(key, value);
+      return;
+    }
+    formData.append(key, String(value));
+  });
+
+  return { payload: formData, isMultipart: true };
+}
+
 async function createEnrollment(data: PatientInsuranceCreateInput): Promise<PatientInsurance> {
-  const response = await apiClient.post(`${BASE}/enrollments/`, data);
+  const { payload, isMultipart } = buildEnrollmentPayload(data);
+  const response = await apiClient.post(`${BASE}/enrollments/`, payload, isMultipart
+    ? { headers: { 'Content-Type': 'multipart/form-data' } }
+    : undefined);
   return parseResponse(PatientInsuranceSchema, response.data, {
     context: 'insuranceApi.createEnrollment',
   });
@@ -182,7 +207,10 @@ async function updateEnrollment(
   id: number,
   data: Partial<PatientInsuranceCreateInput>
 ): Promise<PatientInsurance> {
-  const response = await apiClient.patch(`${BASE}/enrollments/${id}/`, data);
+  const { payload, isMultipart } = buildEnrollmentPayload(data);
+  const response = await apiClient.patch(`${BASE}/enrollments/${id}/`, payload, isMultipart
+    ? { headers: { 'Content-Type': 'multipart/form-data' } }
+    : undefined);
   return parseResponse(PatientInsuranceSchema, response.data, {
     context: 'insuranceApi.updateEnrollment',
   });

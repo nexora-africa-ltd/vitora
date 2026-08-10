@@ -138,6 +138,7 @@ export interface PatientCreateData {
   insurance_member_number?: string;
   // Other
   referral_source?: 'self' | 'clinic' | 'other_facility';
+  referred_from_facility?: string;
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
   emergency_contact_relationship?: string;

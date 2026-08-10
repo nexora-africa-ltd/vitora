@@ -1020,6 +1020,7 @@ IMAGING_STANDALONE_MODE = os.getenv("IMAGING_STANDALONE_MODE", "false").lower() 
 # ManualAdapter (no outbound API calls). Per-provider API config in
 # InsuranceProviderConfig is still respected for submission_format.
 INSURANCE_ENABLED = os.getenv("INSURANCE_ENABLED", "false").lower() == "true"
+INSURANCE_CARD_IMAGE_URL_TTL_SECONDS = int(os.getenv("INSURANCE_CARD_IMAGE_URL_TTL_SECONDS", "300"))
 
 # =============================================================================
 # TIBABOT AI INTEGRATION

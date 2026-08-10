@@ -266,6 +266,8 @@ export interface PatientInsurance {
   notes: string;
   card_image_front: string | null;
   card_image_back: string | null;
+  has_card_image_front?: boolean;
+  has_card_image_back?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -285,6 +287,10 @@ export interface PatientInsuranceCreateInput {
   copay_override?: string | null;
   annual_balance?: string | null;
   is_primary?: boolean;
+  card_image_front?: string | File | null;
+  card_image_back?: string | File | null;
+  remove_card_image_front?: boolean;
+  remove_card_image_back?: boolean;
   notes?: string;
 }
 

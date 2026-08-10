@@ -26,6 +26,7 @@ from django.utils import timezone
 
 from hmis.apps.core.mixins import FacilityScopedModel, OrganizationScopedModel
 from hmis.apps.core.pii import encrypted_pii_property
+from hmis.apps.core.upload_validators import validate_image_upload as _validate_image_upload
 
 
 # ---------------------------------------------------------------------------
@@ -303,12 +304,14 @@ class PatientInsurance(OrganizationScopedModel):
         upload_to="insurance/cards/",
         blank=True,
         null=True,
+        validators=[_validate_image_upload],
         help_text="Front image of insurance card",
     )
     card_image_back = models.ImageField(
         upload_to="insurance/cards/",
         blank=True,
         null=True,
+        validators=[_validate_image_upload],
         help_text="Back image of insurance card",
     )
 

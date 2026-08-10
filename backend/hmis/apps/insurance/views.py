@@ -5,6 +5,7 @@ import logging
 import re
 
 from django.core.exceptions import ValidationError
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -14,6 +15,7 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
+from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import RequiresActiveShiftPermission
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.insurance.bootstrap import seed_slade_defaults
@@ -25,6 +27,7 @@ from hmis.apps.insurance.filters import (
     PatientInsuranceFilter,
     PayerTariffFilter,
 )
+from hmis.apps.insurance.media_security import read_decrypted_card_image, validate_card_image_token
 from hmis.apps.insurance.models import (
     InsuranceBalanceReservation,
     InsuranceClaim,
@@ -196,9 +199,23 @@ class PatientInsuranceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
     ordering = ["-valid_to"]
 
     def get_serializer_class(self):
-        if self.action == "create":
+        if self.action in {"create", "update", "partial_update"}:
             return PatientInsuranceCreateSerializer
         return PatientInsuranceSerializer
+
+    def _can_view_card_images(self, request) -> bool:
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        profile = getattr(user, "staff_profile", None)
+        if not profile:
+            return False
+        role = getattr(profile, "primary_role", None)
+        if role and getattr(role, "code", "") in {"ADMIN", "ORG-ADMIN", "OWNER"}:
+            return True
+        return profile.has_permission("read", "PatientInsurance")
 
     def perform_create(self, serializer):
         tenant_kwargs = self.get_tenant_save_kwargs()
@@ -449,6 +466,59 @@ class PatientInsuranceViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
                 "eligibility": self._eligibility_payload(result),
             }
         )
+
+    @action(detail=True, methods=["get"], url_path=r"card-image/(?P<side>front|back)")
+    def card_image(self, request, pk=None, side=None):
+        enrollment = self.get_object()
+        if not self._can_view_card_images(request):
+            return Response(
+                {"error": "You do not have permission to view insurance card images."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        token = request.query_params.get("token", "")
+        if not token or not validate_card_image_token(
+            token,
+            enrollment_id=enrollment.id,
+            side=side,
+            user_id=request.user.id,
+        ):
+            return Response(
+                {"error": "Invalid or expired card image link."}, status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            payload, content_type = read_decrypted_card_image(enrollment=enrollment, side=side)
+        except FileNotFoundError:
+            return Response({"error": "Card image not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as exc:
+            logger.exception(
+                "Failed to read insurance card image",
+                extra={"enrollment_id": enrollment.id, "side": side},
+            )
+            return Response(
+                {"error": f"Could not load card image: {exc}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        AuditLog.log(
+            action="insurance_card_image_view",
+            user=request.user,
+            resource_type="PatientInsurance",
+            resource_id=enrollment.id,
+            patient_id=enrollment.patient_id,
+            request=request,
+            details={
+                "side": side,
+                "purpose": "insurance_enrollment_review",
+            },
+        )
+
+        response = HttpResponse(payload, content_type=content_type)
+        response["Cache-Control"] = "private, max-age=60"
+        response["X-Content-Type-Options"] = "nosniff"
+        response["Content-Disposition"] = "inline"
+        return response
 
     @action(detail=True, methods=["post"], url_path="healthcloud-session/request-otp")
     def healthcloud_session_request_otp(self, request, pk=None):

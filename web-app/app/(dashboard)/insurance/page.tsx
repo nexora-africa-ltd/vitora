@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   ArrowRight,
   TrendingUp,
+  Wallet,
 } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { PageHeader } from '@/components/shared/page-header';
@@ -310,6 +311,18 @@ export default function InsurancePage() {
                   <div>
                     <p className="font-medium text-sm">Remittances</p>
                     <p className="text-xs text-muted-foreground">Create & reconcile batches</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </CardContent>
+            </Card>
+            <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push('/insurance/reservations')}>
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Wallet className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-sm">Reservations</p>
+                    <p className="text-xs text-muted-foreground">Reserve balances for claims</p>
                   </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />

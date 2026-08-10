@@ -92,7 +92,7 @@ export default function InsuranceEnrollmentsPage() {
         data={enrollments}
         isLoading={isLoading}
         keyExtractor={(item) => item.id}
-        onRowClick={(item) => router.push(`/patients/${item.patient}`)}
+        onRowClick={(item) => router.push(`/insurance/enrollments/${item.id}`)}
         emptyMessage="No enrollments found."
         columns={[
           {
@@ -138,8 +138,15 @@ export default function InsuranceEnrollmentsPage() {
             header: 'Actions',
             cell: (item) => (
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); void handleVerifyViaHealthcloud(item.id); }}>
-                  Verify
+                {item.status !== 'active' ? (
+                  <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); void handleVerifyViaHealthcloud(item.id); }}>
+                    Verify
+                  </Button>
+                ) : (
+                  <Badge variant="secondary">Verified</Badge>
+                )}
+                <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); router.push(`/insurance/enrollments/${item.id}`); }}>
+                  View
                 </Button>
                 {(() => {
                   const existingSession = sessionsByEnrollment.get(item.id);
@@ -182,8 +189,15 @@ export default function InsuranceEnrollmentsPage() {
                 {item.status.replace('_', ' ')}
               </Badge>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => void handleVerifyViaHealthcloud(item.id)}>
-                  Verify
+                {item.status !== 'active' ? (
+                  <Button size="sm" variant="outline" onClick={() => void handleVerifyViaHealthcloud(item.id)}>
+                    Verify
+                  </Button>
+                ) : (
+                  <Badge variant="secondary">Verified</Badge>
+                )}
+                <Button size="sm" variant="secondary" onClick={() => router.push(`/insurance/enrollments/${item.id}`)}>
+                  View
                 </Button>
                 {(() => {
                   const existingSession = sessionsByEnrollment.get(item.id);

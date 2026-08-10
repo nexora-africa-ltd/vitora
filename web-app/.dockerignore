@@ -19,3 +19,4 @@ playwright.config.*
 .prettierrc*
 tsconfig.tsbuildinfo
 README.md
+node_modules

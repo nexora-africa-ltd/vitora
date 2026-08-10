@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { PageHeader } from '@/components/shared/page-header';
@@ -15,7 +15,7 @@ import {
   emptyDiagnosisCodeValue,
   type DiagnosisCodeValue,
 } from '@/components/shared/diagnosis-code-input';
-import { useCreateClaim, usePatientInsurances } from '@/lib/hooks/use-insurance';
+import { useCreateClaim, useInsurancePlan, usePatientInsurances } from '@/lib/hooks/use-insurance';
 import { useToast } from '@/lib/hooks/use-toast';
 
 export default function NewInsuranceClaimPage() {
@@ -41,10 +41,27 @@ export default function NewInsuranceClaimPage() {
   const [diagnosisCode, setDiagnosisCode] = useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue());
   const [notes, setNotes] = useState<string>('');
 
-  const selectedEnrollment = useMemo(
-    () => enrollments.find((e) => String(e.id) === patientInsuranceId),
-    [enrollments, patientInsuranceId]
-  );
+  const selectedEnrollment = enrollments.find((e) => String(e.id) === patientInsuranceId);
+  const { data: selectedPlan } = useInsurancePlan(selectedEnrollment?.plan);
+
+  const inferredClaimType = useMemo<'outpatient' | 'inpatient' | null>(() => {
+    if (!selectedEnrollment) return null;
+
+    if (selectedPlan?.coverage_type === 'inpatient') return 'inpatient';
+    if (selectedPlan?.coverage_type === 'outpatient') return 'outpatient';
+
+    const name = selectedEnrollment.plan_name.toLowerCase();
+    if (name.includes('inpatient') && !name.includes('outpatient')) return 'inpatient';
+    if (name.includes('outpatient') && !name.includes('inpatient')) return 'outpatient';
+
+    return null;
+  }, [selectedEnrollment, selectedPlan?.coverage_type]);
+
+  useEffect(() => {
+    if (inferredClaimType) {
+      setClaimType(inferredClaimType);
+    }
+  }, [inferredClaimType]);
 
   const handleCreate = async () => {
     if (!selectedEnrollment) {
@@ -124,6 +141,11 @@ export default function NewInsuranceClaimPage() {
                   <SelectItem value="inpatient">Inpatient</SelectItem>
                 </SelectContent>
               </Select>
+              {inferredClaimType && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Auto-detected from enrollment: {inferredClaimType}
+                </p>
+              )}
             </div>
 
             <div>
