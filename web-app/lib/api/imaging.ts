@@ -11,6 +11,9 @@ import {
   ImagingProcedureCreateData,
   ImagingOrder,
   ImagingOrderCreateData,
+  ExternalImagingRequest,
+  ExternalImagingRequestCreateData,
+  ExternalImagingRequestListParams,
   ScheduleOrderData,
   CancelOrderData,
   ImagingProcedureListParams,
@@ -50,6 +53,9 @@ import {
   PaginatedImagingOrderSchema,
   ImagingProcedureArraySchema,
   ImagingOrderArraySchema,
+  ExternalImagingRequestSchema,
+  PaginatedExternalImagingRequestSchema,
+  ExternalImagingRequestArraySchema,
   ImagingResourceSchema,
   ImagingResourcesListResponseSchema,
   ImagingCalendarResponseSchema,
@@ -225,6 +231,52 @@ export const imagingApi = {
     return parseResponse(ImagingOrderSchema, response.data, {
       context: 'imagingApi.createOrder',
     }) as ImagingOrder;
+  },
+
+  /**
+   * List external imaging requests.
+   */
+  async listExternalRequests(
+    params?: ExternalImagingRequestListParams
+  ): Promise<PaginatedResponse<ExternalImagingRequest>> {
+    const response = await apiClient.get<PaginatedResponse<ExternalImagingRequest>>(
+      '/api/imaging/external-requests/',
+      { params }
+    );
+    return parseResponse(PaginatedExternalImagingRequestSchema, response.data, {
+      context: 'imagingApi.listExternalRequests',
+    }) as PaginatedResponse<ExternalImagingRequest>;
+  },
+
+  /**
+   * Get encounter-specific external imaging requests.
+   */
+  async getEncounterExternalRequests(encounterId: number): Promise<ExternalImagingRequest[]> {
+    const response = await apiClient.get<PaginatedResponse<ExternalImagingRequest>>(
+      '/api/imaging/external-requests/',
+      { params: { encounter: encounterId } }
+    );
+    const data = parseResponse(PaginatedExternalImagingRequestSchema, response.data, {
+      context: 'imagingApi.getEncounterExternalRequests',
+    }) as PaginatedResponse<ExternalImagingRequest>;
+    return parseResponse(ExternalImagingRequestArraySchema, data.results || [], {
+      context: 'imagingApi.getEncounterExternalRequests.results',
+    }) as ExternalImagingRequest[];
+  },
+
+  /**
+   * Create an encounter-linked external imaging request.
+   */
+  async createExternalRequest(
+    data: ExternalImagingRequestCreateData
+  ): Promise<ExternalImagingRequest> {
+    const response = await apiClient.post<ExternalImagingRequest>(
+      '/api/imaging/external-requests/',
+      data
+    );
+    return parseResponse(ExternalImagingRequestSchema, response.data, {
+      context: 'imagingApi.createExternalRequest',
+    }) as ExternalImagingRequest;
   },
 
   /**

@@ -11,6 +11,7 @@ from .views import (
     DICOMRetrieveView,
     DICOMStudyViewSet,
     DICOMUploadView,
+    EncounterExternalImagingRequestViewSet,
     ImagingCalendarView,
     ImagingEquipmentViewSet,
     ImagingIntegrationSettingsViewSet,
@@ -27,6 +28,11 @@ from .views import (
 router = DefaultRouter()
 router.register(r"procedures", ImagingProcedureViewSet, basename="imaging-procedure")
 router.register(r"orders", ImagingOrderViewSet, basename="imaging-order")
+router.register(
+    r"external-requests",
+    EncounterExternalImagingRequestViewSet,
+    basename="imaging-external-request",
+)
 router.register(r"resources", ImagingResourceViewSet, basename="imaging-resource")
 router.register(r"equipment", ImagingEquipmentViewSet, basename="imaging-equipment")
 router.register(r"settings", ImagingIntegrationSettingsViewSet, basename="imaging-settings")

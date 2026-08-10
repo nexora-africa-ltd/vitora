@@ -7,6 +7,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { ImagingOrderForm } from '@/components/imaging';
 
@@ -86,6 +87,13 @@ export default function NewImagingOrderPage() {
       </div>
 
       {/* Order Form */}
+      <Alert>
+        <AlertTitle>New: External request mode is available</AlertTitle>
+        <AlertDescription>
+          In the form below, set "Request Destination" to "External Imaging Request" when you need referral workflow instead of immediate in-house ordering.
+        </AlertDescription>
+      </Alert>
+
       <ImagingOrderForm
         patientId={parseInt(patientId, 10)}
         patientName={patientName || undefined}

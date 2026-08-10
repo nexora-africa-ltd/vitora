@@ -665,6 +665,143 @@ class ProcedureOrder(FacilityScopedModel, TimeStampedModel):
         return False
 
 
+class ExternalProcedureOrderRequest(FacilityScopedModel, TimeStampedModel):
+    """Outbound procedure request sent to an external provider/facility."""
+
+    class Status(models.TextChoices):
+        RECEIVED = "RECEIVED", "Received"
+        ACCEPTED = "ACCEPTED", "Accepted"
+        REJECTED = "REJECTED", "Rejected"
+
+    request_number = models.CharField(
+        max_length=24,
+        unique=True,
+        editable=False,
+        help_text="Auto-generated request number (EXTPROC-YYYYMMDD-XXXX)",
+    )
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.CASCADE,
+        related_name="external_procedure_requests",
+    )
+    encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.CASCADE,
+        related_name="external_procedure_requests",
+    )
+    procedure = models.ForeignKey(
+        ProcedureCatalog,
+        on_delete=models.PROTECT,
+        related_name="external_requests",
+    )
+
+    priority = models.CharField(
+        max_length=20,
+        choices=ProcedureOrder.Priority.choices,
+        default=ProcedureOrder.Priority.ROUTINE,
+    )
+    indication = models.TextField(
+        help_text="Clinical indication / reason for external procedure request"
+    )
+    clinical_notes = models.TextField(blank=True, default="")
+    body_site = models.CharField(max_length=100, blank=True, default="")
+    laterality = models.CharField(
+        max_length=20,
+        choices=ProcedureOrder.Laterality.choices,
+        default=ProcedureOrder.Laterality.NA,
+    )
+
+    sending_facility = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="External destination facility/provider",
+    )
+    referring_clinician = models.CharField(max_length=200, blank=True, default="")
+
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.RECEIVED)
+    rejection_reason = models.TextField(blank=True, default="")
+
+    procedure_order = models.ForeignKey(
+        ProcedureOrder,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="external_requests",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="external_procedure_requests_created",
+    )
+    processed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="external_procedure_requests_processed",
+    )
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["request_number"]),
+            models.Index(fields=["facility", "status"]),
+            models.Index(fields=["encounter", "status"]),
+            models.Index(fields=["patient", "status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.request_number} - {self.procedure.name}"
+
+    def save(self, *args, **kwargs):  # type: ignore[override]
+        if not self.request_number:
+            self.request_number = self._generate_request_number()
+        super().save(*args, **kwargs)
+
+    def _generate_request_number(self) -> str:
+        today = timezone.now().date()
+        prefix = f"EXTPROC-{today.strftime('%Y%m%d')}-"
+        last_request = (
+            ExternalProcedureOrderRequest.objects.filter(request_number__startswith=prefix)
+            .order_by("-request_number")
+            .first()
+        )
+        next_num = int(last_request.request_number.split("-")[-1]) + 1 if last_request else 1
+        return f"{prefix}{next_num:04d}"
+
+    def accept(self, user: "settings.AUTH_USER_MODEL", procedure_order: ProcedureOrder) -> None:
+        self.status = self.Status.ACCEPTED
+        self.procedure_order = procedure_order
+        self.processed_by = user
+        self.processed_at = timezone.now()
+        self.save(
+            update_fields=[
+                "status",
+                "procedure_order",
+                "processed_by",
+                "processed_at",
+                "updated_at",
+            ]
+        )
+
+    def reject(self, user: "settings.AUTH_USER_MODEL", reason: str) -> None:
+        self.status = self.Status.REJECTED
+        self.rejection_reason = reason
+        self.processed_by = user
+        self.processed_at = timezone.now()
+        self.save(
+            update_fields=[
+                "status",
+                "rejection_reason",
+                "processed_by",
+                "processed_at",
+                "updated_at",
+            ]
+        )
+
+
 class ProcedureConsent(FacilityScopedModel, TimeStampedModel):
     """
     Consent record for a procedure.

@@ -227,6 +227,61 @@ export interface ImagingOrderCreateData {
   items: ImagingOrderItemCreateData[];
 }
 
+export type ExternalImagingRequestStatus =
+  | 'RECEIVED'
+  | 'ACCEPTED'
+  | 'REJECTED'
+  | 'PROCESSING'
+  | 'COMPLETED';
+
+export interface ExternalImagingRequestProcedure {
+  code: string;
+  name?: string;
+  modality?: string;
+  laterality?: string;
+  instructions?: string;
+}
+
+export interface ExternalImagingRequest {
+  id: number;
+  patient: number | null;
+  encounter: number | null;
+  message_control_id: string;
+  sending_application: string;
+  sending_facility: string;
+  referring_clinician: string;
+  external_patient_id: string;
+  patient_name: string;
+  patient_dob: string | null;
+  patient_gender: string;
+  patient_phone: string;
+  patient_id_number: string;
+  placer_order_number: string;
+  priority: ImagingPriority;
+  clinical_indication: string;
+  relevant_clinical_history: string;
+  requested_procedures: ExternalImagingRequestProcedure[];
+  status: ExternalImagingRequestStatus;
+  rejection_reason: string;
+  imaging_order: number | null;
+  imaging_order_number?: string | null;
+  processed_by: number | null;
+  processed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExternalImagingRequestCreateData {
+  patient: number;
+  encounter: number;
+  priority?: ImagingPriority;
+  clinical_indication: string;
+  relevant_clinical_history?: string;
+  referring_clinician?: string;
+  sending_facility?: string;
+  items: ImagingOrderItemCreateData[];
+}
+
 /**
  * Data for scheduling an imaging order.
  */
@@ -270,6 +325,14 @@ export interface ImagingOrderListParams {
   date_from?: string;
   date_to?: string;
   search?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface ExternalImagingRequestListParams {
+  encounter?: number;
+  patient?: number;
+  status?: ExternalImagingRequestStatus;
   page?: number;
   page_size?: number;
 }

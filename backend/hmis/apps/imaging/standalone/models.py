@@ -144,6 +144,22 @@ class ExternalImagingOrderRequest(FacilityScopedModel, TimeStampedModel):
     referring_clinician_license = models.CharField(max_length=100, blank=True)
 
     # Patient (external)
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="external_imaging_requests",
+        help_text="Optional HMIS patient linked from encounter-originated request",
+    )
+    encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="external_imaging_requests",
+        help_text="Optional encounter that generated this external imaging request",
+    )
     external_patient_id = models.CharField(max_length=100, blank=True)
     patient_name = models.CharField(max_length=200)
     patient_dob = models.DateField(null=True, blank=True)

@@ -298,6 +298,7 @@ const _allNavItems: NavItemType[] = [
     children: [
       { label: 'Dashboard', href: '/procedures', icon: LayoutDashboard, actionKey: 'procedures.view_dashboard' },
       { label: 'Orders', href: '/procedures/orders', icon: SquareDashedTopSolid, actionKey: 'procedures.view_orders' },
+      { label: 'External Requests', href: '/procedures/external-requests', icon: Inbox, actionKey: 'procedures.view_orders' },
       { label: 'Catalog', href: '/procedures/catalog', icon: Syringe, actionKey: 'procedures.view_catalog' },
       { label: 'Room Assignments', href: '/procedures/catalog/clinic-mappings', icon: Network, actionKey: 'procedures.view_catalog' },
     ],

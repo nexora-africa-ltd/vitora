@@ -12,10 +12,9 @@ import {
   ScanLine,
   ExternalLink,
   Clock,
-  CheckCircle2,
-  AlertCircle,
   Calendar,
   ImageIcon,
+  Send,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,7 +29,10 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useEncounterImagingOrders } from '@/lib/hooks/use-imaging';
+import {
+  useEncounterExternalImagingRequests,
+  useEncounterImagingOrders,
+} from '@/lib/hooks/use-imaging';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDateTime } from '@/lib/utils/format';
 import {
@@ -41,8 +43,7 @@ import {
 import { ImagingOrderForm } from '@/components/imaging/imaging-order-form';
 import type {
   ImagingOrder,
-  ImagingOrderStatus,
-  ImagingPriority,
+  ExternalImagingRequest,
 } from '@/lib/types/imaging';
 
 interface EncounterImagingOrdersProps {
@@ -60,14 +61,19 @@ export function EncounterImagingOrders({
 }: EncounterImagingOrdersProps) {
   const queryClient = useQueryClient();
   const { data: orders, isLoading, error } = useEncounterImagingOrders(encounterId);
+  const {
+    data: externalRequests,
+    isLoading: isExternalLoading,
+    error: externalError,
+  } = useEncounterExternalImagingRequests(encounterId);
   const [showOrderForm, setShowOrderForm] = useState(false);
 
   const handleOrderCreated = useCallback(() => {
     setShowOrderForm(false);
-    queryClient.invalidateQueries({ queryKey: ['encounter-imaging-orders', encounterId] });
-  }, [queryClient, encounterId]);
+    queryClient.invalidateQueries({ queryKey: ['imaging'] });
+  }, [queryClient]);
 
-  if (isLoading) {
+  if (isLoading || isExternalLoading) {
     return (
       <Card>
         <CardHeader>
@@ -86,7 +92,7 @@ export function EncounterImagingOrders({
     );
   }
 
-  if (error) {
+  if (error || externalError) {
     return (
       <Card>
         <CardHeader>
@@ -106,6 +112,7 @@ export function EncounterImagingOrders({
 
   // Ensure orders is always an array
   const ordersList = Array.isArray(orders) ? orders : [];
+  const externalRequestsList = Array.isArray(externalRequests) ? externalRequests : [];
   const pendingOrders = ordersList.filter(
     (o) => o.status !== 'COMPLETED' && o.status !== 'REPORTED' && o.status !== 'CANCELLED'
   );
@@ -120,8 +127,8 @@ export function EncounterImagingOrders({
           <CardTitle className="text-lg flex items-center gap-2">
             <ScanLine className="h-5 w-5" />
             Imaging Orders
-            {ordersList.length > 0 && (
-              <Badge variant="secondary">{ordersList.length}</Badge>
+            {ordersList.length + externalRequestsList.length > 0 && (
+              <Badge variant="secondary">{ordersList.length + externalRequestsList.length}</Badge>
             )}
           </CardTitle>
           <Button
@@ -139,7 +146,7 @@ export function EncounterImagingOrders({
       </CardHeader>
 
       <CardContent>
-        {ordersList.length === 0 ? (
+        {ordersList.length === 0 && externalRequestsList.length === 0 ? (
           <div className="py-8 text-center">
             <ImageIcon className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
             <p className="text-sm text-muted-foreground mb-4">
@@ -169,6 +176,17 @@ export function EncounterImagingOrders({
               </div>
             )}
 
+            {externalRequestsList.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground">
+                  External Requests ({externalRequestsList.length})
+                </h4>
+                {externalRequestsList.map((request) => (
+                  <ExternalRequestCard key={request.id} request={request} />
+                ))}
+              </div>
+            )}
+
             {/* Completed Orders */}
             {completedOrders.length > 0 && (
               <div className="space-y-2">
@@ -184,15 +202,26 @@ export function EncounterImagingOrders({
         )}
       </CardContent>
 
-      {ordersList.length > 0 && (
+      {(ordersList.length > 0 || externalRequestsList.length > 0) && (
         <CardFooter className="pt-0">
-          <Link
-            href={`/imaging?encounter=${encounterId}`}
-            className="text-sm text-primary hover:underline flex items-center gap-1"
-          >
-            View all imaging orders
-            <ExternalLink className="h-3 w-3" />
-          </Link>
+          <div className="flex flex-col gap-2">
+            <Link
+              href={`/imaging?encounter=${encounterId}`}
+              className="text-sm text-primary hover:underline flex items-center gap-1"
+            >
+              View all imaging orders
+              <ExternalLink className="h-3 w-3" />
+            </Link>
+            {externalRequestsList.length > 0 && (
+              <Link
+                href="/imaging/standalone/external-orders"
+                className="text-sm text-primary hover:underline flex items-center gap-1"
+              >
+                Review external request queue
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            )}
+          </div>
         </CardFooter>
       )}
 
@@ -284,14 +313,19 @@ export function EncounterImagingOrdersContent({
 }: EncounterImagingOrdersProps) {
   const queryClient = useQueryClient();
   const { data: orders, isLoading, error } = useEncounterImagingOrders(encounterId);
+  const {
+    data: externalRequests,
+    isLoading: isExternalLoading,
+    error: externalError,
+  } = useEncounterExternalImagingRequests(encounterId);
   const [showOrderForm, setShowOrderForm] = useState(false);
 
   const handleOrderCreated = useCallback(() => {
     setShowOrderForm(false);
-    queryClient.invalidateQueries({ queryKey: ['encounter-imaging-orders', encounterId] });
-  }, [queryClient, encounterId]);
+    queryClient.invalidateQueries({ queryKey: ['imaging'] });
+  }, [queryClient]);
 
-  if (isLoading) {
+  if (isLoading || isExternalLoading) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-16 w-full" />
@@ -300,11 +334,12 @@ export function EncounterImagingOrdersContent({
     );
   }
 
-  if (error) {
+  if (error || externalError) {
     return <p className="text-sm text-muted-foreground">Failed to load imaging orders.</p>;
   }
 
   const ordersList = Array.isArray(orders) ? orders : [];
+  const externalRequestsList = Array.isArray(externalRequests) ? externalRequests : [];
   const pendingOrders = ordersList.filter(
     (o) => o.status !== 'COMPLETED' && o.status !== 'REPORTED' && o.status !== 'CANCELLED'
   );
@@ -328,7 +363,7 @@ export function EncounterImagingOrdersContent({
         </div>
       )}
 
-      {ordersList.length === 0 ? (
+      {ordersList.length === 0 && externalRequestsList.length === 0 ? (
         <div className="text-center py-4 text-muted-foreground">
           <ScanLine className="h-8 w-8 mx-auto mb-2 opacity-50" />
           <p className="text-sm">No imaging orders for this encounter</p>
@@ -343,6 +378,18 @@ export function EncounterImagingOrdersContent({
               <div className="space-y-2">
                 {pendingOrders.map((order) => (
                   <ImagingOrderCard key={order.id} order={order} />
+                ))}
+              </div>
+            </div>
+          )}
+          {externalRequestsList.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                External Requests ({externalRequestsList.length})
+              </h4>
+              <div className="space-y-2">
+                {externalRequestsList.map((request) => (
+                  <ExternalRequestCard key={request.id} request={request} />
                 ))}
               </div>
             </div>
@@ -381,6 +428,48 @@ export function EncounterImagingOrdersContent({
           </ScrollArea>
         </SheetContent>
       </Sheet>
+    </div>
+  );
+}
+
+function ExternalRequestCard({ request }: { request: ExternalImagingRequest }) {
+  const colorByStatus: Record<string, string> = {
+    RECEIVED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
+    ACCEPTED: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+    REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
+    PROCESSING: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+    COMPLETED: 'bg-slate-100 text-slate-800 dark:bg-slate-900/40 dark:text-slate-200',
+  };
+
+  return (
+    <div className="block p-3 border rounded-lg bg-muted/20">
+      <div className="flex items-start justify-between gap-2">
+        <div className="space-y-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-mono text-sm">{request.placer_order_number}</span>
+            <Badge className={colorByStatus[request.status] || ''}>{request.status}</Badge>
+            <Badge variant="outline" className="text-[10px]">
+              <Send className="h-2.5 w-2.5 mr-0.5" /> External
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground line-clamp-1">{request.clinical_indication}</p>
+          {request.rejection_reason && (
+            <p className="text-xs text-red-600 line-clamp-1">Reason: {request.rejection_reason}</p>
+          )}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {formatDateTime(request.created_at)}
+        </div>
+      </div>
+      {request.imaging_order_number && (
+        <Link
+          href={`/imaging/orders/${request.imaging_order_number}`}
+          className="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-2"
+        >
+          View created order
+          <ExternalLink className="h-3 w-3" />
+        </Link>
+      )}
     </div>
   );
 }

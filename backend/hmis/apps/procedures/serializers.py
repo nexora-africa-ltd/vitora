@@ -2,6 +2,7 @@
 from rest_framework import serializers
 
 from .models import (
+    ExternalProcedureOrderRequest,
     ProcedureCatalog,
     ProcedureConsent,
     ProcedureConsumable,
@@ -252,6 +253,80 @@ class ProcedureOrderDetailSerializer(serializers.ModelSerializer):
             return ProcedureLogSerializer(obj.log).data
         except ProcedureLog.DoesNotExist:
             return None
+
+
+class ExternalProcedureOrderRequestListSerializer(serializers.ModelSerializer):
+    patient_name = serializers.SerializerMethodField()
+    procedure_name = serializers.CharField(source="procedure.name", read_only=True)
+    procedure_order_number = serializers.CharField(
+        source="procedure_order.order_number", read_only=True, default=None
+    )
+
+    class Meta:
+        model = ExternalProcedureOrderRequest
+        fields = [
+            "id",
+            "request_number",
+            "patient",
+            "patient_name",
+            "encounter",
+            "procedure",
+            "procedure_name",
+            "priority",
+            "indication",
+            "clinical_notes",
+            "body_site",
+            "laterality",
+            "sending_facility",
+            "referring_clinician",
+            "status",
+            "rejection_reason",
+            "procedure_order",
+            "procedure_order_number",
+            "processed_by",
+            "processed_at",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_patient_name(self, obj: ExternalProcedureOrderRequest) -> str:
+        return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+
+class ExternalProcedureOrderRequestCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExternalProcedureOrderRequest
+        fields = [
+            "patient",
+            "encounter",
+            "procedure",
+            "priority",
+            "indication",
+            "clinical_notes",
+            "body_site",
+            "laterality",
+            "sending_facility",
+            "referring_clinician",
+        ]
+
+    def validate(self, attrs):
+        patient = attrs["patient"]
+        encounter = attrs["encounter"]
+        procedure = attrs["procedure"]
+
+        if encounter.patient_id != patient.id:
+            raise serializers.ValidationError(
+                {"patient": "Selected patient does not match the encounter patient."}
+            )
+
+        if not procedure.is_active:
+            raise serializers.ValidationError({"procedure": "Selected procedure is inactive."})
+
+        return attrs
+
+
+class ExternalProcedureOrderRequestRejectSerializer(serializers.Serializer):
+    reason = serializers.CharField()
 
 
 # ---------------------------------------------------------------------------

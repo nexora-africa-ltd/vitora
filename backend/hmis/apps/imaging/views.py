@@ -52,6 +52,8 @@ from .serializers import (
     DICOMSeriesListSerializer,
     DICOMStudyDetailSerializer,
     DICOMStudySerializer,
+    EncounterExternalImagingRequestCreateSerializer,
+    ExternalImagingOrderRequestSerializer,
     ImagingIntegrationSettingsSerializer,
     ImagingOrderCreateSerializer,
     ImagingOrderSerializer,
@@ -73,6 +75,7 @@ from .services import (
     recompute_study_statistics,
     resolve_equipment_from_metadata,
 )
+from .standalone.models import ExternalImagingOrderRequest
 
 logger = logging.getLogger(__name__)
 
@@ -871,6 +874,68 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+class EncounterExternalImagingRequestViewSet(viewsets.ModelViewSet):
+    """Create/list external imaging requests from encounter context."""
+
+    queryset = ExternalImagingOrderRequest.objects.all().select_related(
+        "patient", "encounter", "imaging_order", "processed_by"
+    )
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_fields = ["status", "encounter", "patient"]
+    http_method_names = ["get", "post", "head", "options"]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return EncounterExternalImagingRequestCreateSerializer
+        return ExternalImagingOrderRequestSerializer
+
+    def get_queryset(self):
+        resolve_request_tenant(self.request)
+        queryset = self.queryset
+        user = self.request.user
+
+        if not user.is_superuser:
+            facility = getattr(self.request, "facility", None)
+            org = getattr(self.request, "organization", None)
+            if facility:
+                queryset = queryset.filter(
+                    models.Q(facility=facility)
+                    | models.Q(encounter__facility=facility)
+                    | models.Q(patient__registered_at_facility=facility)
+                )
+            elif org:
+                queryset = queryset.filter(
+                    models.Q(organization=org)
+                    | models.Q(encounter__organization=org)
+                    | models.Q(patient__organization=org)
+                )
+            else:
+                return queryset.none()
+
+        return queryset.distinct()
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        ext_request = serializer.save()
+
+        AuditLog.log(
+            action="imaging_external_request_create",
+            user=request.user,
+            resource_type="ExternalImagingOrderRequest",
+            resource_id=ext_request.id,
+            ip_address=get_client_ip(request),
+            details={
+                "placer_order_number": ext_request.placer_order_number,
+                "encounter_id": ext_request.encounter_id,
+            },
+        )
+
+        output_serializer = ExternalImagingOrderRequestSerializer(ext_request)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
 
 # ============================================================================

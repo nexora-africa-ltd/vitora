@@ -162,6 +162,33 @@ export interface ProcedureDashboard {
   completed_today: number;
 }
 
+export type ExternalProcedureRequestStatus = 'RECEIVED' | 'ACCEPTED' | 'REJECTED';
+
+export interface ExternalProcedureOrderRequest {
+  id: number;
+  request_number: string;
+  patient: number;
+  patient_name: string;
+  encounter: number;
+  procedure: number;
+  procedure_name: string;
+  priority: ProcedurePriority;
+  indication: string;
+  clinical_notes: string;
+  body_site: string;
+  laterality: string;
+  sending_facility: string;
+  referring_clinician: string;
+  status: ExternalProcedureRequestStatus;
+  rejection_reason: string;
+  procedure_order: number | null;
+  procedure_order_number: string | null;
+  processed_by: number | null;
+  processed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // Status display helpers
 export const PROCEDURE_STATUS_COLORS: Record<ProcedureOrderStatus, string> = {
   ORDERED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',

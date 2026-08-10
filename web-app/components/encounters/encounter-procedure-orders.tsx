@@ -12,7 +12,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Syringe, ExternalLink, Clock, CheckCircle2, AlertCircle, XCircle, PlayCircle } from 'lucide-react';
+import { Plus, Syringe, ExternalLink, Clock, CheckCircle2, AlertCircle, XCircle, PlayCircle, Send } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -21,7 +21,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { proceduresApi } from '@/lib/api/procedures';
-import { PROCEDURE_STATUS_COLORS, PROCEDURE_STATUS_LABELS, PROCEDURE_PRIORITY_COLORS } from '@/lib/types/procedure';
+import {
+  PROCEDURE_STATUS_COLORS,
+  PROCEDURE_STATUS_LABELS,
+  PROCEDURE_PRIORITY_COLORS,
+  type ExternalProcedureOrderRequest,
+} from '@/lib/types/procedure';
 import { ProcedureOrderForm } from '@/components/procedures/procedure-order-form';
 import type { ProcedureOrderListItem } from '@/lib/types/procedure';
 
@@ -71,7 +76,17 @@ export function EncounterProcedureOrders({
     enabled: !!(encounterId || clinicVisitId || admissionId),
   });
 
+  const {
+    data: externalRequestsData,
+    isLoading: externalLoading,
+  } = useQuery({
+    queryKey: ['procedure-external-requests', filterParams],
+    queryFn: () => proceduresApi.listExternalRequests({ ...filterParams, page_size: '50' }),
+    enabled: !!encounterId,
+  });
+
   const orders = (ordersData?.results ?? []) as ProcedureOrderListItem[];
+  const externalRequests = (externalRequestsData?.results ?? []) as ExternalProcedureOrderRequest[];
   const [showOrderForm, setShowOrderForm] = useState(false);
 
   const handleOrderCreated = useCallback(() => {
@@ -79,7 +94,7 @@ export function EncounterProcedureOrders({
     queryClient.invalidateQueries({ queryKey: ['procedure-orders', filterParams] });
   }, [queryClient, filterParams]);
 
-  if (isLoading) {
+  if (isLoading || externalLoading) {
     return (
       <Card>
         <CardHeader>
@@ -127,8 +142,8 @@ export function EncounterProcedureOrders({
           <CardTitle className="text-lg flex items-center gap-2">
             <Syringe className="h-5 w-5" />
             Procedure Orders
-            {orders.length > 0 && (
-              <Badge variant="secondary">{orders.length}</Badge>
+            {orders.length + externalRequests.length > 0 && (
+              <Badge variant="secondary">{orders.length + externalRequests.length}</Badge>
             )}
           </CardTitle>
           {!disabled && (
@@ -139,12 +154,12 @@ export function EncounterProcedureOrders({
             </Button>
           )}
         </div>
-        {orders.length === 0 && (
+        {orders.length === 0 && externalRequests.length === 0 && (
           <CardDescription>No procedure orders for this {encounterId ? 'encounter' : clinicVisitId ? 'visit' : 'admission'}</CardDescription>
         )}
       </CardHeader>
 
-      {orders.length > 0 && (
+      {(orders.length > 0 || externalRequests.length > 0) && (
         <CardContent className="space-y-4">
           {/* Active Orders */}
           {activeOrders.length > 0 && (
@@ -155,6 +170,19 @@ export function EncounterProcedureOrders({
               <div className="space-y-2">
                 {activeOrders.map((order) => (
                   <ProcedureOrderCard key={order.id} order={order} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {externalRequests.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                External Requests ({externalRequests.length})
+              </h4>
+              <div className="space-y-2">
+                {externalRequests.map((request) => (
+                  <ExternalProcedureRequestCard key={request.id} request={request} />
                 ))}
               </div>
             </div>
@@ -241,7 +269,14 @@ export function EncounterProcedureOrdersContent({
     enabled: !!(encounterId || clinicVisitId || admissionId),
   });
 
+  const { data: externalRequestsData, isLoading: externalLoading } = useQuery({
+    queryKey: ['procedure-external-requests-content', filterParams],
+    queryFn: () => proceduresApi.listExternalRequests({ ...filterParams, page_size: '50' }),
+    enabled: !!encounterId,
+  });
+
   const orders = (ordersData?.results ?? []) as ProcedureOrderListItem[];
+  const externalRequests = (externalRequestsData?.results ?? []) as ExternalProcedureOrderRequest[];
   const [showOrderForm, setShowOrderForm] = useState(false);
 
   const handleOrderCreated = useCallback(() => {
@@ -249,7 +284,7 @@ export function EncounterProcedureOrdersContent({
     queryClient.invalidateQueries({ queryKey: ['procedure-orders-content', filterParams] });
   }, [queryClient, filterParams]);
 
-  if (isLoading) {
+  if (isLoading || externalLoading) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-16 w-full" />
@@ -283,7 +318,7 @@ export function EncounterProcedureOrdersContent({
         </div>
       )}
 
-      {orders.length === 0 ? (
+      {orders.length === 0 && externalRequests.length === 0 ? (
         <div className="text-center py-4 text-muted-foreground">
           <Syringe className="h-8 w-8 mx-auto mb-2 opacity-50" />
           <p className="text-sm">No procedure orders for this {encounterId ? 'encounter' : clinicVisitId ? 'visit' : 'admission'}</p>
@@ -314,6 +349,18 @@ export function EncounterProcedureOrdersContent({
               </div>
             </div>
           )}
+          {externalRequests.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                External Requests ({externalRequests.length})
+              </h4>
+              <div className="space-y-2">
+                {externalRequests.map((request) => (
+                  <ExternalProcedureRequestCard key={request.id} request={request} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -337,6 +384,43 @@ export function EncounterProcedureOrdersContent({
           </ScrollArea>
         </SheetContent>
       </Sheet>
+    </div>
+  );
+}
+
+function ExternalProcedureRequestCard({ request }: { request: ExternalProcedureOrderRequest }) {
+  const statusColors: Record<string, string> = {
+    RECEIVED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+    ACCEPTED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+    REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  };
+
+  return (
+    <div className="rounded-lg border p-3 bg-muted/20">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-mono text-sm">{request.request_number}</span>
+            <Badge className={statusColors[request.status] || ''}>{request.status}</Badge>
+            <Badge variant="outline" className="text-[10px]">
+              <Send className="h-2.5 w-2.5 mr-0.5" /> External
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground line-clamp-1 mt-1">{request.indication}</p>
+          {request.rejection_reason && (
+            <p className="text-xs text-red-600 mt-1">Reason: {request.rejection_reason}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          {request.procedure_order && (
+            <Link href={`/procedures/orders/${request.procedure_order}`}>
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

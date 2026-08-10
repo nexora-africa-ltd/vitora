@@ -40,11 +40,13 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "clinical_indication",
+                "encounter",
                 "created_at",
                 "external_patient_id",
                 "id",
                 "imaging_order",
                 "message_control_id",
+                "patient",
                 "patient_dob",
                 "patient_gender",
                 "patient_id_number",

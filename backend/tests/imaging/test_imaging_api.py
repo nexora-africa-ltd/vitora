@@ -424,6 +424,59 @@ class TestImagingOrderAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_create_external_request_from_encounter(self, authenticated_client, order_data):
+        """Should create an encounter-linked external imaging request."""
+        response = authenticated_client.post(
+            "/api/imaging/external-requests/",
+            {
+                "patient": order_data["patient"],
+                "encounter": order_data["encounter"],
+                "priority": "URGENT",
+                "clinical_indication": "Refer out for MRI availability",
+                "items": order_data["items"],
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["status"] == "RECEIVED"
+        assert response.data["encounter"] == order_data["encounter"]
+        assert response.data["patient"] == order_data["patient"]
+        assert response.data["placer_order_number"].startswith("EIR-")
+
+    def test_external_request_requires_valid_patient(self, authenticated_client, order_data):
+        """Should reject external request with invalid patient id."""
+        response = authenticated_client.post(
+            "/api/imaging/external-requests/",
+            {
+                "patient": 999999,
+                "encounter": order_data["encounter"],
+                "clinical_indication": "Mismatch check",
+                "items": order_data["items"],
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "patient" in response.data
+
+    def test_list_external_requests_by_encounter(self, authenticated_client, order_data):
+        """Should filter external requests by encounter id."""
+        authenticated_client.post(
+            "/api/imaging/external-requests/",
+            {
+                "patient": order_data["patient"],
+                "encounter": order_data["encounter"],
+                "clinical_indication": "Needs external CT",
+                "items": order_data["items"],
+            },
+            format="json",
+        )
+        response = authenticated_client.get(
+            f"/api/imaging/external-requests/?encounter={order_data['encounter']}"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["count"] >= 1
+        assert all(row["encounter"] == order_data["encounter"] for row in response.data["results"])
+
     # --- Retrieve Order Tests ---
 
     def test_retrieve_order(self, authenticated_client, sample_imaging_order):

@@ -206,6 +206,8 @@ class ExternalImagingOrderRequestSerializer(serializers.ModelSerializer):
         model = ExternalImagingOrderRequest
         fields = [
             "id",
+            "patient",
+            "encounter",
             "message_control_id",
             "sending_application",
             "sending_facility",

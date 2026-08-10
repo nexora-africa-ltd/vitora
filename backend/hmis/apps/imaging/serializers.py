@@ -6,7 +6,11 @@ Serializers for imaging models.
 import logging
 import re
 
+from django.utils import timezone
 from rest_framework import serializers
+
+from hmis.apps.encounters.models import Encounter
+from hmis.apps.patients.models import Patient
 
 from .models import (
     DICOMInstance,
@@ -19,6 +23,7 @@ from .models import (
     RadiologyReport,
     ReportAmendment,
 )
+from .standalone.models import ExternalImagingOrderRequest
 
 
 class ImagingProcedureSerializer(serializers.ModelSerializer):
@@ -304,6 +309,147 @@ class ImagingOrderCreateSerializer(serializers.ModelSerializer):
         except Exception:
             logging.getLogger(__name__).debug("eGFR check failed for contrast guard", exc_info=True)
         return warnings
+
+
+def _generate_external_imaging_request_number() -> str:
+    today = timezone.localdate().strftime("%Y%m%d")
+    prefix = f"EIR-{today}-"
+    latest = (
+        ExternalImagingOrderRequest.objects.filter(placer_order_number__startswith=prefix)
+        .order_by("-placer_order_number")
+        .first()
+    )
+    sequence = int(latest.placer_order_number.split("-")[-1]) + 1 if latest else 1
+    return f"{prefix}{sequence:04d}"
+
+
+class ExternalImagingOrderRequestSerializer(serializers.ModelSerializer):
+    """Serializer for external imaging requests (encounter + standalone)."""
+
+    imaging_order_number = serializers.CharField(
+        source="imaging_order.order_number", read_only=True
+    )
+
+    class Meta:
+        model = ExternalImagingOrderRequest
+        fields = [
+            "id",
+            "patient",
+            "encounter",
+            "message_control_id",
+            "sending_application",
+            "sending_facility",
+            "referring_clinician",
+            "referring_clinician_license",
+            "external_patient_id",
+            "patient_name",
+            "patient_dob",
+            "patient_gender",
+            "patient_phone",
+            "patient_id_number",
+            "placer_order_number",
+            "priority",
+            "clinical_indication",
+            "relevant_clinical_history",
+            "requested_procedures",
+            "status",
+            "rejection_reason",
+            "walkin_patient",
+            "imaging_order",
+            "imaging_order_number",
+            "processed_by",
+            "processed_at",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class EncounterExternalImagingRequestCreateSerializer(serializers.Serializer):
+    """Create serializer for encounter-originated external imaging requests."""
+
+    patient = serializers.PrimaryKeyRelatedField(queryset=Patient.objects.all())
+    encounter = serializers.PrimaryKeyRelatedField(queryset=Encounter.objects.all())
+    priority = serializers.ChoiceField(choices=ImagingOrder.PRIORITY_LEVELS, default="ROUTINE")
+    clinical_indication = serializers.CharField()
+    relevant_clinical_history = serializers.CharField(required=False, allow_blank=True, default="")
+    referring_clinician = serializers.CharField(required=False, allow_blank=True, default="")
+    sending_facility = serializers.CharField(required=False, allow_blank=True, default="")
+    items = ImagingOrderItemCreateSerializer(many=True, write_only=True)
+
+    def validate_items(self, value):
+        if not value:
+            raise serializers.ValidationError("At least one imaging item is required.")
+        return value
+
+    def validate(self, attrs):
+        encounter = attrs["encounter"]
+        patient = attrs["patient"]
+        if encounter.patient_id != patient.id:
+            raise serializers.ValidationError(
+                {"patient": "Selected patient does not match the encounter patient."}
+            )
+        return attrs
+
+    def create(self, validated_data):
+        request = self.context["request"]
+        items_data = validated_data.pop("items")
+        encounter = validated_data["encounter"]
+        patient = validated_data["patient"]
+
+        requested_procedures = []
+        facility = encounter.facility
+        for item_data in items_data:
+            procedure_code = item_data["procedure_code"]
+            try:
+                procedure = ImagingProcedure.objects.get(code=procedure_code, facility=facility)
+            except ImagingProcedure.DoesNotExist as e:
+                raise serializers.ValidationError(
+                    {"items": f"Procedure with code '{procedure_code}' not found in catalog."}
+                ) from e
+
+            requested_procedures.append(
+                {
+                    "code": procedure.code,
+                    "name": procedure.name,
+                    "modality": procedure.modality,
+                    "laterality": item_data.get("laterality", "NA"),
+                    "instructions": item_data.get("specific_instructions", ""),
+                }
+            )
+
+        patient_name = f"{patient.first_name} {patient.last_name}".strip()
+        clinician_name = validated_data.get("referring_clinician", "").strip()
+        if not clinician_name:
+            clinician_name = request.user.get_full_name() or request.user.username
+
+        sending_facility = validated_data.get("sending_facility", "").strip() or (
+            getattr(facility, "name", "")
+        )
+
+        return ExternalImagingOrderRequest.objects.create(
+            patient=patient,
+            encounter=encounter,
+            message_control_id=f"INT-{encounter.id}-{timezone.now().strftime('%Y%m%d%H%M%S%f')}",
+            sending_application="VITORA-HMIS",
+            sending_facility=sending_facility,
+            referring_clinician=clinician_name,
+            external_patient_id=getattr(patient, "mrn", "") or str(patient.id),
+            patient_name=patient_name,
+            patient_dob=getattr(patient, "date_of_birth", None),
+            patient_gender=getattr(patient, "gender", "") or "",
+            patient_phone=getattr(patient, "phone_number", "") or "",
+            patient_id_number=getattr(patient, "identification_number", "") or "",
+            placer_order_number=_generate_external_imaging_request_number(),
+            priority=validated_data.get("priority", "ROUTINE"),
+            clinical_indication=validated_data["clinical_indication"],
+            relevant_clinical_history=validated_data.get("relevant_clinical_history", ""),
+            requested_procedures=requested_procedures,
+            raw_message="",
+            status=ExternalImagingOrderRequest.Status.RECEIVED,
+            facility=encounter.facility,
+            organization=encounter.organization,
+        )
 
 
 class ScheduleOrderSerializer(serializers.Serializer):

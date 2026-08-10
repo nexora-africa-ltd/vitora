@@ -5,7 +5,12 @@ from datetime import date, timedelta
 import pytest  # type: ignore
 from rest_framework import status
 
-from hmis.apps.procedures.models import ProcedureConsent, ProcedureLog, ProcedureOrder
+from hmis.apps.procedures.models import (
+    ExternalProcedureOrderRequest,
+    ProcedureConsent,
+    ProcedureLog,
+    ProcedureOrder,
+)
 
 
 class TestProcedureCatalogAPI:
@@ -424,3 +429,87 @@ class TestProcedureDashboard:
         assert data["scheduled_today"] >= 1
         assert data["pending_consent"] >= 1
         assert data["in_progress"] >= 1
+
+
+class TestExternalProcedureRequestAPI:
+    def test_create_external_request(
+        self,
+        authenticated_client,
+        procedure_catalog_entry,
+        sample_patient,
+        sample_encounter,
+    ):
+        response = authenticated_client.post(
+            "/api/procedures/external-requests/",
+            {
+                "patient": sample_patient.id,
+                "encounter": sample_encounter.id,
+                "procedure": procedure_catalog_entry.id,
+                "priority": "URGENT",
+                "indication": "Refer out for specialist theatre support",
+                "clinical_notes": "External referral needed",
+                "body_site": "Right forearm",
+                "laterality": "RIGHT",
+                "sending_facility": "County Referral Centre",
+                "referring_clinician": "Dr. Otieno",
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["status"] == "RECEIVED"
+        assert response.data["request_number"].startswith("EXTPROC-")
+
+    def test_list_external_requests(self, authenticated_client, procedure_order):
+        ExternalProcedureOrderRequest.objects.create(
+            patient=procedure_order.patient,
+            encounter=procedure_order.encounter,
+            procedure=procedure_order.procedure,
+            indication="External request for referral",
+            created_by=procedure_order.ordered_by,
+            facility=procedure_order.facility,
+            organization=procedure_order.organization,
+        )
+        response = authenticated_client.get(
+            f"/api/procedures/external-requests/?encounter={procedure_order.encounter_id}"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["count"] >= 1
+
+    def test_accept_external_request_creates_order(self, authenticated_client, procedure_order):
+        ext_request = ExternalProcedureOrderRequest.objects.create(
+            patient=procedure_order.patient,
+            encounter=procedure_order.encounter,
+            procedure=procedure_order.procedure,
+            indication="External request for acceptance",
+            created_by=procedure_order.ordered_by,
+            facility=procedure_order.facility,
+            organization=procedure_order.organization,
+        )
+        response = authenticated_client.post(
+            f"/api/procedures/external-requests/{ext_request.id}/accept/",
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        ext_request.refresh_from_db()
+        assert ext_request.status == ExternalProcedureOrderRequest.Status.ACCEPTED
+        assert ext_request.procedure_order_id is not None
+
+    def test_reject_external_request(self, authenticated_client, procedure_order):
+        ext_request = ExternalProcedureOrderRequest.objects.create(
+            patient=procedure_order.patient,
+            encounter=procedure_order.encounter,
+            procedure=procedure_order.procedure,
+            indication="External request to reject",
+            created_by=procedure_order.ordered_by,
+            facility=procedure_order.facility,
+            organization=procedure_order.organization,
+        )
+        response = authenticated_client.post(
+            f"/api/procedures/external-requests/{ext_request.id}/reject/",
+            {"reason": "Destination facility unavailable"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        ext_request.refresh_from_db()
+        assert ext_request.status == ExternalProcedureOrderRequest.Status.REJECTED
+        assert ext_request.rejection_reason == "Destination facility unavailable"

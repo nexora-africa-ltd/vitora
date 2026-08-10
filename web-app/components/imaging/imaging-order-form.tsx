@@ -39,7 +39,11 @@ import { Separator } from '@/components/ui/separator';
 import { Loader2, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from '@/lib/hooks';
 import { toast as sonnerToast } from 'sonner';
-import { useCreateImagingOrder, useSubmitImagingOrder } from '@/lib/hooks/use-imaging';
+import {
+  useCreateExternalImagingRequest,
+  useCreateImagingOrder,
+  useSubmitImagingOrder,
+} from '@/lib/hooks/use-imaging';
 import {
   ImagingProcedure,
   ImagingPriority,
@@ -55,9 +59,12 @@ import { ModalityBadge } from './modality-badge';
 const imagingOrderFormSchema = z.object({
   patient: z.number({ required_error: 'Patient is required' }),
   encounter: z.number({ required_error: 'Encounter is required' }),
+  request_mode: z.enum(['IN_HOUSE', 'EXTERNAL_REQUEST']).default('IN_HOUSE'),
   priority: z.enum(['ROUTINE', 'URGENT', 'STAT']),
   clinical_indication: z.string().min(5, 'Clinical indication must be at least 5 characters'),
   relevant_clinical_history: z.string().optional(),
+  sending_facility: z.string().optional(),
+  referring_clinician: z.string().optional(),
 });
 
 type ImagingOrderFormData = z.infer<typeof imagingOrderFormSchema>;
@@ -91,6 +98,7 @@ export function ImagingOrderForm({
   const [currentInstructions, setCurrentInstructions] = useState('');
 
   const createOrder = useCreateImagingOrder();
+  const createExternalRequest = useCreateExternalImagingRequest();
   const submitOrder = useSubmitImagingOrder();
 
   const form = useForm<ImagingOrderFormData>({
@@ -98,11 +106,16 @@ export function ImagingOrderForm({
     defaultValues: {
       patient: patientId,
       encounter: encounterId,
+      request_mode: 'IN_HOUSE',
       priority: 'ROUTINE',
       clinical_indication: '',
       relevant_clinical_history: '',
+      sending_facility: '',
+      referring_clinician: '',
     },
   });
+
+  const requestMode = form.watch('request_mode');
 
   const addItem = useCallback(() => {
     if (!selectedProcedure) {
@@ -162,26 +175,44 @@ export function ImagingOrderForm({
         specific_instructions: item.specific_instructions || undefined,
       }));
 
-      const order = await createOrder.mutateAsync({
-        patient: data.patient,
-        encounter: data.encounter,
-        priority: data.priority,
-        clinical_indication: data.clinical_indication,
-        relevant_clinical_history: data.relevant_clinical_history,
-        items: orderItems,
-      });
+      if (data.request_mode === 'EXTERNAL_REQUEST') {
+        const extRequest = await createExternalRequest.mutateAsync({
+          patient: data.patient,
+          encounter: data.encounter,
+          priority: data.priority,
+          clinical_indication: data.clinical_indication,
+          relevant_clinical_history: data.relevant_clinical_history,
+          sending_facility: data.sending_facility,
+          referring_clinician: data.referring_clinician,
+          items: orderItems,
+        });
 
-      // Auto-submit the order
-      await submitOrder.mutateAsync(order.order_number);
+        sonnerToast.success(`External request ${extRequest.placer_order_number} submitted`, {
+          description: 'Imaging team can now accept or reject this request.',
+        });
+        onSuccess?.(extRequest.placer_order_number);
+      } else {
+        const order = await createOrder.mutateAsync({
+          patient: data.patient,
+          encounter: data.encounter,
+          priority: data.priority,
+          clinical_indication: data.clinical_indication,
+          relevant_clinical_history: data.relevant_clinical_history,
+          items: orderItems,
+        });
 
-      sonnerToast.success(`Order ${order.order_number} has been submitted`, {
-        action: {
-          label: 'View Order',
-          onClick: () => router.push(`/imaging/orders/${order.order_number}`),
-        },
-      });
+        // Auto-submit the order
+        await submitOrder.mutateAsync(order.order_number);
 
-      onSuccess?.(order.order_number);
+        sonnerToast.success(`Order ${order.order_number} has been submitted`, {
+          action: {
+            label: 'View Order',
+            onClick: () => router.push(`/imaging/orders/${order.order_number}`),
+          },
+        });
+
+        onSuccess?.(order.order_number);
+      }
     } catch (error) {
       toast({
         title: 'Error creating order',
@@ -191,7 +222,8 @@ export function ImagingOrderForm({
     }
   };
 
-  const isSubmitting = createOrder.isPending || submitOrder.isPending;
+  const isSubmitting =
+    createOrder.isPending || submitOrder.isPending || createExternalRequest.isPending;
 
   return (
     <Form {...form}>
@@ -219,6 +251,28 @@ export function ImagingOrderForm({
             <CardTitle className="text-base sm:text-lg">Order Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
+            <FormField
+              control={form.control}
+              name="request_mode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Request Destination</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select request destination" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="IN_HOUSE">In-House Imaging</SelectItem>
+                      <SelectItem value="EXTERNAL_REQUEST">External Imaging Request</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="priority"
@@ -282,6 +336,38 @@ export function ImagingOrderForm({
                 </FormItem>
               )}
             />
+
+            {requestMode === 'EXTERNAL_REQUEST' && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="sending_facility"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Destination Facility</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Receiving external imaging facility" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="referring_clinician"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Referring Clinician (optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Clinician name for the external request" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -421,7 +507,7 @@ export function ImagingOrderForm({
           </Button>
           <Button type="submit" disabled={isSubmitting || items.length === 0} className="w-full sm:w-auto">
             {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Create & Submit Order
+            {requestMode === 'EXTERNAL_REQUEST' ? 'Create External Request' : 'Create & Submit Order'}
           </Button>
         </div>
       </form>

@@ -17,6 +17,8 @@ const ProcedurePrioritySchema = z.enum([
   'ELECTIVE',
 ]);
 
+const ExternalProcedureRequestStatusSchema = z.enum(['RECEIVED', 'ACCEPTED', 'REJECTED']);
+
 const NumericNullableSchema = z
   .union([z.number(), z.string()])
   .nullable()
@@ -101,6 +103,31 @@ export const ProcedureDashboardSchema = z.object({
   completed_today: z.number(),
 });
 
+export const ExternalProcedureOrderRequestSchema = z.object({
+  id: z.number(),
+  request_number: z.string(),
+  patient: z.number(),
+  patient_name: z.string(),
+  encounter: z.number(),
+  procedure: z.number(),
+  procedure_name: z.string(),
+  priority: ProcedurePrioritySchema,
+  indication: z.string(),
+  clinical_notes: z.string(),
+  body_site: z.string(),
+  laterality: z.string(),
+  sending_facility: z.string(),
+  referring_clinician: z.string(),
+  status: ExternalProcedureRequestStatusSchema,
+  rejection_reason: z.string(),
+  procedure_order: z.number().nullable(),
+  procedure_order_number: z.string().nullable(),
+  processed_by: z.number().nullable(),
+  processed_at: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
 export const PaginatedProcedureCatalogSchema = z.object({
   count: z.number(),
   next: z.string().nullable(),
@@ -113,4 +140,11 @@ export const PaginatedProcedureOrderSchema = z.object({
   next: z.string().nullable(),
   previous: z.string().nullable(),
   results: z.array(ProcedureOrderListSchema),
+});
+
+export const PaginatedExternalProcedureRequestSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(ExternalProcedureOrderRequestSchema),
 });

@@ -14,8 +14,17 @@ from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import WriteRequiresRolePermission, get_client_ip
 
 from .filters import ProcedureCatalogFilter, ProcedureOrderFilter
-from .models import ProcedureCatalog, ProcedureConsent, ProcedureLog, ProcedureOrder
+from .models import (
+    ExternalProcedureOrderRequest,
+    ProcedureCatalog,
+    ProcedureConsent,
+    ProcedureLog,
+    ProcedureOrder,
+)
 from .serializers import (
+    ExternalProcedureOrderRequestCreateSerializer,
+    ExternalProcedureOrderRequestListSerializer,
+    ExternalProcedureOrderRequestRejectSerializer,
     ProcedureCancelSerializer,
     ProcedureCatalogDetailSerializer,
     ProcedureCatalogListSerializer,
@@ -558,6 +567,111 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             ProcedureOutcomeSerializer(outcome).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class ExternalProcedureOrderRequestViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """ViewSet for encounter-linked external procedure requests."""
+
+    queryset = ExternalProcedureOrderRequest.objects.select_related(
+        "patient", "encounter", "procedure", "procedure_order"
+    ).all()
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["status", "patient", "encounter"]
+    ordering_fields = ["created_at", "status", "priority"]
+    http_method_names = ["get", "post", "head", "options"]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return ExternalProcedureOrderRequestCreateSerializer
+        if self.action == "reject":
+            return ExternalProcedureOrderRequestRejectSerializer
+        return ExternalProcedureOrderRequestListSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user, **self.get_tenant_save_kwargs())
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        request_obj = serializer.instance
+        AuditLog.log(
+            action="external_procedure_request_create",
+            user=request.user,
+            resource_type="ExternalProcedureOrderRequest",
+            resource_id=request_obj.id,
+            ip_address=get_client_ip(request),
+            details={
+                "request_number": request_obj.request_number,
+                "encounter_id": request_obj.encounter_id,
+                "procedure_id": request_obj.procedure_id,
+            },
+        )
+        output = ExternalProcedureOrderRequestListSerializer(request_obj)
+        return Response(output.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def accept(self, request, pk=None):
+        ext_request = self.get_object()
+        if ext_request.status != ExternalProcedureOrderRequest.Status.RECEIVED:
+            return Response(
+                {"error": f"Cannot accept request in {ext_request.status} status."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        procedure_order = ProcedureOrder.objects.create(
+            procedure=ext_request.procedure,
+            patient=ext_request.patient,
+            encounter=ext_request.encounter,
+            priority=ext_request.priority,
+            indication=ext_request.indication,
+            clinical_notes=ext_request.clinical_notes,
+            body_site=ext_request.body_site,
+            laterality=ext_request.laterality,
+            ordered_by=request.user,
+            **self.get_tenant_save_kwargs(),
+        )
+        ext_request.accept(request.user, procedure_order)
+
+        AuditLog.log(
+            action="external_procedure_request_accept",
+            user=request.user,
+            resource_type="ExternalProcedureOrderRequest",
+            resource_id=ext_request.id,
+            ip_address=get_client_ip(request),
+            details={
+                "request_number": ext_request.request_number,
+                "procedure_order_id": procedure_order.id,
+            },
+        )
+        return Response(ExternalProcedureOrderRequestListSerializer(ext_request).data)
+
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        ext_request = self.get_object()
+        if ext_request.status != ExternalProcedureOrderRequest.Status.RECEIVED:
+            return Response(
+                {"error": f"Cannot reject request in {ext_request.status} status."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        ext_request.reject(request.user, serializer.validated_data["reason"])
+
+        AuditLog.log(
+            action="external_procedure_request_reject",
+            user=request.user,
+            resource_type="ExternalProcedureOrderRequest",
+            resource_id=ext_request.id,
+            ip_address=get_client_ip(request),
+            details={
+                "request_number": ext_request.request_number,
+                "reason": serializer.validated_data["reason"],
+            },
+        )
+        return Response(ExternalProcedureOrderRequestListSerializer(ext_request).data)
 
 
 class ProcedureDashboardView(APIView):

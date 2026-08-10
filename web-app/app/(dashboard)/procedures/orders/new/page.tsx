@@ -59,10 +59,13 @@ export default function NewProcedureOrderPage() {
 
   // Order fields
   const [priority, setPriority] = useState('ROUTINE');
+  const [requestMode, setRequestMode] = useState<'IN_HOUSE' | 'EXTERNAL_REQUEST'>('IN_HOUSE');
   const [indication, setIndication] = useState('');
   const [clinicalNotes, setClinicalNotes] = useState('');
   const [bodySite, setBodySite] = useState('');
   const [laterality, setLaterality] = useState('NA');
+  const [sendingFacility, setSendingFacility] = useState('');
+  const [referringClinician, setReferringClinician] = useState('');
 
   // Procedure search query
   const { data: procResults, isLoading: procSearching } = useQuery({
@@ -103,7 +106,7 @@ export default function NewProcedureOrderPage() {
     setProcSearch('');
   }, []);
 
-  const { mutateAsync: createOrder, isPending } = useMutation({
+  const { mutateAsync: createOrder, isPending: isCreatingOrder } = useMutation({
     mutationFn: () =>
       proceduresApi.createOrder({
         patient: patientId,
@@ -132,7 +135,60 @@ export default function NewProcedureOrderPage() {
     },
   });
 
+  const { mutateAsync: createExternalRequest, isPending: isCreatingExternalRequest } = useMutation({
+    mutationFn: () =>
+      proceduresApi.createExternalRequest({
+        patient: patientId,
+        encounter: preEncounterId,
+        procedure: selectedProcedure!.id,
+        priority,
+        indication,
+        clinical_notes: clinicalNotes,
+        body_site: bodySite,
+        laterality,
+        sending_facility: sendingFacility,
+        referring_clinician: referringClinician,
+      }),
+    onSuccess: (data) => {
+      toast({
+        title: 'External request created',
+        description: `Request ${data.request_number} submitted for review.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['procedure-external-requests'] });
+      if (preEncounterId) {
+        router.push(`/encounters/${preEncounterId}`);
+      } else {
+        router.push('/procedures/external-requests');
+      }
+    },
+    onError: (err) => {
+      toast({
+        title: 'Request failed',
+        description: getApiErrorMessage(err),
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const isPending = isCreatingOrder || isCreatingExternalRequest;
+
   const canSubmit = patientId && selectedProcedure && indication.trim();
+
+  const handleSubmit = async () => {
+    if (requestMode === 'EXTERNAL_REQUEST') {
+      if (!preEncounterId) {
+        toast({
+          title: 'Encounter required',
+          description: 'External procedure requests must be created from an encounter context.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      await createExternalRequest();
+      return;
+    }
+    await createOrder();
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -270,6 +326,26 @@ export default function NewProcedureOrderPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <Label htmlFor="requestMode">Request Destination</Label>
+                <Select
+                  value={requestMode}
+                  onValueChange={(value) =>
+                    setRequestMode(value as 'IN_HOUSE' | 'EXTERNAL_REQUEST')
+                  }
+                >
+                  <SelectTrigger id="requestMode">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="IN_HOUSE">In-House Procedure Order</SelectItem>
+                    {preEncounterId ? (
+                      <SelectItem value="EXTERNAL_REQUEST">External Procedure Request</SelectItem>
+                    ) : null}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div>
                 <Label htmlFor="priority">Priority</Label>
                 <Select value={priority} onValueChange={setPriority}>
@@ -331,6 +407,30 @@ export default function NewProcedureOrderPage() {
                 rows={2}
               />
             </div>
+
+            {requestMode === 'EXTERNAL_REQUEST' && (
+              <>
+                <div>
+                  <Label htmlFor="sendingFacility">Destination Facility</Label>
+                  <Input
+                    id="sendingFacility"
+                    value={sendingFacility}
+                    onChange={(e) => setSendingFacility(e.target.value)}
+                    placeholder="Receiving external provider/facility"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="referringClinician">Referring Clinician</Label>
+                  <Input
+                    id="referringClinician"
+                    value={referringClinician}
+                    onChange={(e) => setReferringClinician(e.target.value)}
+                    placeholder="Clinician name"
+                  />
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -344,9 +444,15 @@ export default function NewProcedureOrderPage() {
           >
             Cancel
           </Button>
-          <Button onClick={() => createOrder()} disabled={!canSubmit || isPending}>
+          <Button onClick={handleSubmit} disabled={!canSubmit || isPending}>
             {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {isPending ? 'Ordering...' : 'Place Order'}
+            {isPending
+              ? requestMode === 'EXTERNAL_REQUEST'
+                ? 'Submitting request...'
+                : 'Ordering...'
+              : requestMode === 'EXTERNAL_REQUEST'
+              ? 'Create External Request'
+              : 'Place Order'}
           </Button>
         </div>
       </div>

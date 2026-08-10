@@ -13,6 +13,8 @@ import {
   ImagingOrder,
   ScheduleOrderData,
   CancelOrderData,
+  ExternalImagingRequestListParams,
+  ExternalImagingRequestCreateData,
   ImagingCalendarParams,
   ResourceAvailabilityParams,
   WeeklyAvailabilityParams,
@@ -43,6 +45,11 @@ export const imagingKeys = {
     [...imagingKeys.orders(), 'patient', patientId] as const,
   encounterOrders: (encounterId: number) =>
     [...imagingKeys.orders(), 'encounter', encounterId] as const,
+  externalRequests: () => [...imagingKeys.all, 'external-requests'] as const,
+  externalRequestsList: (params?: ExternalImagingRequestListParams) =>
+    [...imagingKeys.externalRequests(), 'list', params] as const,
+  encounterExternalRequests: (encounterId: number) =>
+    [...imagingKeys.externalRequests(), 'encounter', encounterId] as const,
   worklist: (params?: Omit<ImagingOrderListParams, 'status'>) =>
     [...imagingKeys.orders(), 'worklist', params] as const,
   worklistStats: () => [...imagingKeys.orders(), 'worklist-stats'] as const,
@@ -209,6 +216,19 @@ export function useEncounterImagingOrders(encounterId: number) {
   });
 }
 
+/**
+ * Hook for fetching external imaging requests created from a specific encounter.
+ */
+export function useEncounterExternalImagingRequests(encounterId: number) {
+  return useQuery({
+    queryKey: imagingKeys.encounterExternalRequests(encounterId),
+    queryFn: () => imagingApi.getEncounterExternalRequests(encounterId),
+    enabled: !!encounterId,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
+  });
+}
+
 // ============ Worklist Hooks ============
 
 /**
@@ -254,6 +274,25 @@ export function useCreateImagingOrder() {
       queryClient.invalidateQueries({
         queryKey: imagingKeys.encounterOrders(newOrder.encounter),
       });
+    },
+  });
+}
+
+/**
+ * Hook for creating an encounter-linked external imaging request.
+ */
+export function useCreateExternalImagingRequest() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: ExternalImagingRequestCreateData) => imagingApi.createExternalRequest(data),
+    onSuccess: (newRequest) => {
+      queryClient.invalidateQueries({ queryKey: imagingKeys.externalRequests() });
+      if (newRequest.encounter) {
+        queryClient.invalidateQueries({
+          queryKey: imagingKeys.encounterExternalRequests(newRequest.encounter),
+        });
+      }
     },
   });
 }

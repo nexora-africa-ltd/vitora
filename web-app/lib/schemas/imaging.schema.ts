@@ -140,6 +140,53 @@ export const ImagingOrderSchema = z.object({
 
 export type ImagingOrderSchemaType = z.infer<typeof ImagingOrderSchema>;
 
+export const ExternalImagingRequestStatusSchema = z.enum([
+  'RECEIVED',
+  'ACCEPTED',
+  'REJECTED',
+  'PROCESSING',
+  'COMPLETED',
+]);
+
+export const ExternalImagingRequestProcedureSchema = z.object({
+  code: z.string(),
+  name: z.string().optional(),
+  modality: z.string().optional(),
+  laterality: z.string().optional(),
+  instructions: z.string().optional(),
+});
+
+export const ExternalImagingRequestSchema = z.object({
+  id: z.number(),
+  patient: z.number().nullable(),
+  encounter: z.number().nullable(),
+  message_control_id: z.string(),
+  sending_application: z.string(),
+  sending_facility: z.string(),
+  referring_clinician: z.string(),
+  external_patient_id: z.string(),
+  patient_name: z.string(),
+  patient_dob: z.string().nullable(),
+  patient_gender: z.string(),
+  patient_phone: z.string(),
+  patient_id_number: z.string(),
+  placer_order_number: z.string(),
+  priority: ImagingPrioritySchema,
+  clinical_indication: z.string(),
+  relevant_clinical_history: z.string(),
+  requested_procedures: z.array(ExternalImagingRequestProcedureSchema),
+  status: ExternalImagingRequestStatusSchema,
+  rejection_reason: z.string(),
+  imaging_order: z.number().nullable(),
+  imaging_order_number: z.string().nullable().optional(),
+  processed_by: z.number().nullable(),
+  processed_at: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export type ExternalImagingRequestSchemaType = z.infer<typeof ExternalImagingRequestSchema>;
+
 // =============================================================================
 // PAGINATED RESPONSE SCHEMAS
 // =============================================================================
@@ -162,12 +209,24 @@ export const PaginatedImagingOrderSchema = z.object({
 
 export type PaginatedImagingOrderSchemaType = z.infer<typeof PaginatedImagingOrderSchema>;
 
+export const PaginatedExternalImagingRequestSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(ExternalImagingRequestSchema),
+});
+
+export type PaginatedExternalImagingRequestSchemaType = z.infer<
+  typeof PaginatedExternalImagingRequestSchema
+>;
+
 // =============================================================================
 // ARRAY SCHEMAS
 // =============================================================================
 
 export const ImagingProcedureArraySchema = z.array(ImagingProcedureSchema);
 export const ImagingOrderArraySchema = z.array(ImagingOrderSchema);
+export const ExternalImagingRequestArraySchema = z.array(ExternalImagingRequestSchema);
 
 // =============================================================================
 // WORKLIST STATS SCHEMA

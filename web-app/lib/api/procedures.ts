@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type {
+  ExternalProcedureOrderRequest,
   ProcedureAvailableSlotsResponse,
   ProcedureCatalogDetail,
   ProcedureOrderListItem,
@@ -12,6 +13,8 @@ import {
   PaginatedProcedureCatalogSchema,
   ProcedureCatalogDetailSchema,
   PaginatedProcedureOrderSchema,
+  ExternalProcedureOrderRequestSchema,
+  PaginatedExternalProcedureRequestSchema,
   ProcedureDashboardSchema,
 } from '@/lib/schemas/procedure.schema';
 
@@ -54,6 +57,39 @@ export const proceduresApi = {
   createOrder: async (data: Record<string, unknown>) => {
     const response = await apiClient.post('/api/procedures/orders/', data);
     return response.data;
+  },
+
+  // ---- External Requests ----
+  listExternalRequests: async (
+    params?: Record<string, string>
+  ): Promise<PaginatedResponse<ExternalProcedureOrderRequest>> => {
+    const response = await apiClient.get('/api/procedures/external-requests/', { params });
+    return parseResponse(PaginatedExternalProcedureRequestSchema, response.data, {
+      context: 'proceduresApi.listExternalRequests',
+    });
+  },
+
+  createExternalRequest: async (data: Record<string, unknown>): Promise<ExternalProcedureOrderRequest> => {
+    const response = await apiClient.post('/api/procedures/external-requests/', data);
+    return parseResponse(ExternalProcedureOrderRequestSchema, response.data, {
+      context: 'proceduresApi.createExternalRequest',
+    });
+  },
+
+  acceptExternalRequest: async (id: number): Promise<ExternalProcedureOrderRequest> => {
+    const response = await apiClient.post(`/api/procedures/external-requests/${id}/accept/`);
+    return parseResponse(ExternalProcedureOrderRequestSchema, response.data, {
+      context: 'proceduresApi.acceptExternalRequest',
+    });
+  },
+
+  rejectExternalRequest: async (id: number, reason: string): Promise<ExternalProcedureOrderRequest> => {
+    const response = await apiClient.post(`/api/procedures/external-requests/${id}/reject/`, {
+      reason,
+    });
+    return parseResponse(ExternalProcedureOrderRequestSchema, response.data, {
+      context: 'proceduresApi.rejectExternalRequest',
+    });
   },
 
   getOrder: async (id: number) => {
