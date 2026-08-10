@@ -12,6 +12,7 @@ import { Search, Syringe, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -61,23 +62,42 @@ export function ProcedureOrderForm({
   const [bodySite, setBodySite] = useState('');
   const [laterality, setLaterality] = useState('NA');
 
-  // Procedure search query
-  const { data: procResults, isLoading: procSearching } = useQuery({
-    queryKey: ['procedure-catalog-search', debouncedProcSearch],
+  // Procedure search query (same behavior as /procedures/orders/new)
+  const {
+    data: procSearchData,
+    isLoading: procSearchLoading,
+    error: procSearchError,
+  } = useQuery({
+    queryKey: ['procedure-catalog-search-inline', debouncedProcSearch],
     queryFn: () =>
       proceduresApi.listCatalog({
         search: debouncedProcSearch,
         is_active: 'true',
-        page_size: '10',
+        page_size: '20',
       }),
     enabled: debouncedProcSearch.length >= 2,
     staleTime: 30000,
   });
 
   const catalogResults = useMemo(
-    () => (procResults?.results || []) as ProcedureCatalogEntry[],
-    [procResults],
+    () => (procSearchData?.results || []) as ProcedureCatalogEntry[],
+    [procSearchData],
   );
+
+  const { data: catalogGuardData, isLoading: catalogGuardLoading } = useQuery({
+    queryKey: ['procedure-catalog-guard', 'inline-order-form'],
+    queryFn: () =>
+      proceduresApi.listCatalog({
+        is_active: 'true',
+        page_size: '1',
+      }),
+    staleTime: 60000,
+  });
+
+  const isCatalogUnseeded = !catalogGuardLoading && (catalogGuardData?.count ?? 0) === 0;
+
+  const procSearching = procSearchLoading;
+  const procError = procSearchError;
 
   const handleSelectProcedure = useCallback((proc: ProcedureCatalogEntry) => {
     setSelectedProcedure(proc);
@@ -130,6 +150,14 @@ export function ProcedureOrderForm({
           <CardTitle className="text-base">Select Procedure</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {isCatalogUnseeded && (
+            <Alert>
+              <AlertTitle>Procedure catalog not seeded for this tenant</AlertTitle>
+              <AlertDescription>
+                No active procedure catalog entries were found for your organization. Seed the procedure catalog before placing procedure orders.
+              </AlertDescription>
+            </Alert>
+          )}
           {selectedProcedure ? (
             <div className="flex items-start justify-between gap-3 p-3 rounded-lg border bg-muted/30">
               <div className="min-w-0">
@@ -177,9 +205,15 @@ export function ProcedureOrderForm({
                     <div className="p-4 text-center text-sm text-muted-foreground">
                       Searching...
                     </div>
+                  ) : procError ? (
+                    <div className="p-4 text-center text-sm text-destructive">
+                      {getApiErrorMessage(procError)}
+                    </div>
                   ) : catalogResults.length === 0 ? (
                     <div className="p-4 text-center text-sm text-muted-foreground">
-                      No procedures found
+                      {isCatalogUnseeded
+                        ? 'Procedure catalog not seeded for this tenant.'
+                        : 'No procedures found'}
                     </div>
                   ) : (
                     catalogResults.map((proc) => (

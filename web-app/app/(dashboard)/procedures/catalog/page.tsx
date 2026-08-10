@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Plus, Search, Syringe } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -220,6 +221,15 @@ export default function ProcedureCatalogPage() {
         </div>
 
         {/* Catalog Table */}
+        {!isLoading && totalCount === 0 && !debouncedSearch && !categoryFilter && !riskFilter && (
+          <Alert>
+            <AlertTitle>Procedure catalog not seeded for this tenant</AlertTitle>
+            <AlertDescription>
+              No active procedures are available for your organization yet. Run the procedure catalog seed for this tenant before ordering procedures.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <ResponsiveTable
           data={catalog}
           columns={columns}
