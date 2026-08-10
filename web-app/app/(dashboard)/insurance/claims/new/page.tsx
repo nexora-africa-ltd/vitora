@@ -18,6 +18,8 @@ import {
 } from '@/components/shared/diagnosis-code-input';
 import { buildHealthcloudEligibilityViewFromRaw } from '@/components/insurance/healthcloud-eligibility-cards';
 import { useCreateClaim, useInsurancePlan, usePatientInsurances } from '@/lib/hooks/use-insurance';
+import { useEncounters, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
+import { useInvoices } from '@/lib/hooks/billing';
 import { useToast } from '@/lib/hooks/use-toast';
 
 const normalizeToken = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -78,6 +80,7 @@ export default function NewInsuranceClaimPage() {
   const createClaim = useCreateClaim();
   const enrollmentFromQuery = searchParams.get('enrollment') || '';
   const authorizationFromQuery = searchParams.get('authorization') || '';
+  const encounterFromQuery = searchParams.get('encounter') || '';
   const { data: enrollmentsData, isLoading: enrollmentsLoading } = usePatientInsurances({
     page: 1,
     page_size: 200,
@@ -88,6 +91,7 @@ export default function NewInsuranceClaimPage() {
   const [patientInsuranceId, setPatientInsuranceId] = useState<string>(enrollmentFromQuery);
   const [claimType, setClaimType] = useState<'outpatient' | 'inpatient'>('outpatient');
   const [serviceDate, setServiceDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [encounterId, setEncounterId] = useState<string>(encounterFromQuery);
   const [totalAmount, setTotalAmount] = useState<string>('');
   const [copayAmount, setCopayAmount] = useState<string>('0.00');
   const [diagnosisCodes, setDiagnosisCodes] = useState<DiagnosisCodeValue[]>([emptyDiagnosisCodeValue()]);
@@ -95,6 +99,40 @@ export default function NewInsuranceClaimPage() {
 
   const selectedEnrollment = enrollments.find((e) => String(e.id) === patientInsuranceId);
   const { data: selectedPlan } = useInsurancePlan(selectedEnrollment?.plan);
+  const { data: encountersData, isLoading: encountersLoading } = useEncounters(
+    selectedEnrollment?.patient
+      ? {
+          patient: selectedEnrollment.patient,
+          page: 1,
+          page_size: 100,
+          ordering: '-encounter_date',
+        }
+      : undefined
+  );
+  const encounterOptions = useMemo(() => encountersData?.results ?? [], [encountersData?.results]);
+  const selectedEncounter = encounterOptions.find((encounter) => String(encounter.id) === encounterId);
+  const { data: invoicesData, isLoading: invoicesLoading } = useInvoices(
+    selectedEnrollment?.patient
+      ? {
+          patient: selectedEnrollment.patient,
+          page: 1,
+          page_size: 200,
+          ordering: '-created_at',
+        }
+      : undefined
+  );
+  const encounterInvoice = useMemo(() => {
+    if (!encounterId) return null;
+    const encounterNumericId = Number(encounterId);
+    return (invoicesData?.results ?? []).find(
+      (invoice) =>
+        invoice.encounter === encounterNumericId &&
+        invoice.status !== 'CANCELLED' &&
+        invoice.status !== 'PROFORMA' &&
+        invoice.status !== 'DRAFT'
+    ) || null;
+  }, [encounterId, invoicesData?.results]);
+  const { data: selectedEncounterDiagnoses = [] } = useEncounterDiagnoses(encounterId || 0);
   const eligibilityRawPayload = useMemo(
     () => resolveEligibilityRawPayload(selectedEnrollment?.last_eligibility_payload),
     [selectedEnrollment?.last_eligibility_payload]
@@ -122,6 +160,65 @@ export default function NewInsuranceClaimPage() {
       setClaimType(inferredClaimType);
     }
   }, [inferredClaimType]);
+
+  useEffect(() => {
+    if (!selectedEnrollment) {
+      setEncounterId('');
+      setDiagnosisCodes([emptyDiagnosisCodeValue()]);
+      return;
+    }
+
+    setEncounterId((prev) => {
+      if (!prev) return '';
+      const stillExists = encounterOptions.some((encounter) => String(encounter.id) === prev);
+      return stillExists ? prev : '';
+    });
+  }, [encounterOptions, selectedEnrollment]);
+
+  useEffect(() => {
+    if (!encounterId) {
+      setDiagnosisCodes([emptyDiagnosisCodeValue()]);
+      return;
+    }
+
+    const mapped: DiagnosisCodeValue[] = [];
+
+    selectedEncounterDiagnoses.forEach((diagnosis) => {
+        const icd10Code = diagnosis.icd10_code_display || diagnosis.icd10_display || '';
+        const icd10Description = diagnosis.icd10_description || '';
+        const icd10Display = icd10Code
+          ? `${icd10Code}${icd10Description ? ` - ${icd10Description}` : ''}`
+          : '';
+
+        if (!icd10Display && !diagnosis.icd11_code && !diagnosis.snomed_code) {
+          return;
+        }
+
+        mapped.push({
+          icd10Code: diagnosis.icd10_code,
+          icd10Display,
+          icd11Code: diagnosis.icd11_code || '',
+          icd11Display: diagnosis.icd11_display || '',
+          snomedCode: diagnosis.snomed_code || undefined,
+          snomedDisplay: diagnosis.snomed_display || undefined,
+        });
+    });
+
+    if (mapped.length === 0) {
+      setDiagnosisCodes([emptyDiagnosisCodeValue()]);
+      return;
+    }
+
+    setDiagnosisCodes(mapped);
+  }, [encounterId, selectedEncounterDiagnoses]);
+
+  useEffect(() => {
+    if (!encounterId) {
+      setTotalAmount('');
+      return;
+    }
+    setTotalAmount(encounterInvoice?.total_amount || '');
+  }, [encounterId, encounterInvoice?.total_amount]);
 
   const recommendedCopay = useMemo(() => {
     if (!eligibilityView) return null;
@@ -213,11 +310,29 @@ export default function NewInsuranceClaimPage() {
       toast({ title: 'Missing amount', description: 'Enter total claim amount.', variant: 'destructive' });
       return;
     }
+    if (!encounterId) {
+      toast({
+        title: 'Encounter required',
+        description: 'Select an encounter before creating a claim.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!encounterInvoice) {
+      toast({
+        title: 'Invoice required',
+        description: 'No billable invoice found for the selected encounter.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     try {
       const created = await createClaim.mutateAsync({
+        invoice: encounterInvoice.id,
         patient_insurance: selectedEnrollment.id,
         patient: selectedEnrollment.patient,
+        encounter: Number(encounterId),
         claim_type: claimType,
         service_date: serviceDate,
         total_amount: totalAmount,
@@ -291,8 +406,59 @@ export default function NewInsuranceClaimPage() {
             </div>
 
             <div>
+              <Label>Encounter</Label>
+              <Select
+                value={encounterId}
+                onValueChange={setEncounterId}
+                disabled={!selectedEnrollment || encountersLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      !selectedEnrollment
+                        ? 'Select enrollment first'
+                        : encountersLoading
+                        ? 'Loading encounters...'
+                        : 'Select encounter'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {encounterOptions.map((encounter) => (
+                    <SelectItem key={encounter.id} value={String(encounter.id)}>
+                      #{encounter.id} - {encounter.encounter_type} - {new Date(encounter.encounter_date).toLocaleDateString()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!encountersLoading && selectedEnrollment && encounterOptions.length === 0 && (
+                <p className="mt-1 text-xs text-red-700">
+                  No encounters found for this patient. Create or select an encounter before submitting a claim.
+                </p>
+              )}
+              {selectedEncounter && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Selected: {selectedEncounter.encounter_type} - {selectedEncounter.status}
+                </p>
+              )}
+            </div>
+
+            <div>
               <Label>Total Amount</Label>
-              <Input value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="0.00" />
+              <Input value={totalAmount} readOnly placeholder="0.00" />
+              {encounterId && invoicesLoading ? (
+                <p className="mt-1 text-xs text-muted-foreground">Loading invoice total...</p>
+              ) : encounterId && encounterInvoice ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Auto-filled from invoice {encounterInvoice.invoice_number}.
+                </p>
+              ) : encounterId ? (
+                <p className="mt-1 text-xs text-red-700">
+                  No billable invoice found for this encounter.
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">Select an encounter to load invoice total.</p>
+              )}
             </div>
 
             <div>
@@ -360,7 +526,10 @@ export default function NewInsuranceClaimPage() {
             <Button variant="outline" onClick={() => router.push('/insurance/claims')}>
               Cancel
             </Button>
-            <Button onClick={handleCreate} disabled={createClaim.isPending}>
+            <Button
+              onClick={handleCreate}
+              disabled={createClaim.isPending || !encounterId || !encounterInvoice || !totalAmount}
+            >
               {createClaim.isPending ? 'Creating...' : 'Create Claim'}
             </Button>
           </div>

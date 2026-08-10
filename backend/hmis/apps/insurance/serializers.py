@@ -713,12 +713,44 @@ class InsuranceClaimCreateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         enrollment = attrs.get("patient_insurance")
         patient = attrs.get("patient")
+        encounter = attrs.get("encounter")
+        claim_type = attrs.get("claim_type", InsuranceClaim.ClaimType.OUTPATIENT)
+
+        encounter_required_types = {
+            InsuranceClaim.ClaimType.OUTPATIENT,
+            InsuranceClaim.ClaimType.INPATIENT,
+        }
+
+        if claim_type in encounter_required_types and encounter is None:
+            raise serializers.ValidationError(
+                {
+                    "encounter": (
+                        "Encounter is required for outpatient and inpatient claims so visit context and diagnoses can be linked."
+                    )
+                }
+            )
+
         if enrollment and patient and enrollment.patient_id != patient.id:
             raise serializers.ValidationError(
                 {
                     "patient": "Selected patient must match the selected patient insurance enrollment."
                 }
             )
+
+        if encounter and patient and encounter.patient_id != patient.id:
+            raise serializers.ValidationError(
+                {"encounter": "Selected encounter must belong to the selected patient."}
+            )
+
+        if encounter and enrollment and encounter.patient_id != enrollment.patient_id:
+            raise serializers.ValidationError(
+                {
+                    "encounter": (
+                        "Selected encounter must belong to the patient linked to the selected enrollment."
+                    )
+                }
+            )
+
         return attrs
 
 
