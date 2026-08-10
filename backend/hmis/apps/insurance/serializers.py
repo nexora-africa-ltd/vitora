@@ -1,7 +1,10 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Serializers for the insurance app."""
 
+from decimal import ROUND_HALF_UP, Decimal
+
 from django.core.files.storage import default_storage
+from django.db import transaction
 from rest_framework import serializers
 
 from hmis.apps.insurance.media_security import build_card_image_url, save_encrypted_card_image
@@ -703,11 +706,162 @@ class InsuranceClaimCreateSerializer(serializers.ModelSerializer):
             "items",
         ]
 
+    @staticmethod
+    def _to_money(value: Decimal | str | int | float | None) -> Decimal:
+        return Decimal(str(value or "0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @staticmethod
+    def _to_percent(value: Decimal) -> Decimal:
+        return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @staticmethod
+    def _resolve_copay_purpose(claim: InsuranceClaim) -> str:
+        encounter_type = str(getattr(claim.encounter, "encounter_type", "") or "").strip()
+        if encounter_type:
+            return encounter_type.replace("_", " ").lower()
+        return str(claim.claim_type or "service").replace("_", " ").lower()
+
+    def _upsert_invoice_payer(self, *, invoice, claim, payer_type: str, defaults: dict) -> None:
+        from hmis.apps.billing.models import InvoicePayer
+
+        payers = InvoicePayer.objects.filter(
+            invoice=invoice,
+            insurance_claim=claim,
+            payer_type=payer_type,
+        ).order_by("id")
+        payer = payers.first()
+        if payer is None:
+            InvoicePayer.objects.create(
+                invoice=invoice,
+                insurance_claim=claim,
+                payer_type=payer_type,
+                **defaults,
+            )
+            return
+
+        for field, value in defaults.items():
+            setattr(payer, field, value)
+        payer.save(update_fields=[*defaults.keys(), "updated_at"])
+        payers.exclude(pk=payer.pk).delete()
+
+    def _sync_invoice_responsibility_split(self, claim: InsuranceClaim) -> None:
+        if claim.invoice_id is None:
+            return
+
+        from hmis.apps.billing.models import Invoice, InvoicePayer
+
+        invoice = claim.invoice
+        total_amount = self._to_money(claim.total_amount)
+        raw_copay_amount = self._to_money(claim.copay_amount)
+        copay_amount = min(max(raw_copay_amount, Decimal("0.00")), total_amount)
+        insurer_amount = self._to_money(total_amount - copay_amount)
+
+        if total_amount > Decimal("0.00"):
+            patient_percent = self._to_percent((copay_amount / total_amount) * Decimal("100"))
+            insurer_percent = self._to_percent((insurer_amount / total_amount) * Decimal("100"))
+        else:
+            patient_percent = Decimal("0.00")
+            insurer_percent = Decimal("0.00")
+
+        copay_purpose = self._resolve_copay_purpose(claim)
+
+        if copay_amount > Decimal("0.00") and insurer_amount > Decimal("0.00"):
+            invoice.payment_type = Invoice.PaymentType.MIXED
+            invoice.payer_type = Invoice.PayerType.MIXED
+        elif insurer_amount > Decimal("0.00"):
+            invoice.payment_type = Invoice.PaymentType.INSURANCE
+            invoice.payer_type = Invoice.PayerType.PRIVATE_INSURANCE
+        else:
+            invoice.payment_type = Invoice.PaymentType.CASH
+            invoice.payer_type = Invoice.PayerType.CASH
+
+        invoice.insurance_provider = claim.provider.name
+        invoice.insurance_member_no = claim.patient_insurance.member_number
+        invoice.insurance_amount = insurer_amount
+        invoice.insurance_coverage = insurer_percent
+
+        allocation_note = (
+            f"Estimated copay KES {copay_amount} ({copay_purpose}); "
+            f"insurer allocation KES {insurer_amount}. Source claim {claim.claim_number}."
+        )
+        if allocation_note not in invoice.notes:
+            invoice.notes = (
+                f"{invoice.notes}\n{allocation_note}".strip() if invoice.notes else allocation_note
+            )
+
+        invoice.save(
+            update_fields=[
+                "payment_type",
+                "payer_type",
+                "insurance_provider",
+                "insurance_member_no",
+                "insurance_amount",
+                "insurance_coverage",
+                "notes",
+                "updated_at",
+            ]
+        )
+
+        if copay_amount > Decimal("0.00"):
+            self._upsert_invoice_payer(
+                invoice=invoice,
+                claim=claim,
+                payer_type=InvoicePayer.PayerType.CASH,
+                defaults={
+                    "patient_insurance": claim.patient_insurance,
+                    "provider_name": "Patient",
+                    "member_number": "",
+                    "priority": 1,
+                    "allocation_percent": patient_percent,
+                    "allocated_amount": copay_amount,
+                    "approved_amount": copay_amount,
+                    "paid_amount": Decimal("0.00"),
+                    "status": InvoicePayer.Status.PENDING,
+                    "notes": f"Estimated copay for {copay_purpose} from claim {claim.claim_number}.",
+                },
+            )
+        else:
+            InvoicePayer.objects.filter(
+                invoice=invoice,
+                insurance_claim=claim,
+                payer_type=InvoicePayer.PayerType.CASH,
+            ).delete()
+
+        if insurer_amount > Decimal("0.00"):
+            self._upsert_invoice_payer(
+                invoice=invoice,
+                claim=claim,
+                payer_type=InvoicePayer.PayerType.PRIVATE_INSURANCE,
+                defaults={
+                    "patient_insurance": claim.patient_insurance,
+                    "provider_name": claim.provider.name,
+                    "member_number": claim.patient_insurance.member_number,
+                    "priority": 2 if copay_amount > Decimal("0.00") else 1,
+                    "allocation_percent": insurer_percent,
+                    "allocated_amount": insurer_amount,
+                    "approved_amount": Decimal("0.00"),
+                    "paid_amount": Decimal("0.00"),
+                    "status": InvoicePayer.Status.CLAIMED,
+                    "notes": (
+                        f"Estimated insurer allocation after copay for {copay_purpose}; "
+                        f"linked to claim {claim.claim_number}."
+                    ),
+                },
+            )
+        else:
+            InvoicePayer.objects.filter(
+                invoice=invoice,
+                insurance_claim=claim,
+                payer_type=InvoicePayer.PayerType.PRIVATE_INSURANCE,
+            ).delete()
+
     def create(self, validated_data):
         items_data = validated_data.pop("items", [])
-        claim = InsuranceClaim.objects.create(**validated_data)
-        for item_data in items_data:
-            InsuranceClaimItem.objects.create(claim=claim, **item_data)
+        with transaction.atomic():
+            claim = InsuranceClaim.objects.create(**validated_data)
+            for item_data in items_data:
+                InsuranceClaimItem.objects.create(claim=claim, **item_data)
+            self._sync_invoice_responsibility_split(claim)
         return claim
 
     def validate(self, attrs):

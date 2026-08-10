@@ -444,11 +444,6 @@ export default function NewInsuranceClaimPage() {
             </div>
 
             <div>
-              <Label>Service Date</Label>
-              <Input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} />
-            </div>
-
-            <div>
               <Label>Encounter</Label>
               <Select
                 value={encounterId}
@@ -484,6 +479,11 @@ export default function NewInsuranceClaimPage() {
                   Selected: {selectedEncounter.encounter_type} - {selectedEncounter.status}
                 </p>
               )}
+            </div>
+
+            <div>
+              <Label>Service Date</Label>
+              <Input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} />
             </div>
 
             <div>
