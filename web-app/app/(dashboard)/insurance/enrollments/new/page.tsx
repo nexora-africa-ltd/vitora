@@ -32,6 +32,7 @@ import {
   useInsurancePlans,
   useInsuranceProviders,
   useProviderConfigs,
+  usePatientInsurances,
   useVerifyEnrollmentViaHealthcloudPreview,
 } from '@/lib/hooks/use-insurance';
 import { useCounties, useSubCounties } from '@/lib/hooks/use-locations';
@@ -234,7 +235,6 @@ export default function NewInsuranceEnrollmentPage() {
     { page: 1, page_size: 200 },
     { enabled: !!facility?.id && !!organization?.id }
   );
-
   const [patientId, setPatientId] = useState<number | null>(null);
   const [suggestedPatients, setSuggestedPatients] = useState<SuggestedPatient[]>([]);
   const [searchPatients, setSearchPatients] = useState<Patient[]>([]);
@@ -257,6 +257,17 @@ export default function NewInsuranceEnrollmentPage() {
   const [createPatientForm, setCreatePatientForm] = useState<InlinePatientFormData>(emptyInlinePatientForm);
   const [duplicateCheckMatches, setDuplicateCheckMatches] = useState<Patient[]>([]);
   const [duplicateCheckArmed, setDuplicateCheckArmed] = useState(false);
+  const [createEnrollmentError, setCreateEnrollmentError] = useState<string | null>(null);
+
+  const { data: duplicateEnrollmentsData } = usePatientInsurances(
+    {
+      page: 1,
+      page_size: 100,
+      provider: providerId ? Number(providerId) : undefined,
+      status: 'active',
+    },
+    { enabled: !!providerId && memberNumber.trim().length > 0 }
+  );
 
   const { data: subCounties = [] } = useSubCounties(
     createPatientForm.county ? Number(createPatientForm.county) : undefined
@@ -292,6 +303,14 @@ export default function NewInsuranceEnrollmentPage() {
   const resolvedPlanLabel = resolvedPlan
     ? `${resolvedPlan.provider_name} - ${resolvedPlan.name}`
     : String((eligibilityView?.cover?.schemeName ?? eligibilityResult?.plan_name) || 'N/A');
+  const normalizedMemberNumber = memberNumber.trim().toLowerCase();
+  const duplicateActiveEnrollment = (duplicateEnrollmentsData?.results ?? []).find(
+    (enrollment) =>
+      enrollment.member_number.trim().toLowerCase() === normalizedMemberNumber
+  );
+  const duplicateEnrollmentInlineError = duplicateActiveEnrollment
+    ? `An active enrollment already exists for this payer and member number (${duplicateActiveEnrollment.patient_name}).`
+    : null;
 
   const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
   const digitsOnly = (value: string) => value.replace(/\D+/g, '');
@@ -317,8 +336,15 @@ export default function NewInsuranceEnrollmentPage() {
     medium: 'bg-yellow-100 text-yellow-800',
     low: 'bg-slate-100 text-slate-700',
   };
+  const isEligibilityEligible = eligibilityResult?.eligible === true;
+  const eligibilityInlineError =
+    isEligibilityChecked && !isEligibilityEligible
+      ? eligibilityResult?.message || 'Member is not eligible for enrollment right now.'
+      : null;
   const missingRequirements: string[] = [];
   if (!isEligibilityChecked) missingRequirements.push('run eligibility precheck');
+  if (isEligibilityChecked && !isEligibilityEligible) missingRequirements.push('resolve eligibility issue');
+  if (duplicateEnrollmentInlineError) missingRequirements.push('use a different member number or update the existing enrollment');
   if (!patientId) missingRequirements.push('select a matched patient');
   if (!effectivePlanId) missingRequirements.push('resolve plan from eligibility');
 
@@ -361,6 +387,10 @@ export default function NewInsuranceEnrollmentPage() {
     setDuplicateCheckMatches([]);
     setDuplicateCheckArmed(false);
   };
+
+  useEffect(() => {
+    setCreateEnrollmentError(null);
+  }, [providerId, memberNumber, patientId, effectivePlanId, eligibilityResult]);
 
   useEffect(() => {
     if (!eligibilityResult || planId) return;
@@ -781,7 +811,16 @@ export default function NewInsuranceEnrollmentPage() {
       });
       return;
     }
+    if (duplicateEnrollmentInlineError) {
+      toast({
+        title: 'Duplicate active enrollment',
+        description: duplicateEnrollmentInlineError,
+        variant: 'destructive',
+      });
+      return;
+    }
     try {
+      setCreateEnrollmentError(null);
       await createEnrollment.mutateAsync({
         patient: patientId,
         plan: Number(effectivePlanId),
@@ -797,8 +836,10 @@ export default function NewInsuranceEnrollmentPage() {
       });
       toast({ title: 'Enrollment created' });
       router.push('/insurance/enrollments');
-    } catch {
-      toast({ title: 'Error', description: 'Failed to create enrollment.', variant: 'destructive' });
+    } catch (error) {
+      const message = getApiErrorMessage(error) || 'Failed to create enrollment.';
+      setCreateEnrollmentError(message);
+      toast({ title: 'Enrollment not created', description: message, variant: 'destructive' });
     }
   };
 
@@ -1044,21 +1085,45 @@ export default function NewInsuranceEnrollmentPage() {
             </div>
           )}
           <div className="md:col-span-2 flex justify-end gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => void handleVerifyEligibility()}
-              disabled={verifyPreview.isPending}
-            >
-              {verifyPreview.isPending ? 'Checking...' : '1. Run Eligibility Precheck'}
-            </Button>
+            {!isEligibilityChecked && (
+              <Button
+                variant="secondary"
+                onClick={() => void handleVerifyEligibility()}
+                disabled={verifyPreview.isPending}
+              >
+                {verifyPreview.isPending ? 'Checking...' : '1. Run Eligibility Precheck'}
+              </Button>
+            )}
             <Button variant="outline" onClick={() => router.push('/insurance/enrollments')}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={createEnrollment.isPending || !isEligibilityChecked || !patientId || !effectivePlanId}>
+            <Button
+              onClick={handleCreate}
+              disabled={
+                createEnrollment.isPending ||
+                !isEligibilityChecked ||
+                !isEligibilityEligible ||
+                !!duplicateEnrollmentInlineError ||
+                !patientId ||
+                !effectivePlanId
+              }
+            >
               {createEnrollment.isPending ? 'Creating...' : 'Create Enrollment'}
             </Button>
           </div>
           <div className="md:col-span-2">
             {createEnrollment.isPending ? (
               <p className="text-xs text-muted-foreground">Creating enrollment...</p>
+            ) : eligibilityInlineError ? (
+              <p className="text-xs text-red-700">
+                Eligibility failed: {eligibilityInlineError}
+              </p>
+            ) : duplicateEnrollmentInlineError ? (
+              <p className="text-xs text-red-700">
+                {duplicateEnrollmentInlineError}
+              </p>
+            ) : createEnrollmentError ? (
+              <p className="text-xs text-red-700">
+                {createEnrollmentError}
+              </p>
             ) : missingRequirements.length > 0 ? (
               <p className="text-xs text-muted-foreground">
                 To enable Create Enrollment: {missingRequirements.join(', ')}.

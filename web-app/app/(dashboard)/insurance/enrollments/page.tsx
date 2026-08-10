@@ -136,34 +136,33 @@ export default function InsuranceEnrollmentsPage() {
           {
             key: 'actions',
             header: 'Actions',
-            cell: (item) => (
-              <div className="flex gap-2">
-                {item.status !== 'active' ? (
-                  <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); void handleVerifyViaHealthcloud(item.id); }}>
-                    Verify
+            cell: (item) => {
+              const existingSession = sessionsByEnrollment.get(item.id);
+              const hasValidatedToken = existingSession?.status === 'validated';
+
+              return (
+                <div className="flex gap-2">
+                  {hasValidatedToken ? (
+                    <Badge variant="secondary">Verified</Badge>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); void handleVerifyViaHealthcloud(item.id); }}>
+                      Verify
+                    </Button>
+                  )}
+                  <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); router.push(`/insurance/enrollments/${item.id}`); }}>
+                    View
                   </Button>
-                ) : (
-                  <Badge variant="secondary">Verified</Badge>
-                )}
-                <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); router.push(`/insurance/enrollments/${item.id}`); }}>
-                  View
-                </Button>
-                {(() => {
-                  const existingSession = sessionsByEnrollment.get(item.id);
-                  if (existingSession) {
-                    return (
-                      <Button
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/insurance/authorizations/${existingSession.id}`);
-                        }}
-                      >
-                        View Session
-                      </Button>
-                    );
-                  }
-                  return (
+                  {existingSession ? (
+                    <Button
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/insurance/authorizations/${existingSession.id}`);
+                      }}
+                    >
+                      View Session
+                    </Button>
+                  ) : (
                     <Button
                       size="sm"
                       disabled={startSession.isPending}
@@ -174,10 +173,10 @@ export default function InsuranceEnrollmentsPage() {
                     >
                       {startSession.isPending ? 'Starting...' : 'Start Session'}
                     </Button>
-                  );
-                })()}
-              </div>
-            ),
+                  )}
+                </div>
+              );
+            },
           },
         ]}
         mobileCard={(item) => (
@@ -189,13 +188,18 @@ export default function InsuranceEnrollmentsPage() {
                 {item.status.replace('_', ' ')}
               </Badge>
               <div className="flex gap-2">
-                {item.status !== 'active' ? (
-                  <Button size="sm" variant="outline" onClick={() => void handleVerifyViaHealthcloud(item.id)}>
-                    Verify
-                  </Button>
-                ) : (
-                  <Badge variant="secondary">Verified</Badge>
-                )}
+                {(() => {
+                  const existingSession = sessionsByEnrollment.get(item.id);
+                  const hasValidatedToken = existingSession?.status === 'validated';
+
+                  return hasValidatedToken ? (
+                    <Badge variant="secondary">Verified</Badge>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => void handleVerifyViaHealthcloud(item.id)}>
+                      Verify
+                    </Button>
+                  );
+                })()}
                 <Button size="sm" variant="secondary" onClick={() => router.push(`/insurance/enrollments/${item.id}`)}>
                   View
                 </Button>

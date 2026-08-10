@@ -19,6 +19,7 @@ export type HealthcloudEligibilityBenefit = {
   availableBalance?: number;
   copayType?: string | null;
   copayValue?: number | null;
+  copayAppliesTo?: string[];
 };
 
 export type HealthcloudEligibilityView = {
@@ -31,16 +32,41 @@ export type HealthcloudEligibilityView = {
     vip: boolean | null;
     vvip: boolean | null;
   };
+  coverCopay: {
+    value: number | null;
+    appliesTo: string[];
+  };
 };
 
-export function buildHealthcloudEligibilityView(
-  eligibility: VerifyViaHealthcloudResult | null
+const parseNumber = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+};
+
+const parseStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => (typeof item === 'string' ? item.trim() : ''))
+      .filter(Boolean);
+  }
+  if (typeof value === 'string' && value.trim()) {
+    return [value.trim()];
+  }
+  return [];
+};
+
+export function buildHealthcloudEligibilityViewFromRaw(
+  rawResponse: Record<string, unknown> | null
 ): HealthcloudEligibilityView | null {
-  if (!eligibility?.raw_response || typeof eligibility.raw_response !== 'object') {
+  if (!rawResponse || typeof rawResponse !== 'object') {
     return null;
   }
 
-  const raw = eligibility.raw_response as Record<string, unknown>;
+  const raw = rawResponse;
   const member = raw.member && typeof raw.member === 'object'
     ? (raw.member as Record<string, unknown>)
     : null;
@@ -67,18 +93,20 @@ export function buildHealthcloudEligibilityView(
           benefitName: typeof row.benefitName === 'string' ? row.benefitName : undefined,
           benefitCode: typeof row.benefitCode === 'string' ? row.benefitCode : undefined,
           benefitType: typeof row.benefitType === 'string' ? row.benefitType : undefined,
-          benefitLimit: typeof row.benefitLimit === 'number' ? row.benefitLimit : undefined,
-          visitLimit: typeof row.visitLimit === 'number' ? row.visitLimit : undefined,
-          availableBalance:
-            typeof row.availableBalance === 'number' ? row.availableBalance : undefined,
+          benefitLimit: parseNumber(row.benefitLimit),
+          visitLimit: parseNumber(row.visitLimit),
+          availableBalance: parseNumber(row.availableBalance),
           copayType:
             typeof row.copayType === 'string' || row.copayType === null
               ? (row.copayType as string | null)
               : undefined,
           copayValue:
-            typeof row.copayValue === 'number' || row.copayValue === null
-              ? (row.copayValue as number | null)
-              : undefined,
+            row.copayValue === null
+              ? null
+              : parseNumber(row.copayValue ?? row.copay_value ?? row.copayAmount ?? row.copay_amount),
+          copayAppliesTo: parseStringArray(
+            row.copayAppliesTo ?? row.copay_applies_to ?? row.appliesTo ?? row.applies_to
+          ),
         }))
     : [];
 
@@ -101,6 +129,19 @@ export function buildHealthcloudEligibilityView(
     return null;
   };
 
+  const coverCopayValue = parseNumber(
+    cover?.copayValue ??
+    cover?.copay_value ??
+    raw.copayValue ??
+    raw.copay_value
+  );
+  const coverCopayAppliesTo = parseStringArray(
+    cover?.copayAppliesTo ??
+    cover?.copay_applies_to ??
+    raw.copayAppliesTo ??
+    raw.copay_applies_to
+  );
+
   return {
     raw,
     member,
@@ -111,7 +152,20 @@ export function buildHealthcloudEligibilityView(
       vip: readBooleanFromAny(['vip', 'isVip', 'is_vip', 'isVIP']),
       vvip: readBooleanFromAny(['vvip', 'isVvip', 'is_vvip', 'isVVIP']),
     },
+    coverCopay: {
+      value: coverCopayValue ?? null,
+      appliesTo: coverCopayAppliesTo,
+    },
   };
+}
+
+export function buildHealthcloudEligibilityView(
+  eligibility: VerifyViaHealthcloudResult | null
+): HealthcloudEligibilityView | null {
+  if (!eligibility?.raw_response || typeof eligibility.raw_response !== 'object') {
+    return null;
+  }
+  return buildHealthcloudEligibilityViewFromRaw(eligibility.raw_response as Record<string, unknown>);
 }
 
 export function HealthcloudEligibilityCards({
@@ -194,6 +248,7 @@ export function HealthcloudEligibilityCards({
                   <th className="pb-1">Visit Limit</th>
                   <th className="pb-1">Available</th>
                   <th className="pb-1">Copay</th>
+                  <th className="pb-1">Copay Applies To</th>
                 </tr>
               </thead>
               <tbody>
@@ -213,12 +268,13 @@ export function HealthcloudEligibilityCards({
                         : 'N/A'}
                     </td>
                     <td className="py-1">
-                      {benefit.copayType
-                        ? `${benefit.copayType}${
-                            typeof benefit.copayValue === 'number'
-                              ? ` (${benefit.copayValue})`
-                              : ''
-                          }`
+                      {typeof benefit.copayValue === 'number'
+                        ? `${benefit.copayType ? `${benefit.copayType}: ` : ''}${benefit.copayValue.toLocaleString()}`
+                        : benefit.copayType || 'N/A'}
+                    </td>
+                    <td className="py-1">
+                      {benefit.copayAppliesTo && benefit.copayAppliesTo.length > 0
+                        ? benefit.copayAppliesTo.join(', ')
                         : 'N/A'}
                     </td>
                   </tr>
@@ -228,6 +284,18 @@ export function HealthcloudEligibilityCards({
           </div>
         )}
       </div>
+
+      {(typeof view.coverCopay.value === 'number' || view.coverCopay.appliesTo.length > 0) && (
+        <div>
+          <p className="text-xs text-muted-foreground mb-1">Cover-Level Copay</p>
+          <p className="text-sm">
+            Value: {typeof view.coverCopay.value === 'number' ? view.coverCopay.value.toLocaleString() : 'N/A'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Applies to: {view.coverCopay.appliesTo.length > 0 ? view.coverCopay.appliesTo.join(', ') : 'Not specified'}
+          </p>
+        </div>
+      )}
 
       {showRaw && (
         <details>

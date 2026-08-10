@@ -383,6 +383,8 @@ export function getApiErrorMessage(error: unknown): string {
               // Special case: unique constraint on identification
               if (field === 'non_field_errors' && err.includes('identification_type, identification_number must make a unique set')) {
                 messages.push('A patient with this ID number already exists in the system.');
+              } else if (field === 'non_field_errors' && err.includes('patient, plan, member_number must make a unique set')) {
+                messages.push('This patient is already enrolled on the selected plan with this member number.');
               } else if (field === 'non_field_errors') {
                 // Don't prefix non_field_errors with field name
                 messages.push(err);

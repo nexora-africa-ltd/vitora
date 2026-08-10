@@ -262,6 +262,70 @@ class PatientInsuranceCreateSerializer(serializers.ModelSerializer):
 
     _MISSING = object()
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+
+        patient = attrs.get("patient") or getattr(self.instance, "patient", None)
+        plan = attrs.get("plan") or getattr(self.instance, "plan", None)
+        member_number = attrs.get("member_number")
+        if member_number is None:
+            member_number = getattr(self.instance, "member_number", "")
+        member_number = (member_number or "").strip()
+
+        status = attrs.get("status") or getattr(
+            self.instance, "status", PatientInsurance.Status.ACTIVE
+        )
+
+        if not patient or not plan or not member_number:
+            return attrs
+
+        same_enrollment_qs = PatientInsurance.objects.filter(
+            patient=patient,
+            plan=plan,
+            member_number=member_number,
+        )
+        if self.instance is not None:
+            same_enrollment_qs = same_enrollment_qs.exclude(pk=self.instance.pk)
+
+        if same_enrollment_qs.exists():
+            raise serializers.ValidationError(
+                {
+                    "non_field_errors": [
+                        "This patient is already enrolled on the selected plan with this member number."
+                    ]
+                }
+            )
+
+        if status != PatientInsurance.Status.ACTIVE:
+            return attrs
+
+        duplicate_qs = PatientInsurance.objects.filter(
+            provider=plan.provider,
+            status=PatientInsurance.Status.ACTIVE,
+            member_number=member_number,
+        )
+        if self.instance is not None:
+            duplicate_qs = duplicate_qs.exclude(pk=self.instance.pk)
+
+        if duplicate_qs.exists():
+            existing = duplicate_qs.select_related("patient").first()
+            patient_label = (
+                f"{existing.patient.first_name} {existing.patient.last_name}"
+                if existing and existing.patient_id
+                else "another patient"
+            )
+            raise serializers.ValidationError(
+                {
+                    "member_number": (
+                        "An active enrollment already exists for this provider and member number "
+                        f"({patient_label})."
+                    )
+                }
+            )
+
+        attrs["member_number"] = member_number
+        return attrs
+
     def create(self, validated_data):
         front = validated_data.pop("card_image_front", self._MISSING)
         back = validated_data.pop("card_image_back", self._MISSING)
