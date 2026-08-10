@@ -386,21 +386,21 @@ export const AIDischargeConditionsResponseSchema = z.object({
 export const AICarePlanGoalSchema = z.object({
   id: z.string().optional(),
   description: z.string(),
-  target: z.string().optional(),
+  target: z.string().nullish().transform(v => v ?? undefined),
   priority: z.enum(['high', 'medium', 'low']),
-  timeframe: z.string().optional(),
-  measurable_target: z.string().optional(),
+  timeframe: z.string().nullish().transform(v => v ?? undefined),
+  measurable_target: z.string().nullish().transform(v => v ?? undefined),
 }).passthrough();
 
 /** Schema for a care plan intervention item */
 export const AICarePlanInterventionItemSchema = z.object({
   action: z.string(),
-  frequency: z.string().optional(),
-  rationale: z.string().optional(),
-  duration: z.string().optional(),
-  monitoring: z.string().optional(),
-  timing: z.string().optional(),
-  escalation: z.string().optional(),
+  frequency: z.string().nullish().transform(v => v ?? undefined),
+  rationale: z.string().nullish().transform(v => v ?? undefined),
+  duration: z.string().nullish().transform(v => v ?? undefined),
+  monitoring: z.string().nullish().transform(v => v ?? undefined),
+  timing: z.string().nullish().transform(v => v ?? undefined),
+  escalation: z.string().nullish().transform(v => v ?? undefined),
 }).passthrough();
 
 /** Schema for a care plan intervention category */

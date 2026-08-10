@@ -570,7 +570,10 @@ export function useStoredCarePlans(params: { encounter_id?: number; admission_id
     queryKey: aiKeys.storedCarePlans(params),
     queryFn: () => aiApi.getStoredCarePlans(params),
     enabled: ENABLE_AI && hasId,
-    staleTime: 30_000,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -579,7 +582,10 @@ export function useStoredCDSResults(encounterId: number | undefined) {
     queryKey: aiKeys.storedCDS(encounterId ?? 0),
     queryFn: () => aiApi.getStoredCDSResults({ encounter_id: encounterId! }),
     enabled: ENABLE_AI && Boolean(encounterId),
-    staleTime: 30_000,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -641,7 +647,10 @@ export function useStoredInvestigationSuggestions(encounterId: number | undefine
     queryKey: aiKeys.storedInvestigationSuggestions(encounterId ?? 0),
     queryFn: () => aiApi.getStoredInvestigationSuggestions({ encounter_id: encounterId! }),
     enabled: ENABLE_AI && Boolean(encounterId),
-    staleTime: 30_000,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }
 

@@ -56,7 +56,11 @@ import { ProactiveInsightsPanel } from '@/components/shared/proactive-insight-ca
 import { useProactiveInsights } from '@/lib/hooks/use-proactive-insights';
 import { InvestigationSuggestionsPanel } from '@/components/encounters/investigation-suggestions-panel';
 import { EGFRPanel } from '@/components/encounters/egfr-panel';
+import { useStoredCarePlans } from '@/lib/hooks/use-ai';
 import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
+import { usePatientAllergies } from '@/lib/hooks/use-allergies';
+import { usePatientChronicConditions } from '@/lib/hooks/use-chronic-conditions';
+import { usePatientCurrentMedications } from '@/lib/hooks/use-current-medications';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useAuth } from '@/lib/auth/context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
@@ -93,6 +97,18 @@ function calculateAge(dob: string | null | undefined): number {
   if (!dob) return 0;
   const diff = Date.now() - new Date(dob).getTime();
   return Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
+}
+
+function parseClinicalList(value: string | null | undefined): string[] {
+  if (!value) return [];
+  return value
+    .split(/[;,\n]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function normalizeClinicalText(value: string | undefined): string {
+  return (value || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 // =============================================================================
@@ -144,7 +160,7 @@ export default function EncounterDetailPage() {
   // Use encounter context instead of independent fetch
   const { encounter, isLoading, error } = useEncounterContext();
   const encounterId = encounter?.id ?? 0;
-  const { data: diagnoses } = useEncounterDiagnoses(encounterId);
+  const { data: diagnoses, isLoading: isLoadingDiagnoses } = useEncounterDiagnoses(encounterId);
   const { data: treatmentPlan } = useEncounterTreatmentPlan(encounterId);
   const { data: labOrders } = useEncounterLabOrders(encounterId);
   const { data: imagingOrders } = useEncounterImagingOrders(encounterId);
@@ -167,6 +183,16 @@ export default function EncounterDetailPage() {
   // Referrals data (for tab badge count)
   const { data: referralsList } = useEncounterReferrals(encounterId);
   const referralsCount = referralsList?.length || 0;
+  const { data: storedCarePlans } = useStoredCarePlans({ encounter_id: encounterId });
+  const { data: structuredAllergies, isLoading: isLoadingStructuredAllergies } = usePatientAllergies(
+    encounter?.patient ?? 0,
+  );
+  const { data: structuredConditions, isLoading: isLoadingStructuredConditions } = usePatientChronicConditions(
+    encounter?.patient ?? 0,
+  );
+  const { data: structuredMedications, isLoading: isLoadingStructuredMedications } = usePatientCurrentMedications(
+    encounter?.patient ?? 0,
+  );
 
   // Vitals history for trend chart
   const { data: vitalsHistory, isLoading: isLoadingVitals } = usePatientVitalsHistory(
@@ -194,14 +220,82 @@ export default function EncounterDetailPage() {
 
   const proactivePatientCtx = useMemo(() => {
     if (!encounter) return null;
+    const allergies = parseClinicalList(encounter.allergies);
+    const comorbidities = parseClinicalList(encounter.chronic_conditions);
+    const currentMedications = parseClinicalList(encounter.current_medications);
     return {
       patient_age: calculateAge(encounter.patient_date_of_birth),
       patient_sex: encounter.patient_gender ?? 'O',
-      allergies: encounter.allergies?.split(',').map((s: string) => s.trim()).filter(Boolean) ?? [],
-      comorbidities: encounter.chronic_conditions?.split(',').map((s: string) => s.trim()).filter(Boolean) ?? [],
-      current_medications: encounter.current_medications?.split(',').map((s: string) => s.trim()).filter(Boolean) ?? [],
+      allergies,
+      comorbidities,
+      current_medications: currentMedications,
     };
   }, [encounter]);
+
+  const clinicalAllergies = useMemo(
+    () => {
+      const encounterAllergies = parseClinicalList(encounter?.allergies);
+      if (encounterAllergies.length > 0) return encounterAllergies;
+
+      const fromStructured = (structuredAllergies || [])
+        .filter((item: any) => item?.status === 'active' || item?.status === 'ACTIVE')
+        .map((item: any) => String(item?.substance || '').trim())
+        .filter(Boolean);
+
+      return fromStructured;
+    },
+    [encounter?.allergies, structuredAllergies],
+  );
+
+  const clinicalConditions = useMemo(
+    () => {
+      const encounterConditions = parseClinicalList(encounter?.chronic_conditions);
+      if (encounterConditions.length > 0) return encounterConditions;
+
+      const fromStructured = (structuredConditions || [])
+        .filter((item: any) => item?.status === 'ACTIVE' || item?.status === 'active')
+        .map((item: any) => String(item?.condition_name || '').trim())
+        .filter(Boolean);
+
+      return fromStructured;
+    },
+    [encounter?.chronic_conditions, structuredConditions],
+  );
+
+  const currentMedications = useMemo(
+    () => {
+      const encounterMeds = parseClinicalList(encounter?.current_medications);
+      if (encounterMeds.length > 0) return encounterMeds;
+
+      const fromStructured = (structuredMedications || [])
+        .filter((item: any) => item?.status === 'ACTIVE' || item?.status === 'active')
+        .map((item: any) => String(item?.medication_name || '').trim())
+        .filter(Boolean);
+
+      return fromStructured;
+    },
+    [encounter?.current_medications, structuredMedications],
+  );
+
+  const latestCarePlanInvestigations = useMemo(() => {
+    const latest = storedCarePlans?.[0]?.result_data as
+      | { interventions?: Array<{ category?: string; items?: Array<Record<string, unknown>> }> }
+      | undefined;
+
+    if (!latest?.interventions || !Array.isArray(latest.interventions)) {
+      return [];
+    }
+
+    return latest.interventions
+      .filter((group) => String(group?.category || '').toLowerCase() === 'investigations')
+      .flatMap((group) => (Array.isArray(group.items) ? group.items : []))
+      .map((item) => ({
+        action: typeof item.action === 'string' ? item.action : '',
+        rationale: typeof item.rationale === 'string' ? item.rationale : undefined,
+        timing: typeof item.timing === 'string' ? item.timing : undefined,
+      }))
+      .filter((item) => item.action);
+  }, [storedCarePlans]);
 
   const proactiveEncounterCtx = useMemo(() => {
     if (!encounter) return null;
@@ -277,12 +371,9 @@ export default function EncounterDetailPage() {
   useEffect(() => {
     if (!setEncounterAwareContext || !encounter) return;
 
-    const allergies = encounter.allergies
-      ?.split(',').map((s: string) => s.trim()).filter(Boolean) ?? [];
-    const comorbidities = encounter.chronic_conditions
-      ?.split(',').map((s: string) => s.trim()).filter(Boolean) ?? [];
-    const meds = encounter.current_medications
-      ?.split(',').map((s: string) => s.trim()).filter(Boolean) ?? [];
+    const allergies = parseClinicalList(encounter.allergies);
+    const comorbidities = parseClinicalList(encounter.chronic_conditions);
+    const meds = parseClinicalList(encounter.current_medications);
 
     setEncounterAwareContext(
       {
@@ -363,6 +454,55 @@ export default function EncounterDetailPage() {
       certainty: d.certainty,
     }));
   }, [diagnoses]);
+
+  const diagnosisTexts = useMemo(
+    () => diagnosisFormData
+      .map((d) => d.icd10_display || d.free_text_diagnosis)
+      .filter(Boolean),
+    [diagnosisFormData],
+  );
+
+  const primaryDiagnosisForAI = useMemo(() => {
+    if (diagnosisFormData.length === 0) {
+      if (isLoadingDiagnoses) return undefined;
+      return undefined;
+    }
+
+    const ranked = [...diagnosisFormData].sort((a, b) => {
+      if (a.diagnosis_type === 'PRIMARY' && b.diagnosis_type !== 'PRIMARY') return -1;
+      if (b.diagnosis_type === 'PRIMARY' && a.diagnosis_type !== 'PRIMARY') return 1;
+      if (a.is_confirmed && !b.is_confirmed) return -1;
+      if (b.is_confirmed && !a.is_confirmed) return 1;
+      return 0;
+    });
+
+    const labels = ranked
+      .map((d) => d.icd10_display || d.free_text_diagnosis || '')
+      .filter(Boolean);
+
+    const complaintNorm = normalizeClinicalText(encounter?.chief_complaint || undefined);
+    const nonChiefComplaint = labels.find((label) => normalizeClinicalText(label) !== complaintNorm);
+
+    return nonChiefComplaint || labels[0] || undefined;
+  }, [diagnosisFormData, encounter?.chief_complaint, isLoadingDiagnoses]);
+
+  const primaryICD10CodeForAI = useMemo(() => {
+    if (diagnosisFormData.length === 0) return undefined;
+
+    const ranked = [...diagnosisFormData].sort((a, b) => {
+      if (a.diagnosis_type === 'PRIMARY' && b.diagnosis_type !== 'PRIMARY') return -1;
+      if (b.diagnosis_type === 'PRIMARY' && a.diagnosis_type !== 'PRIMARY') return 1;
+      if (a.is_confirmed && !b.is_confirmed) return -1;
+      if (b.is_confirmed && !a.is_confirmed) return 1;
+      return 0;
+    });
+
+    return ranked[0]?.icd10_code?.toString() || undefined;
+  }, [diagnosisFormData]);
+
+  const isLoadingAIClinicalHistory = isLoadingStructuredAllergies
+    || isLoadingStructuredConditions
+    || isLoadingStructuredMedications;
 
   if (isLoading) {
     return <EncounterDetailSkeleton />;
@@ -489,38 +629,30 @@ export default function EncounterDetailPage() {
       {/* AI Enhanced CDS Panel (Phase 5) — drug interactions, contraindications */}
       <EnhancedCDSPanel
         medications={encounter.current_medications
-          ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
-        diagnoses={diagnosisFormData.map(d =>
-          d.icd10_display || d.free_text_diagnosis
-        ).filter(Boolean)}
-        allergies={encounter.allergies
-          ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
+          ? currentMedications
+          : undefined}
+        diagnoses={diagnosisTexts}
+        allergies={clinicalAllergies}
         patientAge={calculateAge(encounter.patient_date_of_birth)}
         patientSex={
           encounter.patient_gender === 'F' ? 'female' :
           encounter.patient_gender === 'M' ? 'male' : null
         }
-        autoTrigger={autoTriggerCDS}
+        autoTrigger={autoTriggerCDS && !isLoadingDiagnoses}
         onAutoTriggerConsumed={() => setAutoTriggerCDS(false)}
       />
 
       {/* AI Care Plan Panel (Phase 5) */}
       <CarePlanPanel
-        primaryDiagnosis={
-          diagnosisFormData[0]?.icd10_display
-          || diagnosisFormData[0]?.free_text_diagnosis
-          || undefined
-        }
+        encounterId={encounterId}
+        primaryDiagnosis={primaryDiagnosisForAI}
         chiefComplaint={encounter.chief_complaint || undefined}
-        icd10Code={diagnosisFormData[0]?.icd10_code?.toString()}
+        icd10Code={primaryICD10CodeForAI}
         patientAge={calculateAge(encounter.patient_date_of_birth)}
         patientSex={encounter.patient_gender === 'F' ? 'female' : 'male'}
-        allergies={encounter.allergies
-          ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
-        currentMedications={encounter.current_medications
-          ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
-        comorbidities={encounter.chronic_conditions
-          ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
+        allergies={clinicalAllergies}
+        currentMedications={currentMedications}
+        comorbidities={clinicalConditions}
         vitals={{
           ...(encounter.temperature != null && { temperature: Number(encounter.temperature) }),
           ...(encounter.pulse != null && { pulse: encounter.pulse }),
@@ -538,7 +670,8 @@ export default function EncounterDetailPage() {
               unit: item.result!.result_unit || '',
             }))
         )}
-        autoTrigger={autoTriggerCarePlan}
+        disabled={isLoadingDiagnoses || isLoadingAIClinicalHistory}
+        autoTrigger={autoTriggerCarePlan && !isLoadingDiagnoses && !isLoadingAIClinicalHistory}
         onAutoTriggerConsumed={() => setAutoTriggerCarePlan(false)}
       />
 
@@ -737,9 +870,7 @@ export default function EncounterDetailPage() {
               encounterId={encounterId}
               patientId={encounter.patient}
               chiefComplaint={encounter.chief_complaint || undefined}
-              diagnoses={diagnosisFormData.map(d =>
-                d.icd10_display || d.free_text_diagnosis
-              ).filter(Boolean)}
+              diagnoses={diagnosisTexts}
               symptoms={encounter.chief_complaint
                 ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
               existingOrders={labOrders?.flatMap(order =>
@@ -760,6 +891,7 @@ export default function EncounterDetailPage() {
               patientAge={calculateAge(encounter.patient_date_of_birth)}
               patientSex={encounter.patient_gender === 'F' ? 'F' : encounter.patient_gender === 'M' ? 'M' : undefined}
               isPregnant={false}
+              carePlanInvestigations={latestCarePlanInvestigations}
               autoTrigger={autoTriggerInvestigations}
               onAutoTriggerConsumed={() => setAutoTriggerInvestigations(false)}
             />

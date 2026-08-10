@@ -16,6 +16,7 @@ ClinicalChatSessionDetailView) provide local session history.
 
 import json
 import logging
+import re
 from typing import Any
 
 from django.utils import timezone
@@ -28,6 +29,8 @@ from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import resolve_request_tenant
 from hmis.apps.core.models import AuditLog
+from hmis.apps.encounters.models import ChronicCondition, CurrentMedication, Encounter
+from hmis.apps.patients.models import Allergy
 
 from .client import TibaBotError, TibaBotUnavailableError, extract_token_usage, get_tibabot_client
 from .context import build_facility_context, build_user_context
@@ -106,6 +109,98 @@ from .serializers import (  # Advisory link serializers
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _split_clinical_text(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [token.strip() for token in re.split(r"[;,\n]", value) if token and token.strip()]
+
+
+def _pick_primary_diagnosis_text(encounter: Encounter) -> str:
+    diagnoses = list(encounter.diagnoses.select_related("icd10_code").all())
+    if not diagnoses:
+        return ""
+
+    def _dx_text(diagnosis) -> str:
+        if diagnosis.icd10_code_id and diagnosis.icd10_code:
+            return diagnosis.icd10_code.short_description or diagnosis.icd10_code.description or ""
+        return diagnosis.free_text_diagnosis or ""
+
+    diagnoses.sort(
+        key=lambda d: (
+            d.diagnosis_type != "PRIMARY",
+            not d.is_confirmed,
+            d.created_at,
+        )
+    )
+    for diagnosis in diagnoses:
+        text = _dx_text(diagnosis).strip()
+        if text:
+            return text
+    return ""
+
+
+def _enrich_care_plan_input_from_encounter(
+    data: dict[str, Any], request: Request
+) -> dict[str, Any]:
+    encounter_id = data.get("encounter_id")
+    if not encounter_id:
+        return data
+
+    encounter_qs = Encounter.objects.filter(pk=encounter_id)
+    facility = getattr(request, "facility", None)
+    if facility:
+        encounter_qs = encounter_qs.filter(facility=facility)
+
+    encounter = encounter_qs.first()
+    if not encounter:
+        return data
+
+    diagnosis_text = _pick_primary_diagnosis_text(encounter)
+    incoming_primary = (data.get("primary_diagnosis") or "").strip()
+    incoming_complaint = (data.get("chief_complaint") or encounter.chief_complaint or "").strip()
+    should_replace_primary = (
+        not incoming_primary or incoming_primary.lower() == incoming_complaint.lower()
+    )
+
+    if should_replace_primary and diagnosis_text:
+        data["primary_diagnosis"] = diagnosis_text
+
+    if not data.get("chief_complaint") and encounter.chief_complaint:
+        data["chief_complaint"] = encounter.chief_complaint
+
+    if not data.get("allergies"):
+        allergies = _split_clinical_text(encounter.allergies)
+        if not allergies:
+            allergies = list(
+                Allergy.objects.filter(patient_id=encounter.patient_id, status="active")
+                .exclude(substance="")
+                .values_list("substance", flat=True)
+            )
+        data["allergies"] = allergies
+
+    if not data.get("comorbidities"):
+        comorbidities = _split_clinical_text(encounter.chronic_conditions)
+        if not comorbidities:
+            comorbidities = list(
+                ChronicCondition.objects.filter(patient_id=encounter.patient_id, status="ACTIVE")
+                .exclude(condition_name="")
+                .values_list("condition_name", flat=True)
+            )
+        data["comorbidities"] = comorbidities
+
+    if not data.get("current_medications"):
+        current_meds = _split_clinical_text(encounter.current_medications)
+        if not current_meds:
+            current_meds = list(
+                CurrentMedication.objects.filter(patient_id=encounter.patient_id, status="ACTIVE")
+                .exclude(medication_name="")
+                .values_list("medication_name", flat=True)
+            )
+        data["current_medications"] = current_meds
+
+    return data
 
 
 def _record_response_tokens(request: Request, result: dict) -> None:
@@ -2156,6 +2251,16 @@ class CarePlanGenerateView(AIFeatureGatedMixin, APIView):
         data = serializer.validated_data
 
         # Sanitize text fields
+        if data.get("primary_diagnosis"):
+            data["primary_diagnosis"] = sanitize_clinical_text(data["primary_diagnosis"])
+        if data.get("chief_complaint"):
+            data["chief_complaint"] = sanitize_clinical_text(data["chief_complaint"])
+
+        # Enrich from encounter context when request omitted key clinical fields.
+        # This ensures encounter-linked generation still has diagnosis/history payload.
+        data = _enrich_care_plan_input_from_encounter(data, request)
+
+        # Re-sanitize potentially enriched text fields.
         if data.get("primary_diagnosis"):
             data["primary_diagnosis"] = sanitize_clinical_text(data["primary_diagnosis"])
         if data.get("chief_complaint"):

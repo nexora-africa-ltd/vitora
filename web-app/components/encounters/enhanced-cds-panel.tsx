@@ -252,20 +252,22 @@ export function EnhancedCDSPanel({
   }, [result, queryClient, encounterId]);
 
   const handleEvaluate = React.useCallback(() => {
-    mutate({
+    const payload: AICDSEvaluateRequest = {
       encounter_id: encounterId,
-      medications,
-      diagnoses,
-      symptoms,
-      pending_procedures: pendingProcedures,
-      lab_results: labResults,
-      allergies,
-      patient_age: patientAge,
-      patient_sex: patientSex,
+      ...(medications?.length ? { medications } : {}),
+      ...(diagnoses?.length ? { diagnoses } : {}),
+      ...(symptoms?.length ? { symptoms } : {}),
+      ...(pendingProcedures?.length ? { pending_procedures: pendingProcedures } : {}),
+      ...(labResults && Object.keys(labResults).length > 0 ? { lab_results: labResults } : {}),
+      ...(allergies?.length ? { allergies } : {}),
+      ...(patientAge != null ? { patient_age: patientAge } : {}),
+      ...(patientSex ? { patient_sex: patientSex } : {}),
       is_pregnant: isPregnant,
-      region,
-      facility_level: facilityLevel,
-    });
+      ...(region ? { region } : {}),
+      ...(facilityLevel ? { facility_level: facilityLevel } : {}),
+    };
+
+    mutate(payload);
   }, [mutate, encounterId, medications, diagnoses, symptoms, pendingProcedures, labResults, allergies, patientAge, patientSex, isPregnant, region, facilityLevel]);
 
   // Auto-run on mount if requested

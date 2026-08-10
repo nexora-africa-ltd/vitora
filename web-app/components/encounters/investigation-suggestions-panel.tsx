@@ -38,6 +38,8 @@ import {
   useStoredInvestigationSuggestions,
 } from '@/lib/hooks/use-ai';
 import { useResolveTests, useCreateLabOrder, useSubmitLabOrder } from '@/lib/hooks/use-laboratory';
+import { useCreateImagingOrder, useSubmitImagingOrder } from '@/lib/hooks/use-imaging';
+import { imagingApi } from '@/lib/api/imaging';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type {
@@ -65,6 +67,12 @@ export interface InvestigationSuggestionsPanelProps {
   existingOrders?: string[];
   /** Lab results already available */
   existingResults?: Record<string, unknown>;
+  /** Investigations extracted from latest AI care plan payload */
+  carePlanInvestigations?: Array<{
+    action: string;
+    rationale?: string;
+    timing?: string;
+  }>;
   /** Patient age */
   patientAge?: number;
   /** Patient sex */
@@ -106,6 +114,30 @@ const PRIORITY_CONFIG = {
   },
 } as const;
 
+const IMAGING_CATEGORY_HINTS = ['imaging', 'radiology', 'xray', 'x-ray', 'ultrasound', 'ct', 'mri', 'scan'];
+const IMAGING_NAME_HINTS = [
+  'xray',
+  'x-ray',
+  'ultrasound',
+  'ct',
+  'mri',
+  'cxr',
+  'radiograph',
+  'mammogram',
+  'fluoroscopy',
+];
+
+function isImagingSuggestion(suggestion: AIInvestigationSuggestion): boolean {
+  const category = String(suggestion.category || '').toLowerCase();
+  const name = String(suggestion.name || '').toLowerCase();
+
+  if (IMAGING_CATEGORY_HINTS.some((hint) => category.includes(hint))) {
+    return true;
+  }
+
+  return IMAGING_NAME_HINTS.some((hint) => name.includes(hint));
+}
+
 // =============================================================================
 // COMPONENT
 // =============================================================================
@@ -118,6 +150,7 @@ export function InvestigationSuggestionsPanel({
   symptoms,
   existingOrders,
   existingResults,
+  carePlanInvestigations,
   patientAge,
   patientSex,
   isPregnant,
@@ -131,6 +164,8 @@ export function InvestigationSuggestionsPanel({
   const resolveTests = useResolveTests();
   const createOrder = useCreateLabOrder();
   const submitOrder = useSubmitLabOrder();
+  const createImagingOrder = useCreateImagingOrder();
+  const submitImagingOrder = useSubmitImagingOrder();
   const queryClient = useQueryClient();
   const { data: storedResults } = useStoredInvestigationSuggestions(encounterId);
   const [result, setResult] = React.useState<AIInvestigationSuggestResponse | null>(null);
@@ -187,6 +222,21 @@ export function InvestigationSuggestionsPanel({
       })
       .map(([priority, items]) => ({ priority, items }));
   }, [result, dismissedNames]);
+
+  const carePlanSuggestions = React.useMemo<AIInvestigationSuggestion[]>(() => {
+    if (!carePlanInvestigations || carePlanInvestigations.length === 0) return [];
+
+    return carePlanInvestigations
+      .map((item) => ({
+        name: item.action,
+        category: 'care_plan',
+        priority: 'routine' as const,
+        rationale: item.rationale || 'Suggested from latest AI care plan',
+        timing: item.timing,
+        source: 'care_plan',
+      }))
+      .filter((item) => !!item.name && !dismissedNames.has(item.name));
+  }, [carePlanInvestigations, dismissedNames]);
 
   if (!isAIEnabled) return null;
 
@@ -249,19 +299,14 @@ export function InvestigationSuggestionsPanel({
 
     try {
       const suggestions = Array.from(acceptedSuggestions.values());
+      const imagingSuggestions = suggestions.filter(isImagingSuggestion);
+      const labSuggestions = suggestions.filter((s) => !isImagingSuggestion(s));
 
-      // Resolve suggestion names to test catalog entries
-      const { resolved } = await resolveTests.mutateAsync(
-        suggestions.map((s) => ({ name: s.name, loinc_code: s.loinc_code }))
-      );
+      const unmatchedLabNames: string[] = [];
+      const unmatchedImagingNames: string[] = [];
 
-      const matched = resolved.filter((r) => r.match);
-      const unmatched = resolved.filter((r) => !r.match);
-
-      if (matched.length === 0) {
-        toast.error('No matching tests found in catalog. Add tests manually.');
-        return;
-      }
+      let matchedLabCount = 0;
+      let matchedImagingCount = 0;
 
       // Determine highest priority among accepted suggestions
       const priorityRank = { stat: 0, urgent: 1, routine: 2 };
@@ -270,42 +315,113 @@ export function InvestigationSuggestionsPanel({
         return rank < (priorityRank[best as keyof typeof priorityRank] ?? 2) ? s.priority : best;
       }, 'routine' as string);
 
-      // Build clinical notes from rationales
-      const clinicalNotes = suggestions
-        .map((s) => `${s.name}: ${s.rationale}`)
-        .join('\n');
+      if (labSuggestions.length > 0) {
+        // Resolve only lab suggestions to lab test catalog entries
+        const { resolved } = await resolveTests.mutateAsync(
+          labSuggestions.map((s) => ({ name: s.name, loinc_code: s.loinc_code }))
+        );
 
-      // Create a single order with all matched tests
-      const order = await createOrder.mutateAsync({
-        patient: patientId,
-        encounter: encounterId,
-        priority: highestPriority.toUpperCase() as 'ROUTINE' | 'URGENT' | 'STAT',
-        clinical_notes: clinicalNotes,
-        items: matched.map((r) => ({
-          test_code: r.match!.code,
-        })),
-      });
+        const matchedLab = resolved.filter((r) => r.match);
+        const unmatchedLab = resolved.filter((r) => !r.match);
+        unmatchedLabNames.push(...unmatchedLab.map((u) => u.query_name));
 
-      // Auto-submit the order
-      if (order?.order_number) {
-        try {
-          await submitOrder.mutateAsync(order.order_number);
-        } catch {
-          // Order created but not submitted — still useful
+        if (matchedLab.length > 0) {
+          matchedLabCount = matchedLab.length;
+          const labClinicalNotes = labSuggestions
+            .map((s) => `${s.name}: ${s.rationale}`)
+            .join('\n');
+
+          const order = await createOrder.mutateAsync({
+            patient: patientId,
+            encounter: encounterId,
+            priority: highestPriority.toUpperCase() as 'ROUTINE' | 'URGENT' | 'STAT',
+            clinical_notes: labClinicalNotes,
+            items: matchedLab.map((r) => ({
+              test_code: r.match!.code,
+            })),
+          });
+
+          if (order?.order_number) {
+            try {
+              await submitOrder.mutateAsync(order.order_number);
+            } catch {
+              // Order created even if submit fails
+            }
+          }
         }
+      }
+
+      if (imagingSuggestions.length > 0) {
+        const resolvedImagingItems: Array<{ procedure_code: string }> = [];
+
+        for (const suggestion of imagingSuggestions) {
+          const candidates = await imagingApi.searchProcedures(suggestion.name);
+          const exact = candidates.find((p) => p.name.toLowerCase() === suggestion.name.toLowerCase());
+          const best = exact || candidates[0];
+          if (best?.code) {
+            resolvedImagingItems.push({ procedure_code: best.code });
+          } else {
+            unmatchedImagingNames.push(suggestion.name);
+          }
+        }
+
+        if (resolvedImagingItems.length > 0) {
+          matchedImagingCount = resolvedImagingItems.length;
+          const imagingClinicalIndication = imagingSuggestions
+            .map((s) => `${s.name}: ${s.rationale}`)
+            .join('; ')
+            .slice(0, 1000);
+
+          const imagingOrder = await createImagingOrder.mutateAsync({
+            patient: patientId,
+            encounter: encounterId,
+            priority: highestPriority.toUpperCase() as 'ROUTINE' | 'URGENT' | 'STAT',
+            clinical_indication: imagingClinicalIndication || 'AI-suggested imaging investigations',
+            items: resolvedImagingItems,
+          });
+
+          if (imagingOrder?.order_number) {
+            try {
+              await submitImagingOrder.mutateAsync(imagingOrder.order_number);
+            } catch {
+              // Order created even if submit fails
+            }
+          }
+        }
+      }
+
+      if (matchedLabCount === 0 && matchedImagingCount === 0) {
+        toast.error('No matching lab tests or imaging procedures found in catalogs.');
+        return;
       }
 
       // Invalidate lab orders cache so the list refreshes
       queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
       queryClient.invalidateQueries({ queryKey: ['encounter-lab-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['imaging', 'orders'] });
+      queryClient.invalidateQueries({ queryKey: ['imaging', 'orders', 'encounter', encounterId] });
 
-      const matchMsg = `Lab order created with ${matched.length} test${matched.length !== 1 ? 's' : ''}`;
-      const unmatchMsg = unmatched.length > 0
-        ? `. ${unmatched.length} not found: ${unmatched.map((u) => u.query_name).join(', ')}`
-        : '';
-      toast.success(matchMsg + unmatchMsg);
+      const createdParts: string[] = [];
+      if (matchedLabCount > 0) {
+        createdParts.push(`lab order with ${matchedLabCount} test${matchedLabCount !== 1 ? 's' : ''}`);
+      }
+      if (matchedImagingCount > 0) {
+        createdParts.push(`imaging order with ${matchedImagingCount} study${matchedImagingCount !== 1 ? 'ies' : ''}`);
+      }
+
+      const unmatchedParts: string[] = [];
+      if (unmatchedLabNames.length > 0) {
+        unmatchedParts.push(`lab unmatched: ${unmatchedLabNames.join(', ')}`);
+      }
+      if (unmatchedImagingNames.length > 0) {
+        unmatchedParts.push(`imaging unmatched: ${unmatchedImagingNames.join(', ')}`);
+      }
+
+      toast.success(
+        `Created ${createdParts.join(' and ')}${unmatchedParts.length ? `. ${unmatchedParts.join(' | ')}` : ''}`
+      );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create lab order');
+      toast.error(err instanceof Error ? err.message : 'Failed to create orders');
     } finally {
       setIsCreatingOrder(false);
     }
@@ -349,6 +465,28 @@ export function InvestigationSuggestionsPanel({
             Click &quot;Suggest&quot; to get AI-powered investigation recommendations
             based on the current clinical context.
           </p>
+        )}
+
+        {carePlanSuggestions.length > 0 && (
+          <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 dark:border-emerald-800/50 dark:bg-emerald-950/20">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">From Care Plan</Badge>
+              <span className="text-sm font-medium">Suggested investigations</span>
+              <Badge variant="secondary" className="text-xs">{carePlanSuggestions.length}</Badge>
+            </div>
+            <div className="space-y-2 pl-1">
+              {carePlanSuggestions.map((suggestion) => (
+                <SuggestionCard
+                  key={`care-plan-${suggestion.name}`}
+                  suggestion={suggestion}
+                  isAccepted={acceptedNames.has(suggestion.name)}
+                  onAccept={() => handleAccept(suggestion)}
+                  onUnaccept={() => handleUnaccept(suggestion)}
+                  onDismiss={() => handleDismiss(suggestion)}
+                />
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Loading */}
@@ -425,31 +563,6 @@ export function InvestigationSuggestionsPanel({
               </p>
             )}
 
-            {/* Create Lab Order — appears when tests are selected */}
-            {acceptedCount > 0 && encounterId && patientId && (
-              <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 p-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <ShoppingCart className="h-4 w-4 text-primary" />
-                  <span>
-                    {acceptedCount} test{acceptedCount !== 1 ? 's' : ''} selected
-                  </span>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={handleCreateOrder}
-                  disabled={isCreatingOrder || disabled}
-                  className="gap-1.5"
-                >
-                  {isCreatingOrder ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <FlaskConical className="h-4 w-4" />
-                  )}
-                  Create Lab Order
-                </Button>
-              </div>
-            )}
-
             {/* Disclaimer + feedback */}
             <div className="space-y-2 pt-2 border-t">
               <p className="text-xs text-muted-foreground italic">
@@ -460,6 +573,31 @@ export function InvestigationSuggestionsPanel({
               )}
             </div>
           </>
+        )}
+
+        {/* Create Lab Order — appears when tests are selected */}
+        {acceptedCount > 0 && encounterId && patientId && (
+          <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <div className="flex items-center gap-2 text-sm">
+              <ShoppingCart className="h-4 w-4 text-primary" />
+              <span>
+                {acceptedCount} test{acceptedCount !== 1 ? 's' : ''} selected
+              </span>
+            </div>
+            <Button
+              size="sm"
+              onClick={handleCreateOrder}
+              disabled={isCreatingOrder || disabled}
+              className="gap-1.5"
+            >
+              {isCreatingOrder ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FlaskConical className="h-4 w-4" />
+              )}
+              Create Orders
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>

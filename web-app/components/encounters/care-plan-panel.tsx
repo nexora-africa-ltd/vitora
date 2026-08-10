@@ -186,6 +186,9 @@ function GoalItem({ goal }: { goal: AICarePlanGoal }) {
         {goal.measurable_target && (
           <p className="text-xs text-muted-foreground">Target: {goal.measurable_target}</p>
         )}
+        {!goal.measurable_target && goal.target && (
+          <p className="text-xs text-muted-foreground">Target: {goal.target}</p>
+        )}
       </div>
     </div>
   );
@@ -204,8 +207,20 @@ function InterventionCategorySection({ category }: { category: AICarePlanInterve
             {item.frequency && (
               <p className="text-xs text-muted-foreground mt-0.5">Frequency: {item.frequency}</p>
             )}
+            {item.timing && (
+              <p className="text-xs text-muted-foreground mt-0.5">Timing: {item.timing}</p>
+            )}
+            {item.monitoring && (
+              <p className="text-xs text-muted-foreground">Monitoring: {item.monitoring}</p>
+            )}
+            {item.duration && (
+              <p className="text-xs text-muted-foreground">Duration: {item.duration}</p>
+            )}
             {item.rationale && (
               <p className="text-xs text-muted-foreground">Rationale: {item.rationale}</p>
+            )}
+            {item.escalation && (
+              <p className="text-xs text-muted-foreground">Escalation: {item.escalation}</p>
             )}
           </div>
         ))}
@@ -335,6 +350,7 @@ export function CarePlanPanel({
   const { mutate, data: result, isPending, isError, reset } = useAICarePlanGenerate();
   const [isExporting, setIsExporting] = React.useState(false);
   const [appliedThisSession, setAppliedThisSession] = React.useState(false);
+  const [persistedResult, setPersistedResult] = React.useState<AICarePlanResponse | undefined>();
   const panelId = React.useId();
 
   // Idempotency: treat as applied if the prop says so OR we applied it this session
@@ -345,11 +361,55 @@ export function CarePlanPanel({
     () => ({ encounter_id: encounterId, admission_id: admissionId }),
     [encounterId, admissionId],
   );
+  const localStorageKey = React.useMemo(
+    () => `ai-care-plan:${encounterId ?? 'none'}:${admissionId ?? 'none'}`,
+    [encounterId, admissionId],
+  );
   const { data: storedResults } = useStoredCarePlans(storedParams);
   const latestStored = storedResults?.[0];
 
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(localStorageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as AICarePlanResponse;
+      if (parsed && Array.isArray(parsed.goals)) {
+        setPersistedResult(parsed);
+      }
+    } catch {
+      // ignore invalid local cache
+    }
+  }, [localStorageKey]);
+
+  React.useEffect(() => {
+    const storedData = latestStored?.result_data as AICarePlanResponse | undefined;
+    if (!storedData || !Array.isArray(storedData.goals)) return;
+    setPersistedResult(storedData);
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(localStorageKey, JSON.stringify(storedData));
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }, [latestStored, localStorageKey]);
+
+  React.useEffect(() => {
+    if (!result || !Array.isArray(result.goals)) return;
+    setPersistedResult(result);
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(localStorageKey, JSON.stringify(result));
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }, [result, localStorageKey]);
+
   // Hydrate from stored result if no fresh result yet
   const displayResult: AICarePlanResponse | undefined = result
+    ?? persistedResult
     ?? (latestStored?.result_data as unknown as AICarePlanResponse | undefined);
 
   // Show success toast when care plan is generated
@@ -466,6 +526,10 @@ export function CarePlanPanel({
 
   const handleClear = () => {
     reset();
+    setPersistedResult(undefined);
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(localStorageKey);
+    }
     // Delete the latest stored result if available
     if (latestStored?.id) {
       aiApi.deleteStoredCarePlan(latestStored.id).then(() => {
@@ -479,7 +543,7 @@ export function CarePlanPanel({
     }
   };
 
-  const hasResult = displayResult && displayResult.goals && displayResult.goals.length > 0;
+  const hasResult = !!displayResult && Array.isArray(displayResult.goals) && displayResult.goals.length > 0;
   const isFallback = displayResult?.mode === 'fallback';
 
   return (
