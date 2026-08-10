@@ -17,7 +17,7 @@ import pytest  # type: ignore
 from django.test import override_settings
 from rest_framework import status
 
-from hmis.apps.billing.models import FacilityBillingConfig, Invoice
+from hmis.apps.billing.models import FacilityBillingConfig, Invoice, Service, ServiceCategory
 from hmis.apps.core.models import County, Facility, Organization, SubCounty
 
 # ============================================================================
@@ -305,6 +305,43 @@ class TestSHAContractTracking:
         assert response.status_code == status.HTTP_200_OK
         for item in response.data:
             assert item["sha_accreditation_status"] == "accredited"
+
+
+class TestAdmissionServiceGuardEndpoint:
+    """Tests for admission required-service guard endpoint."""
+
+    def test_reports_missing_codes(self, authenticated_client, sample_facility):
+        response = authenticated_client.get(
+            f"/api/billing/facility-configs/guards/admission-services/?facility={sample_facility.id}"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "warning"
+        assert set(response.data["missing_codes"]) == {"ADM-FEE"}
+
+    def test_reports_ok_when_required_codes_exist(
+        self, authenticated_client, sample_facility, test_user
+    ):
+        ipd_category = ServiceCategory.objects.create(
+            name="Inpatient",
+            code="IPD",
+            description="Inpatient services",
+            display_order=1,
+        )
+        Service.objects.create(
+            category=ipd_category,
+            code="ADM-FEE",
+            name="Admission Fee",
+            unit_price=Decimal("1000.00"),
+            created_by=test_user,
+            is_active=True,
+        )
+        response = authenticated_client.get(
+            f"/api/billing/facility-configs/guards/admission-services/?facility={sample_facility.id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "ok"
+        assert response.data["missing_codes"] == []
 
 
 # ============================================================================

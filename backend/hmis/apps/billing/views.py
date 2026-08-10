@@ -60,7 +60,7 @@ from hmis.apps.core.mixins import (
     ReadOnCreateMixin,
     TenantScopedViewMixin,
 )
-from hmis.apps.core.models import AuditLog
+from hmis.apps.core.models import AuditLog, Facility
 from hmis.apps.core.permissions import RequiresActiveShiftPermission, WriteRequiresRolePermission
 
 logger = logging.getLogger(__name__)
@@ -1584,6 +1584,81 @@ class FacilityBillingConfigViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
         report["facility_mfl_code"] = config.facility.mfl_code
 
         return Response(report)
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "facility",
+                OpenApiTypes.INT,
+                description="Facility ID (defaults to active facility context when omitted)",
+                required=False,
+            )
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=["get"], url_path="guards/admission-services")
+    def admission_service_guard(self, request):
+        """Flag missing inpatient billing service codes needed for admission billing."""
+        facility_id = request.query_params.get("facility")
+
+        if facility_id:
+            try:
+                facility = Facility.objects.get(pk=int(facility_id))
+            except (ValueError, Facility.DoesNotExist):
+                return Response(
+                    {"detail": "Facility not found."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+        else:
+            facility = getattr(request, "facility", None)
+            if facility is None:
+                return Response(
+                    {
+                        "detail": "Provide ?facility=<id> or use an active facility context.",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        required_codes = ["ADM-FEE"]
+        services = Service.objects.filter(
+            code__in=required_codes,
+            is_active=True,
+        ).select_related("category")
+
+        by_code = {service.code: service for service in services}
+        missing_codes = [code for code in required_codes if code not in by_code]
+
+        if missing_codes:
+            guard_status = "warning"
+            message = (
+                f"Required admission billing services are missing: {', '.join(missing_codes)}."
+            )
+        else:
+            guard_status = "ok"
+            message = "Required admission billing services are configured."
+
+        return Response(
+            {
+                "facility": {
+                    "id": facility.id,
+                    "name": facility.name,
+                    "mfl_code": facility.mfl_code,
+                    "has_inpatient": bool(getattr(facility, "has_inpatient", True)),
+                },
+                "required_codes": required_codes,
+                "present_services": [
+                    {
+                        "code": svc.code,
+                        "name": svc.name,
+                        "category_code": getattr(svc.category, "code", ""),
+                    }
+                    for svc in by_code.values()
+                ],
+                "missing_codes": missing_codes,
+                "status": guard_status,
+                "message": message,
+            }
+        )
 
 
 # ===========================================================================

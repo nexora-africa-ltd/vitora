@@ -412,6 +412,12 @@ class TestHandleAdmissionCreated:
         """Should add first bed night charge on admission."""
         from hmis.apps.billing.agent import BillingAgentService
 
+        invoice = Invoice.objects.filter(
+            patient=sample_admission.patient,
+            status=Invoice.Status.DRAFT,
+        ).first()
+        before = invoice.items.filter(description__icontains="bed night").count() if invoice else 0
+
         BillingAgentService.handle_admission_created(sample_admission)
 
         invoice = Invoice.objects.filter(
@@ -420,7 +426,7 @@ class TestHandleAdmissionCreated:
         ).first()
 
         bed_items = invoice.items.filter(description__icontains="bed night")
-        assert bed_items.count() == 1
+        assert bed_items.count() == before + 1
         # Bed night uses ward's daily_rate (500.00)
         assert bed_items.first().unit_price == Decimal("500.00")
 
@@ -634,23 +640,24 @@ class TestApplyDailyBedCharges:
         charged = BillingAgentService.apply_daily_bed_charges()
         assert charged == 0
 
-    def test_skips_admissions_without_bed_night_service(
+    def test_creates_fallback_bed_line_without_bed_night_service(
         self,
         db,
         sample_admission,
     ):
-        """Should not add bed charges if BED-NIGHT service doesn't exist."""
+        """Should still add bed charge even when BED-NIGHT service is missing."""
         from hmis.apps.billing.agent import BillingAgentService
 
         charged = BillingAgentService.apply_daily_bed_charges()
-        # Invoice still created but no bed item because BED-NIGHT service is missing
         assert charged == 1
 
         invoice = Invoice.objects.filter(
             patient=sample_admission.patient,
             status=Invoice.Status.DRAFT,
         ).first()
-        assert invoice.items.filter(description__icontains="bed night").count() == 0
+        bed_items = invoice.items.filter(description__icontains="bed night")
+        assert bed_items.count() == 2
+        assert all(item.service is None for item in bed_items)
 
 
 # ============================================================================

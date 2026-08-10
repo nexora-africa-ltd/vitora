@@ -8,6 +8,7 @@ including ICD-10 diagnosis codes and treatment plans.
 Sprint 1.1-1.2: Enhanced encounter management with diagnosis and treatment tracking.
 """
 
+import logging
 import re
 import uuid
 from datetime import date, timedelta
@@ -21,6 +22,8 @@ from simple_history.models import HistoricalRecords
 from hmis.apps.core.history import HistoryMixin
 from hmis.apps.core.mixins import FacilityScopedModel, resolve_tenant_from_related
 from hmis.apps.core.models import TimeStampedModel
+
+logger = logging.getLogger(__name__)
 
 # ICD-10 code format validator
 icd10_code_validator = RegexValidator(
@@ -1149,6 +1152,16 @@ class Encounter(HistoryMixin, FacilityScopedModel):
         self.finalized_by = user
         self.finalized_at = timezone.now()
         self.save(update_fields=["status", "finalized_by", "finalized_at", "updated_at"])
+
+        try:
+            from hmis.apps.billing.services.automation_rules import BillingAutomationRuleService
+
+            BillingAutomationRuleService.apply_checkout(self)
+        except Exception:
+            logger.exception(
+                "Billing automation rules failed for encounter checkout %s",
+                self.id,
+            )
 
         # Create audit log entry
         AuditLog.log(

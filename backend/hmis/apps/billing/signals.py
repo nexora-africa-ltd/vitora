@@ -51,10 +51,13 @@ def create_invoice_for_encounter(sender, instance, created, **kwargs):
         encounter__isnull=True,  # Not linked to another encounter
     ).first()
 
+    invoice = None
+
     if existing_invoice:
         # Link existing invoice to this encounter
         existing_invoice.encounter = instance
         existing_invoice.save(update_fields=["encounter", "updated_at"])
+        invoice = existing_invoice
     else:
         # Create new draft invoice for the encounter
         # Get or create a system user for auto-created invoices
@@ -72,7 +75,7 @@ def create_invoice_for_encounter(sender, instance, created, **kwargs):
                 is_active=True,
             )
 
-        Invoice.objects.create(
+        invoice = Invoice.objects.create(
             patient=instance.patient,
             encounter=instance,
             invoice_date=date.today(),
@@ -84,6 +87,16 @@ def create_invoice_for_encounter(sender, instance, created, **kwargs):
             created_by=system_user,
             facility=getattr(instance, "facility", None),
             organization=getattr(instance, "organization", None),
+        )
+
+    try:
+        from hmis.apps.billing.services.automation_rules import BillingAutomationRuleService
+
+        BillingAutomationRuleService.apply_encounter_created(instance, invoice=invoice)
+    except Exception:
+        logger.exception(
+            "Billing automation rules failed for encounter %s",
+            getattr(instance, "id", None),
         )
 
     # Publish domain event for encounter-triggered invoice creation
@@ -277,6 +290,16 @@ def handle_admission_billing(sender, instance, created, **kwargs):
         from hmis.apps.billing.agent import BillingAgentService
 
         BillingAgentService.handle_admission_created(instance)
+
+        try:
+            from hmis.apps.billing.services.automation_rules import BillingAutomationRuleService
+
+            BillingAutomationRuleService.apply_admission_created(instance)
+        except Exception:
+            logger.exception(
+                "Billing automation rules failed for admission %s",
+                getattr(instance, "id", None),
+            )
 
         publish_event(
             event_type=BillingEvents.ADMISSION_BILLING,

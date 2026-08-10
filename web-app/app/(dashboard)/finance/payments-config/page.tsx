@@ -13,18 +13,24 @@ import {
   AlertTriangle,
   BadgeCent,
   Banknote,
+  Check,
+  ChevronsUpDown,
   CreditCard,
   Eye,
   EyeOff,
   Loader2,
+  Plus,
   Save,
+  Settings2,
   ShieldCheck,
   Smartphone,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFacility } from '@/lib/context/facility-context';
 import { billingApi } from '@/lib/api/billing';
 import type {
+  BillingAutomationRuleInput,
   FacilityBillingConfig,
   FacilityBillingConfigUpdateData,
 } from '@/lib/types/billing';
@@ -40,6 +46,15 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -82,6 +97,18 @@ const SHA_ENVIRONMENTS = [
   { value: 'production', label: 'Production (Live)' },
 ] as const;
 
+const AUTOMATION_TRIGGERS = [
+  { value: 'encounter_created', label: 'Encounter Created' },
+  { value: 'admission_created', label: 'Admission Created' },
+  { value: 'checkout', label: 'Checkout' },
+  { value: 'daily', label: 'Daily Schedule' },
+] as const;
+
+const AUTOMATION_RECURRENCE = [
+  { value: 'once', label: 'Once' },
+  { value: 'recurring', label: 'Recurring' },
+] as const;
+
 // ---------------------------------------------------------------------------
 // Form state
 // ---------------------------------------------------------------------------
@@ -110,6 +137,20 @@ interface FormState {
   sha_facility_fr_code: string;
   sha_encrypted_pin: string;
   sha_api_environment: string;
+  automation_rules: AutomationRuleForm[];
+}
+
+interface AutomationRuleForm {
+  id?: number;
+  name: string;
+  is_active: boolean;
+  trigger: 'encounter_created' | 'admission_created' | 'checkout' | 'daily';
+  recurrence: 'once' | 'recurring';
+  repeat_every_days: number;
+  service: number | null;
+  quantity: string;
+  unit_price_override: string;
+  description_template: string;
 }
 
 type FormErrors = Partial<Record<keyof FormState, string>>;
@@ -136,10 +177,37 @@ function configToForm(cfg: FacilityBillingConfig): FormState {
     sha_facility_fr_code: cfg.sha_facility_fr_code ?? '',
     sha_encrypted_pin: cfg.sha_encrypted_pin ?? '',
     sha_api_environment: cfg.sha_api_environment ?? 'sandbox',
+    automation_rules: (cfg.automation_rules ?? []).map((rule) => ({
+      id: rule.id,
+      name: rule.name,
+      is_active: rule.is_active,
+      trigger: (rule.trigger as AutomationRuleForm['trigger']) ?? 'encounter_created',
+      recurrence: (rule.recurrence as AutomationRuleForm['recurrence']) ?? 'once',
+      repeat_every_days: rule.repeat_every_days ?? 1,
+      service: rule.service ?? null,
+      quantity: rule.quantity ?? '1.00',
+      unit_price_override: rule.unit_price_override ?? '',
+      description_template: rule.description_template ?? '',
+    })),
   };
 }
 
 function formToPayload(form: FormState): FacilityBillingConfigUpdateData {
+  const automationRules: BillingAutomationRuleInput[] = form.automation_rules.map((rule) => ({
+    ...(rule.id ? { id: rule.id } : {}),
+    name: rule.name.trim(),
+    is_active: rule.is_active,
+    trigger: rule.trigger,
+    recurrence: rule.recurrence,
+    repeat_every_days: Math.max(1, rule.repeat_every_days || 1),
+    service: rule.service,
+    item_type: 'service',
+    quantity: rule.quantity || '1.00',
+    unit_price_override: rule.unit_price_override.trim() ? rule.unit_price_override.trim() : null,
+    description_template: rule.description_template.trim(),
+    encounter_types: [],
+  }));
+
   const payload: FacilityBillingConfigUpdateData = {
     default_payment_type: form.default_payment_type,
     default_due_days: form.default_due_days,
@@ -158,6 +226,7 @@ function formToPayload(form: FormState): FacilityBillingConfigUpdateData {
     sha_facility_fr_code: form.sha_facility_fr_code,
     sha_encrypted_pin: form.sha_encrypted_pin,
     sha_api_environment: form.sha_api_environment,
+    automation_rules: automationRules,
   };
   // Only send secrets when user has entered new values
   if (form.mpesa_consumer_key) payload.mpesa_consumer_key = form.mpesa_consumer_key;
@@ -245,6 +314,28 @@ function validate(form: FormState, credsSavedOnServer = false): FormErrors {
   return errors;
 }
 
+function getAutomationValidationError(rules: AutomationRuleForm[]): string | null {
+  for (const [index, rule] of rules.entries()) {
+    const row = index + 1;
+    if (!rule.name.trim()) {
+      return `Automation rule ${row} requires a name.`;
+    }
+    if (!rule.service && !rule.unit_price_override.trim()) {
+      return `Automation rule ${row} requires a service or a unit price override.`;
+    }
+    if (!rule.quantity.trim() || Number(rule.quantity) <= 0) {
+      return `Automation rule ${row} must have quantity greater than zero.`;
+    }
+    if (rule.unit_price_override.trim() && Number(rule.unit_price_override) < 0) {
+      return `Automation rule ${row} has an invalid unit price override.`;
+    }
+    if (rule.recurrence === 'recurring' && (!rule.repeat_every_days || rule.repeat_every_days < 1)) {
+      return `Automation rule ${row} recurring interval must be at least 1 day.`;
+    }
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Tiny helper components
 // ---------------------------------------------------------------------------
@@ -271,6 +362,7 @@ export default function PaymentsConfigPage() {
   const [form, setForm] = useState<FormState | null>(null);
   const [showSecrets, setShowSecrets] = useState(false);
   const [touched, setTouched] = useState(false);
+  const [openServiceRuleIndex, setOpenServiceRuleIndex] = useState<number | null>(null);
 
   const facilityId = facility?.id ?? null;
 
@@ -291,6 +383,21 @@ export default function PaymentsConfigPage() {
     enabled: facilityId !== null,
   });
 
+  const servicesQuery = useQuery({
+    queryKey: ['billing-services', facilityId],
+    queryFn: async () => {
+      const response = await billingApi.getServices({ page: 1, page_size: 200, is_active: true });
+      return response.results;
+    },
+    enabled: facilityId !== null,
+  });
+
+  const admissionServiceGuardQuery = useQuery({
+    queryKey: ['admission-service-guard', facilityId],
+    queryFn: () => billingApi.getAdmissionServiceGuard(facilityId as number),
+    enabled: facilityId !== null,
+  });
+
   // Seed form when data arrives
   useEffect(() => {
     if (configQuery.data) {
@@ -308,12 +415,20 @@ export default function PaymentsConfigPage() {
   const hasShaCreds = configQuery.data?.has_sha_credentials ?? false;
 
   const errors = useMemo<FormErrors>(() => (form ? validate(form, hasMpesaCreds) : {}), [form, hasMpesaCreds]);
+  const servicesById = useMemo(() => {
+    return new Map((servicesQuery.data ?? []).map((service) => [service.id, service]));
+  }, [servicesQuery.data]);
+  const automationValidationError = useMemo(
+    () => (form ? getAutomationValidationError(form.automation_rules) : null),
+    [form],
+  );
   const hasErrors = Object.keys(errors).length > 0;
 
   // Which tabs have errors?
   const generalTabHasErrors = !!(errors.default_payment_type || errors.default_due_days || errors.tax_rate);
   const mpesaTabHasErrors = !!(errors.mpesa_consumer_key || errors.mpesa_consumer_secret || errors.mpesa_passkey || errors.mpesa_shortcode || errors.mpesa_callback_url);
   const bankTabHasErrors = !!(errors.bank_name || errors.bank_account_number);
+  const automationTabHasErrors = !!automationValidationError;
 
   // Payment method gating
   const mpesaConfigured = form ? hasMpesaCredsInForm(form, hasMpesaCreds) : false;
@@ -366,6 +481,39 @@ export default function PaymentsConfigPage() {
     setTouched(true);
   }
 
+  function addAutomationRule() {
+    if (!form) return;
+    updateField('automation_rules', [
+      ...form.automation_rules,
+      {
+        name: '',
+        is_active: true,
+        trigger: 'encounter_created',
+        recurrence: 'once',
+        repeat_every_days: 1,
+        service: null,
+        quantity: '1.00',
+        unit_price_override: '',
+        description_template: '',
+      },
+    ]);
+  }
+
+  function updateAutomationRule(index: number, patch: Partial<AutomationRuleForm>) {
+    if (!form) return;
+    const nextRules = [...form.automation_rules];
+    const current = nextRules[index];
+    if (!current) return;
+    nextRules[index] = { ...current, ...patch };
+    updateField('automation_rules', nextRules);
+  }
+
+  function removeAutomationRule(index: number) {
+    if (!form) return;
+    const nextRules = form.automation_rules.filter((_, idx) => idx !== index);
+    updateField('automation_rules', nextRules);
+  }
+
   const handleSave = useCallback(() => {
     if (!form) return;
     setTouched(true);
@@ -377,8 +525,21 @@ export default function PaymentsConfigPage() {
       toast.error('Please fix the highlighted errors before saving.');
       return;
     }
+    if (automationValidationError) {
+      setActiveTab('automation');
+      toast.error(automationValidationError);
+      return;
+    }
     updateMutation.mutate(form);
-  }, [form, hasErrors, generalTabHasErrors, mpesaTabHasErrors, bankTabHasErrors, updateMutation]);
+  }, [
+    form,
+    hasErrors,
+    generalTabHasErrors,
+    mpesaTabHasErrors,
+    bankTabHasErrors,
+    automationValidationError,
+    updateMutation,
+  ]);
 
   // -------------------------------------------------------------------------
   // Render: guards
@@ -507,6 +668,16 @@ export default function PaymentsConfigPage() {
         </Alert>
       )}
 
+      {admissionServiceGuardQuery.data?.status === 'warning' && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Admission billing guard warning</AlertTitle>
+          <AlertDescription className="text-xs">
+            {admissionServiceGuardQuery.data.message} Add the missing services in Service Catalog before starting new admissions.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Tab layout */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="bg-muted h-10 sm:h-11 p-1">
@@ -537,6 +708,12 @@ export default function PaymentsConfigPage() {
             <BadgeCent className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="sm:hidden">Terms</span>
             <span className="hidden sm:inline">Payment Terms</span>
+          </TabsTrigger>
+          <TabsTrigger value="automation" className="gap-1.5 text-xs sm:text-sm">
+            <Settings2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="sm:hidden">Rules</span>
+            <span className="hidden sm:inline">Automation Rules</span>
+            {touched && automationTabHasErrors && <span className="ml-1 h-2 w-2 rounded-full bg-destructive" />}
           </TabsTrigger>
         </TabsList>
 
@@ -1051,6 +1228,236 @@ export default function PaymentsConfigPage() {
 
         <TabsContent value="terms" className="space-y-4 mt-4">
           <BillingSettingsTab />
+        </TabsContent>
+
+        {/* ================================================================ */}
+        {/* TAB 6: Automation Rules */}
+        {/* ================================================================ */}
+
+        <TabsContent value="automation" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base sm:text-lg">Billing Automation Rules</CardTitle>
+                <HelpPopover content="Define trigger-based charges (for example consultation fee on encounter creation). Bed/night charging remains managed by inpatient admission and daily accrual workflows." />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert>
+                <AlertTitle className="text-sm">Rule behavior</AlertTitle>
+                <AlertDescription className="text-xs">
+                  Rules execute in the backend with idempotency tracking. Encounter-created rules run when a new encounter invoice is initialized.
+                </AlertDescription>
+              </Alert>
+
+              {form.automation_rules.length === 0 && (
+                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  No automation rules yet. Add one to auto-create charge lines on supported triggers.
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {form.automation_rules.map((rule, index) => (
+                  <div key={rule.id ?? `new-${index}`} className="rounded-lg border p-3 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium">Rule {index + 1}</p>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={rule.is_active}
+                          onCheckedChange={(checked) => updateAutomationRule(index, { is_active: checked })}
+                          disabled={isPending}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeAutomationRule(index)}
+                          disabled={isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label>Name</Label>
+                        <Input
+                          value={rule.name}
+                          onChange={(e) => updateAutomationRule(index, { name: e.target.value })}
+                          placeholder="e.g. OPD Consultation"
+                          disabled={isPending}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Service</Label>
+                        <Popover
+                          open={openServiceRuleIndex === index}
+                          onOpenChange={(open) => setOpenServiceRuleIndex(open ? index : null)}
+                        >
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              role="combobox"
+                              className="w-full justify-between"
+                              disabled={isPending || servicesQuery.isLoading}
+                            >
+                              {rule.service
+                                ? (() => {
+                                    const selectedService = servicesById.get(rule.service);
+                                    if (!selectedService) {
+                                      return `Service #${rule.service}`;
+                                    }
+                                    return `${selectedService.code} - ${selectedService.name}`;
+                                  })()
+                                : (servicesQuery.isLoading ? 'Loading services...' : 'Search service...')}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[360px] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Search by code or name..." />
+                              <CommandList>
+                                <CommandEmpty>No service found.</CommandEmpty>
+                                <CommandGroup>
+                                  <CommandItem
+                                    value="no-service"
+                                    onSelect={() => {
+                                      updateAutomationRule(index, { service: null });
+                                      setOpenServiceRuleIndex(null);
+                                    }}
+                                  >
+                                    <Check className={`mr-2 h-4 w-4 ${rule.service === null ? 'opacity-100' : 'opacity-0'}`} />
+                                    No service (use price override)
+                                  </CommandItem>
+                                  {(servicesQuery.data ?? []).map((service) => (
+                                    <CommandItem
+                                      key={service.id}
+                                      value={`${service.code} ${service.name}`}
+                                      onSelect={() => {
+                                        updateAutomationRule(index, { service: service.id });
+                                        setOpenServiceRuleIndex(null);
+                                      }}
+                                    >
+                                      <Check className={`mr-2 h-4 w-4 ${rule.service === service.id ? 'opacity-100' : 'opacity-0'}`} />
+                                      {service.code} - {service.name}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Trigger</Label>
+                        <Select
+                          value={rule.trigger}
+                          onValueChange={(value) => updateAutomationRule(index, { trigger: value as AutomationRuleForm['trigger'] })}
+                          disabled={isPending}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AUTOMATION_TRIGGERS.map((trigger) => (
+                              <SelectItem key={trigger.value} value={trigger.value}>
+                                {trigger.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Recurrence</Label>
+                        <Select
+                          value={rule.recurrence}
+                          onValueChange={(value) =>
+                            updateAutomationRule(index, { recurrence: value as AutomationRuleForm['recurrence'] })
+                          }
+                          disabled={isPending}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AUTOMATION_RECURRENCE.map((recurrence) => (
+                              <SelectItem key={recurrence.value} value={recurrence.value}>
+                                {recurrence.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Quantity</Label>
+                        <Input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={rule.quantity}
+                          onChange={(e) => updateAutomationRule(index, { quantity: e.target.value })}
+                          disabled={isPending}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Unit price override (KES)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={rule.unit_price_override}
+                          onChange={(e) => updateAutomationRule(index, { unit_price_override: e.target.value })}
+                          placeholder="Optional"
+                          disabled={isPending}
+                        />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <Label>Description template</Label>
+                        <Input
+                          value={rule.description_template}
+                          onChange={(e) => updateAutomationRule(index, { description_template: e.target.value })}
+                          placeholder="Optional custom line description"
+                          disabled={isPending}
+                        />
+                      </div>
+                      {rule.recurrence === 'recurring' && (
+                        <div className="space-y-1.5">
+                          <Label>Repeat every (days)</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={rule.repeat_every_days}
+                            onChange={(e) =>
+                              updateAutomationRule(index, { repeat_every_days: Number.parseInt(e.target.value, 10) || 1 })
+                            }
+                            disabled={isPending}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Button type="button" variant="outline" onClick={addAutomationRule} disabled={isPending}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Rule
+              </Button>
+            </CardContent>
+            <CardFooter className="flex justify-end border-t pt-4">
+              <Button onClick={handleSave} disabled={!isDirty || isPending} size="sm">
+                {updateMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
+                Save
+              </Button>
+            </CardFooter>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

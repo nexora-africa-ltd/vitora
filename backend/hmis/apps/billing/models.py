@@ -4285,6 +4285,142 @@ class FacilityBillingConfig(models.Model):
         return None
 
 
+class BillingAutomationRule(models.Model):
+    """Configurable billing automation rule attached to a facility billing config."""
+
+    class Trigger(models.TextChoices):
+        ENCOUNTER_CREATED = "encounter_created", "Encounter Created"
+        ADMISSION_CREATED = "admission_created", "Admission Created"
+        CHECKOUT = "checkout", "Checkout"
+        DAILY = "daily", "Daily Schedule"
+
+    class Recurrence(models.TextChoices):
+        ONCE = "once", "One-time"
+        RECURRING = "recurring", "Recurring"
+
+    id = models.BigAutoField(primary_key=True)
+    billing_config = models.ForeignKey(
+        FacilityBillingConfig,
+        on_delete=models.CASCADE,
+        related_name="automation_rules",
+    )
+    name = models.CharField(max_length=150)
+    is_active = models.BooleanField(default=True)
+    trigger = models.CharField(
+        max_length=30,
+        choices=Trigger.choices,
+        default=Trigger.ENCOUNTER_CREATED,
+    )
+    recurrence = models.CharField(
+        max_length=20,
+        choices=Recurrence.choices,
+        default=Recurrence.ONCE,
+        help_text="One-time or recurring charge behavior.",
+    )
+    repeat_every_days = models.PositiveIntegerField(
+        default=1,
+        help_text="For recurring rules, run every N days per context.",
+    )
+    service = models.ForeignKey(
+        "billing.Service",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="automation_rules",
+    )
+    item_type = models.CharField(
+        max_length=20,
+        choices=InvoiceItem.ItemType.choices,
+        default=InvoiceItem.ItemType.SERVICE,
+    )
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("1.00"))
+    unit_price_override = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Optional fixed price override. If empty, service unit price is used.",
+    )
+    description_template = models.CharField(max_length=300, blank=True, default="")
+    encounter_types = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Optional encounter type allow-list (e.g. ['OPD', 'EMERGENCY']).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["billing_config", "trigger", "is_active"]),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.get_trigger_display()})"
+
+    def clean(self):
+        errors = {}
+        if self.quantity <= 0:
+            errors["quantity"] = "Quantity must be greater than zero."
+        if self.recurrence == self.Recurrence.RECURRING and self.repeat_every_days < 1:
+            errors["repeat_every_days"] = (
+                "repeat_every_days must be at least 1 for recurring rules."
+            )
+        if self.unit_price_override is None and self.service_id is None:
+            errors["service"] = "Select a service or provide a unit_price_override."
+        if self.unit_price_override is not None and self.unit_price_override < 0:
+            errors["unit_price_override"] = "unit_price_override cannot be negative."
+        if errors:
+            raise ValidationError(errors)
+
+
+class BillingAutomationExecution(models.Model):
+    """Execution ledger for billing automation rules (idempotency + audit)."""
+
+    id = models.BigAutoField(primary_key=True)
+    rule = models.ForeignKey(
+        BillingAutomationRule,
+        on_delete=models.CASCADE,
+        related_name="executions",
+    )
+    encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="billing_automation_executions",
+    )
+    context_key = models.CharField(
+        max_length=120,
+        help_text="Idempotency context key, e.g. encounter:123",
+    )
+    execution_date = models.DateField(help_text="Execution bucket date for recurrence checks.")
+    invoice_item = models.ForeignKey(
+        "billing.InvoiceItem",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="automation_executions",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["rule", "context_key", "execution_date"],
+                name="unique_rule_execution_per_context_date",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["rule", "context_key"]),
+        ]
+
+    def __str__(self):
+        return f"{self.rule.name} @ {self.context_key} ({self.execution_date})"
+
+
 # ---------------------------------------------------------------------------
 # DHA HIE Consent & Preauth Models (User Journey Compliance)
 # ---------------------------------------------------------------------------

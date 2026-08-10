@@ -614,6 +614,25 @@ export const SHA_SERVICE_LEVELS = ['BASIC', 'STANDARD', 'COMPREHENSIVE', 'SPECIA
 export const SHAAccreditationStatusSchema = z.enum(SHA_ACCREDITATION_STATUSES);
 export const SHAServiceLevelSchema = z.enum(SHA_SERVICE_LEVELS);
 
+export const BillingAutomationRuleSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  is_active: z.boolean(),
+  trigger: z.string(),
+  recurrence: z.string(),
+  repeat_every_days: z.number(),
+  service: z.number().nullable().optional(),
+  service_code: z.string().nullable().optional(),
+  service_name: z.string().nullable().optional(),
+  item_type: z.string(),
+  quantity: z.string(),
+  unit_price_override: z.string().nullable().optional(),
+  description_template: z.string(),
+  encounter_types: z.array(z.string()).optional().default([]),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
 export const FacilityBillingConfigSchema = z.object({
   id: z.number(),
   facility: z.number(),
@@ -659,9 +678,30 @@ export const FacilityBillingConfigSchema = z.object({
   sha_api_environment: z.string().optional().default('sandbox'),
   sha_encrypted_pin: z.string().optional().default(''),
   has_sha_credentials: z.boolean().optional().default(false),
+  automation_rules: z.array(BillingAutomationRuleSchema).optional().default([]),
   // Timestamps
   created_at: z.string(),
   updated_at: z.string(),
+});
+
+export const AdmissionServiceGuardSchema = z.object({
+  facility: z.object({
+    id: z.number(),
+    name: z.string(),
+    mfl_code: z.string(),
+    has_inpatient: z.boolean(),
+  }),
+  required_codes: z.array(z.string()),
+  present_services: z.array(
+    z.object({
+      code: z.string(),
+      name: z.string(),
+      category_code: z.string().optional().default(''),
+    }),
+  ),
+  missing_codes: z.array(z.string()),
+  status: z.enum(['ok', 'warning', 'not_applicable']),
+  message: z.string(),
 });
 
 export const SHAContractSummarySchema = z.object({
@@ -739,7 +779,9 @@ export type DailyCollectionReport = z.infer<typeof DailyCollectionReportSchema>;
 export type RevenueSummary = z.infer<typeof RevenueSummarySchema>;
 export type PaymentMethodAnalysis = z.infer<typeof PaymentMethodAnalysisSchema>;
 export type DailyClosureReport = z.infer<typeof DailyClosureReportSchema>;
+export type BillingAutomationRule = z.infer<typeof BillingAutomationRuleSchema>;
 export type FacilityBillingConfig = z.infer<typeof FacilityBillingConfigSchema>;
+export type AdmissionServiceGuard = z.infer<typeof AdmissionServiceGuardSchema>;
 export type SHAContractSummary = z.infer<typeof SHAContractSummarySchema>;
 export type SHAAccreditationStatus = z.infer<typeof SHAAccreditationStatusSchema>;
 export type SHAServiceLevel = z.infer<typeof SHAServiceLevelSchema>;

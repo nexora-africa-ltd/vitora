@@ -658,29 +658,26 @@ class BillingAgentService:
     def _add_bed_charge(cls, invoice: Invoice, admission, nights: int = 1) -> None:
         """Add bed night charge(s) for an admission.
 
-        Uses ward.daily_rate as the price. Requires a BED-NIGHT service
-        in the IPD category.
+        Uses ward.daily_rate as the price.
+
+        Bed charging is intentionally ward-rate driven and does not require
+        a BED-NIGHT service catalog entry.
         """
         ward = admission.ward
         if not ward or not ward.daily_rate:
+            logger.warning(
+                "Billing agent: skipped bed charge for admission %s (missing ward or daily_rate)",
+                getattr(admission, "id", None),
+            )
             return
 
-        bed_service = Service.objects.filter(
-            category__code="IPD",
-            code="BED-NIGHT",
-            is_active=True,
-        ).first()
-
-        if not bed_service:
-            return
-
-        InvoiceItem.objects.create(
-            invoice=invoice,
-            item_type=InvoiceItem.ItemType.SERVICE,
-            service=bed_service,
+        cls.add_line_item(
+            invoice,
+            service=None,
             description=f"Bed night: {ward.name} ({date.today()})",
             quantity=nights,
             unit_price=ward.daily_rate,
+            item_type=InvoiceItem.ItemType.SERVICE,
         )
 
     # ── SHA Automation ───────────────────────────────────────────

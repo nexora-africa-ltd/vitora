@@ -44,6 +44,8 @@ export type {
   RevenueSummary,
   PaymentMethodAnalysis,
   DailyClosureReport,
+  BillingAutomationRule,
+  AdmissionServiceGuard,
   FacilityBillingConfig,
   SHAContractSummary,
   // Paginated types
@@ -373,9 +375,25 @@ export interface FacilityBillingConfigCreateData {
   sha_facility_fr_code?: string;
   sha_encrypted_pin?: string;
   sha_api_environment?: string;
+  automation_rules?: BillingAutomationRuleInput[];
 }
 
 export interface FacilityBillingConfigUpdateData extends Partial<Omit<FacilityBillingConfigCreateData, 'facility'>> {}
+
+export interface BillingAutomationRuleInput {
+  id?: number;
+  name: string;
+  is_active?: boolean;
+  trigger?: 'encounter_created' | 'admission_created' | 'checkout' | 'daily';
+  recurrence?: 'once' | 'recurring';
+  repeat_every_days?: number;
+  service?: number | null;
+  item_type?: string;
+  quantity?: string;
+  unit_price_override?: string | null;
+  description_template?: string;
+  encounter_types?: string[];
+}
 
 export interface FacilityBillingConfigListParams {
   page?: number;

@@ -462,6 +462,10 @@ export default function NewEncounterReviewPage() {
         ? <ToastAction altText="View encounter" onClick={() => router.push(`/encounters/${createdEncounterId}`)}>View</ToastAction>
         : undefined,
     });
+    if (createdEncounterId) {
+      router.push(`/encounters/${createdEncounterId}`);
+      return;
+    }
     router.push('/encounters');
   }, [clearSession, createdEncounterId, toast, router]);
 

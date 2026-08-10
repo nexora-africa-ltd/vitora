@@ -19,8 +19,18 @@ from celery import shared_task
 def apply_daily_bed_charges():
     """Apply daily bed charges to all active inpatient admissions."""
     from hmis.apps.billing.agent import BillingAgentService
+    from hmis.apps.billing.services.automation_rules import BillingAutomationRuleService
 
-    return BillingAgentService.apply_daily_bed_charges()
+    logger = logging.getLogger(__name__)
+
+    charged = BillingAgentService.apply_daily_bed_charges()
+
+    try:
+        BillingAutomationRuleService.apply_daily()
+    except Exception:
+        logger.exception("Billing automation DAILY rules failed")
+
+    return charged
 
 
 @shared_task(name="hmis.apps.billing.tasks.flag_overdue_invoices")

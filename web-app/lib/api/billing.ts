@@ -40,6 +40,7 @@ import {
   PaginatedPaymentPointSchema,
   PaginatedCreditNoteSchema,
   FacilityBillingConfigSchema,
+  AdmissionServiceGuardSchema,
   SHAContractSummarySchema,
   PaginatedFacilityBillingConfigSchema,
   SupplierBillSchema,
@@ -102,6 +103,7 @@ import type {
   PaymentMethodAnalysis,
   // Facility billing config
   FacilityBillingConfig,
+  AdmissionServiceGuard,
   FacilityBillingConfigCreateData,
   FacilityBillingConfigUpdateData,
   FacilityBillingConfigListParams,
@@ -710,6 +712,11 @@ async function getSHAContractSummaries(): Promise<SHAContractSummary[]> {
   return parseResponse(z.array(SHAContractSummarySchema), response.data, { context: 'billingApi.getSHAContractSummaries' });
 }
 
+async function getAdmissionServiceGuard(facility: number): Promise<AdmissionServiceGuard> {
+  const response = await apiClient.get(`/api/billing/facility-configs/guards/admission-services/?facility=${facility}`);
+  return parseResponse(AdmissionServiceGuardSchema, response.data, { context: 'billingApi.getAdmissionServiceGuard' });
+}
+
 // ============================================================================
 // Export API Object
 // ============================================================================
@@ -793,6 +800,7 @@ export const billingApi = {
   createFacilityBillingConfig,
   updateFacilityBillingConfig,
   getSHAContractSummaries,
+  getAdmissionServiceGuard,
 
   // Supplier Bills (Accounts Payable)
   supplierBills: {
