@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3009",
     "dev:staging": "npm run clean && cp .env.staging .env.local && next dev -p 3009",
-    "build": "next build --webpack",
+    "build": "next build",
     "build:staging": "npm run clean && cp .env.staging .env.local && next build",
     "start": "next start",
     "start:staging": "NODE_ENV=production NEXT_PUBLIC_ENV=staging next start",
