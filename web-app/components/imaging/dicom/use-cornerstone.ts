@@ -241,6 +241,11 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
   const viewportId = 'dicom-viewport';
   const renderingEngineId = 'vitora-dicom-engine';
   const toolGroupId = 'vitora-dicom-toolgroup';
+  const viewPresentationRef = useRef({
+    rotation: 0,
+    flipHorizontal: false,
+    flipVertical: false,
+  });
 
   // Initialize Cornerstone and create viewport
   useEffect(() => {
@@ -322,6 +327,11 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
 
         // Get the stack viewport
         const viewport = renderingEngine.getViewport(viewportId);
+        viewPresentationRef.current = {
+          rotation: 0,
+          flipHorizontal: false,
+          flipVertical: false,
+        };
 
         // Prepare image IDs with wadouri scheme
         const imageIds = imageUrls.map((url) => `wadouri:${url}`);
@@ -504,6 +514,11 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
 
   // Viewport manipulation
   const resetViewport = useCallback(() => {
+    viewPresentationRef.current = {
+      rotation: 0,
+      flipHorizontal: false,
+      flipVertical: false,
+    };
     withViewport((viewport) => {
       resetViewportSafely(viewport);
     });
@@ -518,34 +533,46 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
   }, [withViewport]);
 
   const flipHorizontal = useCallback(() => {
+    const nextFlipHorizontal = !viewPresentationRef.current.flipHorizontal;
+    viewPresentationRef.current = {
+      ...viewPresentationRef.current,
+      flipHorizontal: nextFlipHorizontal,
+    };
+
     withViewport((viewport) => {
-      const current = viewport.getViewPresentation?.() ?? {};
+      viewport.resetCamera?.();
       viewport.setViewPresentation?.({
-        ...current,
-        flipHorizontal: !Boolean(current.flipHorizontal),
+        ...viewPresentationRef.current,
       });
       viewport.render();
     });
   }, [withViewport]);
 
   const flipVertical = useCallback(() => {
+    const nextFlipVertical = !viewPresentationRef.current.flipVertical;
+    viewPresentationRef.current = {
+      ...viewPresentationRef.current,
+      flipVertical: nextFlipVertical,
+    };
+
     withViewport((viewport) => {
-      const current = viewport.getViewPresentation?.() ?? {};
+      viewport.resetCamera?.();
       viewport.setViewPresentation?.({
-        ...current,
-        flipVertical: !Boolean(current.flipVertical),
+        ...viewPresentationRef.current,
       });
       viewport.render();
     });
   }, [withViewport]);
 
   const rotate90 = useCallback(() => {
+    viewPresentationRef.current = {
+      ...viewPresentationRef.current,
+      rotation: (viewPresentationRef.current.rotation + 90) % 360,
+    };
+
     withViewport((viewport) => {
-      const current = viewport.getViewPresentation?.() ?? {};
-      const rotation = Number(current.rotation ?? 0);
       viewport.setViewPresentation?.({
-        ...current,
-        rotation: (rotation + 90) % 360,
+        ...viewPresentationRef.current,
       });
       viewport.render();
     });

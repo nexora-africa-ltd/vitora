@@ -1,10 +1,3 @@
-type ModuleMap = Record<string, unknown>;
-
-function runtimeImport(modulePath: string): Promise<ModuleMap> {
-  const importer = Function('path', 'return import(path)') as (path: string) => Promise<ModuleMap>;
-  return importer(modulePath);
-}
-
 export async function register() {
   // Desktop app: initialize local SQLite database and sync services
   // Guard with NEXT_RUNTIME to prevent Edge bundler from tracing Node.js-only imports
@@ -20,13 +13,9 @@ export async function register() {
     });
 
     try {
-      const localDbModule = await runtimeImport('./lib/desktop/local-db');
-      const syncEngineModule = await runtimeImport('./lib/desktop/sync-engine');
-      const backupServiceModule = await runtimeImport('./lib/desktop/backup-service');
-
-      const initLocalDatabase = localDbModule.initLocalDatabase as () => void;
-      const startAutoSync = syncEngineModule.startAutoSync as () => void;
-      const startAutoBackups = backupServiceModule.startAutoBackups as () => void;
+      const { initLocalDatabase } = await import('./lib/desktop/local-db');
+      const { startAutoSync } = await import('./lib/desktop/sync-engine');
+      const { startAutoBackups } = await import('./lib/desktop/backup-service');
 
       initLocalDatabase();
       startAutoBackups();
@@ -41,11 +30,11 @@ export async function register() {
 
   try {
     if (process.env.NEXT_RUNTIME === "nodejs") {
-      await runtimeImport('./sentry.server.config');
+      await import('./sentry.server.config');
     }
 
     if (process.env.NEXT_RUNTIME === "edge") {
-      await runtimeImport('./sentry.edge.config');
+      await import('./sentry.edge.config');
     }
   } catch (e) {
     // Silently fail in development (Turbopack compatibility)
@@ -57,7 +46,7 @@ export async function register() {
 
 export async function onRequestError(...args: unknown[]) {
   try {
-    const sentry = await runtimeImport('@sentry/nextjs');
+    const sentry = await import('@sentry/nextjs');
     return (sentry.captureRequestError as (...innerArgs: unknown[]) => unknown)(...args);
   } catch (e) {
     if (process.env.NODE_ENV !== "development") {

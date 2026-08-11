@@ -14,6 +14,24 @@ export function PWARegister() {
       return;
     }
 
+    if (process.env.NODE_ENV !== 'production') {
+      const cleanupDevServiceWorkers = async () => {
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map((r) => r.unregister()));
+          if (typeof caches !== 'undefined') {
+            const keys = await caches.keys();
+            await Promise.all(keys.map((k) => caches.delete(k)));
+          }
+        } catch (error) {
+          console.warn('[PWA] dev SW cleanup failed', error);
+        }
+      };
+
+      void cleanupDevServiceWorkers();
+      return;
+    }
+
     // Desktop mode: actively unregister any pre-existing service workers and
     // purge caches. Users who upgraded from older desktop builds (< v0.1.28)
     // still have the PWA service worker registered inside WebView2. That SW
