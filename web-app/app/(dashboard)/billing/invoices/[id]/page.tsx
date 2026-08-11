@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
 
-export default function BillingInvoiceDetailRedirect({
+export default async function BillingInvoiceDetailRedirect({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  redirect(`/transactions/invoices/${params.id}`);
+  const { id } = await params;
+  redirect(`/transactions/invoices/${id}`);
 }

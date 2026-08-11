@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
 
-export default function BillingSHAClaimDetailRedirect({
+export default async function BillingSHAClaimDetailRedirect({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  redirect(`/transactions/sha-claims/${params.id}`);
+  const { id } = await params;
+  redirect(`/transactions/sha-claims/${id}`);
 }

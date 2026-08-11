@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -140,7 +140,7 @@ export default function CreateInterFacilityTransferPage() {
   const pendingSummaryRequests = transfers.filter(
     (transfer) => transfer.discharge_summary_requested && !transfer.discharge_summary_snapshot
   );
-  const membershipFacilities = useMemo(() => {
+  const membershipFacilities = (() => {
     const map = new Map<number, { id: number; name: string; mfl_code: string }>();
     (user?.memberships ?? []).forEach((membership) => {
       membership.facilities.forEach((facilityItem) => {
@@ -152,8 +152,8 @@ export default function CreateInterFacilityTransferPage() {
       });
     });
     return [...map.values()];
-  }, [user?.memberships]);
-  const destinationFacilityOptions = useMemo(() => {
+  })();
+  const destinationFacilityOptions = (() => {
     const map = new Map<number, { id: number; name: string; mfl_code: string }>();
     organizationFacilities.forEach((item) => {
       map.set(item.id, { id: item.id, name: item.name, mfl_code: item.mfl_code });
@@ -165,7 +165,7 @@ export default function CreateInterFacilityTransferPage() {
       map.set(item.id, { id: item.id, name: item.name, mfl_code: item.mfl_code });
     });
     return [...map.values()];
-  }, [facilityListResults, membershipFacilities, organizationFacilities]);
+  })();
   const selectableFacilities = destinationFacilityOptions.filter((item) => item.id !== facility?.id);
   const selectedDestinationFacilityId =
     selectedDestinationFacility !== 'OTHER' && selectedDestinationFacility

@@ -493,9 +493,6 @@ export function ICURiskAssessmentPanel({
     }
   }, [prediction, queryClient, admissionId]);
 
-  // Don't render if AI is disabled
-  if (!aiEnabled) return null;
-
   // Advisory inputs that improve prediction quality but are not strict blockers.
   const ADVISORY_FIELDS = ['wbc', 'lactate', 'urine_output_ml_day'] as const;
 
@@ -605,6 +602,9 @@ export function ICURiskAssessmentPanel({
     onVasopressors,
     onMechanicalVentilation,
   ]);
+
+  // Don't render if AI is disabled
+  if (!aiEnabled) return null;
 
   const effectiveVitals = {
     ...vitals,

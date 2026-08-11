@@ -2,13 +2,14 @@ import { redirect } from 'next/navigation';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-export default function BillingNewInvoiceRedirect({
+export default async function BillingNewInvoiceRedirect({
   searchParams,
 }: {
-  searchParams?: SearchParams;
+  searchParams?: Promise<SearchParams>;
 }) {
+  const resolvedSearchParams = (await searchParams) ?? {};
   const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(searchParams ?? {})) {
+  for (const [key, value] of Object.entries(resolvedSearchParams)) {
     if (value === undefined) continue;
     if (Array.isArray(value)) {
       value.forEach((v) => params.append(key, v));

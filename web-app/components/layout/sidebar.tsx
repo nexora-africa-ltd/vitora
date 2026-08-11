@@ -516,7 +516,7 @@ const NavLink = memo(function NavLink({
   const badgeCount = badgeCounts?.[item.href] ?? item.badge ?? 0;
 
   const baseStyles =
-    'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]';
+    'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200 ease-[cubic-bezier(0.4,_0,_0.2,_1)]';
 
   const activeStyles =
     'bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 border-l-2 border-cyan-500 font-medium';
@@ -537,12 +537,12 @@ const NavLink = memo(function NavLink({
       )}
     >
       <div className={cn(
-        'relative flex shrink-0 items-center justify-center rounded-lg transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
+        'relative flex shrink-0 items-center justify-center rounded-lg transition-all duration-300 ease-[cubic-bezier(0.34,_1.56,_0.64,_1)]',
         collapsed ? 'h-10 w-10' : 'h-8 w-8',
         'group-hover:scale-110 group-hover:bg-cyan-500/15 group-hover:shadow-sm'
       )}>
         <Icon className={cn(
-          'transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110',
+          'transition-transform duration-300 ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] group-hover:scale-110',
           collapsed ? 'h-6 w-6' : 'h-5 w-5'
         )} />
         {/* Collapsed: show dot indicator */}
@@ -624,8 +624,8 @@ const NavGroup = memo(function NavGroup({
                 : 'text-muted-foreground hover:bg-cyan-500/10'
             )}
           >
-            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110 group-hover:bg-cyan-500/15 group-hover:shadow-sm">
-              <Icon className="h-6 w-6 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110" />
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-all duration-300 ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] group-hover:scale-110 group-hover:bg-cyan-500/15 group-hover:shadow-sm">
+              <Icon className="h-6 w-6 transition-transform duration-300 ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] group-hover:scale-110" />
               {groupBadgeCount > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
               )}
@@ -649,14 +649,14 @@ const NavGroup = memo(function NavGroup({
       <CollapsibleTrigger asChild>
         <button
           className={cn(
-            'group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]',
+            'group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200 ease-[cubic-bezier(0.4,_0,_0.2,_1)]',
             hasActiveChild
               ? 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-300'
               : 'text-muted-foreground hover:text-cyan-600 dark:hover:text-cyan-300'
           )}
         >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110 group-hover:bg-cyan-500/15 group-hover:shadow-sm">
-            <Icon className="h-5 w-5 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-300 ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] group-hover:scale-110 group-hover:bg-cyan-500/15 group-hover:shadow-sm">
+            <Icon className="h-5 w-5 transition-transform duration-300 ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] group-hover:scale-110" />
           </div>
           <span className="flex-1 text-left">{item.label}</span>
           {groupBadgeCount > 0 && !isOpen && (
