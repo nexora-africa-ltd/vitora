@@ -9,13 +9,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { DICOMViewerTool } from '@/lib/types/imaging';
 
-type ModuleMap = Record<string, unknown>;
-
-function runtimeImport(modulePath: string): Promise<ModuleMap> {
-  const importer = Function('path', 'return import(path)') as (path: string) => Promise<ModuleMap>;
-  return importer(modulePath);
-}
-
 // =============================================================================
 // MODULE REFERENCES (populated after dynamic import)
 // =============================================================================
@@ -74,12 +67,11 @@ export async function initCornerstone(): Promise<void> {
   }
 
   try {
-    // Runtime imports keep heavy Cornerstone codec trees out of the default
-    // Turbopack graph until the viewer is actually initialized in-browser.
+    // Dynamic imports to avoid SSR issues
     const [coreModule, toolsModule, dicomLoaderModule] = await Promise.all([
-      runtimeImport('@cornerstonejs/core'),
-      runtimeImport('@cornerstonejs/tools'),
-      runtimeImport('@cornerstonejs/dicom-image-loader'),
+      import('@cornerstonejs/core'),
+      import('@cornerstonejs/tools'),
+      import('@cornerstonejs/dicom-image-loader'),
     ]);
 
     cornerstoneCore = coreModule;
@@ -121,11 +113,11 @@ export async function initCornerstone(): Promise<void> {
 
     // Configure external dicomParser if the property exists (older API compatibility)
     if (dicomImageLoader.external) {
-      const dicomParserModule = await runtimeImport('dicom-parser');
+      const dicomParserModule = await import('dicom-parser');
       dicomImageLoader.external.dicomParser = dicomParserModule.default || dicomParserModule;
     } else if (dicomImageLoader.wadouri?.externalModules) {
       // Alternative location in some versions
-      const dicomParserModule = await runtimeImport('dicom-parser');
+      const dicomParserModule = await import('dicom-parser');
       dicomImageLoader.wadouri.externalModules.dicomParser = dicomParserModule.default || dicomParserModule;
     }
     // If neither exists, dicom-parser is bundled internally (v4+ behavior)
