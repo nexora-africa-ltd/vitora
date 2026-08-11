@@ -436,7 +436,6 @@ export default function NewEncounterReviewPage() {
     clearSession,
     router,
     user,
-    patientData?.id,
     refetchActiveAdmissionConflict,
   ]);
 

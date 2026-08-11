@@ -283,8 +283,8 @@ export default function InsuranceClaimDetailPage() {
     [eligibilityResult]
   );
 
-  const eligibilityContacts = eligibilityView?.contacts ?? [];
-  const eligibilityBenefits = eligibilityView?.benefits ?? [];
+  const eligibilityContacts = useMemo(() => eligibilityView?.contacts ?? [], [eligibilityView?.contacts]);
+  const eligibilityBenefits = useMemo(() => eligibilityView?.benefits ?? [], [eligibilityView?.benefits]);
 
   useEffect(() => {
     if (session) return;
@@ -389,7 +389,7 @@ export default function InsuranceClaimDetailPage() {
     toast({ title, description: message, variant: 'destructive' });
   };
 
-  const pickPreferredBenefit = (benefits: Array<Record<string, unknown>>) => {
+  const pickPreferredBenefit = useCallback((benefits: Array<Record<string, unknown>>) => {
     if (benefits.length === 0) return null;
     const claimType = String(claim?.claim_type || '').toLowerCase();
     const desiredType = claimType === 'inpatient' ? 'INPATIENT' : 'OUTPATIENT';
@@ -398,7 +398,7 @@ export default function InsuranceClaimDetailPage() {
       return benefitTypeValue.includes(desiredType);
     });
     return preferred ?? benefits.find((row) => typeof row.benefitCode === 'string') ?? null;
-  };
+  }, [claim?.claim_type]);
 
   const workflowSteps = useMemo(() => {
     const hasSession = Boolean(session?.id);
@@ -441,7 +441,7 @@ export default function InsuranceClaimDetailPage() {
 
     if (typeof preferred.benefitCode === 'string') setBenefitCode(preferred.benefitCode);
     if (typeof preferred.benefitType === 'string') setBenefitType(preferred.benefitType);
-  }, [benefitCode, claim?.claim_type, eligibilityBenefits]);
+  }, [benefitCode, claim?.claim_type, eligibilityBenefits, pickPreferredBenefit]);
 
   const displayedLineItems = useMemo(() => {
     if (claim?.items?.length) {

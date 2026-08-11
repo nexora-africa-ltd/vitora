@@ -13,6 +13,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ExternalLink, Eye, Fingerprint, Loader2, LogOut, Plus, Share2, Trash2, UploadCloud } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -2061,9 +2062,12 @@ export function DischargePanel({
                   </a>
                 </div>
                 {activeAttachmentIsImage && inlinePreviewUrl ? (
-                  <img
+                  <Image
                     src={inlinePreviewUrl}
                     alt={activeAttachment.name}
+                    width={1280}
+                    height={720}
+                    unoptimized
                     className="max-h-72 w-full rounded border object-contain bg-background"
                   />
                 ) : activeAttachmentIsPdf && inlinePreviewUrl ? (
@@ -2451,9 +2455,12 @@ export function DischargePanel({
                   </a>
                 </div>
                 {activeAttachmentIsImage && inlinePreviewUrl ? (
-                  <img
+                  <Image
                     src={inlinePreviewUrl}
                     alt={activeAttachment.name}
+                    width={1280}
+                    height={720}
+                    unoptimized
                     className="max-h-72 w-full rounded border object-contain bg-background"
                   />
                 ) : activeAttachmentIsPdf && inlinePreviewUrl ? (

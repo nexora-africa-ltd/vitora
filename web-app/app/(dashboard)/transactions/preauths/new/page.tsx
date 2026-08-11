@@ -1014,7 +1014,6 @@ export default function NewPreauthPage() {
   const {
     data: selectedInterventionRecord,
     isFetching: selectedInterventionRecordLoading,
-    error: selectedInterventionRecordError,
   } = useQuery({
     queryKey: [
       'preauth-intervention-record',
@@ -1441,7 +1440,6 @@ export default function NewPreauthPage() {
     interventionCode,
     selectedInterventionTariff,
     selectedInterventionRecordLoading,
-    selectedInterventionRecordError,
   ]);
 
   const patientActiveFunds = useMemo(() => {
@@ -1663,7 +1661,7 @@ export default function NewPreauthPage() {
     setTariffChips((prev) => (
       prev.includes(consentInterventionCode) ? prev : [consentInterventionCode, ...prev]
     ));
-  }, [interventionOptions, derivePreauthType]);
+  }, [interventionOptions, derivePreauthType, queryClient]);
 
   const selectIntervention = useCallback((item: InterventionOption) => {
     if (
@@ -2561,10 +2559,11 @@ export default function NewPreauthPage() {
     makeDraftDocument,
     patientId,
     interventionCode,
+    interventionName,
     diagnosisChips,
     doctorChips,
     clinicalNotes,
-    selectedClaimIdNumber,
+    selectedType,
     toast,
   ]);
 

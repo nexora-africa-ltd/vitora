@@ -189,7 +189,7 @@ export default function NewAdmissionPage() {
     return () => {
       controller.abort();
     };
-  }, [payerType, patientId]);
+  }, [payerType, patientData?.sha_number, patientId]);
 
   // Benefits check — run when SHA eligible and we have a SHA/CR number
   const shaNumber = shaEligibility.shaNumber ?? patientData?.sha_number ?? undefined;

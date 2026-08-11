@@ -432,7 +432,7 @@ export default function InterFacilityDestinationQueuePage() {
     ordering: '-updated_at',
     page_size: 200,
   });
-  const queue = data ?? [];
+  const queue = useMemo(() => data ?? [], [data]);
   const history = useMemo(() => {
     const allTransfers = transfersResponse?.results ?? [];
     const openQueueIds = new Set(queue.map((item) => item.id));

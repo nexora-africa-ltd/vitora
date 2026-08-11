@@ -65,22 +65,27 @@ export default function AuthorizationSessionDetailPage() {
   const cover = eligibilityPayload.cover && typeof eligibilityPayload.cover === 'object'
     ? (eligibilityPayload.cover as Record<string, unknown>)
     : {};
-  const contacts = Array.isArray(member.contacts)
-    ? member.contacts
-        .filter((row): row is Record<string, unknown> => !!row && typeof row === 'object')
-        .map((row) => ({ id: Number(row.id ?? 0), value: String(row.contactValue ?? '') }))
-        .filter((row) => row.id > 0)
-    : [];
-  const benefits = Array.isArray(eligibilityPayload.benefits)
-    ? eligibilityPayload.benefits
-        .filter((row): row is Record<string, unknown> => !!row && typeof row === 'object')
-        .map((row) => ({
-          code: String(row.benefitCode ?? ''),
-          type: String(row.benefitType ?? ''),
-          name: String(row.benefitName ?? 'Unknown benefit'),
-        }))
-        .filter((row) => row.code)
-    : [];
+  const contacts = useMemo(() => (
+    Array.isArray(member.contacts)
+      ? member.contacts
+          .filter((row): row is Record<string, unknown> => !!row && typeof row === 'object')
+          .map((row) => ({ id: Number(row.id ?? 0), value: String(row.contactValue ?? '') }))
+          .filter((row) => row.id > 0)
+      : []
+  ), [member.contacts]);
+
+  const benefits = useMemo(() => (
+    Array.isArray(eligibilityPayload.benefits)
+      ? eligibilityPayload.benefits
+          .filter((row): row is Record<string, unknown> => !!row && typeof row === 'object')
+          .map((row) => ({
+            code: String(row.benefitCode ?? ''),
+            type: String(row.benefitType ?? ''),
+            name: String(row.benefitName ?? 'Unknown benefit'),
+          }))
+          .filter((row) => row.code)
+      : []
+  ), [eligibilityPayload.benefits]);
 
   const selectedBenefit = benefits.find((b) => b.code === selectedBenefitCode);
   const isValidated = session?.workflow_step === 'authorization_validated' || session?.status === 'validated';
