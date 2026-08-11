@@ -1561,6 +1561,11 @@ class CertificateAuthoritySerializer(serializers.ModelSerializer):
 
     is_expired = serializers.BooleanField(read_only=True)
     ca_type = serializers.SerializerMethodField()
+    organization_name = serializers.CharField(
+        source="organization.name",
+        read_only=True,
+        default="",
+    )
 
     class Meta:
         model = CertificateAuthority
@@ -1573,6 +1578,8 @@ class CertificateAuthoritySerializer(serializers.ModelSerializer):
             "valid_to",
             "is_root",
             "parent_ca",
+            "organization",
+            "organization_name",
             "is_active",
             "is_expired",
             "key_size",
@@ -1593,6 +1600,11 @@ class UserCertificateSerializer(serializers.ModelSerializer):
     is_expired = serializers.BooleanField(read_only=True)
     is_valid = serializers.BooleanField(read_only=True)
     ca_name = serializers.CharField(source="certificate_authority.name", read_only=True)
+    organization_name = serializers.CharField(
+        source="organization.name",
+        read_only=True,
+        default="",
+    )
 
     class Meta:
         model = UserCertificate
@@ -1603,6 +1615,8 @@ class UserCertificateSerializer(serializers.ModelSerializer):
             "user_name",
             "certificate_authority",
             "ca_name",
+            "organization",
+            "organization_name",
             "serial_number",
             "subject_dn",
             "valid_from",

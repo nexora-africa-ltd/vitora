@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import axios from 'axios';
 import {
   Award,
   Ban,
@@ -41,9 +42,39 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useAuth } from '@/lib/auth/context';
+import { useFacility } from '@/lib/context/facility-context';
 import { certificatesApi } from '@/lib/api/certificates';
 import { toast } from 'sonner';
 import type { CertificateAuthority, UserCertificate } from '@/lib/types/security';
+
+function certificateErrorMessage(error: unknown, fallback: string): string {
+  if (!axios.isAxiosError(error)) return fallback;
+
+  const status = error.response?.status;
+  const payload = error.response?.data as
+    | { error?: string; detail?: string; message?: string }
+    | undefined;
+
+  if (typeof payload?.error === 'string' && payload.error.trim().length > 0) {
+    return payload.error;
+  }
+  if (typeof payload?.detail === 'string' && payload.detail.trim().length > 0) {
+    return payload.detail;
+  }
+  if (typeof payload?.message === 'string' && payload.message.trim().length > 0) {
+    return payload.message;
+  }
+
+  if (status === 404) {
+    return 'Certificate not found in your organization scope.';
+  }
+  if (status === 403) {
+    return 'You can only manage certificates within your organization.';
+  }
+
+  return fallback;
+}
 
 function CertStatusBadge({ cert }: { cert: UserCertificate }) {
   if (cert.is_revoked) {
@@ -57,6 +88,8 @@ function CertStatusBadge({ cert }: { cert: UserCertificate }) {
 
 export default function CertificatesPage() {
   const { refresh, isRefreshing } = usePageRefresh();
+  const { user } = useAuth();
+  const { organization } = useFacility();
   const queryClient = useQueryClient();
   const [issueDialogOpen, setIssueDialogOpen] = useState(false);
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
@@ -65,20 +98,32 @@ export default function CertificatesPage() {
   const [issueValidity, setIssueValidity] = useState('2');
   const [revokeReason, setRevokeReason] = useState('CESSATION');
 
+  const isSuperuser = !!user?.is_superuser;
+  const organizationId = organization?.id ?? null;
+  const canLoadTenantScopedData = isSuperuser || organizationId !== null;
+  const tenantScopePending = !isSuperuser && organizationId === null;
+
   const {
     data: casData,
     isLoading: casLoading,
+    isError: casError,
+    refetch: refetchCAs,
   } = useQuery<CertificateAuthority[]>({
-    queryKey: ['certificate-authorities'],
+    queryKey: ['certificate-authorities', isSuperuser ? 'superuser' : organizationId],
     queryFn: certificatesApi.listCAs,
+    enabled: canLoadTenantScopedData,
+    refetchOnMount: 'always',
   });
 
   const {
     data: certsData,
     isLoading: certsLoading,
+    isError: certsError,
   } = useQuery({
-    queryKey: ['user-certificates'],
+    queryKey: ['user-certificates', isSuperuser ? 'superuser' : organizationId],
     queryFn: () => certificatesApi.list({ page_size: 100 }),
+    enabled: canLoadTenantScopedData,
+    refetchOnMount: 'always',
   });
 
   const issueMutation = useMutation({
@@ -90,11 +135,12 @@ export default function CertificatesPage() {
     onSuccess: () => {
       toast.success('Certificate issued.');
       queryClient.invalidateQueries({ queryKey: ['user-certificates'] });
+      queryClient.invalidateQueries({ queryKey: ['certificate-authorities'] });
       setIssueDialogOpen(false);
       setSelectedUserId(undefined);
     },
-    onError: () => {
-      toast.error('Failed to issue certificate.');
+    onError: (error) => {
+      toast.error(certificateErrorMessage(error, 'Failed to issue certificate.'));
     },
   });
 
@@ -107,8 +153,8 @@ export default function CertificatesPage() {
       setRevokeDialogOpen(false);
       setSelectedCert(null);
     },
-    onError: () => {
-      toast.error('Failed to revoke certificate.');
+    onError: (error) => {
+      toast.error(certificateErrorMessage(error, 'Failed to revoke certificate.'));
     },
   });
 
@@ -122,7 +168,7 @@ export default function CertificatesPage() {
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="Certificates"
-          helpContent="Manage X.509 PKI certificates for document digital signatures. Issue certificates to clinical staff so they can cryptographically sign lab results, prescriptions, and reports. DHA Compliance: Gap #32."
+          helpContent="Manage X.509 PKI certificates for document digital signatures. Certificate and intermediate CA operations are organization-scoped. Issue certificates to clinical staff so they can cryptographically sign lab results, prescriptions, and reports. DHA Compliance: Gap #32."
           actions={
             <Button size="sm" onClick={() => setIssueDialogOpen(true)}>
               <UserPlus className="h-4 w-4 mr-2" />
@@ -130,6 +176,10 @@ export default function CertificatesPage() {
             </Button>
           }
         />
+
+        <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
+          Tenant scope enforcement is active: this page lists and manages certificates only for your organization.
+        </div>
 
         {/* Stats */}
         <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
@@ -203,7 +253,7 @@ export default function CertificatesPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <CardTitle className="text-base">Certificate Authorities</CardTitle>
-              <HelpPopover content="Root CAs that issue user certificates. Initialize via 'python manage.py init_pki_ca'." />
+              <HelpPopover content="Global root CAs and your organization's intermediate CAs used to issue user certificates." />
             </div>
           </CardHeader>
           <CardContent>
@@ -211,6 +261,19 @@ export default function CertificatesPage() {
               <div className="space-y-2">
                 <Skeleton className="h-12 w-full" />
                 <Skeleton className="h-12 w-full" />
+              </div>
+            ) : tenantScopePending ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                Resolving organization scope before loading certificate authorities...
+              </p>
+            ) : casError ? (
+              <div className="text-center py-6 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Could not load certificate authorities for your organization.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => refetchCAs()}>
+                  Retry
+                </Button>
               </div>
             ) : cas.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">
@@ -231,6 +294,11 @@ export default function CertificatesPage() {
                           <Badge variant="outline" className="text-xs">Root</Badge>
                         ) : (
                           <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Intermediate</Badge>
+                        )}
+                        {!ca.is_root && (
+                          <Badge variant="secondary" className="text-xs">
+                            {ca.organization_name || 'Organization Scoped'}
+                          </Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1 truncate">
@@ -259,6 +327,14 @@ export default function CertificatesPage() {
                   <Skeleton key={i} className="h-16 w-full" />
                 ))}
               </div>
+            ) : tenantScopePending ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                Resolving organization scope before loading certificates...
+              </p>
+            ) : certsError ? (
+              <p className="text-sm text-destructive text-center py-6">
+                Failed to load certificates for your organization.
+              </p>
             ) : certs.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">
                 No certificates issued yet.
@@ -280,6 +356,11 @@ export default function CertificatesPage() {
                       <p className="text-xs text-muted-foreground mt-1">
                         Serial: {cert.serial_number} &bull; CA: {cert.ca_name}
                       </p>
+                      {cert.organization_name && (
+                        <p className="text-xs text-muted-foreground">
+                          Organization: {cert.organization_name}
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         Valid: {new Date(cert.valid_from).toLocaleDateString()} –{' '}
                         {new Date(cert.valid_to).toLocaleDateString()}

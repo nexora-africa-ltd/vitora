@@ -179,6 +179,7 @@ class PKIService:
         parent_ca,
         name: str = "Facility Intermediate CA",
         org: str = "Health Facility",
+        organization=None,
         country: str = "KE",
         key_size: int = 2048,
         validity_years: int = 5,
@@ -213,10 +214,20 @@ class PKIService:
         if not parent_ca.is_active:
             raise ValueError(f"Parent CA '{parent_ca.name}' is not active.")
 
-        # Idempotent: check if an active intermediate with this name already exists
-        existing = CertificateAuthority.objects.filter(
-            name=name, is_root=False, is_active=True
-        ).first()
+        # Idempotent within tenant scope: one active intermediate per organization.
+        if organization is not None:
+            existing = CertificateAuthority.objects.filter(
+                organization=organization,
+                is_root=False,
+                is_active=True,
+            ).first()
+        else:
+            existing = CertificateAuthority.objects.filter(
+                name=name,
+                organization__isnull=True,
+                is_root=False,
+                is_active=True,
+            ).first()
         if existing:
             logger.info(f"Active intermediate CA already exists: {existing.name}")
             return existing
@@ -334,6 +345,7 @@ class PKIService:
             valid_to=valid_to,
             is_root=False,
             parent_ca=parent_ca,
+            organization=organization,
             is_active=True,
             key_size=key_size,
         )
@@ -348,6 +360,7 @@ class PKIService:
         self,
         user,
         ca=None,
+        organization=None,
         validity_years: int = 2,
     ):
         """
@@ -370,13 +383,35 @@ class PKIService:
         from hmis.apps.core.kms import get_kms_provider
         from hmis.apps.core.models import CertificateAuthority, UserCertificate
 
+        if organization is None:
+            profile = getattr(user, "staff_profile", None)
+            organization = getattr(profile, "organization", None)
+
         if ca is None:
-            # Prefer an active intermediate CA over root for user cert issuance
-            ca = CertificateAuthority.objects.filter(is_root=False, is_active=True).first()
+            # Prefer a tenant-owned active intermediate; fall back to global root CA.
+            if organization is not None:
+                ca = CertificateAuthority.objects.filter(
+                    organization=organization,
+                    is_root=False,
+                    is_active=True,
+                ).first()
+            else:
+                ca = CertificateAuthority.objects.filter(
+                    organization__isnull=True,
+                    is_root=False,
+                    is_active=True,
+                ).first()
+
             if ca is None:
                 ca = CertificateAuthority.objects.filter(is_root=True, is_active=True).first()
             if ca is None:
                 raise ValueError("No active CA found. Run 'init_pki_ca' first.")
+
+        if organization is None and ca.organization_id:
+            organization = ca.organization
+
+        if organization is not None and ca.organization_id not in (None, organization.id):
+            raise ValueError("Selected CA does not belong to the target tenant organization.")
 
         if ca.is_expired:
             raise ValueError(f"CA '{ca.name}' has expired.")
@@ -479,6 +514,7 @@ class PKIService:
 
         user_cert = UserCertificate.objects.create(
             user=user,
+            organization=organization,
             certificate_authority=ca,
             serial_number=format(serial, "x"),
             subject_dn=subject_dn,
@@ -668,5 +704,6 @@ class PKIService:
         return self.issue_user_certificate(
             user=cert.user,
             ca=cert.certificate_authority,
+            organization=cert.organization,
             validity_years=validity_years,
         )

@@ -4598,6 +4598,17 @@ class CertificateAuthority(models.Model):
         related_name="subordinate_cas",
         help_text="Parent CA for intermediate CAs",
     )
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="certificate_authorities",
+        help_text=(
+            "Owning organization for tenant-scoped intermediate CAs. "
+            "Root CAs remain global with organization unset."
+        ),
+    )
     is_active = models.BooleanField(
         default=True,
         db_index=True,
@@ -4614,6 +4625,15 @@ class CertificateAuthority(models.Model):
         verbose_name = "Certificate Authority"
         verbose_name_plural = "Certificate Authorities"
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization"],
+                condition=(
+                    models.Q(is_root=False, is_active=True) & models.Q(organization__isnull=False)
+                ),
+                name="unique_active_intermediate_ca_per_organization",
+            )
+        ]
 
     def __str__(self) -> str:
         status = "Active" if self.is_active else "Inactive"
@@ -4643,6 +4663,14 @@ class UserCertificate(models.Model):
         on_delete=models.CASCADE,
         related_name="certificates",
         help_text="User who owns this certificate",
+    )
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="user_certificates",
+        help_text="Owning organization (tenant) for this certificate.",
     )
     certificate_authority = models.ForeignKey(
         CertificateAuthority,
@@ -4696,6 +4724,7 @@ class UserCertificate(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["user", "is_revoked"]),
+            models.Index(fields=["organization", "is_revoked"]),
         ]
 
     def __str__(self) -> str:

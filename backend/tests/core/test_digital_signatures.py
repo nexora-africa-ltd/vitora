@@ -367,6 +367,190 @@ class TestDocumentSigning:
 class TestPKIAPI:
     """Tests for PKI and signature API endpoints."""
 
+    def test_tenant_admin_list_excludes_other_org_certificates(
+        self,
+        api_client,
+        pki_service,
+        root_ca,
+        sample_organization,
+        sample_facility,
+        sample_county,
+        sample_sub_county,
+        another_user,
+    ):
+        """Tenant-scoped staff admin cannot list certificates from another organization."""
+        from hmis.apps.core.models import Facility, Organization
+
+        plan = sample_organization.subscription_plan
+
+        tenant_admin = User.objects.create_user(
+            username="tenantadmin",
+            email="tenantadmin@example.com",
+            password="testpassword123",
+            is_staff=True,
+        )
+        ensure_staff_profile(tenant_admin, sample_organization, sample_facility)
+
+        other_org = Organization.objects.create(
+            name="Other Hospital Group",
+            slug="other-hospital-group",
+            contact_email="other-admin@test-hospital.co.ke",
+            is_active=True,
+            is_verified=True,
+            subscription_plan=plan,
+        )
+        other_facility = Facility.objects.create(
+            organization=other_org,
+            name="Other Health Centre",
+            mfl_code="99998",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        ensure_staff_profile(another_user, other_org, other_facility)
+
+        own_cert = pki_service.issue_user_certificate(
+            user=tenant_admin,
+            ca=root_ca,
+            organization=sample_organization,
+            validity_years=1,
+        )
+        foreign_cert = pki_service.issue_user_certificate(
+            user=another_user,
+            ca=root_ca,
+            organization=other_org,
+            validity_years=1,
+        )
+
+        api_client.force_authenticate(user=tenant_admin)
+        response = api_client.get("/api/core/certificates/")
+
+        assert response.status_code == status.HTTP_200_OK
+        cert_ids = {item["id"] for item in response.data["results"]}
+        assert own_cert.id in cert_ids
+        assert foreign_cert.id not in cert_ids
+
+    def test_tenant_admin_cannot_revoke_other_org_certificate(
+        self,
+        api_client,
+        pki_service,
+        root_ca,
+        sample_organization,
+        sample_facility,
+        sample_county,
+        sample_sub_county,
+        another_user,
+    ):
+        """Tenant-scoped staff admin cannot revoke certificates from another organization."""
+        from hmis.apps.core.models import Facility, Organization
+
+        tenant_admin = User.objects.create_user(
+            username="tenantadmin2",
+            email="tenantadmin2@example.com",
+            password="testpassword123",
+            is_staff=True,
+        )
+        ensure_staff_profile(tenant_admin, sample_organization, sample_facility)
+
+        other_org = Organization.objects.create(
+            name="Other Hospital Group 2",
+            slug="other-hospital-group-2",
+            contact_email="other2-admin@test-hospital.co.ke",
+            is_active=True,
+            is_verified=True,
+            subscription_plan=sample_organization.subscription_plan,
+        )
+        other_facility = Facility.objects.create(
+            organization=other_org,
+            name="Other Health Centre 2",
+            mfl_code="99997",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        ensure_staff_profile(another_user, other_org, other_facility)
+
+        foreign_cert = pki_service.issue_user_certificate(
+            user=another_user,
+            ca=root_ca,
+            organization=other_org,
+            validity_years=1,
+        )
+
+        api_client.force_authenticate(user=tenant_admin)
+        response = api_client.post(
+            f"/api/core/certificates/{foreign_cert.id}/revoke/",
+            {"reason": "KEY_COMPROMISE"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_tenant_admin_ca_list_shows_root_and_own_intermediate_only(
+        self,
+        api_client,
+        pki_service,
+        root_ca,
+        sample_organization,
+        sample_facility,
+        sample_county,
+        sample_sub_county,
+    ):
+        """Tenant admin sees global root CA + own org intermediate CA, but not other org intermediates."""
+        from hmis.apps.core.models import Facility, Organization
+
+        tenant_admin = User.objects.create_user(
+            username="tenantadmin3",
+            email="tenantadmin3@example.com",
+            password="testpassword123",
+            is_staff=True,
+        )
+        ensure_staff_profile(tenant_admin, sample_organization, sample_facility)
+
+        own_intermediate = pki_service.create_intermediate_ca(
+            parent_ca=root_ca,
+            name="Tenant A Intermediate CA",
+            org="Tenant A",
+            organization=sample_organization,
+            validity_years=3,
+        )
+
+        other_org = Organization.objects.create(
+            name="Other Hospital Group 3",
+            slug="other-hospital-group-3",
+            contact_email="other3-admin@test-hospital.co.ke",
+            is_active=True,
+            is_verified=True,
+            subscription_plan=sample_organization.subscription_plan,
+        )
+        Facility.objects.create(
+            organization=other_org,
+            name="Other Health Centre 3",
+            mfl_code="99996",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        foreign_intermediate = pki_service.create_intermediate_ca(
+            parent_ca=root_ca,
+            name="Tenant B Intermediate CA",
+            org="Tenant B",
+            organization=other_org,
+            validity_years=3,
+        )
+
+        api_client.force_authenticate(user=tenant_admin)
+        response = api_client.get("/api/core/certificates/ca/")
+
+        assert response.status_code == status.HTTP_200_OK
+        ca_ids = {item["id"] for item in response.data}
+        assert root_ca.id in ca_ids
+        assert own_intermediate.id in ca_ids
+        assert foreign_intermediate.id not in ca_ids
+
     def test_list_certificates_authenticated(self, authenticated_client, user_cert):
         """Authenticated users can list their certificates."""
         response = authenticated_client.get("/api/core/certificates/")

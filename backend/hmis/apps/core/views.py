@@ -2881,7 +2881,12 @@ class CertificateViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelM
     List and verify user certificates. Issue and revoke certificates (admin only).
     """
 
-    queryset = UserCertificate.objects.select_related("user", "certificate_authority").all()
+    queryset = UserCertificate.objects.select_related(
+        "user",
+        "organization",
+        "certificate_authority",
+        "certificate_authority__organization",
+    ).all()
     serializer_class = UserCertificateSerializer
     permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
     filterset_fields = ["user", "is_revoked"]
@@ -2889,6 +2894,14 @@ class CertificateViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelM
 
     def get_queryset(self):
         qs = super().get_queryset()
+        resolve_request_tenant(self.request)
+        org = getattr(self.request, "organization", None)
+
+        if not self.request.user.is_superuser:
+            if not org:
+                return qs.none()
+            qs = qs.filter(organization=org)
+
         if not (self.request.user.is_staff or self.request.user.is_superuser):
             qs = qs.filter(user=self.request.user)
         return qs
@@ -2896,7 +2909,18 @@ class CertificateViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelM
     @action(detail=False, methods=["get"])
     def ca(self, request):
         """List active Certificate Authorities (public info only)."""
+        resolve_request_tenant(request)
+        org = getattr(request, "organization", None)
+
         cas = CertificateAuthority.objects.filter(is_active=True)
+        if not request.user.is_superuser:
+            if not org:
+                cas = cas.none()
+            else:
+                cas = cas.filter(
+                    models.Q(is_root=True, organization__isnull=True) | models.Q(organization=org)
+                )
+
         serializer = CertificateAuthoritySerializer(cas, many=True)
         return Response(serializer.data)
 
@@ -2917,10 +2941,33 @@ class CertificateViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelM
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
+        resolve_request_tenant(request)
+        tenant_org = getattr(request, "organization", None)
+        target_profile = getattr(target_user, "staff_profile", None)
+        target_org = getattr(target_profile, "organization", None) or tenant_org
+
+        if not request.user.is_superuser and not target_org:
+            return Response(
+                {"error": "Target user is not assigned to an organization."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if (
+            not request.user.is_superuser
+            and tenant_org is not None
+            and target_org is not None
+            and target_org.id != tenant_org.id
+        ):
+            return Response(
+                {"error": "Cannot issue certificates across organizations."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         service = PKIService()
         try:
             cert = service.issue_user_certificate(
                 user=target_user,
+                organization=target_org,
                 validity_years=int(request.data.get("validity_years", 2)),
             )
         except ValueError as e:
@@ -2990,6 +3037,33 @@ class CertificateViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelM
         validity_years = int(request.data.get("validity_years", 5))
         parent_ca_id = request.data.get("parent_ca_id")
 
+        resolve_request_tenant(request)
+        tenant_org = getattr(request, "organization", None)
+
+        organization_id = request.data.get("organization_id")
+        organization = None
+        if organization_id:
+            try:
+                organization = Organization.objects.get(pk=organization_id, is_active=True)
+            except Organization.DoesNotExist:
+                return Response(
+                    {"error": "Specified organization not found or inactive"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+        else:
+            organization = tenant_org
+
+        if (
+            not request.user.is_superuser
+            and tenant_org is not None
+            and organization is not None
+            and organization.id != tenant_org.id
+        ):
+            return Response(
+                {"error": "Cannot create intermediate CA for another organization."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         if parent_ca_id:
             try:
                 parent_ca = CertificateAuthority.objects.get(pk=parent_ca_id, is_active=True)
@@ -3012,6 +3086,7 @@ class CertificateViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelM
                 parent_ca=parent_ca,
                 name=name,
                 org=org,
+                organization=organization,
                 country=country,
                 key_size=key_size,
                 validity_years=validity_years,

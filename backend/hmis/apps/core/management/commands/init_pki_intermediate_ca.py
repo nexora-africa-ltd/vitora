@@ -19,7 +19,7 @@ Usage:
 
 from django.core.management.base import BaseCommand, CommandError
 
-from hmis.apps.core.models import CertificateAuthority
+from hmis.apps.core.models import CertificateAuthority, Organization
 from hmis.apps.core.services.pki_service import PKIService
 
 
@@ -55,6 +55,12 @@ class Command(BaseCommand):
             help="CA certificate validity in years (default: 5).",
         )
         parser.add_argument(
+            "--organization-id",
+            type=int,
+            default=None,
+            help="Organization ID to scope this intermediate CA to.",
+        )
+        parser.add_argument(
             "--parent-ca-id",
             type=int,
             default=None,
@@ -76,12 +82,21 @@ class Command(BaseCommand):
                     "No active root CA found. Run 'python manage.py init_pki_ca' first."
                 )
 
+        organization = None
+        organization_id = options["organization_id"]
+        if organization_id is not None:
+            try:
+                organization = Organization.objects.get(pk=organization_id, is_active=True)
+            except Organization.DoesNotExist:
+                raise CommandError(f"No active organization found with ID {organization_id}.")
+
         service = PKIService()
         try:
             ca = service.create_intermediate_ca(
                 parent_ca=parent_ca,
                 name=options["name"],
                 org=options["org"],
+                organization=organization,
                 country=options["country"],
                 key_size=options["key_size"],
                 validity_years=options["validity_years"],
@@ -90,9 +105,17 @@ class Command(BaseCommand):
             raise CommandError(str(e))
 
         # Check if it was an existing CA (idempotent)
-        existing_count = CertificateAuthority.objects.filter(
-            name=options["name"], is_root=False, is_active=True
-        ).count()
+        existing_filter = {
+            "name": options["name"],
+            "is_root": False,
+            "is_active": True,
+        }
+        if organization is not None:
+            existing_filter["organization"] = organization
+        else:
+            existing_filter["organization__isnull"] = True
+
+        existing_count = CertificateAuthority.objects.filter(**existing_filter).count()
         if existing_count > 1:
             self.stdout.write(
                 self.style.WARNING(f"Active intermediate CA already existed: {ca.name}")

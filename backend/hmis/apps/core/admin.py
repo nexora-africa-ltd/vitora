@@ -11,10 +11,12 @@ from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.core.exceptions import ValidationError
+from django.db import models
 from django.utils import timezone
 from django.utils.html import format_html
 
 from .emergency_access.admin import EmergencyAccessAdmin  # noqa: F401
+from .mixins import TenantScopedAdminMixin, resolve_request_tenant
 from .models import (
     SKU,
     ActivityFeed,
@@ -1949,12 +1951,13 @@ class DHIS2ConfigAdmin(admin.ModelAdmin):
 
 
 @admin.register(CertificateAuthority)
-class CertificateAuthorityAdmin(admin.ModelAdmin):
+class CertificateAuthorityAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin for Certificate Authority with intermediate CA creation support."""
 
     list_display = [
         "name",
         "ca_type_badge",
+        "organization",
         "serial_number",
         "parent_ca",
         "is_active",
@@ -1962,7 +1965,7 @@ class CertificateAuthorityAdmin(admin.ModelAdmin):
         "valid_to",
         "key_size",
     ]
-    list_filter = ["is_active", "is_root"]
+    list_filter = ["is_active", "is_root", "organization"]
     readonly_fields = [
         "serial_number",
         "subject_dn",
@@ -1988,7 +1991,7 @@ class CertificateAuthorityAdmin(admin.ModelAdmin):
         (
             "Hierarchy",
             {
-                "fields": ("is_root", "parent_ca"),
+                "fields": ("is_root", "parent_ca", "organization"),
             },
         ),
         (
@@ -2012,6 +2015,20 @@ class CertificateAuthorityAdmin(admin.ModelAdmin):
         ),
     )
     actions = ["create_intermediate_ca_action"]
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+
+        resolve_request_tenant(request)
+        org = getattr(request, "organization", None)
+        if not org:
+            return qs.none()
+
+        return qs.filter(
+            models.Q(is_root=True, organization__isnull=True) | models.Q(organization=org)
+        )
 
     @admin.display(description="Type", ordering="is_root")
     def ca_type_badge(self, obj):
@@ -2062,11 +2079,19 @@ class CertificateAuthorityAdmin(admin.ModelAdmin):
 
 
 @admin.register(UserCertificate)
-class UserCertificateAdmin(admin.ModelAdmin):
+class UserCertificateAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     """Admin for User Certificates."""
 
-    list_display = ["serial_number", "user", "is_revoked", "valid_from", "valid_to", "created_at"]
-    list_filter = ["is_revoked"]
+    list_display = [
+        "serial_number",
+        "user",
+        "organization",
+        "is_revoked",
+        "valid_from",
+        "valid_to",
+        "created_at",
+    ]
+    list_filter = ["is_revoked", "organization"]
     readonly_fields = [
         "serial_number",
         "subject_dn",
@@ -2086,6 +2111,12 @@ class UserCertificateAdmin(admin.ModelAdmin):
         from .services.pki_service import PKIService
 
         service = PKIService()
+        resolve_request_tenant(request)
+
+        if not request.user.is_superuser:
+            org = getattr(request, "organization", None)
+            queryset = queryset.none() if org is None else queryset.filter(organization=org)
+
         count = 0
         for cert in queryset.filter(is_revoked=False):
             service.revoke_certificate(cert, reason="PRIVILEGE_WITHDRAWN", user=request.user)

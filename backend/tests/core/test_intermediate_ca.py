@@ -37,12 +37,13 @@ def root_ca(db, pki_service):
 
 
 @pytest.fixture
-def intermediate_ca(db, pki_service, root_ca):
+def intermediate_ca(db, pki_service, root_ca, sample_organization):
     """Create an intermediate CA signed by the root."""
     return pki_service.create_intermediate_ca(
         parent_ca=root_ca,
         name="Demo Health Facility CA",
         org="Demo Health Facility",
+        organization=sample_organization,
         country="KE",
         key_size=2048,
         validity_years=5,
@@ -170,9 +171,16 @@ class TestUserCertFromIntermediateCA:
         assert cert.certificate_authority_id == intermediate_ca.pk
 
     def test_default_ca_prefers_intermediate(
-        self, pki_service, root_ca, intermediate_ca, test_user
+        self,
+        pki_service,
+        root_ca,
+        intermediate_ca,
+        test_user,
+        sample_organization,
+        sample_facility,
     ):
         """When no CA specified, prefer an active intermediate CA over root."""
+        ensure_staff_profile(test_user, sample_organization, sample_facility)
         cert = pki_service.issue_user_certificate(
             user=test_user,
             validity_years=2,

@@ -39,6 +39,8 @@ export interface CertificateAuthority {
   valid_to: string;
   is_root: boolean;
   parent_ca: number | null;
+  organization: number | null;
+  organization_name: string;
   is_active: boolean;
   is_expired: boolean;
   key_size: number;
@@ -57,6 +59,8 @@ export interface UserCertificate {
   user_name: string;
   certificate_authority: number;
   ca_name: string;
+  organization: number | null;
+  organization_name: string;
   serial_number: string;
   subject_dn: string;
   valid_from: string;
@@ -81,6 +85,7 @@ export interface RevokeCertificateData {
 export interface CreateIntermediateCAData {
   name: string;
   org?: string;
+  organization_id?: number;
   country?: string;
   key_size?: number;
   validity_years?: number;
