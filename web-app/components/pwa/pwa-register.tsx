@@ -3,6 +3,9 @@
 import { useEffect } from 'react';
 import { isDesktop } from '@/lib/desktop';
 
+const SW_DISABLE_FLAG = process.env.NEXT_PUBLIC_DISABLE_SW === 'true';
+const SW_PURGE_SESSION_KEY = 'vitora-sw-purged';
+
 function isDesktopNavigation(): boolean {
   if (isDesktop()) return true;
   return typeof window !== 'undefined' && window.location.search.includes('desktop=1');
@@ -14,21 +17,36 @@ export function PWARegister() {
       return;
     }
 
-    if (process.env.NODE_ENV !== 'production') {
-      const cleanupDevServiceWorkers = async () => {
-        try {
-          const registrations = await navigator.serviceWorker.getRegistrations();
-          await Promise.all(registrations.map((r) => r.unregister()));
-          if (typeof caches !== 'undefined') {
-            const keys = await caches.keys();
-            await Promise.all(keys.map((k) => caches.delete(k)));
-          }
-        } catch (error) {
-          console.warn('[PWA] dev SW cleanup failed', error);
-        }
-      };
+    const purgeServiceWorkers = async (reloadWhenNeeded: boolean) => {
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((r) => r.unregister()));
 
-      void cleanupDevServiceWorkers();
+        if (typeof caches !== 'undefined') {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+
+        if (
+          reloadWhenNeeded &&
+          registrations.length > 0 &&
+          !sessionStorage.getItem(SW_PURGE_SESSION_KEY)
+        ) {
+          sessionStorage.setItem(SW_PURGE_SESSION_KEY, '1');
+          window.location.reload();
+        }
+      } catch (error) {
+        console.warn('[PWA] service worker cleanup failed', error);
+      }
+    };
+
+    if (process.env.NODE_ENV !== 'production') {
+      void purgeServiceWorkers(false);
+      return;
+    }
+
+    if (SW_DISABLE_FLAG) {
+      void purgeServiceWorkers(true);
       return;
     }
 
@@ -41,25 +59,7 @@ export function PWARegister() {
     // Simply skipping registration on new builds is not enough — the existing
     // registration persists in WebView2's user data folder across upgrades.
     if (isDesktopNavigation()) {
-      const cleanup = async () => {
-        try {
-          const registrations = await navigator.serviceWorker.getRegistrations();
-          await Promise.all(registrations.map((r) => r.unregister()));
-          if (typeof caches !== 'undefined') {
-            const keys = await caches.keys();
-            await Promise.all(keys.map((k) => caches.delete(k)));
-          }
-          // If any SWs were actually unregistered, force a one-time reload so
-          // the page is no longer being controlled by the killed worker.
-          if (registrations.length > 0 && !sessionStorage.getItem('vitora-desktop-sw-purged')) {
-            sessionStorage.setItem('vitora-desktop-sw-purged', '1');
-            window.location.reload();
-          }
-        } catch (error) {
-          console.warn('[PWA] desktop SW cleanup failed', error);
-        }
-      };
-      void cleanup();
+      void purgeServiceWorkers(true);
       return;
     }
 
