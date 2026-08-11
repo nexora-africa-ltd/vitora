@@ -196,6 +196,47 @@ class TestAdminAccessMiddleware:
         assert response.status_code == 302
         assert "/admin/mfa-verify/" in response.url
 
+    def test_admin_mfa_disabled_override_allows_superuser(
+        self,
+        rf,
+        superuser,
+        settings,
+        mocker,
+        sample_organization,
+        sample_facility,
+        sample_department,
+    ):
+        """When override is enabled, mfa_disabled bypasses admin MFA enforcement."""
+        from hmis.apps.core.models import Role, StaffProfile
+
+        settings.ADMIN_MFA_REQUIRED = True
+        settings.ADMIN_MFA_ALLOW_DISABLE_OVERRIDE = True
+        settings.MFA_ENFORCEMENT = True
+        mocker.patch(
+            "hmis.apps.core.mfa.utils.is_mfa_enabled",
+            return_value=False,
+        )
+
+        role, _ = Role.objects.get_or_create(
+            code="ADMIN",
+            defaults={"name": "Admin", "hierarchy_level": 1, "is_active": True},
+        )
+        StaffProfile.objects.create(
+            user=superuser,
+            employee_id="EMP-SUPER-ADMIN-1",
+            organization=sample_organization,
+            primary_facility=sample_facility,
+            primary_department=sample_department,
+            primary_role=role,
+            date_joined="2026-01-01",
+            mfa_disabled=True,
+        )
+
+        request = self._add_session(rf.get("/admin/core/staffprofile/"))
+        request.user = superuser
+        response = _make_admin_mw()(request)
+        assert response.status_code == 200
+
     def test_admin_session_expires_after_idle_timeout(self, rf, superuser, settings, mocker):
         """Idle admin sessions should be logged out and sent back to admin login."""
         settings.ADMIN_SESSION_TIMEOUT_SECONDS = 900

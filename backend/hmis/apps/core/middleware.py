@@ -227,8 +227,14 @@ class AdminAccessMiddleware:
 
         mfa_enabled = is_mfa_enabled(user)
         admin_mfa_required = bool(getattr(settings, "ADMIN_MFA_REQUIRED", False))
+        allow_disable_override = bool(getattr(settings, "ADMIN_MFA_ALLOW_DISABLE_OVERRIDE", False))
+        profile = getattr(user, "staff_profile", None)
+        mfa_disabled = bool(getattr(profile, "mfa_disabled", False))
+        admin_mfa_effectively_required = (admin_mfa_required or mfa_enabled) and not (
+            allow_disable_override and mfa_disabled
+        )
 
-        if admin_mfa_required or mfa_enabled:
+        if admin_mfa_effectively_required:
             if not request.session.get("admin_mfa_verified"):
                 return redirect("/admin/mfa-verify/")
 

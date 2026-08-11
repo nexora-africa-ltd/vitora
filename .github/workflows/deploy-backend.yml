@@ -157,6 +157,7 @@ jobs:
             TIBABOT_JWKS_URL=${{ vars.TIBABOT_JWKS_URL }}
             TIBABOT_ADMIN_KEY=secretref:tibabot-admin-key
             SETUP_WIZARD_ENABLED=true
+            ADMIN_MFA_ALLOW_DISABLE_OVERRIDE=${{ vars.ADMIN_MFA_ALLOW_DISABLE_OVERRIDE || (env.DEPLOY_ENV == 'staging' && 'true' || 'false') }}
             ADMIN_SESSION_TIMEOUT_SECONDS=${{ vars.ADMIN_SESSION_TIMEOUT_SECONDS || '900' }}
             DJANGO_LOG_LEVEL=INFO
             SENTRY_DSN=${{ vars.SENTRY_DSN || '' }}

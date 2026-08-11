@@ -266,6 +266,11 @@ MFA_ENFORCEMENT = True
 # Nexora superusers must have MFA configured before entering /admin/ in
 # staging/production, and idle admin sessions are re-authenticated.
 ADMIN_MFA_REQUIRED = True
+# Optional override: when True, ``staff_profile.mfa_disabled`` bypasses Django
+# admin MFA checks as well. Keep False by default for safer production posture.
+ADMIN_MFA_ALLOW_DISABLE_OVERRIDE = (
+    os.getenv("ADMIN_MFA_ALLOW_DISABLE_OVERRIDE", "false").lower() == "true"
+)
 ADMIN_SESSION_TIMEOUT_SECONDS = 15 * 60
 
 # Grace period (hours) for new users to set up MFA before it becomes mandatory.

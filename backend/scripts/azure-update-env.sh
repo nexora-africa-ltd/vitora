@@ -198,6 +198,7 @@ az containerapp update \
     "TIBABOT_JWKS_URL=${TIBABOT_JWKS_URL:-}" \
     "TIBABOT_ADMIN_KEY=secretref:tibabot-admin-key" \
     "SETUP_WIZARD_ENABLED=${SETUP_WIZARD_ENABLED:-true}" \
+    "ADMIN_MFA_ALLOW_DISABLE_OVERRIDE=${ADMIN_MFA_ALLOW_DISABLE_OVERRIDE:-true}" \
     "ADMIN_SESSION_TIMEOUT_SECONDS=${ADMIN_SESSION_TIMEOUT_SECONDS:-900}" \
     "DJANGO_LOG_LEVEL=${DJANGO_LOG_LEVEL:-INFO}" \
     "SENTRY_DSN=${SENTRY_DSN:-}" \
@@ -218,8 +219,8 @@ az containerapp update \
     "PRICING_QUOTE_SNAPSHOT_TTL_DAYS=${PRICING_QUOTE_SNAPSHOT_TTL_DAYS:-30}" \
     "AT_API_KEY=secretref:at-api-key" \
     "AT_USERNAME=${AT_USERNAME:-sandbox}" \
-    "WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID:-staging.vitora.digital}" \
-    "WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN:-https://staging.vitora.digital}" \
+    "WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID:-vitora.digital}" \
+    "WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN:-https://staging.vitora.digital,https://staging-api.vitora.digital}" \
     "METABASE_SITE_URL=${METABASE_SITE_URL:-}" \
     "METABASE_API_URL=${METABASE_API_URL:-http://vitora-metabase}" \
     "METABASE_EMBEDDING_SECRET=secretref:metabase-embedding-secret" \
