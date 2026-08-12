@@ -34,6 +34,7 @@ import {
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   AlertDialog,
@@ -53,6 +54,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -80,7 +82,7 @@ import {
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { toast } from 'sonner';
-import { resourcesApi, shiftsApi, staffConstraintsApi, schedulingSettingsApi, shiftTypeConfigsApi } from '@/lib/api/scheduling';
+import { appointmentsApi, resourcesApi, shiftsApi, staffConstraintsApi, schedulingSettingsApi, shiftTypeConfigsApi } from '@/lib/api/scheduling';
 import { QRCodeDisplay } from '@/components/scheduling/qr-clock-in';
 import type {
   ShiftType,
@@ -88,6 +90,10 @@ import type {
   ShiftCreateData,
   ResourceListItem,
   CrossFacilityConflict,
+  AutofillRun,
+  AutofillWeights,
+  AutofillGroupMinimumRule,
+  AutofillGroupMaximumRule,
 } from '@/lib/types/scheduling';
 import {
   printRoster,
@@ -122,6 +128,29 @@ const SHIFT_TYPES: { value: ShiftType; label: string; short: string; icon: React
 const SHIFT_MAP = Object.fromEntries(SHIFT_TYPES.map((s) => [s.value, s]));
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_LABELS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const REJECT_REASON_LABELS: Record<AutoFillRejectReason, string> = {
+  max_days_reached: 'Max days reached',
+  already_assigned: 'Already assigned this day',
+  blocked_shift_type: 'Blocked shift type',
+  weekend_restricted: 'Weekend restriction',
+  night_limit_reached: 'Night limit reached',
+  rest_violation: 'Minimum rest violation',
+  max_consecutive_days: 'Max consecutive days exceeded',
+  not_preferred_shift: 'Not preferred shift',
+  group_maximum_reached: 'Group maximum reached',
+  no_shared_shift_with: 'Cannot share shift with staff pair',
+};
+
+const DEFAULT_AUTOFILL_WEIGHTS = {
+  weekly_load: 30,
+  history_hours: 4,
+  night_penalty: 16,
+  weekend_penalty: 3,
+  continuity_bonus: 3,
+  preferred_match_bonus: 8,
+  preferred_mismatch_penalty: 6,
+};
 
 // =============================================================================
 // Helpers
@@ -168,6 +197,53 @@ function cellKey(resourceId: number, date: string): CellKey {
   return `${resourceId}-${date}`;
 }
 
+type AutoFillRejectReason =
+  | 'max_days_reached'
+  | 'already_assigned'
+  | 'blocked_shift_type'
+  | 'weekend_restricted'
+  | 'night_limit_reached'
+  | 'rest_violation'
+  | 'max_consecutive_days'
+  | 'not_preferred_shift'
+  | 'group_maximum_reached'
+  | 'no_shared_shift_with';
+
+interface AutoFillDecision {
+  staffId: number;
+  staffName: string;
+  date: string;
+  shiftType: ShiftType;
+  score: number;
+  rationale: string[];
+}
+
+interface NormalizedGroupRule {
+  scope: 'DEPARTMENT' | 'ROLE';
+  value: string;
+  min_staff: number;
+  shift_types: ShiftType[];
+}
+
+interface NormalizedGroupMaxRule {
+  scope: 'DEPARTMENT' | 'ROLE';
+  value: string;
+  max_staff: number;
+  shift_types: ShiftType[];
+}
+
+interface AutoFillReport {
+  filled: number;
+  balanceMoves: number;
+  targetCoverageSlots: number;
+  finalCoverageSlots: number;
+  fairnessSpread: number;
+  strategy: string;
+  weights: AutofillWeights;
+  topRejectReasons: Array<{ reason: AutoFillRejectReason; count: number }>;
+  decisions: AutoFillDecision[];
+}
+
 // =============================================================================
 // Component
 // =============================================================================
@@ -191,6 +267,9 @@ export default function WeeklyRosterPage() {
   // Mobile day-by-day navigation (< md breakpoint)
   const [mobileDayIndex, setMobileDayIndex] = useState(() => new Date().getDay()); // 0=Sun
   const [legendOpen, setLegendOpen] = useState(false);
+  const [decisionLogOpen, setDecisionLogOpen] = useState(false);
+  const [compareRunA, setCompareRunA] = useState<string>('');
+  const [compareRunB, setCompareRunB] = useState<string>('');
 
   // Shift comments dialog
   const [commentShift, setCommentShift] = useState<ShiftListItem | null>(null);
@@ -248,6 +327,16 @@ export default function WeeklyRosterPage() {
     queryKey: ['scheduling-settings-current'],
     queryFn: () => schedulingSettingsApi.getCurrent(),
   });
+  const { data: autofillRuns = [] } = useQuery({
+    queryKey: ['roster-autofill-runs'],
+    queryFn: () => schedulingSettingsApi.listAutofillRuns(),
+  });
+  const saveAutofillRunMutation = useMutation({
+    mutationFn: (payload: Record<string, unknown>) => schedulingSettingsApi.createAutofillRun(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['roster-autofill-runs'] });
+    },
+  });
 
   // Fetch facility-configured shift type times (for creating shifts with correct times)
   const { data: shiftTypeDefaults } = useQuery({
@@ -290,6 +379,42 @@ export default function WeeklyRosterPage() {
       if (c.constraint_type === 'NO_WEEKENDS') set.add(c.staff_resource);
     }
     return set;
+  }, [constraintsData]);
+
+  const preferredShiftTypes = useMemo(() => {
+    const map = new Map<number, Set<ShiftType>>();
+    for (const c of constraintsData?.results ?? []) {
+      if (c.constraint_type !== 'PREFERRED_SHIFTS') continue;
+      const raw = c.value as Record<string, unknown> | undefined;
+      const values = Array.isArray(raw?.shift_types)
+        ? raw?.shift_types
+        : Array.isArray(raw?.types)
+          ? raw?.types
+          : [];
+      const allowed = new Set<ShiftType>();
+      for (const value of values) {
+        if (typeof value === 'string' && value in SHIFT_MAP) {
+          allowed.add(value as ShiftType);
+        }
+      }
+      if (allowed.size > 0) {
+        map.set(c.staff_resource, allowed);
+      }
+    }
+    return map;
+  }, [constraintsData]);
+
+  const noSharedShiftPairs = useMemo(() => {
+    const map = new Map<number, Set<number>>();
+    for (const c of constraintsData?.results ?? []) {
+      if (c.constraint_type !== 'NO_SHARED_SHIFT_WITH') continue;
+      const raw = c.value as Record<string, unknown> | undefined;
+      const other = Number(raw?.staff_resource_id ?? raw?.other_staff_resource_id ?? 0);
+      if (!other || Number.isNaN(other)) continue;
+      if (!map.has(c.staff_resource)) map.set(c.staff_resource, new Set<number>());
+      map.get(c.staff_resource)!.add(other);
+    }
+    return map;
   }, [constraintsData]);
 
   // Filter shift types: if facility has ShiftTypeConfigs, only show those marked active.
@@ -515,6 +640,7 @@ export default function WeeklyRosterPage() {
 
   function goToPrevWeek() {
     setDraft(new Map());
+    setAutoFillReport(null);
     setWeekStart((prev) => {
       const d = new Date(prev);
       d.setDate(d.getDate() - 7);
@@ -524,6 +650,7 @@ export default function WeeklyRosterPage() {
 
   function goToNextWeek() {
     setDraft(new Map());
+    setAutoFillReport(null);
     setWeekStart((prev) => {
       const d = new Date(prev);
       d.setDate(d.getDate() + 7);
@@ -533,6 +660,7 @@ export default function WeeklyRosterPage() {
 
   function goToThisWeek() {
     setDraft(new Map());
+    setAutoFillReport(null);
     setWeekStart(getWeekStart(new Date()));
   }
 
@@ -541,66 +669,163 @@ export default function WeeklyRosterPage() {
   // ==========================================================================
 
   const [maxDaysPerStaff, setMaxDaysPerStaff] = useState(5);
+  const [autoFillReport, setAutoFillReport] = useState<AutoFillReport | null>(null);
+
+  const historyEnd = useMemo(() => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() - 1);
+    return toLocalDateString(d);
+  }, [weekStart]);
+  const historyStart = useMemo(() => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() - 42);
+    return toLocalDateString(d);
+  }, [weekStart]);
+
+  const { data: historicalShiftsData } = useQuery({
+    queryKey: ['roster-history-shifts', historyStart, historyEnd],
+    queryFn: () =>
+      shiftsApi.list({
+        from_date: historyStart,
+        to_date: historyEnd,
+        page_size: 1500,
+        ordering: 'shift_date,start_time',
+      }),
+    enabled: !!historyStart && !!historyEnd,
+  });
+
+  const { data: historicalAppointmentsData } = useQuery({
+    queryKey: ['roster-history-appointments', historyStart, historyEnd],
+    queryFn: () =>
+      appointmentsApi.list({
+        from_date: historyStart,
+        to_date: historyEnd,
+        page_size: 1000,
+        ordering: 'scheduled_start',
+      }),
+    enabled: !!historyStart && !!historyEnd,
+  });
+
+  const historicalBurdenByStaff = useMemo(() => {
+    const map = new Map<number, { hours: number; nightCount: number; weekendCount: number }>();
+    for (const shift of historicalShiftsData?.results ?? []) {
+      const current = map.get(shift.staff_resource) ?? { hours: 0, nightCount: 0, weekendCount: 0 };
+      current.hours += shift.duration_hours ?? 0;
+      if (shift.shift_type === 'NIGHT') current.nightCount += 1;
+      const weekday = new Date(`${shift.shift_date}T00:00:00`).getDay();
+      if (weekday === 0 || weekday === 6) current.weekendCount += 1;
+      map.set(shift.staff_resource, current);
+    }
+    return map;
+  }, [historicalShiftsData]);
+
+  const predictiveDemandByWeekday = useMemo(() => {
+    const buckets = new Map<number, number[]>();
+    const perDate = new Map<string, number>();
+    const activeStatuses = new Set(['CREATED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS', 'COMPLETED']);
+    for (const appt of historicalAppointmentsData?.results ?? []) {
+      if (!activeStatuses.has(appt.status)) continue;
+      const day = appt.scheduled_start.slice(0, 10);
+      perDate.set(day, (perDate.get(day) ?? 0) + 1);
+    }
+    for (const [day, count] of perDate.entries()) {
+      const weekday = new Date(`${day}T00:00:00`).getDay();
+      const arr = buckets.get(weekday) ?? [];
+      arr.push(count);
+      buckets.set(weekday, arr);
+    }
+    const avg = new Map<number, number>();
+    for (const [weekday, counts] of buckets.entries()) {
+      const total = counts.reduce((sum, value) => sum + value, 0);
+      avg.set(weekday, counts.length ? total / counts.length : 0);
+    }
+    return avg;
+  }, [historicalAppointmentsData]);
 
   const handleAutoFill = useCallback(() => {
-    // Determine which shift types the facility wants to cover each day.
-    // If active_shift_types is configured, distribute staff across ALL of them.
-    // Otherwise fall back to the old pattern/paint behaviour.
-    // Filter by available shift types (exclude inactive configs)
     const availableWorking = new Set(availableShiftTypes.filter((st) => !st.isOff).map((st) => st.value));
-
+    const configuredActive = (schedulingSettings?.active_shift_types as ShiftType[] | undefined) ?? [];
+    const configuredDefault = (schedulingSettings?.default_shift_pattern as ShiftType[] | undefined) ?? [];
     const activeTypes: ShiftType[] =
-      schedulingSettings?.active_shift_types?.length
-        ? (schedulingSettings.active_shift_types as ShiftType[]).filter((t) => availableWorking.has(t))
-        : schedulingSettings?.default_shift_pattern?.length
-          ? (schedulingSettings.default_shift_pattern as ShiftType[]).filter((t) => availableWorking.has(t))
-          : [paintType];
-
-    const useMultiType = (schedulingSettings?.active_shift_types?.length ?? 0) > 0;
-
+      configuredActive.length
+        ? configuredActive.filter((t) => availableWorking.has(t))
+        : configuredDefault.length
+          ? configuredDefault.filter((t) => availableWorking.has(t))
+          : [];
+    const useMultiType = activeTypes.length > 1;
+    const autofillMode = schedulingSettings?.autofill_mode ?? 'BALANCED_UTILIZATION';
+    const targetDaysPerStaff = Math.max(1, Math.min(7, schedulingSettings?.autofill_target_days_per_staff ?? 4));
+    const groupMinRules = ((schedulingSettings?.autofill_group_minimums as AutofillGroupMinimumRule[] | undefined) ?? [])
+      .map((rule): NormalizedGroupRule | null => {
+        const scope = rule.scope === 'ROLE' ? 'ROLE' : 'DEPARTMENT';
+        const value = String(rule.value ?? '').trim();
+        const minStaff = Math.max(1, Math.round(Number(rule.min_staff ?? 1)));
+        const shiftTypes = (rule.shift_types ?? [])
+          .map((type) => String(type) as ShiftType)
+          .filter((type) => activeTypes.includes(type));
+        if (!value || shiftTypes.length === 0) return null;
+        return { scope, value, min_staff: minStaff, shift_types: shiftTypes };
+      })
+      .filter((rule): rule is NormalizedGroupRule => !!rule);
+    const groupMaxRules = ((schedulingSettings?.autofill_group_maximums as AutofillGroupMaximumRule[] | undefined) ?? [])
+      .map((rule): NormalizedGroupMaxRule | null => {
+        const scope = rule.scope === 'ROLE' ? 'ROLE' : 'DEPARTMENT';
+        const value = String(rule.value ?? '').trim();
+        const maxStaff = Math.max(1, Math.round(Number(rule.max_staff ?? 1)));
+        const shiftTypes = (rule.shift_types ?? [])
+          .map((type) => String(type) as ShiftType)
+          .filter((type) => activeTypes.includes(type));
+        if (!value || shiftTypes.length === 0) return null;
+        return { scope, value, max_staff: maxStaff, shift_types: shiftTypes };
+      })
+      .filter((rule): rule is NormalizedGroupMaxRule => !!rule);
+    const groupMinimumByShift = new Map<ShiftType, number>();
+    for (const rule of groupMinRules) {
+      for (const shiftType of rule.shift_types) {
+        groupMinimumByShift.set(shiftType, (groupMinimumByShift.get(shiftType) ?? 0) + rule.min_staff);
+      }
+    }
+    if (activeTypes.length === 0) {
+      toast.error('Auto-fill is unavailable', {
+        description: 'Configure Active Shift Types or Default Shift Pattern in roster settings first.',
+      });
+      return;
+    }
     const maxNights = schedulingSettings?.max_night_shifts_per_week ?? 4;
     const minRestHours = schedulingSettings?.min_rest_hours ?? 11;
-
-    // ---- Shift transition helpers ----
-    // Shift end hours (approximate, for continuity checks)
-    const SHIFT_END_HOUR: Record<string, number> = {
-      DAY: 19, NIGHT: 7, MORNING: 14, AFTERNOON: 22,
-      ON_CALL: 24, OVERTIME: 16,
-      DAY_OFF: 19, NIGHT_OFF: 7, OFF: 0, AFTERNOON_OFF: 22,
-      LEAVE: 0, SICK_LEAVE: 0, REST: 0,
-    };
-    const SHIFT_START_HOUR: Record<string, number> = {
-      DAY: 7, NIGHT: 19, MORNING: 6, AFTERNOON: 14,
-      ON_CALL: 0, OVERTIME: 8,
-      DAY_OFF: 7, NIGHT_OFF: 19, OFF: 0, AFTERNOON_OFF: 14,
-      LEAVE: 0, SICK_LEAVE: 0, REST: 0,
+    const maxConsecutiveDays = schedulingSettings?.max_consecutive_days ?? 6;
+    const weights = {
+      ...DEFAULT_AUTOFILL_WEIGHTS,
+      ...((schedulingSettings?.autofill_weights as Record<string, number> | undefined) || {}),
     };
 
-    /** Check if assigning nextType on the day after prevType violates rest. */
+    const shiftEndHour: Record<string, number> = {
+      DAY: 19, NIGHT: 7, MORNING: 14, AFTERNOON: 22, ON_CALL: 24, OVERTIME: 16,
+      DAY_OFF: 19, NIGHT_OFF: 7, OFF: 0, AFTERNOON_OFF: 22, LEAVE: 0, SICK_LEAVE: 0, REST: 0,
+    };
+    const shiftStartHour: Record<string, number> = {
+      DAY: 7, NIGHT: 19, MORNING: 6, AFTERNOON: 14, ON_CALL: 0, OVERTIME: 8,
+      DAY_OFF: 7, NIGHT_OFF: 19, OFF: 0, AFTERNOON_OFF: 14, LEAVE: 0, SICK_LEAVE: 0, REST: 0,
+    };
+
     const violatesRest = (prevType: ShiftType | null | undefined, nextType: ShiftType): boolean => {
       if (!prevType) return false;
-      const prevEnd = SHIFT_END_HOUR[prevType] ?? 0;
-      const nextStart = SHIFT_START_HOUR[nextType] ?? 0;
-      // If prev shift ends after midnight (NIGHT ends at 7am next day),
-      // rest = nextStart - prevEnd on the SAME next day
-      // NIGHT(19:00-07:00): ends at 07:00 next day → rest until next shift start
+      const prevEnd = shiftEndHour[prevType] ?? 0;
+      const nextStart = shiftStartHour[nextType] ?? 0;
       if (prevType === 'NIGHT') {
-        // Night ends at ~07:00 the next morning. Next shift on that SAME day:
-        // rest hours = nextStart - 7
-        const rest = nextStart - 7;
-        return rest < minRestHours;
+        return (nextStart - 7) < minRestHours;
       }
-      // For non-night previous shifts ending on day N, next shift is day N+1:
-      // rest = (24 - prevEnd) + nextStart
-      const rest = (24 - prevEnd) + nextStart;
-      return rest < minRestHours;
+      return ((24 - prevEnd) + nextStart) < minRestHours;
     };
+
+    let reportDraft: AutoFillReport | null = null;
 
     setDraft((prev) => {
       const next = new Map(prev);
       let filled = 0;
+      const decisions: AutoFillDecision[] = [];
+      const rejectCounts = new Map<AutoFillRejectReason, number>();
 
-      // ---- Coverage tracking per (day, shiftType) ----
       const dayCoverage: Map<string, number>[] = weekDates.map((date) => {
         const map = new Map<string, number>();
         for (const staff of staffList) {
@@ -616,14 +841,21 @@ export default function WeeklyRosterPage() {
         return map;
       });
 
-      const dayTotalCoverage = (dayIdx: number) => {
-        let sum = 0;
-        for (const count of dayCoverage[dayIdx]!.values()) sum += count;
-        return sum;
-      };
+      const coverageTargets: Map<string, number>[] = weekDates.map((date) => {
+        const targets = new Map<string, number>();
+        for (const type of activeTypes) {
+          targets.set(type, 0);
+        }
+        const dow = new Date(`${date}T00:00:00`).getDay();
+        const demand = predictiveDemandByWeekday.get(dow) ?? 0;
+        const extras = demand >= 20 ? 2 : demand >= 10 ? 1 : 0;
+        for (let i = 0; i < extras; i++) {
+          const type = activeTypes[i % activeTypes.length];
+          if (type) targets.set(type, (targets.get(type) ?? 0) + 1);
+        }
+        return targets;
+      });
 
-      // ---- Per-staff shift-type tracker (for continuity checks) ----
-      // staffDayType[staffId][dayIdx] = ShiftType assigned
       const staffDayType = new Map<number, (ShiftType | null)[]>();
       for (const staff of staffList) {
         const types: (ShiftType | null)[] = [];
@@ -634,302 +866,392 @@ export default function WeeklyRosterPage() {
           const draftVal = next.get(key);
           const hasDraft = next.has(key) && draftVal !== null;
           const markedForRemoval = next.has(key) && draftVal === null;
-          if (markedForRemoval) {
-            types.push(null);
-          } else if (hasDraft) {
-            types.push(draftVal as ShiftType);
-          } else if (saved) {
-            types.push(saved.shift_type as ShiftType);
-          } else {
-            types.push(null);
-          }
+          if (markedForRemoval) types.push(null);
+          else if (hasDraft) types.push(draftVal as ShiftType);
+          else if (saved) types.push(saved.shift_type as ShiftType);
+          else types.push(null);
         }
         staffDayType.set(staff.id, types);
       }
 
-      /** Get what a staff member is assigned on a given day (including new assignments). */
-      const getAssignedType = (staffId: number, dayIdx: number): ShiftType | null => {
-        return staffDayType.get(staffId)?.[dayIdx] ?? null;
-      };
+      const getAssignedType = (staffId: number, dayIdx: number): ShiftType | null =>
+        staffDayType.get(staffId)?.[dayIdx] ?? null;
 
-      /** Record an assignment in the tracker. */
-      const recordAssignment = (staffId: number, dayIdx: number, type: ShiftType) => {
+      const setAssignedType = (staffId: number, dayIdx: number, type: ShiftType | null) => {
         const arr = staffDayType.get(staffId);
         if (arr) arr[dayIdx] = type;
       };
 
-      /** Check if assigning shiftType on dayIdx violates rest relative to adjacent days. */
       const wouldViolateRest = (staffId: number, dayIdx: number, shiftType: ShiftType): boolean => {
-        // Check previous day → this assignment
-        if (dayIdx > 0) {
-          const prevType = getAssignedType(staffId, dayIdx - 1);
-          if (prevType && violatesRest(prevType, shiftType)) return true;
-        }
-        // Check this assignment → next day
-        if (dayIdx < weekDates.length - 1) {
-          const nextType = getAssignedType(staffId, dayIdx + 1);
-          if (nextType && violatesRest(shiftType, nextType)) return true;
-        }
+        const prevType = dayIdx > 0 ? getAssignedType(staffId, dayIdx - 1) : null;
+        const nextType = dayIdx < weekDates.length - 1 ? getAssignedType(staffId, dayIdx + 1) : null;
+        if (prevType && violatesRest(prevType, shiftType)) return true;
+        if (nextType && violatesRest(shiftType, nextType)) return true;
         return false;
       };
 
-      // ---- Per-staff helpers ----
       const getStaffState = (staff: ResourceListItem) => {
         let shiftCount = 0;
         let nightCount = 0;
         const emptyDays: number[] = [];
-
         for (let i = 0; i < weekDates.length; i++) {
           const t = getAssignedType(staff.id, i);
           if (t) {
             shiftCount++;
             if (t === 'NIGHT') nightCount++;
-          } else {
-            // Only include future/today dates for auto-fill
-            if (weekDates[i]! >= today) {
-              emptyDays.push(i);
-            }
+          } else if (weekDates[i]! >= today) {
+            emptyDays.push(i);
           }
         }
         return { shiftCount, nightCount, emptyDays };
       };
 
-      if (useMultiType) {
-        // ================================================================
-        // Multi-type mode: ensure every day has coverage for EACH active
-        // shift type. Iterate (day × shiftType), pick the best staff.
-        // ================================================================
+      const staffShiftCount = new Map<number, number>();
+      const staffNightCount = new Map<number, number>();
+      const staffAssignedDays = new Map<number, Set<number>>();
 
-        type WorkSlot = { dayIdx: number; shiftType: ShiftType };
-        const slots: WorkSlot[] = [];
+      for (const staff of staffList) {
+        const state = getStaffState(staff);
+        staffShiftCount.set(staff.id, state.shiftCount);
+        staffNightCount.set(staff.id, state.nightCount);
+        const assigned = new Set<number>();
+        for (let i = 0; i < weekDates.length; i++) {
+          if (!state.emptyDays.includes(i)) assigned.add(i);
+        }
+        staffAssignedDays.set(staff.id, assigned);
+      }
 
-        for (let dayIdx = 0; dayIdx < weekDates.length; dayIdx++) {
-          // Skip past dates
-          if (weekDates[dayIdx]! < today) continue;
-          for (const st of activeTypes) {
-            const current = dayCoverage[dayIdx]!.get(st) ?? 0;
-            if (current === 0) {
-              slots.push({ dayIdx, shiftType: st });
-            }
+      const exceedsConsecutive = (staffId: number, dayIdx: number, shiftType: ShiftType): boolean => {
+        if ((SHIFT_MAP[shiftType]?.isOff ?? false)) return false;
+        const arr = [...(staffDayType.get(staffId) ?? [])];
+        arr[dayIdx] = shiftType;
+        let run = 0;
+        for (const t of arr) {
+          const working = !!t && !(SHIFT_MAP[t]?.isOff ?? false);
+          if (working) {
+            run += 1;
+            if (run > maxConsecutiveDays) return true;
+          } else {
+            run = 0;
+          }
+        }
+        return false;
+      };
+
+      const hasNoSharedShiftConflict = (staffId: number, dayIdx: number, shiftType: ShiftType): boolean => {
+        for (const other of staffList) {
+          if (other.id === staffId) continue;
+          if (getAssignedType(other.id, dayIdx) !== shiftType) continue;
+          const blocksOther = noSharedShiftPairs.get(staffId)?.has(other.id) ?? false;
+          const blockedByOther = noSharedShiftPairs.get(other.id)?.has(staffId) ?? false;
+          if (blocksOther || blockedByOther) return true;
+        }
+        return false;
+      };
+
+      const checkHardConstraints = (staff: ResourceListItem, dayIdx: number, shiftType: ShiftType): AutoFillRejectReason | null => {
+        const id = staff.id;
+        if ((staffShiftCount.get(id) ?? 0) >= maxDaysPerStaff) return 'max_days_reached';
+        if (staffAssignedDays.get(id)?.has(dayIdx)) return 'already_assigned';
+        if (blockedTypes.get(id)?.has(shiftType)) return 'blocked_shift_type';
+
+        const date = weekDates[dayIdx]!;
+        const dayOfWeek = new Date(`${date}T00:00:00`).getDay();
+        if (noWeekendStaff.has(id) && (dayOfWeek === 0 || dayOfWeek === 6)) return 'weekend_restricted';
+        if (shiftType === 'NIGHT' && (staffNightCount.get(id) ?? 0) >= maxNights) return 'night_limit_reached';
+        if (wouldViolateRest(id, dayIdx, shiftType)) return 'rest_violation';
+        if (exceedsConsecutive(id, dayIdx, shiftType)) return 'max_consecutive_days';
+        if (hasNoSharedShiftConflict(id, dayIdx, shiftType)) return 'no_shared_shift_with';
+        return null;
+      };
+
+      const scoreCandidate = (staff: ResourceListItem, dayIdx: number, shiftType: ShiftType): { score: number; rationale: string[] } => {
+        const id = staff.id;
+        const burden = historicalBurdenByStaff.get(id) ?? { hours: 0, nightCount: 0, weekendCount: 0 };
+        const preferred = preferredShiftTypes.get(id);
+        const dayOfWeek = new Date(`${weekDates[dayIdx]}T00:00:00`).getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const currentLoad = staffShiftCount.get(id) ?? 0;
+        const currentNights = staffNightCount.get(id) ?? 0;
+
+        let score = currentLoad * weights.weekly_load;
+        score += (burden.hours / 8) * weights.history_hours;
+        if (shiftType === 'NIGHT') score += currentNights * weights.night_penalty + burden.nightCount * 3;
+        if (isWeekend) score += burden.weekendCount * weights.weekend_penalty;
+
+        const prev = dayIdx > 0 ? getAssignedType(id, dayIdx - 1) : null;
+        if (prev === shiftType) score -= weights.continuity_bonus;
+
+        const rationale: string[] = [
+          `load:${currentLoad}`,
+          `history:${Math.round(burden.hours)}h`,
+        ];
+        if (preferred && preferred.size > 0) {
+          if (preferred.has(shiftType)) {
+            score -= weights.preferred_match_bonus;
+            rationale.push('preferred:+');
+          } else {
+            score += weights.preferred_mismatch_penalty;
+            rationale.push('preferred:-');
           }
         }
 
-        // Sort: prioritise under-staffed days, then harder-to-fill types (NIGHT)
-        slots.sort((a, b) => {
-          const covDiff = dayTotalCoverage(a.dayIdx) - dayTotalCoverage(b.dayIdx);
-          if (covDiff !== 0) return covDiff;
-          if (a.shiftType === 'NIGHT' && b.shiftType !== 'NIGHT') return -1;
-          if (b.shiftType === 'NIGHT' && a.shiftType !== 'NIGHT') return 1;
-          return a.dayIdx - b.dayIdx;
-        });
+        score += Math.random();
+        return { score, rationale };
+      };
 
-        const staffShiftCount = new Map<number, number>();
-        const staffNightCount = new Map<number, number>();
-        const staffAssignedDays = new Map<number, Set<number>>();
+      const getGroupValue = (staff: ResourceListItem, scope: 'DEPARTMENT' | 'ROLE'): string => {
+        if (scope === 'DEPARTMENT') return (staff.department_name ?? '').trim();
+        const role =
+          (staff.metadata?.role as string | undefined)
+          ?? (staff.metadata?.staff_role as string | undefined)
+          ?? (staff.metadata?.job_title as string | undefined)
+          ?? '';
+        return String(role).trim();
+      };
 
-        for (const staff of staffList) {
-          const s = getStaffState(staff);
-          staffShiftCount.set(staff.id, s.shiftCount);
-          staffNightCount.set(staff.id, s.nightCount);
-          const assigned = new Set<number>();
-          for (let i = 0; i < weekDates.length; i++) {
-            if (!s.emptyDays.includes(i)) assigned.add(i);
-          }
-          staffAssignedDays.set(staff.id, assigned);
-        }
-
-        for (const slot of slots) {
-          const { dayIdx, shiftType } = slot;
-          const date = weekDates[dayIdx]!;
-          const dayOfWeek = new Date(date + 'T00:00:00').getDay();
-
-          let bestStaff: ResourceListItem | null = null;
-          let bestScore = Infinity;
-
-          for (const staff of staffList) {
-            const id = staff.id;
-            const sc = staffShiftCount.get(id) ?? 0;
-            if (sc >= maxDaysPerStaff) continue;
-
-            const assignedDays = staffAssignedDays.get(id)!;
-            if (assignedDays.has(dayIdx)) continue;
-
-            const blocked = blockedTypes.get(id);
-            if (blocked?.has(shiftType)) continue;
-
-            if (noWeekendStaff.has(id) && (dayOfWeek === 0 || dayOfWeek === 6)) continue;
-            if (shiftType === 'NIGHT' && (staffNightCount.get(id) ?? 0) >= maxNights) continue;
-
-            // Rest/continuity check
-            if (wouldViolateRest(id, dayIdx, shiftType)) continue;
-
-            const score = sc;
-            if (score < bestScore) {
-              bestScore = score;
-              bestStaff = staff;
-            }
-          }
-
-          if (!bestStaff) continue;
-
-          const key = cellKey(bestStaff.id, date);
-          next.set(key, shiftType);
-          recordAssignment(bestStaff.id, dayIdx, shiftType);
-
-          staffShiftCount.set(bestStaff.id, (staffShiftCount.get(bestStaff.id) ?? 0) + 1);
-          if (shiftType === 'NIGHT') {
-            staffNightCount.set(bestStaff.id, (staffNightCount.get(bestStaff.id) ?? 0) + 1);
-          }
-          staffAssignedDays.get(bestStaff.id)!.add(dayIdx);
-          dayCoverage[dayIdx]!.set(shiftType, (dayCoverage[dayIdx]!.get(shiftType) ?? 0) + 1);
-          filled++;
-        }
-
-        // Second pass: fill remaining staff capacity with active types
-        for (const staff of staffList) {
-          const id = staff.id;
-          const sc = staffShiftCount.get(id) ?? 0;
-          const slotsLeft = maxDaysPerStaff - sc;
-          if (slotsLeft <= 0) continue;
-
-          const assignedDays = staffAssignedDays.get(id)!;
-          const blocked = blockedTypes.get(id);
-          const isNoWeekend = noWeekendStaff.has(id);
-
-          const emptyDays: number[] = [];
-          for (let i = 0; i < weekDates.length; i++) {
-            if (!assignedDays.has(i)) emptyDays.push(i);
-          }
-          emptyDays.sort((a, b) => dayTotalCoverage(a) - dayTotalCoverage(b));
-
-          let slotsFilled = 0;
-          for (const dayIdx of emptyDays) {
-            if (slotsFilled >= slotsLeft) break;
-
-            const date = weekDates[dayIdx]!;
-            const dayOfWeek = new Date(date + 'T00:00:00').getDay();
-            if (isNoWeekend && (dayOfWeek === 0 || dayOfWeek === 6)) continue;
-
-            // Pick the active type with lowest coverage that doesn't violate rest
-            let bestType: ShiftType | null = null;
-            let bestCov = Infinity;
-            for (const st of activeTypes) {
-              if (blocked?.has(st)) continue;
-              if (st === 'NIGHT' && (staffNightCount.get(id) ?? 0) >= maxNights) continue;
-              if (wouldViolateRest(id, dayIdx, st)) continue;
-              const cov = dayCoverage[dayIdx]!.get(st) ?? 0;
-              if (cov < bestCov) {
-                bestCov = cov;
-                bestType = st;
-              }
-            }
-            if (!bestType) continue;
-
-            const key = cellKey(id, date);
-            next.set(key, bestType);
-            recordAssignment(id, dayIdx, bestType);
-            staffShiftCount.set(id, (staffShiftCount.get(id) ?? 0) + 1);
-            if (bestType === 'NIGHT') {
-              staffNightCount.set(id, (staffNightCount.get(id) ?? 0) + 1);
-            }
-            assignedDays.add(dayIdx);
-            dayCoverage[dayIdx]!.set(bestType, (dayCoverage[dayIdx]!.get(bestType) ?? 0) + 1);
-            slotsFilled++;
-            filled++;
-          }
-        }
-
-        // Third pass: assign OFF/REST to remaining empty days
-        // Use REST for days following a night shift, OFF otherwise
-        for (const staff of staffList) {
-          const id = staff.id;
-          const assignedDays = staffAssignedDays.get(id)!;
-          for (let i = 0; i < weekDates.length; i++) {
-            if (assignedDays.has(i)) continue;
-            const date = weekDates[i]!;
-            // Skip past dates
-            if (date < today) continue;
-            const key = cellKey(id, date);
-            // If already has something saved, skip
-            const saved = existingShifts.get(key);
-            if (saved && !(next.has(key) && next.get(key) === null)) continue;
-
-            const prevType = i > 0 ? getAssignedType(id, i - 1) : null;
-            const offType: ShiftType = prevType === 'NIGHT' ? 'REST' as ShiftType : 'OFF' as ShiftType;
-            next.set(key, offType);
-            recordAssignment(id, i, offType);
-            assignedDays.add(i);
-            filled++;
-          }
-        }
-      } else {
-        // ================================================================
-        // Legacy mode: single pattern / paint type (backward-compatible)
-        // ================================================================
-        const pattern = activeTypes;
-
-        for (const staff of staffList) {
-          const staffBlocked = blockedTypes.get(staff.id);
-          const isNoWeekend = noWeekendStaff.has(staff.id);
-          const { shiftCount: staffShiftCount, nightCount: staffNightCount, emptyDays: emptyDayIndices } = getStaffState(staff);
-          let nightCount = staffNightCount;
-
-          const slotsToFill = Math.max(0, maxDaysPerStaff - staffShiftCount);
-          if (slotsToFill === 0 || emptyDayIndices.length === 0) continue;
-
-          const sorted = [...emptyDayIndices].sort(
-            (a, b) => dayTotalCoverage(a) - dayTotalCoverage(b)
-          );
-
-          let slotsFilled = 0;
-          for (const dayIdx of sorted) {
-            if (slotsFilled >= slotsToFill) break;
-
-            const date = weekDates[dayIdx]!;
-            const dayOfWeek = new Date(date + 'T00:00:00').getDay();
-            if (isNoWeekend && (dayOfWeek === 0 || dayOfWeek === 6)) continue;
-
-            const patternIdx = slotsFilled % pattern.length;
-            let shiftType = pattern[patternIdx]!;
-
-            if (staffBlocked?.has(shiftType)) {
-              let found = false;
-              for (let p = 1; p < pattern.length; p++) {
-                const alt = pattern[(patternIdx + p) % pattern.length]!;
-                if (!staffBlocked.has(alt)) {
-                  if (alt === 'NIGHT' && nightCount >= maxNights) continue;
-                  shiftType = alt;
-                  found = true;
-                  break;
-                }
-              }
-              if (!found) continue;
-            }
-
-            if (shiftType === 'NIGHT' && nightCount >= maxNights) {
-              const fallback = pattern.find(
-                (t) => t !== 'NIGHT' && !staffBlocked?.has(t)
-              );
-              if (fallback) {
-                shiftType = fallback;
-              } else {
-                continue;
-              }
-            }
-
-            // Rest/continuity check
-            if (wouldViolateRest(staff.id, dayIdx, shiftType)) continue;
-
-            const key = cellKey(staff.id, date);
-            next.set(key, shiftType);
-            recordAssignment(staff.id, dayIdx, shiftType);
-            dayCoverage[dayIdx]!.set(shiftType, (dayCoverage[dayIdx]!.get(shiftType) ?? 0) + 1);
-            if (shiftType === 'NIGHT') nightCount++;
-            slotsFilled++;
-            filled++;
+      const groupCoverage = new Map<string, number>();
+      const allGroupRules: Array<{ scope: 'DEPARTMENT' | 'ROLE'; value: string; shift_types: ShiftType[] }> = [
+        ...groupMinRules,
+        ...groupMaxRules,
+      ];
+      for (let dayIdx = 0; dayIdx < weekDates.length; dayIdx++) {
+        for (const type of activeTypes) {
+          for (const rule of allGroupRules) {
+            if (!rule.shift_types.includes(type)) continue;
+            const count = staffList.reduce((sum, staff) => {
+              const assignedType = getAssignedType(staff.id, dayIdx);
+              if (assignedType !== type) return sum;
+              const groupValue = getGroupValue(staff, rule.scope);
+              return sum + (groupValue.toLowerCase() === rule.value.toLowerCase() ? 1 : 0);
+            }, 0);
+            groupCoverage.set(`${dayIdx}|${type}|${rule.scope}|${rule.value.toLowerCase()}`, count);
           }
         }
       }
+
+      const wouldExceedGroupMaximum = (staff: ResourceListItem, dayIdx: number, shiftType: ShiftType): boolean => {
+        for (const rule of groupMaxRules) {
+          if (!rule.shift_types.includes(shiftType)) continue;
+          const groupValue = getGroupValue(staff, rule.scope);
+          if (groupValue.toLowerCase() !== rule.value.toLowerCase()) continue;
+          const key = `${dayIdx}|${shiftType}|${rule.scope}|${rule.value.toLowerCase()}`;
+          const current = groupCoverage.get(key) ?? 0;
+          if (current >= rule.max_staff) return true;
+        }
+        return false;
+      };
+
+      const assign = (
+        staff: ResourceListItem,
+        dayIdx: number,
+        shiftType: ShiftType,
+        score: number,
+        rationale: string[],
+        requiredRule?: NormalizedGroupRule,
+      ) => {
+        const key = cellKey(staff.id, weekDates[dayIdx]!);
+        next.set(key, shiftType);
+        setAssignedType(staff.id, dayIdx, shiftType);
+        staffAssignedDays.get(staff.id)!.add(dayIdx);
+        staffShiftCount.set(staff.id, (staffShiftCount.get(staff.id) ?? 0) + 1);
+        if (shiftType === 'NIGHT') {
+          staffNightCount.set(staff.id, (staffNightCount.get(staff.id) ?? 0) + 1);
+        }
+        dayCoverage[dayIdx]!.set(shiftType, (dayCoverage[dayIdx]!.get(shiftType) ?? 0) + 1);
+        for (const rule of allGroupRules) {
+          if (!rule.shift_types.includes(shiftType)) continue;
+          const groupValue = getGroupValue(staff, rule.scope);
+          if (groupValue.toLowerCase() === rule.value.toLowerCase()) {
+            const key = `${dayIdx}|${shiftType}|${rule.scope}|${rule.value.toLowerCase()}`;
+            groupCoverage.set(key, (groupCoverage.get(key) ?? 0) + 1);
+          }
+        }
+        decisions.push({
+          staffId: staff.id,
+          staffName: staff.name,
+          date: weekDates[dayIdx]!,
+          shiftType,
+          score,
+          rationale,
+        });
+        filled += 1;
+      };
+
+      type Slot = { dayIdx: number; shiftType: ShiftType; requiredRule?: NormalizedGroupRule };
+      const slots: Slot[] = [];
+      for (let dayIdx = 0; dayIdx < weekDates.length; dayIdx++) {
+        if (weekDates[dayIdx]! < today) continue;
+        const dayTypes = useMultiType ? activeTypes : [activeTypes[0]!];
+        for (const shiftType of dayTypes) {
+          const current = dayCoverage[dayIdx]!.get(shiftType) ?? 0;
+          const target = useMultiType ? (coverageTargets[dayIdx]!.get(shiftType) ?? 1) : 1;
+          for (let i = current; i < target; i++) {
+            slots.push({ dayIdx, shiftType });
+          }
+        }
+      }
+
+      for (let dayIdx = 0; dayIdx < weekDates.length; dayIdx++) {
+        if (weekDates[dayIdx]! < today) continue;
+        for (const shiftType of activeTypes) {
+          for (const rule of groupMinRules) {
+            if (!rule.shift_types.includes(shiftType)) continue;
+            const key = `${dayIdx}|${shiftType}|${rule.scope}|${rule.value.toLowerCase()}`;
+            const current = groupCoverage.get(key) ?? 0;
+            for (let i = current; i < rule.min_staff; i++) {
+              slots.push({ dayIdx, shiftType, requiredRule: rule });
+            }
+          }
+        }
+      }
+
+      if (autofillMode === 'BALANCED_UTILIZATION') {
+        const utilizationGap = staffList.reduce((sum, staff) => {
+          const currentAssigned = staffShiftCount.get(staff.id) ?? 0;
+          return sum + Math.max(0, targetDaysPerStaff - currentAssigned);
+        }, 0);
+        const futureDayIndices = weekDates
+          .map((date, dayIdx) => ({ date, dayIdx }))
+          .filter((item) => item.date >= today)
+          .map((item) => item.dayIdx);
+
+        const extraAssigned = new Map<string, number>();
+        for (let i = 0; i < utilizationGap; i++) {
+          let bestKey: string | null = null;
+          let bestDay = -1;
+          let bestShift: ShiftType | null = null;
+          let bestScore = -1;
+          for (const dayIdx of futureDayIndices) {
+            const dow = new Date(`${weekDates[dayIdx]}T00:00:00`).getDay();
+              const dayWeight = (predictiveDemandByWeekday.get(dow) ?? 0) + 1;
+            for (const shiftType of activeTypes) {
+              const shiftWeight = Math.max(1, groupMinimumByShift.get(shiftType) ?? 1);
+              const key = `${dayIdx}|${shiftType}`;
+              const spreadDivisor = 1 + (extraAssigned.get(key) ?? 0);
+              const score = (dayWeight * shiftWeight) / spreadDivisor;
+              if (score > bestScore) {
+                bestScore = score;
+                bestDay = dayIdx;
+                bestShift = shiftType;
+                bestKey = key;
+              }
+            }
+          }
+          if (bestDay < 0 || !bestShift || !bestKey) break;
+          slots.push({ dayIdx: bestDay, shiftType: bestShift });
+          extraAssigned.set(bestKey, (extraAssigned.get(bestKey) ?? 0) + 1);
+        }
+      }
+
+      slots.sort((a, b) => {
+        const aCov = Array.from(dayCoverage[a.dayIdx]!.values()).reduce((sum, value) => sum + value, 0);
+        const bCov = Array.from(dayCoverage[b.dayIdx]!.values()).reduce((sum, value) => sum + value, 0);
+        if (aCov !== bCov) return aCov - bCov;
+        if (a.shiftType === 'NIGHT' && b.shiftType !== 'NIGHT') return -1;
+        if (b.shiftType === 'NIGHT' && a.shiftType !== 'NIGHT') return 1;
+        return a.dayIdx - b.dayIdx;
+      });
+
+      for (const slot of slots) {
+        let best: { staff: ResourceListItem; score: number; rationale: string[] } | null = null;
+        for (const staff of staffList) {
+          if (slot.requiredRule) {
+            const groupValue = getGroupValue(staff, slot.requiredRule.scope);
+            if (groupValue.toLowerCase() !== slot.requiredRule.value.toLowerCase()) {
+              continue;
+            }
+          }
+          const rejectReason = checkHardConstraints(staff, slot.dayIdx, slot.shiftType);
+          if (rejectReason) {
+            rejectCounts.set(rejectReason, (rejectCounts.get(rejectReason) ?? 0) + 1);
+            continue;
+          }
+          if (wouldExceedGroupMaximum(staff, slot.dayIdx, slot.shiftType)) {
+            rejectCounts.set('group_maximum_reached', (rejectCounts.get('group_maximum_reached') ?? 0) + 1);
+            continue;
+          }
+          const scored = scoreCandidate(staff, slot.dayIdx, slot.shiftType);
+          if (!best || scored.score < best.score) {
+            best = { staff, score: scored.score, rationale: scored.rationale };
+          }
+        }
+        if (best) {
+          assign(
+            best.staff,
+            slot.dayIdx,
+            slot.shiftType,
+            best.score,
+            [...best.rationale, slot.requiredRule ? 'group-minimum' : 'coverage'],
+            slot.requiredRule,
+          );
+        } else if (slot.requiredRule) {
+          for (const staff of staffList) {
+            const rejectReason = checkHardConstraints(staff, slot.dayIdx, slot.shiftType);
+            if (rejectReason) continue;
+            if (wouldExceedGroupMaximum(staff, slot.dayIdx, slot.shiftType)) continue;
+            const scored = scoreCandidate(staff, slot.dayIdx, slot.shiftType);
+            best = { staff, score: scored.score + 1000, rationale: [...scored.rationale, 'group-fallback'] };
+            break;
+          }
+          if (best) {
+            assign(best.staff, slot.dayIdx, slot.shiftType, best.score, best.rationale);
+          }
+        }
+      }
+
+      // Fill remaining empty future cells with OFF/REST to complete roster view
+      for (const staff of staffList) {
+        const assignedDays = staffAssignedDays.get(staff.id)!;
+        for (let dayIdx = 0; dayIdx < weekDates.length; dayIdx++) {
+          const date = weekDates[dayIdx]!;
+          if (date < today || assignedDays.has(dayIdx)) continue;
+          const key = cellKey(staff.id, date);
+          const saved = existingShifts.get(key);
+          if (saved && !(next.has(key) && next.get(key) === null)) continue;
+
+          const prevType = dayIdx > 0 ? getAssignedType(staff.id, dayIdx - 1) : null;
+          const offType: ShiftType = prevType === 'NIGHT' ? 'REST' : 'OFF';
+          next.set(key, offType);
+          setAssignedType(staff.id, dayIdx, offType);
+          assignedDays.add(dayIdx);
+          filled += 1;
+        }
+      }
+
+      const loads = staffList.map((staff) => staffShiftCount.get(staff.id) ?? 0);
+      const avg = loads.length ? loads.reduce((sum, value) => sum + value, 0) / loads.length : 0;
+      const spread = loads.length
+        ? Math.sqrt(loads.reduce((sum, value) => sum + (value - avg) ** 2, 0) / loads.length)
+        : 0;
+
+      const targetCoverageSlots = coverageTargets.reduce((sum, map) => {
+        let subtotal = 0;
+        for (const value of map.values()) subtotal += value;
+        return sum + subtotal;
+      }, 0);
+      const finalCoverageSlots = dayCoverage.reduce((sum, map) => {
+        let subtotal = 0;
+        for (const type of activeTypes) subtotal += map.get(type) ?? 0;
+        return sum + subtotal;
+      }, 0);
+
+      reportDraft = {
+        filled,
+        balanceMoves: 0,
+        targetCoverageSlots,
+        finalCoverageSlots,
+        fairnessSpread: Number(spread.toFixed(2)),
+        strategy: useMultiType
+          ? (autofillMode === 'BALANCED_UTILIZATION' ? 'coverage-utilization-fairness' : 'coverage-and-fairness')
+          : 'single-pattern',
+        weights,
+        topRejectReasons: Array.from(rejectCounts.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([reason, count]) => ({ reason, count })),
+        decisions: decisions.slice(0, 25),
+      };
 
       if (filled === 0) {
         toast.info('All staff already have enough shifts — nothing to fill');
@@ -944,7 +1266,33 @@ export default function WeeklyRosterPage() {
       });
       return next;
     });
-  }, [paintType, staffList, weekDates, existingShifts, maxDaysPerStaff, blockedTypes, noWeekendStaff, schedulingSettings, today, availableShiftTypes]);
+
+    const runReport = reportDraft as AutoFillReport | null;
+    setAutoFillReport(runReport);
+    if (runReport) {
+      saveAutofillRunMutation.mutate({
+        week_start: weekDates[0],
+        week_end: weekDates[6],
+        strategy: runReport.strategy,
+        report: runReport,
+      });
+    }
+  }, [
+    staffList,
+    weekDates,
+    existingShifts,
+    maxDaysPerStaff,
+    blockedTypes,
+    noWeekendStaff,
+    preferredShiftTypes,
+    noSharedShiftPairs,
+    schedulingSettings,
+    today,
+    availableShiftTypes,
+    historicalBurdenByStaff,
+    predictiveDemandByWeekday,
+    saveAutofillRunMutation,
+  ]);
 
   // ==========================================================================
   // Print
@@ -974,6 +1322,18 @@ export default function WeeklyRosterPage() {
   // ==========================================================================
 
   const isLoading = resourcesLoading || shiftsLoading;
+  const selectedRunA = autofillRuns.find((run) => run.id === compareRunA) ?? null;
+  const selectedRunB = autofillRuns.find((run) => run.id === compareRunB) ?? null;
+  const configuredActiveTypes = (schedulingSettings?.active_shift_types as string[] | undefined) ?? [];
+  const configuredDefaultPattern = (schedulingSettings?.default_shift_pattern as string[] | undefined) ?? [];
+  const configuredAutofillMode = schedulingSettings?.autofill_mode ?? 'BALANCED_UTILIZATION';
+  const configuredTargetDays = schedulingSettings?.autofill_target_days_per_staff ?? 4;
+  const isAutofillConfigured = configuredActiveTypes.length > 0 || configuredDefaultPattern.length > 0;
+  const autofillDisabledReason = !isAutofillConfigured
+    ? 'Auto-fill disabled: no Active Shift Types or Default Shift Pattern configured in roster settings.'
+    : staffList.length === 0
+      ? 'Auto-fill disabled: no staff resources available.'
+      : null;
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
@@ -991,21 +1351,25 @@ export default function WeeklyRosterPage() {
                     <TooltipProvider delayDuration={200}>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleAutoFill}
-                            disabled={staffList.length === 0}
-                          >
-                            <Wand2 className="h-4 w-4 mr-1" />
-                            Auto-Fill
-                          </Button>
+                          <span className="inline-flex">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={handleAutoFill}
+                              disabled={!!autofillDisabledReason}
+                            >
+                              <Wand2 className="h-4 w-4 mr-1" />
+                              Auto-Fill
+                            </Button>
+                          </span>
                         </TooltipTrigger>
                         <TooltipContent>
                           <p>
-                            {(schedulingSettings?.active_shift_types?.length ?? 0) > 0
-                              ? `Fill all active shift types (${schedulingSettings!.active_shift_types.join(', ')}), max ${maxDaysPerStaff} days/staff`
-                              : `Fill empty cells with the selected shift type (max ${maxDaysPerStaff} days/staff)`
+                            {autofillDisabledReason
+                              ? autofillDisabledReason
+                              : configuredActiveTypes.length > 0
+                                ? `Fill active shift types (${configuredActiveTypes.join(', ')}), max ${maxDaysPerStaff} days/staff, mode ${configuredAutofillMode === 'BALANCED_UTILIZATION' ? `Balanced Utilization (${configuredTargetDays} target days)` : 'Minimum Coverage'}`
+                                : `Fallback using default shift pattern (${configuredDefaultPattern.join(', ')}), mode ${configuredAutofillMode === 'BALANCED_UTILIZATION' ? `Balanced Utilization (${configuredTargetDays} target days)` : 'Minimum Coverage'}`
                             }
                           </p>
                         </TooltipContent>
@@ -1131,7 +1495,7 @@ export default function WeeklyRosterPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {canManageSchedules && (
-                      <DropdownMenuItem onClick={handleAutoFill} disabled={staffList.length === 0}>
+                      <DropdownMenuItem onClick={handleAutoFill} disabled={!!autofillDisabledReason}>
                         <Wand2 className="h-4 w-4 mr-2" />
                         Auto-Fill
                       </DropdownMenuItem>
@@ -1369,6 +1733,134 @@ export default function WeeklyRosterPage() {
             </div>
           </div>
         )}
+
+        {autoFillReport && (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">Auto-fill report ({autoFillReport.strategy})</p>
+                <Badge variant="outline" className="text-xs">
+                  fairness spread {autoFillReport.fairnessSpread}
+                </Badge>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <Badge variant="secondary">{autoFillReport.filled} filled</Badge>
+                <Badge variant="secondary">{autoFillReport.finalCoverageSlots}/{autoFillReport.targetCoverageSlots} coverage</Badge>
+              </div>
+              {autoFillReport.topRejectReasons.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  {autoFillReport.topRejectReasons.map((item) => (
+                    <span key={item.reason}>
+                      {REJECT_REASON_LABELS[item.reason]}: {item.count}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {autoFillReport && (
+          <Collapsible open={decisionLogOpen} onOpenChange={setDecisionLogOpen}>
+            <Card>
+              <CardContent className="p-0">
+                <CollapsibleTrigger asChild>
+                  <button className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/40 transition-colors">
+                    <span className="text-sm font-medium">Auto-fill Decision Log</span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${decisionLogOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-3 pb-3 space-y-2">
+                    {autoFillReport.decisions.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No decisions captured for this run.</p>
+                    ) : (
+                      autoFillReport.decisions.map((decision, index) => (
+                        <div key={`${decision.staffId}-${decision.date}-${index}`} className="rounded-md border p-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-medium">{decision.staffName}</p>
+                            <Badge variant="outline" className="text-xs">
+                              {decision.shiftType} · {decision.date}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            score: {decision.score.toFixed(2)}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {decision.rationale.join(', ')}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </CardContent>
+            </Card>
+          </Collapsible>
+        )}
+
+        <Card>
+          <CardContent className="p-3 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-medium">Autofill Run History</p>
+              <Badge variant="secondary" className="text-xs">{autofillRuns.length}</Badge>
+            </div>
+            {autofillRuns.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No historical auto-fill runs recorded yet.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Compare Run A</Label>
+                  <Select value={compareRunA || '_none'} onValueChange={(v) => setCompareRunA(v === '_none' ? '' : v)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Select run A" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">None</SelectItem>
+                      {autofillRuns.map((run: AutofillRun) => (
+                        <SelectItem key={`a-${run.id}`} value={run.id}>
+                          {run.week_start || 'week'} · {new Date(run.created_at).toLocaleString()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Compare Run B</Label>
+                  <Select value={compareRunB || '_none'} onValueChange={(v) => setCompareRunB(v === '_none' ? '' : v)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Select run B" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">None</SelectItem>
+                      {autofillRuns.map((run: AutofillRun) => (
+                        <SelectItem key={`b-${run.id}`} value={run.id}>
+                          {run.week_start || 'week'} · {new Date(run.created_at).toLocaleString()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {selectedRunA && selectedRunB && (
+              <div className="rounded-md border p-3 text-xs space-y-1.5">
+                <p className="font-medium text-sm">Compare Summary</p>
+                <p>A filled: {Number((selectedRunA.report as Record<string, unknown>).filled || 0)}</p>
+                <p>B filled: {Number((selectedRunB.report as Record<string, unknown>).filled || 0)}</p>
+                <p>
+                  Coverage A/B: {Number((selectedRunA.report as Record<string, unknown>).finalCoverageSlots || 0)} /
+                  {Number((selectedRunB.report as Record<string, unknown>).finalCoverageSlots || 0)}
+                </p>
+                <p>
+                  Fairness spread A/B: {Number((selectedRunA.report as Record<string, unknown>).fairnessSpread || 0)} /
+                  {Number((selectedRunB.report as Record<string, unknown>).fairnessSpread || 0)}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Roster Grid — Desktop (md+) */}
         <Card className="hidden md:block">

@@ -530,8 +530,48 @@ export interface SchedulingSettings {
   enforce_constraints: boolean;
   enforce_punctuality: boolean;
   late_cutoff_minutes: number;
+  autofill_mode?: 'MIN_COVERAGE' | 'BALANCED_UTILIZATION';
+  autofill_target_days_per_staff?: number;
+  autofill_min_staff_per_shift?: Record<string, number>;
+  autofill_group_minimums?: AutofillGroupMinimumRule[];
+  autofill_group_maximums?: AutofillGroupMaximumRule[];
+  autofill_weights?: AutofillWeights;
+  autofill_run_history?: AutofillRun[];
   created_at: string;
   updated_at: string;
+}
+
+export interface AutofillGroupMinimumRule {
+  scope: 'DEPARTMENT' | 'ROLE';
+  value: string;
+  min_staff: number;
+  shift_types: string[];
+}
+
+export interface AutofillGroupMaximumRule {
+  scope: 'DEPARTMENT' | 'ROLE';
+  value: string;
+  max_staff: number;
+  shift_types: string[];
+}
+
+export interface AutofillWeights {
+  weekly_load?: number;
+  history_hours?: number;
+  night_penalty?: number;
+  weekend_penalty?: number;
+  continuity_bonus?: number;
+  preferred_match_bonus?: number;
+  preferred_mismatch_penalty?: number;
+}
+
+export interface AutofillRun {
+  id: string;
+  created_at: string;
+  week_start?: string;
+  week_end?: string;
+  strategy?: string;
+  report: Record<string, unknown>;
 }
 
 // =============================================================================
@@ -583,7 +623,8 @@ export type ConstraintType =
   | 'MAX_CONSECUTIVE'
   | 'PREFERRED_SHIFTS'
   | 'NO_OVERTIME'
-  | 'LIGHT_DUTY';
+  | 'LIGHT_DUTY'
+  | 'NO_SHARED_SHIFT_WITH';
 
 export interface StaffConstraint {
   id: number;

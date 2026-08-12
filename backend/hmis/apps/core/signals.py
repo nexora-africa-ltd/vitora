@@ -18,6 +18,46 @@ from hmis.apps.core.sync_context import is_sync_materialization_active
 logger = logging.getLogger(__name__)
 
 
+@receiver(pre_save, sender="core.StaffProfile")
+def cache_previous_primary_role(sender, instance, **kwargs):
+    """Cache previous primary_role before save so group sync can remove stale role group."""
+    if not instance.pk:
+        instance._previous_primary_role_id = None
+        return
+    previous_role_id = (
+        sender.objects.filter(pk=instance.pk).values_list("primary_role_id", flat=True).first()
+    )
+    instance._previous_primary_role_id = previous_role_id
+
+
+@receiver(post_save, sender="core.StaffProfile")
+def sync_user_group_with_primary_role(sender, instance, created, **kwargs):
+    """Keep Django user.groups aligned with StaffProfile.primary_role's django_group."""
+    if not instance.user_id or not instance.primary_role_id:
+        return
+
+    previous_role_id = getattr(instance, "_previous_primary_role_id", None)
+    if not created and previous_role_id == instance.primary_role_id:
+        return
+
+    from hmis.apps.core.models import Role
+    from hmis.apps.core.role_permissions_sync import ensure_role_django_group
+
+    user = instance.user
+    if previous_role_id:
+        previous_group_id = (
+            Role.objects.filter(pk=previous_role_id)
+            .values_list("django_group_id", flat=True)
+            .first()
+        )
+        if previous_group_id:
+            user.groups.remove(previous_group_id)
+
+    role = instance.primary_role
+    group = ensure_role_django_group(role)
+    user.groups.add(group)
+
+
 # ============================================================================
 # Push Notification on High/Critical Notifications
 # ============================================================================

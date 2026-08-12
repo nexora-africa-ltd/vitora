@@ -18,6 +18,8 @@ import {
   Timer,
   Palette,
   Pencil,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -50,7 +52,7 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { schedulingSettingsApi, staffConstraintsApi, resourcesApi, shiftTypeConfigsApi } from '@/lib/api/scheduling';
-import type { SchedulingSettings, StaffConstraint, StaffConstraintCreateData, ConstraintType, ShiftTypeConfig, ShiftTypeConfigCreateData, ShiftType } from '@/lib/types/scheduling';
+import type { SchedulingSettings, StaffConstraint, StaffConstraintCreateData, ConstraintType, ShiftTypeConfig, ShiftTypeConfigCreateData, ShiftType, AutofillWeights, AutofillGroupMinimumRule, AutofillGroupMaximumRule } from '@/lib/types/scheduling';
 
 // =============================================================================
 // Constants
@@ -64,6 +66,7 @@ const CONSTRAINT_OPTIONS: { value: ConstraintType; label: string; description: s
   { value: 'PREFERRED_SHIFTS', label: 'Preferred shift types only', description: 'Only assign specific shift types', icon: <UserCog className="h-4 w-4" /> },
   { value: 'NO_OVERTIME', label: 'No overtime', description: 'Staff will not be assigned overtime shifts', icon: <ShieldAlert className="h-4 w-4" /> },
   { value: 'LIGHT_DUTY', label: 'Light duty — days only', description: 'Only day/morning shifts (medical restriction)', icon: <ShieldAlert className="h-4 w-4" /> },
+  { value: 'NO_SHARED_SHIFT_WITH', label: 'Cannot share shift with', description: 'Prevent this staff member from being scheduled on the same shift as selected staff.', icon: <ShieldAlert className="h-4 w-4" /> },
 ];
 
 /** Working shift types eligible for auto-fill. Off/leave types are excluded. */
@@ -93,6 +96,39 @@ const ALL_SHIFT_TYPES: { value: ShiftType; label: string }[] = [
   { value: 'REST', label: 'Rest Day' },
 ];
 
+const AUTOFILL_WEIGHT_FIELDS: Array<{ key: keyof AutofillWeights; label: string; description: string; unit: string }> = [
+  { key: 'weekly_load', label: 'Weekly Load Penalty', description: 'Penalty for staff already carrying more assignments this week.', unit: 'points per assigned shift' },
+  { key: 'history_hours', label: 'Historical Hours Penalty', description: 'Penalty for staff with higher total historical worked hours.', unit: 'points per 8 historical hours' },
+  { key: 'night_penalty', label: 'Night Burden Penalty', description: 'Penalty for staff with higher night-shift burden.', unit: 'points per current-week night shift' },
+  { key: 'weekend_penalty', label: 'Weekend Burden Penalty', description: 'Penalty for staff with higher weekend burden.', unit: 'points per historical weekend shift' },
+  { key: 'continuity_bonus', label: 'Continuity Bonus', description: 'Bonus when adjacent days keep a consistent shift type.', unit: 'points subtracted on same-type continuity' },
+  { key: 'preferred_match_bonus', label: 'Preferred Shift Bonus', description: 'Bonus when assignment matches preferred shifts.', unit: 'points subtracted on preferred match' },
+  { key: 'preferred_mismatch_penalty', label: 'Preferred Shift Penalty', description: 'Penalty when assignment does not match preferred shifts.', unit: 'points added on preferred mismatch' },
+];
+
+const DEFAULT_AUTOFILL_WEIGHTS: Record<keyof AutofillWeights, number> = {
+  weekly_load: 30,
+  history_hours: 4,
+  night_penalty: 16,
+  weekend_penalty: 3,
+  continuity_bonus: 3,
+  preferred_match_bonus: 8,
+  preferred_mismatch_penalty: 6,
+};
+
+const AUTOFILL_MODE_OPTIONS = [
+  {
+    value: 'BALANCED_UTILIZATION',
+    label: 'Balanced Utilization',
+    description: 'Fill coverage, then add assignments to move staff toward target working days.',
+  },
+  {
+    value: 'MIN_COVERAGE',
+    label: 'Minimum Coverage',
+    description: 'Fill only required coverage targets and stop.',
+  },
+] as const;
+
 // =============================================================================
 // Component
 // =============================================================================
@@ -110,6 +146,18 @@ export default function RosterSettingsPage() {
   });
 
   const [settingsForm, setSettingsForm] = useState<Partial<SchedulingSettings>>({});
+  const [newGroupRule, setNewGroupRule] = useState<AutofillGroupMinimumRule>({
+    scope: 'DEPARTMENT',
+    value: '',
+    min_staff: 1,
+    shift_types: ['DAY'],
+  });
+  const [newGroupMaxRule, setNewGroupMaxRule] = useState<AutofillGroupMaximumRule>({
+    scope: 'DEPARTMENT',
+    value: '',
+    max_staff: 1,
+    shift_types: ['NIGHT'],
+  });
 
   // Merge fetched data with local edits
   const currentSettings = { ...settings, ...settingsForm };
@@ -133,6 +181,91 @@ export default function RosterSettingsPage() {
   });
 
   const hasSettingsChanges = Object.keys(settingsForm).length > 0;
+  const currentAutofillWeights: Record<keyof AutofillWeights, number> = {
+    ...DEFAULT_AUTOFILL_WEIGHTS,
+    ...(settings?.autofill_weights || {}),
+    ...((settingsForm.autofill_weights as AutofillWeights | undefined) || {}),
+  };
+
+  const updateAutofillWeight = (key: keyof AutofillWeights, rawValue: number) => {
+    const value = Number.isFinite(rawValue) ? rawValue : DEFAULT_AUTOFILL_WEIGHTS[key] || 0;
+    updateSetting('autofill_weights', {
+      ...currentAutofillWeights,
+      [key]: value,
+    });
+  };
+
+  const currentActiveShiftTypes = (currentSettings.active_shift_types as string[] | undefined) ?? [];
+  const currentDefaultShiftPattern = (currentSettings.default_shift_pattern as string[] | undefined) ?? [];
+  const currentAutofillMode = currentSettings.autofill_mode ?? 'BALANCED_UTILIZATION';
+  const currentAutofillTargetDays = currentSettings.autofill_target_days_per_staff ?? 4;
+  const currentGroupMinimums = (currentSettings.autofill_group_minimums as AutofillGroupMinimumRule[] | undefined) ?? [];
+  const currentGroupMaximums = (currentSettings.autofill_group_maximums as AutofillGroupMaximumRule[] | undefined) ?? [];
+
+  const moveDefaultPatternItem = (index: number, direction: -1 | 1) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= currentDefaultShiftPattern.length) return;
+    const next = [...currentDefaultShiftPattern];
+    const [item] = next.splice(index, 1);
+    if (!item) return;
+    next.splice(nextIndex, 0, item);
+    updateSetting('default_shift_pattern', next);
+  };
+
+  const addDefaultPatternType = (shiftType: string) => {
+    if (currentDefaultShiftPattern.includes(shiftType)) return;
+    updateSetting('default_shift_pattern', [...currentDefaultShiftPattern, shiftType]);
+  };
+
+  const removeDefaultPatternType = (shiftType: string) => {
+    updateSetting('default_shift_pattern', currentDefaultShiftPattern.filter((t) => t !== shiftType));
+  };
+
+  const addGroupMinimumRule = () => {
+    const value = newGroupRule.value.trim();
+    if (!value) {
+      toast.error('Enter a department or role value');
+      return;
+    }
+    if (newGroupRule.shift_types.length === 0) {
+      toast.error('Select at least one shift type for the rule');
+      return;
+    }
+    const nextRule: AutofillGroupMinimumRule = {
+      ...newGroupRule,
+      value,
+      min_staff: Math.max(1, Math.round(newGroupRule.min_staff || 1)),
+    };
+    updateSetting('autofill_group_minimums', [...currentGroupMinimums, nextRule]);
+    setNewGroupRule((prev) => ({ ...prev, value: '' }));
+  };
+
+  const removeGroupMinimumRule = (index: number) => {
+    updateSetting('autofill_group_minimums', currentGroupMinimums.filter((_, i) => i !== index));
+  };
+
+  const addGroupMaximumRule = () => {
+    const value = newGroupMaxRule.value.trim();
+    if (!value) {
+      toast.error('Enter a department or role value');
+      return;
+    }
+    if (newGroupMaxRule.shift_types.length === 0) {
+      toast.error('Select at least one shift type for the rule');
+      return;
+    }
+    const nextRule: AutofillGroupMaximumRule = {
+      ...newGroupMaxRule,
+      value,
+      max_staff: Math.max(1, Math.round(newGroupMaxRule.max_staff || 1)),
+    };
+    updateSetting('autofill_group_maximums', [...currentGroupMaximums, nextRule]);
+    setNewGroupMaxRule((prev) => ({ ...prev, value: '' }));
+  };
+
+  const removeGroupMaximumRule = (index: number) => {
+    updateSetting('autofill_group_maximums', currentGroupMaximums.filter((_, i) => i !== index));
+  };
 
   // ---------------------------------------------------------------------------
   // Constraints
@@ -149,7 +282,34 @@ export default function RosterSettingsPage() {
     queryFn: () => resourcesApi.list({ resource_type: 'PERSON', page_size: 200, ordering: 'name' }),
   });
   const staffList = staffData?.results ?? [];
-
+  const availableDepartmentOptions = Array.from(
+    new Set(
+      staffList
+        .map((staff) => (staff.department_name ?? '').trim())
+        .filter((name) => !!name)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+  const availableRoleOptions = Array.from(
+    new Set(
+      staffList
+        .map((staff) => {
+          const metadata = staff.metadata as Record<string, unknown> | undefined;
+          return String(
+            (metadata?.role as string | undefined)
+              ?? (metadata?.staff_role as string | undefined)
+              ?? (metadata?.job_title as string | undefined)
+              ?? ''
+          ).trim();
+        })
+        .filter((name) => !!name)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+  const currentScopeOptions = newGroupRule.scope === 'DEPARTMENT'
+    ? availableDepartmentOptions
+    : availableRoleOptions;
+  const currentMaxScopeOptions = newGroupMaxRule.scope === 'DEPARTMENT'
+    ? availableDepartmentOptions
+    : availableRoleOptions;
   // Add constraint dialog
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newConstraint, setNewConstraint] = useState<StaffConstraintCreateData>({
@@ -157,6 +317,7 @@ export default function RosterSettingsPage() {
     constraint_type: 'NO_NIGHTS',
     reason: '',
   });
+  const shareWithOptions = staffList.filter((staff) => staff.id !== newConstraint.staff_resource);
 
   const createMutation = useMutation({
     mutationFn: (data: StaffConstraintCreateData) => staffConstraintsApi.create(data),
@@ -209,8 +370,13 @@ export default function RosterSettingsPage() {
   });
 
   const openAddConfig = () => {
+    const defaultShiftType = availableTypes[0]?.value ?? 'DAY';
+    if (availableTypes.length === 0) {
+      toast.info('All active shift types already have time configurations');
+      return;
+    }
     setEditingConfig(null);
-    setConfigForm({ shift_type: 'DAY', label: '', start_time: '08:00', end_time: '16:00', color: '', is_active: true });
+    setConfigForm({ shift_type: defaultShiftType, label: '', start_time: '08:00', end_time: '16:00', color: '', is_active: true });
     setShowConfigDialog(true);
   };
 
@@ -228,9 +394,14 @@ export default function RosterSettingsPage() {
   };
 
   const configuredTypes = shiftTypeConfigs.map((c) => c.shift_type);
-  const availableTypes = ALL_SHIFT_TYPES.filter(
-    (t) => !configuredTypes.includes(t.value) || editingConfig?.shift_type === t.value
-  );
+  const activeTypes = currentActiveShiftTypes as ShiftType[];
+  const activeTypeSet = new Set<ShiftType>(activeTypes);
+  const availableTypes = ALL_SHIFT_TYPES.filter((t) => {
+    const isConfigured = configuredTypes.includes(t.value);
+    const isEditingCurrent = editingConfig?.shift_type === t.value;
+    const isActiveOrUnrestricted = activeTypeSet.size === 0 || activeTypeSet.has(t.value);
+    return (!isConfigured || isEditingCurrent) && (isActiveOrUnrestricted || isEditingCurrent);
+  });
 
   const createConfigMutation = useMutation({
     mutationFn: (data: ShiftTypeConfigCreateData) => shiftTypeConfigsApi.create(data),
@@ -289,20 +460,6 @@ export default function RosterSettingsPage() {
                 <span className="hidden sm:inline">Back to Roster</span>
               </Link>
             </Button>
-            {hasSettingsChanges && (
-              <Button
-                size="sm"
-                onClick={() => settingsMutation.mutate()}
-                disabled={settingsMutation.isPending}
-              >
-                {settingsMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-1" />
-                )}
-                Save Settings
-              </Button>
-            )}
           </div>
         }
       />
@@ -501,18 +658,17 @@ export default function RosterSettingsPage() {
               <div className="flex items-center gap-2">
                 <Settings className="h-5 w-5 text-primary" />
                 <CardTitle className="text-base">Active Shift Types</CardTitle>
-                <HelpPopover content="Select which working shift types your facility uses. Auto-fill will distribute staff across ALL selected types each day, ensuring every shift is covered. If none are selected, auto-fill will only use the paint brush type." />
+                <HelpPopover content="Auto-fill mode priority: (1) Active Shift Types, (2) Default Shift Pattern, (3) disabled if both are empty. Active Shift Types are used for full coverage mode, while Default Shift Pattern is a fallback ordered preference list." />
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Select the shift types your facility operates. Auto-fill will ensure every day has staff assigned to each active type.
+                  Select the shift types your facility operates. When set, auto-fill ensures every day has staff assigned to each active type.
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {WORKING_SHIFT_TYPES.map((st) => {
-                    const active = (currentSettings.active_shift_types as string[] | undefined) ?? [];
-                    const isChecked = active.includes(st.value);
+                    const isChecked = currentActiveShiftTypes.includes(st.value);
                     return (
                       <label
                         key={st.value}
@@ -525,7 +681,7 @@ export default function RosterSettingsPage() {
                         <Checkbox
                           checked={isChecked}
                           onCheckedChange={(checked) => {
-                            const current = [...active];
+                            const current = [...currentActiveShiftTypes];
                             if (checked) {
                               current.push(st.value);
                             } else {
@@ -540,16 +696,370 @@ export default function RosterSettingsPage() {
                     );
                   })}
                 </div>
-                {((currentSettings.active_shift_types as string[] | undefined) ?? []).length > 0 && (
+                {currentActiveShiftTypes.length > 0 && (
                   <div className="flex items-center gap-2 mt-2">
                     <Badge variant="secondary" className="text-xs">
-                      {(currentSettings.active_shift_types as string[]).length} type(s) active
+                      {currentActiveShiftTypes.length} type(s) active
                     </Badge>
                     <span className="text-xs text-muted-foreground">
-                      Auto-fill will cover: {(currentSettings.active_shift_types as string[]).join(', ')}
+                      Auto-fill will cover: {currentActiveShiftTypes.join(', ')}
                     </span>
                   </div>
                 )}
+
+                <div className="pt-2 border-t space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm font-medium">Default Shift Pattern (Fallback)</Label>
+                    <HelpPopover content="Used only when Active Shift Types is empty. The order is kept as your fallback preference and applied to weekly auto-fill when no active types are configured." />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Configure this fallback so auto-fill remains available even if no active shift types are selected.
+                  </p>
+
+                  <div className="flex flex-wrap gap-2">
+                    {WORKING_SHIFT_TYPES.filter((st) => !currentDefaultShiftPattern.includes(st.value)).map((st) => (
+                      <Button
+                        key={`add-${st.value}`}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => addDefaultPatternType(st.value)}
+                      >
+                        + {st.label}
+                      </Button>
+                    ))}
+                  </div>
+
+                  {currentDefaultShiftPattern.length === 0 ? (
+                    <p className="text-xs text-amber-600">No fallback pattern configured. Auto-fill will be disabled when active shift types are empty.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {currentDefaultShiftPattern.map((type, index) => {
+                        const label = WORKING_SHIFT_TYPES.find((st) => st.value === type)?.label ?? type;
+                        return (
+                          <div key={`${type}-${index}`} className="flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5">
+                            <div className="flex items-center gap-2 text-xs">
+                              <Badge variant="secondary" className="text-[10px]">{index + 1}</Badge>
+                              <span className="font-medium">{label}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                onClick={() => moveDefaultPatternItem(index, -1)}
+                                disabled={index === 0}
+                              >
+                                <ArrowUp className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                onClick={() => moveDefaultPatternItem(index, 1)}
+                                disabled={index === currentDefaultShiftPattern.length - 1}
+                              >
+                                <ArrowDown className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 text-destructive/70 hover:text-destructive"
+                                onClick={() => removeDefaultPatternType(type)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Settings className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base">Global Autofill Rules</CardTitle>
+                <HelpPopover content="These rules control coverage and utilization. Group minimum rules set required staffing from specific departments/roles per shift type, while group maximum rules cap over-concentration on a shift. Balanced Utilization mode adds extra assignments toward target days per staff; Minimum Coverage mode stops after required coverage is met." />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Autofill Mode</Label>
+                  <Select
+                    value={currentAutofillMode}
+                    onValueChange={(v) => updateSetting('autofill_mode', v as SchedulingSettings['autofill_mode'])}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AUTOFILL_MODE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {AUTOFILL_MODE_OPTIONS.find((opt) => opt.value === currentAutofillMode)?.description}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Target Working Days / Staff (weekly)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={7}
+                    step={1}
+                    value={currentAutofillTargetDays}
+                    onChange={(e) => updateSetting('autofill_target_days_per_staff', Number(e.target.value))}
+                    className="h-9"
+                    disabled={currentAutofillMode !== 'BALANCED_UTILIZATION'}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Used in Balanced Utilization mode to reduce excessive OFF/REST outcomes.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3 border-t pt-3">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm">Group Minimum Rules</Label>
+                  <HelpPopover content="Guarantee minimum staffing from a specific department or role per day and shift type. These rules are applied as required autofill slots before general balancing." />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                  <Select
+                    value={newGroupRule.scope}
+                    onValueChange={(v) => setNewGroupRule((prev) => ({ ...prev, scope: v as 'DEPARTMENT' | 'ROLE', value: '' }))}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DEPARTMENT">Department</SelectItem>
+                      <SelectItem value="ROLE">Role</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={newGroupRule.value || '_none'}
+                    onValueChange={(v) => setNewGroupRule((prev) => ({ ...prev, value: v === '_none' ? '' : v }))}
+                    disabled={currentScopeOptions.length === 0}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder={newGroupRule.scope === 'DEPARTMENT' ? 'Select department' : 'Select role'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">Select...</SelectItem>
+                      {currentScopeOptions.map((option) => (
+                        <SelectItem key={`${newGroupRule.scope}-${option}`} value={option}>{option}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={newGroupRule.min_staff}
+                    onChange={(e) => setNewGroupRule((prev) => ({ ...prev, min_staff: Number(e.target.value) }))}
+                    className="h-9"
+                  />
+                  <Button type="button" className="h-9" onClick={addGroupMinimumRule}>
+                    Add Rule
+                  </Button>
+                </div>
+                {currentScopeOptions.length === 0 && (
+                  <p className="text-xs text-amber-600">
+                    No {newGroupRule.scope === 'DEPARTMENT' ? 'departments' : 'roles'} found on staff resources yet.
+                  </p>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  {WORKING_SHIFT_TYPES.map((st) => {
+                    const selected = newGroupRule.shift_types.includes(st.value);
+                    return (
+                      <Button
+                        key={`new-rule-shift-${st.value}`}
+                        type="button"
+                        size="sm"
+                        variant={selected ? 'default' : 'outline'}
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          const next = selected
+                            ? newGroupRule.shift_types.filter((t) => t !== st.value)
+                            : [...newGroupRule.shift_types, st.value];
+                          setNewGroupRule((prev) => ({ ...prev, shift_types: next }));
+                        }}
+                      >
+                        {st.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                {currentGroupMinimums.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No department/role minimum rules configured.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {currentGroupMinimums.map((rule, index) => (
+                      <div key={`group-rule-${index}`} className="flex items-center justify-between gap-2 rounded-md border px-2.5 py-2">
+                        <div className="text-xs">
+                          <span className="font-medium">{rule.scope === 'DEPARTMENT' ? 'Dept' : 'Role'}: {rule.value}</span>
+                          <span className="text-muted-foreground"> {' • '}min {rule.min_staff} {' • '} {rule.shift_types.join(', ')}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-destructive/70 hover:text-destructive"
+                          onClick={() => removeGroupMinimumRule(index)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3 border-t pt-3">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm">Group Maximum Rules</Label>
+                  <HelpPopover content="Limit over-concentration by capping how many staff from a specific department or role can be placed on the same shift and day." />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                  <Select
+                    value={newGroupMaxRule.scope}
+                    onValueChange={(v) => setNewGroupMaxRule((prev) => ({ ...prev, scope: v as 'DEPARTMENT' | 'ROLE', value: '' }))}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DEPARTMENT">Department</SelectItem>
+                      <SelectItem value="ROLE">Role</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={newGroupMaxRule.value || '_none'}
+                    onValueChange={(v) => setNewGroupMaxRule((prev) => ({ ...prev, value: v === '_none' ? '' : v }))}
+                    disabled={currentMaxScopeOptions.length === 0}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder={newGroupMaxRule.scope === 'DEPARTMENT' ? 'Select department' : 'Select role'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">Select...</SelectItem>
+                      {currentMaxScopeOptions.map((option) => (
+                        <SelectItem key={`${newGroupMaxRule.scope}-${option}`} value={option}>{option}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={newGroupMaxRule.max_staff}
+                    onChange={(e) => setNewGroupMaxRule((prev) => ({ ...prev, max_staff: Number(e.target.value) }))}
+                    className="h-9"
+                  />
+                  <Button type="button" className="h-9" onClick={addGroupMaximumRule}>
+                    Add Cap
+                  </Button>
+                </div>
+                {currentMaxScopeOptions.length === 0 && (
+                  <p className="text-xs text-amber-600">
+                    No {newGroupMaxRule.scope === 'DEPARTMENT' ? 'departments' : 'roles'} found on staff resources yet.
+                  </p>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  {WORKING_SHIFT_TYPES.map((st) => {
+                    const selected = newGroupMaxRule.shift_types.includes(st.value);
+                    return (
+                      <Button
+                        key={`new-cap-shift-${st.value}`}
+                        type="button"
+                        size="sm"
+                        variant={selected ? 'default' : 'outline'}
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          const next = selected
+                            ? newGroupMaxRule.shift_types.filter((t) => t !== st.value)
+                            : [...newGroupMaxRule.shift_types, st.value];
+                          setNewGroupMaxRule((prev) => ({ ...prev, shift_types: next }));
+                        }}
+                      >
+                        {st.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                {currentGroupMaximums.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No department/role maximum rules configured.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {currentGroupMaximums.map((rule, index) => (
+                      <div key={`group-cap-${index}`} className="flex items-center justify-between gap-2 rounded-md border px-2.5 py-2">
+                        <div className="text-xs">
+                          <span className="font-medium">{rule.scope === 'DEPARTMENT' ? 'Dept' : 'Role'}: {rule.value}</span>
+                          <span className="text-muted-foreground"> {' • '}max {rule.max_staff} {' • '} {rule.shift_types.join(', ')}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-destructive/70 hover:text-destructive"
+                          onClick={() => removeGroupMaximumRule(index)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Settings className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base">Autofill Weights</CardTitle>
+                <HelpPopover content="These weights tune the weekly roster auto-fill scorer. Penalty means points are added to a candidate score (higher score = less likely assignment). Bonus means points are subtracted (lower score = more likely assignment). Example: if Nurse A has more current shifts, a higher weekly-load penalty pushes Nurse A down; if a shift matches Nurse B's preference, the preferred-match bonus boosts Nurse B up." />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {AUTOFILL_WEIGHT_FIELDS.map((field) => (
+                  <div key={field.key} className="space-y-1.5">
+                    <Label className="text-sm">{field.label}</Label>
+                    <Input
+                      type="number"
+                      step={0.5}
+                      value={currentAutofillWeights[field.key] ?? 0}
+                      onChange={(e) => updateAutofillWeight(field.key, Number(e.target.value))}
+                      className="h-9"
+                    />
+                    <p className="text-xs text-muted-foreground">Unit: {field.unit}</p>
+                    <p className="text-xs text-muted-foreground">{field.description}</p>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -695,6 +1205,28 @@ export default function RosterSettingsPage() {
               )}
             </CardContent>
           </Card>
+
+          <div className="sticky bottom-3 z-20">
+            <Card className="border-primary/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+              <CardContent className="py-3 flex items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {hasSettingsChanges ? 'You have unsaved settings changes.' : 'All settings are saved.'}
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => settingsMutation.mutate()}
+                  disabled={!hasSettingsChanges || settingsMutation.isPending}
+                >
+                  {settingsMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-1" />
+                  )}
+                  Save Settings
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </>
       )}
 
@@ -726,7 +1258,7 @@ export default function RosterSettingsPage() {
               <Label className="text-sm">Constraint Type</Label>
               <Select
                 value={newConstraint.constraint_type}
-                onValueChange={(v) => setNewConstraint((p) => ({ ...p, constraint_type: v as ConstraintType }))}
+                onValueChange={(v) => setNewConstraint((p) => ({ ...p, constraint_type: v as ConstraintType, value: {} }))}
               >
                 <SelectTrigger className="h-9">
                   <SelectValue />
@@ -779,6 +1311,27 @@ export default function RosterSettingsPage() {
               </div>
             )}
 
+            {newConstraint.constraint_type === 'NO_SHARED_SHIFT_WITH' && (
+              <div className="space-y-1.5">
+                <Label className="text-sm">Cannot share with</Label>
+                <Select
+                  value={String((newConstraint.value as Record<string, number>)?.staff_resource_id ?? '')}
+                  onValueChange={(v) =>
+                    setNewConstraint((p) => ({ ...p, value: { staff_resource_id: Number(v) } }))
+                  }
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select staff..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {shareWithOptions.map((s) => (
+                      <SelectItem key={`share-with-${s.id}`} value={String(s.id)}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label className="text-sm">Reason (optional)</Label>
               <Input
@@ -796,7 +1349,14 @@ export default function RosterSettingsPage() {
             </Button>
             <Button
               onClick={() => createMutation.mutate(newConstraint)}
-              disabled={!newConstraint.staff_resource || createMutation.isPending}
+              disabled={
+                !newConstraint.staff_resource
+                || createMutation.isPending
+                || (
+                  newConstraint.constraint_type === 'NO_SHARED_SHIFT_WITH'
+                  && !Number((newConstraint.value as Record<string, number>)?.staff_resource_id || 0)
+                )
+              }
             >
               {createMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
               Add Constraint

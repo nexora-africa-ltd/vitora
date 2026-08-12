@@ -2866,6 +2866,54 @@ class SchedulingSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         serializer = self.get_serializer(settings_obj)
         return Response(serializer.data)
 
+    @action(detail=False, methods=["get", "post"], url_path="autofill-runs")
+    def autofill_runs(self, request):
+        """
+        List or append weekly roster autofill run reports for current facility.
+
+        GET  /api/scheduling/settings/autofill-runs/  -> latest-first list
+        POST /api/scheduling/settings/autofill-runs/  -> append run payload
+        """
+        from hmis.apps.scheduling.models import SchedulingSettings
+
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response(
+                {"error": "No facility context available"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        settings_obj, _created = SchedulingSettings.objects.get_or_create(
+            facility=facility,
+            defaults={"organization": getattr(facility, "organization", None)},
+        )
+
+        if request.method == "GET":
+            runs = settings_obj.autofill_run_history or []
+            return Response(runs)
+
+        payload = request.data if isinstance(request.data, dict) else None
+        if not payload:
+            return Response(
+                {"error": "Expected a JSON object payload"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        runs = list(settings_obj.autofill_run_history or [])
+        run_entry = {
+            "id": timezone.now().strftime("%Y%m%d%H%M%S%f"),
+            "created_at": timezone.now().isoformat(),
+            "week_start": payload.get("week_start"),
+            "week_end": payload.get("week_end"),
+            "strategy": payload.get("strategy"),
+            "report": payload,
+        }
+        runs.insert(0, run_entry)
+        settings_obj.autofill_run_history = runs[:100]
+        settings_obj.save(update_fields=["autofill_run_history", "updated_at"])
+        return Response(run_entry, status=status.HTTP_201_CREATED)
+
 
 class ShiftTypeConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """

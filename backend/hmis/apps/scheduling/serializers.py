@@ -1261,10 +1261,17 @@ class SchedulingSettingsSerializer(serializers.ModelSerializer):
             "enforce_constraints",
             "enforce_punctuality",
             "late_cutoff_minutes",
+            "autofill_mode",
+            "autofill_target_days_per_staff",
+            "autofill_min_staff_per_shift",
+            "autofill_group_minimums",
+            "autofill_group_maximums",
+            "autofill_weights",
+            "autofill_run_history",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at", "autofill_run_history"]
 
 
 class ShiftTypeConfigSerializer(serializers.ModelSerializer):

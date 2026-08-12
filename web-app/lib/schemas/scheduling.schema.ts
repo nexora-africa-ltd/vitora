@@ -264,13 +264,37 @@ export const SchedulingSettingsSchema = z.object({
   enforce_constraints: z.boolean(),
   enforce_punctuality: z.boolean(),
   late_cutoff_minutes: z.number(),
+  autofill_mode: z.enum(['MIN_COVERAGE', 'BALANCED_UTILIZATION']).optional(),
+  autofill_target_days_per_staff: z.number().optional(),
+  autofill_min_staff_per_shift: z.record(z.number()).optional(),
+  autofill_group_minimums: z.array(z.object({
+    scope: z.enum(['DEPARTMENT', 'ROLE']),
+    value: z.string(),
+    min_staff: z.number(),
+    shift_types: z.array(z.string()),
+  })).optional(),
+  autofill_group_maximums: z.array(z.object({
+    scope: z.enum(['DEPARTMENT', 'ROLE']),
+    value: z.string(),
+    max_staff: z.number(),
+    shift_types: z.array(z.string()),
+  })).optional(),
+  autofill_weights: z.record(z.number()).optional(),
+  autofill_run_history: z.array(z.object({
+    id: z.string(),
+    created_at: z.string(),
+    week_start: z.string().optional(),
+    week_end: z.string().optional(),
+    strategy: z.string().optional(),
+    report: z.record(z.unknown()),
+  })).optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
 
 export const ConstraintTypeSchema = z.enum([
   'NO_NIGHTS', 'NO_WEEKENDS', 'MAX_HOURS', 'MAX_CONSECUTIVE',
-  'PREFERRED_SHIFTS', 'NO_OVERTIME', 'LIGHT_DUTY',
+  'PREFERRED_SHIFTS', 'NO_OVERTIME', 'LIGHT_DUTY', 'NO_SHARED_SHIFT_WITH',
 ]);
 
 export const StaffConstraintSchema = z.object({

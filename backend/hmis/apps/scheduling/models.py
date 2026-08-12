@@ -1975,6 +1975,67 @@ class SchedulingSettings(FacilityScopedModel, TimeStampedModel):
         default=30,
         help_text="Minutes after shift start after which clock-in is blocked (0 = no limit)",
     )
+    AUTOFILL_MODE_CHOICES = [
+        ("MIN_COVERAGE", "Minimum Coverage"),
+        ("BALANCED_UTILIZATION", "Balanced Utilization"),
+    ]
+    autofill_mode = models.CharField(
+        max_length=32,
+        choices=AUTOFILL_MODE_CHOICES,
+        default="BALANCED_UTILIZATION",
+        help_text=(
+            "Autofill strategy mode. MIN_COVERAGE fills only required coverage slots. "
+            "BALANCED_UTILIZATION also adds assignments to reach target days per staff."
+        ),
+    )
+    autofill_target_days_per_staff = models.PositiveIntegerField(
+        default=4,
+        help_text=(
+            "Target scheduled working days per staff per week when autofill mode is "
+            "BALANCED_UTILIZATION."
+        ),
+    )
+    autofill_min_staff_per_shift = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Per-shift minimum staffing coverage targets for autofill, e.g. "
+            '{"DAY": 3, "NIGHT": 2}. Missing keys default to 1.'
+        ),
+    )
+    autofill_group_minimums = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "Group-specific minimum staffing rules for autofill, e.g. "
+            '[{"scope": "DEPARTMENT", "value": "Nursing", "min_staff": 2, "shift_types": ["DAY", "NIGHT"]}].'
+        ),
+    )
+    autofill_group_maximums = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "Group-specific maximum staffing rules for autofill, e.g. "
+            '[{"scope": "ROLE", "value": "Nurse", "max_staff": 3, "shift_types": ["NIGHT"]}].'
+        ),
+    )
+    autofill_weights = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Per-facility scoring weights for weekly roster autofill, e.g. "
+            '{"weekly_load": 30, "history_hours": 4, "night_penalty": 16}. '
+            "Missing keys fall back to system defaults."
+        ),
+    )
+    autofill_run_history = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "Recent autofill run reports for this facility. "
+            "Stored as an append-only list (latest first) for review/compare in UI."
+        ),
+    )
 
     class Meta(TimeStampedModel.Meta):
         verbose_name = "Scheduling Settings"
@@ -2068,6 +2129,7 @@ class StaffConstraint(FacilityScopedModel, TimeStampedModel):
         ("PREFERRED_SHIFTS", "Preferred shift types only"),
         ("NO_OVERTIME", "No overtime shifts"),
         ("LIGHT_DUTY", "Light duty — day shifts only"),
+        ("NO_SHARED_SHIFT_WITH", "Cannot share shift with specific staff"),
     ]
 
     staff_resource = models.ForeignKey(

@@ -61,6 +61,7 @@ import type {
   BulkCreateShiftsResult,
   CrossFacilityConflict,
   SchedulingSettings,
+  AutofillRun,
   StaffConstraint,
   StaffConstraintCreateData,
   MyTodayResponse,
@@ -450,6 +451,16 @@ export const schedulingSettingsApi = {
     return parseResponse(SchedulingSettingsSchema, response.data, {
       context: 'schedulingSettingsApi.update',
     });
+  },
+
+  listAutofillRuns: async (): Promise<AutofillRun[]> => {
+    const response = await apiClient.get(`${BASE_URL}/settings/autofill-runs/`);
+    return response.data as AutofillRun[];
+  },
+
+  createAutofillRun: async (report: Record<string, unknown>): Promise<AutofillRun> => {
+    const response = await apiClient.post(`${BASE_URL}/settings/autofill-runs/`, report);
+    return response.data as AutofillRun;
   },
 };
 

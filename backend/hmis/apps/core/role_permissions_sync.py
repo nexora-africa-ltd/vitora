@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Group, Permission
 
 if TYPE_CHECKING:
     from hmis.apps.core.models import Role
@@ -433,14 +433,12 @@ def sync_role_group_permissions(role: Role) -> int:
     Returns the number of permissions set on the group.
     If the role has no linked django_group, does nothing and returns 0.
     """
-    if not role.django_group:
-        return 0
+    group = ensure_role_django_group(role)
 
     if not role.permissions_matrix:
-        role.django_group.permissions.clear()
+        group.permissions.clear()
         return 0
 
-    group = role.django_group
     permissions_to_add: list[Permission] = []
 
     for model_name, actions in role.permissions_matrix.items():
@@ -488,3 +486,21 @@ def sync_role_group_permissions(role: Role) -> int:
 
     group.permissions.set(permissions_to_add)
     return len(permissions_to_add)
+
+
+def ensure_role_django_group(role: Role) -> Group:
+    """Ensure a Role has a linked Django Group, creating one if needed."""
+    if role.django_group_id:
+        return role.django_group
+
+    base_name = (role.code or role.name or f"role-{role.pk}").strip()
+    candidate = base_name
+    suffix = 1
+    while Group.objects.filter(name=candidate).exists():
+        candidate = f"{base_name}-{suffix}"
+        suffix += 1
+
+    group = Group.objects.create(name=candidate)
+    role.django_group = group
+    role.save(update_fields=["django_group", "updated_at"])
+    return group

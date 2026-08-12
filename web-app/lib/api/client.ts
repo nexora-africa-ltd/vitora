@@ -2,6 +2,7 @@ import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'ax
 import { tokenStorage } from '@/lib/auth/storage';
 import { isDesktop, getApiUrl } from '@/lib/desktop';
 import { API_BASE_URL } from '@/lib/utils/constants';
+import { toast } from 'sonner';
 
 /**
  * Get the API base URL.
@@ -195,6 +196,10 @@ apiClient.interceptors.response.use(
         }
         return Promise.reject(error);
       }
+      if (data && data.code === 'permission_denied') {
+        notifyPermissionDenied(error);
+        return Promise.reject(error);
+      }
     }
 
     // Handle 401 Unauthorized — try cookie-based refresh
@@ -278,12 +283,38 @@ async function refreshViaCookie(): Promise<boolean> {
 
 // Guard against multiple simultaneous auth error redirects
 let isRedirectingToLogin = false;
+let lastPermissionToastKey = '';
+let lastPermissionToastAt = 0;
+
+function notifyPermissionDenied(error: AxiosError): void {
+  if (typeof window === 'undefined') return;
+  const data = (error.response?.data ?? {}) as Record<string, unknown>;
+  const code = String(data.code ?? 'permission_denied');
+  const detail = String(data.detail ?? 'You do not have permission to perform this action.');
+  const requiredPermission = String(data.required_permission ?? '').trim();
+  const key = `${code}|${detail}|${requiredPermission}`;
+  const now = Date.now();
+  if (key === lastPermissionToastKey && now - lastPermissionToastAt < 2500) return;
+  lastPermissionToastKey = key;
+  lastPermissionToastAt = now;
+
+  toast.error('Permission denied', {
+    description: requiredPermission
+      ? `${detail} Required: ${requiredPermission}.`
+      : detail,
+  });
+}
 
 /**
  * Handle authentication errors.
  */
 function handleAuthError(): void {
   tokenStorage.clearAll();
+  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    toast.error('Session expired', {
+      description: 'Please sign in again to continue.',
+    });
+  }
   // Redirect to login (only once, only in browser) — preserve current path
   if (typeof window !== 'undefined' && !isRedirectingToLogin) {
     isRedirectingToLogin = true;
