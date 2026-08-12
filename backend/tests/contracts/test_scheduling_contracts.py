@@ -358,6 +358,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "department_name",
                 "id",
                 "is_active",
+                "metadata",
                 "name",
                 "resource_type",
             }
@@ -449,6 +450,13 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "active_shift_types",
+                "autofill_group_maximums",
+                "autofill_group_minimums",
+                "autofill_min_staff_per_shift",
+                "autofill_mode",
+                "autofill_run_history",
+                "autofill_target_days_per_staff",
+                "autofill_weights",
                 "created_at",
                 "default_shift_pattern",
                 "enforce_constraints",

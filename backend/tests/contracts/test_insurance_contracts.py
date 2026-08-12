@@ -9,6 +9,8 @@ Re-run the script to update after serializer changes:
 import pytest  # type: ignore
 
 from hmis.apps.insurance.serializers import (
+    HealthCloudSessionRequestOTPSerializer,
+    HealthCloudSessionStartVisitSerializer,
     InsuranceClaimAppealSerializer,
     InsuranceClaimApproveSerializer,
     InsuranceClaimCancelSerializer,
@@ -27,18 +29,56 @@ from hmis.apps.insurance.serializers import (
     InsurancePreauthCreateSerializer,
     InsurancePreauthDenySerializer,
     InsurancePreauthSerializer,
+    InsuranceProviderConfigSerializer,
     InsuranceProviderCreateSerializer,
     InsuranceProviderSerializer,
     InsuranceRemittanceCreateSerializer,
     InsuranceRemittanceLineSerializer,
     InsuranceRemittanceSerializer,
+    InsuranceVisitAuthorizationSerializer,
     PatientInsuranceCreateSerializer,
     PatientInsuranceSerializer,
     PayerTariffCreateSerializer,
     PayerTariffSerializer,
+    RequestOTPSerializer,
+    ReserveBalanceSerializer,
+    StartVisitSerializer,
+    SubmitCreditNoteSerializer,
+    SubmitInvoiceSerializer,
+    UploadClaimAttachmentSerializer,
+    ValidateAuthorizationSerializer,
+    VerifyEnrollmentPreviewSerializer,
 )
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
+    (
+        HealthCloudSessionRequestOTPSerializer,
+        frozenset(
+            {
+                "contact_id",
+                "session_id",
+            }
+        ),
+    ),
+    (
+        HealthCloudSessionStartVisitSerializer,
+        frozenset(
+            {
+                "beneficiary_contact",
+                "beneficiary_id",
+                "benefit_code",
+                "benefit_type",
+                "encounter",
+                "factors",
+                "otp",
+                "policy_effective_date",
+                "policy_number",
+                "scheme_code",
+                "scheme_name",
+                "session_id",
+            }
+        ),
+    ),
     (
         InsuranceClaimAppealSerializer,
         frozenset(
@@ -157,8 +197,11 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "id",
                 "invoice",
                 "is_appealable",
+                "is_healthcloud_enabled",
                 "is_overdue",
                 "items",
+                "latest_balance_reservation",
+                "latest_submit_claim_external",
                 "member_number",
                 "notes",
                 "paid_amount",
@@ -311,6 +354,44 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        InsuranceProviderConfigSerializer,
+        frozenset(
+            {
+                "accreditation_number",
+                "accreditation_status",
+                "api_auth_type",
+                "api_base_url",
+                "api_credentials",
+                "api_enabled",
+                "api_key",
+                "api_password",
+                "api_secret",
+                "api_token",
+                "api_username",
+                "auth_base_url",
+                "contract_end",
+                "contract_number",
+                "contract_start",
+                "created_at",
+                "facility_name",
+                "healthcloud_enabled",
+                "id",
+                "is_contract_active",
+                "max_claim_amount",
+                "notes",
+                "payer_slade_code",
+                "provider",
+                "provider_edi_base_url",
+                "provider_is_base_url",
+                "provider_name",
+                "require_balance_reservation",
+                "require_visit_authorization",
+                "submission_format",
+                "updated_at",
+            }
+        ),
+    ),
+    (
         InsuranceProviderCreateSerializer,
         frozenset(
             {
@@ -411,10 +492,50 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        InsuranceVisitAuthorizationSerializer,
+        frozenset(
+            {
+                "auth_expiry",
+                "auth_status",
+                "auth_token",
+                "authorization_date",
+                "authorization_guid",
+                "beneficiary_contact_id",
+                "beneficiary_contact_value",
+                "beneficiary_id",
+                "benefit_code",
+                "benefit_type",
+                "created_at",
+                "eligibility_payload",
+                "encounter",
+                "enrollment",
+                "factors",
+                "id",
+                "last_error",
+                "member_number",
+                "patient",
+                "patient_name",
+                "payer_slade_code",
+                "policy_number",
+                "provider_config",
+                "raw_payload",
+                "selected_beneficiary_contact_id",
+                "selected_beneficiary_contact_value",
+                "selected_benefit_code",
+                "selected_benefit_type",
+                "status",
+                "updated_at",
+                "workflow_step",
+            }
+        ),
+    ),
+    (
         PatientInsuranceCreateSerializer,
         frozenset(
             {
                 "annual_balance",
+                "card_image_back",
+                "card_image_front",
                 "copay_override",
                 "employer",
                 "is_primary",
@@ -426,6 +547,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "policy_number",
                 "principal_member",
                 "principal_name",
+                "remove_card_image_back",
+                "remove_card_image_front",
                 "status",
                 "valid_from",
                 "valid_to",
@@ -444,9 +567,15 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "created_at",
                 "days_until_expiry",
                 "employer",
+                "has_card_image_back",
+                "has_card_image_front",
                 "id",
                 "is_primary",
                 "is_valid",
+                "last_eligibility_checked_at",
+                "last_eligibility_eligible",
+                "last_eligibility_payload",
+                "last_eligibility_status",
                 "member_number",
                 "member_type",
                 "notes",
@@ -510,6 +639,103 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "service_name",
                 "tariff_amount",
                 "updated_at",
+            }
+        ),
+    ),
+    (
+        RequestOTPSerializer,
+        frozenset(
+            {
+                "contact_id",
+            }
+        ),
+    ),
+    (
+        ReserveBalanceSerializer,
+        frozenset(
+            {
+                "amount",
+                "authorization_id",
+                "invoice_number",
+            }
+        ),
+    ),
+    (
+        StartVisitSerializer,
+        frozenset(
+            {
+                "beneficiary_contact",
+                "beneficiary_id",
+                "benefit_code",
+                "benefit_type",
+                "encounter",
+                "factors",
+                "otp",
+                "policy_effective_date",
+                "policy_number",
+                "scheme_code",
+                "scheme_name",
+            }
+        ),
+    ),
+    (
+        SubmitCreditNoteSerializer,
+        frozenset(
+            {
+                "claim",
+                "invoice_date",
+                "invoice_number",
+                "lines",
+            }
+        ),
+    ),
+    (
+        SubmitInvoiceSerializer,
+        frozenset(
+            {
+                "claim",
+                "copays",
+                "invoice_date",
+                "invoice_number",
+                "lines",
+            }
+        ),
+    ),
+    (
+        UploadClaimAttachmentSerializer,
+        frozenset(
+            {
+                "attachment",
+                "attachment_type",
+                "claim",
+                "description",
+            }
+        ),
+    ),
+    (
+        ValidateAuthorizationSerializer,
+        frozenset(
+            {
+                "auth_token",
+                "first_name",
+                "last_name",
+                "member_number",
+                "other_names",
+                "payer_code",
+                "scheme_code",
+                "scheme_name",
+                "visit_type",
+            }
+        ),
+    ),
+    (
+        VerifyEnrollmentPreviewSerializer,
+        frozenset(
+            {
+                "member_number",
+                "plan",
+                "policy_number",
+                "provider",
             }
         ),
     ),

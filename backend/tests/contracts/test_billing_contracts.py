@@ -9,6 +9,7 @@ Re-run the script to update after serializer changes:
 import pytest  # type: ignore
 
 from hmis.apps.billing.serializers import (
+    BillingAutomationRuleSerializer,
     CreditNoteSerializer,
     FacilityBillingConfigCreateSerializer,
     FacilityBillingConfigSerializer,
@@ -32,6 +33,29 @@ from hmis.apps.billing.serializers import (
 )
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
+    (
+        BillingAutomationRuleSerializer,
+        frozenset(
+            {
+                "created_at",
+                "description_template",
+                "encounter_types",
+                "id",
+                "is_active",
+                "item_type",
+                "name",
+                "quantity",
+                "recurrence",
+                "repeat_every_days",
+                "service",
+                "service_code",
+                "service_name",
+                "trigger",
+                "unit_price_override",
+                "updated_at",
+            }
+        ),
+    ),
     (
         CreditNoteSerializer,
         frozenset(
@@ -64,6 +88,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "auto_finalize_on_checkout",
+                "automation_rules",
                 "bank_account_number",
                 "bank_branch",
                 "bank_name",
@@ -107,6 +132,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "auto_finalize_on_checkout",
+                "automation_rules",
                 "bank_account_number",
                 "bank_branch",
                 "bank_name",
@@ -161,6 +187,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "drug",
                 "drug_name",
                 "id",
+                "inpatient_consumable_usage",
                 "insurance_approved_amount",
                 "invoice",
                 "is_converted",
@@ -175,7 +202,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "surgery_case",
                 "surgery_case_number",
                 "theatre_consumable",
-                "inpatient_consumable_usage",
                 "unit_price",
                 "updated_at",
             }

@@ -9,6 +9,9 @@ Re-run the script to update after serializer changes:
 import pytest  # type: ignore
 
 from hmis.apps.procedures.serializers import (
+    ExternalProcedureOrderRequestCreateSerializer,
+    ExternalProcedureOrderRequestListSerializer,
+    ExternalProcedureOrderRequestRejectSerializer,
     ProcedureCancelSerializer,
     ProcedureCatalogDetailSerializer,
     ProcedureCatalogListSerializer,
@@ -28,6 +31,60 @@ from hmis.apps.procedures.serializers import (
 )
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
+    (
+        ExternalProcedureOrderRequestCreateSerializer,
+        frozenset(
+            {
+                "body_site",
+                "clinical_notes",
+                "encounter",
+                "indication",
+                "laterality",
+                "patient",
+                "priority",
+                "procedure",
+                "referring_clinician",
+                "sending_facility",
+            }
+        ),
+    ),
+    (
+        ExternalProcedureOrderRequestListSerializer,
+        frozenset(
+            {
+                "body_site",
+                "clinical_notes",
+                "created_at",
+                "encounter",
+                "id",
+                "indication",
+                "laterality",
+                "patient",
+                "patient_name",
+                "priority",
+                "procedure",
+                "procedure_name",
+                "procedure_order",
+                "procedure_order_number",
+                "processed_at",
+                "processed_by",
+                "referring_clinician",
+                "rejection_reason",
+                "request_number",
+                "sending_facility",
+                "status",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        ExternalProcedureOrderRequestRejectSerializer,
+        frozenset(
+            {
+                "reason",
+            }
+        ),
+    ),
     (
         ProcedureCancelSerializer,
         frozenset(
