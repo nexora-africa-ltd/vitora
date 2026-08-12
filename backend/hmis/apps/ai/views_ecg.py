@@ -22,6 +22,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 
 from .client import TibaBotError, TibaBotUnavailableError, get_tibabot_client
 from .feature_flags import AIFeatureGatedMixin
@@ -134,7 +135,7 @@ class ECGInterpretView(AIFeatureGatedMixin, APIView):
     POST /api/ai/ecg/interpret/
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = ECGInterpretRequestSerializer(data=request.data)
@@ -178,7 +179,7 @@ class ECGCompareView(AIFeatureGatedMixin, APIView):
     POST /api/ai/ecg/compare/
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = ECGCompareRequestSerializer(data=request.data)
@@ -222,7 +223,7 @@ class ECGUploadView(AIFeatureGatedMixin, APIView):
     Max file size: 10 MB.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     parser_classes = [MultiPartParser]
 
     ALLOWED_EXTENSIONS = {
@@ -303,7 +304,7 @@ class ECGReportView(AIFeatureGatedMixin, APIView):
     Returns: application/pdf
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> HttpResponse:
         serializer = ECGReportRequestSerializer(data=request.data)
@@ -345,7 +346,7 @@ class ECGScoreCHA2DS2VAScView(AIFeatureGatedMixin, APIView):
     POST /api/ai/ecg/scores/cha2ds2-vasc/
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = CHA2DS2VAScRequestSerializer(data=request.data)
@@ -385,7 +386,7 @@ class ECGScoreHASBLEDView(AIFeatureGatedMixin, APIView):
     POST /api/ai/ecg/scores/has-bled/
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = HASBLEDRequestSerializer(data=request.data)

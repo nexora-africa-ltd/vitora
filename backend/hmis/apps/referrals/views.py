@@ -17,6 +17,7 @@ from rest_framework.response import Response
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.referrals.models import ClinicalReferral
 from hmis.apps.referrals.permissions import (
     ReferralActionPermission,
@@ -89,7 +90,7 @@ class ClinicalReferralViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "destination_clinic",
         "clinic_visit",
     )
-    permission_classes = [IsAuthenticated, ReferralActionPermission]
+    permission_classes = [IsAuthenticated, ReferralActionPermission, ReadRequiresModelPermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,

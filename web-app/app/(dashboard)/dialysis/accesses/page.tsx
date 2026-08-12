@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { useVascularAccesses } from '@/lib/hooks/use-dialysis';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { formatDate } from '@/lib/utils/format';
 import type { VascularAccess } from '@/lib/types/dialysis';
@@ -23,6 +24,7 @@ import { ACCESS_STATUS_COLORS, ACCESS_TYPE_LABELS } from '@/lib/types/dialysis';
 
 export default function VascularAccessPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { refresh, isRefreshing } = usePageRefresh();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -95,7 +97,7 @@ export default function VascularAccessPage() {
           helpContent="Track patient vascular access sites for dialysis. Monitor AV fistulas, grafts, and central venous catheters."
           actions={
             <PermissionGate action="dialysis.manage">
-              <Button onClick={() => router.push('/dialysis/accesses/new')}>
+              <Button onClick={() => router.push('/dialysis/accesses/new')} disabled={!canCreateRoute('/dialysis/accesses/new')}>
                 <Plus className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">New Access</span>
                 <span className="sm:hidden">New</span>

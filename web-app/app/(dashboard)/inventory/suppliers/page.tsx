@@ -14,6 +14,7 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { inventoryApi } from '@/lib/api/inventory';
 import type { Supplier, SupplierType } from '@/lib/types/inventory';
 
@@ -33,6 +34,7 @@ const supplierTypeColors: Record<SupplierType, string> = {
 
 export default function SuppliersPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { refresh, isRefreshing } = usePageRefresh();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -64,7 +66,7 @@ export default function SuppliersPage() {
           title="Suppliers"
           helpContent="Manage vendor and supplier relationships. Suppliers are shared across all facilities in your organization."
           actions={
-            <Button onClick={() => router.push('/inventory/suppliers/new')} className="gap-2 w-full sm:w-auto">
+            <Button onClick={() => router.push('/inventory/suppliers/new')} disabled={!canCreateRoute('/inventory/suppliers/new')} className="gap-2 w-full sm:w-auto">
               <Plus className="h-4 w-4" />
               Add Supplier
             </Button>

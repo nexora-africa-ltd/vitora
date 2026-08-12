@@ -18,6 +18,7 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.licensing.permissions import requires_feature
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,11 @@ class ClaimBatchValidateView(APIView):
     Returns summary with ready/invalid/missing_docs counts and claim details.
     """
 
-    permission_classes = [IsAuthenticated, requires_feature("sha_claims")]
+    permission_classes = [
+        IsAuthenticated,
+        requires_feature("sha_claims"),
+        ReadRequiresModelPermission,
+    ]
     renderer_classes = [JSONRenderer]
 
     def post(self, request):
@@ -63,7 +68,11 @@ class ClaimBulkSubmitView(APIView):
     Only submits claims that pass validation. Returns detailed results.
     """
 
-    permission_classes = [IsAuthenticated, requires_feature("sha_claims")]
+    permission_classes = [
+        IsAuthenticated,
+        requires_feature("sha_claims"),
+        ReadRequiresModelPermission,
+    ]
     renderer_classes = [JSONRenderer]
 
     def post(self, request):
@@ -104,7 +113,11 @@ class ClaimDailyDigestView(APIView):
     Returns comprehensive summary with counts, amounts, and action items.
     """
 
-    permission_classes = [IsAuthenticated, requires_feature("sha_claims")]
+    permission_classes = [
+        IsAuthenticated,
+        requires_feature("sha_claims"),
+        ReadRequiresModelPermission,
+    ]
     renderer_classes = [JSONRenderer]
 
     def get(self, request):
@@ -134,7 +147,11 @@ class ClaimInterventionSuggestionsView(APIView):
     Returns list of suggested SHA interventions based on clinical data.
     """
 
-    permission_classes = [IsAuthenticated, requires_feature("sha_claims")]
+    permission_classes = [
+        IsAuthenticated,
+        requires_feature("sha_claims"),
+        ReadRequiresModelPermission,
+    ]
     renderer_classes = [JSONRenderer]
 
     def get(self, _request, claim_id):
@@ -194,7 +211,11 @@ class EligibilityPreCheckView(APIView):
     Queues a background eligibility check and caches the result.
     """
 
-    permission_classes = [IsAuthenticated, requires_feature("sha_claims")]
+    permission_classes = [
+        IsAuthenticated,
+        requires_feature("sha_claims"),
+        ReadRequiresModelPermission,
+    ]
     renderer_classes = [JSONRenderer]
 
     def post(self, request):
@@ -239,7 +260,11 @@ class ClaimAutoAttachDocumentsView(APIView):
     clinical notes, then attaches them as claim documents.
     """
 
-    permission_classes = [IsAuthenticated, requires_feature("sha_claims")]
+    permission_classes = [
+        IsAuthenticated,
+        requires_feature("sha_claims"),
+        ReadRequiresModelPermission,
+    ]
     renderer_classes = [JSONRenderer]
 
     def post(self, _request, claim_id):

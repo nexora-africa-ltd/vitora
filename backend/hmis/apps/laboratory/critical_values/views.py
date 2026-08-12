@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.laboratory.permissions import LaboratoryModuleRequired, LISConfigPermission
 
 from .models import CriticalValueNotification, CriticalValueRange
@@ -39,7 +40,12 @@ class CriticalValueRangeFilter(filters.FilterSet):
 class CriticalValueRangeViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """CRUD for critical value ranges."""
 
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISConfigPermission,
+        ReadRequiresModelPermission,
+    ]
     filterset_class = CriticalValueRangeFilter
     tenant_scope = "facility"
     queryset = CriticalValueRange.objects.select_related("test")
@@ -186,7 +192,12 @@ class CriticalValueNotificationFilter(filters.FilterSet):
 class CriticalValueNotificationViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
     """View and manage critical value notifications."""
 
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISConfigPermission,
+        ReadRequiresModelPermission,
+    ]
     filterset_class = CriticalValueNotificationFilter
     tenant_scope = "facility"
     queryset = CriticalValueNotification.objects.select_related(

@@ -24,6 +24,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { inventoryApi } from '@/lib/api/inventory';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 import { getApiErrorMessage } from '@/lib/api/client';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useToast } from '@/lib/hooks/use-toast';
 
 const poItemSchema = z.object({
@@ -50,7 +51,23 @@ function formatCurrency(amount: number): string {
 
 export default function NewPurchaseOrderPage() {
   const router = useRouter();
+  const { hasPermission } = usePermissions();
+  const canCreatePurchaseOrder = hasPermission('inventory.add_purchaseorder');
   const { toast } = useToast();
+
+  if (!canCreatePurchaseOrder) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Purchase Order" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to create purchase orders.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   // Fetch suppliers
   const { data: suppliersData } = useQuery({

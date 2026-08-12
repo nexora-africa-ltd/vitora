@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cdsApi } from '@/lib/api/cds';
 import { formatDateTime } from '@/lib/utils/format';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { toast } from 'sonner';
 
 const STATUS_BADGE_VARIANTS: Record<string, 'secondary' | 'success' | 'warning' | 'outline'> = {
@@ -268,13 +269,27 @@ export default function CDSRuleDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { hasPermission } = usePermissions();
+  const canViewCDSRules = hasPermission('cds.view_cdsrule');
   const ruleId = Number(id);
 
   const { data: rule, isLoading } = useQuery({
     queryKey: ['cds-rule', ruleId],
     queryFn: () => cdsApi.getRule(ruleId),
-    enabled: !isNaN(ruleId),
+    enabled: canViewCDSRules && !isNaN(ruleId),
   });
+
+  if (!canViewCDSRules) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="CDS Rule" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">You do not have permission to view CDS rules.</p>
+        </Card>
+      </div>
+    );
+  }
 
   const activateMutation = useMutation({
     mutationFn: () => cdsApi.activateRule(ruleId),

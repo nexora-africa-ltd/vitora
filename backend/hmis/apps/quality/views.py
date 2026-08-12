@@ -24,6 +24,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 
 from .models import (
     AnnualReport,
@@ -71,7 +72,7 @@ class QuarterlyReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
 
     serializer_class = QuarterlyReportSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["clinic", "year", "quarter", "dhis2_submitted"]
     ordering_fields = ["year", "quarter", "total_visits", "created_at"]
@@ -161,7 +162,7 @@ class AnnualReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for annual reports."""
 
     serializer_class = AnnualReportSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["clinic", "year", "dhis2_submitted"]
     ordering_fields = ["year", "total_visits", "created_at"]
@@ -236,7 +237,7 @@ class QualityMeasureViewSet(viewsets.ModelViewSet):
     """ViewSet for quality measure definitions (CQM)."""
 
     serializer_class = QualityMeasureSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["domain", "status", "reporting_period"]
     search_fields = ["code", "name", "description"]
@@ -453,7 +454,7 @@ class QualityMeasureResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet)
         "measure", "clinic", "calculated_by"
     ).all()
     serializer_class = QualityMeasureResultSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = [
         "measure",
@@ -578,7 +579,7 @@ class QualityDashboardView(APIView):
     Returns aggregate statistics across all quality measures.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     @extend_schema(
         summary="Get quality dashboard data",
@@ -684,7 +685,7 @@ class SDMXImportView(APIView):
     Accepts raw SDMX-ML XML in the request body or as a file upload.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     parser_classes = [MultiPartParser, FormParser]
 
     @extend_schema(
@@ -737,7 +738,7 @@ class BenchmarkDataView(APIView):
     GET /api/quality/benchmarks/?indicator_code=&source=&time_period=
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     @extend_schema(summary="List benchmark observations")
     def get(self, request: Request) -> Response:

@@ -44,6 +44,7 @@ import { proceduresApi } from '@/lib/api/procedures';
 import { usePatientSearch, usePatientLookup, useTodayCheckins, useCheckinPatient } from '@/lib/hooks/use-checkin';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { VISIT_REASON_OPTIONS, type VisitReason, type PatientLookupResponse, type PatientSearchResult } from '@/lib/types/checkin';
 import { cn } from '@/lib/utils';
 import { CheckinSuccessModal, type CheckinSuccessData } from '@/components/patients/checkin-success-modal';
@@ -696,6 +697,7 @@ function RecentCheckinsCard() {
 
 export default function PatientCheckinPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
@@ -1054,7 +1056,7 @@ export default function PatientCheckinPage() {
                 <p className="text-muted-foreground mb-2">No patients found</p>
                 <Button
                   variant="outline"
-                  onClick={() => router.push('/patients/new')}
+                  onClick={() => router.push('/patients/new')} disabled={!canCreateRoute('/patients/new')}
                   size="sm"
                 >
                   Register New Patient

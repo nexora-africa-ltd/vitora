@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { CreateRouteLink } from '@/components/auth/create-route-link';
 import { useRouter } from 'next/navigation';
 import { Plus, Building2, Users, Search, Filter, Network, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
@@ -91,10 +92,10 @@ export default function DepartmentsPage() {
           helpContent="Manage organizational departments, reporting structure, and leadership assignments."
           actions={
             <Button asChild>
-              <Link href="/admin/departments/new">
+              <CreateRouteLink href="/admin/departments/new">
                 <Plus className="mr-2 h-4 w-4" />
                 New Department
-              </Link>
+              </CreateRouteLink>
             </Button>
           }
         />
@@ -118,10 +119,10 @@ export default function DepartmentsPage() {
           helpContent="Manage organizational departments, reporting structure, and leadership assignments."
           actions={
             <Button asChild>
-              <Link href="/admin/departments/new">
+              <CreateRouteLink href="/admin/departments/new">
                 <Plus className="mr-2 h-4 w-4" />
                 New Department
-              </Link>
+              </CreateRouteLink>
             </Button>
           }
         />

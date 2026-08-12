@@ -12,7 +12,11 @@ from rest_framework.response import Response
 from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import WriteRequiresRolePermission, get_client_ip
+from hmis.apps.core.permissions import (
+    ReadRequiresModelPermission,
+    WriteRequiresRolePermission,
+    get_client_ip,
+)
 
 # Immunization models now come from the unified immunizations app
 from hmis.apps.immunizations.models import AEFI as ImmunizationsAEFI
@@ -239,7 +243,7 @@ class MCHRegistrationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         "baby",
         "registered_by",
     )
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -609,7 +613,7 @@ class ANCVisitViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     tenant_org_chain = "registration__organization"
 
     queryset = ANCVisit.objects.select_related("registration", "clinic_visit", "conducted_by")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = ANCVisitFilter
     ordering_fields = ["visit_date", "visit_number"]
@@ -661,7 +665,7 @@ class CommunityScreeningViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     tenant_org_chain = "patient__organization"
 
     queryset = CommunityScreening.objects.select_related("patient", "captured_by")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -729,7 +733,7 @@ class DeliveryViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "admission",
         "partograph",
     )
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -968,7 +972,7 @@ class LabourPartographViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "admission",
         "created_by",
     )
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -1015,7 +1019,7 @@ class LabourPartographObservationViewSet(NestedTenantScopeMixin, viewsets.ModelV
         "partograph__registration",
         "recorded_by",
     )
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = LabourPartographObservationFilter
     ordering_fields = ["observation_time", "created_at"]
@@ -1055,7 +1059,7 @@ class PNCVisitViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "clinic_visit",
         "conducted_by",
     )
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = PNCVisitFilter
     ordering_fields = ["visit_date", "visit_number"]
@@ -1105,7 +1109,7 @@ class GrowthMeasurementViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     tenant_org_chain = "encounter__organization"
 
     queryset = GrowthMeasurement.objects.select_related("patient", "measured_by")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = GrowthMeasurementFilter
     ordering_fields = ["measurement_date", "created_at"]
@@ -1260,7 +1264,7 @@ class VaccineViewSet(viewsets.ReadOnlyModelViewSet):
     """
 
     queryset = VaccineDefinition.objects.filter(is_active=True, program="KEPI")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     serializer_class = ImmVaccineSerializer
     pagination_class = None  # Small reference dataset, return flat array
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
@@ -1280,7 +1284,7 @@ class ImmunizationRecordViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     queryset = ImmunizationsImmunizationRecord.objects.select_related(
         "patient", "vaccine", "administered_by"
     )
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = ImmunizationRecordFilter
     ordering_fields = ["scheduled_date", "created_at", "status"]
@@ -1408,7 +1412,7 @@ class VitaminASupplementViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     tenant_org_chain = "patient__organization"
 
     queryset = VitaminASupplement.objects.select_related("patient", "administered_by")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     serializer_class = VitaminASupplementSerializer
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = VitaminASupplementFilter
@@ -1437,7 +1441,7 @@ class AEFIViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     tenant_org_chain = "immunization_record__patient__organization"
 
     queryset = ImmunizationsAEFI.objects.select_related("immunization_record", "investigated_by")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = AEFIFilter
     ordering_fields = ["event_date", "created_at"]
@@ -1470,7 +1474,7 @@ class HEIFollowUpViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     tenant_org_chain = "mch_registration__organization"
 
     queryset = HEIFollowUp.objects.select_related("infant", "mch_registration", "enrolled_by")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = HEIFollowUpFilter
     ordering_fields = ["enrollment_date", "created_at", "status"]
@@ -1594,7 +1598,7 @@ class HEIPCRTestViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     tenant_org_chain = "hei_followup__mch_registration__organization"
 
     queryset = HEIPCRTest.objects.select_related("hei_followup")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     serializer_class = HEIPCRTestSerializer
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     ordering_fields = ["scheduled_date", "actual_date", "created_at"]

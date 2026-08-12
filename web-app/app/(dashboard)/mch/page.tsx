@@ -23,6 +23,7 @@ import { useDebounce } from '@/lib/hooks/use-debounce';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useFacility } from '@/lib/context/facility-context';
 import { useMCHSocket } from '@/lib/hooks/use-websocket';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { formatDate } from '@/lib/utils/format';
 import { mchRegistrationsApi } from '@/lib/api/mch';
 import type { MCHRegistrationListItem, MCHRegistrationStatus } from '@/lib/types/mch';
@@ -50,6 +51,7 @@ const statusColors: Record<MCHRegistrationStatus, string> = {
 
 export default function MCHRegistrationsPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { refresh, isRefreshing } = usePageRefresh();
   const { facility } = useFacility();
   useMCHSocket(facility?.id ?? null);
@@ -98,7 +100,7 @@ export default function MCHRegistrationsPage() {
           title="MCH Registrations"
           helpContent="Manage maternal and child health registrations. Track pregnancies from ANC through delivery and postnatal care."
           actions={
-            <Button onClick={() => router.push('/mch/new')} className="gap-2 w-full sm:w-auto">
+            <Button onClick={() => router.push('/mch/new')} disabled={!canCreateRoute('/mch/new')} className="gap-2 w-full sm:w-auto">
               <Plus className="h-4 w-4" />
               New Registration
             </Button>

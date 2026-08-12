@@ -16,11 +16,13 @@ import {
 } from '@/components/ui/select';
 import { useBloodDonors } from '@/lib/hooks/use-blood-bank';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import type { BloodDonorListItem } from '@/lib/types/blood-bank';
 
 export default function BloodDonorsPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { refresh, isRefreshing } = usePageRefresh();
   const [search, setSearch] = useState('');
   const [bloodGroupFilter, setBloodGroupFilter] = useState<string>('');
@@ -101,7 +103,7 @@ export default function BloodDonorsPage() {
           helpContent="Register and manage blood donors. Track eligibility based on donation intervals."
           actions={
             <PermissionGate action="blood_bank.manage">
-              <Button onClick={() => router.push('/blood-bank/donors/new')}>
+              <Button onClick={() => router.push('/blood-bank/donors/new')} disabled={!canCreateRoute('/blood-bank/donors/new')}>
                 <Plus className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Register Donor</span>
                 <span className="sm:hidden">New</span>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { CreateRouteLink } from '@/components/auth/create-route-link';
 import { Plus, Clock, CheckCircle, AlertCircle, User } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -75,10 +76,10 @@ export default function HandoverListPage() {
         helpContent="View and acknowledge shift handover reports between nursing shifts."
         actions={
           <Button asChild>
-            <Link href="/admissions/handover/new">
+            <CreateRouteLink href="/admissions/handover/new">
               <Plus className="h-4 w-4 mr-2" />
               New Handover
-            </Link>
+            </CreateRouteLink>
           </Button>
         }
       />

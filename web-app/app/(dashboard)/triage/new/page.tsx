@@ -32,6 +32,7 @@ import { useIdempotencyKey } from '@/lib/utils';
 import { LEGACY_TRIAGE_FLOW } from '@/lib/utils/constants';
 import { encountersApi } from '@/lib/api/encounters';
 import { triageApi } from '@/lib/api/triage';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { TriageAssessmentCreateData } from '@/lib/types/triage';
 import type { Patient } from '@/lib/types/patient';
 import type { AIQuickAction } from '@/lib/types/ai';
@@ -39,6 +40,22 @@ import type { AIQuickAction } from '@/lib/types/ai';
 export default function NewTriagePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { hasPermission } = usePermissions();
+  const canCreateTriage = hasPermission('triage.add_triageassessment');
+
+  if (!canCreateTriage) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Triage Assessment" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to create triage assessments.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   // Get patient/encounter from query params
   const patientIdParam = searchParams.get('patientId');

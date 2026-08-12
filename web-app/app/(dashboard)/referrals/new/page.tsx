@@ -33,6 +33,7 @@ import { toast } from '@/lib/hooks/use-toast';
 import { referralsApi } from '@/lib/api/referrals';
 import { encountersApi } from '@/lib/api/encounters';
 import { getApiErrorMessage } from '@/lib/api/client';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { Patient } from '@/lib/types/patient';
 import type { Encounter } from '@/lib/types/encounter';
 import {
@@ -47,6 +48,22 @@ export default function NewReferralPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const { hasPermission } = usePermissions();
+  const canCreateReferral = hasPermission('referrals.add_clinicalreferral');
+
+  if (!canCreateReferral) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Referral" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to create referrals.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   // Pre-fill from URL params
   const prePatientId = searchParams.get('patient')

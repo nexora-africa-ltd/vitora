@@ -51,7 +51,12 @@ from .models import (
     UserCertificate,
     Ward,
 )
-from .permissions import AuditLogPermission, FacilityAdminPermission, WriteRequiresRolePermission
+from .permissions import (
+    AuditLogPermission,
+    FacilityAdminPermission,
+    ReadRequiresModelPermission,
+    WriteRequiresRolePermission,
+)
 from .role_permissions_sync import sync_role_group_permissions
 from .serializers import (
     AuditLogSerializer,
@@ -372,7 +377,7 @@ class FrontendEventViewSet(viewsets.GenericViewSet):
 
     queryset = FrontendEvent.objects.all()
     serializer_class = FrontendEventSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_fields = ["event_type", "resource_type", "session_id", "was_offline"]
     search_fields = ["event_type", "resource_type", "session_id"]
     ordering_fields = ["server_timestamp", "client_timestamp"]
@@ -445,7 +450,7 @@ class PermissionViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericView
 
     queryset = Permission.objects.select_related("content_type").all()
     serializer_class = PermissionSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["codename", "name", "content_type__app_label"]
     ordering_fields = ["codename", "name"]
@@ -467,7 +472,7 @@ class CodeSystemViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericView
 
     queryset = CodeSystem.objects.filter(is_active=True)
     serializer_class = CodeSystemSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["slug", "name", "publisher", "description"]
     ordering_fields = ["slug", "name", "created_at"]
@@ -515,7 +520,7 @@ class WardViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet):
 
     queryset = Ward.objects.select_related("sub_county").all()
     serializer_class = WardSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name"]
     ordering_fields = ["name"]
@@ -700,7 +705,11 @@ class DepartmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if self.action in ["create", "update", "partial_update", "destroy"]:
             permission_classes = [IsAdminUser]
         else:
-            permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+            permission_classes = [
+                IsAuthenticated,
+                WriteRequiresRolePermission,
+                ReadRequiresModelPermission,
+            ]
         return [permission() for permission in permission_classes]
 
     def perform_create(self, serializer):
@@ -860,7 +869,11 @@ class RoleViewSet(viewsets.ModelViewSet):
         if self.action in ["create", "update", "partial_update", "destroy"]:
             permission_classes = [IsAdminUser]
         else:
-            permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+            permission_classes = [
+                IsAuthenticated,
+                WriteRequiresRolePermission,
+                ReadRequiresModelPermission,
+            ]
         return [permission() for permission in permission_classes]
 
     def perform_create(self, serializer):
@@ -1057,7 +1070,11 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if self.action in ["create", "destroy", "reset_password"]:
             permission_classes = [FacilityAdminPermission]
         else:
-            permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+            permission_classes = [
+                IsAuthenticated,
+                WriteRequiresRolePermission,
+                ReadRequiresModelPermission,
+            ]
         return [permission() for permission in permission_classes]
 
     def create(self, request, *args, **kwargs):
@@ -1560,7 +1577,11 @@ class OrgMembershipViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if self.action in ["create", "update", "partial_update", "destroy"]:
             permission_classes = [IsAdminUser]
         else:
-            permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+            permission_classes = [
+                IsAuthenticated,
+                WriteRequiresRolePermission,
+                ReadRequiresModelPermission,
+            ]
         return [permission() for permission in permission_classes]
 
     def create(self, request, *args, **kwargs):
@@ -1691,7 +1712,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
 
     queryset = Notification.objects.all()
     serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["created_at", "priority"]
     ordering = ["-created_at"]
@@ -1788,7 +1809,7 @@ class PushSubscriptionViewSet(viewsets.ModelViewSet):
 
     queryset = PushSubscription.objects.none()
     serializer_class = PushSubscriptionSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     http_method_names = ["get", "post", "delete", "head", "options"]
 
     def get_queryset(self):
@@ -2152,7 +2173,7 @@ class FeatureFlagViewSet(ListModelMixin, viewsets.GenericViewSet):
 
     queryset = FeatureFlag.objects.all()
     serializer_class = FeatureFlagSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     pagination_class = None  # Always return all flags
 
     @action(detail=False, methods=["get"])
@@ -2395,9 +2416,17 @@ class FacilityViewSet(viewsets.ModelViewSet):
         or tenant ADMIN/ORG-ADMIN/OWNER roles).
         """
         if self.action in ["create", "update", "partial_update", "destroy"]:
-            permission_classes = [IsAuthenticated, FacilityAdminPermission]
+            permission_classes = [
+                IsAuthenticated,
+                FacilityAdminPermission,
+                ReadRequiresModelPermission,
+            ]
         else:
-            permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+            permission_classes = [
+                IsAuthenticated,
+                WriteRequiresRolePermission,
+                ReadRequiresModelPermission,
+            ]
         return [permission() for permission in permission_classes]
 
     def get_queryset(self):
@@ -2888,7 +2917,7 @@ class CertificateViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelM
         "certificate_authority__organization",
     ).all()
     serializer_class = UserCertificateSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_fields = ["user", "is_revoked"]
     ordering = ["-created_at"]
 
@@ -3109,7 +3138,7 @@ class DocumentSignatureViewSet(viewsets.GenericViewSet, ListModelMixin, Retrieve
 
     queryset = DocumentSignature.objects.select_related("signer", "certificate").all()
     serializer_class = DocumentSignatureSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_fields = ["document_type", "signer"]
     ordering = ["-signed_at"]
 
@@ -3402,7 +3431,7 @@ class DocumentShareViewSet(viewsets.GenericViewSet, ListModelMixin):
     """User-to-user share management for signable documents."""
 
     queryset = DocumentShare.objects.select_related("shared_by", "shared_with", "revoked_by")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -3493,7 +3522,7 @@ class DocumentShareViewSet(viewsets.GenericViewSet, ListModelMixin):
 class DocumentHubViewSet(viewsets.ViewSet):
     """Unified document listing for owned and shared clinical documents."""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @action(
         detail=False,

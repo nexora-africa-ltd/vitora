@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.laboratory.permissions import LaboratoryModuleRequired, LISWorksheetPermission
 
 from .models import LabelPrintJob, LabelTemplate, Worksheet, WorksheetTemplate
@@ -45,7 +46,12 @@ class WorksheetTemplateFilter(filters.FilterSet):
 class WorksheetTemplateViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """CRUD for worksheet templates."""
 
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISWorksheetPermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISWorksheetPermission,
+        ReadRequiresModelPermission,
+    ]
     filterset_class = WorksheetTemplateFilter
     tenant_scope = "facility"
     queryset = WorksheetTemplate.objects.select_related("instrument")
@@ -189,7 +195,12 @@ class WorksheetFilter(filters.FilterSet):
 class WorksheetViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
     """View generated worksheets."""
 
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISWorksheetPermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISWorksheetPermission,
+        ReadRequiresModelPermission,
+    ]
     filterset_class = WorksheetFilter
     tenant_scope = "facility"
     queryset = Worksheet.objects.select_related("template", "generated_by")
@@ -255,7 +266,12 @@ class LabelTemplateFilter(filters.FilterSet):
 class LabelTemplateViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """CRUD for label templates."""
 
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISWorksheetPermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISWorksheetPermission,
+        ReadRequiresModelPermission,
+    ]
     filterset_class = LabelTemplateFilter
     tenant_scope = "facility"
     queryset = LabelTemplate.objects.all()
@@ -287,7 +303,12 @@ class LabelPrintJobFilter(filters.FilterSet):
 class LabelPrintJobViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
     """View and manage label print jobs."""
 
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISWorksheetPermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISWorksheetPermission,
+        ReadRequiresModelPermission,
+    ]
     filterset_class = LabelPrintJobFilter
     tenant_scope = "facility"
     queryset = LabelPrintJob.objects.select_related("template", "generated_by")

@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
-from hmis.apps.core.permissions import RequiresActiveShiftPermission
+from hmis.apps.core.permissions import ReadRequiresModelPermission, RequiresActiveShiftPermission
 from hmis.apps.pharmacy.permissions import PharmacyModuleRequired, PharmacyStandaloneRequired
 from hmis.apps.pharmacy.serializers import PrescriptionSerializer
 
@@ -36,6 +36,7 @@ class WalkInCustomerViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
         PharmacyModuleRequired,
         RequiresActiveShiftPermission,
         PharmacyStandaloneRequired,
+        ReadRequiresModelPermission,
     ]
     filter_backends = [filters.SearchFilter]
     search_fields = ["first_name", "last_name", "registration_number"]
@@ -84,6 +85,7 @@ class StandalonePrescriptionViewSet(TenantScopedViewMixin, viewsets.GenericViewS
         PharmacyModuleRequired,
         RequiresActiveShiftPermission,
         PharmacyStandaloneRequired,
+        ReadRequiresModelPermission,
     ]
 
     def get_serializer_class(self):
@@ -117,6 +119,7 @@ class ExternalPrescriptionRequestViewSet(TenantScopedViewMixin, viewsets.ModelVi
         PharmacyModuleRequired,
         RequiresActiveShiftPermission,
         PharmacyStandaloneRequired,
+        ReadRequiresModelPermission,
     ]
     http_method_names = ["get", "post", "head", "options"]
 

@@ -26,12 +26,15 @@ import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useFacility } from '@/lib/context';
 import { GENDER_OPTIONS } from '@/lib/utils/constants';
 import { organizationsApi } from '@/lib/api/organizations';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 export default function PatientsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refresh, isRefreshing } = usePageRefresh();
   const { facility, organization } = useFacility();
+  const { hasPermission } = usePermissions();
+  const canCreatePatient = hasPermission('patients.add_patient');
 
   // Check if we're in select mode (coming from another page that needs a patient)
   const selectMode = searchParams.get('select') === 'true';
@@ -104,10 +107,12 @@ export default function PatientsPage() {
           }
           actions={
             !selectMode && (
-              <Button onClick={() => router.push('/patients/new')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Register Patient
-              </Button>
+              canCreatePatient ? (
+                <Button onClick={() => router.push('/patients/new')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Register Patient
+                </Button>
+              ) : undefined
             )
           }
         />

@@ -24,6 +24,7 @@ import { toast } from '@/lib/hooks/use-toast';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { proceduresApi } from '@/lib/api/procedures';
 import { getApiErrorMessage } from '@/lib/api/client';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { formatCurrency } from '@/lib/utils/format';
 import type { ProcedureCatalogEntry } from '@/lib/types/procedure';
 import { RISK_LEVEL_COLORS } from '@/lib/types/procedure';
@@ -33,6 +34,22 @@ export default function NewProcedureOrderPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const { hasPermission } = usePermissions();
+  const canCreateProcedureOrder = hasPermission('procedures.add_procedureorder');
+
+  if (!canCreateProcedureOrder) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Procedure Order" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to create procedure orders.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   // Pre-fill from URL params (e.g., linked from encounter, clinic visit, or admission)
   const prePatientId = searchParams.get('patient')

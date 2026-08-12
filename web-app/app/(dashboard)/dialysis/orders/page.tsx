@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { useDialysisOrders } from '@/lib/hooks/use-dialysis';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useFacility } from '@/lib/context/facility-context';
 import { formatDate } from '@/lib/utils/format';
@@ -24,6 +25,7 @@ import { ORDER_STATUS_COLORS, DIALYSIS_TYPE_LABELS, FREQUENCY_LABELS } from '@/l
 
 export default function DialysisOrdersPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { hasModule } = useFacility();
   const { refresh, isRefreshing } = usePageRefresh();
   const [search, setSearch] = useState('');
@@ -97,7 +99,7 @@ export default function DialysisOrdersPage() {
           actions={
             hasModule('dialysis') ? (
               <PermissionGate action="dialysis.create_order">
-                <Button onClick={() => router.push('/dialysis/orders/new')}>
+                <Button onClick={() => router.push('/dialysis/orders/new')} disabled={!canCreateRoute('/dialysis/orders/new')}>
                   <Plus className="h-4 w-4 mr-2" />
                   <span className="hidden sm:inline">New Order</span>
                   <span className="sm:hidden">New</span>

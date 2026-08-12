@@ -70,6 +70,56 @@ class CDSAlertFilter(django_filters.FilterSet):
         fields = ["status", "priority", "patient", "encounter", "rule", "category"]
 
 
+class CDSRulePermission(permissions.BasePermission):
+    """Enforce Django permissions for CDS rule endpoints."""
+
+    def has_permission(self, request: Request, view) -> bool:
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+
+        action = getattr(view, "action", "")
+        if request.method in permissions.SAFE_METHODS:
+            return user.has_perm("cds.view_cdsrule")
+        if action == "create":
+            return user.has_perm("cds.add_cdsrule")
+        if action in {"update", "partial_update", "activate", "deactivate", "retire"}:
+            return user.has_perm("cds.change_cdsrule")
+        if action == "destroy":
+            return user.has_perm("cds.delete_cdsrule")
+        if action == "evaluate":
+            return user.has_perm("cds.view_cdsrule")
+        return user.has_perm("cds.change_cdsrule")
+
+
+class CDSAlertPermission(permissions.BasePermission):
+    """Enforce Django permissions for CDS alert endpoints."""
+
+    def has_permission(self, request: Request, view) -> bool:
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+
+        action = getattr(view, "action", "")
+        if request.method in permissions.SAFE_METHODS:
+            return user.has_perm("cds.view_cdsalert")
+        if action in {"acknowledge", "accept", "override", "dismiss"}:
+            return user.has_perm("cds.change_cdsalert")
+        if action == "evaluate_encounter":
+            return user.has_perm("cds.add_cdsalert")
+        if action == "create":
+            return user.has_perm("cds.add_cdsalert")
+        if action in {"update", "partial_update"}:
+            return user.has_perm("cds.change_cdsalert")
+        if action == "destroy":
+            return user.has_perm("cds.delete_cdsalert")
+        return user.has_perm("cds.change_cdsalert")
+
+
 # ──────────────────────────── Rule ViewSet ────────────────────────────
 
 
@@ -86,7 +136,7 @@ class CDSRuleViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
 
     queryset = CDSRule.objects.select_related("created_by", "approved_by").all()
     serializer_class = CDSRuleSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [CDSRulePermission]
     filterset_class = CDSRuleFilter
     search_fields = ["code", "name", "description"]
     ordering_fields = ["code", "name", "category", "priority", "status", "created_at"]
@@ -244,7 +294,7 @@ class CDSAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         "rule", "patient", "encounter", "resolved_by", "triggered_by"
     ).all()
     serializer_class = CDSAlertSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [CDSAlertPermission]
     filterset_class = CDSAlertFilter
     search_fields = [
         "message",

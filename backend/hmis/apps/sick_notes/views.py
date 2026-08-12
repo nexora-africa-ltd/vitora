@@ -19,6 +19,7 @@ from rest_framework.response import Response
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.sick_notes.models import SickNote
 from hmis.apps.sick_notes.serializers import (
     SickNoteCreateSerializer,
@@ -62,7 +63,7 @@ class SickNoteViewSet(ReadOnCreateMixin, NestedTenantScopeMixin, viewsets.ModelV
     queryset = SickNote.objects.select_related(
         "patient", "encounter", "issued_by", "revoked_by", "cancelled_by"
     )
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_class = SickNoteFilter
     ordering_fields = ["created_at", "leave_start_date", "note_number"]
     ordering = ["-created_at"]

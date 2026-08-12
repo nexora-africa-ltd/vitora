@@ -20,6 +20,7 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { inventoryApi } from '@/lib/api/inventory';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import type { StockCount, StockCountStatus, StockCountType } from '@/lib/types/inventory';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 
 const statusLabels: Record<StockCountStatus, string> = {
   DRAFT: 'Draft',
@@ -51,6 +52,7 @@ const typeColors: Record<StockCountType, string> = {
 
 export default function StockCountsPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { refresh, isRefreshing } = usePageRefresh();
 
   const { data: capabilities } = useQuery({
@@ -87,7 +89,7 @@ export default function StockCountsPage() {
           helpContent="Physical stock verification sessions. Create a count, generate items from current batches, record physical quantities, then approve to auto-create adjustments for variances."
           actions={
             capabilities?.can_initiate ? (
-              <Button onClick={() => router.push('/inventory/stock-counts/new')}>
+              <Button onClick={() => router.push('/inventory/stock-counts/new')} disabled={!canCreateRoute('/inventory/stock-counts/new')}>
                 <ClipboardList className="mr-2 h-4 w-4" />
                 New Count
               </Button>

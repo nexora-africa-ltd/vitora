@@ -29,9 +29,11 @@ import {
 } from 'lucide-react';
 import { useAlliedHealthDashboard } from '@/lib/hooks/use-allied-health';
 import { useClinicVisits } from '@/lib/hooks/use-clinics';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 
 export default function PhysiotherapyDashboardPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const [activeTab, setActiveTab] = useState('queue');
 
   const { data: dashboardStats, isLoading: statsLoading } = useAlliedHealthDashboard();
@@ -58,7 +60,7 @@ export default function PhysiotherapyDashboardPage() {
         title="Physiotherapy Services"
         helpContent="Manage physiotherapy orders, treatment sessions, and patient rehabilitation progress."
         actions={
-          <Button onClick={() => router.push('/allied-health/physiotherapy/orders/new')}>
+          <Button onClick={() => router.push('/allied-health/physiotherapy/orders/new')} disabled={!canCreateRoute('/allied-health/physiotherapy/orders/new')}>
             <Plus className="h-4 w-4 mr-2" />
             New Order
           </Button>

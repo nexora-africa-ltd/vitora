@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from hmis.apps.analytics.permissions import CanViewAnalytics
 from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 
 from .models import MOH705Report, MOH711Report, MOH717Report, MOHReportStatus
 from .serializers import (
@@ -155,7 +156,7 @@ class MOHReportActionsMixin:
 
 class MOH705ReportViewSet(MOHReportActionsMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = MOH705Report.objects.select_related("facility", "generated_by", "approved_by")
-    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    permission_classes = [IsAuthenticated, CanViewAnalytics, ReadRequiresModelPermission]
     tenant_scope = "facility"
     generator_class = MOH705Generator
     report_type_label = "MOH 705"
@@ -173,7 +174,7 @@ class MOH705ReportViewSet(MOHReportActionsMixin, TenantScopedViewMixin, viewsets
 
 class MOH711ReportViewSet(MOHReportActionsMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = MOH711Report.objects.select_related("facility", "generated_by", "approved_by")
-    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    permission_classes = [IsAuthenticated, CanViewAnalytics, ReadRequiresModelPermission]
     tenant_scope = "facility"
     generator_class = MOH711Generator
     report_type_label = "MOH 711"
@@ -191,7 +192,7 @@ class MOH711ReportViewSet(MOHReportActionsMixin, TenantScopedViewMixin, viewsets
 
 class MOH717ReportViewSet(MOHReportActionsMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = MOH717Report.objects.select_related("facility", "generated_by", "approved_by")
-    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    permission_classes = [IsAuthenticated, CanViewAnalytics, ReadRequiresModelPermission]
     tenant_scope = "facility"
     generator_class = MOH717Generator
     report_type_label = "MOH 717"

@@ -19,7 +19,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
-from hmis.apps.core.permissions import RequiresActiveShiftPermission, WriteRequiresRolePermission
+from hmis.apps.core.permissions import (
+    ReadRequiresModelPermission,
+    RequiresActiveShiftPermission,
+    WriteRequiresRolePermission,
+)
 from hmis.apps.inventory.filters import (
     ConsumptionRecordFilter,
     DemandForecastFilter,
@@ -99,7 +103,7 @@ class PaymentTermViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = PaymentTerm.objects.all()
     serializer_class = PaymentTermSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_scope = "organization"
     search_fields = ["code", "name"]
 
@@ -113,7 +117,7 @@ class SupplierViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelVi
     """CRUD for suppliers. Organization-scoped."""
 
     queryset = Supplier.objects.all()
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = SupplierFilter
     search_fields = ["name", "code", "contact_person"]
     tenant_scope = "organization"
@@ -143,7 +147,11 @@ class PurchaseOrderViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mo
     queryset = PurchaseOrder.objects.select_related(
         "supplier", "ordered_by", "approved_by"
     ).prefetch_related("items__drug")
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filterset_class = PurchaseOrderFilter
     tenant_scope = "facility"
 
@@ -177,7 +185,11 @@ class PurchaseOrderViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mo
     @action(
         detail=True,
         methods=["post"],
-        permission_classes=[IsAuthenticated, RequiresActiveShiftPermission],
+        permission_classes=[
+            IsAuthenticated,
+            ReadRequiresModelPermission,
+            RequiresActiveShiftPermission,
+        ],
     )
     def approve(self, request, pk=None):
         """SUBMITTED → APPROVED. Requires ``inventory.approve_purchase_order``."""
@@ -229,7 +241,11 @@ class GoodsReceiptNoteViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets
     queryset = GoodsReceiptNote.objects.select_related(
         "supplier", "purchase_order", "received_by", "confirmed_by"
     ).prefetch_related("items__drug", "items__po_item", "items__stock_batch")
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filterset_class = GoodsReceiptNoteFilter
     tenant_scope = "facility"
 
@@ -296,7 +312,7 @@ class StoreLocationViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mo
     """CRUD for store locations within a facility. Facility-scoped."""
 
     queryset = StoreLocation.objects.select_related("managed_by")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = StoreLocationFilter
     search_fields = ["name", "code"]
     tenant_scope = "facility"
@@ -325,7 +341,11 @@ class StockTransferViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mo
         "dispatched_by",
         "received_by",
     ).prefetch_related("items__drug", "items__source_batch", "items__destination_batch")
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filterset_class = StockTransferFilter
     tenant_scope = "organization"
 
@@ -359,7 +379,11 @@ class StockTransferViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mo
     @action(
         detail=True,
         methods=["post"],
-        permission_classes=[IsAuthenticated, RequiresActiveShiftPermission],
+        permission_classes=[
+            IsAuthenticated,
+            ReadRequiresModelPermission,
+            RequiresActiveShiftPermission,
+        ],
     )
     def approve(self, request, pk=None):
         """REQUESTED → APPROVED. Requires ``inventory.approve_stock_transfer``."""
@@ -435,7 +459,11 @@ class WardStockViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelV
     """CRUD + consume/replenish/return for ward stock levels. Facility-scoped."""
 
     queryset = WardStock.objects.select_related("store_location", "drug", "ward")
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filterset_class = WardStockFilter
     tenant_scope = "facility"
 
@@ -561,7 +589,7 @@ class WardStockTransactionViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelV
         "patient",
     )
     serializer_class = WardStockTransactionSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = WardStockTransactionFilter
     tenant_scope = "facility"
     tenant_facility_field = "ward_stock__facility"
@@ -576,7 +604,11 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
     """CRUD + lifecycle actions for stock counts. Facility-scoped."""
 
     queryset = StockCount.objects.select_related("store_location", "started_by", "approved_by")
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filterset_class = StockCountFilter
     tenant_scope = "facility"
 
@@ -699,7 +731,11 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
     @action(
         detail=True,
         methods=["post"],
-        permission_classes=[IsAuthenticated, RequiresActiveShiftPermission],
+        permission_classes=[
+            IsAuthenticated,
+            ReadRequiresModelPermission,
+            RequiresActiveShiftPermission,
+        ],
     )
     def approve(self, request, pk=None):
         """COMPLETED → APPROVED. Requires ``inventory.approve_stock_count``."""
@@ -818,7 +854,7 @@ class ETIMSConfigViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
     """
 
     queryset = ETIMSConfig.objects.all()
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_scope = "facility"
 
     def check_write_permission(self, request):
@@ -882,7 +918,7 @@ class ETIMSInvoiceViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mod
     queryset = ETIMSInvoice.objects.select_related(
         "invoice__patient", "dispensing"
     ).prefetch_related("items")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = ETIMSInvoiceFilter
     tenant_scope = "facility"
 
@@ -1005,7 +1041,7 @@ class ETIMSDailyReportViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewS
     from hmis.apps.inventory.models import ETIMSDailyReport
 
     queryset = ETIMSDailyReport.objects.all()
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_scope = "facility"
 
     def get_serializer_class(self):
@@ -1060,7 +1096,7 @@ class ConsumptionRecordViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelView
     """Read-only access to aggregated consumption records."""
 
     queryset = ConsumptionRecord.objects.select_related("drug")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = ConsumptionRecordFilter
     tenant_scope = "facility"
 
@@ -1074,7 +1110,7 @@ class DemandForecastViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet
     """Read-only access to demand forecasts + on-demand generation."""
 
     queryset = DemandForecast.objects.select_related("drug")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = DemandForecastFilter
     tenant_scope = "facility"
 
@@ -1137,7 +1173,7 @@ class ReorderSuggestionViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelView
     """Read-only access to reorder suggestions + convert/dismiss actions."""
 
     queryset = ReorderSuggestion.objects.select_related("drug", "supplier")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = ReorderSuggestionFilter
     tenant_scope = "facility"
 

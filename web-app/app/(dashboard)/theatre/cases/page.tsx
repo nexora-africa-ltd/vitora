@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { CreateRouteLink } from '@/components/auth/create-route-link';
 import { useRouter } from 'next/navigation';
 import { Plus, Search } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
@@ -88,10 +89,10 @@ export default function TheatreCasesPage() {
           helpContent="Browse and manage all surgery cases. Filter by status, priority, or search by patient name, MRN, or case number."
           actions={
             <Button asChild>
-              <Link href="/theatre/cases/new">
+              <CreateRouteLink href="/theatre/cases/new">
                 <Plus className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Book Surgery</span>
-              </Link>
+              </CreateRouteLink>
             </Button>
           }
         />

@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { CreateRouteLink } from '@/components/auth/create-route-link';
 import { useRouter } from 'next/navigation';
 import { Plus, Building2, Users, Search, MapPin } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -51,10 +52,10 @@ export default function OrganizationsPage() {
           helpContent="Manage healthcare organizations and their facility branches. Each organization groups multiple facilities under a single entity."
           actions={
             <Button asChild size="sm">
-              <Link href="/admin/organizations/new">
+              <CreateRouteLink href="/admin/organizations/new">
                 <Plus className="h-4 w-4 mr-1" />
                 New Organization
-              </Link>
+              </CreateRouteLink>
             </Button>
           }
         />

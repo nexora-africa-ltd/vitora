@@ -17,6 +17,7 @@ import { useCultures, useAntibiograms, useGenerateAntibiogram } from '@/lib/hook
 import { microbiologyApi } from '@/lib/api/laboratory';
 import { CultureStatus } from '@/lib/types/laboratory';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { toast } from 'sonner';
 
 const STATUS_COLORS: Record<CultureStatus, string> = {
@@ -31,6 +32,7 @@ const STATUS_COLORS: Record<CultureStatus, string> = {
 
 export default function MicrobiologyPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { refresh, isRefreshing } = usePageRefresh();
   const [tab, setTab] = useState('cultures');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -146,7 +148,7 @@ export default function MicrobiologyPage() {
           title="Microbiology"
           helpContent="Culture & sensitivity workflow, antibiogram generation, and WHONET-compatible data export."
           actions={
-            <Button onClick={() => router.push('/laboratory/microbiology/new')}>
+            <Button onClick={() => router.push('/laboratory/microbiology/new')} disabled={!canCreateRoute('/laboratory/microbiology/new')}>
               <Plus className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">New Culture</span>
               <span className="sm:hidden">New</span>

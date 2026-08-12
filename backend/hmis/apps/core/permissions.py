@@ -813,6 +813,53 @@ class WriteRequiresRolePermission(permissions.BasePermission):
         return False
 
 
+class ReadRequiresModelPermission(permissions.BasePermission):
+    """Require Django `view_*` permission for SAFE methods when model can be resolved.
+
+    This is intended to pair with `IsAuthenticated` and tighten read access for
+    endpoints that previously allowed any authenticated user.
+    """
+
+    message = "You do not have permission to view this resource."
+    code = "permission_denied"
+
+    ADMIN_ROLE_CODES = {"ADMIN", "ORG-ADMIN", "OWNER"}
+
+    def has_permission(self, request, view):
+        if request.method not in permissions.SAFE_METHODS:
+            return True
+
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+
+        profile = getattr(user, "staff_profile", None)
+        if profile:
+            role = getattr(profile, "primary_role", None)
+            if role and getattr(role, "code", "") in self.ADMIN_ROLE_CODES:
+                return True
+
+        app_label, model_name = self._resolve_model(view)
+        if not app_label or not model_name:
+            return True
+
+        codename = f"{app_label}.view_{model_name}"
+        return user.has_perm(codename)
+
+    def _resolve_model(self, view):
+        queryset = getattr(view, "queryset", None)
+        model = getattr(queryset, "model", None) if queryset is not None else None
+        if model is None:
+            serializer_class = getattr(view, "serializer_class", None)
+            meta = getattr(serializer_class, "Meta", None) if serializer_class else None
+            model = getattr(meta, "model", None)
+        if model is None:
+            return None, None
+        return model._meta.app_label, model._meta.model_name
+
+
 class RequiresActiveLicense(permissions.BasePermission):
     """
     Permission that checks if the user's organization has an active

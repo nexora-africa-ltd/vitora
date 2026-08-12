@@ -30,6 +30,7 @@ import { useCreateEnrollment, useInsurancePlans } from '@/lib/hooks/use-insuranc
 import { useToast } from '@/lib/hooks/use-toast';
 import { getOrCreateIdempotencyKey, clearIdempotencyKey } from '@/lib/utils/idempotency';
 import { getApiErrorMessage } from '@/lib/api/client';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { PatientCreateData, Patient } from '@/lib/types/patient';
 import type { ClientRegistryClient, DirectEligibilityCheckResponse, SHAPayloadPerson } from '@/lib/types/sha';
 
@@ -83,6 +84,8 @@ function isDuplicateRegistrationError(error: unknown): boolean {
 
 export default function NewPatientPage() {
   const router = useRouter();
+  const { hasPermission } = usePermissions();
+  const canCreatePatient = hasPermission('patients.add_patient');
   const { toast } = useToast();
   const createPatient = useCreatePatient();
   const createEnrollment = useCreateEnrollment();
@@ -99,6 +102,20 @@ export default function NewPatientPage() {
   const [healthcloudDefaults, setHealthcloudDefaults] = useState<HealthcloudDefaults | undefined>(undefined);
   const [healthcloudEnrollmentContext, setHealthcloudEnrollmentContext] =
     useState<HealthcloudEnrollmentContext | null>(null);
+
+  if (!canCreatePatient) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="Register New Patient" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to register patients.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   // Generate idempotency key for form submission (Sprint 1.7)
   const idempotencyKey = useMemo(() => getOrCreateIdempotencyKey(IDEMPOTENCY_FORM_ID), []);

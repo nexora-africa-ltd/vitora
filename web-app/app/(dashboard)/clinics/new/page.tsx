@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCreateClinic } from '@/lib/hooks/use-clinics';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { toast } from '@/lib/hooks/use-toast';
 import { SHATariffCombobox } from '@/components/shared/sha-tariff-combobox';
 import type { ClinicType } from '@/lib/types/clinic';
@@ -92,7 +93,23 @@ type FormData = z.infer<typeof formSchema>;
 
 export default function NewClinicPage() {
   const router = useRouter();
+  const { hasPermission } = usePermissions();
+  const canCreateClinic = hasPermission('clinics.add_clinic');
   const { mutateAsync: createClinic, isPending } = useCreateClinic();
+
+  if (!canCreateClinic) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Clinic" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to create clinics.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),

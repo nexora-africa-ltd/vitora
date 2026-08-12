@@ -74,7 +74,11 @@ from hmis.apps.billing.sha_serializers import (
 from hmis.apps.core.kms import get_kms_provider
 from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import SHAPermission, WriteRequiresRolePermission
+from hmis.apps.core.permissions import (
+    ReadRequiresModelPermission,
+    SHAPermission,
+    WriteRequiresRolePermission,
+)
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.licensing.permissions import requires_feature
 
@@ -479,7 +483,7 @@ class SHAMemberViewSet(viewsets.ModelViewSet):
 
     queryset = SHAMember.objects.select_related("patient", "created_by").all()
     lookup_value_regex = r"\d+"
-    permission_classes = [IsAuthenticated, SHAPermission]
+    permission_classes = [IsAuthenticated, SHAPermission, ReadRequiresModelPermission]
     pagination_class = SHAPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = SHAMemberFilter
@@ -669,7 +673,7 @@ class SHATariffViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = SHATariff.objects.all()
     lookup_value_regex = r"\d+"
     serializer_class = SHATariffSerializer
-    permission_classes = [IsAuthenticated, SHAPermission]
+    permission_classes = [IsAuthenticated, SHAPermission, ReadRequiresModelPermission]
     pagination_class = SHAPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["category", "facility_level", "is_active"]
@@ -748,7 +752,12 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     )
     tenant_scope = "facility"
     lookup_value_regex = r"\d+"
-    permission_classes = [IsAuthenticated, SHAPermission, requires_feature("sha_claims")]
+    permission_classes = [
+        IsAuthenticated,
+        SHAPermission,
+        requires_feature("sha_claims"),
+        ReadRequiresModelPermission,
+    ]
     renderer_classes = [JSONRenderer, BrowsableAPIRenderer, CSVRenderer, XLSXRenderer]
     pagination_class = SHAPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -3759,7 +3768,7 @@ class TerminologySearchView(APIView):
     For ICD-11, uses local WHO ICD-11 API container by default (ICD11_USE_LOCAL=true).
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         parameters=[
@@ -4085,7 +4094,7 @@ class ClientRegistryView(APIView):
     API view for Kenya Client Registry operations.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         parameters=[
@@ -4447,7 +4456,7 @@ class FacilitySearchView(APIView):
     API view for facility validation via MFL.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         parameters=[
@@ -4650,7 +4659,7 @@ class PractitionerSearchView(APIView):
     middleware which uses the newer authentication flow.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     # Map identification_type to the DHA regulator code.
     # When the caller doesn't specify a regulator we try all four.
@@ -4867,7 +4876,7 @@ class EligibilityCheckView(APIView):
     API view for SHA eligibility verification.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         request=inline_serializer(
@@ -5005,7 +5014,7 @@ class DirectEligibilityCheckView(APIView):
     registration or lookup to verify SHA coverage status.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         parameters=[
@@ -5539,7 +5548,7 @@ class ConsentSendOTPView(APIView):
     authentication transparently via OAuth2 client_credentials token.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     throttle_scope = "otp"
 
     # Fallback intervention code when none selected by user
@@ -5800,7 +5809,7 @@ class ConsentValidateOTPView(APIView):
     POST /api/sha/consent/validate-otp/
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     throttle_scope = "otp"
 
     def _get_facility(self, request):
@@ -5895,7 +5904,7 @@ class ConsentDetailView(APIView):
     GET /api/sha/consent/{id}/
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def _get_facility(self, request):
         """Resolve and return the request facility, or None."""
@@ -5969,7 +5978,7 @@ class ConsentLatestView(APIView):
     missing or expired.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
         from hmis.apps.billing.models import ConsentToken, SHAClaim
@@ -6119,7 +6128,7 @@ class ConsentLatestView(APIView):
 class ConsentAdmissionConflictView(APIView):
     """Check if patient has an active admission in any facility in org."""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
         from hmis.apps.core.mixins import resolve_request_tenant
@@ -6238,7 +6247,7 @@ class StartVisitView(APIView):
     validates it, and starts the visit session in a single call.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def _get_facility(self, request):
         """Resolve and return the request facility, or None."""
@@ -6471,7 +6480,7 @@ class BiometricAuthorizeView(APIView):
     Returns auth_guid and iframe_url for rendering the biometric capture UI.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def _get_facility(self, request):
         """Resolve and return the request facility, or None."""
@@ -6604,7 +6613,7 @@ class BiometricAuthorizeStatusView(APIView):
     Returns current status of the biometric fingerprint verification.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         responses={
@@ -6647,7 +6656,7 @@ class BiometricCancelView(APIView):
     Used when the iframe expires (10-min window) or the user wants to abort.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         responses={
@@ -6690,7 +6699,7 @@ class BeneficiaryContactsView(APIView):
     The user selects which contact to send the OTP to.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         parameters=[
@@ -6748,7 +6757,7 @@ class PreauthSubmitView(APIView):
     POST /api/sha/preauth/submit/
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def _get_facility(self, request):
         """Resolve and return the request facility, or None."""
@@ -6863,7 +6872,7 @@ class PreauthStatusView(APIView):
     GET /api/sha/preauth/{id}/status/
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def _get_facility(self, request):
         """Resolve and return the request facility, or None."""
@@ -6923,7 +6932,7 @@ class PreauthPendingListView(APIView):
     GET /api/sha/preauth/pending/
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def _get_facility(self, request):
         """Resolve and return the request facility, or None."""
@@ -6990,7 +6999,7 @@ class SHARemittanceViewSet(viewsets.ReadOnlyModelViewSet):
     POST /api/sha/remittances/fetch/   → trigger DHA fetch
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get_queryset(self):
         from hmis.apps.billing.models import SHARemittance
@@ -7082,7 +7091,7 @@ class CapitationValidationView(APIView):
     }
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission]
 
     @extend_schema(
         request=inline_serializer(
@@ -7176,7 +7185,7 @@ class CapitationValidateDirectView(APIView):
     }
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission]
 
     @extend_schema(
         request=inline_serializer(

@@ -30,6 +30,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from hmis.apps.core.permissions import ReadRequiresModelPermission
+
 
 class PowerSyncTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
@@ -100,7 +102,7 @@ class PowerSyncCredentialsView(APIView):
       - `facility_id`, `organization_id` for sync rule evaluation
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission]
 
     @extend_schema(
         responses={

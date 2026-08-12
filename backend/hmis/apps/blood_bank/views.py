@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
-from hmis.apps.core.permissions import WriteRequiresRolePermission
+from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 
 from .models import (
     BloodDonor,
@@ -80,7 +80,7 @@ class BloodRequestFilter(filters.FilterSet):
 
 class BloodDonorViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = BloodDonor.objects.all()
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = BloodDonorFilter
     search_fields = ["first_name", "last_name", "donor_number"]
     ordering_fields = ["created_at", "last_donation_date", "blood_group"]
@@ -105,7 +105,7 @@ class BloodDonorViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Model
 
 class BloodUnitViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = BloodUnit.objects.select_related("donor")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = BloodUnitFilter
     search_fields = ["unit_number", "donor__first_name", "donor__last_name"]
     ordering_fields = ["collection_date", "expiry_date", "blood_group", "status"]
@@ -160,7 +160,7 @@ class BloodUnitViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelV
 
 class BloodRequestViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = BloodRequest.objects.select_related("patient", "requested_by")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = BloodRequestFilter
     search_fields = ["request_number", "patient__first_name", "patient__last_name", "patient__mrn"]
     ordering_fields = ["created_at", "urgency", "status"]
@@ -198,7 +198,7 @@ class BloodRequestViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mod
 
 class CrossMatchViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = CrossMatch.objects.select_related("blood_request", "blood_unit", "performed_by")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     search_fields = ["blood_unit__unit_number", "blood_request__request_number"]
     tenant_scope = "facility"
 
@@ -241,7 +241,7 @@ class BloodIssueViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Model
     queryset = BloodIssue.objects.select_related(
         "blood_request", "blood_unit", "crossmatch", "issued_by"
     )
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     search_fields = ["blood_unit__unit_number", "blood_request__request_number"]
     tenant_scope = "facility"
 

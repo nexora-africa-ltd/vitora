@@ -16,6 +16,7 @@ import { useDebounce } from '@/lib/hooks/use-debounce';
 import type { InsuranceProvider, InsuranceProviderStatus } from '@/lib/types/insurance';
 import { PROVIDER_TYPE_LABELS } from '@/lib/types/insurance';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 
 const STATUS_COLORS: Record<InsuranceProviderStatus, string> = {
   active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
@@ -25,6 +26,7 @@ const STATUS_COLORS: Record<InsuranceProviderStatus, string> = {
 
 export default function InsuranceProvidersPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -65,7 +67,7 @@ export default function InsuranceProvidersPage() {
           title="Insurance Providers"
           helpContent="Manage insurance providers registered with your facility. Add new providers, view their plans, and track enrollments."
           actions={
-            <Button onClick={() => router.push('/insurance/providers/new')} className="gap-2 w-full sm:w-auto">
+            <Button onClick={() => router.push('/insurance/providers/new')} disabled={!canCreateRoute('/insurance/providers/new')} className="gap-2 w-full sm:w-auto">
               <Plus className="h-4 w-4" />
               Add Provider
             </Button>

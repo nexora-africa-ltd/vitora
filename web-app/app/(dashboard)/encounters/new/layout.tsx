@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RotateCcw, X, Clock } from 'lucide-react';
 import { useToast } from '@/lib/hooks/use-toast';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 // =============================================================================
 // Layout Content
@@ -40,7 +41,22 @@ export default function NewEncounterLayout({
 }) {
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreateEncounter = hasPermission('encounters.add_encounter');
   const patientIdParam = searchParams.get('patient');
+
+  if (!canCreateEncounter) {
+    return (
+      <div className="p-4 sm:p-6">
+        <Alert>
+          <AlertTitle>Access denied</AlertTitle>
+          <AlertDescription>
+            You do not have permission to create encounters.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   const {
     initSession,

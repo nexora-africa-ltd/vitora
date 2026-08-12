@@ -17,6 +17,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.laboratory.management.commands.seed_analyzer_templates import TEMPLATES
 from hmis.apps.laboratory.permissions import (
     LaboratoryModuleRequired,
@@ -86,6 +87,7 @@ class InstrumentChannelViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewset
         LaboratoryModuleRequired,
         LISIntegrationSettingsPermission,
         LISConfigPermission,
+        ReadRequiresModelPermission,
     ]
     filterset_class = InstrumentChannelFilter
     tenant_scope = "facility"
@@ -204,6 +206,7 @@ class AnalyzerMessageViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSe
         LaboratoryModuleRequired,
         LISIntegrationSettingsPermission,
         LISConfigPermission,
+        ReadRequiresModelPermission,
     ]
     filterset_class = AnalyzerMessageFilter
     tenant_scope = "facility"
@@ -291,7 +294,12 @@ class AnalyzerDriverTemplateViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = AnalyzerDriverTemplate.objects.filter(is_active=True)
     serializer_class = AnalyzerDriverTemplateSerializer
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISConfigPermission,
+        ReadRequiresModelPermission,
+    ]
     filterset_class = AnalyzerDriverTemplateFilter
 
     @action(detail=False, methods=["post"])
@@ -336,6 +344,7 @@ class AnalyzerDashboardView(APIView):
         LaboratoryModuleRequired,
         LISIntegrationSettingsPermission,
         LISConfigPermission,
+        ReadRequiresModelPermission,
     ]
     required_permission = "laboratory.view_instrumentchannel"
 

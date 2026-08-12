@@ -30,9 +30,11 @@ import {
 } from 'lucide-react';
 import { useAlliedHealthDashboard } from '@/lib/hooks/use-allied-health';
 import { useClinicVisits } from '@/lib/hooks/use-clinics';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 
 export default function CounsellingDashboardPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const [activeTab, setActiveTab] = useState('queue');
 
   const { data: dashboardStats, isLoading: statsLoading } = useAlliedHealthDashboard();
@@ -63,7 +65,7 @@ export default function CounsellingDashboardPage() {
         title="Counselling Services"
         helpContent="Manage counselling referrals and sessions. Support grief counselling, family therapy, substance abuse, mental health, and psychosocial support."
         actions={
-          <Button onClick={() => router.push('/allied-health/counselling/referrals/new')}>
+          <Button onClick={() => router.push('/allied-health/counselling/referrals/new')} disabled={!canCreateRoute('/allied-health/counselling/referrals/new')}>
             <Plus className="h-4 w-4 mr-2" />
             New Referral
           </Button>

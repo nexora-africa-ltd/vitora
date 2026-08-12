@@ -24,6 +24,7 @@ from hmis.apps.core.mixins import (
 )
 from hmis.apps.core.models import AuditLog, IdempotencyKey
 from hmis.apps.core.permissions import (
+    ReadRequiresModelPermission,
     SensitiveAccessPermission,
     WriteRequiresRolePermission,
     get_client_ip,
@@ -114,7 +115,7 @@ class PatientViewSet(
         "registered_at_facility",
     ).all()
     serializer_class = PatientSerializer
-    permission_classes = [IsAuthenticated, SensitiveAccessPermission]
+    permission_classes = [IsAuthenticated, SensitiveAccessPermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = PatientFilter
     search_fields = ["first_name", "last_name", "mrn"]
@@ -1108,7 +1109,7 @@ class EmergencyContactViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     serializer_class = EmergencyContactSerializer
     queryset = EmergencyContact.objects.all()
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_facility_chain = "patient__registered_at_facility"
     tenant_org_chain = "patient__organization"
 
@@ -1191,7 +1192,7 @@ class AllergyViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     tenant_scope = "organization"  # Allergies are org-scoped (shared medical history)
 
     serializer_class = AllergySerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["patient", "substance_type", "severity", "status", "verification_status"]
     search_fields = ["substance", "substance_code", "notes"]
@@ -1636,7 +1637,7 @@ class DeathRecordViewSet(ReadOnCreateMixin, NestedTenantScopeMixin, viewsets.Mod
         "admission",
         "encounter",
     ).all()
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["status", "body_status", "manner_of_death", "place_of_death", "patient"]
     search_fields = [

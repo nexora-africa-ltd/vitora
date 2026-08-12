@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { formatDate } from '@/lib/utils/format';
 import { aefiApi } from '@/lib/api/immunizations';
 import type {
@@ -75,6 +76,7 @@ function formatEventTypes(types: AEFIEventType[]): string {
 
 export default function AEFIPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { refresh, isRefreshing } = usePageRefresh();
   const [severityFilter, setSeverityFilter] = useState<AEFISeverity | ''>('');
   const [reportTypeFilter, setReportTypeFilter] = useState<AEFIReportType | ''>('');
@@ -98,7 +100,7 @@ export default function AEFIPage() {
           title="AEFI Reports"
           helpContent="Adverse Event Following Immunization reports aligned with the Kenya MOH AEFI Reporting Form. Track, investigate, and report vaccine adverse events. Severe cases must be reported to national authorities within 24 hours."
           actions={
-            <Button size="sm" onClick={() => router.push('/immunizations/aefi/new')}>
+            <Button size="sm" onClick={() => router.push('/immunizations/aefi/new')} disabled={!canCreateRoute('/immunizations/aefi/new')}>
               <Plus className="h-4 w-4 mr-1" />
               <span className="hidden sm:inline">Report AEFI</span>
               <span className="sm:hidden">Report</span>

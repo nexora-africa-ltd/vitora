@@ -29,9 +29,11 @@ import {
 } from 'lucide-react';
 import { useAlliedHealthDashboard } from '@/lib/hooks/use-allied-health';
 import { useClinicVisits } from '@/lib/hooks/use-clinics';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 
 export default function NutritionDashboardPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const [activeTab, setActiveTab] = useState('queue');
 
   const { data: dashboardStats, isLoading: statsLoading } = useAlliedHealthDashboard();
@@ -58,7 +60,7 @@ export default function NutritionDashboardPage() {
         title="Nutrition Services"
         helpContent="Manage nutrition consultations, dietary assessments, and diet plans. Track BMI, nutritional status, and interventions."
         actions={
-          <Button onClick={() => router.push('/allied-health/nutrition/consultations/new')}>
+          <Button onClick={() => router.push('/allied-health/nutrition/consultations/new')} disabled={!canCreateRoute('/allied-health/nutrition/consultations/new')}>
             <Plus className="h-4 w-4 mr-2" />
             New Consultation
           </Button>

@@ -36,7 +36,7 @@ from hmis.apps.billing.services.dha_errors import (
 )
 from hmis.apps.billing.services.ilm_registries_service import IlmRegistriesService
 from hmis.apps.core.events import BillingEvents, publish_event
-from hmis.apps.core.permissions import WriteRequiresRolePermission
+from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 from hmis.apps.patients.models import Patient
 
 logger = logging.getLogger(__name__)
@@ -203,7 +203,7 @@ def _result_to_response(result) -> Response:
 class IlmFacilitySearchView(APIView):
     """GET /api/sha/ilm/registries/facility-search/?identifier=&identifier_type=&name="""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
         identifier = request.query_params.get("identifier")
@@ -232,7 +232,7 @@ class IlmFacilitySearchView(APIView):
 class IlmPatientLookupView(APIView):
     """GET /api/sha/ilm/registries/patient-lookup/?identification_number=&identification_type="""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
         idn = request.query_params.get("identification_number")
@@ -270,7 +270,7 @@ class IlmPatientLookupView(APIView):
 class IlmProfessionalSearchView(APIView):
     """GET /api/sha/ilm/registries/professional-search/?identification_number=&identification_type=&regulator="""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
         idn = request.query_params.get("identification_number")
@@ -340,7 +340,7 @@ class IlmProfessionalSearchView(APIView):
 class IlmEligibilityView(APIView):
     """GET /api/sha/ilm/eligibility/?identification_number=&identification_type=&patient_pk="""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
         idn = request.query_params.get("identification_number")
@@ -378,7 +378,7 @@ class IlmEligibilityView(APIView):
 class IlmBenefitsView(APIView):
     """GET /api/sha/ilm/benefits/?patient_id=&fields=&is_unique_benefit=&patient_pk="""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
         patient_id = request.query_params.get("patient_id")
@@ -412,7 +412,7 @@ class IlmBenefitsView(APIView):
 class IlmSubBenefitsView(APIView):
     """GET /api/sha/ilm/sub-benefits/?patient_id=&patient_pk="""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
         patient_id = request.query_params.get("patient_id")
@@ -442,7 +442,7 @@ class IlmSubBenefitsView(APIView):
 class IlmBenefitInterventionsView(APIView):
     """GET /api/sha/ilm/benefit-interventions/?patient_id=&sub_benefit_code=&patient_pk=&service_type="""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
         patient_id = request.query_params.get("patient_id")
@@ -478,7 +478,7 @@ class IlmBenefitInterventionsView(APIView):
 class IlmUtilizationView(APIView):
     """GET /api/sha/ilm/utilization/?patient_id=&intervention_code=&patient_pk="""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
         patient_id = request.query_params.get("patient_id")
@@ -524,7 +524,7 @@ class PatientContactListCreateView(APIView):
     (POST /api/v1/patients/next-of-kin/contacts) will be wired in Phase 3.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
         patient = _resolve_patient(request)

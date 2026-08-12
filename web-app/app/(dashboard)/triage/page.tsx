@@ -55,6 +55,7 @@ import {
   type TriageHistoryFilters,
 } from '@/lib/hooks/use-triage';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { toast } from '@/lib/hooks/use-toast';
 import { LEGACY_TRIAGE_FLOW } from '@/lib/utils/constants';
 import type { TriageCategory, TriageAssessment } from '@/lib/types/triage';
@@ -63,6 +64,8 @@ type DateRangeOption = 'today' | 'week' | 'month' | 'quarter' | 'all';
 
 export default function TriageQueuePage() {
   const router = useRouter();
+  const { hasPermission } = usePermissions();
+  const canCreateTriage = hasPermission('triage.add_triageassessment');
   const [showQueueBanner, setShowQueueBanner] = useState(true);
   const [activeTab, setActiveTab] = useState<'queue' | 'history'>('queue');
 
@@ -260,10 +263,12 @@ export default function TriageQueuePage() {
           title="Triage"
           helpContent="Assess and prioritize patients for clinical care. Use Queue tab for patients waiting, History tab for past triages."
           actions={
-            <Button size="sm" onClick={handleNewTriage} className="h-9 sm:h-10">
-              <Plus className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">New Triage</span>
-            </Button>
+            canCreateTriage ? (
+              <Button size="sm" onClick={handleNewTriage} className="h-9 sm:h-10">
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">New Triage</span>
+              </Button>
+            ) : undefined
           }
         />
 

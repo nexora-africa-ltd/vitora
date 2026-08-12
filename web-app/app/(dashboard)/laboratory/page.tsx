@@ -12,10 +12,12 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useLabOrders } from '@/lib/hooks/use-laboratory';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { LabOrderStatus, LabPriority } from '@/lib/types/laboratory';
 
 export default function LaboratoryPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const searchParams = useSearchParams();
   const { refresh, isRefreshing } = usePageRefresh();
   const [page, setPage] = useState(1);
@@ -42,7 +44,7 @@ export default function LaboratoryPage() {
           title="Laboratory"
           helpContent="Manage lab orders, record results, and track the lab queue. Pull down to refresh on mobile, or use the refresh button in the header."
           actions={
-            <Button onClick={() => router.push('/laboratory/orders/new')} className="gap-2 w-full sm:w-auto">
+            <Button onClick={() => router.push('/laboratory/orders/new')} disabled={!canCreateRoute('/laboratory/orders/new')} className="gap-2 w-full sm:w-auto">
               <Plus className="h-4 w-4" />
               New Lab Order
             </Button>

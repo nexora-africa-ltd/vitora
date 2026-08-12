@@ -10,9 +10,11 @@ import { DietPlanTable } from '@/components/allied-health/nutrition';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 
 export default function DietPlansPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
 
   return (
     <div className="space-y-6">
@@ -24,6 +26,7 @@ export default function DietPlansPage() {
             onClick={() =>
               router.push('/allied-health/nutrition/diet-plans/new')
             }
+            disabled={!canCreateRoute('/allied-health/nutrition/diet-plans/new')}
           >
             <Plus className="h-4 w-4 mr-2" />
             New Diet Plan

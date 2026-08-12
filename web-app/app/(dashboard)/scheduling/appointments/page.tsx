@@ -25,6 +25,7 @@ import {
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useFacility } from '@/lib/context/facility-context';
 import { useSchedulingSocket } from '@/lib/hooks/use-websocket';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { appointmentsApi } from '@/lib/api/scheduling';
 import { formatDate } from '@/lib/utils/format';
 import type {
@@ -94,6 +95,8 @@ export default function AppointmentsListPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { hasPermission } = usePermissions();
+  const canCreateAppointment = hasPermission('scheduling.add_appointment');
   const { facility } = useFacility();
   useSchedulingSocket(facility?.id ?? null);
 
@@ -132,11 +135,13 @@ export default function AppointmentsListPage() {
           title="Appointments"
           helpContent="View and manage all facility appointments. Filter by status, type, priority, and date range. Click a row to see details and manage lifecycle."
           actions={
-            <Button size="sm" onClick={() => router.push('/scheduling/appointments/new')}>
-              <Plus className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">New Appointment</span>
-              <span className="sm:hidden">New</span>
-            </Button>
+            canCreateAppointment ? (
+              <Button size="sm" onClick={() => router.push('/scheduling/appointments/new')}>
+                <Plus className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">New Appointment</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            ) : undefined
           }
         />
 

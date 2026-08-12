@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { CreateRouteLink } from '@/components/auth/create-route-link';
 import {
   AlertTriangle,
   ArrowRight,
@@ -228,10 +229,10 @@ export default function AdminOverviewPage() {
           actions={
             <>
               <Button asChild variant="outline">
-                <Link href="/admin/staff/new">Add Staff</Link>
+                <CreateRouteLink href="/admin/staff/new">Add Staff</CreateRouteLink>
               </Button>
               <Button asChild>
-                <Link href="/admin/departments/new">New Department</Link>
+                <CreateRouteLink href="/admin/departments/new">New Department</CreateRouteLink>
               </Button>
             </>
           }
@@ -270,10 +271,10 @@ export default function AdminOverviewPage() {
 
                   <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[250px]">
                     <Button asChild className="w-full">
-                      <Link href="/admin/departments/new">New Department</Link>
+                      <CreateRouteLink href="/admin/departments/new">New Department</CreateRouteLink>
                     </Button>
                     <Button asChild variant="outline" className="w-full">
-                      <Link href="/admin/staff/new">Add Staff</Link>
+                      <CreateRouteLink href="/admin/staff/new">Add Staff</CreateRouteLink>
                     </Button>
                     <Button asChild variant="outline" className="w-full sm:col-span-2">
                       <Link href="/admin/roles">

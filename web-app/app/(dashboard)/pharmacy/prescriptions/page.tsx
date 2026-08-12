@@ -20,11 +20,14 @@ import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { PrescriptionsTable } from '@/components/pharmacy';
 import { usePrescriptions, usePendingPrescriptions } from '@/lib/hooks/use-pharmacy';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { PrescriptionStatus } from '@/lib/types/pharmacy';
 
 export default function PrescriptionsPage() {
   const { refresh, isRefreshing } = usePageRefresh();
   const searchParams = useSearchParams();
+  const { hasPermission } = usePermissions();
+  const canCreatePrescription = hasPermission('pharmacy.add_prescription');
 
   // Prescriptions state
   const [page, setPage] = useState(1);
@@ -69,12 +72,14 @@ export default function PrescriptionsPage() {
                   {pendingCount} pending
                 </Badge>
               )}
-              <Button asChild className="w-full sm:w-auto">
-                <Link href="/pharmacy/prescriptions/new">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Prescription
-                </Link>
-              </Button>
+              {canCreatePrescription ? (
+                <Button asChild className="w-full sm:w-auto">
+                  <Link href="/pharmacy/prescriptions/new">
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Prescription
+                  </Link>
+                </Button>
+              ) : null}
             </div>
           }
         />

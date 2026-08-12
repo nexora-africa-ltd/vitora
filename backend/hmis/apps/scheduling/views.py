@@ -35,6 +35,7 @@ from hmis.apps.core.mixins import (
     resolve_request_tenant,
 )
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.scheduling.models import (
     Appointment,
     AssignmentDecision,
@@ -241,7 +242,7 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         "staff_profile__primary_department", "staff_profile__user", "department"
     )
     serializer_class = ResourceSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_class = ResourceFilter
     tenant_scope = "facility"
 
@@ -682,7 +683,7 @@ class ScheduleViewSet(NestedTenantScopeMixin, ReadOnCreateMixin, viewsets.ModelV
 
     queryset = Schedule.objects.select_related("resource").prefetch_related("breaks")
     serializer_class = ScheduleSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_class = ScheduleFilter
     tenant_facility_chain = "resource__facility"
     tenant_org_chain = "resource__organization"
@@ -738,7 +739,7 @@ class AppointmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         "patient", "resource", "created_by", "confirmed_by", "cancelled_by"
     )
     serializer_class = AppointmentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_class = AppointmentFilter
     tenant_scope = "facility"
 
@@ -951,7 +952,7 @@ class AssignmentRuleViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
 
     queryset = AssignmentRule.objects.all()
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_class = AssignmentRuleFilter
     tenant_scope = "facility"
 
@@ -1013,7 +1014,7 @@ class AssignmentDecisionViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelVi
 
     queryset = AssignmentDecision.objects.all()
     serializer_class = AssignmentDecisionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_class = AssignmentDecisionFilter
     tenant_facility_chain = "assigned_resource__facility"
     tenant_org_chain = "assigned_resource__organization"
@@ -1045,7 +1046,7 @@ class AssignmentOverrideViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     queryset = AssignmentOverride.objects.all()
     serializer_class = AssignmentOverrideSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_class = AssignmentOverrideFilter
     tenant_facility_chain = "new_resource__facility"
     tenant_org_chain = "new_resource__organization"
@@ -1102,7 +1103,7 @@ class AssignmentViewSet(viewsets.ViewSet):
     Provides auto-assign and manual-override endpoints.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     @extend_schema(
         request=inline_serializer(
@@ -1361,7 +1362,11 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         "clinic",
     )
     serializer_class = ShiftSerializer
-    permission_classes = [permissions.IsAuthenticated, ManageSchedulesWritePermission]
+    permission_classes = [
+        permissions.IsAuthenticated,
+        ManageSchedulesWritePermission,
+        ReadRequiresModelPermission,
+    ]
     filterset_class = ShiftFilter
     tenant_scope = "facility"
 
@@ -2840,7 +2845,7 @@ class SchedulingSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = SchedulingSettings.objects.all()
     serializer_class = SchedulingSettingsSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     tenant_scope = "facility"
 
     def perform_create(self, serializer):
@@ -2932,7 +2937,7 @@ class ShiftTypeConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = ShiftTypeConfig.objects.all()
     serializer_class = ShiftTypeConfigSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     tenant_scope = "facility"
 
     def create(self, request, *args, **kwargs):
@@ -3051,7 +3056,7 @@ class StaffConstraintViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = StaffConstraint.objects.select_related("staff_resource").all()
     serializer_class = StaffConstraintSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     tenant_scope = "facility"
 
     def get_queryset(self):
@@ -3121,7 +3126,7 @@ class ShiftSwapViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelV
         "reviewed_by",
     )
     serializer_class = ShiftSwapRequestSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_class = ShiftSwapFilter
     tenant_scope = "facility"
 

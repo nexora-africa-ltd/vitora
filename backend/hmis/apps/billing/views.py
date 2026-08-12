@@ -61,7 +61,11 @@ from hmis.apps.core.mixins import (
     TenantScopedViewMixin,
 )
 from hmis.apps.core.models import AuditLog, Facility
-from hmis.apps.core.permissions import RequiresActiveShiftPermission, WriteRequiresRolePermission
+from hmis.apps.core.permissions import (
+    ReadRequiresModelPermission,
+    RequiresActiveShiftPermission,
+    WriteRequiresRolePermission,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +79,7 @@ class ServiceCategoryViewSet(viewsets.ModelViewSet):
 
     queryset = ServiceCategory.objects.all()
     serializer_class = ServiceCategorySerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "code", "description"]
     ordering_fields = ["display_order", "name", "created_at"]
@@ -91,7 +95,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
     queryset = Service.objects.select_related("category", "created_by").all()
     serializer_class = ServiceSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["category", "is_active", "is_taxable", "sha_code"]
     search_fields = ["name", "code", "description", "sha_code"]
@@ -119,7 +123,11 @@ class InvoiceViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.ModelV
         .all()
     )
     serializer_class = InvoiceSerializer
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = InvoiceFilter
     search_fields = ["invoice_number", "patient__first_name", "patient__last_name", "patient__mrn"]
@@ -530,7 +538,11 @@ class PaymentViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     queryset = Payment.objects.select_related("invoice", "received_by").all()
     serializer_class = PaymentSerializer
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = PaymentFilter
     search_fields = ["reference", "mpesa_receipt_number", "transaction_reference"]
@@ -637,7 +649,7 @@ class PaymentPointViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = PaymentPoint.objects.select_related("created_by").all()
     serializer_class = PaymentPointSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["method", "is_active"]
     search_fields = ["name", "code", "till_number", "paybill_number", "bank_account_number"]
@@ -657,7 +669,7 @@ class CreditNoteViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "invoice", "patient", "requested_by", "approved_by"
     ).all()
     serializer_class = CreditNoteSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = CreditNoteFilter
     search_fields = ["credit_note_number", "reason_detail"]
@@ -727,7 +739,7 @@ class MpesaViewSet(viewsets.ViewSet):
     - Transaction status queries
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     serializer_class = None  # No model serializer - all actions use inline serializers
 
     @extend_schema(
@@ -1210,7 +1222,7 @@ class ReportViewSet(viewsets.ViewSet):
     Provides read-only endpoints for financial reports.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     serializer_class = None  # No model serializer - all actions return dict responses
 
     def _get_report_service(self, request):
@@ -1439,7 +1451,7 @@ class FacilityBillingConfigViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet
 
     tenant_facility_chain = ""
     tenant_org_chain = "facility__organization"
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ["facility", "sha_accreditation_status", "default_payment_type"]
     search_fields = ["facility__name", "facility__mfl_code", "sha_contract_number"]
@@ -1682,7 +1694,11 @@ class SupplierBillViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mod
     queryset = SupplierBill.objects.select_related(
         "supplier", "grn", "purchase_order", "created_by", "approved_by"
     ).prefetch_related("items", "payments")
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["bill_number", "supplier_invoice_number", "supplier__name"]
     ordering_fields = ["bill_date", "due_date", "amount_invoiced", "status", "created_at"]
@@ -1881,7 +1897,11 @@ class SupplierPaymentViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.
     from hmis.apps.billing.models import SupplierPayment
 
     queryset = SupplierPayment.objects.select_related("bill", "supplier", "paid_by").all()
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["payment_reference", "transaction_reference", "supplier__name"]
     ordering_fields = ["payment_date", "amount", "created_at"]

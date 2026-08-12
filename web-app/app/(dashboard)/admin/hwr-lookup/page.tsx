@@ -4,13 +4,23 @@ import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/shared/page-header';
 import { DHAPractitionerSearch } from '@/components/sha/practitioner-search';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import type { DHAPractitioner } from '@/lib/types/sha';
 
 export default function HWRLookupPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { toast } = useToast();
 
   const handleSelect = (practitioner: DHAPractitioner) => {
+    if (!canCreateRoute('/admin/staff/new')) {
+      toast({
+        title: 'Access denied',
+        description: 'You do not have permission to create staff records.',
+        variant: 'destructive',
+      });
+      return;
+    }
     // Store practitioner data for the new-staff page to pick up
     try {
       sessionStorage.setItem('hwr_practitioner', JSON.stringify(practitioner));

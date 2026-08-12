@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { surveillanceApi } from '@/lib/api/surveillance';
 import { formatDateTime } from '@/lib/utils/format';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type {
   IHRNotificationListItem,
   IHRNotificationListParams,
@@ -59,6 +60,8 @@ const URGENCY_BADGE_VARIANTS: Record<string, 'destructive' | 'warning' | 'info'>
 export default function IHRNotificationsPage() {
   const { refresh, isRefreshing } = usePageRefresh();
   const router = useRouter();
+  const { hasPermission } = usePermissions();
+  const canCreateIHRNotification = hasPermission('surveillance.add_ihrnotification');
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -111,11 +114,13 @@ export default function IHRNotificationsPage() {
           title="IHR Notifications"
           helpContent="International Health Regulations (2005) notification pipeline. Track events from detection through county → MOH → WHO escalation. Notifications must reach WHO within 24 hours per IHR Article 6."
           actions={
-            <Button size="sm" onClick={() => router.push('/surveillance/ihr/new')}>
-              <Plus className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">New Notification</span>
-              <span className="sm:hidden">New</span>
-            </Button>
+            canCreateIHRNotification ? (
+              <Button size="sm" onClick={() => router.push('/surveillance/ihr/new')}>
+                <Plus className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">New Notification</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            ) : undefined
           }
         />
 

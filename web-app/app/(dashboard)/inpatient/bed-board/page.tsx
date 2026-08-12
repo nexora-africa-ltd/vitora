@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { CreateRouteLink } from '@/components/auth/create-route-link';
 import {
   AlertTriangle,
   Bed,
@@ -203,7 +204,7 @@ export default function InpatientBedBoardPage() {
                 <Link href="/inpatient/alerts">Supervisor Alerts</Link>
               </Button>
               <Button asChild className="w-full sm:w-auto">
-                <Link href="/admissions/new">New Admission</Link>
+                <CreateRouteLink href="/admissions/new">New Admission</CreateRouteLink>
               </Button>
             </div>
           }

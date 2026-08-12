@@ -21,11 +21,28 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { surveillanceApi } from '@/lib/api/surveillance';
 import { locationsApi } from '@/lib/api/locations';
 import { toast } from '@/lib/hooks/use-toast';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { IHRNotificationCreateData, IHRUrgency } from '@/lib/types/surveillance';
 
 export default function NewIHRNotificationPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { hasPermission } = usePermissions();
+  const canCreateIHRNotification = hasPermission('surveillance.add_ihrnotification');
+
+  if (!canCreateIHRNotification) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New IHR Notification" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to create IHR notifications.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   const [formData, setFormData] = useState<IHRNotificationCreateData>({
     disease: 0,

@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { proceduresApi } from '@/lib/api/procedures';
 import { formatCurrency } from '@/lib/utils/format';
 import type { ProcedureCatalogEntry } from '@/lib/types/procedure';
@@ -59,6 +60,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function ProcedureCatalogPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { refresh, isRefreshing } = usePageRefresh();
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
@@ -174,7 +176,7 @@ export default function ProcedureCatalogPage() {
           title="Procedure Catalog"
           helpContent="Browse all available procedures. Filter by category and risk level. View procedure codes, fees, and consent requirements."
           actions={
-            <Button onClick={() => router.push('/procedures/catalog/new')}>
+            <Button onClick={() => router.push('/procedures/catalog/new')} disabled={!canCreateRoute('/procedures/catalog/new')}>
               <Plus className="h-4 w-4 mr-2" />
               New Procedure
             </Button>

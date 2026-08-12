@@ -21,6 +21,7 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { inventoryApi } from '@/lib/api/inventory';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import type { StoreLocation, StoreLocationType } from '@/lib/types/inventory';
 
 const locationTypeLabels: Record<StoreLocationType, string> = {
@@ -41,6 +42,7 @@ const locationTypeColors: Record<StoreLocationType, string> = {
 
 export default function StoreLocationsPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { refresh, isRefreshing } = usePageRefresh();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -74,7 +76,7 @@ export default function StoreLocationsPage() {
           title="Store Locations"
           helpContent="Manage storage locations for inventory — main stores, satellite pharmacies, ward stores, theatre stores, and lab stores."
           actions={
-            <Button onClick={() => router.push('/inventory/store-locations/new')}>
+            <Button onClick={() => router.push('/inventory/store-locations/new')} disabled={!canCreateRoute('/inventory/store-locations/new')}>
               <Warehouse className="mr-2 h-4 w-4" />
               Add Location
             </Button>

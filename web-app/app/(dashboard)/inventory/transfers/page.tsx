@@ -20,6 +20,7 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { inventoryApi } from '@/lib/api/inventory';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import type { StockTransfer, TransferStatus } from '@/lib/types/inventory';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 
 const statusLabels: Record<TransferStatus, string> = {
   DRAFT: 'Draft',
@@ -41,6 +42,7 @@ const statusColors: Record<TransferStatus, string> = {
 
 export default function StockTransfersPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { refresh, isRefreshing } = usePageRefresh();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -71,7 +73,7 @@ export default function StockTransfersPage() {
           title="Stock Transfers"
           helpContent="Transfer stock between facilities and store locations. Track transfers from request through dispatch to receipt."
           actions={
-            <Button onClick={() => router.push('/inventory/transfers/new')}>
+            <Button onClick={() => router.push('/inventory/transfers/new')} disabled={!canCreateRoute('/inventory/transfers/new')}>
               Create Transfer
             </Button>
           }

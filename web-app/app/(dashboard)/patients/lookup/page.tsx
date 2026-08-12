@@ -27,6 +27,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { BenefitsPanel } from '@/components/billing/sha';
 import { HealthcloudEligibilityCards } from '@/components/insurance/healthcloud-eligibility-cards';
+import { CreateRouteLink } from '@/components/auth/create-route-link';
 import { usePatients } from '@/lib/hooks/use-patients';
 import { useFetchFromCR } from '@/lib/hooks/use-sha';
 import {
@@ -40,6 +41,7 @@ import {
 import { useToast } from '@/lib/hooks/use-toast';
 import { shaApi, type CapitationValidationResult } from '@/lib/api/sha';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import type { Patient } from '@/lib/types/patient';
 import type {
   ClientRegistryClient,
@@ -63,6 +65,7 @@ type IlmLookupIdType = (typeof ILM_LOOKUP_ID_OPTIONS)[number]['value'];
 
 export default function PatientLookupPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [lookupIdType, setLookupIdType] = useState<IlmLookupIdType | ''>('');
@@ -613,7 +616,7 @@ export default function PatientLookupPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => router.push('/patients/new')}
+                onClick={() => router.push('/patients/new')} disabled={!canCreateRoute('/patients/new')}
               >
                 Register New Patient
               </Button>
@@ -1174,8 +1177,10 @@ function CRResultCard({
                 <p className="text-xs text-muted-foreground">
                   No private insurance enrollment found for this patient.
                 </p>
-                <Button size="sm" variant="outline" onClick={() => router.push('/insurance/enrollments/new')}>
-                  Create Enrollment
+                <Button size="sm" variant="outline" asChild>
+                  <CreateRouteLink href="/insurance/enrollments/new">
+                    Create Enrollment
+                  </CreateRouteLink>
                 </Button>
               </div>
             ) : (

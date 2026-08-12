@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/select';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { SeedClinicsDialog } from '@/components/clinics/seed-clinics-dialog';
 import type { ClinicListParams, ClinicStatus, ClinicType } from '@/lib/types/clinic';
 import { cn } from '@/lib/utils/cn';
@@ -90,6 +91,8 @@ const STATUS_OPTIONS: { value: ClinicStatus | 'ALL'; label: string }[] = [
 export default function ClinicsPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { hasPermission } = usePermissions();
+  const canCreateClinic = hasPermission('clinics.add_clinic');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [clinicType, setClinicType] = useState<ClinicType | 'ALL'>('ALL');
@@ -147,12 +150,14 @@ export default function ClinicsPage() {
         title="Clinics"
         helpContent="Manage and monitor all clinic operations. View open/closed status, filter by type, and access individual clinic dashboards."
         actions={
-          <Button asChild size="sm">
-            <Link href="/clinics/new">
-              <Plus className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Add Clinic</span>
-            </Link>
-          </Button>
+          canCreateClinic ? (
+            <Button asChild size="sm">
+              <Link href="/clinics/new">
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Add Clinic</span>
+              </Link>
+            </Button>
+          ) : undefined
         }
       />
 

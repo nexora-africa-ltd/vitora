@@ -53,9 +53,12 @@ import {
 import { formatDate, formatBytes } from '@/lib/utils/format';
 import { useFacility } from '@/lib/context/facility-context';
 import { useImagingSocket } from '@/lib/hooks/use-websocket';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 export default function ImagingPage() {
   const router = useRouter();
+  const { hasPermission } = usePermissions();
+  const canCreateImagingOrder = hasPermission('imaging.add_imagingorder');
   const { facility } = useFacility();
   useImagingSocket(facility?.id ?? null);
   const [page, setPage] = useState(1);
@@ -85,13 +88,15 @@ export default function ImagingPage() {
             Manage imaging orders, view worklist, and track procedures
           </p>
         </div>
-        <Button
-          onClick={() => router.push('/imaging/orders/new')}
-          className="w-full sm:w-auto"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          New Imaging Order
-        </Button>
+        {canCreateImagingOrder ? (
+          <Button
+            onClick={() => router.push('/imaging/orders/new')}
+            className="w-full sm:w-auto"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New Imaging Order
+          </Button>
+        ) : null}
       </div>
 
       {/* Tabs */}

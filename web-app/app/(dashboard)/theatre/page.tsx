@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { CreateRouteLink } from '@/components/auth/create-route-link';
 import { useRouter } from 'next/navigation';
 import {
   Calendar,
@@ -88,10 +89,10 @@ export default function TheatrePage() {
                 </Link>
               </Button>
               <Button asChild>
-                <Link href="/theatre/cases/new">
+                <CreateRouteLink href="/theatre/cases/new">
                   <Plus className="h-4 w-4 mr-2" />
                   <span className="hidden sm:inline">New Case</span>
-                </Link>
+                </CreateRouteLink>
               </Button>
             </div>
           }
@@ -127,7 +128,7 @@ export default function TheatrePage() {
                 <ClipboardList className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
                 <p className="text-muted-foreground">No surgeries scheduled for today.</p>
                 <Button variant="outline" size="sm" className="mt-4" asChild>
-                  <Link href="/theatre/cases/new">Book a Surgery</Link>
+                  <CreateRouteLink href="/theatre/cases/new">Book a Surgery</CreateRouteLink>
                 </Button>
               </div>
             ) : (

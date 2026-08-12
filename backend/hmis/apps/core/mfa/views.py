@@ -54,7 +54,7 @@ from hmis.apps.core.mfa.serializers import (
 )
 from hmis.apps.core.mfa.utils import get_client_ip, get_mfa_status, is_mfa_required
 from hmis.apps.core.models import AuditLog, PasswordResetToken
-from hmis.apps.core.permissions import WriteRequiresRolePermission
+from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ logger = logging.getLogger(__name__)
 class MFAStatusView(APIView):
     """Get MFA status for current user."""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(responses={200: MFAStatusSerializer})
     def get(self, request):
@@ -75,7 +75,7 @@ class MFAStatusView(APIView):
 class TOTPSetupView(APIView):
     """Start TOTP enrollment."""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(request=None, responses={200: TOTPSetupSerializer})
     @transaction.atomic
@@ -125,7 +125,7 @@ class TOTPSetupView(APIView):
 class TOTPConfirmView(APIView):
     """Confirm TOTP enrollment with a valid token."""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         request=TOTPConfirmSerializer,
@@ -190,7 +190,7 @@ class TOTPConfirmView(APIView):
 class MFADisableView(APIView):
     """Disable MFA for current user."""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         request=MFADisableSerializer,
@@ -249,7 +249,7 @@ class MFADisableView(APIView):
 class BackupCodesRegenerateView(APIView):
     """Regenerate backup codes."""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         request=BackupCodesRegenerateSerializer,
@@ -458,7 +458,7 @@ class BackupCodesDownloadView(APIView):
     Unlike regenerate, this does NOT generate new codes — it returns existing unused ones.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         request=inline_serializer(
@@ -547,7 +547,7 @@ class WebAuthnRegisterBeginView(APIView):
     on top of TOTP, not as a standalone first factor).
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         request=None,
@@ -634,7 +634,7 @@ class WebAuthnRegisterCompleteView(APIView):
     and stores the new credential.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         request=WebAuthnRegisterCompleteSerializer,
@@ -739,7 +739,7 @@ class WebAuthnRegisterCompleteView(APIView):
 class WebAuthnCredentialsListView(APIView):
     """List all WebAuthn credentials for the current user."""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(responses={200: WebAuthnCredentialSerializer(many=True)})
     def get(self, request):
@@ -763,7 +763,7 @@ class WebAuthnCredentialsListView(APIView):
 class WebAuthnCredentialDeleteView(APIView):
     """Delete a specific WebAuthn credential."""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         request=WebAuthnDeleteSerializer,

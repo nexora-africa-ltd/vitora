@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { cdsApi } from '@/lib/api/cds';
 import { formatDateTime } from '@/lib/utils/format';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { CDSRuleListItem, CDSRuleListParams } from '@/lib/types/cds';
 
 const PAGE_SIZE = 20;
@@ -53,6 +54,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 export default function CDSRulesPage() {
   const { refresh, isRefreshing } = usePageRefresh();
   const router = useRouter();
+  const { hasPermission } = usePermissions();
+  const canViewCDSRules = hasPermission('cds.view_cdsrule');
+  const canCreateCDSRules = hasPermission('cds.add_cdsrule');
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -74,8 +78,21 @@ export default function CDSRulesPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['cds-rules', queryParams],
     queryFn: () => cdsApi.listRules(queryParams),
+    enabled: canViewCDSRules,
     staleTime: 30000,
   });
+
+  if (!canViewCDSRules) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="CDS Rules" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">You do not have permission to view CDS rules.</p>
+        </Card>
+      </div>
+    );
+  }
 
   const handleRowClick = (item: CDSRuleListItem) => {
     router.push(`/cds/rules/${item.id}`);
@@ -87,13 +104,13 @@ export default function CDSRulesPage() {
         <PageHeader
           title="CDS Rules"
           helpContent="Manage clinical decision support rules. Rules define conditions that trigger alerts during clinical workflows — drug-allergy checks, critical lab values, vital sign thresholds, and more."
-          actions={
+          actions={canCreateCDSRules ? (
             <Button size="sm" onClick={() => router.push('/cds/rules/new')}>
               <Plus className="h-4 w-4 mr-1" />
               <span className="hidden sm:inline">New Rule</span>
               <span className="sm:hidden">New</span>
             </Button>
-          }
+          ) : undefined}
         />
 
         {/* Filters */}

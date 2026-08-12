@@ -42,10 +42,13 @@ import { useDebounce } from '@/lib/hooks/use-debounce';
 import { StockStatus, PrescriptionStatus, DrugCategory, DrugForm, DrugSchedule } from '@/lib/types/pharmacy';
 import { useFacility } from '@/lib/context/facility-context';
 import { usePharmacySocket } from '@/lib/hooks/use-websocket';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 export default function PharmacyPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { hasPermission } = usePermissions();
+  const canCreatePrescription = hasPermission('pharmacy.add_prescription');
   const { facility } = useFacility();
   usePharmacySocket(facility?.id ?? null);
 
@@ -364,10 +367,12 @@ export default function PharmacyPage() {
         {/* Prescriptions Tab */}
         <TabsContent value="prescriptions" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => router.push('/pharmacy/prescriptions/new')} size="sm">
-              <Plus className="h-4 w-4 mr-1.5" />
-              New Prescription
-            </Button>
+            {canCreatePrescription ? (
+              <Button onClick={() => router.push('/pharmacy/prescriptions/new')} size="sm">
+                <Plus className="h-4 w-4 mr-1.5" />
+                New Prescription
+              </Button>
+            ) : null}
           </div>
           <PrescriptionsTable
             prescriptions={rxData?.results ?? []}

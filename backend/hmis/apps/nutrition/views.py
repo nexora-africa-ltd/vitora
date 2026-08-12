@@ -16,7 +16,7 @@ from rest_framework.response import Response
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import WriteRequiresRolePermission
+from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 from hmis.apps.nutrition.models import DietPlan, NutritionConsultation
 from hmis.apps.nutrition.serializers import (
     DietPlanCreateSerializer,
@@ -88,7 +88,7 @@ class NutritionConsultationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet)
         "referred_by",
         "clinic_visit",
     ).prefetch_related("diet_plans")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -403,7 +403,7 @@ class DietPlanViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "created_by",
         "updated_by",
     )
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,

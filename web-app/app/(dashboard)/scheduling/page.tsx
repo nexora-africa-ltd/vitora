@@ -28,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useFacility } from '@/lib/context/facility-context';
 import { useSchedulingSocket } from '@/lib/hooks/use-websocket';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { appointmentsApi, attendanceApi, resourcesApi } from '@/lib/api/scheduling';
 import { formatDate } from '@/lib/utils/format';
 import type { OnDutyStaffEntry, ResourceListItem } from '@/lib/types/scheduling';
@@ -37,6 +38,8 @@ const today = new Date().toISOString().split('T')[0];
 export default function SchedulingDashboardPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { hasPermission } = usePermissions();
+  const canCreateAppointment = hasPermission('scheduling.add_appointment');
   const { facility } = useFacility();
   useSchedulingSocket(facility?.id ?? null);
   const [resourcesDate, setResourcesDate] = useState(today);
@@ -125,11 +128,13 @@ export default function SchedulingDashboardPage() {
           title="Scheduling"
           helpContent="View today's appointments, staff on duty, and resource overview. Manage schedules, and create new appointments."
           actions={
-            <Button size="sm" onClick={() => router.push('/scheduling/appointments/new')}>
-              <Plus className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">New Appointment</span>
-              <span className="sm:hidden">New</span>
-            </Button>
+            canCreateAppointment ? (
+              <Button size="sm" onClick={() => router.push('/scheduling/appointments/new')}>
+                <Plus className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">New Appointment</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            ) : undefined
           }
         />
 

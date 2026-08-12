@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { CreateRouteLink } from '@/components/auth/create-route-link';
 import {
   Building2,
   Bed,
@@ -94,20 +95,20 @@ export default function WardsPage() {
             <div className="flex gap-2 w-full sm:w-auto">
               <PermissionGate action="inpatient.manage_ward">
                 <Button variant="outline" asChild className="gap-2 flex-1 sm:flex-none">
-                  <Link href="/wards/new">
+                  <CreateRouteLink href="/wards/new">
                     <Plus className="h-4 w-4" />
                     <span className="sm:hidden">Ward</span>
                     <span className="hidden sm:inline">New Ward</span>
-                  </Link>
+                  </CreateRouteLink>
                 </Button>
               </PermissionGate>
               <PermissionGate action="inpatient.create_admission">
                 <Button asChild className="gap-2 flex-1 sm:flex-none">
-                  <Link href="/admissions/new">
+                  <CreateRouteLink href="/admissions/new">
                     <Plus className="h-4 w-4" />
                     <span className="sm:hidden">Admit</span>
                     <span className="hidden sm:inline">New Admission</span>
-                  </Link>
+                  </CreateRouteLink>
                 </Button>
               </PermissionGate>
             </div>

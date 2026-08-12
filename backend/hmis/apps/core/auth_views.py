@@ -25,6 +25,8 @@ from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
+from hmis.apps.core.permissions import ReadRequiresModelPermission
+
 from .models import (
     AuditLog,
     Department,
@@ -538,7 +540,7 @@ class OrgJoinRequestViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = OrgJoinRequestSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     http_method_names = ["get", "post", "head", "options"]
 
     def get_queryset(self):

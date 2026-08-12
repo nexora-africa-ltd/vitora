@@ -29,6 +29,7 @@ from hmis.apps.comments.serializers import (
 )
 from hmis.apps.comments.utils import parse_mentions
 from hmis.apps.comments.websockets import broadcast_comment_event
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.core.utils import resolve_model_pk_or_public_id
 
 User = get_user_model()
@@ -50,7 +51,7 @@ class ClinicalCommentViewSet(viewsets.ModelViewSet):
     List defaults to top-level comments (parent=null). Pass ?parent={id} for replies.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     http_method_names = ["get", "post", "patch", "delete"]
 
     def _resolve_target(self):

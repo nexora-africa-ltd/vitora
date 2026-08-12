@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { CreateRouteLink } from '@/components/auth/create-route-link';
 import { useRouter } from 'next/navigation';
 import { Plus, Search, Calendar, User, Skull, PackageCheck, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
@@ -122,11 +123,11 @@ export default function LastOfficePage() {
           actions={
             <PermissionGate action="last_office.record_death">
               <Button asChild>
-                <Link href="/last-office/new">
+                <CreateRouteLink href="/last-office/new">
                   <Plus className="h-4 w-4 mr-2" />
                   <span className="hidden sm:inline">Record Death</span>
                   <span className="sm:hidden">New</span>
-                </Link>
+                </CreateRouteLink>
               </Button>
             </PermissionGate>
           }

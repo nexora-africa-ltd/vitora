@@ -26,6 +26,7 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { sickNotesApi } from '@/lib/api/sick-notes';
 import type { SickNoteListItem, SickNoteStatus } from '@/lib/types/sick-note';
 import { SICK_NOTE_STATUS_CONFIG } from '@/lib/types/sick-note';
@@ -40,6 +41,8 @@ const STATUS_COLORS: Record<SickNoteStatus, string> = {
 export default function SickNotesPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { hasPermission } = usePermissions();
+  const canCreateSickNote = hasPermission('sick_notes.add_sicknote');
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -80,11 +83,13 @@ export default function SickNotesPage() {
           title="Sick Notes"
           helpContent="Manage medical certificates and sick notes issued to patients. Track leave periods, issue status, and print official documents."
           actions={
-            <Button onClick={() => router.push('/sick-notes/new')} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">New Sick Note</span>
-              <span className="sm:hidden">New</span>
-            </Button>
+            canCreateSickNote ? (
+              <Button onClick={() => router.push('/sick-notes/new')} size="sm">
+                <Plus className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">New Sick Note</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            ) : undefined
           }
         />
 

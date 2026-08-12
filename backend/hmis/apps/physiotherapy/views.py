@@ -16,7 +16,7 @@ from rest_framework.response import Response
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import WriteRequiresRolePermission
+from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 from hmis.apps.physiotherapy.models import (
     PhysiotherapyOrder,
     PhysiotherapySession,
@@ -55,7 +55,7 @@ class PhysiotherapyTreatmentTypeViewSet(viewsets.ModelViewSet):
     """
 
     queryset = PhysiotherapyTreatmentType.objects.all()
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -128,7 +128,7 @@ class PhysiotherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         "ordered_by",
         "assigned_therapist",
     ).prefetch_related("sessions")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -437,7 +437,7 @@ class PhysiotherapySessionViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet)
         "order__treatment_type",
         "therapist",
     )
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,

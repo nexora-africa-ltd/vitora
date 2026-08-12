@@ -28,6 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useReferrals } from '@/lib/hooks/use-referrals';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type {
   ClinicalReferralListItem,
   ReferralStatus,
@@ -55,6 +56,8 @@ const PRIORITY_COLORS: Record<ReferralPriority, string> = {
 export default function ReferralsPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { hasPermission } = usePermissions();
+  const canCreateReferral = hasPermission('referrals.add_clinicalreferral');
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -93,11 +96,13 @@ export default function ReferralsPage() {
           title="Referrals"
           helpContent="View and manage all clinical referrals. Track referrals across departments — allied health, specialty clinics, admissions, and external facilities."
           actions={
-            <Button onClick={() => router.push('/referrals/new')} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">New Referral</span>
-              <span className="sm:hidden">New</span>
-            </Button>
+            canCreateReferral ? (
+              <Button onClick={() => router.push('/referrals/new')} size="sm">
+                <Plus className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">New Referral</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            ) : undefined
           }
         />
 

@@ -12,7 +12,11 @@ from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import WriteRequiresRolePermission, get_client_ip
+from hmis.apps.core.permissions import (
+    ReadRequiresModelPermission,
+    WriteRequiresRolePermission,
+    get_client_ip,
+)
 from hmis.apps.immunizations.filters import (
     AEFIFilter,
     ImmunizationRecordFilter,
@@ -66,7 +70,7 @@ class VaccineDefinitionViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only viewset for vaccine definition reference data."""
 
     queryset = VaccineDefinition.objects.filter(is_active=True)
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     serializer_class = VaccineDefinitionSerializer
     pagination_class = None  # Small reference dataset
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
@@ -81,7 +85,7 @@ class ImmunizationRecordViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = ImmunizationRecord.objects.select_related(
         "patient", "vaccine", "administered_by", "campaign"
     )
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_scope = "facility"
     filter_backends = [
         django_filters.rest_framework.DjangoFilterBackend,
@@ -275,7 +279,7 @@ class VaccineCampaignViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for vaccine campaigns."""
 
     queryset = VaccineCampaign.objects.prefetch_related("vaccines")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_scope = "facility"
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = VaccineCampaignFilter
@@ -311,7 +315,7 @@ class AEFIViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         "parent_report",
         "vaccination_centre_county",
     )
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_scope = "facility"
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = AEFIFilter
@@ -451,7 +455,7 @@ class CoverageView(APIView):
     Returns coverage percentage and breakdown for a specific vaccine.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         parameters=[
@@ -546,7 +550,7 @@ class VaccineStockViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for vaccine stock batch management."""
 
     queryset = VaccineStock.objects.select_related("vaccine", "received_by")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_scope = "facility"
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = VaccineStockFilter
@@ -662,7 +666,7 @@ class ColdChainEquipmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for cold chain equipment management."""
 
     queryset = ColdChainEquipment.objects.all()
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_scope = "facility"
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = ColdChainEquipmentFilter
@@ -698,7 +702,7 @@ class TemperatureLogViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for temperature log entries."""
 
     queryset = TemperatureLog.objects.select_related("equipment", "recorded_by")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_facility_chain = "equipment__facility"
     tenant_org_chain = "equipment__organization"
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
@@ -755,7 +759,7 @@ class VaccineIncidentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = VaccineIncident.objects.prefetch_related(
         "affected_equipment", "affected_batches"
     ).select_related("reported_by", "investigated_by")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_scope = "facility"
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = VaccineIncidentFilter

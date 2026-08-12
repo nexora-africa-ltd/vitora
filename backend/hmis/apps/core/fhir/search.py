@@ -26,6 +26,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.fhir.views import FHIR_RENDERER_CLASSES
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +142,7 @@ class FHIRSearchMixin:
 class FHIRSearchAPIView(FHIRSearchMixin, APIView):
     """Base class for FHIR search endpoints (authenticated)."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission]
     renderer_classes = FHIR_RENDERER_CLASSES
 
 

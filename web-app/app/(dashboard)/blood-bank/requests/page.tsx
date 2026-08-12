@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { useBloodRequests } from '@/lib/hooks/use-blood-bank';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useFacility } from '@/lib/context/facility-context';
 import { formatDate } from '@/lib/utils/format';
@@ -24,6 +25,7 @@ import { REQUEST_STATUS_COLORS, URGENCY_COLORS, COMPONENT_LABELS } from '@/lib/t
 
 export default function BloodRequestsPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { hasModule } = useFacility();
   const { refresh, isRefreshing } = usePageRefresh();
   const [search, setSearch] = useState('');
@@ -119,7 +121,7 @@ export default function BloodRequestsPage() {
           actions={
             hasModule('blood_bank') ? (
               <PermissionGate action="blood_bank.create_request">
-                <Button onClick={() => router.push('/blood-bank/requests/new')}>
+                <Button onClick={() => router.push('/blood-bank/requests/new')} disabled={!canCreateRoute('/blood-bank/requests/new')}>
                   <Plus className="h-4 w-4 mr-2" />
                   <span className="hidden sm:inline">New Request</span>
                   <span className="sm:hidden">New</span>

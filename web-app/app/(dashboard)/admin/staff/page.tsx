@@ -9,6 +9,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { CreateRouteLink } from '@/components/auth/create-route-link';
 import { useRouter } from 'next/navigation';
 import {
   Plus,
@@ -104,10 +105,10 @@ export default function StaffListPage() {
           helpContent="Manage staff accounts, role assignments, and department placement for administrative oversight."
           actions={
             <Button asChild>
-              <Link href="/admin/staff/new">
+              <CreateRouteLink href="/admin/staff/new">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Staff
-              </Link>
+              </CreateRouteLink>
             </Button>
           }
         />
@@ -138,10 +139,10 @@ export default function StaffListPage() {
                 </Link>
               </Button>
               <Button asChild>
-                <Link href="/admin/staff/new">
+                <CreateRouteLink href="/admin/staff/new">
                   <Plus className="mr-2 h-4 w-4" />
                   Add Staff
-                </Link>
+                </CreateRouteLink>
               </Button>
             </div>
           }

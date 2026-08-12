@@ -26,6 +26,7 @@ from hmis.apps.core.mixins import (
 )
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import (
+    ReadRequiresModelPermission,
     RequiresActiveShiftPermission,
     WriteRequiresRolePermission,
     get_client_ip,
@@ -141,7 +142,11 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = TriageAssessment.objects.all().select_related(
         "encounter__patient", "triaged_by", "assigned_clinician", "assigned_clinic"
     )
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        ReadRequiresModelPermission,
+        RequiresActiveShiftPermission,
+    ]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["triage_category", "assigned_area", "mental_status", "encounter"]
     search_fields = [
@@ -398,7 +403,7 @@ class WaitingQueueViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     queryset = WaitingQueue.objects.all().select_related(
         "patient", "encounter", "checked_in_by", "triage_room"
     )
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["status", "priority_hint"]
     search_fields = [
@@ -577,7 +582,7 @@ class TriageSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = TriageSettings.objects.select_related("triage_department")
     serializer_class = TriageSettingsSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission, WriteRequiresRolePermission]
     tenant_scope = "facility"
     http_method_names = ["get", "patch", "head", "options"]
 
@@ -616,7 +621,7 @@ class VitalThresholdsViewSet(viewsets.ModelViewSet):
 
     queryset = TriageVitalThreshold.objects.all()
     serializer_class = TriageVitalThresholdSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission, WriteRequiresRolePermission]
 
     def get_queryset(self):
         """By default show only active thresholds; admins can see all."""
@@ -725,7 +730,7 @@ class TriageQueueViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
         "triage_assessment__encounter__patient", "triage_assessment__triaged_by", "called_by"
     )
     serializer_class = TriageQueueSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["status", "triage_assessment__assigned_area"]
 
@@ -1031,7 +1036,7 @@ class TriageReportSummaryView(APIView):
     Supports date_range, area, and category filters.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission, WriteRequiresRolePermission]
 
     KETA_TARGETS = {
         "RED": 0,
@@ -1350,7 +1355,7 @@ class WaitTimesReportView(APIView):
     Returns real-time wait time metrics for the triage dashboard.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission, WriteRequiresRolePermission]
 
     # KETA target wait times by triage category (in minutes)
     KETA_TARGETS = {
@@ -1534,7 +1539,7 @@ class ReportExportView(APIView):
     Supports exporting wait-time and volume reports for a given date range.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission, WriteRequiresRolePermission]
 
     @extend_schema(
         parameters=[
@@ -1666,7 +1671,7 @@ class VolumeReportView(APIView):
     Report endpoint for volume by category.
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission, WriteRequiresRolePermission]
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT},
@@ -1733,7 +1738,7 @@ class ERBedViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
     """
 
     queryset = ERBed.objects.all()
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["zone", "status"]
     ordering_fields = ["zone", "bed_number", "status_changed_at"]
@@ -2072,7 +2077,7 @@ class WaitTimeBreachViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSe
         "queue_entry", "triage_assessment", "patient", "acknowledged_by"
     )
     serializer_class = WaitTimeBreachSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["status", "severity", "triage_category", "assigned_area"]
     ordering_fields = ["created_at", "severity", "actual_wait_minutes"]
@@ -2156,7 +2161,7 @@ class EscalationViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
         "resolved_by",
     )
     serializer_class = EscalationSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission, WriteRequiresRolePermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["status", "escalation_type", "triage_category", "assigned_area"]
     ordering_fields = ["created_at", "escalation_type"]

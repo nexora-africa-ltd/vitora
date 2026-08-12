@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { proceduresApi } from '@/lib/api/procedures';
 import { formatDate, formatTime } from '@/lib/utils/format';
@@ -35,6 +36,8 @@ import {
 export default function ProcedureOrdersPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { hasPermission } = usePermissions();
+  const canCreateProcedureOrder = hasPermission('procedures.add_procedureorder');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('');
@@ -148,10 +151,12 @@ export default function ProcedureOrdersPage() {
           title="Procedure Orders"
           helpContent="View and manage all procedure orders. Filter by status, priority, or search by patient name or order number."
           actions={
-            <Button onClick={() => router.push('/procedures/orders/new')}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Order
-            </Button>
+            canCreateProcedureOrder ? (
+              <Button onClick={() => router.push('/procedures/orders/new')}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Order
+              </Button>
+            ) : undefined
           }
         />
 

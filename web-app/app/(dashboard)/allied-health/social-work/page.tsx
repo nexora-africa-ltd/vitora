@@ -30,9 +30,11 @@ import {
 } from 'lucide-react';
 import { useAlliedHealthDashboard } from '@/lib/hooks/use-allied-health';
 import { useClinicVisits } from '@/lib/hooks/use-clinics';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 
 export default function SocialWorkDashboardPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const [activeTab, setActiveTab] = useState('queue');
 
   const { data: dashboardStats, isLoading: statsLoading } = useAlliedHealthDashboard();
@@ -59,7 +61,7 @@ export default function SocialWorkDashboardPage() {
         title="Social Work Services"
         helpContent="Manage social work cases, referrals, and interventions. Track GBV, child protection, poverty assessment, and psychosocial support."
         actions={
-          <Button onClick={() => router.push('/allied-health/social-work/cases/new')}>
+          <Button onClick={() => router.push('/allied-health/social-work/cases/new')} disabled={!canCreateRoute('/allied-health/social-work/cases/new')}>
             <Plus className="h-4 w-4 mr-2" />
             New Case
           </Button>

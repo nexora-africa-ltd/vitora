@@ -15,6 +15,7 @@ import {
   useVisitAuthorizations,
 } from '@/lib/hooks/use-insurance';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import type { InsuranceVisitAuthorization, PatientInsurance } from '@/lib/types/insurance';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -27,6 +28,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function InsuranceEnrollmentsPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { toast } = useToast();
   const { data, isLoading, refetch } = usePatientInsurances({
     page: 1,
@@ -84,7 +86,7 @@ export default function InsuranceEnrollmentsPage() {
         title="Insurance Enrollments"
         helpContent="Manage patient insurance enrollments and verify eligibility via HealthCloud."
         actions={
-          <Button onClick={() => router.push('/insurance/enrollments/new')}>New Enrollment</Button>
+          <Button onClick={() => router.push('/insurance/enrollments/new')} disabled={!canCreateRoute('/insurance/enrollments/new')}>New Enrollment</Button>
         }
       />
 

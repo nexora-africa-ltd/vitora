@@ -22,7 +22,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
-from hmis.apps.core.permissions import RequiresActiveShiftPermission, WriteRequiresRolePermission
+from hmis.apps.core.permissions import (
+    ReadRequiresModelPermission,
+    RequiresActiveShiftPermission,
+    WriteRequiresRolePermission,
+)
 from hmis.apps.core.utils import resolve_model_pk_or_public_id
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.licensing.permissions import requires_feature
@@ -126,7 +130,12 @@ class TestCatalogViewSet(viewsets.ModelViewSet):
     """
 
     queryset = TestCatalog.objects.all()
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISManageCatalogPermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISManageCatalogPermission,
+        ReadRequiresModelPermission,
+    ]
     lookup_field = "code"
 
     def get_serializer_class(self):
@@ -508,6 +517,7 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         LaboratoryModuleRequired,
         RequiresActiveShiftPermission,
         requires_feature("laboratory"),
+        ReadRequiresModelPermission,
     ]
     filter_backends = [filters.DjangoFilterBackend, SearchFilter]
     filterset_fields = ["patient", "encounter", "status", "priority", "order_type"]
@@ -975,7 +985,12 @@ class LabResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     queryset = LabResult.objects.all().select_related(
         "order_item__test", "order_item__lab_order__patient", "entered_by"
     )
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filter_backends = [SearchFilter, filters.DjangoFilterBackend]
     search_fields = [
         "order_item__test__name",
@@ -1230,7 +1245,7 @@ class LabAttachmentViewSet(NestedTenantScopeMixin, viewsets.GenericViewSet):
 
     queryset = LabResultAttachment.objects.all().select_related("lab_order", "uploaded_by")
     serializer_class = LabResultAttachmentSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_facility_chain = "lab_order__facility"
     tenant_org_chain = "lab_order__organization"
 
@@ -1258,7 +1273,7 @@ class PatientLabOrderViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewS
 
     queryset = LabOrder.objects.all()
     serializer_class = LabOrderSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_facility_chain = "facility"
     tenant_org_chain = "organization"
 
@@ -1280,7 +1295,7 @@ class EncounterLabOrderViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelVie
 
     queryset = LabOrder.objects.all()
     serializer_class = LabOrderSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_facility_chain = "facility"
     tenant_org_chain = "organization"
 
@@ -1306,7 +1321,7 @@ class PatientLabResultViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelView
 
     queryset = LabResult.objects.all()
     serializer_class = LabResultSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_facility_chain = "order_item__lab_order__facility"
     tenant_org_chain = "order_item__lab_order__organization"
 
@@ -1325,7 +1340,7 @@ class LOINCCodeViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = LOINCCode.objects.all()
     serializer_class = LOINCCodeSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
 
 class LOINCSearchView(APIView):
@@ -1339,7 +1354,7 @@ class LOINCSearchView(APIView):
     GET /api/laboratory/loinc-search/?code=<code>  (validate/lookup single code)
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ReadRequiresModelPermission]
 
     @extend_schema(
         summary="Search LOINC terminology codes",
@@ -1400,7 +1415,7 @@ class LabQueueViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     - technicians: List available technicians
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [filters.DjangoFilterBackend]
     filterset_fields = ["queue_status", "priority", "assigned_technician"]
     lookup_field = "queue_number"
@@ -1637,7 +1652,7 @@ class LabQueueViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 class LabTurnaroundTimeReportView(APIView):
     """Report turnaround time metrics for lab operations."""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         responses={
@@ -1663,7 +1678,7 @@ class LabTurnaroundTimeReportView(APIView):
 class LabWorkloadReportView(APIView):
     """Report lab workload metrics."""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         responses={
@@ -1688,7 +1703,7 @@ class LabWorkloadReportView(APIView):
 class LabCriticalValuesReportView(APIView):
     """Report critical values metrics."""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         responses={
@@ -1712,7 +1727,7 @@ class LabCriticalValuesReportView(APIView):
 class LabSampleRejectionReportView(APIView):
     """Report sample rejection metrics."""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         responses={
@@ -1771,6 +1786,7 @@ class InstrumentViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Model
         LaboratoryModuleRequired,
         LISIntegrationSettingsPermission,
         WriteRequiresRolePermission,
+        ReadRequiresModelPermission,
     ]
     filterset_class = InstrumentFilter
     tenant_scope = "facility"
@@ -1812,7 +1828,7 @@ class AnalyzerRunViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
 
     queryset = AnalyzerRun.objects.select_related("specimen", "instrument", "operator").all()
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = AnalyzerRunFilter
     tenant_facility_chain = "specimen__lab_order__facility"
     tenant_org_chain = "specimen__lab_order__organization"
@@ -1886,7 +1902,7 @@ class DiagnosticReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "amended_by",
     ).all()
     lookup_field = "report_number"
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = DiagnosticReportFilter
     tenant_facility_chain = "lab_order__facility"
     tenant_org_chain = "lab_order__organization"
@@ -2206,7 +2222,7 @@ class SpecimenViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
         .all()
     )
     serializer_class = SpecimenSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = SpecimenFilter
     lookup_field = "barcode"
@@ -2239,6 +2255,7 @@ class SpecimenRejectionReasonViewSet(TenantScopedViewMixin, viewsets.ModelViewSe
         LaboratoryModuleRequired,
         LISIntegrationSettingsPermission,
         WriteRequiresRolePermission,
+        ReadRequiresModelPermission,
     ]
     tenant_scope = "facility"
 
@@ -2266,6 +2283,7 @@ class ResultCommentTemplateViewSet(TenantScopedViewMixin, viewsets.ModelViewSet)
         LaboratoryModuleRequired,
         LISIntegrationSettingsPermission,
         WriteRequiresRolePermission,
+        ReadRequiresModelPermission,
     ]
     tenant_scope = "facility"
 
@@ -2296,6 +2314,7 @@ class ReferralLabViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         LaboratoryModuleRequired,
         LISIntegrationSettingsPermission,
         WriteRequiresRolePermission,
+        ReadRequiresModelPermission,
     ]
     tenant_scope = "facility"
 
@@ -2326,6 +2345,7 @@ class LabBarcodeConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         LaboratoryModuleRequired,
         LISIntegrationSettingsPermission,
         WriteRequiresRolePermission,
+        ReadRequiresModelPermission,
     ]
     tenant_scope = "facility"
 
@@ -2363,6 +2383,7 @@ class LabWorkflowSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         LaboratoryModuleRequired,
         LISIntegrationSettingsPermission,
         WriteRequiresRolePermission,
+        ReadRequiresModelPermission,
     ]
     tenant_scope = "facility"
 

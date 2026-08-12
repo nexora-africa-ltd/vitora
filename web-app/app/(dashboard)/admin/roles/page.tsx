@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { CreateRouteLink } from '@/components/auth/create-route-link';
 import { useRouter } from 'next/navigation';
 import { Plus, Shield, Users, Settings, Search, KeyRound, BadgeCheck, RefreshCcw, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
@@ -118,10 +119,10 @@ export default function RolesListPage() {
           helpContent="Manage role definitions and permission bundles for clinical, administrative, and technical staff."
           actions={
             <Button asChild>
-              <Link href="/admin/roles/new">
+              <CreateRouteLink href="/admin/roles/new">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Role
-              </Link>
+              </CreateRouteLink>
             </Button>
           }
         />
@@ -161,10 +162,10 @@ export default function RolesListPage() {
                 </Button>
               )}
               <Button asChild>
-                <Link href="/admin/roles/new">
+                <CreateRouteLink href="/admin/roles/new">
                   <Plus className="mr-2 h-4 w-4" />
                   Add Role
-                </Link>
+                </CreateRouteLink>
               </Button>
             </div>
           }

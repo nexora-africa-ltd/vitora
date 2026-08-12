@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 
 from .client import TibaBotError, TibaBotUnavailableError, get_tibabot_client
 from .feature_flags import AIFeatureGatedMixin
@@ -48,7 +49,7 @@ class FormularySearchView(AIFeatureGatedMixin, APIView):
     - KEML (Kenya Essential Medicines List)
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         serializer = FormularySearchRequestSerializer(data=request.query_params)
@@ -110,7 +111,7 @@ class FormularySmpcDetailView(AIFeatureGatedMixin, APIView):
     Proxies to TibaBot /drugs/smpc/{doc_id} endpoint.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request, doc_id: str) -> Response:
         # Audit log
@@ -153,7 +154,7 @@ class FormularyStatsView(AIFeatureGatedMixin, APIView):
     Proxies to TibaBot /drugs/stats endpoint.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:  # noqa: ARG002
         try:

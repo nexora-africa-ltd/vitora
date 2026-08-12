@@ -25,6 +25,7 @@ import { InvoiceList } from '@/components/billing/InvoiceList';
 import { useDhaInvoices, useInvoices, useFinalizeInvoice, useCancelInvoice } from '@/lib/hooks/billing';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import type { DHAInvoiceRow, Invoice, InvoiceStatus } from '@/lib/types/billing';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
 
@@ -32,6 +33,7 @@ type InvoiceSourceFilter = 'local' | 'dha';
 
 export default function TransactionsInvoicesPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
@@ -59,6 +61,7 @@ export default function TransactionsInvoicesPage() {
   const cancelInvoice = useCancelInvoice();
 
   const handleCreateInvoice = () => {
+    if (!canCreateRoute('/transactions/invoices/new')) return;
     router.push('/transactions/invoices/new');
   };
 
@@ -115,7 +118,11 @@ export default function TransactionsInvoicesPage() {
           title="Invoices"
           helpContent="Create and manage patient invoices. Filter by status, search by invoice number, patient name, or MRN."
           actions={
-            <Button onClick={handleCreateInvoice} className="gap-2 w-full sm:w-auto">
+            <Button
+              onClick={handleCreateInvoice}
+              disabled={!canCreateRoute('/transactions/invoices/new')}
+              className="gap-2 w-full sm:w-auto"
+            >
               <Plus className="h-4 w-4" />
               New Invoice
             </Button>

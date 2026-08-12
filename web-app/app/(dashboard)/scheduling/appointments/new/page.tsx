@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useToast } from '@/lib/hooks/use-toast';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { appointmentsApi, resourcesApi } from '@/lib/api/scheduling';
 import { patientsApi } from '@/lib/api/patients';
 import type { AppointmentType, AppointmentPriority, AppointmentCreateData, AvailabilitySlot } from '@/lib/types/scheduling';
@@ -45,6 +46,22 @@ export default function NewAppointmentPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canCreateAppointment = hasPermission('scheduling.add_appointment');
+
+  if (!canCreateAppointment) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Appointment" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to create appointments.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   // Patient search
   const [patientSearch, setPatientSearch] = useState('');

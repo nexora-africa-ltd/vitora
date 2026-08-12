@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { qualityApi } from '@/lib/api/quality';
 import { Plus, Search } from 'lucide-react';
 import type {
@@ -63,6 +64,8 @@ export default function QualityMeasuresListPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { hasPermission } = usePermissions();
+  const canCreateMeasure = hasPermission('quality.add_qualitymeasure');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [domain, setDomain] = useState<string>(searchParams.get('domain') || 'all');
@@ -91,14 +94,16 @@ export default function QualityMeasuresListPage() {
           title="Quality Measures"
           helpContent="Clinical Quality Measures (CQM) define the indicators used to assess healthcare quality. Each measure has numerator/denominator logic and target percentages."
           actions={
-            <Button
-              size="sm"
-              onClick={() => router.push('/quality/measures/new')}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Add Measure</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
+            canCreateMeasure ? (
+              <Button
+                size="sm"
+                onClick={() => router.push('/quality/measures/new')}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Add Measure</span>
+                <span className="sm:hidden">Add</span>
+              </Button>
+            ) : undefined
           }
         />
 

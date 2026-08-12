@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { inventoryApi } from '@/lib/api/inventory';
 import type { PurchaseOrder, PurchaseOrderStatus } from '@/lib/types/inventory';
@@ -48,6 +49,8 @@ function formatDate(dateStr: string | null | undefined): string {
 export default function PurchaseOrdersPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { hasPermission } = usePermissions();
+  const canCreatePurchaseOrder = hasPermission('inventory.add_purchaseorder');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
@@ -81,10 +84,12 @@ export default function PurchaseOrdersPage() {
           title="Purchase Orders"
           helpContent="Create and manage purchase orders for your facility. Submit orders for approval, track delivery status, and manage supplier procurement."
           actions={
-            <Button onClick={() => router.push('/inventory/purchase-orders/new')} className="gap-2 w-full sm:w-auto">
-              <Plus className="h-4 w-4" />
-              New PO
-            </Button>
+            canCreatePurchaseOrder ? (
+              <Button onClick={() => router.push('/inventory/purchase-orders/new')} className="gap-2 w-full sm:w-auto">
+                <Plus className="h-4 w-4" />
+                New PO
+              </Button>
+            ) : undefined
           }
         />
 

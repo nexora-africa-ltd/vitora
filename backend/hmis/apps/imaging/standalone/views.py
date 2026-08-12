@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
-from hmis.apps.core.permissions import RequiresActiveShiftPermission
+from hmis.apps.core.permissions import ReadRequiresModelPermission, RequiresActiveShiftPermission
 from hmis.apps.imaging.permissions import ImagingModuleRequired, ImagingStandaloneRequired
 from hmis.apps.imaging.serializers import ImagingOrderSerializer
 
@@ -36,6 +36,7 @@ class WalkInImagingPatientViewSet(ReadOnCreateMixin, TenantScopedViewMixin, view
         ImagingModuleRequired,
         RequiresActiveShiftPermission,
         ImagingStandaloneRequired,
+        ReadRequiresModelPermission,
     ]
     filter_backends = [filters.SearchFilter]
     search_fields = ["first_name", "last_name", "registration_number"]
@@ -83,6 +84,7 @@ class StandaloneImagingOrderViewSet(TenantScopedViewMixin, viewsets.GenericViewS
         ImagingModuleRequired,
         RequiresActiveShiftPermission,
         ImagingStandaloneRequired,
+        ReadRequiresModelPermission,
     ]
 
     def get_serializer_class(self):
@@ -116,6 +118,7 @@ class ExternalImagingOrderRequestViewSet(TenantScopedViewMixin, viewsets.ModelVi
         ImagingModuleRequired,
         RequiresActiveShiftPermission,
         ImagingStandaloneRequired,
+        ReadRequiresModelPermission,
     ]
     http_method_names = ["get", "post", "head", "options"]
 

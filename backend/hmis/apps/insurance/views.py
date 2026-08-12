@@ -18,7 +18,7 @@ from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import RequiresActiveShiftPermission
+from hmis.apps.core.permissions import ReadRequiresModelPermission, RequiresActiveShiftPermission
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.insurance.bootstrap import seed_slade_defaults
 from hmis.apps.insurance.filters import (
@@ -1311,7 +1311,11 @@ class InsuranceClaimItemViewSet(viewsets.ModelViewSet):
 
     queryset = InsuranceClaimItem.objects.all()
     serializer_class = InsuranceClaimItemSerializer
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
 
     def get_queryset(self):
         return self.queryset.filter(claim_id=self.kwargs.get("claim_pk"))

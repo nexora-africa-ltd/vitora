@@ -20,10 +20,12 @@ import { useDebounce } from '@/lib/hooks/use-debounce';
 import { useBillingStore } from '@/lib/stores/billing';
 import { useFacility } from '@/lib/context/facility-context';
 import { useBillingSocket } from '@/lib/hooks/use-websocket';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import type { Invoice, Payment, InvoiceStatus, PaymentMethod, PaymentStatus } from '@/lib/types/billing';
 
 export default function TransactionsPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { facility } = useFacility();
   useBillingSocket(facility?.id ?? null);
   const { activeTab, setActiveTab } = useBillingStore();
@@ -50,6 +52,7 @@ export default function TransactionsPage() {
   const { data: dailyReport, isLoading: reportLoading } = useDailyCollectionReport(today);
 
   const handleCreateInvoice = () => {
+    if (!canCreateRoute('/transactions/invoices/new')) return;
     router.push('/transactions/invoices/new');
   };
 
@@ -87,7 +90,11 @@ export default function TransactionsPage() {
         title="Transactions"
         helpContent="Manage invoices, payments, and bills. View daily collections and track outstanding balances."
         actions={
-          <Button onClick={handleCreateInvoice} size="sm">
+          <Button
+            onClick={handleCreateInvoice}
+            disabled={!canCreateRoute('/transactions/invoices/new')}
+            size="sm"
+          >
             <Plus className="h-4 w-4 mr-1" />
             New Invoice
           </Button>

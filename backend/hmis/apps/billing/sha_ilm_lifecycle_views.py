@@ -50,7 +50,7 @@ from hmis.apps.billing.services.ilm_lifecycle_service import (
 )
 from hmis.apps.billing.services.multipart_builder import MultipartFile
 from hmis.apps.core.events import BillingEvents, publish_event
-from hmis.apps.core.permissions import WriteRequiresRolePermission
+from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 from hmis.apps.patients.models import Patient
 
 logger = logging.getLogger(__name__)
@@ -205,7 +205,7 @@ def _record_pending_whitelist_from_error(
 
 
 class IlmVisitOtpView(APIView):
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def post(self, request):
         intervention_codes = request.data.get("intervention_codes")
@@ -251,7 +251,7 @@ class IlmVisitOtpView(APIView):
 
 
 class IlmDischargeOtpView(APIView):
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def post(self, request):
         consent_token = request.data.get("consent_token")
@@ -280,7 +280,7 @@ class IlmDischargeOtpView(APIView):
 
 
 class IlmDischargeView(APIView):
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def post(self, request):
         # consent_token, discharge_date, discharge_reason, invoice_number always required.
@@ -458,7 +458,7 @@ class IlmDischargeView(APIView):
 
 
 class IlmOtpWhitelistRequestView(APIView):
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def post(self, request):
@@ -573,7 +573,7 @@ class IlmOtpWhitelistRequestView(APIView):
 
 
 class IlmOtpWhitelistCallbackView(APIView):
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
         beneficiary_cr_id = request.query_params.get("beneficiary_cr_id")
@@ -602,7 +602,7 @@ class IlmOtpWhitelistCallbackView(APIView):
 
 
 class IlmNextOfKinView(APIView):
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def post(self, request):
         required = (
@@ -643,7 +643,7 @@ class IlmNextOfKinView(APIView):
 
 
 class IlmEmergencyDoctorAddView(APIView):
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def post(self, request):
         consent_token = request.data.get("consent_token")
@@ -668,7 +668,7 @@ class IlmEmergencyDoctorAddView(APIView):
 
 
 class IlmEmergencyDoctorRemoveView(APIView):
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def delete(self, request):
         consent_token = request.data.get("consent_token")
@@ -694,7 +694,7 @@ class IlmEmergencyDoctorRemoveView(APIView):
 
 
 class IlmPomsfBalancesView(APIView):
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
         patient_id = request.query_params.get("patient_id")
@@ -728,7 +728,7 @@ class IlmPomsfBalancesView(APIView):
 
 
 class IlmFileUploadView(APIView):
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
@@ -756,7 +756,7 @@ class IlmFileUploadView(APIView):
 
 
 class IlmFileUrlView(APIView):
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request, file_id: str):
         if not file_id:
@@ -825,7 +825,7 @@ def _serialize_upload(u: SHAUpload) -> dict[str, Any]:
 
 
 class SHAOtpRequestListView(APIView):
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
         qs = SHAOtpRequest.objects.all().order_by("-sent_at")
@@ -839,7 +839,7 @@ class SHAOtpRequestListView(APIView):
 
 
 class SHAOtpWhitelistListView(APIView):
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
         qs = SHAOtpWhitelistRequest.objects.all().order_by("-requested_at")
@@ -853,7 +853,7 @@ class SHAOtpWhitelistListView(APIView):
 
 
 class SHAUploadListView(APIView):
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def get(self, request):
         qs = SHAUpload.objects.all().order_by("-uploaded_at")

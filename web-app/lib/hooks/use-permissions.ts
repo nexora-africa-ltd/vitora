@@ -205,7 +205,9 @@ export function usePermissions(): PermissionsResult {
 
   const hasPermission = useCallback((permission: string): boolean => {
     if (!isAuthenticated || !user) return false;
-    if (isSuperuser || isAdmin) return true;
+    // Strict Django permission check for create/view/change/delete gating.
+    // Only superusers bypass model/action permissions.
+    if (isSuperuser) return true;
 
     const userPermissions = user.permissions || [];
 
@@ -223,7 +225,7 @@ export function usePermissions(): PermissionsResult {
       const codename = p.includes('.') ? p.split('.')[1] : p;
       return codename === permission;
     });
-  }, [user, isAuthenticated, isSuperuser, isAdmin]);
+  }, [user, isAuthenticated, isSuperuser]);
 
   const canAccessModule = useCallback((module: ModuleKey): boolean => {
     if (!isAuthenticated) return false;

@@ -75,6 +75,7 @@ import { useCheckDrugInteractions } from '@/lib/hooks/use-allergies';
 import { PrescriptionAllergyWarning } from '@/components/pharmacy/prescription-allergy-warning';
 import type { DrugInteractionCheck } from '@/lib/types/allergy';
 import { useAuth } from '@/lib/auth';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useOptionalPatientContext } from '@/lib/context/patient-context';
 import { useOptionalEncounterContext } from '@/lib/context/encounter-context';
 import { printPrescription, type PrintPrescriptionOptions } from '@/lib/documents';
@@ -118,7 +119,23 @@ interface PrescriptionItemForm extends PrescriptionItemCreateData {
 
 export default function NewPrescriptionPage() {
   const router = useRouter();
+  const { hasPermission } = usePermissions();
+  const canCreatePrescription = hasPermission('pharmacy.add_prescription');
   const searchParams = useSearchParams();
+
+  if (!canCreatePrescription) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Prescription" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to create prescriptions.
+          </p>
+        </Card>
+      </div>
+    );
+  }
   const { toast } = useToast();
   const { user } = useAuth();
 

@@ -17,12 +17,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cdsApi } from '@/lib/api/cds';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { toast } from 'sonner';
 import type { CDSRuleCreateData } from '@/lib/types/cds';
 
 export default function CDSRuleNewPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { hasPermission } = usePermissions();
+  const canCreateCDSRules = hasPermission('cds.add_cdsrule');
 
   const [formData, setFormData] = useState<CDSRuleCreateData>({
     code: '',
@@ -82,6 +85,20 @@ export default function CDSRuleNewPage() {
   ) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
+
+  if (!canCreateCDSRules) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New CDS Rule" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to create CDS rules.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">

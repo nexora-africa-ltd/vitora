@@ -23,6 +23,7 @@ from hmis.apps.core.mixins import (
 )
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import (
+    ReadRequiresModelPermission,
     RequiresActiveShiftPermission,
     WriteRequiresRolePermission,
     get_client_ip,
@@ -83,7 +84,7 @@ class ICD10CodeViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = ICD10Code.objects.filter(is_active=True)
     serializer_class = ICD10CodeSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["chapter", "category"]
     search_fields = ["code", "description", "category"]
@@ -108,7 +109,7 @@ class TreatmentPlanTemplateViewSet(viewsets.ModelViewSet):
 
     queryset = TreatmentPlanTemplate.objects.filter(is_active=True)
     serializer_class = TreatmentPlanTemplateSerializer
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["department", "is_active"]
     search_fields = ["name", "description", "department"]
@@ -173,7 +174,11 @@ class DiagnosisViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     serializer_class = DiagnosisSerializer
     queryset = Diagnosis.objects.all()
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["diagnosis_type", "is_confirmed"]
     ordering_fields = ["diagnosis_type", "created_at"]
@@ -339,7 +344,11 @@ class EncounterViewSet(
         "clinic_visit__session__clinic",
     ).all()
     serializer_class = EncounterSerializer
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = EncounterFilter
     search_fields = ["chief_complaint", "notes", "patient__first_name", "patient__last_name"]
@@ -1685,7 +1694,7 @@ class TreatmentPlanView(APIView):
     - PUT/PATCH /api/encounters/{encounter_id}/treatment-plan/ - Update treatment plan
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     def _get_encounter(self, encounter_pk):
         """Get encounter or return 404."""
@@ -1811,7 +1820,7 @@ class ApplyTemplateView(APIView):
     - POST /api/encounters/{encounter_id}/treatment-plan/apply-template/
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         request=inline_serializer(
@@ -1891,7 +1900,11 @@ class MedicationViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     serializer_class = MedicationSerializer
     queryset = Medication.objects.all()
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["name", "created_at"]
     ordering = ["name"]
@@ -1961,7 +1974,7 @@ class SNOMEDSearchView(APIView):
         limit: Max results (default 20, max 50)
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         parameters=[
@@ -2042,7 +2055,11 @@ class SocialHistoryObservationViewSet(
     queryset = SocialHistoryObservation.objects.select_related(
         "patient", "encounter", "recorded_by"
     )
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["observation_type", "status"]
     ordering_fields = ["effective_date", "created_at"]
@@ -2113,7 +2130,11 @@ class ChronicConditionViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets
     """CRUD for structured chronic conditions scoped by patient."""
 
     queryset = ChronicCondition.objects.select_related("patient", "encounter", "recorded_by")
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["status"]
     ordering_fields = ["onset_date", "created_at"]
@@ -2184,7 +2205,11 @@ class CurrentMedicationViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewset
     queryset = CurrentMedication.objects.select_related(
         "patient", "encounter", "recorded_by", "drug"
     )
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["status"]
     ordering_fields = ["start_date", "created_at"]
@@ -2253,7 +2278,11 @@ class PastSurgeryViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mode
     """CRUD for structured past surgeries/procedures scoped by patient."""
 
     queryset = PastSurgery.objects.select_related("patient", "encounter", "recorded_by")
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["outcome"]
     ordering_fields = ["procedure_date", "created_at"]
@@ -2322,7 +2351,11 @@ class FamilyHistoryViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mo
     """CRUD for structured family history scoped by patient."""
 
     queryset = FamilyHistory.objects.select_related("patient", "encounter", "recorded_by")
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [
+        IsAuthenticated,
+        RequiresActiveShiftPermission,
+        ReadRequiresModelPermission,
+    ]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["relationship"]
     ordering_fields = ["created_at"]

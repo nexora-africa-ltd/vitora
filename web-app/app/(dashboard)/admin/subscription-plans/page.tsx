@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { CreateRouteLink } from '@/components/auth/create-route-link';
 import { Plus, Search, CreditCard, Building2, Users, Check, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
@@ -72,10 +73,10 @@ export default function SubscriptionPlansPage() {
           helpContent="Manage subscription tiers with pricing, facility/user/patient limits, and feature flags. Plans are linked to organizations to enforce limits."
           actions={
             <Button asChild size="sm">
-              <Link href="/admin/subscription-plans/new">
+              <CreateRouteLink href="/admin/subscription-plans/new">
                 <Plus className="h-4 w-4 mr-1" />
                 New Plan
-              </Link>
+              </CreateRouteLink>
             </Button>
           }
         />

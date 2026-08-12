@@ -10,6 +10,7 @@ import { Plus } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { ImagingOrderTable } from '@/components/imaging';
 import { useImagingOrders } from '@/lib/hooks/use-imaging';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -18,6 +19,8 @@ import { ImagingOrderStatus, ImagingPriority } from '@/lib/types/imaging';
 export default function ImagingOrdersPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { hasPermission } = usePermissions();
+  const canCreateImagingOrder = hasPermission('imaging.add_imagingorder');
   const pageSize = 20;
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<ImagingOrderStatus | ''>('');
@@ -44,10 +47,12 @@ export default function ImagingOrdersPage() {
           title="Imaging Orders"
           helpContent="View and manage all imaging orders. Search by patient name, MRN, order number, or clinical indication. Filter by status and priority."
           actions={
-            <Button onClick={() => router.push('/imaging/orders/new')} className="gap-2 w-full sm:w-auto">
-              <Plus className="h-4 w-4" />
-              New Order
-            </Button>
+            canCreateImagingOrder ? (
+              <Button onClick={() => router.push('/imaging/orders/new')} className="gap-2 w-full sm:w-auto">
+                <Plus className="h-4 w-4" />
+                New Order
+              </Button>
+            ) : undefined
           }
         />
 

@@ -22,6 +22,7 @@ from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 
 from .models import (
     IHRNotification,
@@ -109,7 +110,7 @@ class NotifiableDiseaseViewSet(viewsets.ModelViewSet):
 
     queryset = NotifiableDisease.objects.all()
     serializer_class = NotifiableDiseaseSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_fields = ["category", "is_active", "is_ihr_notifiable"]
     search_fields = ["name", "icd10_codes", "description"]
     ordering_fields = ["name", "category", "reporting_hours"]
@@ -245,7 +246,7 @@ class NotifiableCaseViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
         "disease", "patient", "encounter", "county", "sub_county", "reported_by", "notified_by"
     ).all()
     serializer_class = NotifiableCaseSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_class = NotifiableCaseFilter
     search_fields = ["patient__first_name", "patient__last_name", "patient__mrn", "disease__name"]
     ordering_fields = ["detected_at", "notification_deadline", "notification_status"]
@@ -366,7 +367,7 @@ class SurveillanceAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         "case", "case__disease", "case__patient", "case__county", "acknowledged_by"
     ).all()
     serializer_class = SurveillanceAlertSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_fields = ["alert_type", "is_acknowledged", "case__disease"]
     search_fields = ["case__disease__name", "case__patient__mrn", "message"]
     ordering = ["-created_at"]
@@ -533,7 +534,7 @@ class SurveillanceDashboardView(APIView):
     GET /api/surveillance/dashboard/
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     @extend_schema(responses={200: SurveillanceDashboardSerializer})
     def get(self, request):
@@ -628,7 +629,7 @@ class CountyReportView(APIView):
     Query params: start_date, end_date
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     @extend_schema(responses={200: CountyReportSerializer})
     def get(self, request, county_id):
@@ -774,7 +775,7 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = None  # Set in get_queryset
     serializer_class = None  # Set dynamically
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_class = IDSRWeeklyReportFilter
     search_fields = ["facility_name", "facility_code"]
     ordering_fields = ["epi_year", "epi_week", "generated_at", "total_cases"]
@@ -1171,7 +1172,7 @@ class IHRNotificationViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.
         "national_reviewed_by",
     ).all()
     serializer_class = IHRNotificationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_class = IHRNotificationFilter
     search_fields = [
         "disease__name",

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { CreateRouteLink } from '@/components/auth/create-route-link';
 import { Hospital, Search, MapPin, ShieldCheck, Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
@@ -44,10 +45,10 @@ export default function FacilitiesPage() {
           actions={
             isSuperuser ? (
               <Button asChild size="sm">
-                <Link href="/admin/facilities/new">
+                <CreateRouteLink href="/admin/facilities/new">
                   <Plus className="h-4 w-4 mr-1" />
                   New Facility
-                </Link>
+                </CreateRouteLink>
               </Button>
             ) : undefined
           }

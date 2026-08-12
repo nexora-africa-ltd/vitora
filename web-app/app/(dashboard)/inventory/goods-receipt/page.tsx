@@ -14,6 +14,7 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { inventoryApi } from '@/lib/api/inventory';
 import type { GoodsReceiptNote, GRNStatus } from '@/lib/types/inventory';
 
@@ -41,6 +42,7 @@ function formatDate(dateStr: string | null | undefined): string {
 
 export default function GoodsReceiptPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { refresh, isRefreshing } = usePageRefresh();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -69,7 +71,7 @@ export default function GoodsReceiptPage() {
           title="Formal Goods Receipt"
           helpContent="Record incoming deliveries against purchase orders. Confirm receipts to update inventory stock levels automatically."
           actions={
-            <Button onClick={() => router.push('/inventory/goods-receipt/new')} className="gap-2 w-full sm:w-auto">
+            <Button onClick={() => router.push('/inventory/goods-receipt/new')} disabled={!canCreateRoute('/inventory/goods-receipt/new')} className="gap-2 w-full sm:w-auto">
               <Plus className="h-4 w-4" />
               New GRN
             </Button>

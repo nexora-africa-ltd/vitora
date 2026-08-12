@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { useBloodUnits } from '@/lib/hooks/use-blood-bank';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { formatDate } from '@/lib/utils/format';
 import type { BloodUnitListItem } from '@/lib/types/blood-bank';
@@ -23,6 +24,7 @@ import { UNIT_STATUS_COLORS, COMPONENT_LABELS } from '@/lib/types/blood-bank';
 
 export default function BloodUnitsPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { refresh, isRefreshing } = usePageRefresh();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -99,7 +101,7 @@ export default function BloodUnitsPage() {
           helpContent="Track blood unit inventory, screening status, and expiry. Units move through: Collected → Testing → Available → Issued."
           actions={
             <PermissionGate action="blood_bank.manage">
-              <Button onClick={() => router.push('/blood-bank/units/new')}>
+              <Button onClick={() => router.push('/blood-bank/units/new')} disabled={!canCreateRoute('/blood-bank/units/new')}>
                 <Plus className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Add Unit</span>
                 <span className="sm:hidden">New</span>

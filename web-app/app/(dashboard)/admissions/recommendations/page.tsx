@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { CreateRouteLink } from '@/components/auth/create-route-link';
 import { useRouter } from 'next/navigation';
 import { Check, Clock, AlertTriangle, User, X, BedDouble, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
@@ -117,10 +118,10 @@ export default function AdmissionRecommendationsPage() {
         helpContent="Review and approve pending admission recommendations from OPD encounters, and process IPD encounters awaiting admission."
         actions={(
           <Button asChild>
-            <Link href="/admissions/recommendations/new">
+            <CreateRouteLink href="/admissions/recommendations/new">
               <Plus className="h-4 w-4 mr-2" />
               New Recommendation
-            </Link>
+            </CreateRouteLink>
           </Button>
         )}
       />

@@ -38,6 +38,7 @@ import { getApiErrorMessage } from '@/lib/api/client';
 import { formatRelativeTime } from '@/lib/utils/format';
 import { ENCOUNTER_TYPES, ENCOUNTER_STATUS } from '@/lib/utils/constants';
 import type { Encounter } from '@/lib/types/encounter';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 type EncountersTab = 'queue' | 'active' | 'all';
 
@@ -126,6 +127,8 @@ function getEncounterWorkflowPresentation(
 
 export default function EncountersPage() {
   const router = useRouter();
+  const { hasPermission } = usePermissions();
+  const canCreateEncounter = hasPermission('encounters.add_encounter');
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const initialTab = useMemo(
@@ -224,11 +227,13 @@ export default function EncountersPage() {
         title={workflowPresentation.title}
         helpContent={workflowPresentation.helpContent}
         actions={
-          <Button onClick={() => router.push('/encounters/new')} className="w-full sm:w-auto">
-            <Plus className="h-4 w-4 mr-2" />
-            <span className="sm:hidden">New</span>
-            <span className="hidden sm:inline">New Encounter</span>
-          </Button>
+          canCreateEncounter ? (
+            <Button onClick={() => router.push('/encounters/new')} className="w-full sm:w-auto">
+              <Plus className="h-4 w-4 mr-2" />
+              <span className="sm:hidden">New</span>
+              <span className="hidden sm:inline">New Encounter</span>
+            </Button>
+          ) : undefined
         }
       />
 

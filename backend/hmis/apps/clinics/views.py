@@ -21,6 +21,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.core.tenant_access import user_has_facility_access
 
 from .models import (
@@ -238,7 +239,11 @@ class ClinicViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     tenant_scope = "facility"  # Clinics are facility-scoped
 
     queryset = Clinic.objects.all()
-    permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
+    permission_classes = [
+        permissions.IsAuthenticated,
+        IsAdminOrReadOnly,
+        ReadRequiresModelPermission,
+    ]
     filterset_class = ClinicFilter
     search_fields = ["name", "code", "clinic_type", "description"]
 
@@ -618,7 +623,7 @@ class ClinicSessionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = ClinicSession.objects.select_related("clinic").order_by("-session_date").all()
     serializer_class = ClinicSessionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_class = ClinicSessionFilter
 
     def get_queryset(self):
@@ -722,7 +727,7 @@ class ClinicVisitViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         "anc_visit__registration",
         "pnc_visit__registration",
     ).all()
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_class = ClinicVisitFilter
 
     def get_serializer_class(self):
@@ -863,7 +868,11 @@ class ClinicStaffViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     queryset = ClinicStaff.objects.select_related("user", "clinic").all()
     serializer_class = ClinicStaffSerializer
-    permission_classes = [permissions.IsAuthenticated, CanManageClinicStaff]
+    permission_classes = [
+        permissions.IsAuthenticated,
+        CanManageClinicStaff,
+        ReadRequiresModelPermission,
+    ]
 
     def get_queryset(self):
         """Filter staff by clinic, scoped by facility."""
@@ -898,7 +907,11 @@ class ClinicScheduleViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     queryset = ClinicSchedule.objects.select_related("clinic").all()
     serializer_class = ClinicScheduleSerializer
-    permission_classes = [permissions.IsAuthenticated, CanManageClinicSchedule]
+    permission_classes = [
+        permissions.IsAuthenticated,
+        CanManageClinicSchedule,
+        ReadRequiresModelPermission,
+    ]
 
     def get_queryset(self):
         """Filter schedules by clinic, scoped by facility."""
@@ -937,7 +950,7 @@ class ClinicEnrollmentViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     tenant_org_chain = "clinic__organization"
 
     queryset = ClinicEnrollment.objects.select_related("clinic", "patient", "enrolled_by").all()
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     filterset_class = ClinicEnrollmentFilter
 
     def get_serializer_class(self):
@@ -1067,7 +1080,7 @@ class ClinicRoomViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     queryset = ClinicRoom.objects.select_related("room").all()
     serializer_class = ClinicRoomSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get_queryset(self):
         """Filter rooms to the parent clinic, scoped by facility."""

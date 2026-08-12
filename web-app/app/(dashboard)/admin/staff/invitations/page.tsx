@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { CreateRouteLink } from '@/components/auth/create-route-link';
 import {
   Plus,
   Search,
@@ -171,10 +172,10 @@ export default function InvitationsPage() {
                 <Link href="/admin/staff">Staff List</Link>
               </Button>
               <Button asChild>
-                <Link href="/admin/staff/new">
+                <CreateRouteLink href="/admin/staff/new">
                   <Plus className="mr-2 h-4 w-4" />
                   Invite Staff
-                </Link>
+                </CreateRouteLink>
               </Button>
             </div>
           }

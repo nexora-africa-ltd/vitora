@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.laboratory.permissions import LaboratoryModuleRequired, LISConfigPermission
 
 from .engine import evaluate_reflex_rules
@@ -39,7 +40,12 @@ class ReflexRuleFilter(filters.FilterSet):
 class ReflexRuleViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """CRUD for reflex testing rules."""
 
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISConfigPermission,
+        ReadRequiresModelPermission,
+    ]
     filterset_class = ReflexRuleFilter
     tenant_scope = "facility"
     queryset = ReflexRule.objects.select_related("trigger_test", "reflex_test")
@@ -247,7 +253,12 @@ class ReflexExecutionFilter(filters.FilterSet):
 class ReflexExecutionViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
     """Read-only view of reflex executions with approve/reject actions."""
 
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, LISConfigPermission]
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        LISConfigPermission,
+        ReadRequiresModelPermission,
+    ]
     filterset_class = ReflexExecutionFilter
     serializer_class = ReflexExecutionSerializer
     tenant_scope = "facility"

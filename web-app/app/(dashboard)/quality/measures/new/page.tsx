@@ -20,6 +20,7 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { qualityApi } from '@/lib/api/quality';
 import { toast } from '@/lib/hooks/use-toast';
 import { useClinics } from '@/lib/hooks/use-clinics';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type {
   QualityEvaluationRule,
   QualityEvaluationRuleType,
@@ -169,6 +170,22 @@ function generateDraftFromNarrative(
 export default function NewQualityMeasurePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { hasPermission } = usePermissions();
+  const canCreateMeasure = hasPermission('quality.add_qualitymeasure');
+
+  if (!canCreateMeasure) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Quality Measure" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to create quality measures.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   const [formData, setFormData] = useState<QualityMeasureCreateData>({
     code: '',

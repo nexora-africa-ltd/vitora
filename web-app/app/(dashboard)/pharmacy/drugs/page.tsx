@@ -16,11 +16,14 @@ import { DrugTable } from '@/components/pharmacy';
 import { useDrugs } from '@/lib/hooks/use-pharmacy';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { DrugCategory, DrugForm, DrugSchedule, ItemType } from '@/lib/types/pharmacy';
 
 export default function DrugCatalogPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { hasPermission } = usePermissions();
+  const canCreateDrug = hasPermission('pharmacy.add_drug');
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -58,10 +61,12 @@ export default function DrugCatalogPage() {
           title="Item Catalog"
           helpContent="Browse and manage medications, consumables, and reagents. Add new items, view details, and manage stock levels."
           actions={
-            <Button onClick={() => router.push('/pharmacy/drugs/new')}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Item
-            </Button>
+            canCreateDrug ? (
+              <Button onClick={() => router.push('/pharmacy/drugs/new')}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Item
+              </Button>
+            ) : undefined
           }
         />
 

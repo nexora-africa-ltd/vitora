@@ -22,7 +22,7 @@ from rest_framework.response import Response
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import WriteRequiresRolePermission
+from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 from hmis.apps.social_work.models import (
     CaseNote,
     SocialWorkCase,
@@ -100,7 +100,7 @@ class SocialWorkReferralViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         "referred_by",
         "assigned_worker",
     )
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -436,7 +436,7 @@ class SocialWorkCaseViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "assigned_worker",
         "supervisor",
     ).prefetch_related("notes", "interventions")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -696,7 +696,7 @@ class CaseNoteViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     tenant_org_chain = "case__referral__organization"
 
     queryset = CaseNote.objects.select_related("case", "author")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -786,7 +786,7 @@ class SocialWorkInterventionViewSet(NestedTenantScopeMixin, viewsets.ModelViewSe
     tenant_org_chain = "case__referral__organization"
 
     queryset = SocialWorkIntervention.objects.select_related("case", "provided_by")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [
         django_filters.DjangoFilterBackend,
         filters.SearchFilter,

@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { useInsuranceClaims } from '@/lib/hooks/use-insurance';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import type { InsuranceClaim, InsuranceClaimStatus } from '@/lib/types/insurance';
 import { CLAIM_STATUS_LABELS } from '@/lib/types/insurance';
 
@@ -48,6 +49,7 @@ function formatCurrency(amount: string | number): string {
 
 export default function InsuranceClaimsPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<InsuranceClaimStatus | 'all'>('all');
   const [page, setPage] = useState(1);
@@ -79,7 +81,7 @@ export default function InsuranceClaimsPage() {
           title="Insurance Claims"
           helpContent="Track and manage insurance claims. Submit claims, respond to queries, and monitor payment status."
           actions={
-            <Button onClick={() => router.push('/insurance/claims/new')} className="gap-2 w-full sm:w-auto">
+            <Button onClick={() => router.push('/insurance/claims/new')} disabled={!canCreateRoute('/insurance/claims/new')} className="gap-2 w-full sm:w-auto">
               <Plus className="h-4 w-4" />
               New Claim
             </Button>

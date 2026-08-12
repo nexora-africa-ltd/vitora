@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
-from hmis.apps.core.permissions import WriteRequiresRolePermission
+from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 
 from .models import DialysisOrder, DialysisSession, OrderStatus, SessionStatus, VascularAccess
 from .permissions import CanManageDialysis, CanPerformDialysis
@@ -69,7 +69,7 @@ class DialysisSessionFilter(filters.FilterSet):
 
 class VascularAccessViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = VascularAccess.objects.select_related("patient", "placed_by")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = VascularAccessFilter
     search_fields = ["patient__first_name", "patient__last_name", "patient__mrn", "site"]
     ordering_fields = ["placed_date", "created_at"]
@@ -94,7 +94,7 @@ class VascularAccessViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
 
 class DialysisOrderViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = DialysisOrder.objects.select_related("patient", "ordered_by", "vascular_access")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = DialysisOrderFilter
     search_fields = ["patient__first_name", "patient__last_name", "patient__mrn"]
     ordering_fields = ["created_at", "start_date", "status"]
@@ -145,7 +145,7 @@ class DialysisOrderViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mo
 
 class DialysisSessionViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = DialysisSession.objects.select_related("patient", "order", "performed_by")
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filterset_class = DialysisSessionFilter
     search_fields = ["session_number", "patient__first_name", "patient__last_name", "patient__mrn"]
     ordering_fields = ["scheduled_date", "start_time", "status", "created_at"]

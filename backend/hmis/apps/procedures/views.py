@@ -11,7 +11,11 @@ from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import WriteRequiresRolePermission, get_client_ip
+from hmis.apps.core.permissions import (
+    ReadRequiresModelPermission,
+    WriteRequiresRolePermission,
+    get_client_ip,
+)
 
 from .filters import ProcedureCatalogFilter, ProcedureOrderFilter
 from .models import (
@@ -52,7 +56,7 @@ class ProcedureCatalogViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
 
     queryset = ProcedureCatalog.objects.all()
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     tenant_scope = "organization"
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = ProcedureCatalogFilter
@@ -156,7 +160,7 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for procedure orders with workflow @actions."""
 
     queryset = ProcedureOrder.objects.select_related("procedure", "patient").all()
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = ProcedureOrderFilter
     search_fields = [
@@ -575,7 +579,7 @@ class ExternalProcedureOrderRequestViewSet(TenantScopedViewMixin, viewsets.Model
     queryset = ExternalProcedureOrderRequest.objects.select_related(
         "patient", "encounter", "procedure", "procedure_order"
     ).all()
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["status", "patient", "encounter"]
     ordering_fields = ["created_at", "status", "priority"]
@@ -677,7 +681,7 @@ class ExternalProcedureOrderRequestViewSet(TenantScopedViewMixin, viewsets.Model
 class ProcedureDashboardView(APIView):
     """Dashboard stats for procedures."""
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         responses={

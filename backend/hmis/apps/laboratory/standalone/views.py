@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
-from hmis.apps.core.permissions import RequiresActiveShiftPermission
+from hmis.apps.core.permissions import ReadRequiresModelPermission, RequiresActiveShiftPermission
 from hmis.apps.laboratory.permissions import LaboratoryModuleRequired, LISStandaloneRequired
 from hmis.apps.laboratory.serializers import LabOrderSerializer
 
@@ -41,6 +41,7 @@ class WalkInPatientViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mo
         LaboratoryModuleRequired,
         RequiresActiveShiftPermission,
         LISStandaloneRequired,
+        ReadRequiresModelPermission,
     ]
     filter_backends = [filters.SearchFilter]
     search_fields = [
@@ -143,6 +144,7 @@ class StandaloneOrderViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
         LaboratoryModuleRequired,
         RequiresActiveShiftPermission,
         LISStandaloneRequired,
+        ReadRequiresModelPermission,
     ]
 
     def get_serializer_class(self):
@@ -179,6 +181,7 @@ class ExternalOrderRequestViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         LaboratoryModuleRequired,
         RequiresActiveShiftPermission,
         LISStandaloneRequired,
+        ReadRequiresModelPermission,
     ]
     http_method_names = ["get", "post", "head", "options"]  # Read + accept/reject actions
 

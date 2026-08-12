@@ -13,7 +13,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import get_client_ip
+from hmis.apps.core.permissions import ReadRequiresModelPermission, get_client_ip
 
 from .models import EmergencyAccess, EmergencyAccessStatus
 from .serializers import (
@@ -63,7 +63,7 @@ class EmergencyAccessViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = EmergencyAccessSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get_queryset(self):
         """Get queryset based on user permissions."""

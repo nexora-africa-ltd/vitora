@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { useDialysisSessions } from '@/lib/hooks/use-dialysis';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { formatDate } from '@/lib/utils/format';
 import type { DialysisSession } from '@/lib/types/dialysis';
@@ -23,6 +24,7 @@ import { SESSION_STATUS_COLORS, DIALYSIS_TYPE_LABELS } from '@/lib/types/dialysi
 
 export default function DialysisSessionsPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { refresh, isRefreshing } = usePageRefresh();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -95,7 +97,7 @@ export default function DialysisSessionsPage() {
           helpContent="Track individual dialysis treatment sessions. Sessions progress: Scheduled → In Progress → Completed."
           actions={
             <PermissionGate action="dialysis.perform_session">
-              <Button onClick={() => router.push('/dialysis/sessions/new')}>
+              <Button onClick={() => router.push('/dialysis/sessions/new')} disabled={!canCreateRoute('/dialysis/sessions/new')}>
                 <Plus className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">New Session</span>
                 <span className="sm:hidden">New</span>

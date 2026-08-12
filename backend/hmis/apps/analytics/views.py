@@ -38,7 +38,7 @@ from hmis.apps.analytics.serializers import (
     PatientDemographicSnapshotSerializer,
 )
 from hmis.apps.core.mixins import TenantScopedViewMixin
-from hmis.apps.core.permissions import SubscriptionFeaturePermission
+from hmis.apps.core.permissions import ReadRequiresModelPermission, SubscriptionFeaturePermission
 
 # ---------------------------------------------------------------------------
 # Filters
@@ -98,7 +98,7 @@ class FacilityDailySummaryViewSet(
 
     queryset = FacilityDailySummary.objects.select_related("facility")
     serializer_class = FacilityDailySummarySerializer
-    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    permission_classes = [IsAuthenticated, CanViewAnalytics, ReadRequiresModelPermission]
     filterset_class = FacilityDailySummaryFilter
     ordering_fields = ["date", "encounters_total", "revenue_total"]
     ordering = ["-date"]
@@ -119,7 +119,7 @@ class DepartmentMonthlySummaryViewSet(
 
     queryset = DepartmentMonthlySummary.objects.select_related("facility")
     serializer_class = DepartmentMonthlySummarySerializer
-    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    permission_classes = [IsAuthenticated, CanViewAnalytics, ReadRequiresModelPermission]
     filterset_class = DepartmentMonthlyFilter
     ordering_fields = ["year", "month", "visit_count", "revenue"]
     ordering = ["-year", "-month"]
@@ -140,7 +140,7 @@ class DiagnosisTrendViewSet(
 
     queryset = DiagnosisTrend.objects.select_related("facility")
     serializer_class = DiagnosisTrendSerializer
-    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    permission_classes = [IsAuthenticated, CanViewAnalytics, ReadRequiresModelPermission]
     filterset_class = DiagnosisTrendFilter
     ordering_fields = ["period_start", "case_count"]
     ordering = ["-period_start", "-case_count"]
@@ -161,7 +161,7 @@ class PatientDemographicSnapshotViewSet(
 
     queryset = PatientDemographicSnapshot.objects.select_related("facility")
     serializer_class = PatientDemographicSnapshotSerializer
-    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    permission_classes = [IsAuthenticated, CanViewAnalytics, ReadRequiresModelPermission]
     ordering_fields = ["snapshot_date", "total_patients"]
     ordering = ["-snapshot_date"]
     tenant_scope = "facility"
@@ -256,7 +256,12 @@ class SupersetGuestTokenView(APIView):
     data by the requesting user's ``facility_id``, ensuring tenant isolation.
     """
 
-    permission_classes = [IsAuthenticated, CanViewAnalytics, SubscriptionFeaturePermission]
+    permission_classes = [
+        IsAuthenticated,
+        CanViewAnalytics,
+        SubscriptionFeaturePermission,
+        ReadRequiresModelPermission,
+    ]
     subscription_feature = "custom_reports"
 
     def get(self, request: Request) -> Response:
@@ -418,7 +423,12 @@ class SupersetDashboardListView(APIView):
     Only returns dashboards that are published (``published=true``).
     """
 
-    permission_classes = [IsAuthenticated, CanViewAnalytics, SubscriptionFeaturePermission]
+    permission_classes = [
+        IsAuthenticated,
+        CanViewAnalytics,
+        SubscriptionFeaturePermission,
+        ReadRequiresModelPermission,
+    ]
     subscription_feature = "custom_reports"
 
     def get(self, request: Request) -> Response:
@@ -522,7 +532,12 @@ class MetabaseEmbedView(APIView):
     row-level sandboxing filters data by tenant.
     """
 
-    permission_classes = [IsAuthenticated, CanViewAnalytics, SubscriptionFeaturePermission]
+    permission_classes = [
+        IsAuthenticated,
+        CanViewAnalytics,
+        SubscriptionFeaturePermission,
+        ReadRequiresModelPermission,
+    ]
     subscription_feature = "custom_reports"
 
     def get(self, request: Request) -> Response:
@@ -593,7 +608,12 @@ class MetabaseDashboardListView(APIView):
     Excludes the default E-commerce sample dashboard.
     """
 
-    permission_classes = [IsAuthenticated, CanViewAnalytics, SubscriptionFeaturePermission]
+    permission_classes = [
+        IsAuthenticated,
+        CanViewAnalytics,
+        SubscriptionFeaturePermission,
+        ReadRequiresModelPermission,
+    ]
     subscription_feature = "custom_reports"
 
     def get(self, request: Request) -> Response:
@@ -661,7 +681,7 @@ class OrgFacilityDailySummaryViewSet(
 
     queryset = FacilityDailySummary.objects.select_related("facility")
     serializer_class = FacilityDailySummarySerializer
-    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    permission_classes = [IsAuthenticated, CanViewAnalytics, ReadRequiresModelPermission]
     filterset_class = FacilityDailySummaryFilter
     ordering_fields = ["date", "encounters_total", "revenue_total"]
     ordering = ["-date"]
@@ -679,7 +699,7 @@ class OrgDepartmentMonthlySummaryViewSet(
 
     queryset = DepartmentMonthlySummary.objects.select_related("facility")
     serializer_class = DepartmentMonthlySummarySerializer
-    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    permission_classes = [IsAuthenticated, CanViewAnalytics, ReadRequiresModelPermission]
     filterset_class = DepartmentMonthlyFilter
     ordering_fields = ["year", "month", "visit_count", "revenue"]
     ordering = ["-year", "-month"]
@@ -697,7 +717,7 @@ class OrgDiagnosisTrendViewSet(
 
     queryset = DiagnosisTrend.objects.select_related("facility")
     serializer_class = DiagnosisTrendSerializer
-    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    permission_classes = [IsAuthenticated, CanViewAnalytics, ReadRequiresModelPermission]
     filterset_class = DiagnosisTrendFilter
     ordering_fields = ["period_start", "case_count"]
     ordering = ["-period_start", "-case_count"]
@@ -715,7 +735,7 @@ class OrgDemographicSnapshotViewSet(
 
     queryset = PatientDemographicSnapshot.objects.select_related("facility")
     serializer_class = PatientDemographicSnapshotSerializer
-    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    permission_classes = [IsAuthenticated, CanViewAnalytics, ReadRequiresModelPermission]
     ordering_fields = ["snapshot_date", "total_patients"]
     ordering = ["-snapshot_date"]
     tenant_scope = "organization"
@@ -740,7 +760,7 @@ class PlatformFacilityDailySummaryViewSet(
 
     queryset = FacilityDailySummary.objects.select_related("facility")
     serializer_class = FacilityDailySummarySerializer
-    permission_classes = [IsAuthenticated, IsSuperUser]
+    permission_classes = [IsAuthenticated, IsSuperUser, ReadRequiresModelPermission]
     filterset_class = FacilityDailySummaryFilter
     ordering_fields = ["date", "encounters_total", "revenue_total"]
     ordering = ["-date"]
@@ -754,7 +774,7 @@ class PlatformDepartmentMonthlySummaryViewSet(
 
     queryset = DepartmentMonthlySummary.objects.select_related("facility")
     serializer_class = DepartmentMonthlySummarySerializer
-    permission_classes = [IsAuthenticated, IsSuperUser]
+    permission_classes = [IsAuthenticated, IsSuperUser, ReadRequiresModelPermission]
     filterset_class = DepartmentMonthlyFilter
     ordering_fields = ["year", "month", "visit_count", "revenue"]
     ordering = ["-year", "-month"]
@@ -768,7 +788,7 @@ class PlatformDiagnosisTrendViewSet(
 
     queryset = DiagnosisTrend.objects.select_related("facility")
     serializer_class = DiagnosisTrendSerializer
-    permission_classes = [IsAuthenticated, IsSuperUser]
+    permission_classes = [IsAuthenticated, IsSuperUser, ReadRequiresModelPermission]
     filterset_class = DiagnosisTrendFilter
     ordering_fields = ["period_start", "case_count"]
     ordering = ["-period_start", "-case_count"]
@@ -782,6 +802,6 @@ class PlatformDemographicSnapshotViewSet(
 
     queryset = PatientDemographicSnapshot.objects.select_related("facility")
     serializer_class = PatientDemographicSnapshotSerializer
-    permission_classes = [IsAuthenticated, IsSuperUser]
+    permission_classes = [IsAuthenticated, IsSuperUser, ReadRequiresModelPermission]
     ordering_fields = ["snapshot_date", "total_patients"]
     ordering = ["-snapshot_date"]

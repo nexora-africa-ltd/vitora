@@ -30,6 +30,7 @@ import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-inpu
 import { sickNotesApi } from '@/lib/api/sick-notes';
 import { encountersApi } from '@/lib/api/encounters';
 import { getApiErrorMessage } from '@/lib/api/client';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { Patient } from '@/lib/types/patient';
 import type { Encounter } from '@/lib/types/encounter';
 import { format } from 'date-fns';
@@ -53,6 +54,22 @@ export default function NewSickNotePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const { hasPermission } = usePermissions();
+  const canCreateSickNote = hasPermission('sick_notes.add_sicknote');
+
+  if (!canCreateSickNote) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Sick Note" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to create sick notes.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   // Pre-fill from URL params
   const prePatientId = searchParams.get('patient')

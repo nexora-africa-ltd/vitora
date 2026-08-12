@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.laboratory.permissions import LaboratoryModuleRequired
 
 from .engine import TATReportingEngine
@@ -46,7 +47,7 @@ class TATSLATargetViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mod
 
     queryset = TATSLATarget.objects.select_related("test")
     serializer_class = TATSLATargetSerializer
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, ReadRequiresModelPermission]
     tenant_scope = "facility"
     filterset_fields = ["test", "priority", "is_active"]
 
@@ -66,7 +67,7 @@ class TATSnapshotViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
         "lab_order", "test", "sla_target", "resulted_by", "verified_by"
     )
     serializer_class = TATSnapshotSerializer
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, ReadRequiresModelPermission]
     tenant_scope = "facility"
     filterset_fields = ["priority", "is_breach", "test"]
 
@@ -92,7 +93,7 @@ class WorkloadSnapshotViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewS
 
     queryset = WorkloadSnapshot.objects.select_related("technician")
     serializer_class = WorkloadSnapshotSerializer
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, ReadRequiresModelPermission]
     tenant_scope = "facility"
     filterset_fields = ["date", "technician"]
 
@@ -115,7 +116,7 @@ def _get_facility_id(request):
 class SLAComplianceReportView(APIView):
     """Enhanced SLA compliance report with percentiles."""
 
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, ReadRequiresModelPermission]
 
     def get(self, request):
         start_date, end_date = _parse_date_range(request)
@@ -129,7 +130,7 @@ class SLAComplianceReportView(APIView):
 class TATTrendReportView(APIView):
     """Daily TAT trend report."""
 
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, ReadRequiresModelPermission]
 
     def get(self, request):
         start_date, end_date = _parse_date_range(request)
@@ -143,7 +144,7 @@ class TATTrendReportView(APIView):
 class ActiveBreachesView(APIView):
     """Real-time view of currently breached in-progress orders."""
 
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, ReadRequiresModelPermission]
 
     def get(self, request):
         facility_id = _get_facility_id(request)
@@ -156,7 +157,7 @@ class ActiveBreachesView(APIView):
 class TechnicianEfficiencyView(APIView):
     """Per-technician efficiency metrics."""
 
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, ReadRequiresModelPermission]
 
     def get(self, request):
         start_date, end_date = _parse_date_range(request)
@@ -170,7 +171,7 @@ class TechnicianEfficiencyView(APIView):
 class WorkloadKPIReportView(APIView):
     """Workload KPI report from aggregated snapshots."""
 
-    permission_classes = [IsAuthenticated, LaboratoryModuleRequired]
+    permission_classes = [IsAuthenticated, LaboratoryModuleRequired, ReadRequiresModelPermission]
 
     def get(self, request):
         start_date, end_date = _parse_date_range(request)

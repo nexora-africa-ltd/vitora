@@ -27,6 +27,7 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { shaApi } from '@/lib/api/sha';
 import type { SHAPreauth } from '@/lib/schemas/sha.schema';
+import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
 
 // ============================================================================
 // Status helpers
@@ -94,6 +95,7 @@ function getDoctorConsentBadge(state: string) {
 
 export default function PreauthsListPage() {
   const router = useRouter();
+  const canCreateRoute = useCreateRouteAccess();
   const { refresh, isRefreshing } = usePageRefresh();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -140,7 +142,7 @@ export default function PreauthsListPage() {
           title="Pre-authorizations"
           helpContent="Pre-authorization requests submitted to SHA for restricted services. Track approval status and manage pending requests."
           actions={
-            <Button onClick={() => router.push('/transactions/preauths/new')} size="sm">
+            <Button onClick={() => router.push('/transactions/preauths/new')} disabled={!canCreateRoute('/transactions/preauths/new')} size="sm">
               <Plus className="mr-1 h-4 w-4" />
               New Preauth
             </Button>

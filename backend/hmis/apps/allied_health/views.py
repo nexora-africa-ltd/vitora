@@ -22,7 +22,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.allied_health.serializers import AlliedHealthDashboardSerializer
-from hmis.apps.core.permissions import WriteRequiresRolePermission
+from hmis.apps.core.permissions import ReadRequiresModelPermission, WriteRequiresRolePermission
 
 # Allied health clinic types that should be included in the dashboard
 ALLIED_HEALTH_CLINIC_TYPES = [
@@ -47,7 +47,7 @@ class AlliedHealthDashboardView(APIView):
     - Counselling
     """
 
-    permission_classes = [IsAuthenticated, WriteRequiresRolePermission]
+    permission_classes = [IsAuthenticated, WriteRequiresRolePermission, ReadRequiresModelPermission]
 
     @extend_schema(
         operation_id="allied_health_dashboard",

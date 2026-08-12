@@ -29,6 +29,7 @@ from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import resolve_request_tenant
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import ReadRequiresModelPermission
 from hmis.apps.encounters.models import ChronicCondition, CurrentMedication, Encounter
 from hmis.apps.patients.models import Allergy
 
@@ -331,7 +332,7 @@ class CanUseAIChat(BasePermission):
 class AISuggestionAuditView(AIFeatureGatedMixin, APIView):
     """Audit accepted or applied AI suggestions for accountability."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = AISuggestionAuditRequestSerializer(data=request.data)
@@ -395,7 +396,7 @@ class ICD10SuggestView(AIFeatureGatedMixin, APIView):
     Advisory only — clinician must confirm/reject each suggestion.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         # Validate input
@@ -483,7 +484,7 @@ class AIStatusView(APIView):
     whether to render AI components.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         enabled = is_ai_enabled()
@@ -544,7 +545,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
     }
     """
 
-    permission_classes = [permissions.IsAuthenticated, CanUseAIChat]
+    permission_classes = [permissions.IsAuthenticated, CanUseAIChat, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = ClinicalChatRequestSerializer(data=request.data)
@@ -738,7 +739,7 @@ class ClinicalAssistView(AIFeatureGatedMixin, APIView):
     before forwarding to TibaBot.
     """
 
-    permission_classes = [permissions.IsAuthenticated, CanUseAIChat]
+    permission_classes = [permissions.IsAuthenticated, CanUseAIChat, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = ClinicalAssistRequestSerializer(data=request.data)
@@ -841,7 +842,7 @@ class ClinicalChatSessionListView(AIFeatureGatedMixin, APIView):
     }
     """
 
-    permission_classes = [permissions.IsAuthenticated, CanUseAIChat]
+    permission_classes = [permissions.IsAuthenticated, CanUseAIChat, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         resolve_request_tenant(request)
@@ -879,7 +880,7 @@ class ClinicalChatSessionDetailView(AIFeatureGatedMixin, APIView):
     Returns 204 No Content.
     """
 
-    permission_classes = [permissions.IsAuthenticated, CanUseAIChat]
+    permission_classes = [permissions.IsAuthenticated, CanUseAIChat, ReadRequiresModelPermission]
 
     def get(self, request: Request, session_id: str) -> Response:
         session = self._get_session(request.user, session_id)
@@ -972,7 +973,7 @@ class ConditionPredictView(AIFeatureGatedMixin, APIView):
     Advisory only — clinician must review and confirm.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         # Validate input
@@ -1083,7 +1084,7 @@ class AIFeedbackView(AIFeatureGatedMixin, APIView):
     Forwards to TibaBot's POST /feedback and returns {status, message, feedback_id}.
     """
 
-    permission_classes = [permissions.IsAuthenticated, CanUseAIChat]
+    permission_classes = [permissions.IsAuthenticated, CanUseAIChat, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = AIFeedbackRequestSerializer(data=request.data)
@@ -1155,7 +1156,7 @@ class AIFeedbackStatsView(AIFeatureGatedMixin, APIView):
     Useful for the admin dashboard.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         try:
@@ -1204,7 +1205,7 @@ class AIInsightsView(AIFeatureGatedMixin, APIView):
     - Usage breakdown by action type (last 30 days)
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         from datetime import timedelta
@@ -1346,7 +1347,7 @@ class ICULabEnrichmentView(AIFeatureGatedMixin, APIView):
     The frontend can display these before triggering a prediction.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         admission_id = request.query_params.get("admission_id")
@@ -1411,7 +1412,7 @@ class ICUPredictView(AIFeatureGatedMixin, APIView):
     - POST /predict/icu/risk-stratify
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     # Default empty response structure for graceful degradation
     _EMPTY_RESPONSE: dict = {
@@ -1643,7 +1644,7 @@ class ICUQSOFALiteView(AIFeatureGatedMixin, APIView):
     available at triage.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     _EMPTY_RESPONSE: dict = {
         "risk_level": "low",
@@ -1753,7 +1754,7 @@ class AutopopulateView(AIFeatureGatedMixin, APIView):
     All suggestions require explicit user confirmation before being applied.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         from hmis.apps.core.models import FeatureFlag
@@ -1928,7 +1929,7 @@ class EGFRCalculateView(AIFeatureGatedMixin, APIView):
     dose adjustment band, and clinical action flags.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         from .serializers import EGFRCalculateRequestSerializer, EGFRCalculateResponseSerializer
@@ -1996,7 +1997,7 @@ class StoredEGFRResultListView(AIFeatureGatedMixin, APIView):
     Returns saved eGFR calculation results.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         from .serializers import StoredEGFRResultSerializer
@@ -2033,7 +2034,7 @@ class LabInterpretView(AIFeatureGatedMixin, APIView):
     engine when TibaBot is unavailable.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = LabInterpretRequestSerializer(data=request.data)
@@ -2109,7 +2110,7 @@ class DischargeAssessView(AIFeatureGatedMixin, APIView):
     checklist scoring when TibaBot is unavailable.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = DischargeAssessRequestSerializer(data=request.data)
@@ -2214,7 +2215,7 @@ class DischargeConditionsListView(AIFeatureGatedMixin, APIView):
     GET /api/ai/discharge/conditions/
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         try:
@@ -2243,7 +2244,7 @@ class CarePlanGenerateView(AIFeatureGatedMixin, APIView):
     Falls back to generic template when TibaBot is unavailable.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = CarePlanGenerateRequestSerializer(data=request.data)
@@ -2349,7 +2350,7 @@ class CarePlanGenerateFHIRView(AIFeatureGatedMixin, APIView):
     No fallback — requires TibaBot.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = CarePlanGenerateRequestSerializer(data=request.data)
@@ -2398,7 +2399,7 @@ class CarePlanConditionsListView(AIFeatureGatedMixin, APIView):
     GET /api/ai/care-plan/conditions/
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         try:
@@ -2425,7 +2426,7 @@ class ClerkingAutocompleteView(AIFeatureGatedMixin, APIView):
     No meaningful fallback — returns empty suggestions when unavailable.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = ClerkingAutocompleteRequestSerializer(data=request.data)
@@ -2469,7 +2470,7 @@ class ClerkingStructureView(AIFeatureGatedMixin, APIView):
     Falls back to empty structure template when TibaBot is unavailable.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = ClerkingStructureRequestSerializer(data=request.data)
@@ -2521,7 +2522,7 @@ class ClinicalDocumentGenerateView(AIFeatureGatedMixin, APIView):
     Falls back to empty template when TibaBot is unavailable.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = ClinicalDocGenerateRequestSerializer(data=request.data)
@@ -2600,7 +2601,7 @@ class CDSEvaluateView(AIFeatureGatedMixin, APIView):
     No fallback — returns empty alerts when TibaBot is unavailable.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = CDSEvaluateRequestSerializer(data=request.data)
@@ -2684,7 +2685,7 @@ class InvestigationSuggestView(AIFeatureGatedMixin, APIView):
     must explicitly accept each suggestion.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = InvestigationSuggestRequestSerializer(data=request.data)
@@ -2763,7 +2764,7 @@ class StoredInvestigationSuggestListView(AIFeatureGatedMixin, APIView):
     When no filter is provided, returns the 20 most recent results (facility-scoped).
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         qs = AIInvestigationSuggestResult.objects.select_related("created_by").order_by(
@@ -2792,7 +2793,7 @@ class StoredCarePlanListView(AIFeatureGatedMixin, APIView):
     When no filter is provided, returns the 20 most recent results (facility-scoped).
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         qs = AICarePlanResult.objects.select_related("created_by").order_by("-created_at")
@@ -2817,7 +2818,7 @@ class StoredCarePlanDeleteView(AIFeatureGatedMixin, APIView):
     Delete a stored care plan result. Only the creator can delete.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def delete(self, request: Request, pk=None) -> Response:
         try:
@@ -2844,7 +2845,7 @@ class StoredCDSResultListView(AIFeatureGatedMixin, APIView):
     When no filter is provided, returns the 20 most recent results (facility-scoped).
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         qs = AICDSResult.objects.select_related("created_by").order_by("-created_at")
@@ -2866,7 +2867,7 @@ class StoredLabInterpretListView(AIFeatureGatedMixin, APIView):
     When no filter is provided, returns the 20 most recent results (facility-scoped).
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         qs = AILabInterpretResult.objects.select_related("created_by").order_by("-created_at")
@@ -2891,7 +2892,7 @@ class StoredDischargeResultListView(AIFeatureGatedMixin, APIView):
     When no filter is provided, returns the 20 most recent results (facility-scoped).
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         qs = AIDischargeResult.objects.select_related("created_by").order_by("-created_at")
@@ -2913,7 +2914,7 @@ class StoredICURiskResultListView(AIFeatureGatedMixin, APIView):
     When no filter is provided, returns the 20 most recent results (facility-scoped).
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         qs = AIICURiskResult.objects.select_related("created_by").order_by("-created_at")
@@ -2935,7 +2936,7 @@ class StoredICURiskResultListView(AIFeatureGatedMixin, APIView):
 class SurgicalPreOpAssessView(AIFeatureGatedMixin, APIView):
     """Proxy surgical pre-operative risk assessment and persist results."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = SurgicalPreOpAssessRequestSerializer(data=request.data)
@@ -3004,7 +3005,7 @@ class SurgicalPreOpAssessView(AIFeatureGatedMixin, APIView):
 class SurgicalChecklistStartView(AIFeatureGatedMixin, APIView):
     """Start a TibaBot advisory checklist session and persist the initial snapshot."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = SurgicalChecklistStartRequestSerializer(data=request.data)
@@ -3080,7 +3081,7 @@ class SurgicalChecklistStartView(AIFeatureGatedMixin, APIView):
 class SurgicalChecklistAdvanceView(AIFeatureGatedMixin, APIView):
     """Advance a persisted TibaBot advisory checklist session."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request, session_id: str) -> Response:
         serializer = SurgicalChecklistAdvanceRequestSerializer(data=request.data)
@@ -3160,7 +3161,7 @@ class SurgicalChecklistAdvanceView(AIFeatureGatedMixin, APIView):
 class SurgicalChecklistStatusView(AIFeatureGatedMixin, APIView):
     """Fetch live status for a TibaBot advisory checklist session."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request, session_id: str) -> Response:
         try:
@@ -3200,7 +3201,7 @@ class SurgicalChecklistStatusView(AIFeatureGatedMixin, APIView):
 class SurgicalPostOpCarePlanView(AIFeatureGatedMixin, APIView):
     """Generate a TibaBot post-operative care plan and persist it."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         serializer = SurgicalPostOpCarePlanRequestSerializer(data=request.data)
@@ -3260,7 +3261,7 @@ class SurgicalPostOpCarePlanView(AIFeatureGatedMixin, APIView):
 class SurgicalProcedureListView(AIFeatureGatedMixin, APIView):
     """List TibaBot surgical procedure templates for mapping and UI fallback."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         try:
@@ -3285,7 +3286,7 @@ class SurgicalProcedureListView(AIFeatureGatedMixin, APIView):
 class SurgicalProcedureDetailView(AIFeatureGatedMixin, APIView):
     """Get a single TibaBot surgical procedure template."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request, procedure_key: str) -> Response:
         try:
@@ -3310,7 +3311,7 @@ class SurgicalProcedureDetailView(AIFeatureGatedMixin, APIView):
 class StoredSurgicalPreOpAssessListView(AIFeatureGatedMixin, APIView):
     """Return saved surgical pre-op assessments for a surgery case."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         surgery_case_id = request.query_params.get("surgery_case_id")
@@ -3329,7 +3330,7 @@ class StoredSurgicalPreOpAssessListView(AIFeatureGatedMixin, APIView):
 class StoredSurgicalChecklistSessionListView(AIFeatureGatedMixin, APIView):
     """Return saved advisory checklist session snapshots for a surgery case."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         surgery_case_id = request.query_params.get("surgery_case_id")
@@ -3348,7 +3349,7 @@ class StoredSurgicalChecklistSessionListView(AIFeatureGatedMixin, APIView):
 class StoredSurgicalPostOpCarePlanListView(AIFeatureGatedMixin, APIView):
     """Return saved surgical post-op care plans for a surgery case."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         surgery_case_id = request.query_params.get("surgery_case_id")
@@ -3474,7 +3475,7 @@ def _extract_suggestions(
 class AIAdvisoryOrderLinkListView(APIView):
     """List links for a given AI result or seed them from result_data."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         """GET /api/ai/advisory-links/?ai_result_id=<uuid>"""
@@ -3546,7 +3547,7 @@ class AIAdvisoryOrderLinkListView(APIView):
 class AIAdvisoryOrderLinkActionView(APIView):
     """Action a single suggestion: mark as ORDERED / DECLINED / NOT_APPLICABLE."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def patch(self, request: Request, pk: int) -> Response:
         """PATCH /api/ai/advisory-links/<id>/action/"""
@@ -3587,7 +3588,7 @@ class AIAdvisoryHasOrdersView(APIView):
     Used by the frontend to disable 'Ask again' when live orders exist.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         """GET /api/ai/advisory-links/has-orders/?ai_result_id=<uuid>"""
@@ -3632,7 +3633,7 @@ class ProactiveInsightsView(AIFeatureGatedMixin, APIView):
     Context deduplication: returns empty if context_hash matches previous call.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     throttle_scope = "ai_proactive"
 
     def post(self, request: Request) -> Response:
@@ -3717,7 +3718,7 @@ class WebhookRegisterView(AIFeatureGatedMixin, APIView):
     POST /api/ai/webhooks/
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request) -> Response:
         from .serializers import WebhookRegisterRequestSerializer
@@ -3766,7 +3767,7 @@ class WebhookListView(AIFeatureGatedMixin, APIView):
     GET /api/ai/webhooks/
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         try:
@@ -3795,7 +3796,7 @@ class WebhookDetailView(AIFeatureGatedMixin, APIView):
     DELETE /api/ai/webhooks/{id}/
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request, webhook_id: str) -> Response:
         try:
@@ -3890,7 +3891,7 @@ class WebhookPauseView(AIFeatureGatedMixin, APIView):
     POST /api/ai/webhooks/{id}/pause/
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request, webhook_id: str) -> Response:
         try:
@@ -3927,7 +3928,7 @@ class WebhookActivateView(AIFeatureGatedMixin, APIView):
     POST /api/ai/webhooks/{id}/activate/
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def post(self, request: Request, webhook_id: str) -> Response:
         try:
@@ -3964,7 +3965,7 @@ class WebhookDeliveryHistoryView(AIFeatureGatedMixin, APIView):
     GET /api/ai/webhooks/{id}/deliveries/
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request, webhook_id: str) -> Response:
         try:
@@ -3996,7 +3997,7 @@ class FacilityKBInfoView(AIFeatureGatedMixin, APIView):
     GET /api/ai/facility/knowledge-base/
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         try:
@@ -4027,7 +4028,7 @@ class FacilityKBUploadView(AIFeatureGatedMixin, APIView):
     Accepts multipart/form-data with a single ``file`` field.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
     parser_classes = [MultiPartParser]
 
     def post(self, request: Request) -> Response:
@@ -4083,7 +4084,7 @@ class FacilityKBDocumentDeleteView(AIFeatureGatedMixin, APIView):
     DELETE /api/ai/facility/knowledge-base/documents/{document_id}/
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def delete(self, request: Request, document_id: str) -> Response:
         try:
@@ -4120,7 +4121,7 @@ class FacilityKBSearchView(AIFeatureGatedMixin, APIView):
     GET /api/ai/facility/knowledge-base/search/?q=<query>&limit=10
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
     def get(self, request: Request) -> Response:
         query = request.query_params.get("q", "").strip()
