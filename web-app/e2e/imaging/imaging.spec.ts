@@ -424,6 +424,14 @@ test.describe('Imaging Module - Order Creation', () => {
     await expect(page.getByText('Imaging Procedures', { exact: true }).first()).toBeVisible();
   });
 
+  test('new order without URL context opens patient and encounter selection', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+    await page.goto('/imaging/orders/new');
+
+    await expect(page.getByRole('heading', { name: 'Select patient and encounter' })).toBeVisible();
+    await expect(page.getByText('Select both a patient and encounter before placing an imaging order.')).toBeVisible();
+  });
+
   test('can select priority', async ({ page }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/imaging/orders/new?patient=1&encounter=1');

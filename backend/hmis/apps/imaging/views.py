@@ -153,7 +153,12 @@ class ImagingResourceViewSet(viewsets.ReadOnlyModelViewSet):
         modality = self.request.query_params.get("modality", None)
 
         # Build queryset directly instead of using service (which returns list)
-        qs = Resource.objects.filter(is_active=True, metadata__department="radiology")
+        # Legacy imaging resources store their department in metadata, while
+        # resources created from Scheduling use the direct department FK.
+        qs = Resource.objects.filter(is_active=True).filter(
+            models.Q(metadata__department="radiology")
+            | models.Q(department__name__iexact="Radiology")
+        )
         if facility:
             qs = qs.filter(facility=facility)
         elif not getattr(self.request.user, "is_superuser", False):
@@ -182,7 +187,11 @@ class ImagingResourceViewSet(viewsets.ReadOnlyModelViewSet):
         try:
             resource = Resource.objects.get(pk=kwargs["pk"])
             # Verify it's an imaging resource
-            if resource.metadata.get("department") != "radiology":
+            is_radiology_resource = (
+                resource.metadata.get("department") == "radiology"
+                or getattr(resource.department, "name", "").lower() == "radiology"
+            )
+            if not is_radiology_resource:
                 return Response(
                     {"error": "Resource is not an imaging resource"},
                     status=status.HTTP_404_NOT_FOUND,
@@ -1003,6 +1012,18 @@ class DICOMStudyViewSet(viewsets.ReadOnlyModelViewSet):
         modality = self.request.query_params.get("modality")
         if modality:
             queryset = queryset.filter(modality=modality)
+
+        # Search before pagination so matches are returned from the full study set.
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            queryset = queryset.filter(
+                models.Q(patient__first_name__icontains=search)
+                | models.Q(patient__last_name__icontains=search)
+                | models.Q(patient__mrn__icontains=search)
+                | models.Q(accession_number__icontains=search)
+                | models.Q(study_description__icontains=search)
+                | models.Q(study_instance_uid__icontains=search)
+            )
 
         # Filter by date range
         date_after = self.request.query_params.get("study_date_after")

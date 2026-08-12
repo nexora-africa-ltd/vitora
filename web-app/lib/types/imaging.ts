@@ -288,6 +288,7 @@ export interface ExternalImagingRequestCreateData {
 export interface ScheduleOrderData {
   scheduled_datetime: string;
   scheduled_room?: string;
+  resource_id?: number;
 }
 
 /**
@@ -679,6 +680,7 @@ export interface DICOMUploadResponse {
 export interface DICOMStudyListParams {
   patient?: number;
   modality?: string;
+  search?: string;
   study_date_after?: string;
   study_date_before?: string;
   imaging_order?: number;

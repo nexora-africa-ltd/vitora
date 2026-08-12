@@ -33,6 +33,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { ModalityBadge } from '@/components/imaging';
 import { imagingApi } from '@/lib/api/imaging';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import { DICOMStudy, DICOMStudyListParams, ImagingModality, MODALITY_LABELS } from '@/lib/types/imaging';
 import { formatBytes, formatDate } from '@/lib/utils/format';
 import { cn } from '@/lib/utils';
@@ -53,11 +54,13 @@ export default function DICOMStudiesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [modalityFilter, setModalityFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
   // Build query params
   const queryParams: DICOMStudyListParams = {
     page,
     page_size: PAGE_SIZE,
+    ...(debouncedSearch.trim() && { search: debouncedSearch.trim() }),
     ...(modalityFilter !== 'all' && { modality: modalityFilter }),
   };
 
@@ -81,16 +84,7 @@ export default function DICOMStudiesPage() {
     [router]
   );
 
-  // Filter studies by search term (client-side for patient name)
-  const filteredStudies = studiesData?.results?.filter((study) => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      study.patient_name?.toLowerCase().includes(searchLower) ||
-      study.accession_number?.toLowerCase().includes(searchLower) ||
-      study.study_description?.toLowerCase().includes(searchLower)
-    );
-  });
+  const studies = studiesData?.results ?? [];
 
   // Pagination
   const totalPages = studiesData ? Math.ceil(studiesData.count / PAGE_SIZE) : 0;
@@ -127,11 +121,20 @@ export default function DICOMStudiesPage() {
               <Input
                 placeholder="Search patient, accession, description..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                }}
                 className="pl-9"
               />
             </div>
-            <Select value={modalityFilter} onValueChange={setModalityFilter}>
+            <Select
+              value={modalityFilter}
+              onValueChange={(value) => {
+                setModalityFilter(value);
+                setPage(1);
+              }}
+            >
               <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="All Modalities" />
               </SelectTrigger>
@@ -164,7 +167,7 @@ export default function DICOMStudiesPage() {
                 Try Again
               </Button>
             </div>
-          ) : !filteredStudies?.length ? (
+          ) : !studies.length ? (
             <div className="p-8 text-center text-muted-foreground">
               <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No DICOM studies found</p>
@@ -193,7 +196,7 @@ export default function DICOMStudiesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredStudies.map((study) => (
+                    {studies.map((study) => (
                       <TableRow
                         key={study.study_instance_uid}
                         className="cursor-pointer hover:bg-muted/50"
@@ -256,7 +259,7 @@ export default function DICOMStudiesPage() {
 
               {/* Mobile Cards */}
               <div className="md:hidden space-y-3 p-4">
-                {filteredStudies.map((study) => (
+                  {studies.map((study) => (
                   <Card
                     key={study.study_instance_uid}
                     className="cursor-pointer hover:bg-muted/50 transition-colors"

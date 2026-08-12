@@ -436,10 +436,11 @@ export function useCancelImagingOrder() {
 /**
  * Hook for fetching imaging resources.
  */
-export function useImagingResources(modality?: ImagingModality) {
+export function useImagingResources(modality?: ImagingModality, enabled = true) {
   return useQuery({
     queryKey: imagingKeys.resourcesList(modality),
     queryFn: () => imagingApi.listResources(modality),
+    enabled,
   });
 }
 

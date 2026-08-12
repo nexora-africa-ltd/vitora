@@ -199,6 +199,34 @@ class TestImagingResourcesAPI:
         for resource in response.data["results"]:
             assert "XR" in resource["metadata"].get("modalities", [])
 
+    def test_list_includes_room_assigned_to_radiology_department(
+        self, authenticated_client, sample_facility
+    ):
+        """Rooms created through Scheduling use the department FK, not metadata."""
+        from hmis.apps.core.models import Department
+
+        radiology = Department.objects.create(
+            name="Radiology",
+            code="RAD",
+            is_active=True,
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+        room = Resource.objects.create(
+            name="Radiology Room 2",
+            resource_type="PLACE",
+            code="RAD-ROOM-02",
+            is_active=True,
+            capacity=1,
+            facility=sample_facility,
+            department=radiology,
+        )
+
+        response = authenticated_client.get("/api/imaging/resources/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert room.code in [resource["code"] for resource in response.data["results"]]
+
     def test_list_imaging_resources_requires_auth(self, api_client):
         """Should require authentication."""
         response = api_client.get("/api/imaging/resources/")

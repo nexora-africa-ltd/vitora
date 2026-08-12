@@ -104,6 +104,18 @@ describe('Imaging Calendar Hooks', () => {
       expect(result.current.data).toHaveLength(1);
     });
 
+    it('can defer fetching resources until scheduling opens', async () => {
+      const { result } = renderHook(() => useImagingResources(undefined, false), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.fetchStatus).toBe('idle');
+      });
+
+      expect(mockImagingApi.listResources).not.toHaveBeenCalled();
+    });
+
     it('handles API errors', async () => {
       mockImagingApi.listResources.mockRejectedValueOnce(new Error('Network error'));
 

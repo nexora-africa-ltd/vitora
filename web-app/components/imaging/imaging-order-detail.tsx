@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useDeferredValue } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Card,
@@ -40,6 +40,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import {
   ArrowLeft,
   Calendar,
@@ -55,6 +64,8 @@ import {
   DollarSign,
   Eye,
   Image as ImageIcon,
+  Check,
+  ChevronsUpDown,
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDateTime } from '@/lib/utils/format';
@@ -63,6 +74,7 @@ import {
   useImagingOrder,
   useSubmitImagingOrder,
   useScheduleImagingOrder,
+  useImagingResources,
   useStartImagingOrder,
   useCompleteImagingOrder,
   useCancelImagingOrder,
@@ -100,6 +112,9 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
   const router = useRouter();
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleRoom, setScheduleRoom] = useState('');
+  const [selectedResourceId, setSelectedResourceId] = useState<number | null>(null);
+  const [resourcePickerOpen, setResourcePickerOpen] = useState(false);
+  const [resourceSearch, setResourceSearch] = useState('');
   const [cancelReason, setCancelReason] = useState('');
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [eligibilityStatus, setEligibilityStatus] = useState<boolean | null>(null);
@@ -111,6 +126,20 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
   const startOrder = useStartImagingOrder();
   const completeOrder = useCompleteImagingOrder();
   const cancelOrder = useCancelImagingOrder();
+  const { data: imagingResources = [], isLoading: loadingImagingResources } = useImagingResources(
+    undefined,
+    scheduleDialogOpen
+  );
+  const deferredResourceSearch = useDeferredValue(resourceSearch);
+  const normalizedResourceSearch = deferredResourceSearch.trim().toLowerCase();
+  const visibleResources = imagingResources.filter((resource) => {
+    if (!normalizedResourceSearch) return true;
+    const roomNumber = resource.metadata.room_number || '';
+    return `${resource.name} ${resource.code} ${roomNumber}`
+      .toLowerCase()
+      .includes(normalizedResourceSearch);
+  });
+  const selectedResource = imagingResources.find((resource) => resource.id === selectedResourceId);
 
   const isActionLoading =
     submitOrder.isPending ||
@@ -167,6 +196,7 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
         data: {
           scheduled_datetime: new Date(scheduleDate).toISOString(),
           scheduled_room: scheduleRoom || undefined,
+          resource_id: selectedResourceId || undefined,
         },
       });
       toast({ title: 'Order scheduled successfully' });
@@ -546,12 +576,78 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="schedule-room">Room</Label>
+                        <Label>Radiology room</Label>
+                        <Popover open={resourcePickerOpen} onOpenChange={setResourcePickerOpen}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={resourcePickerOpen}
+                              className="w-full justify-between font-normal"
+                            >
+                              <span className="truncate">
+                                {selectedResource
+                                  ? selectedResource.name
+                                  : scheduleRoom
+                                    ? `Custom room: ${scheduleRoom}`
+                                    : 'Select a radiology room'}
+                              </span>
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                            <Command shouldFilter={false}>
+                              <CommandInput
+                                placeholder="Search radiology rooms..."
+                                value={resourceSearch}
+                                onValueChange={setResourceSearch}
+                              />
+                              <CommandList>
+                                <CommandEmpty>
+                                  {loadingImagingResources
+                                    ? 'Loading radiology rooms...'
+                                    : 'No radiology rooms found.'}
+                                </CommandEmpty>
+                                <CommandGroup heading="Radiology rooms">
+                                  {visibleResources.map((resource) => (
+                                    <CommandItem
+                                      key={resource.id}
+                                      value={String(resource.id)}
+                                      onSelect={() => {
+                                        setSelectedResourceId(resource.id);
+                                        setScheduleRoom(resource.name);
+                                        setResourcePickerOpen(false);
+                                        setResourceSearch('');
+                                      }}
+                                    >
+                                      <Check
+                                        className={`mr-2 h-4 w-4 ${
+                                          selectedResourceId === resource.id ? 'opacity-100' : 'opacity-0'
+                                        }`}
+                                      />
+                                      <span className="truncate">{resource.name}</span>
+                                      <span className="ml-2 text-xs text-muted-foreground">
+                                        {resource.code}
+                                      </span>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="schedule-room">Or enter a room manually</Label>
                         <Input
                           id="schedule-room"
                           placeholder="e.g., Radiology Room 1"
                           value={scheduleRoom}
-                          onChange={(e) => setScheduleRoom(e.target.value)}
+                          onChange={(e) => {
+                            setScheduleRoom(e.target.value);
+                            setSelectedResourceId(null);
+                          }}
                         />
                       </div>
                     </div>

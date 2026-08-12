@@ -757,6 +757,21 @@ class TestStudyListAPI:
         for study in response.data["results"]:
             assert study["modality"] == "XR"
 
+    def test_list_studies_searches_across_all_studies(
+        self, authenticated_client, sample_dicom_study
+    ):
+        """Should apply accession search before pagination."""
+        response = authenticated_client.get(
+            f"/api/imaging/studies/?search={sample_dicom_study.accession_number}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["count"] >= 1
+        assert all(
+            study["accession_number"] == sample_dicom_study.accession_number
+            for study in response.data["results"]
+        )
+
     def test_list_studies_filter_by_date_range(self, authenticated_client, sample_dicom_study):
         """Should filter studies by date range."""
         response = authenticated_client.get(
