@@ -660,7 +660,11 @@ class DischargeSerializer(serializers.ModelSerializer):
         transfer_workflow = attrs.get("transfer_workflow")
 
         # ----- Automated clearance validation for normal discharges -----
-        if admission and discharge_type in {"NORMAL", "ROUTINE", "TRANSFERRED"}:
+        if (
+            admission
+            and discharge_type in {"NORMAL", "ROUTINE", "TRANSFERRED"}
+            and self.instance is None
+        ):
             from hmis.apps.billing.models import Invoice
             from hmis.apps.laboratory.models import LabOrder
             from hmis.apps.pharmacy.models import Prescription
@@ -672,6 +676,7 @@ class DischargeSerializer(serializers.ModelSerializer):
                 encounter=admission.ipd_encounter,
             ).exclude(
                 status__in=[
+                    Invoice.Status.DRAFT,
                     Invoice.Status.PAID,
                     Invoice.Status.CANCELLED,
                     Invoice.Status.WRITTEN_OFF,

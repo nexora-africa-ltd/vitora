@@ -2469,6 +2469,7 @@ class AdmissionViewSet(PublicIdLookupMixin, TenantScopedViewMixin, viewsets.Mode
             billing_q |= Q(encounter=admission.opd_encounter)
         unpaid_invoices = Invoice.objects.filter(billing_q).exclude(
             status__in=[
+                Invoice.Status.DRAFT,
                 Invoice.Status.PAID,
                 Invoice.Status.CANCELLED,
                 Invoice.Status.WRITTEN_OFF,

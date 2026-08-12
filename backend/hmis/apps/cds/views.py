@@ -10,6 +10,7 @@ Provides ViewSets for CDS rules and alerts with custom actions:
 from __future__ import annotations
 
 import django_filters
+from django.conf import settings
 from django.db.models import Count
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
@@ -74,6 +75,9 @@ class CDSRulePermission(permissions.BasePermission):
     """Enforce Django permissions for CDS rule endpoints."""
 
     def has_permission(self, request: Request, view) -> bool:
+        if not getattr(settings, "RBAC_CDS_ENFORCEMENT", True):
+            return bool(request.user and request.user.is_authenticated)
+
         user = request.user
         if not user or not user.is_authenticated:
             return False
@@ -98,6 +102,9 @@ class CDSAlertPermission(permissions.BasePermission):
     """Enforce Django permissions for CDS alert endpoints."""
 
     def has_permission(self, request: Request, view) -> bool:
+        if not getattr(settings, "RBAC_CDS_ENFORCEMENT", True):
+            return bool(request.user and request.user.is_authenticated)
+
         user = request.user
         if not user or not user.is_authenticated:
             return False

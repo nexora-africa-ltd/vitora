@@ -709,6 +709,11 @@ class WriteRequiresRolePermission(permissions.BasePermission):
     }
 
     def has_permission(self, request, view):
+        from django.conf import settings
+
+        if not getattr(settings, "RBAC_WRITE_ENFORCEMENT", True):
+            return True
+
         # Allow all safe methods (reads)
         if request.method in permissions.SAFE_METHODS:
             return True
@@ -826,6 +831,11 @@ class ReadRequiresModelPermission(permissions.BasePermission):
     ADMIN_ROLE_CODES = {"ADMIN", "ORG-ADMIN", "OWNER"}
 
     def has_permission(self, request, view):
+        from django.conf import settings
+
+        if not getattr(settings, "RBAC_READ_ENFORCEMENT", True):
+            return True
+
         if request.method not in permissions.SAFE_METHODS:
             return True
 

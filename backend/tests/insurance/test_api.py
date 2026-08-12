@@ -170,10 +170,13 @@ class TestInsuranceClaimAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 1
 
-    def test_create_claim(self, authenticated_client, patient_insurance, sample_patient):
+    def test_create_claim(
+        self, authenticated_client, patient_insurance, sample_patient, sample_encounter
+    ):
         data = {
             "patient_insurance": patient_insurance.pk,
             "patient": sample_patient.pk,
+            "encounter": sample_encounter.pk,
             "claim_type": "outpatient",
             "total_amount": "3000.00",
             "diagnosis_codes": ["J06.9"],
@@ -184,10 +187,13 @@ class TestInsuranceClaimAPI:
         assert response.data["claim_number"].startswith("IC-")
         assert response.data["status"] == "draft"
 
-    def test_create_claim_with_items(self, authenticated_client, patient_insurance, sample_patient):
+    def test_create_claim_with_items(
+        self, authenticated_client, patient_insurance, sample_patient, sample_encounter
+    ):
         data = {
             "patient_insurance": patient_insurance.pk,
             "patient": sample_patient.pk,
+            "encounter": sample_encounter.pk,
             "claim_type": "outpatient",
             "total_amount": "5000.00",
             "diagnosis_codes": ["J06.9"],

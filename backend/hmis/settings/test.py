@@ -44,6 +44,11 @@ SUBSCRIPTION_FEATURE_ENFORCEMENT = (
     os.getenv("SUBSCRIPTION_FEATURE_ENFORCEMENT", "false").lower() == "true"
 )
 
+# RBAC read/write enforcement — disabled in tests by default
+RBAC_READ_ENFORCEMENT = os.getenv("RBAC_READ_ENFORCEMENT", "false").lower() == "true"
+RBAC_WRITE_ENFORCEMENT = os.getenv("RBAC_WRITE_ENFORCEMENT", "false").lower() == "true"
+RBAC_CDS_ENFORCEMENT = os.getenv("RBAC_CDS_ENFORCEMENT", "false").lower() == "true"
+
 # In-memory SQLite for speed — migrations run once per pytest session (~2-4s).
 # WebSocket / Channels tests that need cross-thread visibility should use a
 # file-backed override (see conftest.py `ws_db` fixture).

@@ -22,7 +22,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Q, Sum
 
 from hmis.apps.billing.models import Invoice, InvoiceItem, Service, SHAClaim, SHAMember
 
@@ -655,7 +655,14 @@ class BillingAgentService:
         cls._update_sha_claim_on_discharge(invoice, admission.ipd_encounter, discharge)
 
     @classmethod
-    def _add_bed_charge(cls, invoice: Invoice, admission, nights: int = 1) -> None:
+    def _add_bed_charge(
+        cls,
+        invoice: Invoice,
+        admission,
+        nights: int = 1,
+        *,
+        coalesce_existing: bool = False,
+    ) -> None:
         """Add bed night charge(s) for an admission.
 
         Uses ward.daily_rate as the price.
@@ -671,10 +678,56 @@ class BillingAgentService:
             )
             return
 
+        description = f"Bed night: {ward.name} ({date.today()})"
+
+        # Backward compatibility: when a BED-NIGHT service exists, keep all
+        # charges for the same day on a single line by increasing quantity.
+        bed_night_service = Service.objects.filter(
+            category__code="IPD",
+            code="BED-NIGHT",
+            is_active=True,
+        ).first()
+
+        if coalesce_existing and bed_night_service:
+            existing = (
+                invoice.items.filter(
+                    description=description,
+                )
+                .filter(Q(service=bed_night_service) | Q(service__isnull=True))
+                .first()
+            )
+            if existing:
+                existing.quantity += nights
+                existing.service = bed_night_service
+                existing.unit_price = ward.daily_rate
+                existing.save(update_fields=["service", "quantity", "unit_price", "updated_at"])
+                return
+
+            cls.add_line_item(
+                invoice,
+                service=bed_night_service,
+                description=description,
+                quantity=nights,
+                unit_price=ward.daily_rate,
+                item_type=InvoiceItem.ItemType.SERVICE,
+            )
+            return
+
+        if bed_night_service:
+            cls.add_line_item(
+                invoice,
+                service=bed_night_service,
+                description=description,
+                quantity=nights,
+                unit_price=ward.daily_rate,
+                item_type=InvoiceItem.ItemType.SERVICE,
+            )
+            return
+
         cls.add_line_item(
             invoice,
             service=None,
-            description=f"Bed night: {ward.name} ({date.today()})",
+            description=description,
             quantity=nights,
             unit_price=ward.daily_rate,
             item_type=InvoiceItem.ItemType.SERVICE,
@@ -841,7 +894,7 @@ class BillingAgentService:
                 invoice = cls.get_or_create_draft_invoice(
                     admission.patient, admission.ipd_encounter
                 )
-                cls._add_bed_charge(invoice, admission, nights=1)
+                cls._add_bed_charge(invoice, admission, nights=1, coalesce_existing=True)
                 charged += 1
             except Exception:
                 logger.exception(
