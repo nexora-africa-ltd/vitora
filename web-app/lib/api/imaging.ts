@@ -695,9 +695,21 @@ export const imagingApi = {
    */
   getThumbnailUrl(thumbnailPath: string | null | undefined): string | null {
     if (!thumbnailPath) return null;
-    const baseUrl = getApiBaseUrl();
-    // thumbnail_path is relative to MEDIA_ROOT, served at /media/
-    return `${baseUrl}/media/${thumbnailPath}`;
+
+    // Some records may already contain an absolute URL.
+    if (/^https?:\/\//i.test(thumbnailPath)) {
+      return thumbnailPath;
+    }
+
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+    const normalizedPath = thumbnailPath
+      .replace(/\\/g, '/')
+      .replace(/^\/+/, '')
+      .replace(/^media\//, '');
+
+    // thumbnail_path should be MEDIA_ROOT-relative. Normalize defensively so
+    // values like `/media/...` and `media/...` still resolve correctly.
+    return `${baseUrl}/media/${normalizedPath}`;
   },
 
   // ============ Study Download & Sharing (Phase E) ============

@@ -254,7 +254,7 @@ class DICOMParsingService:
                 pixel_array = cls._apply_ct_windowing(ds, pixel_array)
 
             # Normalise to 0-255
-            if pixel_array.ndim == 2:
+            if pixel_array.ndim == 2 or pixel_array.ndim == 3:
                 p_min = pixel_array.min()
                 p_max = pixel_array.max()
                 if p_max > p_min:

@@ -7,7 +7,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, Search, Filter, Clock, User, Shield, PencilLine, Trash2, PlusCircle } from 'lucide-react';
+import { FileText, Search, Filter, Clock, User, Shield, PencilLine, Trash2, PlusCircle, Network } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -254,6 +254,15 @@ export default function AuditLogsPage() {
                     ),
                   },
                   {
+                    key: 'ip_address',
+                    header: 'IP Address',
+                    cell: (log) => (
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {log.ip_address || 'Not recorded'}
+                      </span>
+                    ),
+                  },
+                  {
                     key: 'details',
                     header: 'Details',
                     hideOnMobile: true,
@@ -302,6 +311,10 @@ function AuditLogMobileCard({ log }: { log: (typeof logsPlaceholder)[number] }) 
       <div className="mt-3 space-y-1 text-sm text-muted-foreground">
         <p>{log.resource_name || log.resource_type}</p>
         <p>{formatDetails(log.details)}</p>
+        <p className="flex items-center gap-1.5 font-mono text-xs">
+          <Network className="h-3.5 w-3.5" />
+          {log.ip_address || 'IP not recorded'}
+        </p>
       </div>
     </Card>
   );
@@ -315,6 +328,7 @@ const logsPlaceholder = [] as Array<{
   resource_name?: string;
   resource_type: string;
   details: Record<string, unknown>;
+  ip_address: string | null;
   timestamp: string;
 }>;
 

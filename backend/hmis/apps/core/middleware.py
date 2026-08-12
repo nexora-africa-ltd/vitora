@@ -636,12 +636,18 @@ class MediaSecurityMiddleware:
         self.media_url = settings.MEDIA_URL
         if not self.media_url.startswith("/"):
             self.media_url = "/" + self.media_url
+        if not self.media_url.endswith("/"):
+            self.media_url += "/"
 
     def __call__(self, request):
         response = self.get_response(request)
         if request.path.startswith(self.media_url):
-            # Force download rather than inline rendering
-            if "Content-Disposition" not in response:
+            media_relative_path = request.path[len(self.media_url) :].lstrip("/")
+            # System-generated thumbnails are safe to render inline.
+            # Keep attachment behavior for all other uploaded media.
+            allow_inline = media_relative_path.startswith("thumbnails/")
+
+            if "Content-Disposition" not in response and not allow_inline:
                 response["Content-Disposition"] = "attachment"
             response["X-Content-Type-Options"] = "nosniff"
         return response

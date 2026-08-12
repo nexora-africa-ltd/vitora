@@ -1531,7 +1531,7 @@ class DICOMUploadView(APIView):
                 )
 
                 # Create DICOMInstance (skip if already exists)
-                _instance, created = DICOMInstance.objects.get_or_create(
+                dicom_instance, created = DICOMInstance.objects.get_or_create(
                     sop_instance_uid=m_sop_uid,
                     defaults={
                         "series": dicom_series,
@@ -1553,16 +1553,28 @@ class DICOMUploadView(APIView):
                     instances_created += 1
                     instances_created_by_study[m_study_uid] += 1
 
-                    # Generate thumbnail for the first instance
-                    if instances_created == 1:
+                    # Populate thumbnails from the first available instance for
+                    # each entity (instance, series, study).
+                    if (
+                        not dicom_instance.thumbnail_path
+                        or not dicom_series.thumbnail_path
+                        or not dicom_study.thumbnail_path
+                    ):
                         abs_stored = pacs.get_absolute_path(stored_path)
                         thumb_path = DICOMParsingService.generate_thumbnail(
                             abs_stored,
                             str(settings.MEDIA_ROOT),
                         )
                         if thumb_path:
-                            dicom_study.thumbnail_path = thumb_path
-                            dicom_study.save(update_fields=["thumbnail_path"])
+                            if not dicom_instance.thumbnail_path:
+                                dicom_instance.thumbnail_path = thumb_path
+                                dicom_instance.save(update_fields=["thumbnail_path"])
+                            if not dicom_series.thumbnail_path:
+                                dicom_series.thumbnail_path = thumb_path
+                                dicom_series.save(update_fields=["thumbnail_path"])
+                            if not dicom_study.thumbnail_path:
+                                dicom_study.thumbnail_path = thumb_path
+                                dicom_study.save(update_fields=["thumbnail_path"])
                 else:
                     duplicates_skipped += 1
 

@@ -117,6 +117,25 @@ def persist_dicom_instance(
         },
     )
 
+    # Ensure thumbnail fields are populated on first ingest contact.
+    # Reuse one generated thumbnail path for all missing entities.
+    if not instance.thumbnail_path or not series.thumbnail_path or not study.thumbnail_path:
+        abs_stored = pacs.get_absolute_path(stored_path)
+        thumb_path = DICOMParsingService.generate_thumbnail(
+            abs_stored,
+            str(settings.MEDIA_ROOT),
+        )
+        if thumb_path:
+            if not instance.thumbnail_path:
+                instance.thumbnail_path = thumb_path
+                instance.save(update_fields=["thumbnail_path"])
+            if not series.thumbnail_path:
+                series.thumbnail_path = thumb_path
+                series.save(update_fields=["thumbnail_path"])
+            if not study.thumbnail_path:
+                study.thumbnail_path = thumb_path
+                study.save(update_fields=["thumbnail_path"])
+
     return {
         "study": study,
         "series": series,

@@ -323,6 +323,8 @@ const nextConfig = {
 
   // Allow next/image to load from the Django backend (thumbnails, media)
   images: {
+    // Needed for local development when backend/media is served from 127.0.0.1.
+    dangerouslyAllowLocalIP: process.env.NODE_ENV !== 'production',
     remotePatterns: [
       {
         protocol: 'http',
@@ -331,8 +333,19 @@ const nextConfig = {
         pathname: '/media/**',
       },
       {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '9088',
+        pathname: '/media/**',
+      },
+      {
         protocol: 'https',
         hostname: '*.azurecontainerapps.io',
+        pathname: '/media/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.vitora.digital',
         pathname: '/media/**',
       },
     ],
