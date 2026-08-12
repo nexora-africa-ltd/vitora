@@ -696,7 +696,8 @@ staging-secrets:
 # Build, push, and deploy to STAGING ACA
 staging-deploy:
 	@echo "=== Building and deploying to STAGING ($(ACA_STAGING_NAME)) ==="
-	@TAG="$(DEPLOY_TAG)"; \
+	@START_TS=$$(date +%s); \
+	TAG="$(DEPLOY_TAG)"; \
 	if [ -z "$$TAG" ]; then \
 		BASE_TAG=$$(git rev-parse --short HEAD); \
 		if [ -n "$$(git status --porcelain)" ]; then \
@@ -705,16 +706,23 @@ staging-deploy:
 			TAG="$$BASE_TAG"; \
 		fi; \
 	fi; \
+	IMAGE_REF="$(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG"; \
 	echo "Image tag: $$TAG"; \
-	docker build -t $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG -t $(ACR_NAME).azurecr.io/$(ACR_IMAGE):staging-latest . && \
+	docker build -t $$IMAGE_REF -t $(ACR_NAME).azurecr.io/$(ACR_IMAGE):staging-latest . && \
+	IMAGE_SIZE_BYTES=$$(docker image inspect $$IMAGE_REF --format '{{.Size}}') && \
+	IMAGE_SIZE_HUMAN=$$(python3 -c 'import math,sys; s=max(int(sys.argv[1]),1); u=["B","KB","MB","GB","TB","PB"]; i=min(int(math.log(s,1024)),len(u)-1); print(f"{s/(1024**i):.2f} {u[i]}")' "$$IMAGE_SIZE_BYTES") && \
+	echo "Image size: $$IMAGE_SIZE_HUMAN ($$IMAGE_SIZE_BYTES bytes)" && \
 	az acr login --name $(ACR_NAME) && \
-	docker push $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG && \
+	docker push $$IMAGE_REF && \
 	docker push $(ACR_NAME).azurecr.io/$(ACR_IMAGE):staging-latest && \
 	az containerapp update -n $(ACA_STAGING_NAME) -g $(ACA_RG) \
-		--image $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG && \
+		--image $$IMAGE_REF && \
 	echo "=== Syncing staging environment variables ===" && \
 	SENTRY_RELEASE="$$(git rev-parse HEAD)" DJANGO_SETTINGS_MODULE=hmis.settings.staging ACA_NAME=$(ACA_STAGING_NAME) ACA_RG=$(ACA_RG) bash scripts/azure-update-env.sh && \
-	echo "✅ Deployed $$TAG to STAGING ($(ACA_STAGING_NAME)). Wait ~60s for rollout."
+	END_TS=$$(date +%s) && \
+	DEPLOY_SECONDS=$$((END_TS - START_TS)) && \
+	echo "✅ Deployed $$TAG to STAGING ($(ACA_STAGING_NAME)). Wait ~60s for rollout." && \
+	echo "Deploy time: $${DEPLOY_SECONDS}s | Image size: $$IMAGE_SIZE_HUMAN"
 
 # Post-deploy verification suite
 staging-verify:
@@ -747,17 +755,25 @@ prod-deploy:
 	@echo "⚠️  WARNING: This deploys to the PRODUCTION environment."
 	@read -p "Continue? [y/N] " confirm; \
 	if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then echo "Aborted."; exit 1; fi
-	@TAG=$$(git rev-parse --short HEAD); \
+	@START_TS=$$(date +%s); \
+	TAG=$$(git rev-parse --short HEAD); \
+	IMAGE_REF="$(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG"; \
 	echo "Image tag: $$TAG"; \
-	docker build -t $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG -t $(ACR_NAME).azurecr.io/$(ACR_IMAGE):prod-latest . && \
+	docker build -t $$IMAGE_REF -t $(ACR_NAME).azurecr.io/$(ACR_IMAGE):prod-latest . && \
+	IMAGE_SIZE_BYTES=$$(docker image inspect $$IMAGE_REF --format '{{.Size}}') && \
+	IMAGE_SIZE_HUMAN=$$(python3 -c 'import math,sys; s=max(int(sys.argv[1]),1); u=["B","KB","MB","GB","TB","PB"]; i=min(int(math.log(s,1024)),len(u)-1); print(f"{s/(1024**i):.2f} {u[i]}")' "$$IMAGE_SIZE_BYTES") && \
+	echo "Image size: $$IMAGE_SIZE_HUMAN ($$IMAGE_SIZE_BYTES bytes)" && \
 	az acr login --name $(ACR_NAME) && \
-	docker push $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG && \
+	docker push $$IMAGE_REF && \
 	docker push $(ACR_NAME).azurecr.io/$(ACR_IMAGE):prod-latest && \
 	az containerapp update -n $(ACA_PROD_NAME) -g $(ACA_RG) \
-		--image $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG && \
+		--image $$IMAGE_REF && \
 	echo "=== Syncing production environment variables ===" && \
 	SENTRY_RELEASE="$$(git rev-parse HEAD)" ACA_NAME=$(ACA_PROD_NAME) ACA_RG=$(ACA_RG) bash scripts/azure-update-env-production.sh && \
-	echo "✅ Deployed $$TAG to PRODUCTION ($(ACA_PROD_NAME)). Wait ~60s for rollout."
+	END_TS=$$(date +%s) && \
+	DEPLOY_SECONDS=$$((END_TS - START_TS)) && \
+	echo "✅ Deployed $$TAG to PRODUCTION ($(ACA_PROD_NAME)). Wait ~60s for rollout." && \
+	echo "Deploy time: $${DEPLOY_SECONDS}s | Image size: $$IMAGE_SIZE_HUMAN"
 
 prod-env:
 	ACA_NAME=$(ACA_PROD_NAME) ACA_RG=$(ACA_RG) bash scripts/azure-update-env-production.sh
